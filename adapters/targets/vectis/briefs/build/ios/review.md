@@ -10,7 +10,7 @@ The iOS-specific team-spawn protocol lives in [`review/team-protocol-ios.md`](..
 2. **Spawn specialists concurrently** with the verbatim prompts in [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md):
    - **Structural** — IOS-001..019: ViewModel / screen correspondence, effect handlers, token usage, ScrollView hazards, recurring-group component candidates. Full library: [`review/ios-checks.md`](../../../references/review/ios-checks.md).
    - **Quality** — SWF-001..010: concurrency, force unwraps, a11y labels, state management, previews, swiftformat. Full library: [`review/swift-quality-checks.md`](../../../references/review/swift-quality-checks.md).
-   - **Integration** — only on the first full-scope iteration. Token / asset / composition cross-artifact checks per [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md) § Integration.
+   - **Integration** — only on the first full-scope iteration. Token / asset / composition cross-artifact checks per [`review/team-protocol-ios.md`](../../../references/review/team-protocol-ios.md) § Integration, including **IOS-020** (render-by-`kind`, codex `VECTIS-006`) in [`review/ios-checks.md`](../../../references/review/ios-checks.md).
 3. **Universal checks (lead).** Apply every `UNI-*` rule from [`adapters/shared/rules/universal/`](../../../../../shared/rules/universal/) with Swift heuristics. Full library: [`review/universal-checks.md`](../../../references/review/universal-checks.md).
 4. **Adversarial challenge.** Forward all findings to the antagonist per [`agent-teams.md`](../../../references/agent-teams.md).
 5. **Synthesis.** Lead authors the iteration report per [`review/iteration-report.md`](../../../references/review/iteration-report.md).

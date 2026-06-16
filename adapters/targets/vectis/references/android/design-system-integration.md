@@ -51,13 +51,15 @@ Android/
 │       │   │       ├── (Elevation.kt, Border.kt, Opacity.kt, … as needed)
 │       │   │       └── Theme.kt
 │       │   └── di/...
-│       └── res/                               # generated from assets.yaml
+│       └── res/                               # copied from assets/exports/android/
 │           ├── drawable-mdpi/<asset-id>.png
 │           ├── drawable-hdpi/<asset-id>.png
 │           ├── drawable-xhdpi/<asset-id>.png
 │           ├── drawable-xxhdpi/<asset-id>.png
 │           ├── drawable-xxxhdpi/<asset-id>.png
-│           ├── drawable/<asset-id>.xml         # vector drawable
+│           ├── drawable/<asset-id>.xml         # vector drawable (icon / decorative)
+│           ├── mipmap-*/ic_launcher*.png       # app-icon only
+│           ├── mipmap-anydpi-v26/ic_launcher*.xml
 │           └── values/themes.xml
 └── shared/
     └── build.gradle.kts
@@ -261,6 +263,25 @@ on Android 12+ without any token authoring.
 
 ## Asset integration
 
+### Render-by-`kind`
+
+Shell writers resolve each composition `icon` / `image` / `icon-button` / `fab`
+reference through `assets.yaml` and emit view code strictly by entry `kind`:
+
+| `assets.<id>.kind` | Android emission |
+|---|---|
+| `vector` | `painterResource(R.drawable.<id_snake>)` from a shell-local drawable copied from the materialized export |
+| `raster` | `painterResource` from per-density drawables copied from the materialized export |
+| `symbol` | `Icon(imageVector = Icons.Default.<glyph>, …)` — no resource copy |
+
+**Forbidden at build time:** emitting `Icons.Default.*` (or any Material Icons
+substitute) for an id whose entry is `vector` or `raster`. Missing platform
+exports are validation errors (`assets-materialization-missing`) — never a
+writer shortcut. Platform glyph use requires an explicit `kind: symbol` entry
+(optionally `inferred: true` when promoted from screenshot inference; see
+[Layout Inferer Contract](../layout-inferer-contract.md) and
+`adapters/sources/screenshots/briefs/extract.md`).
+
 ### Reading `assets.yaml`
 
 The Android writer's primary asset input is `assets.yaml`. Resolution
@@ -281,21 +302,32 @@ present). Missing files are errors; missing optional densities are
 warnings (per Phase 1.7). The writer consumes the already-validated input
 set.
 
-### Copy-on-generate
+### Materialize-before-copy
 
-Build hand-off is copy-on-generate: the Android writer
-**copies** referenced asset files into the app module's `res/` tree at
-generation time. The generated shell project must build from its own
-platform directory after generation; it MUST NOT symlink, alias, or
-path-reference `design-system/assets/` from `build.gradle.kts`, nor
-consume files from `<change>/assets/` at runtime. Per-platform copy
-targets:
+Canonical masters live under `design-system/assets/` (`source:` on each entry).
+Per-platform binaries live under `design-system/assets/exports/android/` and are
+recorded in `sources.android` (operator-pinned or auto-written by
+`vectis materialize assets`). Materialization runs automatically at
+`specify slice build --phase prepare` for in-scope assets with missing exports;
+operators may also run `specify tool run vectis -- materialize assets` manually
+after editing canonical masters. Committed `exports/` trees are version-controlled
+— CI and shell builds consume them without re-running materialize on every job.
 
-| Asset `kind` | Source key(s) read | Target resource location |
+Build hand-off is **materialize-then-copy**: the Android writer **copies**
+files from each entry's resolved `sources.android` export path(s) into the app
+module's `res/` tree at generation time. The canonical `source:` file is
+provenance only — never copied into the shell. The generated shell project must
+build from its own platform directory after generation; it MUST NOT symlink,
+alias, or path-reference `design-system/assets/` from `build.gradle.kts`, nor
+consume files from `<change>/assets/` at runtime. Per-platform copy targets (paths relative to `design-system/`; materialize writes under `assets/exports/android/`):
+
+| `role` + `kind` | Export tree read (`sources.android` pin) | Shell `res/` target |
 |---|---|---|
-| `raster` | `sources.android.{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}` | `res/drawable-<density>/<asset-id>.png` (or `.jpg`) — one file per declared density bucket. |
-| `vector` | `sources.android` (`.xml` Vector Drawable preferred; `.svg` is **not** an Android resource type and MUST be converted to a Vector Drawable beforehand) | `res/drawable/<asset-id>.xml`. The canonical `source:` is provenance only — never copied. |
-| `symbol` | `symbols.android` | No resource copy — emit `Icons.Default.<glyph>` (or an explicit `material-icons-extended` reference) at the call site. |
+| `icon` or `decorative` + `vector` | `drawable/<id_snake>.xml` (SVG master materialized to Vector Drawable; `.svg` is never an Android resource) | `res/drawable/<asset-id_snake>.xml`. |
+| `illustration` + `vector` | `drawable-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/<id_snake>.png` (one PNG per density bucket) | Matching `res/drawable-<density>/<asset-id_snake>.png` files. |
+| `photo` or UI `icon` + `raster` | `{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}` under operator-pinned bucket paths (materialize does not invent density ladders) | `res/drawable-<density>/<asset-id_snake>.png` (or `.jpg`) — one file per declared bucket. |
+| `symbol` (any role) | `symbols.android` | No resource copy — emit `Icons.Default.<glyph>` (or an explicit `material-icons-extended` reference) at the call site. |
+| `app-icon` | `assets/exports/android/app-icon/` directory pin (`mipmap-*/`, `mipmap-anydpi-v26/`, `drawable-*/ic_launcher_foreground.png`, `values/ic_launcher_background.xml`; path A auto-convert or path B operator pin) | Copy the export tree into matching `res/` locations; scaffold ships empty adaptive stubs materialize fills. |
 
 Reference the copied asset by its kebab-case asset id at the call site:
 
@@ -333,15 +365,15 @@ indirection.
 
 ### Missing platform exports
 
-When a `vector` asset is referenced from `composition.yaml` but
-`sources.android` is missing, the validator reports an error and shell
-generation halts for the affected screen (missing vector exports are validation errors, not deferred TODOs). The Android writer
-does **not** silently fall back to a placeholder, generate from the
-canonical `source:` SVG at build time, or skip the screen. The legitimate
-operator responses are to add an Android Vector Drawable export to
-`assets.yaml`, re-declare the asset as `kind: raster` with per-density
-`sources.android`, re-declare it as `kind: symbol` with a Material Icons
-glyph mapping, or remove the reference from `composition.yaml`.
+When a `vector` or `raster` asset is referenced from `composition.yaml` but
+`sources.android` is missing or the pinned export path is absent on disk, the
+validator reports `assets-materialization-missing` and shell generation halts
+for the affected screen. The Android writer does **not** silently fall back to a
+Material Icon, generate from the canonical `source:` at build time, or skip the
+screen. The legitimate operator responses are to run materialize (or commit
+operator-pinned exports under `exports/android/`), re-declare the asset as
+`kind: symbol` with an explicit glyph mapping, or remove the reference from
+`composition.yaml`.
 
 ### Stale resource cleanup
 

@@ -25,7 +25,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 - Used offline init with local adapter paths (`specify init <framework>/adapters/targets/{omnia,vectis,contracts}`) per the documented offline fallback in `shared/setup.md`.
 - Added `file://` bare-git `origin` remotes to `backend`, `mobile`, and `contracts` so `specify workspace prepare` can resolve `origin/HEAD`.
-- Plan authored headlessly (`specify plan create`, survey finalize, `propose --from --reconcile-platforms`) rather than a live `/spec:plan` skill session; Gate 1 stamped with `--actor agent`.
+- Plan authored headlessly (`specify plan create`, survey finalize, `propose --from`) rather than a live `/spec:plan` skill session; Gate 1 stamped with `--actor agent`.
 - Phase work driven by `evals/.sandbox/workspace_driver.py` following `/spec:execute` routing; interrupt simulated by stopping after `build --phase prepare` with an extra dirty root file, then releasing the plan lock.
 
 ## Notes

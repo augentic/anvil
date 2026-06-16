@@ -26,7 +26,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 - Used offline init with local adapter paths (`specify init <framework>/adapters/targets/{omnia,vectis,contracts}`) per documented offline fallback in `shared/setup.md`.
 - Symlinked the `documentation` source adapter into the workspace (`adapters/sources/documentation`) per setup prerequisite.
 - Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
-- Plan authored headlessly (`specify plan create`, survey finalize, `propose --from --reconcile-platforms`) rather than a live `/spec:plan` skill session; platform reconciliation inserted `app-foundation` bootstrap slice for mobile.
+- Plan authored headlessly (`specify plan create`, survey finalize, `propose --from`) rather than a live `/spec:plan` skill session; default-on platform bootstrap inserted `app-foundation` bootstrap slice for mobile.
 - Execute driven by a local `evals/.sandbox/workspace_driver.py` helper following `/spec:execute` routing (workspace sync/prepare, `SPECIFY_PLAN_DIR`, refine → build → merge per slice) with minimal omnia/vectis/contracts build stubs; finalize not run (execute-only per scenario stages).
 - Inter-slice residue commits after refine/build in each slot to satisfy `workspace prepare` dirty-boundary classification between phases.
 

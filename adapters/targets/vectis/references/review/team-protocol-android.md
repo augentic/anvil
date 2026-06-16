@@ -52,6 +52,16 @@ Severity downgrades move at most one level along the closed `LintFinding` severi
 (`critical` → `important`, not `critical` → `suggestion`).
 ```
 
+## Integration (first full-scope iteration only)
+
+The Integration specialist cross-checks wired UI input artifacts (`composition.yaml`, effective `assets.yaml`, `tokens.yaml`) against shell sources. Run these checks once per build when all three artifacts are in scope:
+
+| Check | Codex | Library |
+| --- | --- | --- |
+| Render-by-`kind` drift | `VECTIS-006` | [`android-checks.md`](android-checks.md) **AND-028** |
+
+Apply [`VECTIS-006`](../../rules/VECTIS-006-asset-render-by-kind.md): forbid `Icons.Default.*` (and equivalent Material Icons substitutes) for composition-referenced ids whose `assets.yaml` entry is `vector` or `raster`. Cite `rule_id: VECTIS-006` on every finding. Skip when `composition.yaml` or `assets.yaml` is absent.
+
 ## Antagonist responsibilities
 
 1. Reviews every finding for evidence quality and severity accuracy.

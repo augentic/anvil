@@ -41,8 +41,13 @@ Two tracks were framed as parallel, but they are lopsided in practice: the obser
 1. **Observability and portability (RM-14 / RM-15 / RM-18)** — now that the loop is proven on realistic multi-repo flows, make it measurable and portable across teams, forges, agents, and catalogs.   
 **Status: mostly landed for the near-term items.** RM-15 is essentially complete; RM-14's event *substrate* ships (closed taxonomy, `journal show` / `journal emit`, bounded backward-tail reader) and only the operator-facing measurement/export surface remains. This is a known build, not a design risk — a good candidate to execute in parallel with the reconciliation decision.
 
-**Deferred until trigger conditions or prerequisites:**
+#### Recently implemented
 
+- [RFC-46: Asset materialization and mandatory app icon](rfc-46-asset-materialization.md) — canonical SVG inputs with auto-convert or operator-pinned `exports/<platform>/` hand-built assets, deterministic `vectis materialize assets`, render-by-`kind` shell writers, one logical `app-icon` with per-platform delivery, and bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Scoped to iOS/Android; web asset materialization is split out to [RFC-46a](future/rfc-46a-web-asset-materialization.md) (deferred). Landed on `main` in `augentic/specify` and `augentic/specify-cli` (final assurance: [implementation plan](rfc-46-implementation-plan.md) R46-S30).
+
+#### Deferred until trigger conditions or prerequisites
+
+- [RFC-46a](future/rfc-46a-web-asset-materialization.md) — web asset materialization (`sources.web`, favicon / manifest icons, `bootstrap-web`); deferred until a web shell scaffold exists. Extends RFC-46 additively.
 - [Standards baseline](#ideas-parked) — cross-run baseline/diff; no consumers under fix-before-release on Specify-native codebases.
 - RM-12 / RM-13 — catalog import and read-oriented MCP; integration surfaces that enrich an already-trustworthy core loop.
 

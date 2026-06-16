@@ -1,0 +1,64 @@
+# Acceptance fixture for RFC-46 committed exports (R46-S25).
+#
+# Canonical masters live under `assets/`; materialized exports under
+# `assets/exports/<platform>/` are version-controlled after
+# `vectis materialize assets`. Symbol-kind chrome needs no exports.
+#
+# Regenerate: `vectis materialize assets design-system/assets.yaml`
+# (from the fixture root). Re-commit `assets/exports/` and any new pins.
+
+version: 1
+
+provenance:
+  sources:
+    - kind: manual
+      captured_at: "2026-06-16T00:00:00Z"
+
+app-icon: app-icon
+
+assets:
+  app-icon:
+    kind: vector
+    role: app-icon
+    alt: "Todo App"
+    source: assets/app-icon.svg
+    sources:
+      ios: assets/exports/ios/app-icon/AppIcon.appiconset
+      android: assets/exports/android/app-icon
+
+  empty-tasks-hero:
+    kind: vector
+    role: illustration
+    alt: "Empty tasks illustration"
+    source: assets/empty-tasks-hero.svg
+    sources:
+      ios: assets/exports/ios/empty-tasks-hero.imageset/empty-tasks-hero@3x.png
+      android: assets/exports/android/drawable-xxxhdpi/empty_tasks_hero.png
+
+  chevron-right:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: chevron.right
+      android: chevron_right
+
+  chevron-left:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: chevron.left
+      android: chevron_left
+
+  settings:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: gearshape
+      android: settings
+
+  plus:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: plus
+      android: add
