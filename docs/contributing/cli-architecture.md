@@ -71,11 +71,12 @@ The exit-code contract is documented in `src/main.rs` and is part of the public 
 | `0` | `Success` | Operation completed successfully |
 | `1` | `GenericFailure` | I/O error, parse error, or any unclassified failure |
 | `2` | `ValidationFailed` / `ArgumentError` | Validation failure, argument-shape failure discovered after clap parsing, or a declared tool resolver / permission failure |
-| `3` | `VersionTooOld` | Binary version is below the `specify_version` floor in `.specify/project.yaml` |
+| `3` | `VersionTooOld` | Binary version is below the `specify_version` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
 
 The mapping from error variants to exit codes:
 
 - `Error::CliTooOld` maps to exit `3` and serializes as `specify-version-too-old`
+- `Error::AdapterCliTooOld` (an adapter's declared `specify` compatibility floor) maps to exit `3` and serializes as `adapter-cli-too-old`
 - `Error::Validation` maps to exit `2`
 - `Error::Argument`, declared-tool denials, and structural plan errors map to exit `2`
 - All other `Error` variants map to exit `1`

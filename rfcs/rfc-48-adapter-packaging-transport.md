@@ -1,33 +1,33 @@
 # RFC-48: Adapter Packaging and Transport — OCI / wasm-pkg Distribution
 
-> Status: Draft · Execution order: **2nd of RFC-47 → RFC-48 → RFC-49**, executed to completion in numerical sequence. Runs after identity ([RFC-47](rfc-47-adapter-identity.md)) lands; self-contained against today's two-repo platform. The consolidation half ([RFC-49](rfc-49-repository-topology.md)) runs *afterward* and is not a precondition of any step here. · Depends: [RFC-47: Adapter identity](rfc-47-adapter-identity.md) (the semver identity this RFC distributes), the wasm-pkg tool-distribution precedent (`crates/tool/src/{package,resolver}.rs`, `crates/tool/src/cache/fetch.rs`, the `wasi-tools` job in `.github/workflows/release.yaml`), the adapter loader and install path (`crates/workflow/src/init/{adapter_uri,git,cache}.rs`), the per-project cache resolver (`crates/schema/src/cache.rs`) · Related: [RFC-49: Repository topology](rfc-49-repository-topology.md) · Roadmap: the distribution portion of [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model).
+> Status: Draft · Execution order: **2nd of RFC-47 → RFC-48 → RFC-49**, executed to completion in numerical sequence. Runs after identity ([RFC-47](rfc-47-adapter-identity.md)) lands; self-contained against today's two-repo platform. The consolidation half ([RFC-49](rfc-49-repository-topology.md)) runs *afterward* and is not a precondition of any step here. · Depends: [RFC-47: Adapter identity](rfc-47-adapter-identity.md) (the semver identity this RFC distributes), the wasm-pkg extension-distribution precedent (`crates/registry/src/{package,resolver}.rs`, `crates/registry/src/cache/fetch.rs`, the `wasi-extensions` job in `.github/workflows/release.yaml`), the adapter loader and install path (`crates/workflow/src/init/{adapter_uri,git,cache}.rs`), the per-project cache resolver (`crates/schema/src/cache.rs`) · Related: [RFC-49: Repository topology](rfc-49-repository-topology.md) · Roadmap: the distribution portion of [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model).
 
 ## Abstract
 
-An adapter is published, fetched, verified, and cached as an **immutable registry artifact**, over the same wasm-pkg / OCI plumbing first-party WASI tools already use. One package carries both the adapter's **prose** (`adapter.yaml`, briefs, references) and its **wasm** (declared tools), so `omnia@1.0.0` is one pull — not a git sparse checkout plus N separate tool fetches.
+An adapter is published, fetched, verified, and cached as an **immutable registry artifact**, over the same wasm-pkg / OCI plumbing first-party WASI extensions already use. One package carries both the adapter's **prose** (`adapter.yaml`, briefs, references) and its **wasm** (an adapter ships at most one declared extension), so `omnia@1.0.0` is one pull — not a git sparse checkout plus a separate extension fetch.
 
 Identity ([RFC-47](rfc-47-adapter-identity.md)) is a semver; this RFC binds it to an immutable, content-addressed locator and proves it on read with the **registry's own content digest**, not a bespoke downstream Merkle. Because the registry already supplies immutability and content-addressing, the shared cache is an ordinary download-once-by-identity store.
 
-The authoring tree mirrors that unpacked artifact: an author writes prose into a structure shaped like the installed store entry, declares shared content (spec-runtime, shared rules) as versioned dependencies and any wasm tools inline in `adapter.yaml`, and runs `specify adapter vendor` (prose deps) / `build` (tool wasm) so the local tree is byte-identical to what ships (D9/D10). Self-containment becomes a locally reproducible fact, not a publish-only transform.
+The authoring tree mirrors that unpacked artifact: an author writes prose into a structure shaped like the installed store entry, declares shared content (spec-runtime, shared rules) as versioned dependencies and its wasm extension inline in `adapter.yaml`, and runs `specify adapter vendor` (prose deps) / `build` (extension wasm) so the local tree is byte-identical to what ships (D9/D10). Self-containment becomes a locally reproducible fact, not a publish-only transform.
 
 ## Motivation
 
 [RFC-47](rfc-47-adapter-identity.md) fixes what an adapter is *named*; this RFC fixes how the bytes behind that name travel and how they are *proven*. The registry is the natural transport:
 
-- **We already run the loop.** The `wasi-tools` job in `release.yaml` publishes `wasm32-wasip2` components to the `augentic.io` (GHCR-backed) registry via `wkg`; `crates/tool/src/{package,resolver}.rs` fetch, stream, sha256-verify (`specify_schema::digest::Hasher`), and atomically install them. Adapter distribution is the same loop with a tree payload instead of one blob.
-- **Adapters are trees, not blobs.** The tool path installs exactly one `module.wasm`; an adapter is a directory of prose plus optional wasm (see [Background](#background)). The gap this RFC closes is *one blob → a packed tree*.
+- **We already run the loop.** The `wasi-extensions` job in `release.yaml` publishes `wasm32-wasip2` components to the `augentic.io` (GHCR-backed) registry via `wkg`; `crates/registry/src/{package,resolver}.rs` fetch, stream, sha256-verify (`specify_schema::digest::Hasher`), and atomically install them. Adapter distribution is the same loop with a tree payload instead of one blob.
+- **Adapters are trees, not blobs.** The extension path installs exactly one `module.wasm`; an adapter is a directory of prose plus optional wasm (see [Background](#background)). The gap this RFC closes is *one blob → a packed tree*.
 - **The registry gives immutability and a digest for free.** Today's transport is a git sparse checkout (`init/git.rs`) copied into the per-project cache (`init/cache.rs`). A git ref is a *moving* locator — proving immutability against it needs a bespoke publish-time Merkle plus a moved-tag backstop. An OCI content digest *is* immutable identity, so that machinery collapses to verifying the registry descriptor.
 
 ## Background
 
 ### What an adapter is, and isn't
 
-A WASI tool is one wasm component — a single blob with a single digest, which is why the existing fetch path (`crates/tool/src/package.rs`) installs one `module.wasm` and is done. An adapter is a **directory tree**:
+A WASI extension is one wasm component — a single blob with a single digest, which is why the existing fetch path (`crates/registry/src/package.rs`) installs one `module.wasm` and is done. An adapter is a **directory tree**:
 
 - `adapter.yaml` — the prose manifest the loader validates.
 - `briefs/*.md` — prose the *agent* reads and acts against; never run as code.
 - `references/**` — supporting prose plus the vendored `references/spec-runtime/` bundle.
-- optionally wasm tools, declared inline in the manifest's `tools[]` block and built from co-located crates (D10/D11).
+- optionally a single wasm extension, declared inline in the manifest's `extension` block and built from a co-located crate (D10/D11).
 
 The loader (`SourceAdapter::resolve` / `TargetAdapter::resolve`) probes a *directory*, so the packaging problem is *one blob → a tree of prose plus (optionally) wasm*, with the prose dominating.
 
@@ -38,7 +38,7 @@ The loader (`SourceAdapter::resolve` / `TargetAdapter::resolve`) probes a *direc
 The registry stores content-addressed blobs and (via wasm-pkg) wasm components; an adapter is neither. Three shapes close that gap, in rising order of how literally the adapter "becomes wasm":
 
 - **(A) Packed-tree blob.** Pack the whole tree (`adapter.tar.zst`, sidecar wasm included), stream it through the existing acquire-bytes path, then unpack. Greatest reuse, but hinges on whether `wasm-pkg-client` will carry an opaque, non-component blob (the [Prerequisite spike](#prerequisite-spike)).
-- **(B) OCI artifact with layers.** Push the prose tree as one OCI layer and each wasm tool as additional layers, fetched via `oci-client` / `oci-wasm`. The registry's native model for "prose + wasm in one package," at the cost of a sibling fetch path — but those crates are already transitive deps, so the cost is small. The RFC's working default (see [Packaging shapes (D1)](#packaging-shapes-d1)).
+- **(B) OCI artifact with layers.** Push the prose tree as one OCI layer and the wasm extension as a second layer, fetched via `oci-client` / `oci-wasm`. The registry's native model for "prose + wasm in one package," at the cost of a sibling fetch path — but those crates are already transitive deps, so the cost is small. The RFC's working default (see [Packaging shapes (D1)](#packaging-shapes-d1)).
 - **(C) Wrap-as-component.** Compile a thin wasm component that embeds the tree as data and self-extracts. The only *literal* wasm artifact and the heaviest: prose gains a build step that does nothing at runtime.
 
 All three reuse the existing registry, auth, namespace routing, and content digests, and none requires prose to stop being prose. The choice is purely *how the tree is wrapped*, which reduces to the spike question and is recorded as D1.
@@ -59,7 +59,7 @@ Resolve this before authoring D1's mechanism. The working assumption is **(B)**;
 ## Principles
 
 - **Identity is fixed at publish, proven by the registry.** A published `name@X.Y.Z` is immutable: the registry content digest names exactly those bytes. Consumers *verify the digest*; they do not re-derive identity from a checkout.
-- **Artifacts are self-contained.** Everything an adapter needs at resolution time — spec-runtime, declared tools — is bundled at publish. Downstream resolution does no vendoring and dereferences no in-tree symlinks; the installed tree *is* the published tree.
+- **Artifacts are self-contained.** Everything an adapter needs at resolution time — spec-runtime, the declared extension — is bundled at publish. Downstream resolution does no vendoring and dereferences no in-tree symlinks; the installed tree *is* the published tree.
 - **Authoring mirrors the artifact.** The authoring tree is shaped like the unpacked store entry, so `AdapterLocation::Local` and `AdapterLocation::Cached` resolve through one code path and what an author lints and tests is what ships. Shared content is a declared, versioned dependency vendored by a local `vendor` step (D9), never a symlink into a framework checkout.
 - **The cache is boring.** A global store keyed by immutable `(name, version)` is download-once-by-identity with a temp-then-rename install. Integrity lives upstream at publish; downstream is a one-line verify.
 - **Resolution stays project-local.** A shared *store* is storage, not a resolution fallback — what `name` resolves to is the project's pinned `(name, version)`, preserving [DECISIONS.md §"Resolution is project-local only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing).
@@ -72,7 +72,7 @@ The prose *is* the IP — the briefs encode the methodology — and the packagin
 - **Prose is plaintext at the consumer at point of use.** No packaging shape changes this: tarball (A) untars, OCI layers (B) are pullable, wasm-wrapped bytes (C) are `strings`-able, and any "expand at point of use" step must still hand the model cleartext. Client-side obfuscation is a speed bump, not protection.
 - **Access control is the real lever.** Whether the registry namespace is public or authenticated (D8) gates *who* obtains the bytes — stronger than obfuscating freely-handed-out bytes, and a net improvement over today's public git checkout.
 - **Licensing carries the rest.** Copyright and registry terms govern redistribution; the risk is redistribution, not reverse-engineering markdown.
-- **Sensitive logic belongs in the bundled wasm, not the prose.** Proprietary deterministic logic compiled into a declared tool (bundled by D3) is better protected than plaintext markdown.
+- **Sensitive logic belongs in the bundled wasm, not the prose.** Proprietary deterministic logic compiled into a declared extension (bundled by D3) is better protected than plaintext markdown.
 
 Per-licensee **watermarking** (attribution, not prevention) and **server-side prose expansion** (true prevention, at the cost of the offline / self-contained property) are recorded under [Non-Goals](#non-goals).
 
@@ -82,34 +82,34 @@ Per-licensee **watermarking** (attribution, not prevention) and **server-side pr
 
 | ID | Decision | Implementation consequence |
 | --- | --- | --- |
-| **D1 Packaging format** | An adapter publishes as one immutable registry artifact carrying the packed prose tree plus bundled wasm. Working-default shape: an **OCI artifact with layers** (prose layer + wasm layers) via the already-vendored `oci-client` / `oci-wasm`; optimisation shape (only if the spike clears an opaque blob in *both* directions): a **packed-tree blob** (`adapter.tar.zst`). `specify adapter pack` is byte-deterministic either way. | Spike-gated (see [Prerequisite spike](#prerequisite-spike)). OCI adds a sibling fetch module reusing registry/auth/namespace config; the blob shape generalises `crates/tool/src/package.rs` to stream-and-unpack a tree. See [Packaging shapes (D1)](#packaging-shapes-d1). |
+| **D1 Packaging format** | An adapter publishes as one immutable registry artifact carrying the packed prose tree plus bundled wasm. Working-default shape: an **OCI artifact with layers** (prose layer + a wasm layer) via the already-vendored `oci-client` / `oci-wasm`; optimisation shape (only if the spike clears an opaque blob in *both* directions): a **packed-tree blob** (`adapter.tar.zst`). `specify adapter pack` is byte-deterministic either way. | Spike-gated (see [Prerequisite spike](#prerequisite-spike)). OCI adds a sibling fetch module reusing registry/auth/namespace config; the blob shape generalises `crates/registry/src/package.rs` to stream-and-unpack a tree. See [Packaging shapes (D1)](#packaging-shapes-d1). |
 | **D2 Immutable fetch locator** | Fetch targets an **immutable, content-addressed locator** (OCI `@sha256:` digest, or an immutable tag whose digest is recorded), never a branch. | `init/adapter_uri.rs` gains a package-ref form (`specify:omnia@1.0.0`) alongside the local-path / GitHub-URL / shorthand forms, with no branch-ref defaulting. The recorded digest (D4) backstops a moved tag as `adapter-digest-mismatch`. |
-| **D3 Self-contained artifact** | Spec-runtime and the wasm of declared tools are bundled **at publish**; downstream resolution does no vendoring and dereferences no symlinks. | The legacy `vendor_spec_runtime` ancestor-walk (`init/cache.rs`) retires; spec-runtime is resolved by identity at author time ([D12](#shared-content-dependencies-d12)) and `pack` ships it. Declared-tool `module.wasm` ships inside the artifact. Because `vendor` / `build` (D9/D10) land the same bytes at author time, the local working tree is self-contained too. See [Bundled tools (D3)](#bundled-tools-d3). |
+| **D3 Self-contained artifact** | Spec-runtime and the wasm of the declared extension are bundled **at publish**; downstream resolution does no vendoring and dereferences no symlinks. | The legacy `vendor_spec_runtime` ancestor-walk (`init/cache.rs`) retires; spec-runtime is resolved by identity at author time ([D12](#shared-content-dependencies-d12)) and `pack` ships it. The declared extension's `module.wasm` ships inside the artifact. Because `vendor` / `build` (D9/D10) land the same bytes at author time, the local working tree is self-contained too. See [Bundled extension (D3)](#bundled-extension-d3). |
 | **D4 Identity via registry content digest, verified on read** | The artifact's identity is the registry content digest (`sha256:`). The consumer records it on install and re-checks it on every read, refusing a mismatch. Re-publishing an existing `(name, version)` with different bytes is rejected **at publish**. | Verification reuses the streaming `specify_schema::digest::Hasher` in `package.rs`. The bespoke publish-time tree Merkle is **not** built — the registry descriptor is the trust anchor. `ManifestMeta` (`init/cache.rs`) records the digest. |
 | **D5 Trivial global store + projection** | A global store at `<adapters-root>/<name>@<version>/`, resolved `$SPECIFY_ADAPTER_CACHE` → `$XDG_CACHE_HOME/specify/adapters` → `$HOME/.cache/specify/adapters` → `<temp>/specify/adapters` (the `mirror_dir` precedent). Install = pull → temp → verify → atomic rename → `chmod` read-only. The per-project cache is a **directory symlink** into the entry, degrading to a recursive **copy** when symlink creation fails. | New resolver in `crates/schema/src/cache.rs`; install path in `init/cache.rs` link-or-copies from the store; `locate_axis` and the `AdapterLocation::{Cached,Local}` labels are unchanged. See [Store layout and projection (D5)](#store-layout-and-projection-d5). |
-| **D6 Publish tooling** | A publish step mirrors the `wasi-tools` release job: pack the tree (+ bundled wasm), push `specify:<name>@${VERSION}`, pull back and verify. | New job in `.github/workflows/release.yaml`, reusing the `wkg` / GHCR / `specify -> augentic.io` namespace plumbing the tool job exercises. |
-| **D7 Adapter repo extraction** | **Adapters — prose plus co-located tool crates — relocate to a dedicated `augentic/specify-adapters` repo**, extracted from `augentic/specify` once [D12](#shared-content-dependencies-d12) severs the `adapters/shared/` coupling (Phasing step 8). The *other* half — folding `augentic/specify` + `augentic/specify-cli` into one platform repo — is [RFC-49](rfc-49-repository-topology.md), executed afterward and **not** a precondition. First-party tool wasm relocates with the adapters: contract/vectis ship inside the adapter artifact (D3/D6/D11), so the `wasi-tools` publish job retires. | Touching the adapter loader / cache scope requires the cross-repo `rg` sweep per [AGENTS.md §"Note to the implementing agent"](https://github.com/augentic/specify-cli/blob/main/AGENTS.md); net of [RFC-49](rfc-49-repository-topology.md) the sweep is **two-way** (platform ↔ adapters). Retiring `wasi-tools` removes the standalone `specify:contract@x` / `specify:vectis@x` packages, the `first_party_permissions` catalog, and the scalar first-party `tools:` form — decommissioned, not aliased. |
-| **D8 Registry visibility and pull auth** | First-party adapter artifacts publish to an **authenticated** namespace; pulling requires credentials, gating *who* obtains the bytes. A public namespace is a deliberate per-adapter opt-out, not the default. | Pull-side auth reuses the wasm-pkg / GHCR credential path the publish step (D6) exercises — layered config in `crates/tool/src/package.rs::load_config` and `.specify/wasm-pkg.toml`. No new transport. |
-| **D9 Authoring mirrors the unpacked artifact** | The authoring tree is shaped like the unpacked store entry: authored prose (`adapter.yaml`, `briefs/`, `references/`, `rules/`) plus a **reserved vendored namespace** an author never hand-writes. Shared content is declared by identity in `adapter.yaml.requires`; declared-tool wasm builds from a co-located crate in `adapter.yaml.tools[]` (D11). `specify adapter vendor` resolves `adapter.lock` and writes the `requires` reserved paths; `package.include` is the pack manifest. | Adds optional `requires` / `package` blocks to `schemas/{source,target}.schema.json` and a new `adapter.lock` schema; adds author-time `specify adapter {vendor, build, pack}` verbs. Hand-authoring a gitignored reserved path raises `adapter-authored-reserved-path`; lock drift raises `adapter-vendor-stale`. See [Authoring structure (D9)](#authoring-structure-d9). |
-| **D10 Co-located tool source** | An adapter's declared-tool Rust crate lives **beside its prose** at `tools/<name>/`. The built `tools/<name>/module.wasm` is the only shipped byte and is **committed + digest-pinned** (`adapter.lock`), mirroring the existing `wasi-tools/contract/dist/*.wasm` + drift-test precedent — so `pack`, install, and lint need no wasm toolchain; only *refreshing* the byte does. A sparse Cargo workspace spans the per-adapter crates. | `specify adapter build` compiles the crate to `wasm32-wasip2`, writes `module.wasm`, and updates its `adapter.lock` digest — kept **separate from `vendor`** so prose-only adapters (6 of 8 today) never invoke cargo. `package.include`'s `tools/**/module.wasm` ships the artifact and excludes crate source. The Rust toolchain + `clippy`/`test` CI enters the adapters tree only for tool-bearing crates, scoped like the `wasi-tools` carve-out. See [Co-located tool source (D10)](#co-located-tool-source-d10). |
-| **D11 Tool declaration in the manifest** | There is no standalone `tools.yaml`. The **already-present** `adapter.yaml.tools[]` block becomes the single declaration, carrying only `name` and structured WASI `permissions`. **Breaking** change: per-tool `version` moves from *required* to *rejected* (the wasm rides the adapter's semver ([RFC-47](rfc-47-adapter-identity.md)), covered by D4), and `permissions` moves from a flat string array to the `{read, write}` shape the WASI runner already speaks. `source` / `sha256` never appear — the wasm builds from the co-located crate (D10). | Rewrites the `toolDeclaration` `$def` in `schemas/{source,target}.schema.json`. Unifies `AdapterToolDeclaration` (`adapter/core.rs`) with `specify_tool_manifest::ToolPermissions` while preserving the wasmtime-free loader boundary, retires the `tools.yaml` reader (`load::plugin_sidecar`), and **replaces** the now-moot `adapter-tool` cross-reference rule with a co-located-crate / built-`module.wasm` presence check. `specify tool run <name>` resolves the tool from the installed adapter tree. |
+| **D6 Publish tooling** | A publish step mirrors the `wasi-extensions` release job: pack the tree (+ bundled wasm), push `specify:<name>@${VERSION}`, pull back and verify. | New job in `.github/workflows/release.yaml`, reusing the `wkg` / GHCR / `specify -> augentic.io` namespace plumbing the extension job exercises. |
+| **D7 Adapter repo extraction** | **Adapters — prose plus co-located extension crates — relocate to a dedicated `augentic/specify-adapters` repo**, extracted from `augentic/specify` once [D12](#shared-content-dependencies-d12) severs the `adapters/shared/` coupling (Phasing step 8). The *other* half — folding `augentic/specify` + `augentic/specify-cli` into one platform repo — is [RFC-49](rfc-49-repository-topology.md), executed afterward and **not** a precondition. First-party extension wasm relocates with the adapters: contract/vectis ship inside the adapter artifact (D3/D6/D11), so the `wasi-extensions` publish job retires. | Touching the adapter loader / cache scope requires the cross-repo `rg` sweep per [AGENTS.md §"Note to the implementing agent"](https://github.com/augentic/specify-cli/blob/main/AGENTS.md); net of [RFC-49](rfc-49-repository-topology.md) the sweep is **two-way** (platform ↔ adapters). Retiring `wasi-extensions` removes the standalone `specify:contract@x` / `specify:vectis@x` packages, the `first_party_permissions` catalog, and the scalar first-party `tools:` form — decommissioned, not aliased. |
+| **D8 Registry visibility and pull auth** | First-party adapter artifacts publish to an **authenticated** namespace; pulling requires credentials, gating *who* obtains the bytes. A public namespace is a deliberate per-adapter opt-out, not the default. | Pull-side auth reuses the wasm-pkg / GHCR credential path the publish step (D6) exercises — layered config in `crates/registry/src/package.rs::load_config` and `.specify/wasm-pkg.toml`. No new transport. |
+| **D9 Authoring mirrors the unpacked artifact** | The authoring tree is shaped like the unpacked store entry: authored prose (`adapter.yaml`, `briefs/`, `references/`, `rules/`) plus a **reserved vendored namespace** an author never hand-writes. Shared content is declared by identity in `adapter.yaml.requires`; the declared-extension wasm builds from a co-located crate declared in `adapter.yaml.extension` (D11). `specify adapter vendor` resolves `adapter.lock` and writes the `requires` reserved paths; `package.include` is the pack manifest. | Adds optional `requires` / `package` blocks to `schemas/{source,target}.schema.json` and a new `adapter.lock` schema; adds author-time `specify adapter {vendor, build, pack}` verbs. Hand-authoring a gitignored reserved path raises `adapter-authored-reserved-path`; lock drift raises `adapter-vendor-stale`. See [Authoring structure (D9)](#authoring-structure-d9). |
+| **D10 Co-located extension source** | An adapter's declared-extension Rust crate lives **beside its prose** at `extension/`. The built `extension/module.wasm` is the only shipped byte and is **committed + digest-pinned** (`adapter.lock`), mirroring the existing `wasi-extensions/contract/dist/*.wasm` + drift-test precedent — so `pack`, install, and lint need no wasm toolchain; only *refreshing* the byte does. A sparse Cargo workspace spans the per-adapter crates. | `specify adapter build` compiles the crate to `wasm32-wasip2`, writes `module.wasm`, and updates its `adapter.lock` digest — kept **separate from `vendor`** so prose-only adapters (6 of 8 today) never invoke cargo. `package.include`'s `extension/module.wasm` ships the artifact and excludes crate source. The Rust toolchain + `clippy`/`test` CI enters the adapters tree only for extension-bearing crates, scoped like the `wasi-extensions` carve-out. See [Co-located extension source (D10)](#co-located-extension-source-d10). |
+| **D11 Extension declaration in the manifest** | There is no standalone `tools.yaml`, and an adapter ships **at most one binary**. The plural `adapter.yaml.tools[]` array collapses to a singular `adapter.yaml.extension` object carrying an optional `name` (the run handle, defaulting to the adapter name) and structured WASI `permissions`. **Breaking** change: the array→object collapse, plus the per-extension `version` moving from *required* to *rejected* (the wasm rides the adapter's semver ([RFC-47](rfc-47-adapter-identity.md)), covered by D4) and `permissions` moving from a flat string array to the `{read, write}` shape the WASI runner already speaks. `source` / `sha256` never appear — the wasm builds from the co-located crate (D10). | Replaces the `tools[]` array (and its `toolDeclaration` `$def`) with a singular `extension` object (an `extensionDeclaration` `$def`) in `schemas/{source,target}.schema.json`. Renames `AdapterToolDeclaration` → `AdapterExtensionDeclaration` (`adapter/core.rs`), collapses it to an `Option<…>`, and unifies it with `specify_extension_manifest::ExtensionPermissions` while preserving the wasmtime-free loader boundary, retires the `tools.yaml` reader (`load::plugin_sidecar`), and **replaces** the now-moot `adapter-tool` cross-reference rule with a co-located-crate / built-`module.wasm` presence check. `specify extension run <name>` resolves the extension from the installed adapter tree. |
 | **D12 Shared-content dependency transport** | The `requires` targets (`spec-runtime`, `review-team-protocol`, `core-rules`) are themselves **versioned registry artifacts**, published and fetched over the same plumbing as adapters (D1/D6). `specify adapter vendor` resolves each at **author/publish time**; the consumer never resolves `requires`, because D3 bundles the resolved bytes. This makes D10's `adapters/shared/` severance real: the author depends on a published *identity*, not a sibling source tree. | Adds a prose-only sibling of the adapter publish job (D6), a registry-targeting `requires` resolver in `vendor`, and an `adapter.lock` digest pin per resolved dependency. Retires the `adapters/shared/**` sparse checkout (`init/git.rs`) and the `vendor_spec_runtime` ancestor-walk (`init/cache.rs`). See [Shared-content dependencies (D12)](#shared-content-dependencies-d12). |
 
 ### Packaging shapes (D1)
 
 The [design space](#three-ways-to-put-a-tree-in-the-registry) is three shapes (A / B / C); the spike picks between (A) and (B), and (C) is recorded-but-rejected. The working assumption is **(B)**, which the spike may overturn in favour of (A):
 
-- **(B) OCI artifact with layers — working default.** A prose layer plus one layer per wasm tool, over the already-transitive `oci-client` / `oci-wasm`. Each layer is independently content-addressed (serving D3's multi-wasm bundle and D4's verify-on-read directly), and a tool-only bump touches one layer rather than the whole blob.
-- **(A) packed-tree blob — optimisation if the spike clears it.** One `adapter.tar.zst` streamed through ~90% of `crates/tool/src/package.rs`. Cheaper *only if* `wasm-pkg` carries an opaque blob in both directions; otherwise its apparent simplicity is lost to a parallel publish path.
+- **(B) OCI artifact with layers — working default.** A prose layer plus a single wasm layer, over the already-transitive `oci-client` / `oci-wasm`. Each is independently content-addressed (serving D3's bundle and D4's verify-on-read directly), and an extension-only rebuild re-pushes just the wasm layer, leaving the prose layer untouched.
+- **(A) packed-tree blob — optimisation if the spike clears it.** One `adapter.tar.zst` streamed through ~90% of `crates/registry/src/package.rs`. Cheaper *only if* `wasm-pkg` carries an opaque blob in both directions; otherwise its apparent simplicity is lost to a parallel publish path.
 - **(C) wrap-as-component is not pursued** — a prose build step that buys nothing at runtime.
 
 **Verify-on-read differs by shape (D4).** Under (B) the consumer re-checks the cached layer descriptors it already holds — no re-tar. Under (A) re-hash-on-read must either re-tar (requiring a byte-deterministic pack) or retain the tarball past install. (B) avoids both.
 
 **Pack must be byte-deterministic.** D4 rejects re-publishing the same `(name, version)` with different bytes, and D9's "post-`vendor` tree packs to the publish digest" equivalence depends on identical inputs producing an identical archive. `tar` + `zstd` are non-deterministic by default, so `specify adapter pack` normalises entry order, mtimes, uid/gid, and permission bits and pins compression parameters. Under (B) this narrows to the single prose layer.
 
-### Bundled tools (D3)
+### Bundled extension (D3)
 
-An adapter that declares wasm tools (D11) ships their `module.wasm` *inside* the artifact, so one pull is self-contained and one digest covers prose + wasm. The alternative — a prose-only artifact with tools resolved separately — lets a tool bump avoid republishing the adapter, but reintroduces N fetches and N digests. v1 bundles; a split-tool-channel is a deferred optimisation if tool churn outpaces adapter churn.
+An adapter that declares a wasm extension (D11) ships its `module.wasm` *inside* the artifact, so one pull is self-contained and one digest covers prose + wasm. The alternative — a prose-only artifact with the extension resolved separately — lets an extension bump avoid republishing the adapter, but reintroduces a second fetch and a second digest. v1 bundles; a split-extension-channel is a deferred optimisation if extension churn outpaces adapter churn.
 
 ### Store layout and projection (D5)
 
@@ -119,12 +119,12 @@ $XDG_CACHE_HOME/specify/adapters/
     adapter.yaml
     briefs/…
     references/spec-runtime/…   # bundled at publish (D3)
-    tools/<name>/module.wasm    # bundled at publish (D3)
+    extension/module.wasm          # bundled at publish (D3)
   documentation@1.0.0/
 ```
 
 - **The store is CLI-write-only.** The fetch path installs pristine bytes; the agent interacts only with the per-project cache, a read-only projection.
-- **Install is pull → temp → verify → atomic rename → `chmod` read-only.** The temp dir lives under the store root so the rename is atomic on one filesystem. Because identity is immutable, concurrent installs are idempotent: one wins the rename, the other verifies the matching digest and discards its temp. A flock around the rename suffices, reusing the `File::try_lock` family from `plan_lock.rs` and the staged-install precedent in `crates/tool/src/cache/fetch.rs`.
+- **Install is pull → temp → verify → atomic rename → `chmod` read-only.** The temp dir lives under the store root so the rename is atomic on one filesystem. Because identity is immutable, concurrent installs are idempotent: one wins the rename, the other verifies the matching digest and discards its temp. A flock around the rename suffices, reusing the `File::try_lock` family from `plan_lock.rs` and the staged-install precedent in `crates/registry/src/cache/fetch.rs`.
 - **The per-project cache is a directory symlink** into the store entry, degrading to a recursive copy on failure (Windows privilege, cross-device) — correct, but the copy forfeits dedup, so the sharing win is POSIX-first. `locate_axis` still finds a real directory; the `AdapterLocation` labels are unchanged.
 - **Per-project provenance moves out of the linked tree.** `ManifestMeta` / `CodexMeta` are stamped *inside* the cache today; an immutable, cross-project store entry cannot hold a per-project stamp, so it relocates to a sidecar beside the symlink, not inside the linked entry.
 - **The projection is a second concurrency point.** The store rename is flock-guarded; the per-project symlink creation is a separate step two concurrent `specify init` can race. It is idempotent (same target), but the test plan covers it.
@@ -139,7 +139,7 @@ Two consequences for `specify lint framework`. First, after D9 there are no syml
 ```text
 adapters/targets/omnia/            # authored tree == unpacked store entry (post-vendor)
   adapter.yaml                     # authored — manifest + requires + package.include
-  adapter.lock                     # generated, committed — pinned dependency + tool digests
+  adapter.lock                     # generated, committed — pinned dependency + extension digest
   briefs/{shape,build,merge}.md    # authored prose
   references/                      # authored prose you own …
     guardrails.md  providers/**  examples/**
@@ -149,9 +149,9 @@ adapters/targets/omnia/            # authored tree == unpacked store entry (post
     omnia.mdc  provider-only-host-access.md   # authored
     core/                          # reserved — vendored CORE-* rules                  (gitignored)
     universal/                     # reserved — vendored UNI-* rules                   (gitignored)
-  tools/
-    replay-validator/                # co-located Rust crate (authored, source-only)
-    replay-validator/module.wasm     # reserved — built wasm, committed + digest-pinned (NOT gitignored)
+  extension/                          # co-located Rust crate (authored, source-only)
+    Cargo.toml  src/               # authored — extension.name may differ from the adapter name
+    module.wasm                    # reserved — built wasm, committed + digest-pinned  (NOT gitignored)
 ```
 
 **Reserved vendored namespace.** Vendored content only ever lands at a fixed, documented set of paths an author never hand-writes, so the authored ⊎ vendored union is unambiguous and the gitignore set is exact:
@@ -161,9 +161,9 @@ adapters/targets/omnia/            # authored tree == unpacked store entry (post
 | `requires.spec-runtime` | `references/spec-runtime/` | gitignored, regenerated by `vendor` |
 | `requires.review-team-protocol` | `references/agent-teams.md` | gitignored, regenerated by `vendor` |
 | `requires.core-rules` | `rules/core/`, `rules/universal/` | gitignored, regenerated by `vendor` |
-| `adapter.yaml.tools[]` entry `<name>` | `tools/<name>/module.wasm` | **committed**, built by `adapter build`, digest-pinned in `adapter.lock` |
+| `adapter.yaml.extension` | `extension/module.wasm` | **committed**, built by `adapter build`, digest-pinned in `adapter.lock` |
 
-The namespace has two postures. The three **`requires` trees** are gitignored and regenerated by `vendor`; a committed file under one raises `adapter-authored-reserved-path`, and `vendor --check` (CI) catches stale regenerated bytes as `adapter-vendor-stale`. The **built `tools/<name>/module.wasm`** is the exception: it is *committed* and digest-pinned, mirroring the `wasi-tools/contract/dist` precedent so `pack` / install / lint never need a wasm toolchain — `adapter-authored-reserved-path` exempts it, and `vendor --check` instead verifies its bytes against the lock digest (`adapter-digest-mismatch`).
+The namespace has two postures. The three **`requires` trees** are gitignored and regenerated by `vendor`; a committed file under one raises `adapter-authored-reserved-path`, and `vendor --check` (CI) catches stale regenerated bytes as `adapter-vendor-stale`. The **built `extension/module.wasm`** is the exception: it is *committed* and digest-pinned, mirroring the `wasi-extensions/contract/dist` precedent so `pack` / install / lint never need a wasm toolchain — `adapter-authored-reserved-path` exempts it, and `vendor --check` instead verifies its bytes against the lock digest (`adapter-digest-mismatch`).
 
 Unlike the D5 store, the author tree is human-owned, so vendored `requires` bytes are written **writable**: the `vendor --check` drift gate, not a filesystem bit, guards them — read-only files inside a working tree fight `git checkout` / `clean` and editor saves for no integrity gain the lock does not already provide.
 
@@ -182,15 +182,16 @@ briefs:
   build: briefs/build.md
   merge: briefs/merge.md
 
-# Declared wasm tools (D11). version / source / fetch-digest are subsumed
-# by the adapter's own identity (RFC-47) and content digest (D4) — only
-# name and WASI permissions remain. The wasm builds from the co-located
-# crate at tools/<name>/ (D10).
-tools:
-  - name: replay-validator
-    permissions:
-      read: ["$PROJECT_DIR/.specify"]
-      write: []
+# Declared wasm extension (D11). An adapter ships at most one binary, so this is
+# a singular object, not an array. version / source / fetch-digest are
+# subsumed by the adapter's own identity (RFC-47) and content digest (D4);
+# `name` is the optional run handle (defaults to the adapter name). The wasm
+# builds from the co-located crate at extension/ (D10).
+extension:
+  name: replay-validator     # optional; omit to default to the adapter name
+  permissions:
+    read: ["$PROJECT_DIR/.specify"]
+    write: []
 
 # Shared content, declared by identity instead of symlinked into the
 # framework monorepo. `specify adapter vendor` resolves each entry to real
@@ -201,14 +202,14 @@ requires:
   core-rules: "3.0.0"
 
 # The pack manifest: exactly what the published artifact contains. Source-
-# only files (adapter.lock, tool crate sources, dev fixtures) are excluded.
+# only files (adapter.lock, extension crate sources, dev fixtures) are excluded.
 package:
   include:
     - adapter.yaml
     - briefs/**
     - references/**
     - rules/**
-    - tools/**/module.wasm
+    - extension/module.wasm
 ```
 
 **Lockfile — `adapter.lock`** pins every resolved digest so the vendored tree is byte-reproducible. It is not the rejected downstream Merkle: it pins the *inputs* an author vendors (so authoring is reproducible), whereas the registry content digest (D4) proves the *published output* — inputs pinned upstream of pack, output verified downstream of pull, neither re-deriving identity from a checkout:
@@ -228,14 +229,13 @@ requires:
   core-rules:
     version: "3.0.0"
     digest: "sha256:bb71…02"
-# Tools carry no independent version — they ride the adapter's semver
+# The extension carries no independent version — it rides the adapter's semver
 # (RFC-47); the lock pins only the built wasm digest for reproducibility.
-tools:
-  replay-validator:
-    digest: "sha256:1c3e…aa"
+extension:
+  digest: "sha256:1c3e…aa"
 ```
 
-**Pipeline.** `specify adapter vendor` resolves each `requires` entry against `adapter.lock`, verifies the pinned digest, and writes the reserved trees — toolchain-free. `specify adapter build` (separate, toolchain) compiles each co-located tool crate to the committed `tools/<name>/module.wasm`. `specify adapter pack` then makes a deterministic tar of the `package.include` set and records the artifact digest (D4); `pack --dry-run` shows the exact bytes first. Because both `vendor` and `build` land real bytes at their final paths, pack is a plain tar-and-digest with no symlink dereference. `AdapterLocation::Local` resolution runs (or requires) `vendor` first, so a local-path adapter is self-contained like a cached one; `Local` stays digest-verify-exempt (you are editing it) while `Cached` keeps verify-on-read (D4).
+**Pipeline.** `specify adapter vendor` resolves each `requires` entry against `adapter.lock`, verifies the pinned digest, and writes the reserved trees — toolchain-free. `specify adapter build` (separate, toolchain) compiles the co-located extension crate to the committed `extension/module.wasm`. `specify adapter pack` then makes a deterministic tar of the `package.include` set and records the artifact digest (D4); `pack --dry-run` shows the exact bytes first. Because both `vendor` and `build` land real bytes at their final paths, pack is a plain tar-and-digest with no symlink dereference. `AdapterLocation::Local` resolution runs (or requires) `vendor` first, so a local-path adapter is self-contained like a cached one; `Local` stays digest-verify-exempt (you are editing it) while `Cached` keeps verify-on-read (D4).
 
 ### Shared-content dependencies (D12)
 
@@ -243,36 +243,35 @@ The `requires` block (D9) names shared content by versioned identity, not by a p
 
 The shared content is not free-floating. Today `spec-runtime` is the `adapters/shared/references/runtime/` hub, itself a set of symlinks into the **spec skill plugin** (`plugins/spec/references/`) and `docs/reference/` — so an adapter's `references/spec-runtime` reaches two hops into framework-owned prose. The `spec-runtime` artifact is therefore *built and published by `augentic/specify`* (which owns the spec plugin) and *consumed by adapters* via `requires`. Post-split this fixes the dependency direction: `augentic/specify` publishes spec-runtime; `augentic/specify-adapters` resolves it by identity, with no symlink crossing the repo boundary.
 
-Two properties follow, and together they discharge the [Co-located tool source (D10)](#co-located-tool-source-d10) repo-split prerequisite:
+Two properties follow, and together they discharge the [Co-located extension source (D10)](#co-located-extension-source-d10) repo-split prerequisite:
 
 - **The consumer never resolves `requires`.** D3 bundles the resolved bytes *into* the adapter artifact at publish, so a downstream install is one self-contained pull. `requires` is purely an author/publish-time input.
 - **The author depends on an identity, not a checkout.** `specify adapter vendor` pulls `spec-runtime@1.2.0` from the registry into its reserved path, so an adapters tree needs no sibling `augentic/specify` source tree to vendor against. This is the severance D10 is gated on; without it, `requires` would only relocate the coupling from a build-time symlink to a vendor-time path lookup.
 
 The alternative — resolve `requires` from the local framework checkout — is rejected: it leaves the `adapters/shared/` coupling intact under a new spelling and silently re-couples a future adapters repo to `augentic/specify`. Publishing shared content as artifacts is the only `requires` transport that makes D10's severance a fact rather than a rename.
 
-### Co-located tool source (D10)
+### Co-located extension source (D10)
 
-For adapters that declare wasm tools, the tool's Rust crate lives **beside the prose it serves**. Today the `contract` / `vectis` crates live in `augentic/specify-cli` under `wasi-tools/`, far from the `contracts` / `vectis` adapter prose in `augentic/specify`. Co-location makes each adapter self-describing and lets `specify adapter build` compile the tool from the same tree it packs.
+For an adapter that declares a wasm extension, the extension's Rust crate lives **beside the prose it serves**. Today the `contract` / `vectis` crates live in `augentic/specify-cli` under `wasi-extensions/`, far from the `contracts` / `vectis` adapter prose in `augentic/specify`. Co-location makes each adapter self-describing and lets `specify adapter build` compile the extension from the same tree it packs.
 
 ```text
 adapters/targets/contracts/
-  adapter.yaml                     # declares the `contract` tool in tools[] (name + permissions)
+  adapter.yaml                     # declares the `contract` extension in `extension` (name + permissions)
   briefs/**  references/**  rules/**   # authored prose
-  tools/
-    contract/                      # co-located Rust crate (AUTHORED, source-only)
-      Cargo.toml
-      src/lib.rs
-      tests/…
-      module.wasm                  # reserved — BUILT, committed + digest-pinned, the only shipped byte
+  extension/                          # co-located Rust crate (AUTHORED, source-only)
+    Cargo.toml
+    src/lib.rs
+    tests/…
+    module.wasm                    # reserved — BUILT, committed + digest-pinned, the only shipped byte
 ```
 
-- **The reserved path is the `module.wasm` file, not the `tools/<name>/` directory.** Crate source is authored and source-only; only `module.wasm` ships. The split is one `package.include` line — `tools/**/module.wasm`. The built byte is committed and digest-pinned (D9), so `adapter-authored-reserved-path` exempts it and the crate source stays legitimate.
-- **The tool is declared in `adapter.yaml.tools[]` (D11), built from the co-located crate by convention.** No `source` field — the crate *is* the source. `specify adapter build` compiles it to `wasm32-wasip2`; the tool version rides the adapter's RFC-47 semver and ships in one digest (D3). Build is its own verb, so a prose-only adapter never needs the toolchain.
-- **A sparse Cargo workspace spans the per-adapter crates.** A virtual root `Cargo.toml` (`members = ["adapters/*/*/tools/*"]`) carries the crates that exist; most adapters are prose-only and contribute none. This injects a Rust toolchain and `clippy`/`test` CI into the adapters tree — the discipline the `wasi-tools` carve-out keeps separate — but only `specify adapter build` and that CI invoke it; `vendor`, `pack`, install, and lint stay toolchain-free.
+- **The reserved path is the `module.wasm` file, not the `extension/` directory.** Crate source is authored and source-only; only `module.wasm` ships. The split is one `package.include` line — `extension/module.wasm`. The built byte is committed and digest-pinned (D9), so `adapter-authored-reserved-path` exempts it and the crate source stays legitimate.
+- **The extension is declared in `adapter.yaml.extension` (D11), built from the co-located crate by convention.** No `source` field — the crate at `extension/` *is* the source; its run handle is `extension.name` (defaulting to the adapter name), so `contracts` can still expose `contract`. `specify adapter build` compiles it to `wasm32-wasip2`; the extension version rides the adapter's RFC-47 semver and ships in one digest (D3). Build is its own verb, so a prose-only adapter never needs the toolchain.
+- **A sparse Cargo workspace spans the per-adapter crates.** A virtual root `Cargo.toml` (`members = ["adapters/*/*/extension"]`) carries the crates that exist; most adapters are prose-only and contribute none. This injects a Rust toolchain and `clippy`/`test` CI into the adapters tree — the discipline the `wasi-extensions` carve-out keeps separate — but only `specify adapter build` and that CI invoke it; `vendor`, `pack`, install, and lint stay toolchain-free.
 
 **Repo placement.** Co-location is the prerequisite shape; the repo split itself is a **committed end-state** — adapters relocate to `augentic/specify-adapters`. Two clarifications:
 
-- **The one-PR dev loop does not depend on the move.** Editing a brief and its tool crate in one commit is enabled by co-location in a single tree (D10), true whether that tree lives in `augentic/specify` or `augentic/specify-adapters`. The dedicated repo is an **ownership, cadence, and contribution-model** decision, not a prerequisite for the authoring experience.
+- **The one-PR dev loop does not depend on the move.** Editing a brief and its extension crate in one commit is enabled by co-location in a single tree (D10), true whether that tree lives in `augentic/specify` or `augentic/specify-adapters`. The dedicated repo is an **ownership, cadence, and contribution-model** decision, not a prerequisite for the authoring experience.
 - **The move is gated on one hard dependency: [D12](#shared-content-dependencies-d12).** Until shared content is published as versioned artifacts, every adapter's `spec-runtime` symlink resolves into `plugins/spec/references/` and `docs/reference/`; relocating `adapters/` before that either dangles those symlinks or drags spec-plugin prose into the wrong repo. RM-21 third-party demand is a *payoff* of the move, not a *gate* — first-party extraction proceeds regardless.
 
 `specify lint framework --framework-root .` already parameterises the framework root, so pointing the checkers at the adapters repo is configuration, not new machinery.
@@ -280,7 +279,7 @@ adapters/targets/contracts/
 **Migration is sequenced and designed** — a clean cut once [D12](#shared-content-dependencies-d12) lands, consistent with *"no migration framework — pre-1.0 this is a re-init major cut"*:
 
 - **Shared content is published from `augentic/specify` first (D12).** `spec-runtime` / `core-rules` / `review-team-protocol` are published as versioned artifacts *before* the move, built from `plugins/spec/references/` + `docs/reference/` — the load-bearing step that converts the `adapters/shared/` symlink hub into a registry identity the new repo resolves by `requires`.
-- **The move carries prose + tool crates + the `vendor` / `build` / `pack` machinery and relocates the `release.yaml` publish jobs (D6).** The `--framework-root` seam makes the lint side configuration, the publish side a job move.
+- **The move carries prose + extension crates + the `vendor` / `build` / `pack` machinery and relocates the `release.yaml` publish jobs (D6).** The `--framework-root` seam makes the lint side configuration, the publish side a job move.
 - **Namespace continuity holds.** The publish ref (`specify:<name>@<ver>`, D6/D8) names a registry namespace, not a source repo, so a published artifact's identity is unchanged by the source move — proven by a pull-back (D6) from the new origin.
 - **Timing of the physical cut.** The **earliest safe point** is immediately after severance and co-location (D12 + D10, Phasing steps 5–6). The numbered phasing defaults to the later cut (step 8, after the shared store D5), so the full pipeline is proven once in `augentic/specify` before any relocation. A team may instead take the earliest-safe-point cut under transitional coupling (e.g. when separate owners force the repo to exist sooner); whichever variant is chosen should be recorded here when the work starts.
 
@@ -294,12 +293,12 @@ specify source survey <source>      # resolves the bound (name, version) from th
 specify slice build <slice>         # target resolution unchanged in shape
 ```
 
-Authoring adds an `adapter` verb group (D9/D10). `vendor` resolves prose `requires` only (no toolchain); `build` compiles the co-located tool crates (toolchain), kept separate so prose-only adapters never invoke cargo:
+Authoring adds an `adapter` verb group (D9/D10). `vendor` resolves prose `requires` only (no toolchain); `build` compiles the co-located extension crate (toolchain), kept separate so prose-only adapters never invoke cargo:
 
 ```bash
 specify adapter vendor              # resolve prose requires → reserved trees (no Rust toolchain)
 specify adapter vendor --check      # CI drift gate: adapter-vendor-stale if requires ≠ lock; adapter-digest-mismatch if module.wasm ≠ lock
-specify adapter build               # compile co-located tool crates → committed tools/<name>/module.wasm + lock digest
+specify adapter build               # compile the co-located extension crate → committed extension/module.wasm + lock digest
 specify adapter pack [--dry-run]    # deterministic tar of the package.include set + record the digest (D4)
 ```
 
@@ -311,8 +310,8 @@ specify adapter pack [--dry-run]    # deterministic tar of the package.include s
 | --- | --- | --- | --- |
 | `adapter-digest-mismatch` | D4 | violation (exit 2) | cached bytes (or a freshly fetched immutable locator) do not match the recorded content digest; also raised by `vendor --check` when a committed `module.wasm` (D10) drifts from its `adapter.lock` digest |
 | `adapter-vendor-stale` | D9/D12 | violation (exit 2) | `specify adapter vendor --check` finds a gitignored `requires` tree (or `adapter.lock`) out of sync with the declared `requires` |
-| `adapter-authored-reserved-path` | D9 | violation (exit 2) | a committed (non-vendored) file occupies a gitignored reserved `requires` path; the committed `tools/<name>/module.wasm` (D10) is exempt |
-| `adapter-tool-crate-missing` | D10/D11 | violation (exit 2) | an `adapter.yaml.tools[]` entry has no co-located crate at `tools/<name>/` or no committed `module.wasm` (replaces the retired `adapter-tool` cross-reference rule) |
+| `adapter-authored-reserved-path` | D9 | violation (exit 2) | a committed (non-vendored) file occupies a gitignored reserved `requires` path; the committed `extension/module.wasm` (D10) is exempt |
+| `adapter-extension-crate-missing` | D10/D11 | violation (exit 2) | `adapter.yaml.extension` is declared but there is no co-located crate at `extension/` or no committed `module.wasm` (replaces the retired `adapter-tool` cross-reference rule) |
 
 The `adapter-version-required` / `adapter-version-malformed` identity findings live in [RFC-47](rfc-47-adapter-identity.md).
 
@@ -320,13 +319,13 @@ The `adapter-version-required` / `adapter-version-malformed` identity findings l
 
 - **D1** — a pack/unpack round-trip test; a **deterministic-pack** test (identical inputs → byte-identical archive across two runs); a fetch-uses-injected-fetcher test mirroring `package_source_uses_fetcher` in `resolver.rs`.
 - **D2** — an `adapter_uri` test parsing the `specify:<name>@<semver>` form; a "fetch targets an immutable locator, never a branch" assertion.
-- **D3** — a publish-fixture test that the artifact tree is self-contained (no dangling symlinks, spec-runtime present, declared tools' wasm bundled); a consumer test that install performs no vendoring (`repo_root_with_runtime` never consulted downstream).
+- **D3** — a publish-fixture test that the artifact tree is self-contained (no dangling symlinks, spec-runtime present, the declared extension's wasm bundled); a consumer test that install performs no vendoring (`repo_root_with_runtime` never consulted downstream).
 - **D4** — a verify-on-read test (corrupting a cached byte raises `adapter-digest-mismatch`); a moved-locator test (same version, different bytes → mismatch).
 - **D5** — a `cache.rs` resolver test mirroring `distinct_projects_get_distinct_dirs`; a "two projects, same identity ⇒ second is a link/copy, not a re-fetch" test; a "symlink-disabled falls back to copy" test; a "store entry is read-only after install" assertion; an "interrupted install leaves no visible entry" atomic-rename test; a "concurrent projection into one project is idempotent" race test; a "per-project provenance stamp lives beside the symlink" assertion.
-- **D6** — a publish-then-pull-then-verify smoke job in `release.yaml`, mirroring the `wasi-tools` pull-back verification.
+- **D6** — a publish-then-pull-then-verify smoke job in `release.yaml`, mirroring the `wasi-extensions` pull-back verification.
 - **D9** — a `vendor` round-trip test (resolving `requires` writes byte-identical reserved trees matching `adapter.lock`); a `vendor --check` drift test asserting `adapter-vendor-stale`; a reserved-namespace guard test asserting `adapter-authored-reserved-path` for an authored file under a gitignored `requires` path **and** exempting the committed `module.wasm`; a "post-`vendor` tree packs to a fresh publish's digest" equivalence test; a `Local`-resolves-post-`vendor` test; a "`requires` reserved bytes are writable" assertion.
 - **D10** — a `specify adapter build` test that a co-located crate compiles to a committed, digest-pinned `module.wasm`; a "`vendor` / `pack` / install / lint succeed with no `wasm32-wasip2` toolchain" test; a `package.include` test that crate source is excluded while `module.wasm` ships; a workspace-membership test that the sparse `members` glob resolves the per-adapter crates.
-- **D11** — a manifest parse test that `tools[]` carries `name` + structured `{read, write}` `permissions` and **rejects** `version` / `source` / `sha256`; a "flat string-array permissions no longer parse" migration assertion; a "no `tools.yaml` is read" assertion; a "retired `adapter-tool` cross-reference rule does not fire" assertion; a `specify tool run <name>` resolution test against the installed adapter tree.
+- **D11** — a manifest parse test that the singular `extension` object carries an optional `name` + structured `{read, write}` `permissions` and **rejects** `version` / `source` / `sha256`; a "the plural `tools[]` array no longer parses" collapse assertion; a "flat string-array permissions no longer parse" migration assertion; an "omitted `extension.name` defaults to the adapter name" assertion; a "no `tools.yaml` is read" assertion; a "retired `adapter-tool` cross-reference rule does not fire" assertion; a `specify extension run <name>` resolution test against the installed adapter tree.
 - **D12** — a `vendor` test that a `requires` entry resolves to a published shared-content artifact and writes byte-identical reserved bytes; a "consumer install performs no `requires` fetch" test.
 
 `cargo make ci` (`RUSTFLAGS=-Dwarnings`) gates the consumer half; the publish job gates in `release.yaml`.
@@ -336,11 +335,11 @@ The `adapter-version-required` / `adapter-version-malformed` identity findings l
 The order is dependency-driven: identity first, then the **transport loop** every later step publishes onto, then the **self-containment / authoring** refactor, then the **shared store**, and finally the **repo extraction**. Self-containment follows the transport it depends on — shared content cannot be published as a versioned artifact (step 5) before a deterministic pack and a publish job (step 4) exist.
 
 1. **Transport spike — publish + pull + verify.** Probes `wkg publish`, `wasm-pkg-client` pull, and re-verify-on-read for an opaque blob; confirms (B) or clears (A). The transport loop (step 4) keys on it.
-2. **D11 — manifest + tool unification.** Rewrite the `toolDeclaration` `$def`, unify `AdapterToolDeclaration` with `ToolPermissions`, retire the `tools.yaml` reader, replace the `adapter-tool` rule. Spike- and transport-independent — lands in parallel with step 1.
+2. **D11 — manifest + extension unification.** Collapse the `tools[]` array to a singular `extension` object, replace the `toolDeclaration` `$def` with `extensionDeclaration`, rename `AdapterToolDeclaration` → `AdapterExtensionDeclaration` and unify it with `ExtensionPermissions`, retire the `tools.yaml` reader, replace the `adapter-tool` rule. Spike- and transport-independent — lands in parallel with step 1.
 3. **D2 — package-ref form + immutable locator.** Teach `adapter_uri.rs` the `specify:<name>@<semver>` form and require an immutable fetch. Identity-dependent, spike-independent — parallel with steps 1–2.
 4. **D1 + D6 + D4 — the transport loop.** Pack the tree, stand up the publish→pull→verify job in the spike-chosen shape (D1), mirror it as a `release.yaml` step (D6), and record-and-re-verify the digest on read (D4). **This is the transport every later step publishes onto.**
 5. **D12 + D9 — `requires` + `vendor` for prose deps.** Publish shared content as versioned artifacts *over the step-4 transport*, teach `adapter.yaml.requires` + `adapter.lock`, and write the gitignored reserved trees with `vendor` (no toolchain). This severs the `adapters/shared/` coupling — validate it before D10.
-6. **D10 + D3 — co-located tool crates + `build` + bundling.** Move the contract/vectis crates beside their prose, add `specify adapter build`, commit the digest-pinned `module.wasm`, and bundle it at publish (D3). Retires the CLI `wasi-tools` job (D7). Full adapters are now self-contained and publishable.
+6. **D10 + D3 — co-located extension crates + `build` + bundling.** Move the contract/vectis crates beside their prose, add `specify adapter build`, commit the digest-pinned `module.wasm`, and bundle it at publish (D3). Retires the CLI `wasi-extensions` job (D7). Full adapters are now self-contained and publishable.
 7. **D5 — shared store + projection.** The dedup/offline win, once identity is immutable (D4) and the install tree is byte-stable (steps 5–6). The one transport-side piece that legitimately lands late: author-time `vendor` (step 5) fetch-and-verifies without it.
 8. **Extract adapters to `augentic/specify-adapters` (D7 / D10).** Prerequisites met (step 5 severed the coupling, step 6 co-located the crates — a team may cut at that earlier point). Relocate the adapter trees, the `vendor` / `build` / `pack` machinery, and the `release.yaml` publish jobs out of `augentic/specify`; move the framework-lint job (`--framework-root`) and publish credentials. This completes *this* RFC's half of the two-repo end-state; [RFC-49](rfc-49-repository-topology.md) then folds `augentic/specify` + `augentic/specify-cli` into one platform repo afterward.
 
@@ -349,17 +348,17 @@ The order is dependency-driven: identity first, then the **transport loop** ever
 - **Keep git transport; re-derive a canonical tree digest downstream guarded by a bespoke atomic-publish protocol.** Rejected — it content-addresses the *symptom*. The downstream Merkle, the digest-after-vendoring dance, and the bespoke protocol exist only because a git ref is a *moving* locator; an immutable registry digest (D2/D4) collapses the lot to a one-line verify.
 - **Wrap each adapter as a wasm component.** Rejected — adds a build step for prose and buys nothing at runtime (execution stays agent-only), and does not protect the prose (`strings`-able, must still reach the model as cleartext).
 - **Client-side prose expansion — thin briefs that expand from bundled wasm at point of use.** Rejected — protects nothing, collides with the *"CLI never reads brief bodies"* contract, and breaks the `lint framework` checkers that parse brief prose (`links-registry`, `prose`, `brief-schema-link-resolve`). Salvageable kernels are under [Non-Goals](#non-goals).
-- **Prose-only artifact; resolve declared tools separately.** Deferred — bundling (D3) keeps one pull and one digest. Revisit only if tool churn meaningfully outpaces adapter churn.
+- **Prose-only artifact; resolve the declared extension separately.** Deferred — bundling (D3) keeps one pull and one digest. Revisit only if extension churn meaningfully outpaces adapter churn.
 - **Key the store by `(name, major)`.** Rejected — a major spans infinite commits; sharing it yields first-fetch-wins drift. The store keys on the full `(name, version)`.
 - **A global resolution fallback by name.** Rejected — reintroduces the ambient mutable-namespace footgun [DECISIONS.md §"Resolution is project-local only"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#adapter-loader-axis-routing) deliberately removed. The store is storage, not a fallback.
 - **Hardlink the per-project projection (D5).** Rejected — shared inodes mean an accidental write through the cache would mutate the store, and they break across filesystems. A read-only store entry plus a symlink (copy fallback) keeps the store immutable and the failure mode loud.
 - **A `src/` → `dist/` authoring split.** Rejected — it makes the authoring tree *not* resemble the runtime tree, so `Local` and `Cached` would need divergent resolution and authored brief links would not match what ships. D9 mirrors the unpacked structure in place.
-- **Commit the vendored bytes into git (Go-vendor posture).** Rejected for the prose `requires` trees — noisy diffs and silent drift on hand-edit, so D9 gitignores them and pins digests with `vendor --check` as the CI gate. The one exception is the built `tools/<name>/module.wasm` (D10): a binary blob has no diff to be noisy, the `wasi-tools/contract/dist` precedent already commits one, and committing it keeps `pack` / install / lint toolchain-free.
+- **Commit the vendored bytes into git (Go-vendor posture).** Rejected for the prose `requires` trees — noisy diffs and silent drift on hand-edit, so D9 gitignores them and pins digests with `vendor --check` as the CI gate. The one exception is the built `extension/module.wasm` (D10): a binary blob has no diff to be noisy, the `wasi-extensions/contract/dist` precedent already commits one, and committing it keeps `pack` / install / lint toolchain-free.
 - **Resolve `requires` from the local framework checkout.** Rejected ([D12](#shared-content-dependencies-d12)) — it leaves the `adapters/shared/` coupling intact under a vendor-time path lookup and silently re-couples a future adapters repo to `augentic/specify`.
-- **One `vendor` verb that also builds tool wasm.** Rejected — it forces a `wasm32-wasip2` toolchain on prose-only adapters (6 of 8) that declare no tools. D10 splits `build` (toolchain, occasional) from `vendor` (toolchain-free).
-- **Keep tool source in the CLI's `wasi-tools/` workspace (status quo).** Rejected — the crate sits in a different repo from the prose it serves, so authoring spans two repos and `vendor` cannot build the tool from the tree it packs. D10 co-locates the crate at `tools/<name>/`.
+- **One `vendor` verb that also builds the extension wasm.** Rejected — it forces a `wasm32-wasip2` toolchain on prose-only adapters (6 of 8) that declare no extension. D10 splits `build` (toolchain, occasional) from `vendor` (toolchain-free).
+- **Keep extension source in the CLI's `wasi-extensions/` workspace (status quo).** Rejected — the crate sits in a different repo from the prose it serves, so authoring spans two repos and `vendor` cannot build the extension from the tree it packs. D10 co-locates the crate at `extension/`.
 - **Extract adapters into a dedicated repo *before* D12.** Rejected — relocating `adapters/` while `spec-runtime` is still a symlink hub into `plugins/spec/references/` + `docs/reference/` either dangles those symlinks or drags spec-plugin prose into the wrong repo. The extraction is committed (D7/D10, step 8) but sequenced *after* D12.
-- **Keep the standalone `tools.yaml` sidecar.** Rejected — once the wasm is bundled (D3), versioned by the adapter's semver ([RFC-47](rfc-47-adapter-identity.md)), and covered by the content digest (D4), a per-tool `version` / `source` / `sha256` is redundant. D11 narrows the existing `tools[]` block to (`name`, structured `permissions`) — a breaking shape change (see [D11](#design)).
+- **Keep the standalone `tools.yaml` sidecar (or the plural `tools[]` array).** Rejected — once the wasm is bundled (D3), versioned by the adapter's semver ([RFC-47](rfc-47-adapter-identity.md)), and covered by the content digest (D4), a per-extension `version` / `source` / `sha256` is redundant, and no adapter has ever declared more than one extension. D11 collapses the array to a singular `extension` object (optional `name`, structured `permissions`) — a breaking shape change (see [D11](#design)).
 
 ## Non-Goals
 
@@ -373,14 +372,14 @@ The order is dependency-driven: identity first, then the **transport loop** ever
 
 ## References
 
-- `crates/tool/src/package.rs` (`fetch`, `load_config`, `AcquiredBytes`) — the wasm-pkg fetch/verify path D1 reuses or parallels.
-- `crates/tool/src/resolver.rs` and `crates/tool/src/cache/fetch.rs` (`stage_and_install`) — the stage-temp-then-atomic-install precedent D5 mirrors.
-- `crates/tool-manifest/src/lib.rs` (`ToolSource`, `PackageRequest`, `DEFAULT_WASM_PKG_CONFIG`, `WASM_PKG_CONFIG_PATH`) — the package-ref shape and layered registry config D2 extends.
-- `.github/workflows/release.yaml` (`wasi-tools` job) and [`docs/release.md`](https://github.com/augentic/specify-cli/blob/main/docs/release.md) — the publish loop D6 mirrors.
+- `crates/registry/src/package.rs` (`fetch`, `load_config`, `AcquiredBytes`) — the wasm-pkg fetch/verify path D1 reuses or parallels.
+- `crates/registry/src/resolver.rs` and `crates/registry/src/cache/fetch.rs` (`stage_and_install`) — the stage-temp-then-atomic-install precedent D5 mirrors.
+- `crates/extension-manifest/src/lib.rs` (`ExtensionSource`, `PackageRequest`, `DEFAULT_WASM_PKG_CONFIG`, `WASM_PKG_CONFIG_PATH`) — the package-ref shape and layered registry config D2 extends.
+- `.github/workflows/release.yaml` (`wasi-extensions` job) and [`docs/release.md`](https://github.com/augentic/specify-cli/blob/main/docs/release.md) — the publish loop D6 mirrors.
 - `crates/workflow/src/init/{adapter_uri,git,cache}.rs` — the current git-sparse-checkout install path D1/D2/D3 replace, and the `vendor_spec_runtime` / `ManifestMeta` D3/D4 relocate to publish.
 - `crates/schema/src/cache.rs` (`mirror_dir`, `project_cache_dir`) — the cache-root precedent D5 extends.
 - `crates/workflow/src/plan_lock.rs` — the `File::try_lock` flock primitive reused for the install rename (D5).
 - `crates/schema/src/digest.rs` (`Hasher`) — the incremental hasher D4 verifies with.
-- `wasi-tools/{contract,vectis}/` (sibling workspace in `augentic/specify-cli`) — the current out-of-adapter tool-source location D10 co-locates.
+- `wasi-extensions/{contract,vectis}/` (sibling workspace in `augentic/specify-cli`) — the current out-of-adapter extension-source location D10 co-locates.
 - [RFC-47: Adapter identity](rfc-47-adapter-identity.md) — the semver identity this RFC distributes.
 - [Roadmap RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) — the ecosystem item both RFCs serve.
