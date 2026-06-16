@@ -32,7 +32,7 @@ Prove that core synthesis folds a non-empty `target.shape` brief into a slice's 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1` (a target whose `shape` brief is non-empty). Prepare two one-slice inputs for slice `greeting`: one driven by pure intent, one by a short docs path describing the same behavior.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0` (a target whose `shape` brief is non-empty). Prepare two one-slice inputs for slice `greeting`: one driven by pure intent, one by a short docs path describing the same behavior.
 
 ## Invocation
 

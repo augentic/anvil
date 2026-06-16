@@ -49,13 +49,14 @@ jobs:
             echo "sha=$sha" >> "$GITHUB_OUTPUT"
           fi
 
-      # Restore or build a specify binary
+      # Restore a prebuilt specify binary
       - id: specify-bin
         uses: actions/cache@v4
         with:
           path: specify-cli/target/release/specify
           key: specify-bin-${{ steps.specify-cli.outputs.sha }}
 
+      # Build a specify binary if not cached
       - if: steps.specify-bin.outputs.cache-hit != 'true'
         uses: actions/checkout@v6
         with:

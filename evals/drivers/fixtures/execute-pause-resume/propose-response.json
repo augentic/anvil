@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "kind": "response",
+  "slices": [
+    { "name": "metrics-summary", "sources": [{ "source": "intent", "lead": "metrics-summary" }], "rationale": "Expose a metrics summary endpoint for dashboard KPIs." },
+    { "name": "user-activity-feed", "sources": [{ "source": "intent", "lead": "user-activity-feed" }], "rationale": "Stream recent user activity for the dashboard feed." }
+  ]
+}

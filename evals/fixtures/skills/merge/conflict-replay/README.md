@@ -12,6 +12,6 @@ The skill body MUST:
 2. Not call `specify slice transition` — the slice stays at `built`.
 3. Not write to `plan.yaml` — the plan entry stays `in-progress`.
 4. Emit the structured stop hint with `failure-kind: baseline-conflict` and the conflicting baseline paths.
-5. Release the plan lock on exit (the `flock`-bound fd 9 closes when the body returns).
+5. Release the plan lock on exit (the `specify plan lock` child exits when the body returns).
 
 The operator's recovery path is to inspect the conflicting baseline, hand-edit the slice's delta to align, and re-invoke `/spec:merge identity-user-registration` (or let `/spec:execute` re-enter the loop).

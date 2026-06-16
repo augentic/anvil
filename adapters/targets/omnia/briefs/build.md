@@ -104,7 +104,7 @@ When the algorithm resolves, write a schema-valid build report to `.specify/slic
 ```yaml
 version: 1
 slice: <slice-name>     # matches the build request's `slice`
-target: omnia@v1        # this adapter at its manifest version
+target: omnia@1.0.0        # this adapter at its manifest version
 status: success         # or: failure
 findings: []            # structured diagnostics; default []
 ```

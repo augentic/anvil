@@ -11,4 +11,4 @@ The skill body MUST:
 1. Not call `specify slice transition session-cookie-harden built` — the slice stays at `refined`.
 2. Not write to `plan.yaml` — the plan entry stays `in-progress`.
 3. Emit the structured stop hint with `failing-task: cargo test` (or the more specific test name when available) and `log-path` pointing at the brief's captured stderr.
-4. Release the plan lock on exit (the `flock`-bound fd 9 closes when the body returns).
+4. Release the plan lock on exit (the `specify plan lock` child exits when the body returns).

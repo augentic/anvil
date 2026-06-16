@@ -77,4 +77,4 @@ A phase failure only stops the loop while it is the *newest* journal terminal fo
 
 ## Lock release
 
-Every stop path releases the plan lock by virtue of the snippet's trailing edge — the bash session that holds `flock` exits, or the `python3` interpreter on the macOS fallback exits. The skill body never calls `flock -u` explicitly; relying on process-exit semantics is the contract. (The CLI's `plan-lock-not-held` refusal — see [`plan-lock.md`](plan-lock.md) — is the runtime guard that no driver re-enters without re-acquiring.)
+Every stop path releases the plan lock when the `specify plan lock -- <cmd>` child exits — the wrapper holds the lock only for its child's lifetime, so the lock is released the moment the driver returns. Relying on process-exit semantics is the contract; nothing unlocks explicitly. (The CLI's `plan-lock-not-held` refusal — see [`plan-lock.md`](plan-lock.md) — is the runtime guard that no driver re-enters without re-acquiring.)

@@ -18,9 +18,12 @@ The propose sub-step matches across sources using `lead`, `synopsis`, and `sourc
 - lead: user-registration
 - source: legacy-monolith
 - synopsis: Registration endpoint accepting email + password with RFC-5322 validation.
+- topics: [identity, account-creation, validation]
 ```
 
 The heading is `### <source>:<lead>` so two sources surfacing the same `lead` stay distinct blocks. Survey lead-sets MAY omit `source` (the CLI stamps it from the survey binding); the persisted `discovery.md` always carries it.
+
+`topics` is an **optional** inline list of kebab-case slugs the survey agent authors as extra per-lead context. It is additional grouping signal for the propose agent and the join key for the decision-contradiction warning; the CLI computes no grouping from it, and a lead with no `topics` reconciles on its `synopsis` alone. Omit the bullet entirely when a lead is unclassified.
 
 Each `synopsis` SHOULD be content-bearing — name the lead's operation/surface and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. It MAY span more than one line when one is too thin; it stays plan-time headline material, never a back-door for slice-time `Evidence`. There is no survey-time scope-uncertainty flag: a lead is always a lead. Grouping uncertainty is the agent's to express in `change.md` under `## Tentative merges`, never on a lead block — the `/spec:plan` propose sub-step never edits `discovery.md` (see [`specify plan propose`](./cli/plan-propose.md)).
 
@@ -70,4 +73,4 @@ When two source adapters surface the same unit of work, each survey writes its *
 - synopsis: POST /users handler validating email + password and inserting the new user record.
 ```
 
-When the two surfacing sources disagree on the synopsis materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice, invokes `specify plan amend <entry> --divergence likely` (the CLI is the single writer of `slices[].divergence`), and records the side-by-side synopses in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source synopsis; pair-level detail lives in `change.md`.
+When the two surfacing sources disagree on the synopsis materially (different numeric values, conflicting verbs, mutually exclusive nouns), the propose sub-step still merges them into one slice and flags it `divergence: likely` — either directly on the response slice (preferred, alongside the structured `disagreements[]`) or via `specify plan amend <entry> --divergence likely` (the CLI is the single writer of `slices[].divergence`). The machine-readable disagreeing values live in the slice's `disagreements[]` (`{ field, values: [{ source, value }] }`); the operator-facing side-by-side synopses go in `change.md` under `## Likely divergences`. Each raw lead block keeps its own per-source synopsis; the CLI advises on consistency (`slice-divergence-unrecorded` / `slice-divergence-orphan-values`) but never blocks.

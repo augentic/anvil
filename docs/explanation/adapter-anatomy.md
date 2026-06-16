@@ -36,7 +36,7 @@ Authority hierarchy is a property of the adapter, not of a slice. Source adapter
 ```yaml
 # adapters/sources/<name>/adapter.yaml
 name: typescript
-version: 1
+version: "1.0.0"
 axis: source
 execution: agent
 briefs:
@@ -47,7 +47,7 @@ briefs:
 ```yaml
 # adapters/targets/<name>/adapter.yaml
 name: omnia
-version: 1
+version: "1.0.0"
 axis: target
 execution: agent
 briefs:
@@ -56,7 +56,7 @@ briefs:
   merge: briefs/merge.md
 ```
 
-Shared rules: kebab-case `name` unique per axis; required closed `execution` mode (sources are agent-only, so `source.schema.json` enumerates `agent`; targets may declare `agent` | `tool`); `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the out-of-tree per-project cache at `<project-cache>/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+Shared rules: kebab-case `name` unique per axis; required `version` exact-semver string that is the adapter's identity (resolution keys on it, and synthesized refs render `name@<semver>`); optional `specify` host-CLI compatibility floor (an exact-semver minimum platform version the adapter needs, enforced at resolve time and aborting with `adapter-cli-too-old` on exit 3 when the running binary is older; absent means no floor); required closed `execution` mode (sources are agent-only, so `source.schema.json` enumerates `agent`; targets may declare `agent` | `tool`); `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; optional `tools[]` declaring WASI helpers that the host runs into the out-of-tree per-project cache at `<project-cache>/manifests/{sources,targets}/<name>/`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 

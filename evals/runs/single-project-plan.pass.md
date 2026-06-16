@@ -5,7 +5,7 @@
 - **Scenario:** `single-project-plan`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/single-project-plan/`
+- **Sandbox:** `evals/.sandbox/single-project-plan/` (recreated fresh 2026-06-15)
 
 ## Assertions
 

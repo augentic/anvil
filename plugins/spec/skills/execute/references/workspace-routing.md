@@ -26,7 +26,7 @@ For every iteration of the loop where `entry.project` is non-null:
 
 `/spec:refine`, `/spec:build`, and `/spec:merge` invoked standalone share the same routing. Their skill bodies:
 
-1. Acquire `.specify/plan.lock` via the snippet in [`../../../references/plan-lock.md`](../../../references/plan-lock.md).
+1. Acquire `.specify/plan.lock` by driving the phase under `specify plan lock -- <cmd>` per [`../../../references/plan-lock.md`](../../../references/plan-lock.md).
 2. Resolve the active `in-progress` entry via `specify plan next`.
 3. If `entry.project` is non-null, repeat steps 2–6 of the per-iteration routing above (including the `SPECIFY_PLAN_DIR` export) before invoking phase work.
 4. Run the single phase the operator asked for.

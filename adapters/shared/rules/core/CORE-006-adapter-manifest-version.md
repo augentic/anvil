@@ -2,43 +2,38 @@
 id: CORE-006
 title: Adapter Manifest Version
 severity: important
-trigger: "An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `version:` field whose value does not equal the canonical `1`, so the workflow loader cannot rely on the wire shape pinned by the v1 manifest schema."
+trigger: "An `adapters/{sources,targets}/<name>/adapter.yaml` declares a `version:` field whose value is not an exact `x.y.z` semver string, so the workflow loader cannot key the adapter's identity (RFC-47) off the manifest version."
 rule_hints:
   - kind: path-pattern
     value: "adapters/sources/*/adapter.yaml"
-    description: Source adapter manifests; `version:` must equal the literal `1` pinned by `source.schema.json`.
+    description: Source adapter manifests; `version:` must be an exact semver string per `source.schema.json`.
   - kind: path-pattern
     value: "adapters/targets/*/adapter.yaml"
-    description: Target adapter manifests; `version:` must equal the literal `1` pinned by `target.schema.json`.
-  - kind: constant-eq
-    value: adapter-manifest-field
-    config:
-      field: version
-      equals: "1"
-    description: For each `AdapterManifest` fact in the candidate set, assert that the `config.field` (`version`) equals `config.equals` (`1`). One finding per non-conforming manifest, with the `(actual, expected)` pair surfaced as structured evidence.
+    description: Target adapter manifests; `version:` must be an exact semver string per `target.schema.json`.
+  - kind: regex
+    value: '^version:\s*"?\d+(\.\d+)?"?\s*$'
+    description: Flag a top-level `version:` line whose value is a bare integer or two-component number (e.g. `1`, `"2"`, `1.0`) rather than an exact `x.y.z` semver string. One finding per non-conforming manifest version line.
 ---
 
 ## Rule
 
-Every `adapters/{sources,targets}/<name>/adapter.yaml` declares its manifest wire shape through the top-level `version:` field. v1 of the Specify adapter contract pins this field to the literal `1`; a manifest that ships any other value (`2`, `"0.9"`, an absent field) cannot be safely loaded by the v1 dispatcher because field semantics, operation enums, and brief shapes are wire-coupled to that version discriminant.
+Every `adapters/{sources,targets}/<name>/adapter.yaml` declares its identity through the top-level `version:` field. Per RFC-47 the adapter contract pins this field to an **exact semver string** (`x.y.z`, with optional `-prerelease` / `+build`); resolution keys on this value as the adapter's identity, synthesized target refs render `name@<semver>`, and `SourceAdapter.version` / `TargetAdapter.version` parse it into a typed `semver::Version`. A manifest that ships a bare integer (`1`, `2`) or a two-component number (`1.0`) cannot be loaded, because the loader's `adapter-version-malformed` gate rejects anything that is not exact semver.
 
-The deterministic-hint interpreter consumes the `AdapterManifest` facts the framework-profile indexer already produced (`crates/standards/src/lint/index/adapter.rs::extract`, whose `version` field stringifies both integer (`1`) and quoted-string (`"2.1"`) YAML forms verbatim), so the rule cost is one string-equality compare per candidate manifest at lint time. The `value` selects the `adapter-manifest-field` source; both the field (`version`) and the expected constant (`1`) are policy carried in the rule's `config: { field, equals }`, never a `const` in the engine arm.
-
-CORE-006 enforces the workflow contract's `version: 1` pin on disk and is the landing path for the `constant-eq` deterministic hint kind. Every adapter manifest in the framework repo already declares `version: 1`, so the rule fires zero findings against the current tree and surfaces only on drift.
+The `path-pattern` hints scope the candidate set to adapter manifests; the `regex` hint then scans each candidate line-by-line and flags a `version:` line whose value is a bare integer or two-component number — the realistic pre-RFC-47 drift. An exact `x.y.z` value (`1.0.0`, `"1.0.0"`) does not match the forbidden pattern, so the rule fires zero findings against the current tree and surfaces only on drift. Non-numeric garbage (`version: latest`) is caught upstream by the schema (CORE-001) and the loader's `adapter-version-malformed` gate.
 
 ## Look For
 
-- A newly added adapter manifest copy-pasted from an external scaffold that ships `version: 2` (or any other non-`1` value) without coordinating a v2 dispatcher.
-- A manifest scaffolded without the `version:` field at all, relying on schema-default behaviour that the v1 loader does not provide.
-- A migration that quoted the version as a string (`version: "1.0"`) for YAML-style consistency; the v1 contract expects the bare `1` (integer or quoted string equivalent), and any decoration that changes the stringified value trips the rule.
+- A newly added adapter manifest copy-pasted from an older scaffold that still ships `version: 1` (or any bare integer) instead of an exact semver string.
+- A manifest that quoted a partial version (`version: "1.0"`) for YAML-style consistency; the contract expects all three semver components (`1.0.0`).
+- A manifest scaffolded without the `version:` field at all, relying on schema-default behaviour the loader does not provide (caught by the schema, not this regex).
 
 ## Fix
 
-Set the manifest's top-level `version:` field to the literal `1`:
+Set the manifest's top-level `version:` field to an exact semver string:
 
 ```yaml
 name: <adapter-name>
-version: 1
+version: "1.0.0"
 ```
 
-If the manifest genuinely needs a different version, the change belongs in a coordinated CLI release — bump the dispatcher's accepted version set, widen `CORE-006`'s expected constant in the same PR, and update `source.schema.json` / `target.schema.json` accordingly. CORE-006 is the canary, not the policy authority; the policy lives in the schema and the dispatcher.
+If the manifest genuinely needs a different version, set the full `x.y.z` value; the identity flows through the loader and the synthesized `name@<semver>` refs without any further coordination. CORE-006 is the on-disk canary; the policy authority is the per-axis JSON Schema (`source.schema.json` / `target.schema.json`) and the loader's `adapter-version-malformed` gate.

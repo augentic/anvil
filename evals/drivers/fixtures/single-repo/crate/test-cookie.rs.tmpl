@@ -1,0 +1,6 @@
+use @@CRATE@@::session_cookie_config;
+
+#[test]
+fn session_cookie_secure_flag_set() {
+    assert!(session_cookie_config().secure);
+}

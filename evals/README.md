@@ -64,6 +64,7 @@ make install-cli
 | `[scenarios/](scenarios/README.md)` | Scenario catalog + one self-contained `<id>.md` per scenario.              |
 | `[shared/](shared/setup.md)`        | Shared `setup.md`, `inspect.md`, `prompts.md`, `run-template.md`.          |
 | `[runs/](runs/README.md)`           | Filled run records — the audit trail.                                      |
+| `[drivers/](drivers/README.md)`     | Checked-in operator replay scripts (execute / workspace scenarios).        |
 | `[fixtures/](fixtures/)`            | Reference inputs and expected artifact shapes.                             |
 | `.sandbox/` (gitignored)            | Stable per-scenario run roots — browsable, inspectable, recreated per run. |
 

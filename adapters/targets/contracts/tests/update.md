@@ -2,7 +2,7 @@
 id: contracts-update-boundary
 owner: contracts
 kind: adapter-boundary
-adapter: contracts@v1
+adapter: contracts@1.0.0
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project
@@ -29,7 +29,7 @@ Scenario ID: `contracts-update-boundary`
 This is a negative or boundary test for the current pipeline. Omnia/Vectis
 implementation changes do not include a `contracts` define stage. They consume
 baseline contracts as context, while new or changed interface shapes are
-introduced through a separate `contracts@v1` change.
+introduced through a separate `contracts@1.0.0` change.
 
 ## Intent
 
@@ -41,21 +41,21 @@ generation by augmenting its `design.md`. The scenario has two parts:
    over an updated `design.md` must **not** emit contract YAML. This is the
    primary assertion and the **Negative Expectations** section is the
    load-bearing oracle.
-2. The regression path — a separate `contracts@v1` slice authored from the
+2. The regression path — a separate `contracts@1.0.0` slice authored from the
    same endpoint description **does** produce contract artifacts; the
    **Expected Artifacts** section above describes those.
 
 A pass means: (a) the implementation slice produces no contract YAML, and
-(b) the regression `contracts@v1` slice produces the expected artifacts and
+(b) the regression `contracts@1.0.0` slice produces the expected artifacts and
 verifies cleanly.
 
 ## Workspace
 
-- **Adapter under test:** `contracts@v1` (boundary).
+- **Adapter under test:** `contracts@1.0.0` (boundary).
 - **Project shape:** the negative path runs in an implementation-schema
   project (Omnia or Vectis) where `/spec:refine` produces a slice with
   `design.md`. The regression path runs in a project initialised with the
-  `contracts@v1` schema. Operators may use one project that supports both
+  `contracts@1.0.0` schema. Operators may use one project that supports both
   schemas, or two distinct projects.
 - **Registry shape:** not applicable.
 - **Isolation:** `fresh-project` for both paths. Start each path from an
@@ -115,7 +115,7 @@ output.
 
 ### Recommended Regression Path
 
-Now run the regression path inside a `contracts@v1` project to produce the
+Now run the regression path inside a `contracts@1.0.0` project to produce the
 correct contract artifacts:
 
 ```text
@@ -168,11 +168,11 @@ These are the load-bearing oracle for this scenario.
   `loyalty-enrollment` implementation slice's merge step must not promote any
   `contracts/**/*.yaml` files into the root `contracts/` baseline. The only
   legitimate way new contract artifacts reach the baseline is through a
-  separate `contracts@v1` slice (the regression path above).
+  separate `contracts@1.0.0` slice (the regression path above).
 - `implementation-slice-pre-authors-interface-shapes`: the implementation
   slice must not author Omnia or Vectis interface shapes inline as a
   workaround. Implementation work that depends on the new API must depend on
-  the regression `contracts@v1` slice and read the merged baseline
+  the regression `contracts@1.0.0` slice and read the merged baseline
   `contracts/` files.
 
 ## Cleanup

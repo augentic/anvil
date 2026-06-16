@@ -131,7 +131,7 @@ version: 1
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
-    adapter: omnia@v1        # optional greenfield scaffold seed only
+    adapter: omnia@1.0.0        # optional greenfield scaffold seed only
   - name: command-centre
     url: git@github.com:org/command-centre.git
   - name: mobile

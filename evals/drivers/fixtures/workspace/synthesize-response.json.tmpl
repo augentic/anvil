@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "kind": "response",
+  "slice": "@@SLICE@@",
+  "model": {
+    "requirements": [
+      {
+        "title": "@@TITLE@@",
+        "domain": "@@DOMAIN@@",
+        "claims": [{ "source": "@@DOC_KEY@@", "id": "@@CLAIM_ID@@", "kind": "requirement" }],
+        "statement": "@@STATEMENT@@\n\n#### Scenario: Happy path\n\n- GIVEN the system\n- WHEN invoked\n- THEN it succeeds"
+      }
+    ],
+    "tasks": [
+      { "id": "TASK-001", "text": "Implement @@TITLE@@.", "satisfies": ["REQ-001"] }
+    ]
+  },
+  "artifacts": {
+    "proposal": "# @@TITLE@@\n\n## Why\n\n@@STATEMENT@@\n\n## Domains\n\n- @@DOMAIN@@ — @@STATEMENT@@\n",
+    "design": "# Design\n@@STATEMENT@@\n",
+    "tasks": "# Tasks\n\n## 1. Implementation\n\n- [ ] 1.1 TASK-001 Implement @@TITLE@@.\n",
+    "specs": [{ "domain": "@@DOMAIN@@", "content": "## @@TITLE@@\n@@STATEMENT@@\n" }]
+  }
+}

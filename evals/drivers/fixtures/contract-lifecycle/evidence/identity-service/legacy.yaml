@@ -1,0 +1,7 @@
+authority: behaviour
+lead: identity-api
+claims:
+  - id: identity-api.login
+    kind: requirement
+    statement: "Login issues a session token for valid credentials."
+    path: src/auth/login.ts#L10

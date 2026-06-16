@@ -61,7 +61,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 
 ## Invocation
 
-1. **Draft** — from the workspace, run `/spec:plan oauth-login source brief=docs/oauth-login.md`, asking for one contract slice plus backend and mobile implementation slices that both depend on the contract slice. The skill writes `change.md` + `plan.yaml`, validates, and stops at the hand-off (`pending`) printing the literal `specify plan transition oauth-login approved`. It must not proceed into execution.
+1. **Draft** — from the workspace, run `/spec:plan oauth-login source oauth=docs/oauth-login.md`, asking for one contract slice plus backend and mobile implementation slices that both depend on the contract slice. The skill writes `change.md` + `plan.yaml`, validates, and stops at the hand-off (`pending`) printing the literal `specify plan transition oauth-login approved`. It must not proceed into execution.
 2. **Review (operator pause)** — `specify plan validate` and inspect `plan.yaml` read-only; confirm the slice shape. No `specify plan amend` for the parity run.
 3. **Stamp Gate 1** — run the literal `specify plan transition oauth-login approved`.
 4. **Execute** — `/spec:execute loop`; answer only genuine clarification prompts. The loop exits because the plan is complete (`all-done`).

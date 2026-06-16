@@ -13,7 +13,7 @@ Pins the cross-cutting workspace + breakout contract: `/spec:execute` parks on a
 ## Trace
 
 1. **Operator runs `/spec:build` from the workspace.**
-   - The breakout body's first action is to acquire `.specify/plan.lock` via the same snippet `/spec:execute` uses ([`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md)). Lock acquired at the workspace (not in any slot); without it, `specify plan next` would refuse with `plan-lock-not-held`.
+   - The breakout body's first action is to acquire `.specify/plan.lock` via the same `specify plan lock -- <cmd>` wrapper `/spec:execute` uses ([`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md)). Lock acquired at the workspace (not in any slot, via `--plan-dir`); without it, `specify plan next` would refuse with `plan-lock-not-held`.
    - `specify plan next` returns slice 1 (`auth-rotate`, `in-progress`, `project: backend`).
    - Workspace routing rule kicks in identically to the loop: save CWD = workspace; resolve `backend` through `registry.yaml`; slot already materialised; `chdir` into `workspace/backend/`; export `SPECIFY_PLAN_DIR=<workspace-root>`. Emit `Routing: auth-rotate → backend (workspace/backend/)`.
    - `/spec:build` resumes from task 7 (the failing one); operator's patch landed before the breakout; build passes; `specify slice build --phase finalize` journals `slice.build.succeeded` and transitions the slice to `built`.

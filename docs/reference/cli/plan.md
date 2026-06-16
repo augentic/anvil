@@ -150,7 +150,7 @@ Validation codes (all exit 2):
 | `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
 | `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
 | `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
-| `plan-reconcile-partition` | The grouped leads do not achieve total coverage — a surveyed lead is referenced by no slice. (A lead referenced by more than one slice is legal fan-out.) |
+| `lead-coverage-orphan` | The grouped leads do not achieve total coverage — a surveyed lead is referenced by no slice. (A lead referenced by more than one slice is legal fan-out.) |
 | `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
 | `plan-reconcile-slice-name-invalid` | A slice `name` is not kebab-case. |
 | `plan-reconcile-slice-name-collision` | Two slices resolve to the same plan slice name. |

@@ -30,7 +30,7 @@ Prove the build-failure recovery path: a slice's `cargo test` fails during `/spe
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Author a plan named `rate-limit` whose build will fail on first attempt (e.g. a task that needs an operator-supplied fix). Stamp Gate 1.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Author a plan named `rate-limit` whose build will fail on first attempt (e.g. a task that needs an operator-supplied fix). Stamp Gate 1.
 
 ## Invocation
 

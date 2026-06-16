@@ -2,7 +2,7 @@
 id: contracts-source
 owner: contracts
 kind: adapter
-adapter: contracts@v1
+adapter: contracts@1.0.0
 entrypoint: /spec:refine
 stages: [refine, build, merge]
 isolation: fresh-project
@@ -39,14 +39,14 @@ Pipeline note:
   `/spec:build`.
 - Omnia and Vectis implementation changes consume existing baseline contracts
   as context. Reverse-engineered interface shapes should be introduced through
-  a separate `contracts@v1` change before implementation depends on them.
+  a separate `contracts@1.0.0` change before implementation depends on them.
 - Extract-from-source changes assume `/spec:plan legacy-code` has
   already produced a `discovery.md` adapter summary identifying the API
   surface; this test stipulates that precondition rather than exercising it.
 
 ## Intent
 
-Prove that the `contracts@v1` slice loop can extract HTTP and JSON Schema
+Prove that the `contracts@1.0.0` slice loop can extract HTTP and JSON Schema
 artifacts from a legacy TypeScript service when a prior `/spec:plan`
 run has constrained the scope to one adapter. The scenario covers
 analysis-bounded extraction: the contract change must stay inside the scoped
@@ -55,8 +55,8 @@ guessing.
 
 ## Workspace
 
-- **Adapter:** `contracts@v1`.
-- **Project shape:** a single project initialised with the `contracts@v1`
+- **Adapter:** `contracts@1.0.0`.
+- **Project shape:** a single project initialised with the `contracts@1.0.0`
   schema (run `/spec:init` first if the workspace is fresh).
 - **Registry shape:** not applicable.
 - **Isolation:** `fresh-project`. Start from an empty `contracts/` baseline.

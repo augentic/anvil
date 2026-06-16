@@ -31,7 +31,7 @@ Prove that `/spec:plan` turns a short brief in one initialized project into a sm
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Create a short feature brief at `docs/inventory-adjustments.md`:
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Create a short feature brief at `docs/inventory-adjustments.md`:
 
 ```markdown
 # Inventory Adjustments

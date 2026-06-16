@@ -1,0 +1,6 @@
+openapi: 3.1.0
+info:
+  title: Identity API
+  version: 1.0.0
+  x-specify-id: identity-api
+paths: {}

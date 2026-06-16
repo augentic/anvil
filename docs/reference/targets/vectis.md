@@ -15,7 +15,7 @@ The Vectis target declares exactly three operations — `shape`, `build`, `merge
 
 `composition.yaml` is **not** a Specify artifact and is **never** synthesised — `shape` only ensures `spec.md` + `design.md` describe screen structure precisely enough for `build` to regenerate it deterministically. Operator-curated `tokens.yaml` / `assets.yaml` / `components.yaml` are build-time inputs, never synthesis inputs; `shape` forbids restating their contents in `spec.md` / `design.md`.
 
-The synthesis briefs treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
+The synthesis briefs treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@1.0.0` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md).
 
 ### build
 

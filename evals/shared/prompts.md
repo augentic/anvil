@@ -2,7 +2,7 @@
 
 Reusable prompts an operator pastes into a live `cursor-agent` session to drive a single platform eval scenario. They let the agent do the clerical and deterministically-checkable work — environment setup, driving the slash-command lifecycle, capturing per-stage output, self-grading the structural assertions, and filling the run-summary — while leaving the irreducible human seams to the operator. Every scenario sanctions an agent-as-operator ("a human **or** agent follows this script").
 
-**These prompts are operator aids, not a harness.** They are pasted interactively per run; they add no checked-in runner, no CI target, no fake forge, and no golden-output comparison, so every scenario `negative-expectation` still holds. Keep them as documentation next to the scenarios, never as an unattended job.
+**These prompts are operator aids, not a harness.** They are pasted interactively per run; they add no checked-in runner, no CI target, no fake forge, and no golden-output comparison, so every scenario `negative-expectation` still holds. Multi-step execute scenarios may also be replayed via checked-in helpers under [`evals/drivers/`](../drivers/README.md) — those scripts shell out to the real CLI and are not wired into CI.
 
 The three human seams the prompts always hand back to the operator:
 

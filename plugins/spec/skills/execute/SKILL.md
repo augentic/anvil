@@ -10,7 +10,7 @@ description: Drive an approved plan through refine → build → merge per entry
 ## Critical Path
 
 1. Run `specify plan status --format json`. On `stop plan-not-approved`, refuse with the CLI's hint (it carries the literal `specify plan transition <name> approved` command). On `drained`, print the CLI's `drained — run /spec:finalize <name>` line and exit — without acquiring the lock.
-2. Acquire the exclusive lock on `.specify/plan.lock` (workspace in workspace mode) using the `flock`-based shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid. The CLI enforces the same discipline from the other side: `specify plan next`, per-entry `specify plan transition`, and `specify slice merge run` probe the lock and refuse an unlocked driver with `plan-lock-not-held` (exit 2).
+2. Acquire the exclusive lock on `.specify/plan.lock` (the workspace lock in workspace mode, via `--plan-dir`) by driving the loop under `specify plan lock -- <cmd>` per [`../../references/plan-lock.md`](../../references/plan-lock.md); on `plan-lock-busy`, exit immediately with the holder pid. The CLI enforces the same discipline from the other side: `specify plan next`, per-entry `specify plan transition`, and `specify slice merge run` probe the lock and refuse an unlocked driver with `plan-lock-not-held` (exit 2).
 3. Loop on `specify plan status --format json` and branch on its `action` field:
    - `refine` / `build` / `merge` — run `specify plan next` (the sole writer of per-entry `in-progress`; it claims the entry when fresh), route the slice into its workspace slot when `project` is set, invoke the named phase skill for `slice`, restore CWD, continue.
    - `stop` — print the CLI's stop block and `hint:` line verbatim (the text rendering matches [`../../references/stop-conditions.md`](../../references/stop-conditions.md)); leave the entry `in-progress` and exit.
@@ -19,7 +19,7 @@ description: Drive an approved plan through refine → build → merge per entry
 
 ## Plan lock
 
-Every skill that touches plan state from outside the loop reuses the shell snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md) verbatim. On `plan-lock-busy`, exit immediately with the holder pid read from the lockfile body. The lock is also runtime-enforced: the plan-state-writing verbs refuse `plan-lock-not-held` (exit 2) when no session holds it.
+Every skill that touches plan state from outside the loop drives that work under `specify plan lock -- <cmd>` per [`../../references/plan-lock.md`](../../references/plan-lock.md). On `plan-lock-busy`, exit immediately with the holder pid. Re-entrancy is CLI-owned: the wrapper exports `SPECIFY_PLAN_LOCK_HELD=1`, so a breakout spawned under a parent `/spec:execute` skips re-acquisition automatically. The lock is also runtime-enforced: the plan-state-writing verbs refuse `plan-lock-not-held` (exit 2) when no session holds it.
 
 ## Workspace routing
 
@@ -38,7 +38,7 @@ Inside the lock, after routing, invoke the phase skill named by `plan status` ag
 ## Guardrails
 
 - **Never write per-entry `done` directly.** `/spec:merge` is the sole writer of per-entry `done`; this skill only invokes the phase skills.
-- **Never skip the lock.** Every shell that runs `specify plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. Reuse the snippet in [`../../references/plan-lock.md`](../../references/plan-lock.md); the CLI refuses unlocked drivers with `plan-lock-not-held`.
+- **Never skip the lock.** Every session that runs `specify plan next` or invokes a phase skill must hold the `.specify/plan.lock` exclusive lock by driving that work under `specify plan lock -- <cmd>` — including breakouts of `/spec:refine`, `/spec:build`, and `/spec:merge` when an operator runs them standalone. See [`../../references/plan-lock.md`](../../references/plan-lock.md); the CLI refuses unlocked drivers with `plan-lock-not-held` and a busy lock with `plan-lock-busy`.
 - **Never re-classify stops.** `specify plan status` owns stop classification (`refine-failed`, `build-failed`, `merge-conflict`, `slice-dropped`, `merge-incomplete`, `stuck`); render its block and hint verbatim.
 - **No branch push, no archive move.** Hand off to `/spec:finalize` on the drained exit; never call the finalize-only side-effects from inside the loop.
 - Route every plan-lifecycle and per-entry-status write through the CLI — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).

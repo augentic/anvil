@@ -1,0 +1,13 @@
+pub fn session_cookie_secure() -> bool {
+    @@SECURE@@
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_cookie_secure_flag_set() {
+        assert!(session_cookie_secure());
+    }
+}

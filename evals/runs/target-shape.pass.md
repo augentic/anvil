@@ -4,7 +4,7 @@
 
 - **Scenario:** `target-shape`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
 - **Sandbox:** `evals/.sandbox/target-shape-intent/` (intent fixture), `evals/.sandbox/target-shape-docs/` (documentation fixture)
 
 ## Assertions
@@ -20,15 +20,15 @@
 
 ## Deviations
 
-- Offline init via local omnia adapter path (`specify init <framework>/adapters/targets/omnia`) instead of `omnia@v1` network fetch.
+- Offline init via local omnia adapter path (`specify init <framework>/adapters/targets/omnia`) instead of `omnia@1.0.0` network fetch.
 - Symlinked `intent` and `documentation` source adapters per setup prerequisites.
 - Two sandbox roots (`target-shape-intent`, `target-shape-docs`) instead of one directory — scenario allows sequential or parallel fresh projects.
-- Gate 1 stamped with `--actor agent`; plan lock acquired via Python `fcntl` fallback (stock macOS lacks `flock(1)`).
+- Gate 1 stamped with `--actor agent`; plan lock held for the session via `specify plan lock -- <cmd>`.
 - Phase work driven by following `/spec:plan` and `/spec:refine` skill choreography via CLI verbs (survey/extract/synthesize two-phase handoffs).
 
 ## Notes
 
-- `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing) on both fixtures — judged acceptable.
+- `specify slice validate` returned two non-blocking `kind: review` suggestions (imperative proposal language, SHALL/MUST phrasing) on the lead-reconciliation run; target-shape fixtures validated with zero blocking findings.
 - Docs source key `brief` binds `documentation:docs/greeting.md`; intent source uses `intent:value:…` degenerate N=1 binding.
 
 ## Evidence

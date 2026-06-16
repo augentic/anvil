@@ -30,7 +30,7 @@ Prove the stop/resume contract: an operator starts `/spec:execute`, cancels on t
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. Author a multi-slice plan named `dashboard` (at least two slices) and stamp Gate 1.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Author a multi-slice plan named `dashboard` (at least two slices) and stamp Gate 1.
 
 ## Invocation
 

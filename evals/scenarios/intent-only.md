@@ -35,7 +35,7 @@ Prove the degenerate N=1 path: a one-line intent becomes one justifiable slice, 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@v1`. No brief file — the intent is the `/spec:plan` argument.
+Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. No brief file — the intent is the `/spec:plan` argument.
 
 ## Invocation
 

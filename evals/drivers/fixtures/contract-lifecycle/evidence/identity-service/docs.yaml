@@ -1,0 +1,7 @@
+authority: documentation
+lead: identity-api
+claims:
+  - id: identity-api.contract
+    kind: requirement
+    statement: "The identity API exposes authentication and account-access endpoints."
+    path: docs/identity/api.md#L3
