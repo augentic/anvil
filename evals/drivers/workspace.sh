@@ -6,7 +6,7 @@
 #
 # Routing and source bindings come straight from the CLI: `plan status .project`
 # names the slot, `plan next .sources` carries each slice's (source, lead). The
-# bootstrap slice inserted by `--reconcile-platforms` has empty sources.
+# default-on platform bootstrap would insert an `app-foundation` slice with empty sources.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
@@ -133,7 +133,7 @@ create_plan() {
     run "$PLATFORM" plan propose --from ".specify/scratch/plan/propose-response.json"
   else
     copy_fixture "$WFX/propose-full.json" "$pr"
-    run "$PLATFORM" plan propose --from ".specify/scratch/plan/propose-response.json" --reconcile-platforms
+    run "$PLATFORM" plan propose --from ".specify/scratch/plan/propose-response.json"
   fi
   run "$PLATFORM" plan validate
 }

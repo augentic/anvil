@@ -225,3 +225,23 @@ When `composition.yaml` is absent (composition-less change, or a change that onl
 
 1. **Promote to component.** Add `component: <slug>` to the recurring group(s) in `composition.yaml` (kebab-case slug; not a reserved region name like `header` / `body` / `footer` / `fab`); regenerate the iOS shell via `vectis:ios-writer`; the writer emits a single `iOS/<App>/Components/<Slug>.swift` view and rewrites every call site to use it (per the component directive contract).
 2. **Accept the inline duplication.** When the recurring group is intentionally distinct (e.g. two visually similar groups that diverge in a way the skeleton check cannot see — different gesture handling, different state semantics), document the divergence in the composition or in `design.md` and accept the finding.
+
+## IOS-020: Vector Or Raster Asset Rendered As Platform Symbol
+
+**Severity**: important
+
+**Codex**: `rule_id: VECTIS-006`
+
+Per the render-by-`kind` contract ([`ios/design-system-integration.md`](../ios/design-system-integration.md) § Asset integration), composition-referenced ids whose `assets.yaml` entry is `vector` or `raster` must emit `Image("<id>")` from a shell-local imageset copied from the materialized export — never `Image(systemName:)` or another SF Symbol substitute.
+
+**Detection**: When the wired `composition.yaml` and effective `assets.yaml` are available (slice-local path first, then `design-system/assets.yaml` — same precedence as the iOS writer):
+
+1. Walk the composition tree and collect every asset id referenced by `icon`, `image`, `icon-button`, or `fab` items.
+2. Resolve each id in the effective `assets.yaml` and retain only those with `kind: vector` or `kind: raster`.
+3. For each retained id, verify the iOS shell emits `Image("<id>")` (or an equivalent asset-catalog reference to `<id>.imageset`) in the screen views that render that composition node.
+4. Flag any case where the same visual role uses `Image(systemName:` (or `Label` / `Button` labels built from `Image(systemName:`) without a matching `kind: symbol` entry for that composition id.
+5. Do **not** flag `Image(systemName:` when the composition id resolves to `kind: symbol`.
+
+When `composition.yaml` or `assets.yaml` is absent, skip this check — there is no cross-artifact signal.
+
+**Fix**: Regenerate the affected screen via `vectis:ios-writer` after `vectis materialize assets` has populated `design-system/assets/exports/ios/` (or after operator pins are in place). If the glyph is genuinely platform-native, change the `assets.yaml` entry to `kind: symbol` with `symbols.ios` / `symbols.android` and update composition to reference the symbol id — do not leave a `vector` / `raster` entry while the shell still substitutes SF Symbols.

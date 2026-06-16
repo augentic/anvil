@@ -350,3 +350,23 @@ When `composition.yaml` is absent (composition-less change, or a change that onl
 
 1. **Promote to component.** Add `component: <slug>` to the recurring group(s) in `composition.yaml` (kebab-case slug; not a reserved region name like `header` / `body` / `footer` / `fab`); regenerate the Android shell via `vectis:android-writer`; the writer emits a single `ui/components/<Slug>.kt` `@Composable` and rewrites every call site to use it (per the component directive contract).
 2. **Accept the inline duplication.** When the recurring group is intentionally distinct (e.g. two visually similar groups that diverge in a way the skeleton check cannot see — different gesture handling, different state semantics), document the divergence in the composition or in `design.md` and accept the finding.
+
+## AND-028: Vector Or Raster Asset Rendered As Platform Symbol
+
+**Severity**: important
+
+**Codex**: `rule_id: VECTIS-006`
+
+Per the render-by-`kind` contract ([`android/design-system-integration.md`](../android/design-system-integration.md) § Asset integration), composition-referenced ids whose `assets.yaml` entry is `vector` or `raster` must emit `painterResource(R.drawable.<id_snake>)` (or equivalent per-density drawables) from materialized exports — never `Icons.Default.*` or other Material Icons substitutes.
+
+**Detection**: When the wired `composition.yaml` and effective `assets.yaml` are available (slice-local path first, then `design-system/assets.yaml` — same precedence as the Android writer):
+
+1. Walk the composition tree and collect every asset id referenced by `icon`, `image`, `icon-button`, or `fab` items.
+2. Resolve each id in the effective `assets.yaml` and retain only those with `kind: vector` or `kind: raster`.
+3. For each retained id, convert the kebab-case id to snake_case and verify the Android shell uses `painterResource(R.drawable.<id_snake>)` (or `Image(painter = painterResource(…))`) in the composables that render that composition node.
+4. Flag any case where the same visual role uses `Icons.Default.` / `material.icons.Icons.` without a matching `kind: symbol` entry for that composition id.
+5. Do **not** flag Material Icons when the composition id resolves to `kind: symbol`.
+
+When `composition.yaml` or `assets.yaml` is absent, skip this check — there is no cross-artifact signal.
+
+**Fix**: Regenerate the affected screen via `vectis:android-writer` after `vectis materialize assets` has populated `design-system/assets/exports/android/` (or after operator pins are in place). If the glyph is genuinely platform-native, change the `assets.yaml` entry to `kind: symbol` with `symbols.ios` / `symbols.android` and update composition to reference the symbol id — do not leave a `vector` / `raster` entry while the shell still substitutes Material Icons.

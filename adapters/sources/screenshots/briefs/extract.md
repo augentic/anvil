@@ -42,6 +42,27 @@ Run the seven-stage pipeline defined in [`extract/pipeline.md`](extract/pipeline
 - Otherwise emit a `name:` placeholder paired with `notes.todo: add <id> to assets.yaml`.
 - Never crop or extract production assets out of screenshots.
 
+### Symbol inference policy
+
+When a leaf claim carries `leaf: icon` or `leaf: icon-button` and no matching
+`assets.<id>` entry exists, apply the symbol inference policy below (inventory
+authoring only — not a build shortcut):
+
+1. **Known asset** — the screenshot shape matches an existing `assets.<id>`
+   entry → reference that id in the claim / downstream layout.
+2. **Generic platform glyph** — the shape is a close match to a standard SF
+   Symbol / Material Icon and no designer asset exists → MAY add a `kind: symbol`
+   entry to `assets.yaml` with `inferred: true` and the platform glyph mapping
+   under `symbols.ios` / `symbols.android`, **or** emit `notes.todo: promote
+   <slug> as kind: symbol` for operator approval before merge.
+3. **Branded / custom shape** — logo, illustration, or non-glyph artwork → emit
+   `notes.todo: add <id> to assets.yaml` only; **never** auto-promote to
+   `kind: symbol`.
+
+Symbol promotion is explicit inventory work. Shell writers render
+`kind: symbol` at the call site; they MUST NOT substitute platform glyphs for
+`vector` / `raster` ids at build time.
+
 ## `path` grammar
 
 Every claim carries a `path:` rooted relative to `$SOURCE_DIR`. The schema's path grammar accepts `<path>` for whole-image claims and `<path>#L<n>` / `<path>#L<start>-L<end>` for line ranges; screenshots have no line vocabulary, so every claim uses the whole-image form `<path>`.

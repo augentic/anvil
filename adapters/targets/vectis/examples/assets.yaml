@@ -1,0 +1,35 @@
+# Example `design-system/assets.yaml` for Vectis projects.
+#
+# Operator-curated inventory consumed by shell writers and `vectis validate assets`.
+# Canonical masters live under `design-system/assets/`; materialized exports under
+# `design-system/assets/exports/<platform>/` are committed after `vectis materialize assets`.
+#
+# The top-level `app-icon` pointer is required when plan validation detects UI
+# platform bootstrap (missing iOS/Android shell) and no shell-resident launcher
+# icon satisfies the platform yet. Declare a satisfiable `role: app-icon` entry
+# (path A: `source:` master, or path B: operator-pinned export roots) before
+# Gate 1 on bootstrap plans — there is no default placeholder asset in v1.
+
+version: 1
+
+provenance:
+  sources:
+    - kind: manual
+
+# Points at the launcher icon entry under `assets:` (required for bootstrap plans).
+# app-icon: app-icon
+
+assets:
+  # Example vector icon — materialize derives per-platform exports from `source:`.
+  # settings:
+  #   kind: vector
+  #   role: icon
+  #   alt: "Settings"
+  #   source: assets/settings.svg
+
+  # Example app launcher icon (RFC-46) — uncomment and supply a master or pinned exports.
+  # app-icon:
+  #   kind: vector
+  #   role: app-icon
+  #   alt: "Application icon"
+  #   source: assets/app-icon.svg
