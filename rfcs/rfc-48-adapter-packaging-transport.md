@@ -247,6 +247,8 @@ specify source survey <source>      # resolves the bound (name, version) from th
 specify slice build <slice>         # target resolution unchanged in shape
 ```
 
+> **Landed-v1 note.** The `omnia@1.0.0` shorthand above is this RFC's normative end-state — one registry pull into the shared store. In the landed v1, first-party *shorthand* still resolves via a git sparse checkout into the per-project cache (`init/git.rs` → `init/cache.rs`); only the explicit package-ref form `specify:<name>@<semver>` (D2) pulls the immutable artifact from the OCI store. Routing shorthand through the store is deferred — it needs version resolution to map a bare `name@X.Y.Z` to a store entry ([RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model)).
+
 Authoring adds a single `specify adapter build` verb (D9/D10) that does both author-time stages — compile any declared extension, and pack the deterministic artifact (dereferencing the shared-content symlinks as it packs) — just as `cargo build` compiles and links in one invocation. Cargo is invoked only for the compile stage and only when the committed `adapter.wasm` is absent, so prose-only adapters — and any adapter whose wasm is already committed — run `build` without a toolchain. A source edit needs an explicit `specify adapter build --refresh-extension` (recompilation is never triggered by source-mtime heuristics, mirroring the manual `cargo make contract-wasm` refresh of the `extensions/contract/dist` precedent). Publishing (the registry push in the release job) stays separate, the `cargo publish` to this `cargo build`:
 
 ```bash

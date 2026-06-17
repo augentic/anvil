@@ -66,9 +66,9 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The contracts target adapter declares the WASI tool inline in [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
+The contracts target adapter declares the WASI extension inline in [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/adapter.yaml) under the singular `extension` object. The declaration carries the run handle `contract` and a read-only permission on `$PROJECT_DIR/contracts`; the extension's bytes ship as a committed `adapter.wasm` built from the co-located `extension/` crate and bundled into the published adapter artifact.
 
-Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify extension run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
+Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify extension run contract` resolves the extension from the installed adapter tree, applies the filesystem preopen, and runs it through the embedded WASI host.
 
 During local development, project authors may override the adapter declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
 

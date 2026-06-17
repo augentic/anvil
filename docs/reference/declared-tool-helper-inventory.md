@@ -6,9 +6,9 @@ Use this document when adding or changing a first-party deterministic helper. A 
 
 ## Declared Tools
 
-- `contract`: declared as `specify:contract@0.3.0` by [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/adapter.yaml) (`tools[]`) and run as `specify extension run contract -- "$PROJECT_ROOT/contracts" --format json`. It validates the merged `contracts/` baseline.
-- `vectis` (`validate`): declared as `specify:vectis@0.3.0` by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) (`tools[]`) and run as `specify extension run vectis -- validate <mode> [path]`. It owns deterministic Vectis UI input validation for `layout`, `composition`, `tokens`, `assets`, and `all`.
-- `vectis` (`scaffold`): declared as `specify:vectis@0.3.0` by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) (`tools[]`) and run as `specify extension run vectis -- scaffold <target> <app-name> ...`. It renders Vectis project scaffolds only; host post-processing stays with the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/merge.md) briefs.
+- `contract`: declared in the singular `extension` object of [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/adapter.yaml) and run as `specify extension run contract -- "$PROJECT_ROOT/contracts" --format json`. It validates the merged `contracts/` baseline.
+- `vectis` (`validate`): declared in the singular `extension` object of [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) and run as `specify extension run vectis -- validate <mode> [path]`. It owns deterministic Vectis UI input validation for `layout`, `composition`, `tokens`, `assets`, and `all`.
+- `vectis` (`scaffold`): declared in the singular `extension` object of [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) and run as `specify extension run vectis -- scaffold <target> <app-name> ...`. It renders Vectis project scaffolds only; host post-processing stays with the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/merge.md) briefs.
 
 ## Active Caller Inventory
 
@@ -32,7 +32,7 @@ The following command families are intentionally outside this scope. They are no
 
 No additional first-party helper binary in the active skill and brief surface currently meets the migration threshold. Contracts and the filesystem-only Vectis helpers are already declared tools. `omnia` does not currently expose a first-party helper that should become a WASI component.
 
-Future migrations should update this inventory first, then add the WASI component, declare it in the owning target's `adapter.yaml` `tools[]`, rewrite active callers to `specify extension run`, and extend the consistency check for host-helper spellings.
+Future migrations should update this inventory first, then add the WASI component as a co-located `extension/` crate, declare it in the owning target's `adapter.yaml` `extension` object (committing the built `adapter.wasm`), rewrite active callers to `specify extension run`, and extend the consistency check for host-helper spellings.
 
 ## Enforcement
 

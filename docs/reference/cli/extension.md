@@ -36,7 +36,7 @@ Print a tool-owned JSON Schema to stdout.
 specify extension schema <tool> <name>
 ```
 
-`<tool>` resolves through the same path as `specify extension run` (declared `tools[]`). `<name>` is the kebab-case schema id advertised by the tool's embedded registry. Output is pretty-printed JSON with stable key ordering.
+`<tool>` resolves through the same path as `specify extension run` (a declared project tool or the adapter's `extension`). `<name>` is the kebab-case schema id advertised by the tool's embedded registry. Output is pretty-printed JSON with stable key ordering.
 
 Exits `0` on success, `2` for an unknown tool or unknown schema name.
 
@@ -73,14 +73,14 @@ Structured responses use the standard CLI envelope:
 }
 ```
 
-`fetch` returns fetched/cache rows with `fetched: true|false`. `gc` returns `removed`, `all`, and `warnings`. For inspection, read `.specify/project.yaml`, adapter `tools.yaml`, and the tool cache sidecar directly.
+`fetch` returns fetched/cache rows with `fetched: true|false`. `gc` returns `removed`, `all`, and `warnings`. For inspection, read `.specify/project.yaml`, the adapter's `adapter.yaml` `extension` block, and the tool cache sidecar directly.
 
 Manifest-structure failures collapse into a payload-free error envelope whose `error` discriminant is the first failing rule id (so callers can still branch on ids such as `tool.lifecycle-state-write-denied`); per-rule detail is joined into `message`:
 
 ```json
 {
   "error": "tool.lifecycle-state-write-denied",
-  "message": "tool.lifecycle-state-write-denied: tools.yaml manifest must satisfy structural rules: write path `$PROJECT_DIR/.specify` targets `.specify` lifecycle state",
+  "message": "tool.lifecycle-state-write-denied: tool manifest must satisfy structural rules: write path `$PROJECT_DIR/.specify` targets `.specify` lifecycle state",
   "exit-code": 2
 }
 ```
@@ -104,7 +104,7 @@ Inside the root, cache entries are segmented by declaration scope:
             └── meta.yaml
 ```
 
-Scope segments are `project--<project-name>` for tools declared in `.specify/project.yaml` and `adapter--<adapter-name>` for tools declared by a adapter sidecar. This keeps unrelated projects and adapters isolated even when they use the same tool name and version.
+Scope segments are `project--<project-name>` for tools declared in `.specify/project.yaml` and `adapter--<adapter-name>` for an adapter's declared extension. This keeps unrelated projects and adapters isolated even when they use the same tool name and version.
 
 ## Digest verification
 
@@ -120,7 +120,7 @@ Operators still install one binary: `specify`. Cached modules are never executed
 
 Filesystem access is deny-by-default. A tool receives only the read and write preopens declared in its manifest or embedded for first-party package declarations, and permission paths must already exist. Runtime network access is disabled for WASI tools; resolver network access for `https://` and wasm-pkg sources is separate and happens before execution.
 
-The host passes only `PROJECT_DIR` and, for adapter-scope tools, `ADAPTER_DIR`. It does not inherit `PATH`, credentials, shell variables, user identity, current working directory authority, or ambient filesystem access.
+The host passes only `PROJECT_DIR` and, for an adapter-scope extension, `CAPABILITY_DIR`. It does not inherit `PATH`, credentials, shell variables, user identity, current working directory authority, or ambient filesystem access.
 
 Write permissions must not directly target Specify lifecycle state such as `.specify/project.yaml`, slice metadata, archive metadata, plan locks, or archive movement directories. `$PROJECT_DIR` write preopens are valid for tools that must create root-level files, but declarations should still prefer narrower existing parent directories when possible. Lifecycle transitions remain core CLI operations.
 
@@ -133,4 +133,4 @@ A helper that genuinely needs host toolchains, network access, or platform SDKs 
 ## See also
 
 - [Tool declarations](../../explanation/tool-declarations.md) -- where tools are declared and how precedence works
-- [Anatomy of an adapter](../../explanation/adapter-anatomy.md) -- optional adapter `tools.yaml` sidecar
+- [Anatomy of an adapter](../../explanation/adapter-anatomy.md) -- the adapter `extension` declaration

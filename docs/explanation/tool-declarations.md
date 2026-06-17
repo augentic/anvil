@@ -34,22 +34,27 @@ Use project scope when a repo needs a local override, a development build, a pri
 
 ### Adapter scope
 
-Target adapter authors declare tools inline in `adapter.yaml`'s `tools:` array:
+An adapter declares **at most one** WASI extension inline in `adapter.yaml`'s singular `extension:` object:
 
 ```text
 adapters/targets/contracts/
-├── adapter.yaml      # carries `tools:` per target.schema.json
-└── briefs/
+├── adapter.yaml      # carries the `extension:` object per target.schema.json
+├── adapter.wasm      # the committed, bundled extension binary
+├── briefs/
+└── extension/        # co-located Rust crate the wasm builds from (source-only)
 ```
 
 ```yaml
 # adapters/targets/contracts/adapter.yaml (excerpt)
-tools:
-  - name: contract
-    version: 0.3.0
+extension:
+  name: contract           # optional run handle; defaults to the adapter name
+  permissions:
+    read:
+      - "$PROJECT_DIR/contracts"
+    write: []
 ```
 
-First-party target entries name the wasm-pkg package via `{ name, version }`; the CLI rewrites them to `specify:<name>@<version>` and applies embedded permission defaults for first-party tools. At runtime, `specify extension run` resolves plugin-scope tools from a `tools.yaml` sidecar next to `adapter.yaml` (via `load::plugin_sidecar()`). For published adapters the sidecar is generated during fetch; for local development, `make use-local-dev` (after a gitignored `Specify.local.toml` `cli = { path = … }` overlay) builds adapter WASI tools from that checkout and writes a sidecar with a `source:` pointing at the locally-built WASM binary. CLI install is delegated to `scripts/specify.rs --install`. The sidecar is gitignored and never checked in.
+At runtime `specify extension run <name>` resolves the extension directly from the installed adapter tree — there is no `tools.yaml` sidecar, no `load::plugin_sidecar()` reader, and no separate fetch step. The extension's bytes are a committed `adapter.wasm` at the adapter root, built from the co-located `extension/` Rust crate by `specify adapter build` and bundled into the published adapter artifact (it rides the adapter's own semver identity and content digest, so it carries no per-extension `version`, `source`, or `sha256`). For local development, override the bundled extension with a project-scope `tools[]` entry whose `source:` points at a locally built wasm.
 
 Use adapter scope when the helper is part of the adapter's promised behavior, such as a merge validator or a deterministic artifact checker.
 
@@ -57,7 +62,7 @@ Use adapter scope when the helper is part of the adapter's promised behavior, su
 
 `specify extension` resolves the current project, loads both declaration sites, and merges by `name`.
 
-Project scope wins on collision. This lets an operator redirect a adapter-shipped tool to a local build or a pinned internal mirror without editing the adapter. The CLI emits a `tool-name-collision` warning and keeps going.
+Project scope wins on collision. This lets an operator redirect an adapter-shipped extension to a local build or a pinned internal mirror without editing the adapter. The CLI emits a `tool-name-collision` warning and keeps going.
 
 Within a single declaration site, tool names must be unique.
 
@@ -74,7 +79,7 @@ Variables are expanded only in `permissions.read` and `permissions.write`. They 
 
 Permissions are directory preopens, not globs. The host canonicalizes every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. A tool that writes files should ask for the narrowest existing parent directory it needs. Use `$PROJECT_DIR` only when the tool's contract must create or update root-level files such as `Cargo.toml`.
 
-First-party scalar package declarations do not repeat permissions in YAML. `specify` embeds the current defaults for `specify:contract` and `specify:vectis`; project-local object declarations still carry explicit permissions.
+Both sites carry explicit permissions: a project-scope `tools[]` entry declares them per entry, and an adapter declares them inline on its `extension:` object. There are no embedded first-party permission defaults — the retired scalar `specify:<tool>@<version>` declaration is gone.
 
 ## Cache segmentation
 
@@ -98,13 +103,13 @@ The cache root follows the `specify extension` reference order: `SPECIFY_TOOLS_C
 
 ## Package Sources and SHA-256 Pins
 
-First-party package sources use `specify:<tool>@<semver>` and resolve through wasm-pkg registry metadata at `augentic.io` to OCI artifacts in GHCR. Operators still run only `specify extension fetch` and `specify extension run`; they do not install `wkg`.
+A package-backed project-scope `source:` resolves through wasm-pkg registry metadata (e.g. `augentic.io`) to OCI artifacts in GHCR. Operators still run only `specify extension fetch` and `specify extension run`; they do not install `wkg`. Adapter extensions never take this path — an adapter ships its extension as a committed `adapter.wasm` bundled into the published adapter artifact, covered by the adapter's own content digest (RFC-48 D3), so there is no per-extension package source and no separate `sha256`.
 
-`sha256` pins object-declared component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose sidecar digest no longer matches the live declaration.
+`sha256` pins object-declared (project-scope) component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose cached digest no longer matches the live declaration.
 
-Package-backed first-party declarations do not carry a separate `sha256`; the package resolver validates package content through the registry client and records package/OCI metadata in `meta.yaml`. For local object declarations, changing a tool's bytes should also change either `version`, `source`, or `sha256`; otherwise existing caches may continue to use the earlier bytes until garbage collection removes them.
+Package-backed declarations validate package content through the registry client and record package/OCI metadata in `meta.yaml`. For local object declarations, changing a tool's bytes should also change either `version`, `source`, or `sha256`; otherwise existing caches may continue to use the earlier bytes until garbage collection removes them.
 
-The `oci.reference` written into `meta.yaml` is derived best-effort from the resolved registry's well-known wasm-pkg metadata (`oci.registry`, `oci.namespacePrefix`). When a registry advertises no OCI backend or the metadata cannot be fetched, the field is omitted rather than synthesised, so the sidecar stays truthful for any registry — not only `augentic.io`.
+The `oci.reference` written into `meta.yaml` is derived best-effort from the resolved registry's well-known wasm-pkg metadata (`oci.registry`, `oci.namespacePrefix`). When a registry advertises no OCI backend or the metadata cannot be fetched, the field is omitted rather than synthesised, so the metadata stays truthful for any registry — not only `augentic.io`.
 
 ## Registry configuration
 
@@ -133,7 +138,7 @@ Re-running `init` never overwrites an operator-edited file; deleting it falls ba
 Choose project scope when:
 
 - The tool is repo-private.
-- The project needs a temporary or permanent override of a adapter tool.
+- The project needs a temporary or permanent override of an adapter extension.
 - The project is a workspace and has no adapter.
 - The tool should remain available after changing adapters.
 
@@ -141,12 +146,12 @@ Choose adapter scope when:
 
 - The tool is part of the adapter's documented behavior.
 - Briefs or skills in the adapter call `specify extension run <name>`.
-- The adapter author owns updates, digest pins, and distribution.
+- The adapter author owns updates and distribution.
 - `$CAPABILITY_DIR` is needed for read-only templates or bundled resources.
 
 ## Examples
 
-Project-scope override of a adapter tool:
+Project-scope override of an adapter extension:
 
 ```yaml
 # .specify/project.yaml
@@ -162,30 +167,32 @@ tools:
       write: []
 ```
 
-Adapter-scope tool with a bundled read-only template directory:
+Adapter-scope extension with a bundled read-only template directory — no `version`, `source`, or `sha256` appears (those are rejected); the bytes are the committed `adapter.wasm` built from the co-located `extension/` crate:
 
 ```yaml
 # adapters/targets/example/adapter.yaml (excerpt)
-tools:
-  - name: example-generate
-    version: 1.2.0
-    source: "https://example.com/specify/example-generate-1.2.0.wasm"
-    sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    permissions:
-      read:
-        - "$CAPABILITY_DIR/templates"
-        - "$PROJECT_DIR/specs"
-      write:
-        - "$PROJECT_DIR/generated"
+extension:
+  name: example-generate     # optional run handle; defaults to the adapter name
+  permissions:
+    read:
+      - "$CAPABILITY_DIR/templates"
+      - "$PROJECT_DIR/specs"
+    write:
+      - "$PROJECT_DIR/generated"
 ```
 
-First-party adapter-scope package that must create root-level project files:
+First-party adapter extension that must create root-level project files — the `$PROJECT_DIR` write preopen enables root-level scaffolding, and permissions are declared explicitly (there are no embedded first-party defaults):
 
 ```yaml
-# adapters/targets/vectis/adapter.yaml (tools[])
-tools:
-  - name: vectis
-    version: "0.3.0"
+# adapters/targets/vectis/adapter.yaml (extension)
+extension:
+  # name omitted — the run handle defaults to the adapter name (`vectis`)
+  permissions:
+    read:
+      - "$PROJECT_DIR"
+      - "$CAPABILITY_DIR"
+    write:
+      - "$PROJECT_DIR"
 ```
 
 Invocation:
@@ -208,4 +215,4 @@ The current CLI already validates tool declaration structure during `specify ext
 ## See also
 
 - [specify extension](../reference/cli/extension.md) -- command reference
-- [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- adapter sidecar conventions
+- [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- the adapter `extension` declaration

@@ -13,10 +13,9 @@ lint:
 	$(RESOLVE) lint framework
 
 # Adapter-local dev: materialize specify via scripts/specify.rs --install (same cli
-# contract as make lint / make install-cli), build WASI tools from cli.path,
-# write tools.yaml sidecars, and repopulate the plugin cache. Requires a gitignored
-# Specify.local.toml with cli = { path = "../specify-cli" }. ARGS=--skip-wasi skips
-# the WASI build. The nightly shebang also allows ./scripts/use-local-dev.rs.
+# contract as make lint / make install-cli) and repopulate the plugin cache. Requires
+# a gitignored Specify.local.toml with cli = { path = "../specify-cli" }. The nightly
+# shebang also allows ./scripts/use-local-dev.rs.
 use-local-dev:
 	@cargo +nightly -Zscript scripts/use-local-dev.rs $(ARGS)
 

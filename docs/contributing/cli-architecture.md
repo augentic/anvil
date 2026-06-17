@@ -15,13 +15,13 @@ specify (binary)
     └── specify-error   thiserror + serde-saphyr error variants (leaf)
 ```
 
-WASI tools live in the sibling `wasi-tools/` workspace (`wasi-tools/contract`, `wasi-tools/vectis`) and are intentionally carved out of the host workspace's discipline.
+Adapter extension crates no longer live in a sibling `wasi-tools/` workspace in `specify-cli`; they sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) under each adapter's `extension/` directory, and `specify adapter build` compiles each into the committed `adapter.wasm` bundled with the adapter.
 
 The crates form a layered dependency graph with `specify-error` at the base:
 
 ![specify-cli crate dependency graph](../assets/diagrams/contributing/cli-crate-graph.svg)
 
-Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers are published as WASI command components declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) (`tools[]`): `vectis` (`validate`) for UI artifact validation and `vectis` (`scaffold`) for render-only scaffolding. The root CLI is responsible for resolving, caching, permissioning, and running those tools; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
+Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers ship as a committed `adapter.wasm` declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) (its singular `extension` block): the `vectis` extension exposes `validate` for UI artifact validation and `scaffold` for render-only scaffolding. The root CLI is responsible for resolving, permissioning, and running that extension; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
 
 ## Dispatch pattern
 
