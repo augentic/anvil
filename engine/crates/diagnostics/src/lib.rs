@@ -24,9 +24,6 @@ pub mod fingerprint;
 pub mod render;
 pub mod validate;
 
-#[cfg(test)]
-mod test_support;
-
 pub use diagnostic::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticReport, DiagnosticReportVersion,
     DiagnosticSource, DiagnosticSummary, DirectiveDisposition, DispositionSource,

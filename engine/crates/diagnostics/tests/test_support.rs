@@ -1,6 +1,6 @@
 //! Shared diagnostic fixtures for the crate's unit tests.
 
-use crate::diagnostic::{
+use specify_diagnostics::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence,
     FindingLocation, Severity,
 };

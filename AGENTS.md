@@ -111,6 +111,14 @@ Vectis-bound projects commit per-platform exports under `design-system/assets/ex
 
 `/spec:plan` authors the plan and exits at Gate 1; the operator stamps `approved`; `/spec:execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *lifecycle* is only ever written via `specify plan transition`; per-entry `in-progress` is only ever written by `specify plan next`; per-entry `done` is only ever written by `specify slice merge`. Per-entry status walks backwards only via `specify plan transition <entry> --undo`, which refuses to skip rungs (`done → in-progress`, then a second call for `in-progress → pending`) and fires one `plan.transition.undone` journal event per rung. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
 
+## Testing Philosophy
+
+Specify strictly enforces an **aggressive integration-first posture**. 
+
+- **Default to Deletion:** Unit tests are actively discouraged unless they cover a CLI-unreachable branch or a dense edge matrix that would otherwise bloat integration tests. Default to deleting `#[cfg(test)]` modules and unit tests in favor of crate-level integration tests or binary integration tests.
+- **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of `engine/tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in `engine/tests/`.
+- **Coverage is the Brake:** Use `cargo llvm-cov nextest` to ensure that coverage holds during test migrations. Do NOT alter public APIs simply to support integration tests.
+
 ## Commands
 
 All commands are run from the repository root:

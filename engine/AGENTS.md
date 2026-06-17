@@ -81,6 +81,12 @@ See [DECISIONS.md §"Exit codes"](./DECISIONS.md#exit-codes) for the long-form r
 
 ## Rust quality {#rust-quality}
 
+**Aggressive Integration-First Posture:**
+Specify mandates an aggressive integration-first test strategy. Agents must actively work to remove unit tests (`#[cfg(test)]`) in favor of crate-level (`crates/<name>/tests/`) and binary integration tests (`tests/<area>.rs`). 
+- **Default to deletion:** Unit tests survive only if they cover a genuinely CLI-unreachable branch or an edge matrix that would cause subprocess explosion.
+- **Push crate-specific tests down:** `tests/` at the root of the workspace is for E2E workflows. Crate-specific logic must be tested in `crates/<name>/tests/` via the crate's public API.
+- Do NOT change public APIs just to test them. Use `cargo llvm-cov nextest` to prove coverage holds when deleting unit tests.
+
 Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standards/coding-standards.md), and [testing.md § Test naming](./docs/standards/testing.md#test-naming) before adding types, suppressions, or tests. Run `cargo make ci` (not bare `cargo test` — CI uses `RUSTFLAGS=-Dwarnings`).
 
 **Naming:** The module path is context — `registry::show`, not `show_registry`. Test function names are short identifiers; put the narrative in the test body ([testing.md](./docs/standards/testing.md#test-naming)).
