@@ -11,7 +11,7 @@ A versioned Specify extension. Specify splits adapters by direction: **source ad
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
 
 **API contract**
-A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify tool run contract`).
+A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify extension run contract`).
 
 **Archive**
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.

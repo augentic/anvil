@@ -66,7 +66,7 @@ The plan is the change's table of contents. `/spec:plan` produces it by surveyin
 
 `/spec:execute` consumes the approved plan by picking the next eligible slice (`specify plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
-The matching CLI surface spans **`specify plan {create, propose, add, amend, remove, transition, next, finalize}`**, **`specify workspace {sync, push, prepare}`** for multi-repo changes, and **`specify tool run`** for declared WASI helpers.
+The matching CLI surface spans **`specify plan {create, propose, add, amend, remove, transition, next, finalize}`**, **`specify workspace {sync, push, prepare}`** for multi-repo changes, and **`specify extension run`** for declared WASI helpers.
 
 ### Gate 1: the operator review seam
 

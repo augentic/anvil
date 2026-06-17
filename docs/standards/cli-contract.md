@@ -46,7 +46,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Source / target adapters and declared tools
 
 - `specify source {resolve, survey, extract, preview}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates a manifest and reports its declared operations; `survey` / `extract` are the two-phase (`--phase prepare|finalize`) workflow operations that merge leads into `discovery.md` and persist Evidence; `source preview` runs survey + extract in isolation without touching `.specify/`.
-- `specify tool {run, fetch, gc, schema}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$ADAPTER_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
+- `specify extension {run, fetch, gc, schema}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$ADAPTER_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
 
 ### Journal
 
@@ -73,9 +73,9 @@ The three change-lifecycle skills (`/spec:plan`, `/spec:execute`, `/spec:finaliz
 
 The contracts target adapter's `build` brief carries author / import / verify intents for OpenAPI, AsyncAPI, and JSON Schema as format sub-flows. Each sub-flow dispatches to sibling references under `adapters/targets/contracts/references/<format>/`: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency plus merge-time baseline validation in cross-project mode). The brief id, the `contracts@1.0.0` adapter, and the `contracts/` baseline directory keep their original names.
 
-The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. Contracts is a first-party adapter owning its own validation behaviour; the contracts adapter merge brief shells out through `specify tool run` as the post-merge baseline gate.
+The matching CLI surface is the declared `contract` WASI tool, run through `specify extension run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. Contracts is a first-party adapter owning its own validation behaviour; the contracts adapter merge brief shells out through `specify extension run` as the post-merge baseline gate.
 
-Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
+Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specify extension run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ## JSON envelope
 
@@ -118,7 +118,7 @@ Writer ownership follows the same single-writer discipline as the lifecycle fiel
 
 ## Exit codes
 
-The CLI uses a four-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
+The CLI uses a four-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify extension run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
 
 | Code | Name | Skills see it on |
 |---|---|---|

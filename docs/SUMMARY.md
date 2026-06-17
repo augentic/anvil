@@ -64,7 +64,7 @@
   - [specify source and target resolve](reference/cli/adapter.md)
   - [specify registry](reference/cli/registry.md)
   - [specify workspace](reference/cli/workspace.md)
-  - [specify tool](reference/cli/tool.md)
+  - [specify extension](reference/cli/extension.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)
   - [Vectis WASI tools](reference/cli/vectis.md)
   - [CLI output shapes](reference/cli-output-shapes.md)

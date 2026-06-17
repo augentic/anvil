@@ -5,7 +5,7 @@ The contracts adapter declares a `contract` WASI tool that walks a baseline `con
 The canonical user-visible merge gate is the declared WASI tool:
 
 ```bash
-specify tool run contract -- <BASELINE_DIR> [--format text|json]
+specify extension run contract -- <BASELINE_DIR> [--format text|json]
 ```
 
 `<BASELINE_DIR>` is typically `<project>/contracts/`. `--format json` is the canonical output shape for briefs and skills; `--format text` is a human-readable variant for local debugging.
@@ -32,7 +32,7 @@ The `0` / `1` / `2` mapping is the conventional shell-friendly shape so adapter 
 
 ## JSON Envelope
 
-`--format json` writes the validator envelope directly to stdout. `specify tool run` does not wrap successful guest output:
+`--format json` writes the validator envelope directly to stdout. `specify extension run` does not wrap successful guest output:
 
 ```json
 {
@@ -60,22 +60,22 @@ Field semantics:
 - `findings[].detail` — single-line human-readable description.
 - `exit-code` — mirrors the validator's process-style exit code.
 
-Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
+Resolver, permission, or runtime failures come from `specify extension run` and use the standard Specify error envelope.
 
 This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views; that product surface is deferred until a real consumer workflow exists.
 
 ## Distribution
 
-The contracts target adapter declares the WASI tool inline in [`adapters/targets/contracts/adapter.yaml`](../../../adapters/targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
+The contracts target adapter declares the WASI tool inline in [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/adapter.yaml) under `tools[]`. The declaration carries the exact `{ name: contract, version: 0.3.0 }` package request; the CLI rewrites it to `specify:contract@0.3.0` and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
 
-Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
+Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify extension run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
 
 During local development, project authors may override the adapter declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
 
 ## See Also
 
-- [specify tool](tool.md) — the declared WASI tool runner surface.
+- [specify extension](extension.md) — the declared WASI tool runner surface.
 - [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
-- [`adapters/targets/contracts/briefs/build.md`](../../../adapters/targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
+- [`adapters/targets/contracts/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
-- [`adapters/targets/contracts/briefs/merge.md`](../../../adapters/targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.
+- [`adapters/targets/contracts/briefs/merge.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.

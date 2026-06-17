@@ -6,9 +6,6 @@ execution: agent
 briefs:
   extract: briefs/extract.md
   survey: briefs/survey.md
-tools:
-  - name: replay-index
-    version: 0.1.0
 description: >-
   Runtime capture source adapter. Walks a read-only capture tree under
   `$SOURCE_DIR` (the directory layout `/capture:wiretapper` writes —

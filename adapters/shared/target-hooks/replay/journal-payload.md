@@ -19,7 +19,7 @@ Example NDJSON line (illustrative):
 ```
 
 - **`passed`** / **`failed`** / **`skipped`** — non-negative integers from the target runner's test classification.
-- **`runner`** — identifies the target adapter version and command (e.g. `omnia-target@1 (cargo nextest)`, `contracts-target@1 (specify tool run contract)`).
+- **`runner`** — identifies the target adapter version and command (e.g. `omnia-target@1 (cargo nextest)`, `contracts-target@1 (specify extension run contract)`).
 
 Taxonomy reference: [specify-cli `DECISIONS.md` — journal events](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
 

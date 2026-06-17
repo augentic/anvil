@@ -242,7 +242,7 @@ Eval scenario files are validated against [`schemas/scenario.schema.json`](https
 3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
 4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](../../adapters/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -346,7 +346,7 @@ Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file unde
 
 This enforces the tool-owned schema contract: plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
 
-**Common fix:** verify the tool name and schema name in the URL. Use `specify tool schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
+**Common fix:** verify the tool name and schema name in the URL. Use `specify extension schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
 
 ### 15. CLI contract drift
 

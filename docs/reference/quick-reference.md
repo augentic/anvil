@@ -98,7 +98,7 @@ specify workspace prepare <project> --change <name>
 specify workspace push [<project>...]                    # publish specify/<name> branch as PR
 
 # Tools
-specify tool run <name> [args...]                        # run a declared WASI tool
+specify extension run <name> [args...]                        # run a declared WASI tool
 
 # Maintenance & bootstrap
 specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
