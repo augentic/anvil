@@ -1,7 +1,7 @@
 //! `specify plan archive` CLI tests, including the working-directory
 //! co-move (L1.K / L3.B).
 
-use crate::support::*;
+use super::support::*;
 
 // -- plan archive (L1.K) ----------------------------------------------
 //

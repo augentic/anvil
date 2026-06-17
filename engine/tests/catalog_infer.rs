@@ -12,8 +12,6 @@
 //! `cargo make vectis-wasm`); the bind tests are pure host bookkeeping
 //! and need no tool.
 
-mod common;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -22,6 +20,8 @@ use serde_json::Value;
 use specify_workflow::adapter::ADAPTER_WASM_FILENAME;
 use specify_workflow::design_system::{ComponentStatus, ComponentsCatalog};
 use tempfile::{TempDir, tempdir};
+
+use crate::common;
 
 fn vectis_wasm() -> PathBuf {
     repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")

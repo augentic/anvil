@@ -2,7 +2,7 @@
 //! `--from` happy paths, journal tail, negative gates, and re-propose
 //! semantics, plus the propose-only seeds and helpers.
 
-use crate::support::*;
+use super::support::*;
 
 // -- propose seeds ----------------------------------------------------
 

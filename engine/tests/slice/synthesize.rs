@@ -9,7 +9,7 @@
 //! `tests/slice_drift.rs`; here we only add the synthesized-slice happy
 //! path it does not exercise.
 
-use crate::support::*;
+use super::support::*;
 
 /// Agent synthesis response — one agreed requirement (single claim) and
 /// one task. Kernel-owned fields omitted so the kernel projects them.

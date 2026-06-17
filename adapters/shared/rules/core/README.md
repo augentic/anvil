@@ -81,7 +81,7 @@ The three relational / presence kinds dispatch on a `value:` mechanism selector 
 1. Pick the next free `CORE-NNN`. Do not reuse retired ids; mark deprecated rules with a `deprecated:` block and leave the file in place so historical citations resolve.
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
 3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR. Confirm the rule actually fires against a known-bad fixture — a rule that resolves but matches nothing is the usual failure mode.
-4. Keep all policy in the rule's `config:`. The engine's `lint_no_embedded_policy` Layer-3 guard rejects any rule-specific literal that creeps into the dispatcher. For a Road B (`kind: tool`) rule, add the check to the in-process family checker under `cli/crates/standards/src/lint/framework_tools/<name>.rs` (see [docs/contributing/checks.md](../../../../docs/contributing/checks.md)).
+4. Keep all policy in the rule's `config:`. The engine's `lint_no_embedded_policy` Layer-3 guard rejects any rule-specific literal that creeps into the dispatcher. For a Road B (`kind: tool`) rule, add the check to the in-process family checker under `engine/crates/standards/src/lint/framework_tools/<name>.rs` (see [docs/contributing/checks.md](../../../../docs/contributing/checks.md)).
 5. New engine behaviour is covered by mechanism-named, rule-agnostic tests (`crates/standards/tests/lint_hint_<kind>.rs`) and each tool's in-crate tests — not by per-rule parity tests.
 
 ## Rule families and overlapping concerns

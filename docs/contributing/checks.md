@@ -1,6 +1,6 @@
 # Consistency Checks
 
-This repo is linted by `specify lint framework`. The runtime lives in-tree under [`cli/`](../../cli), so `make lint` builds the in-tree binary and runs it against the prose: `cd cli && cargo run -q -p specify -- lint framework --framework-root ..`. A Rust toolchain is the only prerequisite — there is no source pin, published-binary download, or sibling checkout to resolve. Run checks before every pull request.
+This repo is linted by `specify lint framework`. The runtime lives in-tree under [`engine/`](../../engine), so `make lint` builds the in-tree binary and runs it against the prose: `cd engine && cargo run -q -p specify -- lint framework --framework-root ..`. A Rust toolchain is the only prerequisite — there is no source pin, published-binary download, or sibling checkout to resolve. Run checks before every pull request.
 
 ## Editor-first vs specify lint framework
 
@@ -9,17 +9,17 @@ Framework validation splits into two surfaces:
 | Surface                                              | When it runs                                                                                       | What it covers                                                                                                                                                                    |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Editor-first (YAML/JSON LSP)**                     | While you edit plain YAML or JSON                                                                  | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
-| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run -p specify -- lint framework` (under `cli/`) | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
+| **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run -p specify -- lint framework` (under `engine/`) | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
 
-**Authoritative schemas** live in-tree under [`cli/schemas/`](../../cli/schemas) and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
+**Authoritative schemas** live in-tree under [`engine/schemas/`](../../engine/schemas) and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/cli/schemas/source.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/engine/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship in-tree under `cli/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship in-tree under `engine/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
 **Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specify lint framework` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas under `schemas/authoring/` and `schemas/rules/`.
 
@@ -45,25 +45,25 @@ Exit code `0` means all checks pass. Validation failures exit `2`; infrastructur
 
 ### The in-tree binary
 
-`make lint` builds the `specify` binary from the in-tree Cargo workspace under [`cli/`](../../cli) and runs `lint framework --framework-root ..` against this repo:
+`make lint` builds the `specify` binary from the in-tree Cargo workspace under [`engine/`](../../engine) and runs `lint framework --framework-root ..` against this repo:
 
 ```bash
-cd cli && cargo run -q -p specify -- lint framework --framework-root ..
+cd engine && cargo run -q -p specify -- lint framework --framework-root ..
 ```
 
-There is no source pin, no published-binary download, and no sibling checkout: the runtime and the prose are one repo, versioned and released together. A Rust toolchain is the only prerequisite. `make ci` runs the full Rust workspace gate (`cargo make ci` under `cli/`) followed by `make lint`.
+There is no source pin, no published-binary download, and no sibling checkout: the runtime and the prose are one repo, versioned and released together. A Rust toolchain is the only prerequisite. `make ci` runs the full Rust workspace gate (`cargo make ci` under `engine/`) followed by `make lint`.
 
 **Performance.** Framework lint is a single generic pass over all resolved `CORE-*` / `UNI-*` rules: each rule resolves either as a declarative hint (Road A) or a name-resolved in-process checker (Road B). No imperative `Check` rule producer runs on `make lint`. On a **release** build this tree lints in single-digit seconds; benchmark on your own hardware with `/usr/bin/time make lint`. Always measure against `cargo build --release`: a debug/unoptimized binary is many times slower and is not representative.
 
-The `specify-standards` framework predicate regression suite lives in-tree under `cli/` and runs with the rest of the Rust workspace via `cargo make test`:
+The `specify-standards` framework predicate regression suite lives in-tree under `engine/` and runs with the rest of the Rust workspace via `cargo make test`:
 
 ```bash
-cd cli && cargo test -p specify-standards
+cd engine && cargo test -p specify-standards
 ```
 
 ### CI
 
-CI is one job. [`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml) builds the in-tree binary on a stable toolchain (with `Swatinem/rust-cache`), runs `cargo make ci` under `cli/` (the full Rust workspace gate), then runs `specify lint framework --framework-root .` over the prose plus a spec-runtime symlink check. The prose↔runtime contract is intra-repo: one PR, one CI run.
+CI is one job. [`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml) builds the in-tree binary on a stable toolchain (with `Swatinem/rust-cache`), runs `cargo make ci` under `engine/` (the full Rust workspace gate), then runs `specify lint framework --framework-root .` over the prose plus a spec-runtime symlink check. The prose↔runtime contract is intra-repo: one PR, one CI run.
 
 When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
@@ -93,7 +93,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
-Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in-tree under `cli/crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `cli/crates/standards/src/lint/framework_tools/`.
+Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in-tree under `engine/crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `engine/crates/standards/src/lint/framework_tools/`.
 
 ### JSON output
 
@@ -133,7 +133,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Adapter manifest YAML validation
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship in-tree under `cli/schemas/` and are loaded by the `specify-standards` crate.
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship in-tree under `engine/schemas/` and are loaded by the `specify-standards` crate.
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`survey` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -201,7 +201,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Eval scenario frontmatter
 
-Eval scenario files are validated against [`cli/schemas/authoring/scenario.schema.json`](../../cli/schemas/authoring/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Eval scenario files are validated against [`engine/schemas/authoring/scenario.schema.json`](../../engine/schemas/authoring/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `evals/scenarios/<id>.md` — the flat platform scenario pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
 2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
@@ -277,7 +277,7 @@ The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to [`cli/schemas/rules/rule.schema.json`](../../cli/schemas/rules/rule.schema.json).
+  conforms to [`engine/schemas/rules/rule.schema.json`](../../engine/schemas/rules/rule.schema.json).
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
@@ -318,13 +318,13 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 [`CORE-057`](../../adapters/shared/rules/core/CORE-057-cli-contract-drift.md) checks every CLI citation in this repo's documentation against the contract of the **pinned binary that is running the lint** — the same payload `specify contract dump` emits. `specify …` command lines in `bash`/`sh` fences and inline code walk the verb tree (unknown verbs, undeclared `--flags`); cited journal event ids and fenced-JSON `"event"` / `"error"` values are membership-checked against the declared taxonomies. Because the contract is rebuilt from the binary on each run, every citation is re-checked against the in-tree binary in the same change.
 
-[`CORE-060`](../../adapters/shared/rules/core/CORE-060-cli-test-citation-drift.md) rides the same kind's `test-citations` selector: "proven by a named test" claims — `tests/….rs` inline spans and `cli/tests/` link targets under `docs/**` and `AGENTS.md` — must exist in the binary's build-time test inventory. Adapter trees are out of scope because they legitimately describe generated downstream-crate `tests/` layouts.
+[`CORE-060`](../../adapters/shared/rules/core/CORE-060-cli-test-citation-drift.md) rides the same kind's `test-citations` selector: "proven by a named test" claims — `tests/….rs` inline spans and `engine/tests/` link targets under `docs/**` and `AGENTS.md` — must exist in the binary's build-time test inventory. Adapter trees are out of scope because they legitimately describe generated downstream-crate `tests/` layouts.
 
 **Common fix:** align the citation with the live CLI surface (`specify contract dump --format json` or `specify <verb> --help`). For intentional non-verbs — negative claims like "there is no `workspace merge` subcommand" or retired-verb history — drop the `specify ` prefix inside the code span so the citation stops being an invocation. Documented-ahead surfaces (verbs designed but not yet shipped) ride the rule's `config: ignore` with a comment, and the entry is removed when the verb lands.
 
 ## Extending the checks
 
-Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`cli/crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
+Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`engine/crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
 
 ### Road A — declarative hint
 
@@ -341,7 +341,7 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 - **`cross-reference`** — a relational join from an `adapter-dir` (fact-family set difference) or `expected-set` + `config: { entries: [{ key, value }] }` (value-equality) source against a `config: { target }` family (`adapter-manifest`).
 - **`set-coverage`** — the `adapter-briefs` source reads `config: { mode }` (`subset` default — CORE-004, one-sided missing-only; or `exact` — CORE-007, two-sided, additionally flagging unexpected keys) alongside `config: { expected-operations }`.
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
-- **`cli-contract`** — `invocations` + `config: { langs }` (every `specify …` command line in matching fences and inline code walks the verb tree; unknown verbs and undeclared `--flags` flag), `event-ids` / `error-codes` + `config: { json-fields }` (cited journal event ids and error discriminants are membership-checked; event-id candidates are gated to the contract's own id families), or `test-citations` + `config: { link-prefixes }` (cited `tests/….rs` spans and `cli/tests/` link targets are membership-checked against the binary's build-time test inventory). The contract itself — verb tree, flags, event ids, error discriminants, tests — is injected by the running binary (the `specify contract dump` payload), so the rule carries exemptions in `config:` but never a verb list.
+- **`cli-contract`** — `invocations` + `config: { langs }` (every `specify …` command line in matching fences and inline code walks the verb tree; unknown verbs and undeclared `--flags` flag), `event-ids` / `error-codes` + `config: { json-fields }` (cited journal event ids and error discriminants are membership-checked; event-id candidates are gated to the contract's own id families), or `test-citations` + `config: { link-prefixes }` (cited `tests/….rs` spans and `engine/tests/` link targets are membership-checked against the binary's build-time test inventory). The contract itself — verb tree, flags, event ids, error discriminants, tests — is injected by the running binary (the `specify contract dump` payload), so the rule carries exemptions in `config:` but never a verb list.
 
 Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010, the `schema` scenario selector → CORE-032, the `unique` scenario selector → CORE-030, and `cli-contract` → CORE-057 / CORE-060. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
@@ -349,9 +349,9 @@ Each evaluator is generic: it reads its policy (cap, allowed set, owner map, exp
 
 ### Road B — referenced tool
 
-The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named checker from the in-process framework inventory (`cli/crates/standards/src/lint/framework_tools.rs` in `specify-standards`), runs it once per lint, and folds its typed findings directly; the checker stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `evals/`).
+The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named checker from the in-process framework inventory (`engine/crates/standards/src/lint/framework_tools.rs` in `specify-standards`), runs it once per lint, and folds its typed findings directly; the checker stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `evals/`).
 
-The seven framework checkers are native modules under `cli/crates/standards/src/lint/framework_tools/` in `specify-standards`. Each one and the `CORE-*` rules it serves:
+The seven framework checkers are native modules under `engine/crates/standards/src/lint/framework_tools/` in `specify-standards`. Each one and the `CORE-*` rules it serves:
 
 | Checker          | Serves                  |
 | ---------------- | ----------------------- |
@@ -367,9 +367,9 @@ To add or extend one:
 
 1. Add the pure check fn to the family checker module under `crates/standards/src/lint/framework_tools/<name>.rs`, stamping findings with the owning `CORE-NNN` / `severity`. Read any policy from the rule's `config:` (forwarded by the engine as a second positional argument) — never bake it into the checker.
 2. Cover the new check with module-local unit tests beside the checker.
-3. Author/point the `CORE-*` rule file at the checker, run `make lint` + `cargo make check` (under `cli/`).
+3. Author/point the `CORE-*` rule file at the checker, run `make lint` + `cargo make check` (under `engine/`).
 
-> **Policy never lives in the engine.** The `lint_no_embedded_policy` Layer-3 guard test ([`cli/crates/standards/tests/lint_engine_guards.rs`](../../cli/crates/standards/tests/lint_engine_guards.rs)) fails if any eval arm reintroduces a rule-specific literal (operation-set array, owner→prefix map, value-bearing discriminator, canonical-doc path, or an un-allow-listed numeric cap). Put the value in the rule's `config:`.
+> **Policy never lives in the engine.** The `lint_no_embedded_policy` Layer-3 guard test ([`engine/crates/standards/tests/lint_engine_guards.rs`](../../engine/crates/standards/tests/lint_engine_guards.rs)) fails if any eval arm reintroduces a rule-specific literal (operation-set array, owner→prefix map, value-bearing discriminator, canonical-doc path, or an un-allow-listed numeric cap). Put the value in the rule's `config:`.
 
 > **No imperative escape hatch.** A `CORE-*` rule resolves only as a declarative hint (Road A) or a name-resolved in-process checker (Road B). Coverage rests on the per-kind evaluator suite, the schema byte-match gate, and each checker's in-crate tests.
 
@@ -382,7 +382,7 @@ Checks are numbered 1–15 contiguously in this document for the narrative descr
 
 ## CLI checks
 
-The Rust workspace under `cli/` has its own check suite via `cargo-make` (run from `cli/`):
+The Rust workspace under `engine/` has its own check suite via `cargo-make` (run from `engine/`):
 
 ```bash
 cargo make ci     # lint, test, test-docs, vet, outdated, deny, fmt

@@ -3,9 +3,7 @@
 //! the binary level by `tests/e2e.rs` (`validate-good.json` /
 //! `validate-bad.json`). Wire-schema accept/reject fixtures live in the
 //! schema crate (`crates/schema/tests/wire_fixtures.rs`). Shared helpers
-//! live in [`common`].
-
-mod common;
+//! live in [`crate::common`].
 
 #[path = "goldens/merge_engine.rs"]
 mod merge_engine;

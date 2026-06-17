@@ -1,6 +1,6 @@
 //! Component catalog contract — `slice validate` catalog drift gate.
 
-use crate::support::*;
+use super::support::*;
 
 /// Evidence with a `component:` directive on a claim.
 const EVIDENCE_WITH_COMPONENT: &str = "authority: behaviour

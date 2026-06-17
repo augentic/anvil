@@ -36,7 +36,7 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | Workspace breakout after build failure | [`workspace-fail-resume`](workspace-fail-resume.md) | passed | full |
 | Stale-workspace recovery | [`workspace-stale-recovery`](workspace-stale-recovery.md) | passed | full |
 
-13 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [`cli/`](https://github.com/augentic/specify/tree/main/cli) workspace, run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the CLI's plan-lock probe made it deterministic (`tests/workflow/plan_lock.rs`).
+13 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [`engine/`](https://github.com/augentic/specify/tree/main/engine) workspace, run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the CLI's plan-lock probe made it deterministic (`tests/workflow/plan_lock.rs`).
 
 ## Status legend
 

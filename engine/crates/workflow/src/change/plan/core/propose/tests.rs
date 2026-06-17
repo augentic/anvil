@@ -315,31 +315,95 @@ fn assert_code(result: specify_error::Result<ProposeOutcome>, expected: &str) {
     }
 }
 
+/// The `propose_from` rejection matrix: each malformed `(plan, discovery,
+/// topology, response)` tuple must surface its specific `plan-reconcile-*`
+/// (or `lead-coverage-orphan`) code. One block per distinct branch, collapsed
+/// into a single test so the kernel's error surface lives in one place.
 #[test]
-fn propose_rejects_non_replaceable_plan() {
+fn propose_rejections() {
+    // Each case shadows the prior `plan` / `doc` / `topo` so the rejection
+    // matrix reads as a flat sequence (a bare scoping block per case would
+    // trip the `semicolon_outside_block` / `semicolon_if_nothing_returned`
+    // pair, which are mutually exclusive for block-statements).
+
+    // Approved plans are not replaceable.
     let mut plan = plan_with_sources(Lifecycle::Approved, &["intent"]);
     let doc = discovery_with(&[("intent", "fix-typo")]);
     let topo = vec![project("my-app", "omnia@1.0.0", "Single service.")];
     let resp = response(vec![slice("fix-typo", vec![member("intent", "fix-typo")])]);
     assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-plan-not-replaceable");
-}
 
-#[test]
-fn propose_rejects_lead_orphan() {
+    // Response references a lead absent from the catalog.
     let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
     let doc = discovery_with(&[("docs", "real")]);
     let topo = vec![project("p", "omnia@1.0.0", "svc")];
     let resp = response(vec![slice("s", vec![member("docs", "ghost")])]);
     assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-lead-orphan");
-}
 
-#[test]
-fn propose_rejects_slice_source_collision() {
+    // Two members on the same source key within one slice.
     let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
     let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
     let topo = vec![project("p", "omnia@1.0.0", "svc")];
     let resp = response(vec![slice("s", vec![member("docs", "a"), member("docs", "b")])]);
     assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-slice-source-collision");
+
+    // Catalog carries two leads; the response covers only one.
+    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
+    let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
+    let topo = vec![project("p", "omnia@1.0.0", "svc")];
+    let resp = response(vec![slice("s", vec![member("docs", "a")])]);
+    assert_code(plan.propose_from(resp, &doc, &topo), "lead-coverage-orphan");
+
+    // Two projects offered, slice omits `project`.
+    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
+    let doc = discovery_with(&[("docs", "a")]);
+    let topo =
+        vec![project("p1", "omnia@1.0.0", "first"), project("p2", "contracts@1.0.0", "second")];
+    let resp = response(vec![slice("s", vec![member("docs", "a")])]);
+    assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-project-binding-required");
+
+    // Slice names a project absent from the topology.
+    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
+    let doc = discovery_with(&[("docs", "a")]);
+    let topo = vec![project("p", "omnia@1.0.0", "svc")];
+    let mut s = slice("s", vec![member("docs", "a")]);
+    s.project = Some("ghost".to_string());
+    assert_code(plan.propose_from(response(vec![s]), &doc, &topo), "plan-reconcile-project-orphan");
+
+    // Two slices share a name within one project.
+    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
+    let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
+    let topo = vec![project("p", "omnia@1.0.0", "svc")];
+    let mut s1 = slice("dup", vec![member("docs", "a")]);
+    s1.project = Some("p".to_string());
+    let mut s2 = slice("dup", vec![member("docs", "b")]);
+    s2.project = Some("p".to_string());
+    assert_code(
+        plan.propose_from(response(vec![s1, s2]), &doc, &topo),
+        "plan-reconcile-slice-name-collision",
+    );
+
+    // Slice name is not kebab-case.
+    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
+    let doc = discovery_with(&[("docs", "a")]);
+    let topo = vec![project("p", "omnia@1.0.0", "svc")];
+    let resp = response(vec![slice("Not Kebab", vec![member("docs", "a")])]);
+    assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-slice-name-invalid");
+
+    // depends-on forms a cycle.
+    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
+    let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
+    let topo = vec![project("p", "omnia@1.0.0", "svc")];
+    let mut s1 = slice("alpha", vec![member("docs", "a")]);
+    s1.project = Some("p".to_string());
+    s1.depends_on = vec!["beta".to_string()];
+    let mut s2 = slice("beta", vec![member("docs", "b")]);
+    s2.project = Some("p".to_string());
+    s2.depends_on = vec!["alpha".to_string()];
+    assert_code(
+        plan.propose_from(response(vec![s1, s2]), &doc, &topo),
+        "plan-reconcile-depends-on-cycle",
+    );
 }
 
 #[test]
@@ -394,78 +458,6 @@ fn topic_overlap_empty_without_topics() {
 
     let out = plan.propose_from(resp, &doc, &topo).expect("projects");
     assert!(out.topic_overlaps.is_empty(), "got {:#?}", out.topic_overlaps);
-}
-
-#[test]
-fn propose_rejects_coverage_gap() {
-    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
-    let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
-    let topo = vec![project("p", "omnia@1.0.0", "svc")];
-    // Catalog carries two leads; the response covers only one.
-    let resp = response(vec![slice("s", vec![member("docs", "a")])]);
-    assert_code(plan.propose_from(resp, &doc, &topo), "lead-coverage-orphan");
-}
-
-#[test]
-fn propose_rejects_project_binding_required() {
-    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
-    let doc = discovery_with(&[("docs", "a")]);
-    let topo =
-        vec![project("p1", "omnia@1.0.0", "first"), project("p2", "contracts@1.0.0", "second")];
-    // Two projects offered, slice omits `project`.
-    let resp = response(vec![slice("s", vec![member("docs", "a")])]);
-    assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-project-binding-required");
-}
-
-#[test]
-fn propose_rejects_project_orphan() {
-    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
-    let doc = discovery_with(&[("docs", "a")]);
-    let topo = vec![project("p", "omnia@1.0.0", "svc")];
-    let mut s = slice("s", vec![member("docs", "a")]);
-    s.project = Some("ghost".to_string());
-    assert_code(plan.propose_from(response(vec![s]), &doc, &topo), "plan-reconcile-project-orphan");
-}
-
-#[test]
-fn propose_rejects_slice_name_collision() {
-    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
-    let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
-    let topo = vec![project("p", "omnia@1.0.0", "svc")];
-    let mut s1 = slice("dup", vec![member("docs", "a")]);
-    s1.project = Some("p".to_string());
-    let mut s2 = slice("dup", vec![member("docs", "b")]);
-    s2.project = Some("p".to_string());
-    assert_code(
-        plan.propose_from(response(vec![s1, s2]), &doc, &topo),
-        "plan-reconcile-slice-name-collision",
-    );
-}
-
-#[test]
-fn propose_rejects_slice_name_not_kebab() {
-    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
-    let doc = discovery_with(&[("docs", "a")]);
-    let topo = vec![project("p", "omnia@1.0.0", "svc")];
-    let resp = response(vec![slice("Not Kebab", vec![member("docs", "a")])]);
-    assert_code(plan.propose_from(resp, &doc, &topo), "plan-reconcile-slice-name-invalid");
-}
-
-#[test]
-fn propose_rejects_depends_on_cycle() {
-    let mut plan = plan_with_sources(Lifecycle::Pending, &["docs"]);
-    let doc = discovery_with(&[("docs", "a"), ("docs", "b")]);
-    let topo = vec![project("p", "omnia@1.0.0", "svc")];
-    let mut s1 = slice("alpha", vec![member("docs", "a")]);
-    s1.project = Some("p".to_string());
-    s1.depends_on = vec!["beta".to_string()];
-    let mut s2 = slice("beta", vec![member("docs", "b")]);
-    s2.project = Some("p".to_string());
-    s2.depends_on = vec!["alpha".to_string()];
-    assert_code(
-        plan.propose_from(response(vec![s1, s2]), &doc, &topo),
-        "plan-reconcile-depends-on-cycle",
-    );
 }
 
 #[test]
@@ -816,52 +808,48 @@ fn missing_platforms(project_dir: &Path, platforms: &[Platform]) -> Vec<Platform
         .collect()
 }
 
+/// Shell presence detection across shell-tree shapes: no shells reports every
+/// interpreted platform missing; a `shared/src/app.rs` satisfies `core`;
+/// adding `iOS` + `Android` shells clears the set; and `web`/`desktop` are
+/// never probed (only `core` of that set can be reported missing).
 #[test]
-fn detect_missing_no_shells() {
+fn detect_missing() {
+    // Cases shadow `dir` / `platforms` rather than nesting bare scoping blocks.
+
+    // No shells: every interpreted platform reports missing.
     let dir = tempfile::tempdir().expect("tempdir");
     let platforms = vec![Platform::Core, Platform::Ios, Platform::Android];
-    let missing = missing_platforms(dir.path(), &platforms);
-    assert_eq!(missing, vec![Platform::Core, Platform::Ios, Platform::Android]);
-}
+    assert_eq!(
+        missing_platforms(dir.path(), &platforms),
+        vec![Platform::Core, Platform::Ios, Platform::Android]
+    );
 
-#[test]
-fn detect_missing_core_present() {
+    // A `shared/src/app.rs` satisfies `core`.
     let dir = tempfile::tempdir().expect("tempdir");
     let shared = dir.path().join("shared/src");
     std::fs::create_dir_all(&shared).expect("mkdir");
     std::fs::write(shared.join("app.rs"), "fn main() {}").expect("write");
-
     let platforms = vec![Platform::Core, Platform::Ios, Platform::Android];
-    let missing = missing_platforms(dir.path(), &platforms);
-    assert_eq!(missing, vec![Platform::Ios, Platform::Android]);
-}
+    assert_eq!(missing_platforms(dir.path(), &platforms), vec![Platform::Ios, Platform::Android]);
 
-#[test]
-fn detect_missing_all_present() {
+    // Adding iOS + Android shells clears the set.
     let dir = tempfile::tempdir().expect("tempdir");
     let shared = dir.path().join("shared/src");
     std::fs::create_dir_all(&shared).expect("mkdir");
     std::fs::write(shared.join("app.rs"), "fn main() {}").expect("write");
-
     let ios = dir.path().join("iOS");
     std::fs::create_dir_all(&ios).expect("mkdir");
     std::fs::write(ios.join("App.swift"), "import SwiftUI").expect("write");
-
     let android = dir.path().join("Android");
     std::fs::create_dir_all(&android).expect("mkdir");
     std::fs::write(android.join("App.kt"), "package com.example").expect("write");
-
     let platforms = vec![Platform::Core, Platform::Ios, Platform::Android];
-    let missing = missing_platforms(dir.path(), &platforms);
-    assert!(missing.is_empty());
-}
+    assert!(missing_platforms(dir.path(), &platforms).is_empty());
 
-#[test]
-fn detect_missing_skips_web_desktop() {
+    // `web` / `desktop` are never probed: only `core` of that set is reported.
     let dir = tempfile::tempdir().expect("tempdir");
     let platforms = vec![Platform::Core, Platform::Web, Platform::Desktop];
-    let missing = missing_platforms(dir.path(), &platforms);
-    assert_eq!(missing, vec![Platform::Core]);
+    assert_eq!(missing_platforms(dir.path(), &platforms), vec![Platform::Core]);
 }
 
 #[test]

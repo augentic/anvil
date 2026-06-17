@@ -2,8 +2,6 @@
 //! (`resolve`, `extract`, `preview`, `survey`). Shared helpers live in
 //! [`common`].
 
-mod common;
-
 #[path = "source/resolve.rs"]
 mod resolve;
 

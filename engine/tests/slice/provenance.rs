@@ -1,6 +1,6 @@
 //! Provenance projection — `slice provenance`.
 
-use crate::support::*;
+use super::support::*;
 
 /// Evidence the provenance projection reads `value` / `path` and
 /// document-level `authority` from when reshaping `CLEAN_MODEL_YAML`.

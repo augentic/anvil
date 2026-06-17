@@ -23,4 +23,4 @@ expected/
 
 ## Validation
 
-The Evidence YAMLs under `expected/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify/blob/main/cli/schemas/evidence.schema.json) in the CLI repo. The lead blocks in `expected/discovery.md` follow the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify/blob/main/cli/schemas/discovery/lead.schema.json).
+The Evidence YAMLs under `expected/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify/blob/main/engine/schemas/evidence.schema.json) in the CLI repo. The lead blocks in `expected/discovery.md` follow the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify/blob/main/engine/schemas/discovery/lead.schema.json).

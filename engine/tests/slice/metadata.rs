@@ -1,7 +1,7 @@
 //! `SliceMetadata` / `Outcome` serde round-trips, plus the top-level
 //! `--help` axis-verb surface.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn metadata_without_outcome_still_parses() {

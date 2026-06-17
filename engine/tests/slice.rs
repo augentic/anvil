@@ -12,8 +12,6 @@
 //! The suite is split across themed submodules under `tests/slice/`;
 //! shared imports, helpers, and seeds live in [`support`].
 
-mod common;
-
 #[path = "slice/support.rs"]
 mod support;
 

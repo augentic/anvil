@@ -10,10 +10,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
+use common::{parse_stdout, repo_root, specify_cmd};
 use serde_json::Value;
 
-mod common;
-use common::{parse_stdout, repo_root, specify_cmd};
+use crate::common;
 
 /// Dumped once per test process; tests share the parsed payload so the
 /// binary is not re-spawned for every assertion suite.

@@ -62,7 +62,7 @@ use serde_json::{Value, json};
 use specify_diagnostics::{Diagnostic, fingerprint, validate_diagnostic_json};
 use tempfile::TempDir;
 
-use crate::support::scaffold_framework;
+use super::support::scaffold_framework;
 
 /// Replacement token for the canonicalised framework-root prefix in
 /// every captured `location.path`. Chosen so it cannot occur in a
@@ -74,7 +74,7 @@ fn goldens_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("lint-framework")
 }
 
-/// The shared `crate::support::scaffold_framework` base tree plus the
+/// The shared `super::support::scaffold_framework` base tree plus the
 /// declarative `CORE-001` rule the golden suite needs (see
 /// [`write_core_adapter_schema_rule`]).
 fn write_scaffold(root: &Path) {

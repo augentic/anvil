@@ -40,7 +40,7 @@ jobs:
           done
           exit $status
 
-      # The stable toolchain is pinned by cli/rust-toolchain.toml; nightly
+      # The stable toolchain is pinned by engine/rust-toolchain.toml; nightly
       # rustfmt is additionally needed for the `fmt-check` gate, which runs
       # `cargo +nightly fmt --all -- --check`.
       - name: Install nightly rustfmt
@@ -56,7 +56,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: cli
+          workspaces: engine
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
@@ -65,11 +65,11 @@ jobs:
         with:
           tool: cargo-make,cargo-nextest,cargo-deny,cargo-vet
 
-      # # Full Rust workspace gate: fmt-check, clippy, nextest, doctests,
-      # # doc, vet, deny.
-      # - name: Rust workspace CI
-      #   working-directory: cli
-      #   run: cargo make ci
+      # Full Rust workspace gate: fmt-check, clippy, nextest, doctests,
+      # doc, vet, deny.
+      - name: Rust workspace CI
+        working-directory: engine
+        run: cargo make ci
 
       # Framework lint over the in-tree prose surface (plugins/, docs/,
       # adapters/), built from the same in-tree binary.

@@ -20,7 +20,7 @@ use serde_json::Value;
 use specify_standards::rules::{HintKind, ParseError, parse_rule};
 use tempfile::TempDir;
 
-use crate::support::scaffold_framework;
+use super::support::scaffold_framework;
 
 /// Run `specify lint framework --framework-root <root> --output-format json`
 /// and return the captured `(exit, stdout, stderr)` triple.

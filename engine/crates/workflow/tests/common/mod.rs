@@ -99,15 +99,19 @@ fn failure_status() -> ExitStatus {
     ExitStatus::from_raw(1 << 8)
 }
 
-// `copy_dir` (and the git helper trio) come from the workspace-shared
-// helper file; see `tests/common/fs_git.rs` at the repo root. It is
-// re-exposed as a thin wrapper (rather than a `pub use`) so binaries
-// that never stage a fixture see it as `dead_code` — covered by the
-// module-level expectation — instead of an unused `pub use`.
+// `copy_dir` / `run_git` come from the workspace-shared helper file; see
+// `tests/common/fs_git.rs` at the repo root. Each is re-exposed as a thin
+// wrapper (rather than a `pub use`) so a binary that never reaches it sees
+// `dead_code` — covered by the module-level expectation — instead of an
+// unused `pub use`. The `workspace` area reaches `run_git` as
+// `crate::common::run_git`.
 #[path = "../../../../tests/common/fs_git.rs"]
 mod fs_git;
 pub fn copy_dir(src: &std::path::Path, dst: &std::path::Path) {
     fs_git::copy_dir(src, dst);
+}
+pub fn run_git(root: &std::path::Path, args: &[&str]) -> String {
+    fs_git::run_git(root, args)
 }
 
 const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";

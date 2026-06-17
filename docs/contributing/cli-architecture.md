@@ -1,6 +1,6 @@
 # CLI Architecture
 
-The `specify` CLI lives in the in-tree [`cli/`](../../cli) Cargo workspace. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify extension run`.
+The `specify` CLI lives in the in-tree [`engine/`](../../engine) Cargo workspace. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify extension run`.
 
 ## Core crate dependency graph
 
@@ -46,7 +46,7 @@ Each handler function returns an `Exit` that maps to an exit code.
 All JSON output follows the shared envelope contract:
 
 - **Kebab-case keys** -- `app-name`, `project-dir`, `envelope-version` (never `app_name` or `projectDir`); the `envelope-version` JSON envelope key is intentionally kept as the wire-protocol version stamp and is unrelated to the Specify adapter noun
-- **`envelope-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `ENVELOPE_VERSION` in `cli/src/runtime/output.rs`.
+- **`envelope-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `ENVELOPE_VERSION` in `engine/src/runtime/output.rs`.
 - **Kebab-case error variants** -- `missing-prerequisites`, `invalid-project`, `io` (never `missing_prerequisites`)
 
 The `--format` flag is global on `Cli` and controls output:

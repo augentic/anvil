@@ -65,71 +65,65 @@ fn staged_composition(body: &str) -> (tempfile::TempDir, PathBuf) {
 }
 
 #[test]
-fn ui_surface_round_trips() {
-    let report = report_with_ui_surface(3);
-    assert_eq!(report.ui_surface, Some(UiSurface { screens: 3 }));
-    let serialised = serde_json::to_string(&report).expect("serialise");
+fn ui_surface_serialisation() {
+    // Present: round-trips and renders kebab-case.
+    let with_surface = report_with_ui_surface(3);
+    assert_eq!(with_surface.ui_surface, Some(UiSurface { screens: 3 }));
+    let serialised = serde_json::to_string(&with_surface).expect("serialise");
     assert!(serialised.contains("ui-surface"), "ui-surface renders kebab-case: {serialised}");
     let reparsed: BuildReport = serde_json::from_str(&serialised).expect("re-deserialise");
-    assert_eq!(report, reparsed);
-}
+    assert_eq!(with_surface, reparsed);
 
-#[test]
-fn ui_surface_absent_skips_serialisation() {
-    let report = report("success", &[]);
-    assert!(report.ui_surface.is_none(), "missing ui-surface defaults to None");
-    let serialised = serde_json::to_string(&report).expect("serialise");
+    // Absent: defaults to None and is skipped on the wire.
+    let plain = report("success", &[]);
+    assert!(plain.ui_surface.is_none(), "missing ui-surface defaults to None");
+    let serialised = serde_json::to_string(&plain).expect("serialise");
     assert!(!serialised.contains("ui-surface"), "absent ui-surface is skipped: {serialised}");
 }
 
-/// `ui-surface.screens: 0` against a non-empty `screens:` composition →
-/// a single non-blocking `composition-unexpected-for-non-ui-slice`.
+/// The two A4 mismatch warnings, each non-blocking: a UI-surface claim
+/// against a non-UI composition (`composition-unexpected-for-non-ui-slice`)
+/// and a UI slice against an empty / absent composition
+/// (`composition-empty-for-ui-slice`).
 #[test]
-fn coherence_flags_unexpected_composition() {
-    let (_dir, path) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(0), &path);
+fn coherence_flags_mismatches() {
+    let (_d0, screens) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
+    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(0), &screens);
     assert_eq!(warnings.len(), 1, "expected one warning, got {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-unexpected-for-non-ui-slice"));
     assert!(!blocking(&warnings[0]), "A4 warnings must never block");
-}
 
-/// `ui-surface.screens > 0` against an empty `screens: {}` composition →
-/// a single non-blocking `composition-empty-for-ui-slice`.
-#[test]
-fn coherence_flags_empty_composition() {
-    let (_dir, path) = staged_composition("version: 1\nscreens: {}\n");
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(2), &path);
+    let (_d1, empty) = staged_composition("version: 1\nscreens: {}\n");
+    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(2), &empty);
     assert_eq!(warnings.len(), 1, "expected one warning, got {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-empty-for-ui-slice"));
     assert!(!blocking(&warnings[0]), "A4 warnings must never block");
-}
 
-/// An absent composition file with a UI-surface claim also flags
-/// `composition-empty-for-ui-slice`.
-#[test]
-fn coherence_absent_composition_ui_slice() {
+    // An absent composition with a UI-surface claim also flags empty-for-ui-slice.
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("composition.yaml");
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(1), &path);
+    let missing = dir.path().join("composition.yaml");
+    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(1), &missing);
     assert_eq!(warnings.len(), 1, "absent composition for a UI slice warns: {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-empty-for-ui-slice"));
 }
 
-/// Matched cases (UI surface ↔ non-empty composition, no surface ↔
-/// empty composition) produce no warnings.
+/// Coherent and back-compat cases stay silent: matched surface/composition
+/// pairs, and any report without a `ui_surface` claim.
 #[test]
-fn coherence_matched_cases_silent() {
-    let (_screens_dir, screens) =
-        staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
+fn coherence_silent_cases() {
+    let (_s, screens) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
     assert!(
         evaluate_ui_surface_coherence(&report_with_ui_surface(1), &screens).is_empty(),
         "ui slice + non-empty composition is coherent"
     );
-
-    let (_empty_dir, empty) = staged_composition("version: 1\nscreens: {}\n");
+    let (_e, empty) = staged_composition("version: 1\nscreens: {}\n");
     assert!(
         evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty).is_empty(),
         "non-ui slice + empty composition is coherent"
+    );
+    assert!(
+        evaluate_ui_surface_coherence(&report("success", &[]), &screens).is_empty(),
+        "absent ui-surface emits no warnings even with a non-empty composition"
     );
 }
 
@@ -149,17 +143,6 @@ fn coherence_reads_delta_envelope() {
     assert!(
         evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty).is_empty(),
         "an all-empty delta carries no UI surface"
-    );
-}
-
-/// A report without `ui_surface` produces no warnings even when the
-/// composition is non-empty (back-compat).
-#[test]
-fn coherence_absent_ui_surface_silent() {
-    let (_dir, path) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
-    assert!(
-        evaluate_ui_surface_coherence(&report("success", &[]), &path).is_empty(),
-        "absent ui-surface emits no warnings"
     );
 }
 
@@ -207,17 +190,15 @@ fn report_rejects_unknown_field() {
 }
 
 #[test]
-fn report_without_outputs_round_trips() {
+fn report_outputs_round_trip() {
+    // Empty outputs default to empty and are skipped on the wire.
     let report = report("success", &[]);
     assert!(report.outputs.is_empty(), "missing outputs defaults to empty");
     let serialised = serde_json::to_string(&report).expect("serialise");
     assert!(!serialised.contains("outputs"), "empty outputs is skipped in serialisation");
-    let reparsed: BuildReport = serde_json::from_str(&serialised).expect("re-deserialise");
-    assert_eq!(report, reparsed);
-}
+    assert_eq!(report, serde_json::from_str::<BuildReport>(&serialised).expect("re-deserialise"));
 
-#[test]
-fn report_with_outputs_round_trips() {
+    // Present per-platform outputs parse and round-trip.
     let report = report_with_outputs(
         "success",
         &[
@@ -229,151 +210,120 @@ fn report_with_outputs_round_trips() {
     assert_eq!(report.outputs[0].platform, Platform::Core);
     assert_eq!(report.outputs[0].path, "shared/src/app.rs");
     assert_eq!(report.outputs[1].platform, Platform::Ios);
-
     let serialised = serde_json::to_string(&report).expect("serialise");
-    let reparsed: BuildReport = serde_json::from_str(&serialised).expect("re-deserialise");
-    assert_eq!(report, reparsed);
+    assert_eq!(report, serde_json::from_str::<BuildReport>(&serialised).expect("re-deserialise"));
 }
 
+/// A `success` report may carry only non-blocking findings; a blocking
+/// finding fires the gate. `failure` reports may carry blocking findings.
 #[test]
-fn gate_success_blocks_finding() {
-    let report = report("success", &[finding("critical")]);
-    match enforce_report_no_blocking_on_success(&report) {
+fn blocking_finding_gate() {
+    match enforce_report_no_blocking_on_success(&report("success", &[finding("critical")])) {
         Err(Error::Validation { code, .. }) => {
             assert_eq!(code, "target-build-success-with-blocking-finding");
         }
         other => panic!("expected blocking-finding gate to fire, got {other:?}"),
     }
+    enforce_report_no_blocking_on_success(&report("success", &[finding("suggestion")]))
+        .expect("non-blocking success passes");
+    enforce_report_no_blocking_on_success(&report("failure", &[finding("critical")]))
+        .expect("failure may carry blocking findings");
 }
 
+/// Outputs that exist (file or non-empty tree), an empty outputs list, and
+/// any `failure` report all pass the output-existence gate.
 #[test]
-fn gate_success_non_blocking_ok() {
-    let report = report("success", &[finding("suggestion")]);
-    enforce_report_no_blocking_on_success(&report).expect("non-blocking success passes");
-}
-
-#[test]
-fn gate_failure_blocking_ok() {
-    let report = report("failure", &[finding("critical")]);
-    enforce_report_no_blocking_on_success(&report).expect("failure may carry blocking findings");
-}
-
-#[test]
-fn output_gate_accepts_empty_outputs() {
-    let report = report("success", &[]);
+fn output_gate_accepts() {
     let dir = tempfile::tempdir().expect("tempdir");
-    enforce_report_outputs_exist(&report, dir.path()).expect("empty outputs passes");
-}
+    enforce_report_outputs_exist(&report("success", &[]), dir.path())
+        .expect("empty outputs passes");
 
-#[test]
-fn output_gate_accepts_present_outputs() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("shared/src")).expect("mkdir");
     std::fs::write(dir.path().join("shared/src/app.rs"), "fn main() {}").expect("write");
+    enforce_report_outputs_exist(
+        &report_with_outputs(
+            "success",
+            &[json!({ "platform": "core", "path": "shared/src/app.rs" })],
+        ),
+        dir.path(),
+    )
+    .expect("present file output passes");
+    // A non-empty tree output (vectis declares per-platform `shared/` trees).
+    enforce_report_outputs_exist(
+        &report_with_outputs("success", &[json!({ "platform": "core", "path": "shared/" })]),
+        dir.path(),
+    )
+    .expect("non-empty tree output passes");
 
-    let report = report_with_outputs(
-        "success",
-        &[json!({ "platform": "core", "path": "shared/src/app.rs" })],
-    );
-    enforce_report_outputs_exist(&report, dir.path()).expect("present output passes");
-}
-
-#[test]
-fn output_gate_rejects_missing_output() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let report = report_with_outputs(
-        "success",
-        &[json!({ "platform": "ios", "path": "iOS/MyApp/ContentView.swift" })],
-    );
-    match enforce_report_outputs_exist(&report, dir.path()) {
-        Err(Error::Validation { code, .. }) => {
-            assert_eq!(code, "target-build-output-missing");
-        }
-        other => panic!("expected output-missing gate, got {other:?}"),
-    }
+    enforce_report_outputs_exist(
+        &report_with_outputs(
+            "failure",
+            &[json!({ "platform": "ios", "path": "iOS/MyApp/ContentView.swift" })],
+        ),
+        dir.path(),
+    )
+    .expect("failure status skips the output check");
 }
 
+/// Every output-existence failure maps to `target-build-output-missing`:
+/// a missing file, a present-but-empty file, an empty directory, an
+/// absolute path, and a parent-traversal path.
 #[test]
-fn output_gate_rejects_empty_file() {
+fn output_gate_rejects() {
+    fn assert_missing(report: &BuildReport, root: &Path, detail_contains: &str) {
+        match enforce_report_outputs_exist(report, root) {
+            Err(Error::Validation { code, detail }) => {
+                assert_eq!(code, "target-build-output-missing");
+                assert!(detail.contains(detail_contains), "detail: {detail}");
+            }
+            other => panic!("expected output-missing gate, got {other:?}"),
+        }
+    }
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    assert_missing(
+        &report_with_outputs(
+            "success",
+            &[json!({ "platform": "ios", "path": "iOS/MyApp/ContentView.swift" })],
+        ),
+        dir.path(),
+        "",
+    );
+
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("shared/src")).expect("mkdir");
     std::fs::write(dir.path().join("shared/src/app.rs"), "").expect("write empty");
-
-    let report = report_with_outputs(
-        "success",
-        &[json!({ "platform": "core", "path": "shared/src/app.rs" })],
+    assert_missing(
+        &report_with_outputs(
+            "success",
+            &[json!({ "platform": "core", "path": "shared/src/app.rs" })],
+        ),
+        dir.path(),
+        "",
     );
-    match enforce_report_outputs_exist(&report, dir.path()) {
-        Err(Error::Validation { code, .. }) => {
-            assert_eq!(code, "target-build-output-missing");
-        }
-        other => panic!("expected output-missing gate for empty file, got {other:?}"),
-    }
-}
 
-#[test]
-fn output_gate_skips_on_failure_status() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let report = report_with_outputs(
-        "failure",
-        &[json!({ "platform": "ios", "path": "iOS/MyApp/ContentView.swift" })],
-    );
-    enforce_report_outputs_exist(&report, dir.path()).expect("failure status skips output check");
-}
-
-#[test]
-fn output_gate_accepts_tree_output() {
-    // Targets like vectis declare per-platform tree paths (`shared/`).
-    let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(dir.path().join("shared/src")).expect("mkdir");
-    std::fs::write(dir.path().join("shared/src/app.rs"), "fn main() {}").expect("write");
-
-    let report =
-        report_with_outputs("success", &[json!({ "platform": "core", "path": "shared/" })]);
-    enforce_report_outputs_exist(&report, dir.path()).expect("non-empty tree output passes");
-}
-
-#[test]
-fn output_gate_rejects_empty_directory() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("shared")).expect("mkdir");
+    assert_missing(
+        &report_with_outputs("success", &[json!({ "platform": "core", "path": "shared" })]),
+        dir.path(),
+        "exists but is empty",
+    );
 
-    let report = report_with_outputs("success", &[json!({ "platform": "core", "path": "shared" })]);
-    match enforce_report_outputs_exist(&report, dir.path()) {
-        Err(Error::Validation { code, detail }) => {
-            assert_eq!(code, "target-build-output-missing");
-            assert!(detail.contains("exists but is empty"), "detail: {detail}");
-        }
-        other => panic!("expected output-missing gate for empty directory, got {other:?}"),
-    }
-}
-
-#[test]
-fn output_gate_rejects_absolute_path() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let report =
-        report_with_outputs("success", &[json!({ "platform": "core", "path": "/etc/passwd" })]);
-    match enforce_report_outputs_exist(&report, dir.path()) {
-        Err(Error::Validation { code, detail }) => {
-            assert_eq!(code, "target-build-output-missing");
-            assert!(detail.contains("absolute or contains `..`"), "detail: {detail}");
-        }
-        other => panic!("expected output-missing gate for absolute path, got {other:?}"),
-    }
-}
+    assert_missing(
+        &report_with_outputs("success", &[json!({ "platform": "core", "path": "/etc/passwd" })]),
+        dir.path(),
+        "absolute or contains `..`",
+    );
 
-#[test]
-fn output_gate_rejects_parent_traversal() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::write(dir.path().join("secret.txt"), "secret").expect("write");
-
-    let report =
-        report_with_outputs("success", &[json!({ "platform": "core", "path": "../secret.txt" })]);
-    match enforce_report_outputs_exist(&report, dir.path()) {
-        Err(Error::Validation { code, detail }) => {
-            assert_eq!(code, "target-build-output-missing");
-            assert!(detail.contains("absolute or contains `..`"), "detail: {detail}");
-        }
-        other => panic!("expected output-missing gate for traversal path, got {other:?}"),
-    }
+    assert_missing(
+        &report_with_outputs("success", &[json!({ "platform": "core", "path": "../secret.txt" })]),
+        dir.path(),
+        "absolute or contains `..`",
+    );
 }

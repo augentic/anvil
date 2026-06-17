@@ -27,15 +27,20 @@ wasm-compile = { max-threads = 1 }
 # accepts a positive integer or "num-cpus" only (no percentage string).
 host-subprocess = { max-threads = 4 }
 
-# First matching override wins: the vectis-compiling cases stay pinned to
-# the single-threaded wasm-compile group even though their binaries also
-# match the host-subprocess override below.
+# Integration tests now compile to one `it` binary per crate, so the overrides
+# select by module-qualified test path instead of per-area binary names. Only
+# the root `specify::it` binary forks `specify` children and JIT-compiles the
+# vectis WASI component; the crate-level `it` binaries (workflow/standards/schema)
+# are in-process, so `binary_id(specify::it)` pins the groups to the one binary
+# that needs them. First matching override wins: the vectis-compiling cases stay
+# pinned to the single-threaded wasm-compile group even though they also match
+# the host-subprocess override below.
 [[profile.default.overrides]]
-filter = 'binary(catalog_infer) or (binary(plan) and test(end_to_end)) or (binary(extension) and test(schema_vectis))'
+filter = 'binary_id(specify::it) and (test(catalog_infer::) or test(plan::end_to_end) or test(schema_vectis))'
 test-group = 'wasm-compile'
 
 [[profile.default.overrides]]
-filter = 'binary(plan) or binary(slice) or binary(source) or binary(init) or binary(registry) or binary(journal) or binary(workspace) or binary(rules) or binary(lint) or binary(e2e) or binary(bootstrap) or binary(extension)'
+filter = 'binary_id(specify::it) and (test(plan::) or test(slice::) or test(source::) or test(init::) or test(registry::) or test(journal::) or test(workspace::) or test(rules::) or test(lint::) or test(e2e::) or test(bootstrap::) or test(extension::))'
 test-group = 'host-subprocess'
 
 [profile.ci]

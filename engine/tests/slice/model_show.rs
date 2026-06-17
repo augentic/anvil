@@ -1,6 +1,6 @@
 //! Model viewer — `slice model show`.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn model_show_renders_json_and_text() {

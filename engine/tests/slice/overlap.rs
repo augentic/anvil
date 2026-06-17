@@ -1,6 +1,6 @@
 //! `slice overlap` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn overlap_reports_shared_adapters() {

@@ -73,7 +73,7 @@ Run documentation and consistency checks from the repository root:
 make lint
 ```
 
-This builds the in-tree `specify` binary under `cli/` and runs `lint framework` over the prose. Only a Rust toolchain is required. The runtime lives in-tree (`cli/`), so there is no source pin or sibling checkout to resolve. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
+This builds the in-tree `specify` binary under `engine/` and runs `lint framework` over the prose. Only a Rust toolchain is required. The runtime lives in-tree (`engine/`), so there is no source pin or sibling checkout to resolve. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
 
 ### Local plugin development
 

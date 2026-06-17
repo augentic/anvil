@@ -2,7 +2,7 @@
 //! contract, the metadata-free provenance skip, and the
 //! `discovery-lead-synopsis-thin` advisory.
 
-use crate::support::*;
+use super::support::*;
 
 /// The validate surface now renders a `DiagnosticReport` on stdout and
 /// fails payload-free: the per-rule discriminant lives in

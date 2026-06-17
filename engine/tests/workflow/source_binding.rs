@@ -4,7 +4,7 @@
 //! `<key>` shorthand only as sugar for `{ source, lead: <slice.name> }`
 //! per workflow §`Slice.sources`.
 
-use crate::support::*;
+use super::support::*;
 
 const W11_PLAN: &str = "\
 name: w11

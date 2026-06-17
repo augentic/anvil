@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are all in place. The **enforcement** and **reconciliation** pillars have landed too — `lint`, `validate`, and framework checks now share one `Diagnostic` substrate (`specify-diagnostics`) while keeping distinct gate authority, and core owns how sources reconcile into slices. Durable specs live in `[docs/standards/workflow.md](https://github.com/augentic/specify/blob/main/cli/docs/standards/workflow.md)`, `[cli/` `DECISIONS.md](https://github.com/augentic/specify/blob/main/cli/DECISIONS.md)`, and [From sources to slices](../docs/explanation/reconciliation.md). With that loop now proven end-to-end on realistic multi-repo flows, the next phase should sharpen the remaining reconciliation seams, then make it observable and portable across teams, forges, agents, and catalogs.
+The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `lint`, `validate`, and framework checks share one `Diagnostic` substrate (`specify-diagnostics`) while keeping distinct gate authority, and core owns how sources reconcile into slices. Durable specs live in [engine/docs/standards/workflow.md](../engine/docs/standards/workflow.md), [engine/DECISIONS.md](../engine/DECISIONS.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase makes the loop observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -26,7 +26,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
 - **Keep enforcement surfaces distinct.** Framework-repo **authoring standards** (`specify lint framework`) and consumer-project **engineering standards** (`specify lint project`) share rule ids and the neutral `Diagnostic` shape, but never gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
-- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move *any grouping judgment* off the agent: the agent owns "are these two leads the same work?" and expresses it in `slices[]`; the CLI computes no groupings. What core owns is the typed schema those judgments are recorded in, the coverage guarantee over the result, and the audit trail around that judgment. The lead-side fields are agent-authored typed facts a deterministic layer *checks and surfaces*, never a deterministic replacement for the agent's grouping. See [From sources to slices](../docs/explanation/reconciliation.md) and `[cli/` `DECISIONS.md](https://github.com/augentic/specify/blob/main/cli/DECISIONS.md)`.
+- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move *any grouping judgment* off the agent: the agent owns "are these two leads the same work?" and expresses it in `slices[]`; the CLI computes no groupings. What core owns is the typed schema those judgments are recorded in, the coverage guarantee over the result, and the audit trail around that judgment. The lead-side fields are agent-authored typed facts a deterministic layer *checks and surfaces*, never a deterministic replacement for the agent's grouping. See [From sources to slices](../docs/explanation/reconciliation.md) and [engine/DECISIONS.md](../engine/DECISIONS.md).
 
 ## Sequenced Roadmap
 
@@ -34,21 +34,11 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 ### Current priorities
 
-Two tracks were framed as parallel, but they are lopsided in practice: the observability track is nearly landed, while the reconciliation track has not started. They need different things — one needs implementation cycles, the other needs a design decision — so treat them as distinct, not co-equal.
-
-1. **Reconciliation polish** — additive typed fields on the lead side (`topics[]`, source-authored `affinity`), a deterministic coverage check, a decision-contradiction warning, wiring baseline context into synthesis (`advisory-context`), and a greenfield identity seed. The determinism is only in *checking and surfacing* what the agent emitted (coverage, contradiction warning, divergence-flag consistency), never in producing or grouping leads — survey is agent-driven, so the agent populates `topics[]` and emits `slices[]`; the win is moving the agent's output from un-checkable `synopsis` prose into typed facts a deterministic layer can check and join, **without moving any grouping decision off the agent**. 
-
-1. **Observability and portability (RM-14 / RM-15 / RM-18)** — now that the loop is proven on realistic multi-repo flows, make it measurable and portable across teams, forges, agents, and catalogs.   
-**Status: mostly landed for the near-term items.** RM-15 is essentially complete; RM-14's event *substrate* ships (closed taxonomy, `journal show` / `journal emit`, bounded backward-tail reader) and only the operator-facing measurement/export surface remains. This is a known build, not a design risk — a good candidate to execute in parallel with the reconciliation decision.
-
-#### Recently implemented
-
-- [RFC-46: Asset materialization and mandatory app icon](rfc-46-asset-materialization.md) — canonical SVG inputs with auto-convert or operator-pinned `exports/<platform>/` hand-built assets, deterministic `vectis materialize assets`, render-by-`kind` shell writers, one logical `app-icon` with per-platform delivery, and bootstrap-only `plan-bootstrap-app-icon-missing` (shell-resident launcher icons satisfy incremental plans). Scoped to iOS/Android; web asset materialization is split out to [RFC-46a](future/rfc-46a-web-asset-materialization.md) (deferred). Landed on `main` in `augentic/specify` and `augentic/specify-cli` (final assurance: [implementation plan](rfc-46-implementation-plan.md) R46-S30).
+The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
 
 #### Deferred until trigger conditions or prerequisites
 
-- [RFC-46a](future/rfc-46a-web-asset-materialization.md) — web asset materialization (`sources.web`, favicon / manifest icons, `bootstrap-web`); deferred until a web shell scaffold exists. Extends RFC-46 additively.
-- [Standards baseline](#ideas-parked) — cross-run baseline/diff; no consumers under fix-before-release on Specify-native codebases.
+- [RFC-46a](future/rfc-46a-web-asset-materialization.md) — web asset materialization (`sources.web`, favicon / manifest icons, `bootstrap-web`); deferred until a web shell scaffold exists. Extends the existing asset-materialization capability additively.
 - RM-12 / RM-13 — catalog import and read-oriented MCP; integration surfaces that enrich an already-trustworthy core loop.
 
 ---
@@ -59,12 +49,10 @@ Two tracks were framed as parallel, but they are lopsided in practice: the obser
 
 **Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
 
-**Landed (substrate):** the journal already ships a closed ~31-id event taxonomy (`EventKind`), append-only JSONL at `.specify/journal.jsonl`, a bounded backward-tail reader, and the `specify journal show` (`--filter` / `--limit`) and `specify journal emit` verbs. Emitted kinds include `lint-completed`, `slice.build.`*, `slice.synthesize.`*, `slice.merge.*`, `plan.entry.advanced`, `plan.reconcile.completed`, and the workspace/bootstrap events.
-
-**Remaining:** the operator-facing *measurement* surface — a follow/tail view and an `export` to a JSONL file or configurable telemetry sink with run identity. `journal show` covers a one-shot filtered read but not a follow stream or a sink.  
+**Remaining:** the operator-facing *measurement* surface on top of the existing `journal` substrate — a follow/tail view and an `export` to a JSONL file or configurable telemetry sink with run identity. `specify journal show` covers a one-shot filtered read (`--filter` / `--limit`) but not a follow stream or a sink.  
 **Events should also surface:** command/version, project/adapter, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
 
-**Naming decision needed:** the substrate already ships under `specify journal`. Decide whether the consumer surface extends `journal` (`specify journal export`) or introduces a parallel `events` noun (`specify events tail|export`) — do not ship two commands over one log.
+**Naming decision needed:** the substrate is already exposed under `specify journal`. Decide whether the consumer surface extends `journal` (`specify journal export`) or introduces a parallel `events` noun (`specify events tail|export`) — do not ship two commands over one log.
 
 **Target surface (subject to the naming decision):**
 
@@ -73,14 +61,12 @@ specify journal show --follow   # or: specify events tail
 specify journal export          # or: specify events export
 ```
 
-**Output:** local JSONL or configurable telemetry sink with run identity.
-
 #### RM-15: Structured change-lifecycle status for re-entry
 
 **Goal:** Make the `/spec:plan` → `/spec:execute` → `/spec:finalize` lifecycle's re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
-**Status: essentially complete.** `specify plan status` already carries `current-step` / `last-completed` / `resume` alongside `next-action`, projected from `plan.yaml`, slice metadata, and the journal (`StatusBody` in `crates/workflow/src/change/plan/core/status.rs`). Only **pending human action** and **owner** remain open; both depend on the human-intervention and owner signals RM-14's event surface is meant to carry.
+**Remaining:** `specify plan status` already projects `current-step` / `last-completed` / `resume` alongside `next-action`; the open fields are **pending human action** and **owner**, both of which depend on the human-intervention and owner signals RM-14's event surface is meant to carry.
 
 ---
 
@@ -89,7 +75,7 @@ specify journal export          # or: specify events export
 #### RM-11: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
-**Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the diagnostic substrate and consumer scanner (`IFACE-`* contract findings — `[DECISIONS.md` §Diagnostic substrate]([https://github.com/augentic/specify/blob/main/cli/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate](https://github.com/augentic/specify/blob/main/cli/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)) and [§Standards layer split](https://github.com/augentic/specify/blob/main/cli/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)).
+**Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the diagnostic substrate and consumer scanner (`IFACE-`* contract findings — [DECISIONS.md §Diagnostic substrate](../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) and [§Standards layer split](../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)).
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
 **Consumes:** the neutral `Diagnostic` envelope. RM-11 owns the structured-evidence shape for `IFACE-`* contract findings via `schemas/review/finding/contracts-evidence.schema.json`; the `Diagnostic` evidence union reserves the `evidence.kind: structured` branch but leaves the inner `data` shape to this item, so contracts-specific decisions land with the gate that needs them.
 **Target surface:**
@@ -156,9 +142,8 @@ specify execute resume <run-id>
 
 #### RM-21: Adapter ecosystem operating model
 
-**Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
-**Depends:** the [bootstrap/upgrade lifecycle](https://github.com/augentic/specify/blob/main/cli/DECISIONS.md#bootstrap-and-upgrade-lifecycle) for adoption at scale.
-**Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for rules, artifact templates, and tool manifests.
+**Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages, building on the adapter semver identity, host-CLI compatibility floor, and OCI packaging/transport now in place.
+**Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a semver-*range* host-CLI floor policy, a cross-version compatibility matrix, migration guidance, and quality gates, examples, and ownership (rules, artifact templates, adapter extensions) beyond the first-party Omnia/Vectis/contracts set.
 
 #### RM-22: Hosted observability dashboards
 
@@ -197,7 +182,7 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?
 - What is the smallest forge adapter contract for push, PR/MR handoff, CI state, and finalize?
 - How should orchestration ownership and handoff work across multiple operators or agents?
-- What compatibility guarantees should adapter authors provide across adapter and declared-tool versions?
+- What cross-version compatibility matrix and semver-range host-CLI floor policy should adapter authors provide across adapter versions (RM-21)?
 - How much telemetry should emit by default, and what requires explicit opt-in?
 - What approval model is required before hosted execution can push branches or open pull requests?
 

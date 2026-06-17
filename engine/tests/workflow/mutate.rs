@@ -1,7 +1,7 @@
 //! `specify plan {add,remove,amend}` CLI tests — the L1.J write-side
 //! commands.
 
-use crate::support::*;
+use super::support::*;
 
 const EMPTY_PLAN: &str = "\
 name: demo

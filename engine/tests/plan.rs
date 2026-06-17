@@ -6,8 +6,6 @@
 //! [`common`]; the orchestration submodules pull their shared surface
 //! in via [`support`].
 
-mod common;
-
 #[path = "workflow/support.rs"]
 mod support;
 

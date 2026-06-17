@@ -7,13 +7,13 @@
 
 use std::fs;
 
-use tempfile::tempdir;
-
-mod common;
 use common::{
     Project, expected_cache_dir, init_workspace, omnia_schema_dir, parse_stdout, run_git,
     specify_cmd,
 };
+use tempfile::tempdir;
+
+use crate::common;
 
 #[test]
 fn workspace_help_lists_active_subcommands() {

@@ -8,6 +8,10 @@ description = "Specify CLI — deterministic operations for spec-driven developm
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
+# Integration tests are auto-discovered off: the per-area files under tests/
+# are pulled into the single `it` binary via tests/it.rs (one binary per
+# crate). Targets are declared explicitly under `[[test]]` below.
+autotests = false
 
 [dependencies]
 clap.workspace = true
@@ -33,6 +37,16 @@ thiserror.workspace = true
 assert_cmd.workspace = true
 jsonschema.workspace = true
 tempfile.workspace = true
+
+# `it` is the consolidated integration binary; `rust_quality` is the standalone
+# dev-only Rust-quality gate. Both are declared because `autotests = false`.
+[[test]]
+name = "it"
+path = "tests/it.rs"
+
+[[test]]
+name = "rust_quality"
+path = "tests/rust_quality/main.rs"
 
 [lints]
 workspace = true

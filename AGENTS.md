@@ -10,7 +10,7 @@ Specify names two adapter roles and three workflow nouns. Use the terms verbatim
 
 - **source adapter** — input role with two operations: `survey` (plan time) and `extract` (slice time). Lives at `adapters/sources/<name>/adapter.yaml`. Examples: `intent`, `documentation`, `typescript`, `screenshots`, `captures`.
 - **target adapter** — output role with three operations: `shape` (read by core synthesis), `build`, and `merge`. Lives at `adapters/targets/<name>/adapter.yaml`. Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
-- **plugin** — historical shorthand for the shared adapter shape. The Rust loaders are `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` in [`cli/crates/workflow/src/adapter/`](cli/crates/workflow/src/adapter); each validates against the matching per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The noun "plugin" survives in operator-facing prose where source + target authors share the same audience tag.
+- **plugin** — historical shorthand for the shared adapter shape. The Rust loaders are `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` in [`engine/crates/workflow/src/adapter/`](engine/crates/workflow/src/adapter); each validates against the matching per-axis `source.schema.json` / `target.schema.json` distributed with the CLI. The noun "plugin" survives in operator-facing prose where source + target authors share the same audience tag.
 
 ### Synthesis terms
 
@@ -57,7 +57,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 
 ### Authority and reconciliation mechanics
 
-The full mechanics — per-slice operator overrides, inline provenance shape — live in the CLI workspace's [`DECISIONS.md`](cli/DECISIONS.md). The headline rules:
+The full mechanics — per-slice operator overrides, inline provenance shape — live in the CLI workspace's [`DECISIONS.md`](engine/DECISIONS.md). The headline rules:
 
 - **Authority resolution order** — per-slice override → Evidence document-level `authority:` → conflict. (A per-Evidence per-kind override is deferred to a future RFC.) See [`plugins/spec/references/synthesis/authority.md`](plugins/spec/references/synthesis/authority.md) for the resolution order and override surface.
 - **`captures` source adapter** — consumes runtime capture trees and emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`.
@@ -115,11 +115,11 @@ Vectis-bound projects commit per-platform exports under `design-system/assets/ex
 
 All commands are run from the repository root:
 
-- `make lint` — builds the in-tree binary and runs `specify lint framework` for documentation and workflow consistency checks (`cd cli && cargo run -q -p specify -- lint framework --framework-root ..`). Only a Rust toolchain is required; the runtime lives in-tree under `cli/`, so there is no source pin or sibling checkout to resolve.
-- `make ci` — the full local gate: `cargo make ci` under `cli/` (the Rust workspace) followed by `make lint` over the prose.
+- `make lint` — builds the in-tree binary and runs `specify lint framework` for documentation and workflow consistency checks (`cd engine && cargo run -q -p specify -- lint framework --framework-root ..`). Only a Rust toolchain is required; the runtime lives in-tree under `engine/`, so there is no source pin or sibling checkout to resolve.
+- `make ci` — the full local gate: `cargo make ci` under `engine/` (the Rust workspace) followed by `make lint` over the prose.
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
-The `specify-standards` framework predicate regression suite lives in-tree under `cli/` and runs with the rest of the Rust workspace via `cargo make test`. CI is one job: `.github/workflows/ci.yaml` builds the in-tree binary, runs `cargo make ci` under `cli/`, and runs `specify lint framework --framework-root .` over the prose plus a spec-runtime symlink check. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+The `specify-standards` framework predicate regression suite lives in-tree under `engine/` and runs with the rest of the Rust workspace via `cargo make test`. CI is one job: `.github/workflows/ci.yaml` builds the in-tree binary, runs `cargo make ci` under `engine/`, and runs `specify lint framework --framework-root .` over the prose plus a spec-runtime symlink check. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 Full evals guidance, including the scenario packs under [`evals/`](evals/README.md), lives in [docs/contributing/evals.md](docs/contributing/evals.md).
 
@@ -131,11 +131,11 @@ Skill authoring rules — markdown style, description grammar, argument-hint gra
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `specify lint framework` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
-- **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](cli/DECISIONS.md#adapter-name-uniqueness).
-- **First-party adapters resolve project-locally or from GitHub** — `specify init <adapter>` accepts a first-party shorthand (`omnia`, `omnia@1.0.0`; a bare name resolves the single installed identity, a semver pin records the full `name@<semver>` adapter identity) that resolves to the published adapter on GitHub (a networked sparse checkout). The adapter resolver itself is project-local only — manifest-cache mirror then vendored `adapters/` tree — with no environment-variable fallback to an out-of-tree framework checkout. See [DECISIONS.md §"Adapter loader axis routing"](cli/DECISIONS.md#adapter-loader-axis-routing) and §"First-party `<adapter>` shorthand at init".
+- **Adapter names are unique across axes** — a name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`, never both. Collisions surface as `adapter-name-axis-collision` at `specify init` and at first resolve. See [DECISIONS.md §"Adapter name uniqueness"](engine/DECISIONS.md#adapter-name-uniqueness).
+- **First-party adapters resolve project-locally or from GitHub** — `specify init <adapter>` accepts a first-party shorthand (`omnia`, `omnia@1.0.0`; a bare name resolves the single installed identity, a semver pin records the full `name@<semver>` adapter identity) that resolves to the published adapter on GitHub (a networked sparse checkout). The adapter resolver itself is project-local only — manifest-cache mirror then vendored `adapters/` tree — with no environment-variable fallback to an out-of-tree framework checkout. See [DECISIONS.md §"Adapter loader axis routing"](engine/DECISIONS.md#adapter-loader-axis-routing) and §"First-party `<adapter>` shorthand at init".
 - Target review briefs symlink `agent-teams.md` from each adapter's `references/` directory to the shared `adapters/shared/references/runtime/review-team-protocol.md` overlay, which resolves to the canonical `docs/reference/review-team-protocol.md`. If a symlink target is removed, the brief's documentation may reference content that no longer resolves.
-- Crossing a major is a hard cut: no silent compatibility aliases for old manifests, verbs, brief paths, or slash-namespaces, and no migration framework. Pre-1.0, a major bump means re-init — `specify init --upgrade` bumps the pin over an existing project; anything deeper is a fresh `specify init`. See the CLI workspace's [`DECISIONS.md`](cli/DECISIONS.md) "Bootstrap and upgrade lifecycle" decision.
+- Crossing a major is a hard cut: no silent compatibility aliases for old manifests, verbs, brief paths, or slash-namespaces, and no migration framework. Pre-1.0, a major bump means re-init — `specify init --upgrade` bumps the pin over an existing project; anything deeper is a fresh `specify init`. See the CLI workspace's [`DECISIONS.md`](engine/DECISIONS.md) "Bootstrap and upgrade lifecycle" decision.
 
 ## Related coding standards
 
-- CLI binary and crate conventions (errors, DTOs, hint colocation, brevity) live in the CLI workspace's [AGENTS.md](cli/AGENTS.md) and [docs/standards/](cli/docs/standards/). Skills that shell out to `specify` rely on the kebab-case `error` discriminants documented there.
+- CLI binary and crate conventions (errors, DTOs, hint colocation, brevity) live in the CLI workspace's [AGENTS.md](engine/AGENTS.md) and [docs/standards/](engine/docs/standards/). Skills that shell out to `specify` rely on the kebab-case `error` discriminants documented there.

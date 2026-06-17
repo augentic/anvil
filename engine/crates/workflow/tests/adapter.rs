@@ -22,7 +22,7 @@ use specify_workflow::adapter::{
     TargetOperation, cache_dir, check_axis_unique_for_name,
 };
 
-mod common;
+use crate::common;
 
 fn fixtures_root() -> PathBuf {
     // `crates/workflow/tests/` -> `tests/fixtures/plugins/`.

@@ -7,8 +7,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-mod common;
 use common::{Project, copy_dir, expected_cache_dir, parse_stdout, repo_root, specify_cmd};
+
+use crate::common;
 
 fn plugin_fixtures_root() -> PathBuf {
     repo_root().join("crates/workflow/tests/fixtures/plugins")

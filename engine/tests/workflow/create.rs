@@ -1,7 +1,7 @@
 //! `specify plan create` CLI tests, the human-driven replay loop, and
 //! the `--auto-approve` Gate-1 contract.
 
-use crate::support::*;
+use super::support::*;
 
 // -- human-driven replay (the human-driven plan loop) -----------
 

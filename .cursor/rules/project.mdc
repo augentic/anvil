@@ -79,7 +79,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 make lint   # builds the in-tree binary and runs specify lint framework
 ```
 
-`make lint` builds the in-tree `specify` binary under `cli/` and runs `specify lint framework --framework-root ..` — only a Rust toolchain is required. The runtime is in-tree (`cli/`), so there is no source pin or sibling checkout to resolve; `make ci` runs the full Rust workspace gate (`cargo make ci` under `cli/`) plus `make lint`.
+`make lint` builds the in-tree `specify` binary under `engine/` and runs `specify lint framework --framework-root ..` — only a Rust toolchain is required. The runtime is in-tree (`engine/`), so there is no source pin or sibling checkout to resolve; `make ci` runs the full Rust workspace gate (`cargo make ci` under `engine/`) plus `make lint`.
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
 

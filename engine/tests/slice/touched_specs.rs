@@ -1,6 +1,6 @@
 //! `slice touched-specs` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn touched_specs_classifies_new_vs_modified() {

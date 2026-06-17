@@ -3,7 +3,7 @@
 //! `crates/workflow/src/change/plan/core/status/tests.rs`; this suite
 //! pins the verb's wire shapes and its read-only contract.
 
-use crate::support::*;
+use super::support::*;
 
 const APPROVED_IN_PROGRESS: &str = "\
 name: demo

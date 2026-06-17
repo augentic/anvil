@@ -1,6 +1,6 @@
 //! `slice transition` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn transition_walks_happy_path() {

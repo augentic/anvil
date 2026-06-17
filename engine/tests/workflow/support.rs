@@ -4,7 +4,7 @@
 //! The suite is split across themed submodules grouped by `plan`
 //! command family (`validate`, `next`, `mutate`, `source_binding`,
 //! `transition`, `create`, `archive`, `propose`, `authority`). Every
-//! submodule pulls its shared surface in with `use crate::support::*;`,
+//! submodule pulls its shared surface in with `use super::support::*;`,
 //! so the common imports, helpers, and plan seeds live here once.
 
 pub use std::fs;

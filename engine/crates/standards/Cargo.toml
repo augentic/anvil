@@ -9,6 +9,9 @@ description = "Specify standards layer: rule parser, resolver, and lint engine"
 categories = ["development-tools"]
 keywords = ["specify", "standards", "rules"]
 readme = "../../README.md"
+# Integration tests compile to the single `it` binary (one binary per crate);
+# the per-area hubs are pulled in via tests/it.rs `#[path]` includes.
+autotests = false
 
 [lints]
 workspace = true
@@ -30,3 +33,7 @@ thiserror.workspace = true
 toml.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
+
+[[test]]
+name = "it"
+path = "tests/it.rs"

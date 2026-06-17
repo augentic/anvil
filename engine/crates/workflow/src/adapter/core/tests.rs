@@ -2,15 +2,11 @@ use super::*;
 use crate::Platform;
 
 #[test]
-fn axis_dir_segment_round_trips() {
+fn axis_routing() {
     assert_eq!(Axis::Source.dir_segment(), "sources");
     assert_eq!(Axis::Target.dir_segment(), "targets");
-}
-
-#[test]
-fn cache_dir_routes_by_axis() {
-    // The manifest mirror lives out-of-tree under the per-project OS
-    // cache; `cache_dir` routes `manifests/<axis>/<name>` beneath it.
+    // The manifest mirror lives out-of-tree under the per-project OS cache;
+    // `cache_dir` routes `manifests/<axis>/<name>` beneath it.
     let project = Path::new("/proj");
     let base = crate::config::Layout::new(project).cache_dir();
     assert_eq!(
@@ -21,70 +17,96 @@ fn cache_dir_routes_by_axis() {
 }
 
 #[test]
-fn source_briefs_typed_at_parse_boundary() {
-    let yaml = r"name: documentation
+fn briefs_typed_at_parse_boundary() {
+    // Source operations are a closed enum; BTreeMap key order is extract < survey.
+    let source: SourceAdapter = serde_saphyr::from_str(
+        r"name: documentation
 version: 1.0.0
 axis: source
 briefs:
   survey: briefs/survey.md
   extract: briefs/extract.md
-";
-    let manifest: SourceAdapter = serde_saphyr::from_str(yaml).expect("parse");
+",
+    )
+    .expect("parse source");
     assert_eq!(
-        manifest.operations().copied().collect::<Vec<_>>(),
+        source.operations().copied().collect::<Vec<_>>(),
         vec![SourceOperation::Extract, SourceOperation::Survey]
     );
-    let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
-    let reparsed: SourceAdapter = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(manifest, reparsed);
-}
+    let reparsed: SourceAdapter =
+        serde_saphyr::from_str(&serde_saphyr::to_string(&source).expect("serialise"))
+            .expect("reparse");
+    assert_eq!(source, reparsed);
 
-#[test]
-fn target_briefs_typed_at_parse_boundary() {
-    let yaml = r"name: omnia
+    // Target operations order build < merge < shape (kebab-case BTreeMap keys).
+    let target: TargetAdapter = serde_saphyr::from_str(
+        r"name: omnia
 version: 1.0.0
 axis: target
 briefs:
   shape: briefs/shape.md
   build: briefs/build.md
   merge: briefs/merge.md
-";
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
+",
+    )
+    .expect("parse target");
     assert_eq!(
-        manifest.operations().copied().collect::<Vec<_>>(),
-        // BTreeMap key order: build < merge < shape (kebab-case).
+        target.operations().copied().collect::<Vec<_>>(),
         vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape]
     );
 }
 
 #[test]
-fn execution_mode_round_trips() {
-    let yaml = r"name: documentation
+fn execution_mode_and_gate() {
+    // `agent` round-trips kebab-case...
+    let manifest: SourceAdapter = serde_saphyr::from_str(
+        r"name: documentation
 version: 1.0.0
 axis: source
 execution: agent
 briefs:
   survey: briefs/survey.md
   extract: briefs/extract.md
-";
-    let manifest: SourceAdapter = serde_saphyr::from_str(yaml).expect("parse");
+",
+    )
+    .expect("parse agent");
     assert_eq!(manifest.execution, Some(Execution::Agent));
     let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
-    assert!(
-        rendered.contains("execution: agent"),
-        "execution must round-trip as kebab-case, got:\n{rendered}"
-    );
-    let reparsed: SourceAdapter = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(manifest, reparsed);
+    assert!(rendered.contains("execution: agent"), "execution round-trips kebab-case:\n{rendered}");
+    assert_eq!(manifest, serde_saphyr::from_str::<SourceAdapter>(&rendered).expect("reparse"));
+
+    // ...and `tool` parses on the target axis.
+    let target: TargetAdapter = serde_saphyr::from_str(
+        r"name: omnia
+version: 1.0.0
+axis: target
+execution: tool
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+",
+    )
+    .expect("parse tool");
+    assert_eq!(target.execution, Some(Execution::Tool));
+
+    // The typed gate refuses a missing mode (exit 2) and accepts a declared one.
+    let Error::Validation { code, .. } = check_execution(None, Path::new("adapter.yaml"))
+        .expect_err("missing execution must be rejected")
+    else {
+        panic!("expected Error::Validation");
+    };
+    assert_eq!(code, "adapter-execution-mode-required");
+    check_execution(Some(Execution::Agent), Path::new("adapter.yaml")).expect("agent passes");
+    check_execution(Some(Execution::Tool), Path::new("adapter.yaml")).expect("tool passes");
 }
 
-// RFC-48 D11: the singular `extension` object carries an optional run
-// `name` plus structured `{read, write}` permissions, round-trips
-// through serde, and rejects the retired array / version / source /
-// sha256 shapes.
 #[test]
-fn extension_parses_name_and_perms() {
-    let yaml = r#"name: contracts
+fn extension_parse_and_rejections() {
+    // RFC-48 D11: the singular `extension` object carries an optional run
+    // `name` plus structured `{read, write}` permissions and round-trips.
+    let manifest: TargetAdapter = serde_saphyr::from_str(
+        r#"name: contracts
 version: 1.0.0
 axis: target
 execution: agent
@@ -97,21 +119,24 @@ extension:
   permissions:
     read: ["$PROJECT_DIR/contracts"]
     write: []
-"#;
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
+"#,
+    )
+    .expect("parse");
     let extension = manifest.extension.as_ref().expect("extension declared");
     assert_eq!(extension.name.as_deref(), Some("contract"));
     assert_eq!(extension.permissions.read, vec!["$PROJECT_DIR/contracts".to_string()]);
     assert!(extension.permissions.write.is_empty());
-    let reparsed: TargetAdapter =
-        serde_saphyr::from_str(&serde_saphyr::to_string(&manifest).expect("serialise"))
-            .expect("reparse");
-    assert_eq!(manifest, reparsed);
-}
+    assert_eq!(
+        manifest,
+        serde_saphyr::from_str::<TargetAdapter>(
+            &serde_saphyr::to_string(&manifest).expect("serialise")
+        )
+        .expect("reparse")
+    );
 
-#[test]
-fn extension_name_is_optional() {
-    let yaml = r"name: omnia
+    // An empty `extension: {}` defaults the run name to the adapter name.
+    let omitted: TargetAdapter = serde_saphyr::from_str(
+        r"name: omnia
 version: 1.0.0
 axis: target
 execution: agent
@@ -120,18 +145,14 @@ briefs:
   build: briefs/build.md
   merge: briefs/merge.md
 extension: {}
-";
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
-    let extension = manifest.extension.as_ref().expect("extension declared");
-    assert!(extension.name.is_none(), "omitted name defaults to the adapter name at run time");
-}
+",
+    )
+    .expect("parse");
+    assert!(omitted.extension.as_ref().expect("extension").name.is_none());
 
-#[test]
-fn extension_rejects_retired_fields() {
-    // The plural `tools[]` array, a per-extension `version`, and a
-    // `source` are all retired by D11; `deny_unknown_fields` must
-    // reject each.
-    let array_form = r"name: omnia
+    // The retired plural `tools[]` array and per-extension version/source/sha256 are denied.
+    serde_saphyr::from_str::<TargetAdapter>(
+        r"name: omnia
 version: 1.0.0
 axis: target
 execution: agent
@@ -142,10 +163,9 @@ briefs:
 tools:
   - name: contract
     version: 1.0.0
-";
-    serde_saphyr::from_str::<TargetAdapter>(array_form)
-        .expect_err("the plural tools[] array no longer parses");
-
+",
+    )
+    .expect_err("the plural tools[] array no longer parses");
     for retired in ["version: 1.0.0", "source: https://example.com/x.wasm", "sha256: abc"] {
         let yaml = format!(
             "name: omnia\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nextension:\n  name: contract\n  {retired}\n",
@@ -158,72 +178,30 @@ tools:
 }
 
 #[test]
-fn execution_tool_parses() {
-    let yaml = r"name: omnia
-version: 1.0.0
-axis: target
-execution: tool
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-";
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
-    assert_eq!(manifest.execution, Some(Execution::Tool));
-}
-
-#[test]
-fn check_execution_rejects_missing_mode() {
-    // The typed gate refuses to default silently when `execution`
-    // is absent — the kebab discriminant routes to exit 2.
-    let err = check_execution(None, Path::new("adapter.yaml"))
-        .expect_err("missing execution must be rejected");
-    let Error::Validation { code, .. } = err else {
-        panic!("expected Error::Validation, got: {err:?}");
-    };
-    assert_eq!(code, "adapter-execution-mode-required");
-}
-
-#[test]
-fn check_execution_accepts_declared_mode() {
-    check_execution(Some(Execution::Agent), Path::new("adapter.yaml"))
-        .expect("agent execution passes");
-    check_execution(Some(Execution::Tool), Path::new("adapter.yaml"))
-        .expect("tool execution passes (target axis)");
-}
-
-#[test]
-fn version_parses_as_semver() {
-    // RFC-47 D1: `version` is a semver string on the wire and a typed
-    // `semver::Version` in memory.
-    let yaml = r"name: documentation
+fn version_semver_parse_and_gate() {
+    // RFC-47 D1: `version` is a semver string on the wire, typed in memory.
+    let manifest: SourceAdapter = serde_saphyr::from_str(
+        r"name: documentation
 version: 2.3.4
 axis: source
 briefs:
   survey: briefs/survey.md
   extract: briefs/extract.md
-";
-    let manifest: SourceAdapter = serde_saphyr::from_str(yaml).expect("parse");
+",
+    )
+    .expect("parse");
     assert_eq!(manifest.version, semver::Version::new(2, 3, 4));
-}
 
-#[test]
-fn check_version_rejects_non_semver() {
-    // RFC-47 D1 belt-and-suspenders: a non-semver `version` surfaces as
-    // the specific `adapter-version-malformed` finding.
-    let value = serde_json::json!({ "version": "1" });
-    let err = check_version(&value, Path::new("adapter.yaml"))
-        .expect_err("integer-shaped version must be rejected");
-    let Error::Validation { code, .. } = err else {
-        panic!("expected Error::Validation, got: {err:?}");
+    // The belt-and-suspenders gate: a non-semver version is `adapter-version-malformed`.
+    let Error::Validation { code, .. } =
+        check_version(&serde_json::json!({ "version": "1" }), Path::new("adapter.yaml"))
+            .expect_err("integer-shaped version must be rejected")
+    else {
+        panic!("expected Error::Validation");
     };
     assert_eq!(code, "adapter-version-malformed");
-}
-
-#[test]
-fn check_version_accepts_semver() {
-    let value = serde_json::json!({ "version": "1.2.3" });
-    check_version(&value, Path::new("adapter.yaml")).expect("exact semver passes");
+    check_version(&serde_json::json!({ "version": "1.2.3" }), Path::new("adapter.yaml"))
+        .expect("exact semver passes");
 }
 
 #[test]
@@ -238,19 +216,20 @@ fn requested_version_matches_identity() {
         .expect("matching pin resolves");
 
     let other = semver::Version::new(2, 0, 0);
-    let err = check_requested_version(Some(&other), "omnia", &installed, Path::new("adapter.yaml"))
-        .expect_err("mismatched pin must be rejected");
-    let Error::Validation { code, .. } = err else {
-        panic!("expected Error::Validation, got: {err:?}");
+    let Error::Validation { code, .. } =
+        check_requested_version(Some(&other), "omnia", &installed, Path::new("adapter.yaml"))
+            .expect_err("mismatched pin must be rejected")
+    else {
+        panic!("expected Error::Validation");
     };
     assert_eq!(code, "adapter-version-required");
 }
 
 #[test]
-fn requires_specify_floor_parses() {
-    // RFC-47 D3: the optional `specify` key deserializes into the typed
-    // `requires_specify` floor and round-trips byte-for-byte.
-    let yaml = r#"name: omnia
+fn requires_specify_floor() {
+    // RFC-47 D3: the optional `specify` key parses into the typed floor and round-trips.
+    let manifest: TargetAdapter = serde_saphyr::from_str(
+        r#"name: omnia
 version: 1.0.0
 specify: "0.28.0"
 axis: target
@@ -259,57 +238,44 @@ briefs:
   shape: briefs/shape.md
   build: briefs/build.md
   merge: briefs/merge.md
-"#;
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
+"#,
+    )
+    .expect("parse");
     assert_eq!(manifest.requires_specify, Some(semver::Version::new(0, 28, 0)));
     let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
-    assert!(
-        rendered.contains("specify: 0.28.0"),
-        "specify floor must round-trip, got:\n{rendered}"
-    );
-    let reparsed: TargetAdapter = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(manifest, reparsed);
-}
+    assert!(rendered.contains("specify: 0.28.0"), "specify floor round-trips:\n{rendered}");
+    assert_eq!(manifest, serde_saphyr::from_str::<TargetAdapter>(&rendered).expect("reparse"));
 
-#[test]
-fn requires_specify_absent_is_no_floor() {
-    // RFC-47 D3: an absent `specify` key leaves no floor and the gate is
-    // a clean pass — back-compatible at the schema boundary.
-    let yaml = r"name: documentation
+    // An absent floor never gates, even against an ancient binary.
+    let source: SourceAdapter = serde_saphyr::from_str(
+        r"name: documentation
 version: 1.0.0
 axis: source
 execution: agent
 briefs:
   survey: briefs/survey.md
   extract: briefs/extract.md
-";
-    let manifest: SourceAdapter = serde_saphyr::from_str(yaml).expect("parse");
-    assert_eq!(manifest.requires_specify, None);
+",
+    )
+    .expect("parse");
+    assert_eq!(source.requires_specify, None);
     check_requires_specify(
-        manifest.requires_specify.as_ref(),
+        source.requires_specify.as_ref(),
         "0.1.0",
         "documentation",
         Path::new("adapter.yaml"),
     )
-    .expect("absent floor never gates, even against an ancient binary");
-}
+    .expect("absent floor never gates");
 
-#[test]
-fn check_requires_specify_satisfied() {
-    // RFC-47 D3: a binary at or above the floor resolves cleanly.
+    // A binary at or above the floor passes; below the floor aborts on the exit-3 path.
     let floor = semver::Version::new(0, 28, 0);
     check_requires_specify(Some(&floor), "0.28.0", "omnia", Path::new("adapter.yaml"))
-        .expect("exact floor match passes");
+        .expect("exact floor passes");
     check_requires_specify(Some(&floor), "0.29.1", "omnia", Path::new("adapter.yaml"))
-        .expect("a newer binary passes");
-}
+        .expect("newer passes");
 
-#[test]
-fn check_requires_specify_too_old() {
-    // RFC-47 D3: a binary below the floor aborts with the
-    // `adapter-cli-too-old` discriminant on the exit-3 path.
-    let floor = semver::Version::new(2, 0, 0);
-    let err = check_requires_specify(Some(&floor), "1.5.0", "omnia", Path::new("adapter.yaml"))
+    let two = semver::Version::new(2, 0, 0);
+    let err = check_requires_specify(Some(&two), "1.5.0", "omnia", Path::new("adapter.yaml"))
         .expect_err("a binary below the floor must be rejected");
     assert_eq!(err.variant_str(), "adapter-cli-too-old");
     let Error::AdapterCliTooOld { required, found, .. } = err else {
@@ -317,31 +283,26 @@ fn check_requires_specify_too_old() {
     };
     assert_eq!(required, "2.0.0");
     assert_eq!(found, "1.5.0");
-}
 
-#[test]
-fn requires_specify_permissive_current() {
-    // Mirrors `config::version_is_older`: an unparseable running version
-    // is treated as "not older" rather than bricking resolution.
-    let floor = semver::Version::new(2, 0, 0);
-    check_requires_specify(Some(&floor), "not-a-version", "omnia", Path::new("adapter.yaml"))
+    // An unparseable running version is permissive (mirrors config::version_is_older).
+    check_requires_specify(Some(&two), "not-a-version", "omnia", Path::new("adapter.yaml"))
         .expect("unparseable current version is permissive");
 }
 
 #[test]
 fn unknown_brief_key_rejected() {
-    // `shape` is a target operation; appearing on a source manifest
-    // must fail at the typed `briefs: BTreeMap<SourceOperation, _>`
-    // deserialisation boundary before any downstream code runs.
-    let yaml = r"name: bogus
+    // `shape` is a target operation; on a source manifest it must fail at
+    // the typed `briefs: BTreeMap<SourceOperation, _>` boundary.
+    let err = serde_saphyr::from_str::<SourceAdapter>(
+        r"name: bogus
 version: 1.0.0
 axis: source
 briefs:
   survey: briefs/survey.md
   shape: briefs/shape.md
-";
-    let err = serde_saphyr::from_str::<SourceAdapter>(yaml)
-        .expect_err("unknown source operation must be rejected");
+",
+    )
+    .expect_err("unknown source operation must be rejected");
     let detail = err.to_string();
     assert!(
         detail.contains("shape") || detail.contains("survey"),
@@ -350,29 +311,27 @@ briefs:
 }
 
 #[test]
-fn target_without_platforms_round_trips() {
-    let yaml = r"name: omnia
+fn platforms_capability_round_trip() {
+    // Absent platforms default to None and elide on write.
+    let omnia: TargetAdapter = serde_saphyr::from_str(
+        r"name: omnia
 version: 1.0.0
 axis: target
 briefs:
   shape: briefs/shape.md
   build: briefs/build.md
   merge: briefs/merge.md
-";
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
-    assert_eq!(manifest.platforms, None, "absent platforms must default to None");
-    let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
-    assert!(
-        !rendered.contains("platforms"),
-        "absent platforms field must elide on write, got:\n{rendered}"
-    );
-    let reparsed: TargetAdapter = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(manifest, reparsed);
-}
+",
+    )
+    .expect("parse");
+    assert_eq!(omnia.platforms, None, "absent platforms must default to None");
+    let rendered = serde_saphyr::to_string(&omnia).expect("serialise");
+    assert!(!rendered.contains("platforms"), "absent platforms must elide on write:\n{rendered}");
+    assert_eq!(omnia, serde_saphyr::from_str::<TargetAdapter>(&rendered).expect("reparse"));
 
-#[test]
-fn target_with_platforms_round_trips() {
-    let yaml = r"name: vectis
+    // A required capability (vectis) carries allowed + default platform sets.
+    let vectis: TargetAdapter = serde_saphyr::from_str(
+        r"name: vectis
 version: 1.0.0
 axis: target
 briefs:
@@ -391,27 +350,23 @@ platforms:
     - core
     - ios
     - android
-";
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
-    let cap = manifest.platforms.as_ref().expect("platforms must be Some");
+",
+    )
+    .expect("parse");
+    let cap = vectis.platforms.as_ref().expect("platforms must be Some");
     assert!(cap.required);
     assert_eq!(
         cap.allowed,
         vec![Platform::Core, Platform::Ios, Platform::Android, Platform::Web, Platform::Desktop]
     );
     assert_eq!(cap.default, vec![Platform::Core, Platform::Ios, Platform::Android]);
-
-    let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
-    assert!(rendered.contains("platforms:"), "platforms must appear in serialised output");
+    let rendered = serde_saphyr::to_string(&vectis).expect("serialise");
     assert!(rendered.contains("required: true"), "required must round-trip");
+    assert_eq!(vectis, serde_saphyr::from_str::<TargetAdapter>(&rendered).expect("reparse"));
 
-    let reparsed: TargetAdapter = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(manifest, reparsed);
-}
-
-#[test]
-fn platforms_optional_round_trip() {
-    let yaml = r"name: contracts
+    // An optional capability (contracts) round-trips required: false.
+    let contracts: TargetAdapter = serde_saphyr::from_str(
+        r"name: contracts
 version: 1.0.0
 axis: target
 briefs:
@@ -424,14 +379,16 @@ platforms:
     - core
   default:
     - core
-";
-    let manifest: TargetAdapter = serde_saphyr::from_str(yaml).expect("parse");
-    let cap = manifest.platforms.as_ref().expect("platforms must be Some");
+",
+    )
+    .expect("parse");
+    let cap = contracts.platforms.as_ref().expect("platforms must be Some");
     assert!(!cap.required);
     assert_eq!(cap.allowed, vec![Platform::Core]);
     assert_eq!(cap.default, vec![Platform::Core]);
-
-    let reparsed: TargetAdapter =
-        serde_saphyr::from_str(&serde_saphyr::to_string(&manifest).unwrap()).expect("reparse");
-    assert_eq!(manifest, reparsed);
+    assert_eq!(
+        contracts,
+        serde_saphyr::from_str::<TargetAdapter>(&serde_saphyr::to_string(&contracts).unwrap())
+            .expect("reparse")
+    );
 }

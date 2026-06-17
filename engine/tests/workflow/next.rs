@@ -1,6 +1,6 @@
 //! `specify plan next` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn plan_next_picks_first_pending_text() {

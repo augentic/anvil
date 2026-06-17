@@ -33,9 +33,7 @@ fn symlink_dir(target: &Path, link: &Path) {
     std::os::windows::fs::symlink_dir(target, link).expect("symlink");
 }
 
-#[path = "../../../tests/common/fs_git.rs"]
-mod fs_git;
-use fs_git::run_git;
+use crate::common::run_git;
 
 const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";
 const MIRROR_ENV: &str = "SPECIFY_MIRROR_CACHE";

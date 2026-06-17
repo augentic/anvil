@@ -3,8 +3,6 @@
 //! tests (contract, vectis) live with their crates in
 //! `augentic/specify-adapters`. Shared helpers live in [`common`].
 
-mod common;
-
 #[path = "extension/run.rs"]
 mod run;
 

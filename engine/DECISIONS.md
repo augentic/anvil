@@ -63,16 +63,22 @@ No framework `CORE-*` rule uses the deleted `specify_standards::framework` `Chec
 
 New functionality lands in an existing module by default. A new workspace crate requires a paragraph in this file justifying why an existing module cannot host the code, and what dependency-direction invariant the new crate enforces (which leaf-→-root edge it preserves, and which existing crate would have grown a cycle). A new crate that does not strengthen the dependency direction is overhead; refactor within an existing module instead. Adapter-specific logic never lands as a workspace crate — it lands in the adapter's WASI carve-out.
 
-## Integration tests: one binary per area, themed submodules via `#[path]`
+## Integration tests: one binary per crate, `#[path]` submodules
 
-**Decision (2026-06).** Each `tests/*.rs` compiles to its own integration binary that links the entire crate-under-test, so total link time scales with the *number* of binaries, not lines of test code. We keep **one binary per area** rather than either extreme:
+**Decision (2026-06, supersedes "one binary per area").** Each crate exposes exactly **one** integration binary, `tests/it.rs`, which pulls every area in as a `#[path]` submodule (`#[path = "plan.rs"] mod plan;`). The per-area files stay on disk and keep their own `#[path = "<area>/<concern>.rs"]` sub-includes, so the directory layout is unchanged — only the *target* boundary moves. Each crate sets `autotests = false` and declares its `it` (and the standalone `rust_quality` dev gate) explicitly under `[[test]]`. The shared helper is declared once at the `it.rs` root (`mod common;` / `mod eval_support;`) and every area reaches it as `crate::common`; merges never cross crate boundaries, so `specify`, `specify-workflow`, `specify-standards`, and `specify-schema` each own a distinct `it`.
 
-- A single `tests/it.rs` umbrella (all integration tests in one binary) was measured and rejected — the cold-build win was 7.3 % cargo-reported, below the 20 % bar we apply to "Idiomatic Rust Cleanup" chunks, and a mega-binary makes `cargo test --test <area>` useless for local iteration.
-- Strictly one file per binary leaves dozens of near-identical binaries that each re-link the crate-under-test.
+The crate-under-test links once per crate instead of once per area — that link, not test LOC, is the integration suite's build cost, and the always-run suite was throttled by binary count. The earlier per-area decision rejected a *single workspace-wide* `tests/it.rs` (7.3 % cold-build win, below the 20 % bar, and a mega-binary kills `cargo test --test <area>`). One binary **per crate** keeps that objection answered: `cargo test -p <crate>` still scopes to a crate, and nextest's `-E 'test(<area>::)'` module filter restores per-area selectivity inside the `it` binary, so local iteration does not regress.
 
-The middle ground: conceptually-related suites that share a helper module collapse their themed files under a sibling `tests/<area>/` directory wired with `#[path = "<area>/<concern>.rs"] mod <concern>;`. The hub `tests/<area>.rs` declares the shared helper once (`mod common;` / `mod eval_support;` / `mod engine_support;`); submodules reference it as `crate::common` etc. Merges never cross crate boundaries — each crate's `tests/` is its own compilation unit, and helpers like `copy_dir` are single-sourced per crate.
+**Measured (2026-06).** ~30 integration binaries → 5 (`specify::it`, `specify-workflow::it`, `specify-standards::it`, `specify-schema::it`, and `specify-model`'s single `atomic`), with `rust_quality` remaining a standalone dev-gate binary. The full workspace — 1,751 tests — runs in ~18 s under `cargo nextest run --workspace` at the default 4-wide pool. Goldens refresh through the module filter (`REGENERATE_GOLDENS=1 cargo nextest run -E 'test(e2e::)'`). The subprocess / vectis-wasm test-groups in [`.config/nextest.toml`](./.config/nextest.toml) pin to `binary_id(specify::it)`, since only the root `it` forks `specify` children and JIT-compiles the vectis component; the crate-level `it` binaries are in-process.
 
-This collapsed 73 integration binaries to 30 (standards 24 → 5, host 34 → 16, workflow 9 → 7, vectis 6 → 2) while keeping every area runnable via `cargo test --test <area>` and every golden refreshable through the hub binary name (`REGENERATE_GOLDENS=1 cargo nextest run [-p <crate>] --test <area>`).
+## Unit tests: minimized, coverage-gated
+
+**Decision (2026-06).** The unit layer is kept deliberately thin. Integration (binary + crate `tests/`) owns every CLI-reachable behavior; a `#[cfg(test)]` unit test survives only when it covers a branch genuinely unreachable through the CLI, or is the cheap home for a dense parse/projection edge matrix whose case-per-cell integration port would inflate the 4-wide subprocess pool ([`.config/nextest.toml`](./.config/nextest.toml)). This supersedes the implicit "kernel matrices live unit-side" stance; it composes with the binary-layout decision above (one binary per crate).
+
+Two mechanics make aggressive reduction safe:
+
+- **Collapse, don't enumerate.** A unit test that walks a closed `(input → code)` set is one table-driven `#[test]` with a block per case, not one `#[test]` per case. The 2026-06 sweep collapsed five workflow matrices this way — `config` (24 → 12), `adapter/core` (24 → 9), `build/wire` (24 → 11), plan `validate` (31 → 13), and `propose` (34 → 23), −69 test fns — with **zero** `cargo llvm-cov` line/region movement (the crate held 75.18 % line / 74.77 % region byte-identical across the sweep).
+- **Coverage is the brake.** `cargo llvm-cov nextest -p <crate> --summary-only` runs before and after a reduction; a `TOTAL` drop on still-live lines blocks the deletion until an integration assertion backfills it. Coverage, not case count, is the invariant. `nextest` (not bare `cargo test`) is mandatory — its per-test process isolation is what lets the CWD/env-mutating suites pass, and it is the runner CI uses.
 
 ## Framework lint engine: generic dispatcher (Road A / Road B)
 
@@ -108,7 +114,7 @@ Test coverage rests on the per-kind evaluator unit suites (`crates/standards/src
 
 The output-role domain types are spelled `Target*` (`Target`, `Slice.target`, the `slice-create-target-missing` / `init-requires-adapter-or-workspace` discriminants, plus every fixture, JSON envelope, and call site). The shared manifest *shape* is loaded by the axis-aware module `crates/workflow/src/adapter/` (`SourceAdapter` / `TargetAdapter` / `Axis` / `ResolvedAdapter` / `AdapterLocation`). Briefs are resolved by path through `briefs.<op>`; they carry no YAML frontmatter and the CLI never reads their bodies. The slice-metadata wire uses `Operation { Shape, Build, Merge }` (`phase: shape | build | merge`).
 
-Per workflow §"Note to the implementing agent", touching any of these symbols requires an `rg` sweep across both the in-tree `cli/` workspace and the surrounding `augentic/specify` prose in the same PR.
+Per workflow §"Note to the implementing agent", touching any of these symbols requires an `rg` sweep across both the in-tree `engine/` workspace and the surrounding `augentic/specify` prose in the same PR.
 
 ## Adapter loader axis routing
 

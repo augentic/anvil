@@ -1,6 +1,6 @@
 //! `plan {create,add,amend} --authority-override` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 // -- plan {create,add,amend} --authority-override (per-slice authority override) --------
 

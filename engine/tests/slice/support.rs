@@ -4,7 +4,7 @@
 //! sibling `#[path]` submodules (`create`, `transition`, `touched_specs`,
 //! `overlap`, `drop`, `metadata`, `validate`, `provenance`, `model_show`,
 //! `validate_file_location`, `validate_catalog`, `synthesize`). Every
-//! submodule pulls its shared surface in with `use crate::support::*;`,
+//! submodule pulls its shared surface in with `use super::support::*;`,
 //! so the common imports, helpers, and seeds live here once.
 
 pub use std::fs;

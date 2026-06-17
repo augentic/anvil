@@ -1,7 +1,7 @@
 //! `specify plan transition` CLI tests: per-entry edges, undo, the
 //! plan-level Gate-1 stamp, and the retired-state rejections.
 
-use crate::support::*;
+use super::support::*;
 
 const SINGLE_IN_PROGRESS: &str = "\
 name: demo

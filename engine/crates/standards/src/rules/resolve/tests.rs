@@ -617,30 +617,21 @@ fn ch13_inputs_are_accepted_but_ignored() {
     assert_eq!(result[0].rule.id, "UNI-001");
 }
 
-/// `rules-root-required` from CH-12 maps to a payload-free
-/// `Error::Validation` so the wire envelope carries the closed
-/// kebab discriminant in the top-level `error` code.
+/// `map_resolve_error` lands each `ResolveError` on its wire envelope: the two
+/// validation variants carry payload-free `Error::Validation` codes (the
+/// duplicate folds its id + joined paths into `detail`), and a filesystem
+/// failure becomes `Error::Filesystem { op: "readdir" }` (exit 1).
 #[test]
-fn maps_rules_root_required_to_validation() {
-    let err = map_resolve_error(ResolveError::RulesRootRequired);
-    match err {
-        Error::Validation { code, .. } => {
-            assert_eq!(code, "rules-root-required");
-        }
+fn map_resolve_error_codes() {
+    match map_resolve_error(ResolveError::RulesRootRequired) {
+        Error::Validation { code, .. } => assert_eq!(code, "rules-root-required"),
         other => panic!("expected Error::Validation, got {other:?}"),
     }
-}
 
-/// `DuplicateRuleId` lands on a payload-free `Error::Validation`
-/// keyed on `rules-duplicate-rule-id`, with the colliding id and
-/// joined paths folded into the `detail` message.
-#[test]
-fn maps_duplicate_rule_id_to_validation() {
-    let err = map_resolve_error(ResolveError::DuplicateRuleId {
+    match map_resolve_error(ResolveError::DuplicateRuleId {
         id: "UNI-001".into(),
         paths: "a.md, b.md".into(),
-    });
-    match err {
+    }) {
         Error::Validation { code, detail } => {
             assert_eq!(code, "rules-duplicate-rule-id");
             assert!(detail.contains("UNI-001"), "{detail}");
@@ -648,17 +639,11 @@ fn maps_duplicate_rule_id_to_validation() {
         }
         other => panic!("expected Error::Validation, got {other:?}"),
     }
-}
 
-/// Filesystem failures map to `Error::Filesystem { op: "readdir" }`
-/// so the JSON discriminant becomes `filesystem-readdir` (exit 1).
-#[test]
-fn maps_filesystem_to_filesystem_error() {
-    let err = map_resolve_error(ResolveError::Filesystem {
+    match map_resolve_error(ResolveError::Filesystem {
         path: PathBuf::from("/missing"),
         source: io::Error::from(io::ErrorKind::NotFound),
-    });
-    match err {
+    }) {
         Error::Filesystem { op, path, .. } => {
             assert_eq!(op, "readdir");
             assert_eq!(path, PathBuf::from("/missing"));

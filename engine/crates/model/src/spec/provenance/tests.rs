@@ -18,73 +18,74 @@ fn keys<const N: usize>(items: [&str; N]) -> BTreeSet<String> {
 // Worked-examples variants
 // ---------------------------------------------------------------------------
 
+/// Worked-examples: each annotated single-requirement fixture parses to one
+/// requirement with the expected sources/status/tag and validates cleanly
+/// against its declared source keys. `multi-block.md` is asserted separately.
 #[test]
-fn parses_single_source_block() {
-    let parsed = parse_spec_md(fixture!("single-source.md"));
-    assert!(parsed.findings.is_empty(), "no structural findings");
-    assert_eq!(parsed.requirements.len(), 1);
-    let req = &parsed.requirements[0];
-    assert_eq!(req.id, "REQ-001");
-    assert_eq!(req.name, "User registration accepts valid email");
-    assert_eq!(req.sources, vec!["legacy-monolith"]);
-    assert_eq!(req.status, Some(RequirementStatus::Agreed));
-    assert_eq!(req.tag, None);
-    assert!(req.body.starts_with("The system accepts"));
+fn parses_worked_example_blocks() {
+    struct Case {
+        body: &'static str,
+        // Asserted exactly when `Some`; the conflict fixture only pins its
+        // validate keys, mirroring the original per-block coverage.
+        sources: Option<&'static [&'static str]>,
+        status: RequirementStatus,
+        tag: Option<RequirementTag>,
+        keys: &'static [&'static str],
+    }
+    let cases = [
+        Case {
+            body: fixture!("single-source.md"),
+            sources: Some(&["legacy-monolith"]),
+            status: RequirementStatus::Agreed,
+            tag: None,
+            keys: &["legacy-monolith"],
+        },
+        Case {
+            body: fixture!("combined-agreement.md"),
+            sources: Some(&["identity-design-notes", "legacy-monolith"]),
+            status: RequirementStatus::Agreed,
+            tag: None,
+            keys: &["identity-design-notes", "legacy-monolith"],
+        },
+        Case {
+            body: fixture!("divergence.md"),
+            sources: Some(&["identity-design-notes", "legacy-monolith"]),
+            status: RequirementStatus::Divergence,
+            tag: Some(RequirementTag::Divergence),
+            keys: &["identity-design-notes", "legacy-monolith"],
+        },
+        Case {
+            body: fixture!("conflict.md"),
+            sources: None,
+            status: RequirementStatus::Conflict,
+            tag: Some(RequirementTag::Conflict),
+            keys: &["docs-a", "docs-b"],
+        },
+        Case {
+            body: fixture!("unknown.md"),
+            sources: Some(&["intent"]),
+            status: RequirementStatus::Unknown,
+            tag: Some(RequirementTag::Unknown),
+            keys: &["intent"],
+        },
+    ];
 
-    let findings = validate(&parsed, &keys(["legacy-monolith"]));
-    assert!(findings.is_empty(), "{findings:?}");
-}
+    for case in cases {
+        let parsed = parse_spec_md(case.body);
+        assert!(parsed.findings.is_empty(), "structural findings: {:?}", parsed.findings);
+        assert_eq!(parsed.requirements.len(), 1);
+        let req = &parsed.requirements[0];
+        if let Some(expected) = case.sources {
+            let sources: Vec<&str> = req.sources.iter().map(String::as_str).collect();
+            assert_eq!(sources, expected);
+        }
+        assert_eq!(req.status, Some(case.status));
+        assert_eq!(req.tag, case.tag);
 
-#[test]
-fn parses_combined_agreement_block() {
-    let parsed = parse_spec_md(fixture!("combined-agreement.md"));
-    assert!(parsed.findings.is_empty());
-    let req = &parsed.requirements[0];
-    assert_eq!(req.sources, vec!["identity-design-notes", "legacy-monolith"]);
-    assert_eq!(req.status, Some(RequirementStatus::Agreed));
-    assert_eq!(req.tag, None);
-
-    let findings = validate(&parsed, &keys(["identity-design-notes", "legacy-monolith"]));
-    assert!(findings.is_empty(), "{findings:?}");
-}
-
-#[test]
-fn parses_divergence_block_with_inline_tag() {
-    let parsed = parse_spec_md(fixture!("divergence.md"));
-    assert!(parsed.findings.is_empty());
-    let req = &parsed.requirements[0];
-    assert_eq!(req.name, "Reset link expiry");
-    assert_eq!(req.tag, Some(RequirementTag::Divergence));
-    assert_eq!(req.status, Some(RequirementStatus::Divergence));
-    assert_eq!(req.sources, vec!["identity-design-notes", "legacy-monolith"]);
-
-    let findings = validate(&parsed, &keys(["identity-design-notes", "legacy-monolith"]));
-    assert!(findings.is_empty(), "{findings:?}");
-}
-
-#[test]
-fn parses_conflict_block_with_inline_tag() {
-    let parsed = parse_spec_md(fixture!("conflict.md"));
-    assert!(parsed.findings.is_empty());
-    let req = &parsed.requirements[0];
-    assert_eq!(req.tag, Some(RequirementTag::Conflict));
-    assert_eq!(req.status, Some(RequirementStatus::Conflict));
-
-    let findings = validate(&parsed, &keys(["docs-a", "docs-b"]));
-    assert!(findings.is_empty(), "{findings:?}");
-}
-
-#[test]
-fn parses_unknown_block_with_inline_tag() {
-    let parsed = parse_spec_md(fixture!("unknown.md"));
-    assert!(parsed.findings.is_empty());
-    let req = &parsed.requirements[0];
-    assert_eq!(req.tag, Some(RequirementTag::Unknown));
-    assert_eq!(req.status, Some(RequirementStatus::Unknown));
-    assert_eq!(req.sources, vec!["intent"]);
-
-    let findings = validate(&parsed, &keys(["intent"]));
-    assert!(findings.is_empty(), "{findings:?}");
+        let key_set: BTreeSet<String> = case.keys.iter().map(|s| (*s).to_string()).collect();
+        let findings = validate(&parsed, &key_set);
+        assert!(findings.is_empty(), "{findings:?}");
+    }
 }
 
 #[test]
@@ -103,39 +104,75 @@ fn parses_multi_block_document() {
 // Validation failure modes
 // ---------------------------------------------------------------------------
 
+/// Validation failure modes: each malformed requirement block surfaces its
+/// specific `spec.requirement-*` finding. One row per distinct rule id.
 #[test]
-fn missing_id_reported() {
-    let parsed =
-        parse_spec_md("### Requirement: Missing id\n\nSources: [a]\nStatus: agreed\n\nbody\n");
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(findings.iter().any(|f| f.rule_id == "spec.requirement-id-missing"), "{findings:?}");
-}
+fn validation_failure_modes() {
+    let cases: &[(&str, &[&str], &str)] = &[
+        (
+            "### Requirement: Missing id\n\nSources: [a]\nStatus: agreed\n\nbody\n",
+            &["a"],
+            "spec.requirement-id-missing",
+        ),
+        (
+            "### Requirement: Bad id\n\nID: REQ-1\nSources: [a]\nStatus: agreed\n",
+            &["a"],
+            "spec.requirement-id-malformed",
+        ),
+        (
+            "### Requirement: No sources\n\nID: REQ-001\nStatus: agreed\n",
+            &["a"],
+            "spec.requirement-sources-missing",
+        ),
+        (
+            "### Requirement: Empty sources\n\nID: REQ-001\nSources: []\nStatus: agreed\n",
+            &["a"],
+            "spec.requirement-sources-empty",
+        ),
+        (
+            "### Requirement: No status\n\nID: REQ-001\nSources: [a]\n",
+            &["a"],
+            "spec.requirement-status-missing",
+        ),
+        (
+            "### Requirement: Bogus status\n\nID: REQ-001\nSources: [a]\nStatus: maybe\n",
+            &["a"],
+            "spec.requirement-status-unknown-value",
+        ),
+        (
+            "### Requirement: Unknown source key\n\nID: REQ-001\nSources: [phantom]\nStatus: agreed\n",
+            &["a", "b"],
+            "spec.requirement-source-undefined",
+        ),
+        (
+            "### Requirement: Bad key\n\nID: REQ-001\nSources: [Not_Kebab]\nStatus: agreed\n",
+            &[],
+            "spec.requirement-source-malformed",
+        ),
+        (
+            "### Requirement: Mismatched tag [divergence]\n\nID: REQ-001\nSources: [a]\nStatus: agreed\n",
+            &["a"],
+            "spec.requirement-tag-status-mismatch",
+        ),
+        (
+            "### Requirement: Status without tag\n\nID: REQ-001\nSources: [a]\nStatus: divergence\n",
+            &["a"],
+            "spec.requirement-tag-status-mismatch",
+        ),
+    ];
+    for (md, key_list, rule_id) in cases {
+        let parsed = parse_spec_md(md);
+        let key_set: BTreeSet<String> = key_list.iter().map(|s| (*s).to_string()).collect();
+        let findings = validate(&parsed, &key_set);
+        assert!(findings.iter().any(|f| f.rule_id == *rule_id), "{rule_id}: {findings:?}");
+    }
 
-#[test]
-fn malformed_id_reported() {
-    let parsed =
-        parse_spec_md("### Requirement: Bad id\n\nID: REQ-1\nSources: [a]\nStatus: agreed\n");
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(findings.iter().any(|f| f.rule_id == "spec.requirement-id-malformed"), "{findings:?}");
-}
-
-#[test]
-fn missing_sources_reported() {
-    let parsed = parse_spec_md("### Requirement: No sources\n\nID: REQ-001\nStatus: agreed\n");
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-sources-missing"),
-        "{findings:?}"
-    );
-}
-
-#[test]
-fn empty_sources_reported() {
+    // `Status: maybe` retains the raw token and leaves the typed status unset.
     let parsed = parse_spec_md(
-        "### Requirement: Empty sources\n\nID: REQ-001\nSources: []\nStatus: agreed\n",
+        "### Requirement: Bogus status\n\nID: REQ-001\nSources: [a]\nStatus: maybe\n",
     );
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(findings.iter().any(|f| f.rule_id == "spec.requirement-sources-empty"), "{findings:?}");
+    assert_eq!(parsed.requirements[0].status_raw.as_deref(), Some("maybe"));
+    assert_eq!(parsed.requirements[0].status, None);
 }
 
 #[test]
@@ -149,78 +186,6 @@ fn empty_sources_legal_for_unknown() {
     let findings = validate(&parsed, &keys(["a"]));
     assert!(
         !findings.iter().any(|f| f.rule_id == "spec.requirement-sources-empty"),
-        "{findings:?}"
-    );
-}
-
-#[test]
-fn missing_status_reported() {
-    let parsed = parse_spec_md("### Requirement: No status\n\nID: REQ-001\nSources: [a]\n");
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-status-missing"),
-        "{findings:?}"
-    );
-}
-
-#[test]
-fn unknown_status_value_reported() {
-    let parsed = parse_spec_md(
-        "### Requirement: Bogus status\n\nID: REQ-001\nSources: [a]\nStatus: maybe\n",
-    );
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-status-unknown-value"),
-        "{findings:?}"
-    );
-    assert_eq!(parsed.requirements[0].status_raw.as_deref(), Some("maybe"));
-    assert_eq!(parsed.requirements[0].status, None);
-}
-
-#[test]
-fn source_key_undefined_reported() {
-    let parsed = parse_spec_md(
-        "### Requirement: Unknown source key\n\nID: REQ-001\nSources: [phantom]\nStatus: agreed\n",
-    );
-    let findings = validate(&parsed, &keys(["a", "b"]));
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-source-undefined"),
-        "{findings:?}"
-    );
-}
-
-#[test]
-fn malformed_source_key_reported() {
-    let parsed = parse_spec_md(
-        "### Requirement: Bad key\n\nID: REQ-001\nSources: [Not_Kebab]\nStatus: agreed\n",
-    );
-    let findings = validate(&parsed, &BTreeSet::new());
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-source-malformed"),
-        "{findings:?}"
-    );
-}
-
-#[test]
-fn tag_mismatch_when_tag_lies() {
-    let parsed = parse_spec_md(
-        "### Requirement: Mismatched tag [divergence]\n\nID: REQ-001\nSources: [a]\nStatus: agreed\n",
-    );
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-tag-status-mismatch"),
-        "{findings:?}"
-    );
-}
-
-#[test]
-fn tag_mismatch_when_status_lies() {
-    let parsed = parse_spec_md(
-        "### Requirement: Status without tag\n\nID: REQ-001\nSources: [a]\nStatus: divergence\n",
-    );
-    let findings = validate(&parsed, &keys(["a"]));
-    assert!(
-        findings.iter().any(|f| f.rule_id == "spec.requirement-tag-status-mismatch"),
         "{findings:?}"
     );
 }

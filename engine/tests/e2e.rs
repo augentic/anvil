@@ -16,14 +16,14 @@ use std::fs;
 use std::path::PathBuf;
 
 use assert_cmd::Command;
-use serde_json::Value;
-
-mod common;
 use common::{
     GIT_ENV, Project, assert_golden_at, copy_dir, hold_plan_lock, omnia_schema_dir, parse_stdout,
     repo_root, run_git, specify_cmd,
 };
+use serde_json::Value;
 use tempfile::tempdir;
+
+use crate::common;
 
 // ---------------------------------------------------------------------------
 // Paths + setup helpers

@@ -9,7 +9,7 @@ use specify_model::validate::validate_slice;
 use specify_workflow::slice::SLICES_DIR_NAME;
 use tempfile::TempDir;
 
-mod common;
+use crate::common;
 
 fn repo_root() -> PathBuf {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

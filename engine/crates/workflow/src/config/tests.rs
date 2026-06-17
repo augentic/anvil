@@ -11,6 +11,27 @@ fn write_config(dir: &Path, yaml: &str) {
     fs::write(specify.join("project.yaml"), yaml).expect("write project.yaml");
 }
 
+fn sample_cfg(rules: BTreeMap<String, String>) -> ProjectConfig {
+    ProjectConfig {
+        name: "demo".to_string(),
+        description: None,
+        adapter: Some("omnia".to_string()),
+        specify_version: None,
+        rules,
+        tools: Vec::new(),
+        platforms: Vec::new(),
+        workspace: false,
+    }
+}
+
+fn platform_with_slot(peer: &str) -> tempfile::TempDir {
+    let tmp = tempdir().unwrap();
+    fs::create_dir_all(tmp.path().join(".specify")).unwrap();
+    fs::write(tmp.path().join(".specify").join("project.yaml"), "workspace: true\n").unwrap();
+    fs::create_dir_all(tmp.path().join("workspace").join(peer)).unwrap();
+    tmp
+}
+
 #[test]
 fn specify_subpaths() {
     let base = Path::new("/a/b");
@@ -31,11 +52,11 @@ fn specify_subpaths() {
 }
 
 #[test]
-fn plan_dir_moves_plan_artifacts_only() {
+fn plan_dir_override_moves_artifacts() {
     // Workspace routing: phase verbs run inside a slot while the plan
-    // artifacts live at the initiating workspace. The override moves
-    // exactly the three plan-root artifacts; every `.specify/` path
-    // stays anchored to the project (slot) root.
+    // artifacts live at the initiating workspace. `Some` moves exactly the
+    // three plan-root artifacts (every `.specify/` path stays anchored to the
+    // slot root); `None` keeps everything at the project root.
     let slot = Path::new("/ws/workspace/orders");
     let workspace = Path::new("/ws");
     let layout = Layout::new(slot).with_plan_dir(Some(workspace));
@@ -47,27 +68,11 @@ fn plan_dir_moves_plan_artifacts_only() {
     assert_eq!(layout.specify_dir(), PathBuf::from("/ws/workspace/orders/.specify"));
     assert_eq!(layout.slices_dir(), PathBuf::from("/ws/workspace/orders/.specify/slices"));
     assert_eq!(layout.registry_path(), PathBuf::from("/ws/workspace/orders/registry.yaml"));
-}
 
-#[test]
-fn plan_dir_none_keeps_project_root() {
     let base = Path::new("/a/b");
     let layout = Layout::new(base).with_plan_dir(None);
     assert_eq!(layout.plan_dir(), base);
     assert_eq!(layout.plan_path(), PathBuf::from("/a/b/plan.yaml"));
-}
-
-fn sample_cfg(rules: BTreeMap<String, String>) -> ProjectConfig {
-    ProjectConfig {
-        name: "demo".to_string(),
-        description: None,
-        adapter: Some("omnia".to_string()),
-        specify_version: None,
-        rules,
-        tools: Vec::new(),
-        platforms: Vec::new(),
-        workspace: false,
-    }
 }
 
 #[test]
@@ -78,41 +83,34 @@ fn load_not_initialized_when_missing() {
 }
 
 #[test]
-fn load_refuses_future_specify_version() {
+fn load_version_gating() {
+    // A future pin is rejected as `CliTooOld`...
     let tmp = tempdir().unwrap();
     write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: \"99.0.0\"\n");
-    let err = ProjectConfig::load(tmp.path()).expect_err("future version rejected");
-    match err {
+    match ProjectConfig::load(tmp.path()).expect_err("future version rejected") {
         Error::CliTooOld { required, found } => {
             assert_eq!(required, "99.0.0");
             assert_eq!(found, env!("CARGO_PKG_VERSION"));
         }
         other => panic!("unexpected error: {other:?}"),
     }
-}
 
-#[test]
-fn load_accepts_floor_lte_current() {
+    // ...older and exact floors load...
     let tmp = tempdir().unwrap();
     write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: \"0.0.1\"\n");
     ProjectConfig::load(tmp.path()).expect("older version loads");
-
     let tmp = tempdir().unwrap();
     let exact = env!("CARGO_PKG_VERSION");
     write_config(tmp.path(), &format!("name: demo\nadapter: omnia\nspecify: \"{exact}\"\n"));
     ProjectConfig::load(tmp.path()).expect("exact version loads");
-}
 
-#[test]
-fn load_same_major_injected_current() {
+    // ...a same-major newer floor loads against an injected current...
     let tmp = tempdir().unwrap();
     write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: \"2.0.0\"\n");
     let cfg = ProjectConfig::load_with_current(tmp.path(), "2.4.1").expect("same major loads");
     assert_eq!(cfg.specify_version.as_deref(), Some("2.0.0"));
-}
 
-#[test]
-fn load_allows_invalid_pinned_version() {
+    // ...and an unparseable pin is permissive.
     let tmp = tempdir().unwrap();
     write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: not-a-semver\n");
     let cfg = ProjectConfig::load(tmp.path()).expect("unparseable version is permissive");
@@ -136,25 +134,17 @@ fn hub_field_defaults_false_round_trips() {
 }
 
 #[test]
-fn workspace_omitted_when_false() {
-    let cfg = ProjectConfig {
-        name: "demo".to_string(),
-        description: None,
-        adapter: Some("omnia".to_string()),
-        specify_version: None,
-        rules: BTreeMap::new(),
-        tools: Vec::new(),
-        platforms: Vec::new(),
-        workspace: false,
-    };
+fn serialisation_omits_empty_emits_present() {
+    // workspace: false plus empty tools/platforms are omitted; adapter present.
+    let cfg = sample_cfg(BTreeMap::new());
     let yaml = serde_saphyr::to_string(&cfg).expect("serialise");
     assert!(!yaml.contains("workspace:"), "workspace: false should be omitted, got:\n{yaml}");
+    assert!(!yaml.contains("tools:"), "empty tools should be omitted, got:\n{yaml}");
+    assert!(!yaml.contains("platforms:"), "empty platforms should be omitted, got:\n{yaml}");
     assert!(yaml.contains("adapter: omnia"), "adapter: must serialise, got:\n{yaml}");
-}
 
-#[test]
-fn hub_field_serialised_when_true() {
-    let cfg = ProjectConfig {
+    // A hub config emits workspace: true and omits adapter.
+    let hub = ProjectConfig {
         name: "platform".to_string(),
         description: None,
         adapter: None,
@@ -164,7 +154,7 @@ fn hub_field_serialised_when_true() {
         platforms: Vec::new(),
         workspace: true,
     };
-    let yaml = serde_saphyr::to_string(&cfg).expect("serialise");
+    let yaml = serde_saphyr::to_string(&hub).expect("serialise");
     assert!(yaml.contains("workspace: true"), "workspace: true must serialise, got:\n{yaml}");
     assert!(!yaml.contains("adapter:"), "hub project.yaml must omit `adapter:`, got:\n{yaml}");
 }
@@ -193,106 +183,49 @@ fn tools_field_round_trips() {
 }
 
 #[test]
-fn tools_field_omitted_when_empty() {
-    let cfg = sample_cfg(BTreeMap::new());
-    let yaml = serde_saphyr::to_string(&cfg).expect("serialise");
-    assert!(!yaml.contains("tools:"), "empty tools should be omitted, got:\n{yaml}");
-}
-
-fn platform_with_slot(peer: &str) -> tempfile::TempDir {
-    let tmp = tempdir().unwrap();
-    fs::create_dir_all(tmp.path().join(".specify")).unwrap();
-    fs::write(tmp.path().join(".specify").join("project.yaml"), "workspace: true\n").unwrap();
-    fs::create_dir_all(tmp.path().join("workspace").join(peer)).unwrap();
-    tmp
-}
-
-#[test]
-fn slot_detects_slot_root() {
+fn is_slot_detects_roots_and_rejects() {
     let tmp = platform_with_slot("orders");
+    // Positive: the slot root and any nested path beneath it.
     assert!(is_slot(&tmp.path().join("workspace").join("orders")));
-}
-
-#[test]
-fn workspace_clone_detects_nested() {
-    let tmp = platform_with_slot("orders");
     let nested = tmp.path().join("workspace").join("orders").join("src").join("service");
     fs::create_dir_all(&nested).unwrap();
     assert!(is_slot(&nested));
-}
-
-#[test]
-fn slot_rejects_non_slot_paths() {
-    let tmp = platform_with_slot("orders");
+    // Negative: the platform root, its `.specify`, and the bare workspace dir.
     assert!(!is_slot(tmp.path()));
     assert!(!is_slot(&tmp.path().join(".specify")));
     assert!(!is_slot(&tmp.path().join("workspace")));
-}
 
-#[test]
-fn slot_rejects_workspace_dir_no_config() {
-    let tmp = tempdir().unwrap();
-    let project = tmp.path().join("workspace").join("orders");
+    // Negative: a `workspace/<peer>` dir without a platform project.yaml at the grandparent.
+    let bare = tempdir().unwrap();
+    let project = bare.path().join("workspace").join("orders");
     fs::create_dir_all(&project).unwrap();
     assert!(!is_slot(&project), "no platform .specify/project.yaml at the grandparent");
 }
 
 #[test]
-fn find_root_walks_up_to_specify_project() {
+fn find_root_walks_up_misses_outside() {
     let tmp = tempdir().unwrap();
     let root = tmp.path();
     let nested = root.join("sub").join("dir");
     fs::create_dir_all(&nested).expect("mkdir nested");
     write_config(root, "name: demo\nadapter: omnia\n");
-
     assert_eq!(ProjectConfig::find_root(root).as_deref(), Some(root));
     assert_eq!(ProjectConfig::find_root(&nested).as_deref(), Some(root));
+
+    let empty = tempdir().unwrap();
+    assert!(ProjectConfig::find_root(empty.path()).is_none());
 }
 
 #[test]
-fn find_root_none_outside_tree() {
-    let tmp = tempdir().unwrap();
-    assert!(ProjectConfig::find_root(tmp.path()).is_none());
-}
+fn platforms_round_trip_and_preserve_order() {
+    use crate::platform::Platform;
 
-#[test]
-fn platforms_absent_is_empty() {
+    // Absent platforms deserialise to empty.
     let tmp = tempdir().unwrap();
     write_config(tmp.path(), "name: demo\nadapter: omnia\n");
-    let cfg = ProjectConfig::load(tmp.path()).expect("loads without platforms");
-    assert!(cfg.platforms.is_empty());
-}
+    assert!(ProjectConfig::load(tmp.path()).expect("loads without platforms").platforms.is_empty());
 
-#[test]
-fn platforms_field_round_trips() {
-    use crate::platform::Platform;
-
-    let tmp = tempdir().unwrap();
-    write_config(
-        tmp.path(),
-        "name: demo\nadapter: vectis\nplatforms:\n  - core\n  - ios\n  - android\n",
-    );
-    let cfg = ProjectConfig::load(tmp.path()).expect("loads with platforms");
-    assert_eq!(cfg.platforms, vec![Platform::Core, Platform::Ios, Platform::Android]);
-
-    let yaml = serde_saphyr::to_string(&cfg).expect("serialise");
-    assert!(yaml.contains("platforms:"), "platforms must serialise when present, got:\n{yaml}");
-    assert!(yaml.contains("- core"), "must contain core, got:\n{yaml}");
-    assert!(yaml.contains("- ios"), "must contain ios, got:\n{yaml}");
-    assert!(yaml.contains("- android"), "must contain android, got:\n{yaml}");
-}
-
-#[test]
-fn platforms_omitted_when_empty() {
-    let cfg = sample_cfg(BTreeMap::new());
-    let yaml = serde_saphyr::to_string(&cfg).expect("serialise");
-    assert!(!yaml.contains("platforms:"), "empty platforms should be omitted, got:\n{yaml}");
-}
-
-#[test]
-fn platforms_field_preserves_order() {
-    use crate::platform::Platform;
-
+    // A full set round-trips through load + serialise, preserving declared order.
     let tmp = tempdir().unwrap();
     write_config(
         tmp.path(),
@@ -303,6 +236,10 @@ fn platforms_field_preserves_order() {
         cfg.platforms,
         vec![Platform::Core, Platform::Android, Platform::Ios, Platform::Web, Platform::Desktop]
     );
+    let yaml = serde_saphyr::to_string(&cfg).expect("serialise");
+    assert!(yaml.contains("platforms:"), "platforms must serialise when present, got:\n{yaml}");
+    assert!(yaml.contains("- core"), "must contain core, got:\n{yaml}");
+    assert!(yaml.contains("- ios"), "must contain ios, got:\n{yaml}");
 }
 
 proptest! {

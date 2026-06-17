@@ -9,7 +9,7 @@
 
 use tempfile::tempdir;
 
-use crate::support::*;
+use super::support::*;
 
 /// Stand up a plan-less slot project plus a sibling "workspace" dir
 /// holding the governing `plan.yaml`.

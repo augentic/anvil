@@ -11,7 +11,7 @@
 //! `SPECIFY_PLAN_LOCK_HELD=1`. This file is the named CLI-test
 //! replacement for the retired `dual-driving-refused` eval scenario.
 
-use crate::support::*;
+use super::support::*;
 
 /// Absolute path to the `specify` binary under test, used as the child
 /// command for `plan lock -- specify …` round-trips.

@@ -2,8 +2,6 @@
 //! the `WorkspaceModel` it produces (project + framework profiles,
 //! scenario discovery, and DTO round-trip).
 
-mod common;
-
 #[path = "lint_index/framework_indexer.rs"]
 mod framework_indexer;
 #[path = "lint_index/index_scenario.rs"]

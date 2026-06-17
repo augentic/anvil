@@ -1,6 +1,6 @@
 //! `slice drop` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn drop_transitions_and_archives() {

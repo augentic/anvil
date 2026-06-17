@@ -10,13 +10,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use common::{Project, assert_golden_at, parse_stderr, parse_stdout, repo_root, specify_cmd};
 use serde_json::{Map, Value};
 use specify_workflow::change::Divergence;
 use specify_workflow::config::Layout;
 use specify_workflow::journal::{self, Event, EventKind};
 
-mod common;
-use common::{Project, assert_golden_at, parse_stderr, parse_stdout, repo_root, specify_cmd};
+use crate::common;
 
 /// Pinned RFC 3339 timestamp used by every golden snapshot. CLI-driven
 /// emits use `Timestamp::now()`; tests normalise the value to this

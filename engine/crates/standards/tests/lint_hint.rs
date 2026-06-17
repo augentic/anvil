@@ -4,9 +4,7 @@
 //! `src/lint/eval/<kind>.rs` module against in-memory models; this
 //! crate-level suite keeps only the indexer→umbrella seams: the
 //! `path-pattern` candidate-set smoke and the ignore-directive pass.
-//! Shared fixtures and runners live in [`eval_support`].
-
-mod eval_support;
+//! Shared fixtures and runners live in [`crate::eval_support`].
 
 #[path = "lint_hint/ignore_directive_pass.rs"]
 mod ignore_directive_pass;

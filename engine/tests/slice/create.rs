@@ -1,6 +1,6 @@
 //! `slice create` CLI tests.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn create_writes_dir_and_metadata() {

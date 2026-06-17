@@ -3,7 +3,7 @@
 //! health diagnostics (`cycle-in-depends-on`, `orphan-source`,
 //! `stale-workspace-clone`, `topology-cache-stale`).
 
-use crate::support::*;
+use super::support::*;
 
 // -- base shape rules --------------------------------------------------
 

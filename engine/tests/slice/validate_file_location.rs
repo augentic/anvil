@@ -1,6 +1,6 @@
 //! `slice validate` spec file-location gate.
 
-use crate::support::*;
+use super::support::*;
 
 #[test]
 fn root_spec_without_canonical() {

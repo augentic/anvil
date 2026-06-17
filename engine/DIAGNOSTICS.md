@@ -4,7 +4,7 @@ Status record for the lint unification work originally tracked as **A19** (unify
 
 The framework lint engine is now a generic dispatcher with no rule-specific logic or policy; the steady-state posture is below and the authoritative decision is [DECISIONS.md §"Framework lint engine: generic dispatcher (Road A / Road B)"](./DECISIONS.md#framework-lint-engine-generic-dispatcher-road-a--road-b).
 
-Scope: the in-tree `cli/` workspace (primary) and the surrounding `augentic/specify` prose (CORE rule files, docs).
+Scope: the in-tree `engine/` workspace (primary) and the surrounding `augentic/specify` prose (CORE rule files, docs).
 
 Related docs:
 

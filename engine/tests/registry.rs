@@ -7,11 +7,11 @@
 
 use std::fs;
 
+use common::{Project, init_workspace, omnia_schema_dir, parse_stderr, parse_stdout, specify_cmd};
 use serde_json::Value;
 use tempfile::tempdir;
 
-mod common;
-use common::{Project, init_workspace, omnia_schema_dir, parse_stderr, parse_stdout, specify_cmd};
+use crate::common;
 
 #[test]
 fn workspace_validate_succeeds_empty() {

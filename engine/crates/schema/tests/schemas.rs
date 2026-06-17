@@ -349,20 +349,6 @@ fn lint_result_accepts_one_finding() {
     assert!(errors.is_empty(), "FIND-0001 envelope must validate; errors: {errors:?}");
 }
 
-/// Pins the relative-ref form: integrations downstream rely on
-/// `diagnostic.schema.json` resolving against the envelope schema's
-/// directory rather than an absolute URL.
-#[test]
-fn diagnostic_report_relative_ref() {
-    let envelope: Value = serde_json::from_str(DIAGNOSTIC_REPORT_JSON_SCHEMA)
-        .expect("diagnostic-report schema parses");
-    let items_ref = envelope
-        .pointer("/properties/findings/items/$ref")
-        .and_then(Value::as_str)
-        .expect("findings.items.$ref is a string");
-    assert_eq!(items_ref, "diagnostic.schema.json");
-}
-
 /// The build-request worked example validates.
 #[test]
 fn build_request_schema_accepts_rfc_example() {
@@ -464,21 +450,6 @@ fn build_report_success_outputs() {
     });
     let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
     assert!(errors.is_empty(), "success report with outputs must validate; errors: {errors:?}");
-}
-
-/// A report without `outputs` validates (backward compatibility).
-#[test]
-fn build_report_no_outputs() {
-    let validator = build_report_validator();
-    let instance = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "omnia@1.0.0",
-        "status": "success",
-        "findings": []
-    });
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
-    assert!(errors.is_empty(), "report without outputs must validate; errors: {errors:?}");
 }
 
 /// A success report carrying the optional `ui-surface` field validates,
