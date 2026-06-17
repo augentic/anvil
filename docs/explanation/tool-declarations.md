@@ -103,7 +103,7 @@ The cache root follows the `specify extension` reference order: `SPECIFY_TOOLS_C
 
 ## Package Sources and SHA-256 Pins
 
-A package-backed project-scope `source:` resolves through wasm-pkg registry metadata (e.g. `augentic.io`) to OCI artifacts in GHCR. Operators still run only `specify extension fetch` and `specify extension run`; they do not install `wkg`. Adapter extensions never take this path — an adapter ships its extension as a committed `adapter.wasm` bundled into the published adapter artifact, covered by the adapter's own content digest (RFC-48 D3), so there is no per-extension package source and no separate `sha256`.
+A package-backed project-scope `source:` resolves through wasm-pkg registry metadata (e.g. `augentic.io`) to OCI artifacts in GHCR. Operators still run only `specify extension fetch` and `specify extension run`; they do not install `wkg`. Adapter extensions never take this path — an adapter ships its extension as a committed `adapter.wasm` bundled into the published adapter artifact, covered by the adapter's own content digest, so there is no per-extension package source and no separate `sha256`.
 
 `sha256` pins object-declared (project-scope) component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose cached digest no longer matches the live declaration.
 

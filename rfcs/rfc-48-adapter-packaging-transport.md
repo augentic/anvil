@@ -107,6 +107,8 @@ The [design space](#three-ways-to-put-a-tree-in-the-registry) is three shapes (A
 
 **Verify-on-read differs by shape (D4).** Under (B) the consumer re-checks the cached layer descriptors it already holds — no re-tar. Under (A) re-hash-on-read must either re-tar (requiring a byte-deterministic pack) or retain the tarball past install. (B) avoids both.
 
+**As shipped (D4 under single-layer OCI).** The transport landed as a single-layer OCI artifact (the O1 deviation), so verify-on-read takes neither (B)'s per-layer-descriptor recheck nor (A)'s re-tar: `install_tofu` records a deterministic content digest of the *unpacked* store tree in a sibling `<store>/<name>@<version>.meta`, and resolve recomputes it for `AdapterLocation::Store` entries only — raising `adapter-digest-mismatch` on drift, and failing open when no sidecar exists so a pre-D4 entry resolves unchanged. The registry layer digest stays the publish-time anchor. Full deviation record: [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md).
+
 **Pack must be byte-deterministic.** D4 rejects re-publishing the same `(name, version)` with different bytes, and D9's "post-`build` tree packs to the publish digest" equivalence depends on identical inputs producing an identical archive. `tar` + `zstd` are non-deterministic by default, so `build`'s pack stage normalises entry order, mtimes, uid/gid, and permission bits and pins compression parameters. Under (B) this narrows to the single prose layer.
 
 ### Bundled extension (D3)
