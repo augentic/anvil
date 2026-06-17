@@ -1,0 +1,12 @@
+{
+  "name": "augentic-fixture",
+  "owner": { "name": "augentic", "email": "info@augentic.io" },
+  "metadata": {
+    "description": "Minimal marketplace fixture for the framework indexer.",
+    "version": "0.0.0",
+    "pluginRoot": "plugins"
+  },
+  "plugins": [
+    { "name": "spec", "source": "spec", "description": "Spec workflow." }
+  ]
+}

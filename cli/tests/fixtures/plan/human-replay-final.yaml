@@ -1,0 +1,16 @@
+name: demo
+lifecycle: pending
+sources: {}
+slices:
+- name: user-registration
+  project: default
+  status: done
+  depends-on: []
+  sources: []
+  description: null
+- name: registration-duplicate-email-crash
+  project: null
+  status: done
+  depends-on: []
+  sources: []
+  description: Clarified scope

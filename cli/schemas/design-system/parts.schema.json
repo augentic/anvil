@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.specify.dev/specify/design-system/parts.schema.json",
+  "title": "Operator-defined component parts",
+  "description": "Validates `.specify/design-system/parts.yaml`, the operator-authored component parts input. Each part declares an authoritative, schema-compliant composition `group` fragment that seeds agent inference with naming and promotion authority. Parts sit beside `tokens.yaml` / `assets.yaml` as hand-authored inputs; the agent-written `components.yaml` remains the resolved catalog. A part is a best-effort matching hint: `specify catalog infer` factors the parts it can match against the baseline and reports the rest via `part-unmatched`.",
+  "type": "object",
+  "required": ["version", "parts"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "parts": {
+      "type": "object",
+      "description": "Map of operator part slugs to their structural payload and metadata. Keys are kebab-case identifiers.",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["group"],
+        "additionalProperties": false,
+        "properties": {
+          "group": {
+            "$ref": "#/$defs/groupProps",
+            "description": "Schema-compliant composition `group` fragment. Identity is the normalised skeleton of this group; the wiring inside (`bind` / `event` / `*-when` values) is illustrative and stripped before fingerprinting, so a representative real group may be pasted verbatim."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional operator note carried into the resolved catalog entry."
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "itemTypeName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Lowercase item type name from vocabulary or custom_items."
+    },
+    "eventValue": {
+      "type": "string",
+      "pattern": "^[A-Z][a-zA-Z0-9]*(\\([\\w, ]*\\))?$",
+      "description": "Event name with optional arguments."
+    },
+    "bindValue": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)?$",
+      "description": "Field name, optionally dot-qualified for outer iteration context."
+    },
+    "tokenRef": {
+      "type": "string",
+      "description": "Reference to a design token name from tokens.yaml."
+    },
+
+    "contentNodeArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/contentNode" },
+      "description": "Array of items and/or groups."
+    },
+
+    "contentNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/item" },
+        { "$ref": "#/$defs/groupItem" }
+      ]
+    },
+
+    "groupItem": {
+      "type": "object",
+      "required": ["group"],
+      "additionalProperties": false,
+      "properties": {
+        "group": { "$ref": "#/$defs/groupProps" }
+      }
+    },
+
+    "groupProps": {
+      "type": "object",
+      "required": ["items"],
+      "properties": {
+        "component": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "not": { "enum": ["header", "body", "footer", "fab"] },
+          "description": "Optional cross-shell component slug (the structural-identity rule). Reserved slugs (header/body/footer/fab) are rejected to avoid region-name collisions."
+        },
+        "direction": { "type": "string", "enum": ["row", "column", "stack"] },
+        "gap": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "padding": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "$ref": "#/$defs/paddingSpec" }
+          ]
+        },
+        "align": { "type": "string", "enum": ["start", "center", "end", "stretch", "baseline"] },
+        "justify": { "type": "string", "enum": ["start", "center", "end", "space-between", "space-around"] },
+        "wrap": { "type": "boolean" },
+        "size": { "$ref": "#/$defs/sizingSpec" },
+        "background": { "$ref": "#/$defs/tokenRef" },
+        "corner_radius": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "elevation": { "$ref": "#/$defs/tokenRef" },
+        "border": {
+          "type": "object",
+          "required": ["color", "width"],
+          "additionalProperties": false,
+          "properties": {
+            "color": { "$ref": "#/$defs/tokenRef" },
+            "width": { "type": "number" }
+          }
+        },
+        "items": { "$ref": "#/$defs/contentNodeArray" },
+        "label": { "type": "string" },
+        "role": { "type": "string", "enum": ["heading", "button", "image", "link"] },
+        "hint": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "paddingSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "top": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "right": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "bottom": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "left": { "oneOf": [{ "type": "string" }, { "type": "number" }] }
+      }
+    },
+
+    "sizingSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": { "$ref": "#/$defs/sizingValue" },
+        "height": { "$ref": "#/$defs/sizingValue" }
+      }
+    },
+
+    "sizingValue": {
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "string", "enum": ["fill", "hug"] }
+      ]
+    },
+
+    "item": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "not": { "required": ["group"] },
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "null" },
+          { "$ref": "#/$defs/itemProps" }
+        ]
+      }
+    },
+
+    "itemProps": {
+      "type": "object",
+      "properties": {
+        "bind": { "$ref": "#/$defs/bindValue" },
+        "event": { "$ref": "#/$defs/eventValue" },
+        "error": { "type": "string" },
+
+        "content": { "type": "string" },
+        "name": { "type": "string" },
+        "icon": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+
+        "style": { "type": "string" },
+        "color": { "$ref": "#/$defs/tokenRef" },
+        "size": { "$ref": "#/$defs/sizingSpec" },
+        "corner_radius": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+
+        "each": { "type": "string" },
+        "columns": { "type": "integer", "minimum": 1 },
+        "item": { "$ref": "#/$defs/contentNodeArray" },
+
+        "label": { "type": "string" },
+        "role": { "type": "string", "enum": ["heading", "button", "image", "link"] },
+        "hint": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,6 @@
+name: omnia
+version: "2.0.0"
+axis: target
+description: Minimal target adapter fixture.
+briefs:
+  shape: briefs/shape.md

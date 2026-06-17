@@ -1,0 +1,12 @@
+name: Create Patch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  patch:
+    uses: augentic/.github/.github/workflows/patch.yaml@main
+    secrets: inherit

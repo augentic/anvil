@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/authoring/skill.schema.json",
+  "title": "SKILL.md frontmatter",
+  "description": "Validates the YAML frontmatter of a Specify skill definition file.",
+  "type": "object",
+  "required": ["name", "description"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "maxLength": 64,
+      "description": "Skill identifier; lowercase letters, numbers, and hyphens; max 64 chars (Anthropic syntax). Must be plugin-qualified (e.g. `spec-init`, `omnia-crate-writer`); the per-plugin prefix invariant and global uniqueness are enforced by `specify lint framework` because JSON Schema cannot see the surrounding directory. Avoid reserved words `anthropic` and `claude` (Anthropic platform policy)."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 512,
+      "pattern": ".*[Uu]se when.*",
+      "description": "One-line description stating both what the skill does and when to use it, in third person (max 512 chars for this repository). Must include a 'Use when …' clause. The leading imperative verb is enforced by `specify lint framework` because JSON Schema cannot express the curated verb allow-list. Avoid XML tags."
+    },
+    "argument-hint": {
+      "type": "string",
+      "pattern": "^(?:(?:<[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*>(?:\\.\\.\\.)?|\\[[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*\\](?:\\.\\.\\.)?|--[a-z][a-z0-9]*(?:-[a-z0-9]+)*))(?:\\s+(?:<[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*>(?:\\.\\.\\.)?|\\[[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*\\](?:\\.\\.\\.)?|--[a-z][a-z0-9]*(?:-[a-z0-9]+)*))*$",
+      "description": "Cursor slash-command placeholder text rendered after `/plugin:skill ` in chat. Whitespace-separated tokens drawn from a fixed grammar: `<name>` (required positional), `[name]` (optional), trailing `...` for repeated, `<a|b>` / `[a|b]` for mutually exclusive alternatives, `--flag` for long flags (values follow as a separate `<value>`/`[value]` token, e.g. `--kind <kind>`). Names are kebab-case. Bare prose hints (e.g. `the slice name`) and mixed punctuation (e.g. `<arg>: arg2`) are rejected by the pattern above."
+    },
+    "allowed-tools": {
+      "type": "string",
+      "description": "Space-separated tool names (matches Cursor and Claude Code spec). Optional; omit to inherit the caller's tool set. Known-tool allow-listing is enforced by `specify lint framework`."
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "merged-specs": [
+    {
+      "baseline-path": "<TEMPDIR>/.specify/specs/login/spec.md",
+      "name": "login",
+      "operations": [
+        {
+          "id": "REQ-001",
+          "kind": "added",
+          "name": "User can log in"
+        }
+      ]
+    },
+    {
+      "baseline-path": "<TEMPDIR>/.specify/specs/oauth/spec.md",
+      "name": "oauth",
+      "operations": [
+        {
+          "id": "REQ-001",
+          "kind": "added",
+          "name": "Handle OAuth callback"
+        }
+      ]
+    }
+  ]
+}

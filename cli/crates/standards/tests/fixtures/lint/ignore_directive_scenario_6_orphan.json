@@ -1,0 +1,51 @@
+{
+  "findings": [
+    {
+      "artifact": "code",
+      "confidence": "high",
+      "evidence": {
+        "kind": "snippet",
+        "value": "const BASE_URL: &str = \"https://api.example.com\";"
+      },
+      "impact": "Trigger for UNI-014",
+      "kind": "violation",
+      "location": {
+        "column": 25,
+        "line": 2,
+        "path": "app.rs"
+      },
+      "remediation": "See shared/UNI-014.md",
+      "rule-id": "UNI-014",
+      "severity": "important",
+      "source": "deterministic",
+      "title": "UNI-014 test rule: matched `https?://`"
+    },
+    {
+      "artifact": "code",
+      "confidence": "high",
+      "evidence": {
+        "kind": "snippet",
+        "value": "// specify-ignore: UNI-999 — bogus rule id with rationale long enough to clear the floor"
+      },
+      "impact": "Directive references UNI-999 but no finding for that rule fires on the target line.",
+      "kind": "violation",
+      "location": {
+        "line": 1,
+        "path": "app.rs"
+      },
+      "remediation": "Remove the directive, fix the rule id, or restore the underlying finding it was meant to suppress.",
+      "rule-id": "UNI-023",
+      "severity": "important",
+      "source": "deterministic",
+      "status": "open",
+      "title": "specify-ignore directive does not match any finding"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "important": 2,
+    "optional": 0,
+    "suggestion": 0
+  },
+  "version": 1
+}

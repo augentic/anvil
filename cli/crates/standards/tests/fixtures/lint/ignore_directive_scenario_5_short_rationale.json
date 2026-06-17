@@ -1,0 +1,60 @@
+{
+  "findings": [
+    {
+      "artifact": "code",
+      "confidence": "high",
+      "disposition": {
+        "directive": {
+          "line": 1,
+          "path": "app.rs",
+          "rationale": "too short"
+        },
+        "source": "directive"
+      },
+      "evidence": {
+        "kind": "snippet",
+        "value": "const BASE_URL: &str = \"https://api.example.com\";"
+      },
+      "impact": "Trigger for UNI-014",
+      "kind": "violation",
+      "location": {
+        "column": 25,
+        "line": 2,
+        "path": "app.rs"
+      },
+      "remediation": "See shared/UNI-014.md",
+      "rule-id": "UNI-014",
+      "severity": "important",
+      "source": "deterministic",
+      "status": "ignored",
+      "title": "UNI-014 test rule: matched `https?://`"
+    },
+    {
+      "artifact": "code",
+      "confidence": "high",
+      "evidence": {
+        "kind": "snippet",
+        "value": "// specify-ignore: UNI-014 — too short"
+      },
+      "impact": "Directive for UNI-014 omits rationale or carries fewer than 16 characters of rationale.",
+      "kind": "violation",
+      "location": {
+        "line": 1,
+        "path": "app.rs"
+      },
+      "remediation": "Add a rationale of at least 16 characters explaining why the finding is being tolerated at this location.",
+      "rule-id": "UNI-022",
+      "severity": "important",
+      "source": "deterministic",
+      "status": "open",
+      "title": "specify-ignore directive missing or short rationale"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "important": 2,
+    "optional": 0,
+    "suggestion": 0
+  },
+  "version": 1
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "event": "plan.transition.approved",
+    "payload": {
+      "actor": "operator",
+      "plan-name": "platform-v2"
+    },
+    "timestamp": "2026-05-21T20:00:00Z"
+  }
+]

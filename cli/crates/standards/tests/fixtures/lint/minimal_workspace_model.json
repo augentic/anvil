@@ -1,0 +1,122 @@
+{
+  "adapter_manifests": [],
+  "artifact_paths": [],
+  "fenced_blocks": [
+    {
+      "body": "# fenced heading must not be counted\nfake: [link](nope)",
+      "lang": "yaml",
+      "line-end": 19,
+      "line-start": 17,
+      "path": "doc.md"
+    }
+  ],
+  "files": [
+    {
+      "kind": "text",
+      "language": "json",
+      "path": ".specify/.!47447!nonutf8.json"
+    },
+    {
+      "kind": "text",
+      "language": "json",
+      "path": ".specify/.!47532!nonutf8.json"
+    },
+    {
+      "kind": "text",
+      "language": "json",
+      "path": ".specify/.!50591!nonutf8.json"
+    },
+    {
+      "kind": "binary",
+      "path": ".specify/blob.bin"
+    },
+    {
+      "kind": "text",
+      "language": "json",
+      "path": ".specify/nonutf8.json"
+    },
+    {
+      "kind": "text",
+      "language": "markdown",
+      "path": "README.md"
+    },
+    {
+      "kind": "text",
+      "language": "markdown",
+      "path": "doc.md"
+    }
+  ],
+  "frontmatter": [
+    {
+      "fields": {
+        "authors": [
+          "alice",
+          "bob"
+        ],
+        "schema_id": "demo",
+        "title": "Minimal Demo"
+      },
+      "path": "doc.md"
+    }
+  ],
+  "ignore_directives": [],
+  "languages": [],
+  "markdown_links": [
+    {
+      "from-path": "doc.md",
+      "line": 14,
+      "resolves": true,
+      "to-raw": "./README.md"
+    },
+    {
+      "from-path": "doc.md",
+      "line": 14,
+      "to-raw": "https://example.com"
+    }
+  ],
+  "markdown_sections": [
+    {
+      "body-line-count": 28,
+      "level": 1,
+      "line-end": 29,
+      "line-start": 1,
+      "path": "README.md",
+      "title": "`lint/minimal` fixture"
+    },
+    {
+      "body-line-count": 23,
+      "level": 1,
+      "line-end": 31,
+      "line-start": 8,
+      "path": "doc.md",
+      "title": "Top Heading"
+    },
+    {
+      "body-line-count": 15,
+      "level": 2,
+      "line-end": 27,
+      "line-start": 12,
+      "path": "doc.md",
+      "title": "Subsection"
+    },
+    {
+      "body-line-count": 3,
+      "level": 2,
+      "line-end": 31,
+      "line-start": 28,
+      "path": "doc.md",
+      "title": "Sibling"
+    }
+  ],
+  "project_dir": "<TEMPDIR>",
+  "scan_profile": "project",
+  "skills": [],
+  "symlinks": [
+    {
+      "broken": false,
+      "path": "link.md",
+      "target": "doc.md"
+    }
+  ],
+  "version": 1
+}

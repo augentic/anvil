@@ -1,0 +1,17 @@
+[package]
+name = "specify-vectis-shell-detect"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Crux shell presence heuristics shared by the Specify host and vectis WASI"
+categories = ["development-tools"]
+keywords = ["specify", "vectis", "crux", "platform"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

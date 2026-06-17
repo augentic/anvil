@@ -1,0 +1,10 @@
+{
+  "current": "done",
+  "kind": "entry",
+  "name": "foo",
+  "plan": {
+    "name": "demo",
+    "path": "<TEMPDIR>/plan.yaml"
+  },
+  "previous": "in-progress"
+}

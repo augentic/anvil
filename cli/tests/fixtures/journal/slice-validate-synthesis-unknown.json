@@ -1,0 +1,10 @@
+[
+  {
+    "event": "slice.synthesis.unknown",
+    "payload": {
+      "requirement-id": "REQ-001",
+      "slice-name": "my-slice"
+    },
+    "timestamp": "2026-05-21T20:00:00Z"
+  }
+]

@@ -1,0 +1,365 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/rules/resolved.schema.json",
+  "title": "Specify resolved rules export",
+  "description": "Wire shape emitted by `specify rules export --format json` for the `ResolvedRules` export contract. The export is the read-only resolved view of shared, source-adapter, and target-adapter rules for a project, target adapter, slice, or artifact path. Frontmatter `snake_case` keys (`lint_mode`, `rule_hints`, `deprecated.replaced_by`) are emitted as kebab-case at every nesting level (`lint-mode`, `rule-hints`, `deprecated.replaced-by`). The schema is the authoritative source for exported field names; producers MUST validate output against it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "target-adapter",
+    "source-adapters",
+    "rules"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Envelope version. v1 pins this to 1; widening the export contract requires a v2 envelope."
+    },
+    "target-adapter": {
+      "$ref": "#/$defs/adapterRef",
+      "description": "Resolved target-adapter name, optionally versioned as `<name>@v<major>`."
+    },
+    "source-adapters": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/adapterRef"
+      },
+      "description": "Source-adapter names bound to the export context. May be empty when the resolver is invoked without source bindings."
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "description": "Ordered rule list. Producer ordering is `(non-deprecated, severity, origin, rule-id)` for the `ResolvedRules` export contract."
+    }
+  },
+  "$defs": {
+    "ruleId": {
+      "type": "string",
+      "pattern": "^(UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$",
+      "description": "Closed v1 rule-id namespace (`UNI`, `SRC`, `FRAME`, `RUST`, `IFACE`, `SEC`, `OMNIA`, `VECTIS`, `ORG`) with three-digit numeric suffixes. Mirrors `rule.schema.json#/$defs/ruleId`."
+    },
+    "adapterRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:@\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?)?$",
+      "description": "Kebab-case adapter token, optionally suffixed with `@<semver>`. Mirrors `rule.schema.json#/$defs/adapterRef`."
+    },
+    "kebabToken": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "languageToken": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9+#.-]*$"
+    },
+    "relativePathPattern": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(!?)(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+      "description": "Project-relative path or glob. A leading `!` marks an exclusion path-pattern hint. Mirrors `rule.schema.json#/$defs/relativePathPattern`."
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "important",
+        "suggestion",
+        "optional"
+      ],
+      "description": "Closed severity enum, ordered for sort stability (`critical < important < suggestion < optional`). Producer-side severity-aware comparators use this sequence; JSON Schema does not enforce ordering."
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "core",
+        "shared",
+        "source",
+        "target",
+        "unknown"
+      ],
+      "description": "Resolver origin tier. Producer-side ordering is `target < source < shared < core < unknown`. `target` comes from a target-adapter overlay; `source` from a source-adapter overlay; `shared` from `adapters/shared/rules/`; `core` from the core rules pack; `unknown` is the consumer indexer's fallback for rule files whose path does not match a recognized adapter shape. JSON Schema does not enforce ordering."
+    },
+    "pathRoot": {
+      "type": "string",
+      "enum": [
+        "rules-root",
+        "project-dir",
+        "cache"
+      ],
+      "description": "Anchor for the rule `path`. Shared rules and rules-root fallback overlays anchor at `rules-root`; project-local overlays anchor at `project-dir`; cached adapter-rule overlays anchor at `cache` (the out-of-tree per-project cache root, with a cache-relative `manifests/...` path)."
+    },
+    "lintMode": {
+      "type": "string",
+      "enum": [
+        "deterministic",
+        "model-assisted",
+        "hybrid"
+      ],
+      "description": "How the rule is expected to be linted. The lint runner decides execution; this field only classifies the rule."
+    },
+    "hintKind": {
+      "type": "string",
+      "enum": [
+        "path-pattern",
+        "regex",
+        "schema",
+        "tool",
+        "unique",
+        "reference-resolves",
+        "set-coverage",
+        "cardinality",
+        "constant-eq",
+        "fenced-block",
+        "presence",
+        "field-grammar",
+        "cross-reference"
+      ],
+      "description": "Closed v1 deterministic-hint kind enum. Every kind is executable; `specify lint` owns execution semantics."
+    },
+    "regexHintConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional `kind: regex` hint configuration.",
+      "properties": {
+        "negative-match": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, emit one finding per line where the pattern does not match."
+        },
+        "capture-group": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based capture group index to parse as an integer for threshold comparison."
+        },
+        "capture-op": {
+          "type": "string",
+          "enum": ["lt", "le", "gt", "ge", "eq"],
+          "description": "Comparison operator applied to the captured integer."
+        },
+        "capture-value": {
+          "type": "integer",
+          "description": "Right-hand side for capture-op comparison."
+        },
+        "suffix-must-not-start-with": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Per-match filter: skip matches whose remainder starts with this literal prefix."
+        },
+        "slash-skill-positional": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, apply CORE-023 slash-skill positional semantics instead of matching `value` as a regex."
+        },
+        "join-backslash-continuations": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true with `slash-skill-positional`, join backslash- and indent-continued rows before scanning."
+        }
+      }
+    },
+    "ruleHint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/hintKind"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Hint payload, interpreted by a future validator or review tool."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional human explanation for the hint."
+        },
+        "config": {
+          "description": "Per-kind configuration: `regex` uses regexHintConfig when kind is regex.",
+          "oneOf": [
+            { "$ref": "#/$defs/regexHintConfig" }
+          ]
+        }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "url"
+          ]
+        },
+        {
+          "required": [
+            "path"
+          ]
+        }
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short display label for the reference."
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://.+$",
+          "description": "HTTP(S) reference URL."
+        },
+        "path": {
+          "$ref": "#/$defs/relativePathPattern",
+          "description": "Repository-relative reference path. Resolves against the rule's `path-root`."
+        }
+      }
+    },
+    "applicability": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Inclusive narrowing filter. All populated dimensions must match (AND semantics).",
+      "properties": {
+        "adapters": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/adapterRef"
+          }
+        },
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/languageToken"
+          }
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kebabToken"
+          }
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/relativePathPattern"
+          }
+        }
+      }
+    },
+    "deprecatedInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason"
+      ],
+      "description": "Deprecation metadata. Frontmatter `replaced_by` exports as wire-key `replaced-by`.",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replaced-by": {
+          "$ref": "#/$defs/ruleId"
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule-id",
+        "title",
+        "severity",
+        "trigger",
+        "origin",
+        "path-root",
+        "path",
+        "body"
+      ],
+      "properties": {
+        "rule-id": {
+          "$ref": "#/$defs/ruleId"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "lint-mode": {
+          "$ref": "#/$defs/lintMode"
+        },
+        "applicability": {
+          "$ref": "#/$defs/applicability"
+        },
+        "rule-hints": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ruleHint"
+          }
+        },
+        "references": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/reference"
+          }
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "path-root": {
+          "$ref": "#/$defs/pathRoot"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePathPattern",
+          "description": "Path to the rule markdown file, relative to `path-root`."
+        },
+        "body": {
+          "type": "string",
+          "description": "Verbatim markdown body (everything after the closing `---` frontmatter delimiter), including section headings such as `## Rule`."
+        },
+        "deprecated": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/deprecatedInfo"
+            }
+          ],
+          "description": "Deprecation metadata, or `null` when the rule is active. Absence and explicit `null` are equivalent."
+        }
+      }
+    }
+  }
+}

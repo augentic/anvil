@@ -1,0 +1,41 @@
+# Nextest behavior for the workspace.
+
+[profile.default]
+# Bound total fan-out so the subprocess-heavy integration suites (each
+# forks a `specify` child per case, ~2x process amplification) cannot
+# oversubscribe CPU / file descriptors on macOS. `-2` is num-cpus minus
+# two logical CPUs — nextest accepts an integer, a negative integer
+# (relative to CPU count), or "num-cpus", but NOT a percentage string.
+test-threads = -2
+# Flag hangs instead of letting a test sit forever. The period is
+# generous because a cold-cache WASI component compile is legitimate
+# work; four periods without progress terminates the test.
+slow-timeout = { period = "60s", terminate-after = 4 }
+# Tests are deterministic; a flake is a bug, never retry it away.
+retries = 0
+
+# Serialize the integration tests that JIT-compile the vectis WASI
+# component. The wasmtime disk cache only dedupes *completed* compiles,
+# so running these concurrently would make every first-wave test pay
+# the full Cranelift compile instead of exactly one.
+[test-groups]
+wasm-compile = { max-threads = 1 }
+# Cap the subprocess-heavy integration binaries so the `specify` child
+# processes they spawn cannot starve the rest of the run. `max-threads`
+# accepts a positive integer or "num-cpus" only (no percentage string).
+host-subprocess = { max-threads = 4 }
+
+# First matching override wins: the vectis-compiling cases stay pinned to
+# the single-threaded wasm-compile group even though their binaries also
+# match the host-subprocess override below.
+[[profile.default.overrides]]
+filter = 'binary(catalog_infer) or (binary(plan) and test(end_to_end)) or (binary(extension) and test(schema_vectis))'
+test-group = 'wasm-compile'
+
+[[profile.default.overrides]]
+filter = 'binary(plan) or binary(slice) or binary(source) or binary(init) or binary(registry) or binary(journal) or binary(workspace) or binary(rules) or binary(lint) or binary(e2e) or binary(bootstrap) or binary(extension)'
+test-group = 'host-subprocess'
+
+[profile.ci]
+failure-output = "immediate-final"
+fail-fast = false

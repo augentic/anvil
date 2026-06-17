@@ -1,0 +1,8 @@
+name: typescript
+version: "1.0.0"
+axis: source
+execution: agent
+briefs:
+  survey: briefs/survey.md
+  extract: briefs/extract.md
+description: Extracts behavioural evidence from TypeScript codebases.

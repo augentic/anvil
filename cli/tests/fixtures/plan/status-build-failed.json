@@ -1,0 +1,22 @@
+{
+  "action": "stop",
+  "active": "a",
+  "counts": {
+    "done": 0,
+    "in-progress": 1,
+    "pending": 0
+  },
+  "current-step": "build",
+  "last-completed": "refine",
+  "lifecycle": "approved",
+  "next-action": "stop build-failed",
+  "plan": "demo",
+  "project": "default",
+  "resume": "/spec:build a",
+  "slice": "a",
+  "stop": {
+    "detail": "exhausted repair budget",
+    "hint": "Fix the failure, then retry /spec:build for the slice. The plan entry stays in-progress.",
+    "reason": "build-failed"
+  }
+}
