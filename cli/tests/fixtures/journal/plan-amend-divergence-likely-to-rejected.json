@@ -1,0 +1,12 @@
+[
+  {
+    "event": "plan.amend.divergence",
+    "payload": {
+      "from": "likely",
+      "plan-name": "platform-v2",
+      "slice-name": "checkout",
+      "to": "rejected"
+    },
+    "timestamp": "2026-05-21T20:00:00Z"
+  }
+]

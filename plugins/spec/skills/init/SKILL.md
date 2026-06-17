@@ -8,7 +8,7 @@ argument-hint: <adapter|workspace>
 
 ## Critical Path
 
-1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
+1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify` only after explicit user confirmation.
 1b. **Probe CLI version** — run `specify upgrade --dry-run --format json`; report drift and, on consent, run `specify upgrade --yes`.
 1c. **Probe plugin cache** — run `specify plugins doctor --format json`; report drift and, on consent, run `specify plugins refresh --yes`, then stop for a Cursor restart.
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and route reinit through `specify init --upgrade`.
@@ -33,7 +33,7 @@ See [`references/init-runbook.md`](references/init-runbook.md) for the operation
 
 ## Guardrails
 
-- **`/spec:init` is the one Specify skill that may install the CLI.** Install only after explicit user confirmation via `cargo install --git https://github.com/augentic/specify-cli`, always verify `specify --version` before invoking `specify init`, and never overwrite `project.yaml` without user confirmation.
+- **`/spec:init` is the one Specify skill that may install the CLI.** Install only after explicit user confirmation via `cargo install --git https://github.com/augentic/specify`, always verify `specify --version` before invoking `specify init`, and never overwrite `project.yaml` without user confirmation.
 - **`/spec:init` is the one Specify skill that may upgrade the CLI.** Run `specify upgrade --yes` only after the version probe reports drift and the operator consents; on `channel: unknown`, surface the manual-upgrade guidance and never auto-run.
 - **`/spec:init` is the one Specify skill that may refresh the Cursor plugin cache.** Run `specify plugins refresh --yes` only after the doctor probe reports drift and the operator consents, then stop and tell them to restart Cursor and re-run `/spec:init` — never continue, the cache repopulates on restart.
 - **The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.** On non-zero exit, surface the error and stop; never hand-roll the scaffold. Never pre-populate the out-of-tree per-project cache — `specify init` owns adapter fetch when invoked with the adapter positional.

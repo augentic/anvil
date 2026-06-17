@@ -1,0 +1,9 @@
+doc-valid-idents = [
+  "GitHub",
+  "MiB",
+  "OAuth",
+  "OpenTelemetry",
+  "SemVer",
+  "WebAssembly",
+  "YAML",
+]

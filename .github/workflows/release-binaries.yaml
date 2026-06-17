@@ -1,0 +1,143 @@
+name: Release binaries
+
+# Cross-platform `specify` binary build. Triggered by the `v*.*.*` tag
+# that publish.yaml pushes on a merged release PR; publish.yaml creates
+# the GitHub Release (curated notes) and this workflow attaches the
+# built binary archives to it. The Cargo workspace lives under cli/.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: release-binaries-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            use_cross: false
+          # aarch64 Linux uses `cross` for its portable glibc toolchain.
+          # Rationale: avoids hand-rolling apt-installed gcc-aarch64-linux-gnu
+          # env wiring in every step, and matches rustup's own release workflow.
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            use_cross: true
+          - target: x86_64-apple-darwin
+            os: macos-13
+            use_cross: false
+          - target: aarch64-apple-darwin
+            os: macos-14
+            use_cross: false
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            use_cross: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cli
+          key: release-${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --locked --git https://github.com/cross-rs/cross
+
+      - name: Build (cargo)
+        if: ${{ !matrix.use_cross }}
+        shell: bash
+        working-directory: cli
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
+
+      - name: Build (cross)
+        if: matrix.use_cross
+        shell: bash
+        working-directory: cli
+        run: cross build --release --locked --target ${{ matrix.target }} --bin specify
+
+      - name: Compute version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Package (unix)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARCHIVE="specify-${VERSION}-${{ matrix.target }}.tar.gz"
+          tar -czf "${ARCHIVE}" -C "cli/target/${{ matrix.target }}/release" specify
+          shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
+
+      - name: Package (windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $archive = "specify-$version-${{ matrix.target }}.zip"
+          7z a $archive "cli\target\${{ matrix.target }}\release\specify.exe"
+          (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower() + "  " + $archive | Out-File -FilePath "$archive.sha256" -Encoding ascii
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: specify-${{ matrix.target }}
+          path: |
+            specify-*.tar.gz
+            specify-*.zip
+            specify-*.sha256
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Attach binaries to release
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: specify-*
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      # The binary archives are the only release artifacts. The workspace
+      # crates are not published to crates.io — there are no external crate
+      # consumers, and the path-only workspace deps are deliberate. Notes
+      # are owned by publish.yaml; this step only attaches files to the
+      # already-created release for the tag.
+      - name: Attach binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**/*
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+          draft: false
+          prerelease: false

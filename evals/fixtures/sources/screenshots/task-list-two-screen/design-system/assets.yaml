@@ -1,7 +1,7 @@
 # Sibling asset manifest for the task-list-two-screen fixture. Every
 # asset id referenced by `expected.layout.yaml` (`icon-button` / `icon`
 # / `image` / `fab` items) is declared here so the references resolve
-# cleanly under `specify tool run vectis -- validate composition` — the contract
+# cleanly under `specify extension run vectis -- validate composition` — the contract
 # bars inferers from emitting asset ids that no manifest defines unless
 # the reference is paired with a `# TODO` comment, and this fixture
 # demonstrates the resolved-id path. Symbol-kind entries are used for

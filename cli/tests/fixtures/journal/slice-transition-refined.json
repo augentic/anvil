@@ -1,0 +1,9 @@
+[
+  {
+    "event": "slice.transition.refined",
+    "payload": {
+      "slice-name": "checkout"
+    },
+    "timestamp": "2026-05-21T20:00:00Z"
+  }
+]

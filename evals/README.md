@@ -1,8 +1,8 @@
 # Eval packs
 
-Operator-driven eval scenarios and reference corpora for the Specify plugin repo. The scenarios covered here are agent-based. All deterministic tests live in `specify-cli`.
+Operator-driven eval scenarios and reference corpora for the Specify repo. The scenarios covered here are agent-based. All deterministic tests live under `cli/`.
 
-Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — `Specify.toml` points to a valid `specify-cli` install location and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
+Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree `cli/` workspace builds on first `make install-cli`) and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
 
 ## Run all scenarios
 
@@ -44,17 +44,17 @@ Same delegation as **Run all scenarios**, but the agent follows the [single-scen
 | `[workspace-stale-recovery](scenarios/workspace-stale-recovery.md)`   | Stale-workspace recovery                                                 |
 
 
-## Installing `specify-cli` runtime
+## Building the `specify` runtime
 
 The agent runs this for you as runbook step 1; run it directly only when you want the static checks and a fresh build under test without the eval sweep.
 
 ```bash
-# build `specify` from the pinned cli source and symlink the build onto
+# build the in-tree specify binary and symlink it onto
 # ~/.local/bin (run `make lint` separately for the static checks)
 make install-cli
 ```
 
-`make install-cli` builds the resolved `cli` source from `[Specify.toml](Specify.toml)` (or a gitignored `Specify.local.toml` overlay), materializes `.cli/bin/specify`, and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those are owned by `specify-cli` (`cargo make test`).
+`make install-cli` builds `cli/target/release/specify` from the in-tree `cli/` workspace and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those live under `cli/` (`cargo make test`).
 
 ## Layout
 
@@ -71,4 +71,4 @@ make install-cli
 
 `.sandbox/` accumulates full per-scenario project trees (including Cargo target dirs) and is never pruned automatically — it can grow to multiple gigabytes across sweeps. Each scenario recreates its own root on the next run, so it is always safe to reclaim the space between runs with `rm -rf evals/.sandbox`.
 
-Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](../adapters/targets/contracts/tests/README.md)`.
+Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/tests/README.md)`.

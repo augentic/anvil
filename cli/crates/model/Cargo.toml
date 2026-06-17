@@ -1,0 +1,25 @@
+[package]
+name = "specify-model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Specify model crate: artifact types and parsers (spec, task, evidence, discovery) plus the shared atomic writer"
+categories = ["development-tools"]
+keywords = ["specify", "model", "workflow"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+glob.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+specify-diagnostics.workspace = true
+specify-error.workspace = true
+strum.workspace = true
+tempfile.workspace = true

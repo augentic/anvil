@@ -1,0 +1,21 @@
+name: tools-test
+workspace: true
+tools:
+  - name: echo
+    version: 0.1.0
+    source: "file:///__SPECIFY_FIXTURE_ROOT__/tools-test-project/wasm/echo.wasm"
+  - name: read-only
+    version: 0.1.0
+    source: "file:///__SPECIFY_FIXTURE_ROOT__/tools-test-project/wasm/read-only.wasm"
+    permissions:
+      read:
+        - "$PROJECT_DIR/inputs"
+      write: []
+  - name: read-write
+    version: 0.1.0
+    source: "file:///__SPECIFY_FIXTURE_ROOT__/tools-test-project/wasm/read-write.wasm"
+    permissions:
+      read:
+        - "$PROJECT_DIR/inputs"
+      write:
+        - "$PROJECT_DIR/outputs"

@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/target.schema.json",
+  "title": "Specify target adapter manifest",
+  "description": "Refines `adapter.schema.json` for target adapters per workflow §Target adapter contract. Locks `axis` to the literal `target` and requires `briefs.shape`, `briefs.build`, and `briefs.merge` — together these close the operation set to `{shape, build, merge}` (the canonical iterator is `briefs.keys()`). The `kebabName` and `extensionDeclaration` `$defs` are intentionally inlined (rather than `$ref`-resolved against `adapter.schema.json`) so the schema compiles without a registry lookup; keep the embedded `name` pattern byte-identical to `adapter.schema.json#/$defs/kebabName.pattern`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "axis", "description", "briefs", "execution"],
+  "properties": {
+    "name": { "$ref": "#/$defs/kebabName" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "specify": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+      "description": "Optional host-CLI compatibility floor (RFC-47 D3): the exact minimum `specify` platform version this adapter needs. The loader compares it against the running binary at resolve time and aborts with `adapter-cli-too-old` (exit 3) when the binary is older. Absent means no floor."
+    },
+    "axis": {
+      "type": "string",
+      "const": "target",
+      "description": "Locked to `target` for target-adapter manifests."
+    },
+    "briefs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shape", "build", "merge"],
+      "properties": {
+        "shape": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
+        },
+        "build": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
+        },
+        "merge": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
+        }
+      }
+    },
+    "extension": {
+      "$ref": "#/$defs/extensionDeclaration"
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Optional adapter-declared build inputs. Each entry is a path (relative to the build request's `inputs.root`, i.e. the slice tree) that the `build` operation consumes, flagged `required`. The CLI assembles `inputs.artifacts.additional[]` from this list and raises `target-build-input-missing` when a `required` path is absent. v1 keeps the declaration a flat path list; globs / conditional inputs are deferred.",
+      "items": { "$ref": "#/$defs/buildInputDeclaration" }
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "platforms": {
+      "$ref": "#/$defs/platformsCapability"
+    },
+    "execution": {
+      "type": "string",
+      "enum": ["agent", "tool"],
+      "description": "Closed adapter execution mode (`agent` | `tool`)."
+    }
+  },
+  "$defs": {
+    "platform": {
+      "type": "string",
+      "enum": ["core", "ios", "android", "web", "desktop"],
+      "description": "Closed target platform enum. `core` is the shared Rust business-logic crate; `ios`, `android` are supported shell platforms; `web`, `desktop` are future placeholders."
+    },
+    "platformsCapability": {
+      "type": "object",
+      "description": "Declarative platforms capability for target adapters. When `required` is true, `specrun init` demands `--platforms` and validation rejects a project that omits the set.",
+      "additionalProperties": false,
+      "required": ["required", "allowed", "default"],
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "description": "Whether projects using this target must declare a non-empty platform set."
+        },
+        "allowed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/platform" },
+          "uniqueItems": true,
+          "minItems": 1,
+          "description": "The set of platforms this target accepts."
+        },
+        "default": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/platform" },
+          "uniqueItems": true,
+          "description": "Default platform set used by greenfield scaffolding when the operator does not specify."
+        }
+      }
+    },
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "buildInputDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "required"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "extensionDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/kebabName" },
+        "permissions": { "$ref": "#/$defs/extensionPermissions" }
+      }
+    },
+    "extensionPermissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "write": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

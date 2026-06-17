@@ -1,1 +1,0 @@
-../../../shared/references/runtime/review-team-protocol.md

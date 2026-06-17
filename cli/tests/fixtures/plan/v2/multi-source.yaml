@@ -1,0 +1,19 @@
+name: identity-revamp
+
+sources:
+  identity-design-notes:
+    adapter: documentation
+    path: ./design-notes/identity
+  legacy-monolith:
+    adapter: typescript
+    path: ./vendor/legacy-monolith
+
+slices:
+  - name: identity-user-registration
+    project: identity-svc
+    sources:
+      - source: identity-design-notes
+        lead: user-registration
+      - source: legacy-monolith
+        lead: user-registration
+    status: pending

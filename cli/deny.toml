@@ -1,0 +1,55 @@
+# https://embarkstudios.github.io/cargo-deny
+
+[graph]
+all-features = true
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "x86_64-unknown-linux-gnu",
+  "aarch64-unknown-linux-gnu",
+  "x86_64-pc-windows-msvc",
+]
+
+[output]
+feature-depth = 1
+
+[advisories]
+unmaintained = 'workspace'
+ignore = []
+
+[licenses]
+allow = [
+  "Apache-2.0 WITH LLVM-exception",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "MIT-0",
+  "CC0-1.0",
+  "Unicode-3.0",
+  "Zlib",
+]
+
+exceptions = [
+  { name = "bitmaps", allow = ["MPL-2.0"] },
+  { name = "im-rc", allow = ["MPL-2.0"] },
+  { name = "option-ext", allow = ["MPL-2.0"] },
+  { name = "sized-chunks", allow = ["MPL-2.0"] },
+]
+
+[licenses.private]
+ignore = true
+
+[bans]
+deny = []
+multiple-versions = "allow"
+skip = []
+skip-tree = []
+wildcards = "allow"
+
+[bans.workspace-dependencies]
+duplicates = "deny"
+include-path-dependencies = true
+unused = "warn"

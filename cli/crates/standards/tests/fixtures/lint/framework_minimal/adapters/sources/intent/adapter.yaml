@@ -1,0 +1,7 @@
+name: intent
+version: "1.0.0"
+axis: source
+description: Operator-supplied free-form intent. Minimal fixture.
+briefs:
+  survey: briefs/survey.md
+  extract: briefs/extract.md

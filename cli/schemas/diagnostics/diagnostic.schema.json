@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
+  "title": "Specify Diagnostic",
+  "description": "Wire shape for a single structured diagnostic — the neutral currency shared by both Specify check surfaces. Shared by deterministic scanners (`specify lint`), the workflow-gating validate surface (`specify slice validate`), framework JSON export (`specify lint framework --format json`), target-adapter review briefs, model-assisted scorers, CI annotations, and dashboards. Field names are kebab-case at every nesting level. Producer-local `id` is distinct from the codex `rule-id` — `id` is a stable per-run handle (e.g. `FIND-0001`) and `rule-id` is the durable codex citation (e.g. `UNI-014`). Conditional requirements that JSON Schema cannot express (e.g. `confidence` required for `source: model-assisted`) are enforced producer-side.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "severity",
+    "source",
+    "artifact",
+    "evidence",
+    "impact",
+    "remediation",
+    "fingerprint"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/findingId",
+      "description": "Producer-local stable id for this run (e.g. `FIND-0001`). NOT the rule id; report-local heading ids such as `SEC-1` or `UNI-3` also live here when emitted as JSON."
+    },
+    "rule-id": {
+      "$ref": "#/$defs/ruleId",
+      "description": "Rule id (e.g. `UNI-014`). Required when the finding maps to a rule; absent for findings that do not cite codex policy."
+    },
+    "related-rule-ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/ruleId"
+      },
+      "description": "Additional codex ids that informed the finding."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short finding title."
+    },
+    "severity": {
+      "$ref": "#/$defs/severity"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "deterministic",
+        "model-assisted",
+        "hybrid",
+        "human",
+        "tool"
+      ]
+    },
+    "kind": {
+      "$ref": "#/$defs/diagnosticKind",
+      "description": "Nature of the diagnostic: `violation` (a defect) or `review` (a deterministically-raised request for agent/human judgment). Omitted defaults to `violation`."
+    },
+    "target-adapter": {
+      "$ref": "#/$defs/adapterRef",
+      "description": "Target-adapter name when the finding is adapter-specific."
+    },
+    "source-adapter": {
+      "$ref": "#/$defs/adapterRef",
+      "description": "Source-adapter name when the finding is source-extraction-specific."
+    },
+    "slice": {
+      "$ref": "#/$defs/kebabName",
+      "description": "Slice name when the finding is slice-scoped."
+    },
+    "change": {
+      "$ref": "#/$defs/kebabName",
+      "description": "Change name when known."
+    },
+    "artifact": {
+      "$ref": "#/$defs/artifact"
+    },
+    "location": {
+      "$ref": "#/$defs/location",
+      "description": "File path plus optional line, column, and end positions. Omitted for findings without a single anchor location; per-file evidence may carry `locations[]` instead."
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence"
+    },
+    "impact": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Operator-facing risk."
+    },
+    "remediation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Concrete action to clear the finding."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "Producer confidence. Producers MUST set `confidence` for `source: model-assisted`; the conditional rule is enforced producer-side, not by this schema."
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Stable hash of `(rule-id, location, evidence-payload)` for the diagnostic fingerprint algorithm. Excludes producer-controlled fields (`id`, `title`, `severity`, `confidence`, `status`, `disposition`, `change`, `slice`, `target-adapter`, `source-adapter`)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "ignored",
+        "fixed",
+        "accepted",
+        "false-positive"
+      ],
+      "description": "Triage status. Omitted by raw scanners; populated by review reports, the directive post-pass, or CI state. The `ignored` value is set by the directive post-pass on findings matched by a `specify-ignore` directive; `false-positive` is set by the same pass when the directive's rationale begins with `false-positive:`. `open` is the only default-blocking value."
+    },
+    "disposition": {
+      "$ref": "#/$defs/disposition",
+      "description": "Origin of a non-`open` `status`. Unset when `status` is `open` or absent; required to carry `source` when present. Directive producers populate `disposition.directive`."
+    }
+  },
+  "$defs": {
+    "findingId": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9-]*-[0-9]+$",
+      "description": "Producer-local stable id. Examples: `FIND-0001`, `SEC-1`, `UNI-3`. Letters and digits with internal hyphens; ends with a numeric tail. Distinct from the codex `rule-id` namespace."
+    },
+    "ruleId": {
+      "type": "string",
+      "pattern": "^((UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}|[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)$",
+      "description": "Two namespaces share this field. The codex family (`UNI-014`, `CORE-003`, …) mirrors `codex/resolved.schema.json#/$defs/ruleId` and `schemas/rules/rule.schema.json#/$defs/ruleId`. The dot-/kebab-namespaced runtime-validation family (`spec.requirement-id-missing`, `merge.no-duplicate-ids`, `slice-model-source-orphan`) carries the structural workflow invariant ids that `validate` surfaces emit as diagnostics."
+    },
+    "adapterRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:@\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?)?$"
+    },
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Kebab-case identifier matching slice and plan naming. No cross-artifact regex is pinned for `slice` / `change`; this kebab shape is consistent with existing Specify naming."
+    },
+    "relativePathPattern": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+      "description": "Project-relative path. Absolute paths, URI strings, and `..` segments are rejected."
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "important",
+        "suggestion",
+        "optional"
+      ],
+      "description": "Closed review severity enum, ordered for sort stability (`critical < important < suggestion < optional`)."
+    },
+    "diagnosticKind": {
+      "type": "string",
+      "enum": [
+        "violation",
+        "review"
+      ],
+      "description": "Orthogonal nature axis. `violation` marks a deterministic defect; `review` marks a deterministically-raised request for agent or human judgment (e.g. a deferred semantic check). Only `violation` findings are default-blocking."
+    },
+    "artifact": {
+      "type": "string",
+      "enum": [
+        "code",
+        "tests",
+        "contracts",
+        "specs",
+        "design",
+        "decisions",
+        "tasks",
+        "assets",
+        "tokens",
+        "composition",
+        "plan",
+        "unknown"
+      ]
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relativePathPattern"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end-line": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end-column": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "locationList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/location"
+      }
+    },
+    "disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "directive"
+          ],
+          "description": "Origin of the non-`open` status decision. Directive producers emit `directive`; a future baseline mechanism would widen this enum additively."
+        },
+        "directive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "line",
+            "rationale"
+          ],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/relativePathPattern",
+              "description": "Project-relative path of the source file containing the `specify-ignore` directive."
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based line of the directive comment itself (not the target line that the directive applies to)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Free-form rationale captured verbatim from the directive comment. Short rationales (< 16 characters) still populate this field, and unrationaled directives populate the empty string; the directive-validation pass emits `UNI-022` for both cases. The wire shape carries the captured rationale verbatim so downstream tooling can render the raw text alongside the synthetic finding."
+            }
+          },
+          "description": "Directive disposition payload populated when `source: directive`."
+        },
+        "since": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional free-form marker indicating when the disposition took effect (e.g. a commit hash, ISO-8601 timestamp, or release tag). Current emitters leave this unset; reserved for downstream tooling."
+        }
+      },
+      "description": "Origin of a non-`open` finding status. `source` is the closed discriminator and is always required when the disposition object is present."
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Evidence union for structured diagnostics. Closed `kind` discriminator with one legal field set per branch. Evidence payloads have a 16 KiB cap after UTF-8 serialization (enforced producer-side, not by this schema). Diagnostics MUST NOT include secrets, full prompts, model transcripts, or full source files.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "snippet"
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Bounded verbatim excerpt for local code or prose evidence."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "sha256",
+            "summary"
+          ],
+          "properties": {
+            "kind": {
+              "const": "digest"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Hex-encoded SHA-256 digest of the underlying evidence."
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "locations": {
+              "$ref": "#/$defs/locationList",
+              "description": "Optional contributing locations referenced by the digest."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "summary",
+            "data"
+          ],
+          "properties": {
+            "kind": {
+              "const": "structured"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "data": {
+              "type": "object",
+              "description": "Domain evidence payload (e.g. contract compatibility metadata). Producers must keep `data` bounded and secret-free."
+            },
+            "locations": {
+              "$ref": "#/$defs/locationList"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

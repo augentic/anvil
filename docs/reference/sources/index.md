@@ -30,7 +30,7 @@ Authority is set on the **Evidence document** during `extract`, not in `adapter.
 Every source adapter ships a single `adapter.yaml` at `adapters/sources/<name>/`:
 
 ```yaml
-# yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
+# yaml-language-server: $schema=https://github.com/augentic/specify/raw/main/cli/schemas/source.schema.json
 name: typescript
 version: "1.0.0"
 axis: source

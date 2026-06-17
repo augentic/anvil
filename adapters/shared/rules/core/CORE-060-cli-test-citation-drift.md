@@ -2,7 +2,7 @@
 id: CORE-060
 title: CLI Test-Citation Drift
 severity: important
-trigger: Documentation claims a behavior is proven by a named `specify-cli` test that the pinned binary's test tree does not contain.
+trigger: Documentation claims a behavior is proven by a named CLI test that the pinned binary's test tree does not contain.
 rule_hints:
   - kind: path-pattern
     value: "docs/**/*.md"
@@ -13,13 +13,13 @@ rule_hints:
     description: "`tests/….rs` inline code spans and CLI-repo link targets under `tests/` must exist in the binary's build-time test inventory."
     config:
       link-prefixes:
-        - "https://github.com/augentic/specify-cli/blob/main/"
-        - "https://github.com/augentic/specify-cli/tree/main/"
+        - "https://github.com/augentic/specify/blob/main/cli/"
+        - "https://github.com/augentic/specify/tree/main/cli/"
 ---
 
 ## Rule
 
-This repository routinely punts proof to the CLI: "the deterministic substrate is proven by named tests in `augentic/specify-cli`", followed by a citation like `tests/plan/end_to_end.rs` or a GitHub link into the CLI repo's `tests/` tree. Those claims rot silently when a test file is renamed, split, or deleted — the prose keeps asserting coverage that no longer exists under that name.
+This repository routinely punts proof to the CLI: "the deterministic substrate is proven by named tests in the `cli/` workspace", followed by a citation like `tests/plan/end_to_end.rs` or a GitHub link into the `cli/tests/` tree. Those claims rot silently when a test file is renamed, split, or deleted — the prose keeps asserting coverage that no longer exists under that name.
 
 The `test-citations` selector of the `cli-contract` kind closes the gap. The pinned binary embeds an inventory of its own `tests/` tree at build time (published as the `tests` array of `specify contract dump`), and every citation in scope is checked against it:
 
@@ -31,8 +31,8 @@ The scope is deliberately narrower than [CORE-057](CORE-057-cli-contract-drift.m
 ## Look For
 
 - "Proven by `tests/workflow/propose.rs`" where the module moved to a different file.
-- A `blob/main/tests/…` GitHub link whose target was deleted in the pinned CLI source.
-- A `tree/main/tests/fixtures/…` directory link whose fixtures were re-homed.
+- A `blob/main/cli/tests/…` GitHub link whose target was deleted in the pinned CLI source.
+- A `tree/main/cli/tests/fixtures/…` directory link whose fixtures were re-homed.
 
 ## Fix
 

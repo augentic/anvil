@@ -1,0 +1,23 @@
+[package]
+name = "specify-tools-test-fixtures"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[[bin]]
+name = "echo"
+path = "src/bin/echo.rs"
+
+[[bin]]
+name = "read-only"
+path = "src/bin/read_only.rs"
+
+[[bin]]
+name = "read-write"
+path = "src/bin/read_write.rs"
+
+[[bin]]
+name = "read-denied"
+path = "src/bin/read_denied.rs"

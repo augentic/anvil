@@ -1,6 +1,6 @@
 # CLI Architecture
 
-The `specify` CLI lives in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repository. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify tool run`.
+The `specify` CLI lives in the in-tree [`cli/`](../../cli) Cargo workspace. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify extension run`.
 
 ## Core crate dependency graph
 
@@ -15,13 +15,13 @@ specify (binary)
     └── specify-error   thiserror + serde-saphyr error variants (leaf)
 ```
 
-WASI tools live in the sibling `wasi-tools/` workspace (`wasi-tools/contract`, `wasi-tools/vectis`) and are intentionally carved out of the host workspace's discipline.
+Adapter extension crates no longer live in a sibling `wasi-tools/` workspace in `cli/`; they sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) under each adapter's `extension/` directory, and `specify adapter build` compiles each into the committed `adapter.wasm` bundled with the adapter.
 
 The crates form a layered dependency graph with `specify-error` at the base:
 
-![specify-cli crate dependency graph](../assets/diagrams/contributing/cli-crate-graph.svg)
+![specify CLI crate dependency graph](../assets/diagrams/contributing/cli-crate-graph.svg)
 
-Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers are published as WASI command components declared by [`adapters/targets/vectis/adapter.yaml`](../../adapters/targets/vectis/adapter.yaml) (`tools[]`): `vectis` (`validate`) for UI artifact validation and `vectis` (`scaffold`) for render-only scaffolding. The root CLI is responsible for resolving, caching, permissioning, and running those tools; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](../../adapters/targets/vectis/briefs/build.md) and [`merge`](../../adapters/targets/vectis/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
+Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers ship as a committed `adapter.wasm` declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/adapter.yaml) (its singular `extension` block): the `vectis` extension exposes `validate` for UI artifact validation and `scaffold` for render-only scaffolding. The root CLI is responsible for resolving, permissioning, and running that extension; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
 
 ## Dispatch pattern
 
@@ -46,7 +46,7 @@ Each handler function returns an `Exit` that maps to an exit code.
 All JSON output follows the shared envelope contract:
 
 - **Kebab-case keys** -- `app-name`, `project-dir`, `envelope-version` (never `app_name` or `projectDir`); the `envelope-version` JSON envelope key is intentionally kept as the wire-protocol version stamp and is unrelated to the Specify adapter noun
-- **`envelope-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `ENVELOPE_VERSION` in `specify-cli/src/output.rs`.
+- **`envelope-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `ENVELOPE_VERSION` in `cli/src/runtime/output.rs`.
 - **Kebab-case error variants** -- `missing-prerequisites`, `invalid-project`, `io` (never `missing_prerequisites`)
 
 The `--format` flag is global on `Cli` and controls output:
@@ -71,7 +71,7 @@ The exit-code contract is documented in `src/main.rs` and is part of the public 
 | `0` | `Success` | Operation completed successfully |
 | `1` | `GenericFailure` | I/O error, parse error, or any unclassified failure |
 | `2` | `ValidationFailed` / `ArgumentError` | Validation failure, argument-shape failure discovered after clap parsing, or a declared tool resolver / permission failure |
-| `3` | `VersionTooOld` | Binary version is below the `specify_version` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
+| `3` | `VersionTooOld` | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
 
 The mapping from error variants to exit codes:
 
@@ -83,7 +83,7 @@ The mapping from error variants to exit codes:
 
 ## Error handling
 
-Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Adapter tool diagnostics written by a WASI guest pass through `specify tool run` on stdout/stderr when the guest starts successfully.
+Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Adapter tool diagnostics written by a WASI guest pass through `specify extension run` on stdout/stderr when the guest starts successfully.
 
 The pattern for a command handler:
 

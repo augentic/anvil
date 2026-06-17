@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specify.cli/schemas/extension.schema.json",
+  "title": "WASI tool declaration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "tools": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/tool" }
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "source"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "maxLength": 64
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?(\\+[A-Za-z0-9.-]+)?$"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(https://.+|file://.+|/.*|[A-Za-z]:[\\\\/].*|\\$PROJECT_DIR($|[\\\\/].*)|\\$CAPABILITY_DIR($|[\\\\/].*)|specify:[a-z][a-z0-9-]*@\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.-]+)?(\\+[A-Za-z0-9.-]+)?)$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "permissions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/permissionPath" }
+            },
+            "write": {
+              "type": "array",
+              "items": {
+                "allOf": [
+                  { "$ref": "#/$defs/permissionPath" },
+                  {
+                    "not": {
+                      "pattern": "(^|/)\\.specify($|/)"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "permissionPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(\\$PROJECT_DIR($|[\\\\/].*)|\\$CAPABILITY_DIR($|[\\\\/].*)|/.*|[A-Za-z]:[\\\\/].*)$",
+      "not": {
+        "anyOf": [
+          { "pattern": "(^|[\\\\/])\\.\\.($|[\\\\/])" },
+          { "pattern": "[*?\\[\\]{}]" }
+        ]
+      }
+    }
+  }
+}

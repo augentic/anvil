@@ -2,7 +2,7 @@
 
 The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`) shells out to the `specify` binary for every deterministic operation: name validation, `metadata.yaml` reads and writes, lifecycle transitions, adapter and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
 
-The CLI itself is built in the sibling [augentic/specify-cli](https://github.com/augentic/specify-cli) repository. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
+The CLI itself is built in the in-tree [`cli/`](../../cli) Cargo workspace. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
 ## Rule: all deterministic operations live in the CLI
 
@@ -46,7 +46,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Source / target adapters and declared tools
 
 - `specify source {resolve, survey, extract, preview}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates a manifest and reports its declared operations; `survey` / `extract` are the two-phase (`--phase prepare|finalize`) workflow operations that merge leads into `discovery.md` and persist Evidence; `source preview` runs survey + extract in isolation without touching `.specify/`.
-- `specify tool {run, fetch, gc, schema}` — declared WASI command components. Tools are declared either in `.specify/project.yaml` (project scope) or in a `tools.yaml` sidecar next to `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$ADAPTER_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Released first-party tool declarations require `sha256`.
+- `specify extension {run, fetch, gc, schema}` — declared WASI command components. A project declares tools in `.specify/project.yaml` (project scope, a `tools[]` array); an adapter declares at most one extension in the singular `extension` object of `adapter.yaml` (adapter scope); project scope wins on collision. Permissions are directory preopens with `$PROJECT_DIR` (both scopes) and `$CAPABILITY_DIR` (adapter scope only); the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. An adapter extension declares no per-extension `version`/`source`/`sha256` — its committed `adapter.wasm` rides the adapter's identity and content digest; project-scope object declarations may pin `sha256`.
 
 ### Journal
 
@@ -73,15 +73,15 @@ The three change-lifecycle skills (`/spec:plan`, `/spec:execute`, `/spec:finaliz
 
 The contracts target adapter's `build` brief carries author / import / verify intents for OpenAPI, AsyncAPI, and JSON Schema as format sub-flows. Each sub-flow dispatches to sibling references under `adapters/targets/contracts/references/<format>/`: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency plus merge-time baseline validation in cross-project mode). The brief id, the `contracts@1.0.0` adapter, and the `contracts/` baseline directory keep their original names.
 
-The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. Contracts is a first-party adapter owning its own validation behaviour; the contracts adapter merge brief shells out through `specify tool run` as the post-merge baseline gate.
+The matching CLI surface is the declared `contract` WASI tool, run through `specify extension run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. Contracts is a first-party adapter owning its own validation behaviour; the contracts adapter merge brief shells out through `specify extension run` as the post-merge baseline gate.
 
-Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`.
+Cross-project consumer-impact classification is deferred until a real consumer workflow exists. Today the contracts target relies on the declared contract WASI verifier report emitted through `specify extension run contract -- "$PROJECT_ROOT/contracts" --format json`.
 
 ## JSON envelope
 
 Every CLI verb that skills consume emits a stable **flat envelope**: a top-level `envelope-version` integer plus the command-specific body fields at the same level. On success the body is exactly that — there is no `ok` discriminant and no `data` wrapper around the payload. On failure the same flat object carries three extra top-level keys: `error` (a kebab-case discriminant string), `message` (a humanised one-liner), and `exit-code` (the integer the binary returns). Skills invoked with `--format json` parse the envelope and branch on the `error` field rather than on stdout text.
 
-The canonical envelope shapes — including the success / error variants and per-command body examples — live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline; the `checkNoEnvelopeExamples` predicate enforces the rule. The reference is a hand-curated illustration of the happy path per command; full variant coverage (including failure envelopes) lives in the CLI repo under [`tests/fixtures/plan/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/plan) and [`tests/fixtures/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/e2e/goldens).
+The canonical envelope shapes — including the success / error variants and per-command body examples — live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline; the `checkNoEnvelopeExamples` predicate enforces the rule. The reference is a hand-curated illustration of the happy path per command; full variant coverage (including failure envelopes) lives in the CLI workspace under [`cli/tests/fixtures/plan/`](../../cli/tests/fixtures/plan) and [`cli/tests/fixtures/e2e/goldens/`](../../cli/tests/fixtures/e2e/goldens).
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
@@ -118,14 +118,14 @@ Writer ownership follows the same single-writer discipline as the lifecycle fiel
 
 ## Exit codes
 
-The CLI uses a four-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify tool run`) lives in the [CLI repo `AGENTS.md` "Error handling and exit codes" section](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes). Summary for skills:
+The CLI uses a four-slot exit-code table. The authoritative definition (variants, mapping from `Error::*` types, and the `Exit::Code(u8)` WASI passthrough used by `specify extension run`) lives in the [`cli/AGENTS.md` "Exit codes" section](../../cli/AGENTS.md#exit-codes). Summary for skills:
 
 | Code | Name | Skills see it on |
 |---|---|---|
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse `data`. |
 | `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
 | `2` | `EXIT_VALIDATION_FAILED` | Validation errors, undeclared/over-permissioned tool, argument errors. |
-| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old`) — the project's `specify_version` is **newer** than this binary — or `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `specify` compatibility floor is newer than this binary; surface the upgrade hint (`specify upgrade`). |
+| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old`) — the project's `specify` pin is **newer** than this binary — or `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `specify` compatibility floor is newer than this binary; surface the upgrade hint (`specify upgrade`). |
 
 Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 
@@ -134,4 +134,4 @@ Skills should branch on the exit code first (success vs failure class) and on th
 - [docs/standards/skill-authoring.md](skill-authoring.md) — the skill-side rules that surround this contract (description / argument-hint grammar, body caps, references discipline, guardrails).
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
 - [docs/standards/skill-guardrails.md](./skill-guardrails.md) — cross-cutting "skills MUST NOT" rules tied to this CLI surface.
-- [specify-cli `AGENTS.md`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md) — authoritative source for exit codes, error variants, and CLI architecture.
+- [`cli/AGENTS.md`](../../cli/AGENTS.md) — authoritative source for exit codes, error variants, and CLI architecture.

@@ -1,0 +1,17 @@
+{
+  "action": "refine",
+  "active": "a",
+  "counts": {
+    "done": 0,
+    "in-progress": 1,
+    "pending": 0
+  },
+  "current-step": "refine",
+  "last-completed": null,
+  "lifecycle": "approved",
+  "next-action": "refine a",
+  "plan": "demo",
+  "project": "default",
+  "resume": "/spec:refine a",
+  "slice": "a"
+}

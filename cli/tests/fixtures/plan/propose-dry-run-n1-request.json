@@ -1,0 +1,17 @@
+{
+  "kind": "request",
+  "leads": [
+    {
+      "lead": "fix-typo",
+      "source": "intent",
+      "synopsis": "Fix a typo in user.rs."
+    }
+  ],
+  "projects": [
+    {
+      "name": "test-proj",
+      "target": "omnia@1.0.0"
+    }
+  ],
+  "version": 1
+}

@@ -18,7 +18,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### CLI
 
 - [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
-- [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) — first-party helper migration boundary for `specify tool run`.
+- [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) — first-party helper migration boundary for `specify extension run`.
 
 ### Plugins
 

@@ -1,7 +1,0 @@
-cargo +nightly -Zscript scripts/specify.rs lint framework
-    Finished `release` profile [optimized] target(s) in 0.45s
-warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
-note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
-     Running `/var/folders/4j/907gy6rs77s83mh1_s9_39_w0000gn/T/cursor-sandbox-cache/4625a2ee5c50b505c48b5caddda7c139/cargo-target/release/specify lint framework`
-Specify review — 0 finding(s)
-Summary: 0 critical, 0 important, 0 suggestion, 0 optional

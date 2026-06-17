@@ -1,0 +1,15 @@
+{
+  "action": "create",
+  "entry": {
+    "depends-on": [],
+    "description": null,
+    "name": "foo",
+    "project": null,
+    "sources": [],
+    "status": "pending"
+  },
+  "plan": {
+    "name": "demo",
+    "path": "<TEMPDIR>/plan.yaml"
+  }
+}

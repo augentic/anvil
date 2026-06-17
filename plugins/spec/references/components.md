@@ -68,7 +68,7 @@ A part carries two authorities over inference: **naming** (the operator's slug w
 | Surface | Finding | Meaning |
 | --- | --- | --- |
 | `specify slice validate` | `slice-catalog-drift` | Evidence has `component: <slug>` not in catalog or `rejected`. Absent catalog = no-op. |
-| `specify tool run vectis -- validate composition` | Catalog cross-reference | Every `component:` in `composition.yaml` must be `confirmed`. |
+| `specify extension run vectis -- validate composition` | Catalog cross-reference | Every `component:` in `composition.yaml` must be `confirmed`. |
 
 ## What the catalog does not do
 

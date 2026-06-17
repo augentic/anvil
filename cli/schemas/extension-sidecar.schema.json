@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specify.cli/schemas/extension-sidecar.schema.json",
+  "title": "Specify WASI tool cache sidecar",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema-version",
+    "scope",
+    "tool-name",
+    "tool-version",
+    "source",
+    "fetched-at",
+    "permissions-snapshot"
+  ],
+  "properties": {
+    "schema-version": {
+      "type": "integer",
+      "const": 1
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(project|adapter--(source|target))--[^/\\\\]+$"
+    },
+    "tool-name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool-version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fetched-at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "permissions-snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "write": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "registry"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "registry": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

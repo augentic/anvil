@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/context-lock.schema.json",
+  "title": "Specify context.lock",
+  "description": "Validates the structure of `.specify/context.lock`, the deterministic sidecar written by init-time AGENTS.md generation to record renderer-input and fenced-body fingerprints.",
+  "type": "object",
+  "required": ["version", "fingerprint", "cli_version", "inputs", "fences"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Context lock schema version. Version 1 is the RM-02 lock shape."
+    },
+    "fingerprint": {
+      "$ref": "#/$defs/prefixedSha256",
+      "description": "Aggregate SHA-256 fingerprint for the CLI version and sorted renderer inputs."
+    },
+    "cli_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of the `specify` CLI that produced the lock."
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Files actually consumed by the context renderer, sorted by repo-relative path.",
+      "items": { "$ref": "#/$defs/input" }
+    },
+    "fences": {
+      "type": "object",
+      "required": ["body_sha256"],
+      "additionalProperties": false,
+      "description": "Hashes for the generated AGENTS.md fenced region.",
+      "properties": {
+        "body_sha256": {
+          "$ref": "#/$defs/prefixedSha256",
+          "description": "SHA-256 hash of the rendered content between the context fences."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repo-relative path to a file the renderer read."
+        },
+        "sha256": {
+          "$ref": "#/$defs/hexSha256",
+          "description": "SHA-256 hash of the input file bytes."
+        }
+      }
+    },
+    "hexSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "prefixedSha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

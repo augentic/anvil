@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/plan/plan.schema.json",
+  "title": "Specify plan.yaml",
+  "description": "Validates the structure of `plan.yaml` (at the repo root): the change name, the optional plan-level `lifecycle` (`pending | approved` per the workflow contract \u00a7Workflow vocabulary), the optional named-sources map, and the ordered list of plan slices with their dependencies, status, and (per the workflow contract) structured source bindings plus the optional `divergence` enum. Strict schema \u2014 unknown top-level and per-slice fields are rejected.\n\nEach slice binds a `project` (the target registry project; optional on disk \u2014 an omitted `project` resolves to the sole project in the topology) and an optional `divergence` enum (`likely | accepted | rejected`). The target adapter (`name@<semver>`) is no longer stored per slice \u2014 it is resolved on demand from the bound project's topology (the committed `.specify/topology.lock` for a workspace, `project.yaml.adapter` for a single regular project). `slices[].sources[]` items accept either a bare-string source key (shorthand for `{ source: <key>, lead: <slice.name> }`) or the structured `{ source, lead }` object form; the top-level `sources` map carries the structured `{ adapter, path?, value? }` object per source key \u2014 the legacy bare-string shorthand was dropped and exactly one of `path` or `value` is required. The per-entry status enum is `{pending, in-progress, done}` (no `blocked`/`failed`/`skipped`); the plan-level `lifecycle` enum is the collapsed `{pending, approved}` \u2014 `drained` and `currently executing` are computed from per-entry status at read time.\n\nworkflow \u00a7D3: each slice MAY carry an optional `authority-override` map keyed by claim kind whose values are source keys present in the slice's own `sources[]` list \u2014 orphan keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source`. workflow \u00a7D5: every `divergence` value (including `likely`) is CLI-written via `specify plan amend --divergence`; the plan skill no longer patches the file directly.",
+  "type": "object",
+  "required": [
+    "name",
+    "slices"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "$ref": "#/$defs/kebabName",
+      "description": "Change name. Kebab-case; becomes the archive filename prefix."
+    },
+    "sources": {
+      "type": "object",
+      "description": "Named source bindings. Keys are kebab-case identifiers referenced by each slice's `sources` list. Values are the structured `{ adapter, path?, value? }` object \u2014 exactly one of `path` or `value` is required. The legacy bare-string shorthand was dropped.",
+      "propertyNames": {
+        "$ref": "#/$defs/kebabName"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/sourceBinding"
+      }
+    },
+    "slices": {
+      "type": "array",
+      "description": "Ordered list of plan slices. Order is the tie-breaker for `specify plan next` when multiple entries are eligible.",
+      "items": {
+        "$ref": "#/$defs/planSlice"
+      }
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved"
+      ],
+      "description": "workflow plan-level lifecycle gate. `pending` is the default after `plan create`; `approved` is operator-stamped at Gate 1 via `specify plan transition <plan-name> approved`. Two stored states only \u2014 `currently executing` and `drained` are computed at read time from per-entry `status`."
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case identifier: lowercase letters and digits grouped by single internal hyphens; no leading, trailing, or consecutive hyphens. Matches `specify_slice::actions::validate_name`."
+    },
+    "disagreement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "values"
+      ],
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The aspect the matched leads disagree on (a free-form label, e.g. `password-min-length`)."
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "value"],
+            "properties": {
+              "source": { "$ref": "#/$defs/kebabName" },
+              "value": { "type": "string" }
+            }
+          },
+          "description": "The per-source disagreeing values. A genuine disagreement records \u22652 distinct source values; the CLI checks this structurally but never decides materiality."
+        }
+      },
+      "description": "RFC-46 D4 \u2014 one field on which a slice's matched leads materially disagree, recorded by the propose agent alongside a `divergence` flag."
+    },
+    "claimKind": {
+      "type": "string",
+      "enum": [
+        "intent",
+        "requirement",
+        "criterion",
+        "decision",
+        "section",
+        "diagram",
+        "contract",
+        "example",
+        "excerpt",
+        "type",
+        "call",
+        "region",
+        "container",
+        "leaf"
+      ],
+      "description": "Closed claim-kind enum mirrored from `evidence.schema.json#/$defs/claimKind`. Kept byte-identical so the per-slice `authority-override` keys validate against the same closed set."
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter"
+      ],
+      "properties": {
+        "adapter": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Kebab-case source-adapter name (e.g. `intent`, `documentation`, `typescript`, `screenshots`)."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+          "description": "Optional exact semver pin for the bound source adapter (RFC-47). Additive: an omitted `version` resolves the single installed identity, so existing source binds parse unchanged."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Filesystem path or repo location the adapter binds against. Mutually exclusive with `value`."
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Literal value supplied directly to the adapter (e.g. the operator brief text for `intent`). Mutually exclusive with `path`."
+        }
+      },
+      "oneOf": [
+        { "required": ["path"], "not": { "required": ["value"] } },
+        { "required": ["value"], "not": { "required": ["path"] } }
+      ],
+      "description": "workflow \u00a7Source \u2014 a plan-level source binding. The legacy bare-string shorthand was dropped; every entry is now the structured object form with exactly one of `path` or `value`."
+    },
+    "sliceSourceBinding": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/kebabName",
+          "description": "Bare-string shorthand: equivalent to `{ source: <key>, lead: <slice.name> }`. Used predominantly for the degenerate `intent` case (`sources: [intent]`)."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "lead"
+          ],
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/kebabName",
+              "description": "Source key matching a top-level `plan.yaml.sources.<key>` binding."
+            },
+            "lead": {
+              "$ref": "#/$defs/kebabName",
+              "description": "Lead id matching a `## Lead inventory` block in `discovery.md`, resolved within the binding's `source`."
+            }
+          }
+        }
+      ],
+      "description": "workflow \u00a7`Slice.sources` \u2014 one (source, lead) binding per contributing source."
+    },
+    "planSlice": {
+      "type": "object",
+      "required": [
+        "name",
+        "status"
+      ],
+      "additionalProperties": false,
+      "description": "Per workflow §Adapter vocabulary, every slice entry binds a `project` (target registry project). `project` is optional on disk: an omitted value resolves to the sole project in the topology, so a single-regular-project plan need not repeat the project name. The target adapter is not stored on the slice — it is resolved from the bound project's topology (`registry.yaml` or `project.yaml.adapter`).",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Slice name. Unique across the plan; becomes the Specify slice directory name when the entry transitions to `in-progress`."
+        },
+        "project": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Target registry project name. Required for multi-project registries; optional for single-project (an omitted value resolves to the sole topology project). The target adapter is resolved from this project via the committed `.specify/topology.lock` (workspace) or `project.yaml.adapter` (single regular project); it is no longer stored per slice."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "in-progress",
+            "done"
+          ],
+          "description": "Current state in the per-entry status state machine. workflow collapses to three states: `pending` (written by `plan add`/`amend`), `in-progress` (written only by `plan next`), `done` (written by `plan transition <name> done`, stamped by `/spec:merge`). v1 has no per-entry `blocked`, `failed`, or `skipped` state \u2014 build failures and merge conflicts leave the active entry `in-progress`."
+        },
+        "divergence": {
+          "type": "string",
+          "enum": [
+            "likely",
+            "accepted",
+            "rejected"
+          ],
+          "description": "workflow \u00a7Plan-time reconciliation \u2014 closed enum for slice-level divergence state. Absent \u2261 `none` (the default). `likely` is set by `/spec:plan`'s `propose` sub-step on materially-disagreeing lead synopses; `accepted` / `rejected` are set by the operator at Gate 1 via `specify plan amend --divergence`. Advisory metadata in v1. workflow \u00a7D5: every value (including `likely`) is CLI-written \u2014 the `/spec:plan` agent stages `likely` via `specify plan amend <plan> <slice> --divergence likely` (after `propose --from`), and `plan create` scaffolds an empty plan that never carries divergence."
+        },
+        "disagreements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/disagreement" },
+          "description": "RFC-46 D4 \u2014 the per-field disagreeing values backing a `divergence` flag. The `/spec:plan` propose agent records them when it flags `divergence: likely`; the CLI checks structural consistency only (a flagged slice records them with \u22652 distinct source values each; a recorded set without a flag is an orphan) and never decides materiality. Absent stays off disk."
+        },
+        "authority-override": {
+          "type": "object",
+          "description": "workflow \u00a7D3 \u2014 optional per-slice authority override map keyed by claim kind, valued by source key. Keys are the closed claim-kind enum (mirrored from `evidence.schema.json#/$defs/claimKind`); values MUST be source keys present in this slice's own `sources[]` list. Synthesis consults this map first when a contributing-claim disagreement remains, then falls back to the document-level Evidence `authority:` field, then to the workflow default ordering. (A per-Evidence `authority-overrides` map is deferred to a future RFC.) Empty maps and missing fields are equivalent. Orphan source keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source`. CLI-written via `specify plan create --authority-override <slice> <kind>=<key>` and `specify plan amend --authority-override <slice> <kind>=<key>` / `--clear-authority-override` / `--clear-authority-overrides`.",
+          "propertyNames": { "$ref": "#/$defs/claimKind" },
+          "additionalProperties": { "$ref": "#/$defs/kebabName" }
+        },
+        "depends-on": {
+          "type": "array",
+          "description": "Slice names that must be `done` before this slice is eligible. Consumed by `specify plan next`.",
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "description": "Per the workflow contract, an array of (source, lead) bindings. Each item is either a bare string (shorthand for `{ source: <key>, lead: <slice.name> }`) or the structured `{ source, lead }` object. Absent or `[]` \u2192 degenerate intent slice.",
+          "items": {
+            "$ref": "#/$defs/sliceSourceBinding"
+          }
+        },
+        "context": {
+          "type": "array",
+          "description": "Baseline paths relevant to this slice, relative to `.specify/`. Briefs use these as a focus hint when scanning baseline directories.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Free-text scoping context. Carries file-path hints and references to prior slice names for delta-target inference."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/evidence.schema.json",
+  "title": "Specify source-adapter Evidence",
+  "description": "Validates a single source-adapter `Evidence` document per workflow §Source adapter contract — the per-source result of `extract`, persisted under `.specify/slices/<slice>/evidence/<source>.yaml`. The document's `(slice, source)` identity is carried by its on-disk path (slice directory + `<source>.yaml` filename), and its adapter resolves from `plan.yaml.sources.<source>.adapter`; neither is duplicated in-document. Top-level fields: `authority` (closed enum `intent | documentation | behaviour`), `lead` (kebab-case lead id from `discovery.md`), and `claims[]`. v1 resolves authority at document level; the only operator override surface is the per-slice `authority-override` on `plan.yaml` (a per-Evidence `authority-overrides` map is deferred to a future RFC). Each claim carries a closed `kind` from {intent, requirement, criterion, decision, section, diagram, contract, example, excerpt, type, call, region, container, leaf} — `region`/`container`/`leaf` are the spatial kinds co-introduced with the `screenshots` source adapter; `example` is the runtime capture kind emitted by the `captures` source adapter and carries open per-kind body fields `replay-digest` (`sha256:<hex>`), `input`, and `output`. `id` is required on `requirement`, `criterion`, and `example` kinds and optional on others; `path` matches the grammar `<path>` | `<path>#L<n>` | `<path>#L<start>-L<end>`. Per-kind body fields (`statement`, `criterion`, `decision`, `replay-digest`, `input`, `output`, etc.) are intentionally open.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["authority", "lead", "claims"],
+  "properties": {
+    "authority": {
+      "$ref": "#/$defs/authorityClass",
+      "description": "Document-level authority class for this Evidence per workflow §Authority hierarchy. v1 resolves authority at document level; the only override surface is the per-slice `authority-override` on `plan.yaml` (a per-Evidence `authority-overrides` surface is deferred to a future RFC)."
+    },
+    "lead": {
+      "$ref": "#/$defs/kebabName",
+      "description": "Lead id (matches a `## Lead inventory` block in `discovery.md`) the Evidence is bound to."
+    },
+    "claims": {
+      "type": "array",
+      "description": "Per-claim extraction records. Empty `claims: []` is valid; failure is signalled by not writing the Evidence file at all.",
+      "items": { "$ref": "#/$defs/claim" }
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "authorityClass": {
+      "type": "string",
+      "enum": ["intent", "documentation", "behaviour"],
+      "description": "Closed authority class per workflow §Authority hierarchy. New classes require updating the workflow contract and schemas together."
+    },
+    "claimKind": {
+      "type": "string",
+      "enum": [
+        "intent",
+        "requirement",
+        "criterion",
+        "decision",
+        "section",
+        "diagram",
+        "contract",
+        "example",
+        "excerpt",
+        "type",
+        "call",
+        "region",
+        "container",
+        "leaf"
+      ],
+      "description": "Closed claim-kind enum. New kinds require updating the workflow contract and schemas together. `example` is the runtime capture kind emitted by `captures` and carries open `replay-digest` / `input` / `output` body fields."
+    },
+    "claimPath": {
+      "type": "string",
+      "pattern": "^[^\\s][^\\s]*(#L[1-9][0-9]*(-L[1-9][0-9]*)?)?$",
+      "description": "Per-claim path: `<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`."
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/claimKind" },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+          "description": "Stable claim identifier (dotted kebab slug, e.g. `password-reset.expiry`). Required when `kind` is `requirement`, `criterion`, or `example`; optional on other kinds."
+        },
+        "path": { "$ref": "#/$defs/claimPath" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "requirement" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["id"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "criterion" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["id"] }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "example" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["id"] }
+        }
+      ]
+    }
+  }
+}

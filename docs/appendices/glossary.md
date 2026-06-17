@@ -11,7 +11,7 @@ A versioned Specify extension. Specify splits adapters by direction: **source ad
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
 
 **API contract**
-A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify tool run contract`).
+A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify extension run contract`).
 
 **Archive**
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
@@ -169,7 +169,7 @@ An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chose
 A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
-The single CLI binary produced by `augentic/specify-cli` that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, consumer-project linting (`specify lint`), and framework **authoring** checks for contributors to the `augentic/specify` repo (`specify lint framework`, invoked locally as `make lint`). See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
+The single CLI binary produced by the in-tree `cli/` workspace that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, consumer-project linting (`specify lint`), and framework **authoring** checks for contributors to the `augentic/specify` repo (`specify lint framework`, invoked locally as `make lint`). See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **Survey**
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.

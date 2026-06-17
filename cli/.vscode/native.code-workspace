@@ -1,0 +1,13 @@
+{
+    "folders": [
+        {
+            "path": ".."
+        }
+    ],
+    "settings": {
+        "rust-analyzer.linkedProjects": [
+            "Cargo.toml"
+        ],
+        "rust-analyzer.check.command": "clippy",
+    },
+}

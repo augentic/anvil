@@ -1,0 +1,18 @@
+{
+  "action": "amend",
+  "entry": {
+    "depends-on": [
+      "a",
+      "b"
+    ],
+    "description": null,
+    "name": "foo",
+    "project": "default",
+    "sources": [],
+    "status": "pending"
+  },
+  "plan": {
+    "name": "demo",
+    "path": "<TEMPDIR>/plan.yaml"
+  }
+}

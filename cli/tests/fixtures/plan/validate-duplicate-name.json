@@ -1,0 +1,28 @@
+{
+  "findings": [
+    {
+      "artifact": "plan",
+      "evidence": {
+        "kind": "snippet",
+        "value": "duplicate plan entry name 'foo'"
+      },
+      "fingerprint": "sha256:26293bc19d886814766cd49874ad132846249bb6dd47094c0ddeb352d64bb505",
+      "id": "DIAG-0001",
+      "impact": "duplicate plan entry name 'foo'",
+      "kind": "violation",
+      "remediation": "duplicate plan entry name 'foo'",
+      "rule-id": "duplicate-name",
+      "severity": "important",
+      "slice": "foo",
+      "source": "deterministic",
+      "title": "duplicate plan entry name 'foo'"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "important": 1,
+    "optional": 0,
+    "suggestion": 0
+  },
+  "version": 1
+}

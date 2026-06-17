@@ -17,7 +17,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis — that is **core
 Every target adapter ships a single `adapter.yaml` at `adapters/targets/<name>/`:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/target.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/cli/schemas/target.schema.json
 name: omnia
 version: "1.0.0"
 axis: target
@@ -45,7 +45,7 @@ inputs:
 | `briefs`      | yes      | Map of operation → brief markdown path relative to the manifest. |
 | `inputs`      | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `specify slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
 
-Optional `tools[]` declares WASI helpers that the host runner caches in the out-of-tree per-project cache at `<project-cache>/manifests/targets/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md).
+An optional singular `extension` object declares at most one WASI helper; its committed `adapter.wasm` (built from the co-located `extension/` crate) ships in the adapter artifact and runs via `specify extension run <name>`. See [Tool declarations](../../explanation/tool-declarations.md).
 
 ## How a target adapter participates in the loop
 

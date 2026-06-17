@@ -1,6 +1,6 @@
 # RFC-49: Repository Topology — Core and CLI Consolidation
 
-> Status: Draft · Execution order: **3rd of RFC-47 → RFC-48 → RFC-49**. Runs after adapters extract ([RFC-48](rfc-48-adapter-packaging-transport.md)), so the layout below reflects a post-RFC-48 tree (no `wasi-tools/` under `/cli/`). · Sibling: [RFC-48](rfc-48-adapter-packaging-transport.md) extracts adapters into the *second* repo; this RFC consolidates the *first*.
+> Status: Draft · Execution order: **3rd of RFC-47 → RFC-48 → RFC-49**. RFC-48 has now largely landed — `augentic/specify-adapters` exists with the bundled adapters and their extension crates extracted — so the layout below reflects the **actual** post-RFC-48 tree (`specify-cli` already ships no `wasi-tools/` workspace), not a predicted one. · Sibling: [RFC-48](rfc-48-adapter-packaging-transport.md) extracts adapters into the *second* repo; this RFC consolidates the *first*.
 
 ## Abstract
 
@@ -8,7 +8,7 @@ The Specify **platform** — skill plugins, docs and authoring standards, and th
 
 Today's split — `augentic/specify` for prose, `augentic/specify-cli` for the binary — buys nothing the two halves use. They change together, must be version-compatible at every commit, and are already wired across the repo boundary by a source pin, a cargo-script resolver, and a branch-matched CI checkout: scaffolding that *simulates* one repo. This RFC deletes the scaffolding by making it one repo.
 
-This is the **consolidating** half of a two-repo end-state. Its sibling [RFC-48](rfc-48-adapter-packaging-transport.md) is the **extracting** half: adapters leave for `augentic/specify-adapters` as independently-versioned registry artifacts. Net result is **two** repos — one lockstep platform, one independent adapter ecosystem.
+This is the **consolidating** half of a two-repo end-state. Its sibling [RFC-48](rfc-48-adapter-packaging-transport.md) is the **extracting** half: adapters leave for `augentic/specify-adapters` as independently-versioned registry artifacts. Because RFC-48 has already extracted, **three** repos coexist transiently as this RFC opens (`specify`, `specify-cli`, `specify-adapters`); consolidation folds `specify-cli` into `specify`, so the net end-state is **two** repos — one lockstep platform, one independent adapter ecosystem.
 
 ## Motivation
 
@@ -25,8 +25,9 @@ Consolidation removes all four rather than maintaining them.
 
 ### What each repo holds today
 
-- **`augentic/specify`** — `plugins/` (skills + references), `docs/`, `adapters/`, `rfcs/`, `evals/`, the `.cursor-plugin/` marketplace manifest, the `Specify.toml` pin, and `scripts/` shims.
-- **`augentic/specify-cli`** — a Cargo workspace: the root `specify` binary, `crates/{error,schema,diagnostics,model,tool-manifest,tool,standards,workflow}`, the embedded `schemas/`, `tests/`, `DECISIONS.md`, the Rust `docs/standards/`, and the separate `wasi-tools/` workspace.
+- **`augentic/specify`** — `plugins/` (skills + references), `docs/`, `adapters/`, `rfcs/`, `evals/`, the `.cursor-plugin/` marketplace manifest, the `Specify.toml` pin, and `scripts/` shims. Post-RFC-48 the `adapters/` tree is drawn down to what stays on the platform — `sources/*`, `targets/omnia`, and the `adapters/shared/` symlink hub — after the extension-bearing `contracts` / `vectis` targets extracted (RFC-48 continues migrating the remaining prose-only adapters out).
+- **`augentic/specify-cli`** — a Cargo workspace: the root `specify` binary, `crates/{diagnostics,error,extension-manifest,model,registry,schema,standards,vectis-shell-detect,workflow}`, the embedded `schemas/`, `tests/`, `DECISIONS.md`, and the Rust `docs/standards/`. RFC-48 has **already** removed the `wasi-tools/` extension workspace (the `contract` / `vectis` crates relocated to `specify-adapters`), renamed `tool-manifest` → `extension-manifest`, and dropped the standalone `tool` runner crate.
+- **`augentic/specify-adapters`** — the already-extracted second repo (RFC-48 T6): adapter prose, co-located `extension/` crates with a committed `adapter.wasm`, forked shared content (`adapters/shared/` prose-hub targets plus a top-level `shared/vectis-shell-detect/` crate), and **its own** Cargo workspace on an independent version line (`0.4.0` today). It already carries the platform-facing CI seam T5 describes (below).
 
 ### The contract stays a contract
 
@@ -55,7 +56,7 @@ The binary and the prose meet at a **wire contract**: the CLI verbs skills invok
 | **T3 Single version line** | One platform version replaces the plugin line (`0.27.0`) and the runtime line (`0.2.0`). | Adopt `0.27.0` (the user-facing marketplace number); the internal `0.2.0` line retires. One tag moves marketplace `version`, every `plugin.json` `version`, the Cargo workspace `version`, and the consumer `project.yaml.specify` pin together. The consumer pin is renamed `specify_version` → `specify` to reflect that it now references the whole framework. See [Version unification (T3)](#version-unification-t3). |
 | **T4 Tooling + CI collapse** | Delete the source pin, the cargo-script shims, and the branch-matched CI checkout. `make lint` builds the in-tree binary; CI becomes one job; the marketplace `$schema` becomes a relative in-repo path. | `make lint` → `cargo run -p specify -- lint framework --framework-root .`. `ci.yaml` drops resolve-version / sibling-checkout / build-sibling. See [Tooling and CI collapse (T4)](#tooling-and-ci-collapse-t4). |
 | **T5 Contract relocates, not dissolves** | The workflow contract stays the consumer- and adapter-facing surface; the only remaining cross-repo seam is platform ↔ `augentic/specify-adapters`. | The branch-matched-CI pattern relocates to the adapters repo. `workflow.md` and `DECISIONS.md` stay the durable spec, now intra-platform. See [Contract seam relocates, not dissolves (T5)](#contract-seam-relocates-not-dissolves-t5). |
-| **T6 Adapters remain the second repo** | Consolidation does not absorb adapters; they extract per [RFC-48](rfc-48-adapter-packaging-transport.md) (D7 / D10 / D12). | `wasi-tools/{contract,vectis}` leave the runtime for the adapters repo (RFC-48 D10), so `/cli/` ships no `wasi-tools/` workspace. |
+| **T6 Adapters remain the second repo** | Consolidation does not absorb adapters; they extract per [RFC-48](rfc-48-adapter-packaging-transport.md) (D7 / D10 / D12). | **Already done:** the `wasi-tools/{contract,vectis}` extension crates have left the runtime for `augentic/specify-adapters` (now its own Cargo workspace, RFC-48 D10), so `/cli/` inherits a tree with no `wasi-tools/` workspace. |
 
 ### Repo layout (T2)
 
@@ -73,7 +74,7 @@ augentic/specify/                     # the platform — ONE version line, ONE r
 │   ├── Cargo.toml                    # workspace root + `specify` binary crate
 │   ├── Cargo.lock  rust-toolchain.toml  Makefile.toml  deny.toml
 │   ├── src/runtime/                  # CLI dispatch
-│   ├── crates/{error,schema,diagnostics,model,tool-manifest,tool,standards,workflow}
+│   ├── crates/{diagnostics,error,extension-manifest,model,registry,schema,standards,vectis-shell-detect,workflow}
 │   ├── schemas/                      # embedded JSON Schemas (the contract surface)
 │   ├── tests/{…, rust_quality}
 │   ├── DECISIONS.md
@@ -82,7 +83,7 @@ augentic/specify/                     # the platform — ONE version line, ONE r
 ├── Makefile                          # `make ci` → (cd cli && cargo make ci) && specify lint framework
 └── README.md
 
-#  wasi-tools/{contract,vectis}  →  relocate to augentic/specify-adapters (RFC-48 D10)
+#  adapters/ + the former wasi-tools/{contract,vectis} crates  →  augentic/specify-adapters (RFC-48 D7/D10; extension-bearing targets already moved)
 ```
 
 Why prose-at-root, engine-under-`/cli/` (not a root-level workspace):
@@ -110,14 +111,14 @@ Consolidation deletes the cross-repo scaffolding rather than porting it:
 - **Deleted.** `Specify.toml`, `Specify.local.toml`, `scripts/specify.rs`, `scripts/use-local-dev.rs` — the source pin and cargo-script resolvers.
 - **`make lint`** builds the in-tree binary (`cd cli && cargo run -q -p specify -- lint framework --framework-root ..`) instead of resolving a pinned sibling; `nightly -Zscript` is no longer required.
 - **CI** drops the *resolve-version → checkout-sibling → build-sibling* steps; one job runs `cargo make ci` under `/cli/` and `specify lint framework --framework-root .` over the in-tree prose. The symlink-integrity check stays (or is subsumed by [RFC-48](rfc-48-adapter-packaging-transport.md) D12).
-- **`use-local-plugins` / `use-team-plugins`** keep working against the in-tree binary; the WASI-tool build path retires with `wasi-tools` (RFC-48 D7 / D11).
+- **`use-local-plugins` / `use-team-plugins`** keep working against the in-tree binary; the WASI-tool build path in `use-local-dev.rs` is already vestigial (RFC-48 D7 / D11 retired the `wasi-tools` workspace it built) and goes with the shims.
 
 ### Contract seam relocates, not dissolves (T5)
 
 Merging the runtime into the prose repo relocates the only cross-repo seam to exactly one place rather than removing the contract:
 
 - **Stays a contract.** `workflow.md`, the embedded schemas, the `error` discriminants, and the journal taxonomy remain the surface downstream consumers and the adapters repo depend on. The prose↔binary half becomes *intra-repo* (one PR, one CI run) without weakening the externally-facing half.
-- **The seam moves.** The branch-matched-CI pattern that today couples `specify → specify-cli` relocates to `specify-adapters → specify`: the adapters repo builds or fetches the platform binary and runs `lint framework --framework-root .`. One cross-repo seam, different endpoints.
+- **The seam moves — and is already half-built.** The branch-matched-CI pattern that today couples `specify → specify-cli` relocates to `specify-adapters → specify`: the adapters repo builds or fetches the platform binary and runs `lint framework --framework-root .`. RFC-48 already shipped this on the adapters side — `specify-adapters/.github/workflows/{ci,release}.yaml` carry a `framework-lint` job explicitly tagged "RFC-49 T5" that branch-matches and builds the platform binary — so what remains is the `specify → specify-cli` half collapsing to intra-repo at consolidation, not standing up a new seam. (Pre-consolidation that adapters-side job resolves the binary from `specify-cli`; post-consolidation it points at the unified `specify`.) One cross-repo seam, different endpoints.
 
 ## Phasing
 
@@ -126,9 +127,9 @@ Effectively **Phase 0** relative to [RFC-48](rfc-48-adapter-packaging-transport.
 1. **History import (T1).** Merge `specify-cli` into `augentic/specify` under `/cli/`, preserving history; archive `specify-cli`.
 2. **Tooling + CI collapse (T4).** Delete the source pin and cargo-script shims; make CI one job; build the binary in-tree; flip the marketplace `$schema` to an in-repo reference.
 3. **Version unification (T3).** Confirm the platform line, move all version fields together, retag.
-4. **Seam relocation (T5).** Point the single remaining cross-repo CI pattern at `specify-adapters`.
+4. **Seam relocation (T5).** Largely done by RFC-48: the `specify-adapters → specify` `framework-lint` seam already exists. This step reduces to retiring the now-redundant `specify → specify-cli` half (as part of T4), leaving exactly one cross-repo seam.
 
-The `wasi-tools` relocation ([RFC-48](rfc-48-adapter-packaging-transport.md) D10) is the hinge shared with adapter extraction; sequence the two RFCs so it happens once, not twice.
+The `wasi-tools` relocation ([RFC-48](rfc-48-adapter-packaging-transport.md) D10) — the hinge shared with adapter extraction — has **already happened** in RFC-48, so this RFC inherits an extracted tree rather than re-sequencing the move; the once-not-twice concern is resolved.
 
 ## Alternatives considered
 
@@ -152,5 +153,6 @@ The `wasi-tools` relocation ([RFC-48](rfc-48-adapter-packaging-transport.md) D10
 - `.cursor-plugin/marketplace.json` and `plugins/*/.cursor-plugin/plugin.json` — the plugin version line and the cross-repo `$schema` (T3 / T4).
 - `augentic/specify-cli` `Cargo.toml` — the workspace that moves wholesale to `/cli/` (T2) and the `0.2.0` line that retires (T3).
 - [`specify-cli` `docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) — the workflow contract, now intra-platform (T5).
+- `augentic/specify-adapters` `.github/workflows/{ci,release}.yaml` — the `framework-lint` job (tagged "RFC-49 T5") that already implements the `specify-adapters → specify` seam (T5).
 - [RFC-48](rfc-48-adapter-packaging-transport.md) — the sibling extracting half.
 - [Roadmap RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) — the adapter-ecosystem item the second repo serves.

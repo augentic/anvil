@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/source.schema.json
+# yaml-language-server: $schema=https://github.com/augentic/specify/raw/main/cli/schemas/source.schema.json
 name: intent
 version: "1.0.0"
 axis: source

@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "artifact": "code",
+      "confidence": "high",
+      "disposition": {
+        "directive": {
+          "line": 1,
+          "path": "app.rs",
+          "rationale": "internal endpoint pinned per ops policy"
+        },
+        "source": "directive"
+      },
+      "evidence": {
+        "kind": "snippet",
+        "value": "const BASE_URL: &str = \"https://api.example.com\";"
+      },
+      "impact": "Trigger for UNI-014",
+      "kind": "violation",
+      "location": {
+        "column": 25,
+        "line": 2,
+        "path": "app.rs"
+      },
+      "remediation": "See shared/UNI-014.md",
+      "rule-id": "UNI-014",
+      "severity": "important",
+      "source": "deterministic",
+      "status": "ignored",
+      "title": "UNI-014 test rule: matched `https?://`"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "important": 1,
+    "optional": 0,
+    "suggestion": 0
+  },
+  "version": 1
+}

@@ -21,7 +21,7 @@ This installs the bundled plugins (Specify, Capture, Client) and their skills. D
 The `specify` binary backs every skill in the Specify plugin. If you are setting up a project through Cursor, run `/spec:init`; when the CLI is missing, the skill can install it for you with:
 
 ```bash
-cargo install --git https://github.com/augentic/specify-cli
+cargo install --git https://github.com/augentic/specify
 ```
 
 <details>
@@ -39,8 +39,8 @@ cargo install specify
 # Pre-built binary, any POSIX shell
 curl -sSfL https://specify.sh/install.sh | sh
 
-# Local checkout of specify-cli
-make build
+# Local checkout of this repo
+make install-cli
 ```
 
 Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` command, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
@@ -57,7 +57,7 @@ specify --version
 
 `specify upgrade` self-updates the binary in place. It detects the install channel from the running binary's path — `cargo` (under `$CARGO_HOME/bin`, or `~/.cargo/bin`), `brew` (a Homebrew Cellar/prefix), `binary` (a system install such as `/usr/local/bin` or `/opt/specify`), or `unknown` (it then prints manual-upgrade guidance via a structured `unknown-install-channel` diagnostic). Pass `--channel` to override detection.
 
-It resolves the latest release before upgrading — `SPECIFY_RELEASE_TAG` env override first, then `gh release view -R augentic/specify-cli` when `gh` is on `PATH`, then an unauthenticated `api.github.com` request. A probe failure is a warning, not an error: the upgrade proceeds against `HEAD` with a journal note. Preview with `--dry-run`; apply with `--yes`.
+It resolves the latest release before upgrading — `SPECIFY_RELEASE_TAG` env override first, then `gh release view -R augentic/specify` when `gh` is on `PATH`, then an unauthenticated `api.github.com` request. A probe failure is a warning, not an error: the upgrade proceeds against `HEAD` with a journal note. Preview with `--dry-run`; apply with `--yes`.
 
 ```bash
 specify upgrade --dry-run            # report channel + target version, write nothing
@@ -66,18 +66,17 @@ specify upgrade --yes                # self-update and journal `cli.upgraded`
 
 The `cargo` and `brew` executors are fully wired; the `binary`-channel in-process self-replace is deferred to a follow-up, so today that channel emits planned-action plus manual-upgrade guidance.
 
-### Contributing to the framework repo
+### Contributing to the repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) framework repo itself — editing skills, adapters, references, or docs — needs only a Rust toolchain, not a separately installed `specify`. `make lint` (the only framework check) delegates to `cargo +nightly -Zscript scripts/specify.rs lint framework`, a single-file Cargo script that reads the `cli` source spec, **builds** that `specify-cli` source, and runs `specify lint framework` from the repo root:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI under [`cli/`](https://github.com/augentic/specify/tree/main/cli) — needs only a Rust toolchain, not a separately installed `specify`. The CLI is an in-tree Cargo workspace, so the framework checks build it from source:
 
-| `cli` form (in `Specify.toml`) | Source built |
-| ------------------------------ | ------------ |
-| `cli = { version = "X.Y.Z" }` | the `specify-cli` git tag `vX.Y.Z` |
-| `cli = { git = "<url>" }` | branch `main` (default ref) |
-| `cli = { git = "<url>", rev\|branch\|tag = "…" }` | that git ref |
-| `cli = { path = "<dir>" }` (gitignored `Specify.local.toml` only) | a local checkout, built in place |
+```bash
+make lint        # build cli/ and run specify lint framework over the prose tree
+make ci          # the full Rust workspace gate under cli/, then make lint
+make install-cli # build cli/target/release/specify and symlink it onto your PATH
+```
 
-Every form builds from source — no published binary is downloaded. The committed `cli` is always a fetchable form (`version` or `git` + ref) so CI and clean clones build the same source; to co-develop the CLI locally, add a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }`. cargo-script is still nightly-only (`-Zscript`), so the resolver runs under the nightly pinned in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml). [`Specify.toml`](https://github.com/augentic/specify/blob/main/Specify.toml) at that repo's root pins the CLI source; `cargo +nightly -Zscript scripts/specify.rs lint framework` is the direct equivalent of `make lint`. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#binding-to-a-specify-source) for the full binding model.
+No published binary is downloaded — every invocation builds from the in-tree `cli/` Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`cli/rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/cli/rust-toolchain.toml) (`cargo make fmt` uses nightly rustfmt). (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
 
 ## Adapter-specific prerequisites
 
