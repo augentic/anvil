@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/source.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/source.schema.json",
   "title": "Specify source adapter manifest",
   "description": "Refines `adapter.schema.json` for source adapters per workflow §Source adapter contract. Locks `axis` to the literal `source` and requires both `briefs.extract` and `briefs.survey` — together these close the operation set to `{extract, survey}` (the canonical iterator is `briefs.keys()`). The `kebabName` and `extensionDeclaration` `$defs` are intentionally inlined (rather than `$ref`-resolved against `adapter.schema.json`) so the schema compiles without a registry lookup; the embedded `name` pattern MUST stay byte-identical to `adapter.schema.json#/$defs/kebabName.pattern`.",
   "type": "object",

@@ -105,7 +105,7 @@ pub fn validate_proposal_json(content: &str) -> Result<()> {
 
 /// `$id` the synthesis schema's relative `model` `$ref` resolves to.
 const MODEL_SCHEMA_URL: &str =
-    "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json";
+    "https://github.com/augentic/specify/schemas/slice/model.schema.json";
 
 /// Validate an agent synthesis response against the embedded
 /// `schemas/slice/synthesis.schema.json`.
@@ -175,7 +175,7 @@ pub fn validate_build_request_json(content: &str) -> Result<()> {
 /// `$id` the build-report schema's relative `findings[]` `$ref` resolves
 /// to.
 const DIAGNOSTIC_SCHEMA_URL: &str =
-    "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json";
+    "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json";
 
 /// Validate a target build report against the embedded
 /// `schemas/target/build-report.schema.json`.

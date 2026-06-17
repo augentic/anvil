@@ -10,7 +10,7 @@ use crate::Platform;
 fn write_project_yaml(root: &Path, platforms: &[&str]) {
     let yaml_platforms: Vec<String> = platforms.iter().map(|p| format!("  - {p}")).collect();
     let content = format!(
-        "name: app-icon-gate-test\nadapter: vectis\nspecify_version: '{version}'\nplatforms:\n{platforms}",
+        "name: app-icon-gate-test\nadapter: vectis\nspecify: '{version}'\nplatforms:\n{platforms}",
         version = env!("CARGO_PKG_VERSION"),
         platforms = yaml_platforms.join("\n"),
     );

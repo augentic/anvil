@@ -66,7 +66,7 @@ Dispatchers live in `src/runtime/commands/<verb>.rs` and call back into the work
 
 1. Clap parses argv → `Commands` enum.
 2. `src/runtime/commands.rs` matches the variant and calls the dispatcher in `src/runtime/commands/<verb>.rs`.
-3. The dispatcher loads `ProjectConfig` (which enforces the `specify_version` floor for free) and any other state it needs.
+3. The dispatcher loads `ProjectConfig` (which enforces the `specify` version floor for free) and any other state it needs.
 4. The dispatcher delegates the deterministic work to a workspace crate (`specify_slice`, `specify_change`, etc.) and converts the result to a `*Body` for `ctx.write(&body, write_text)`.
 
 Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `src/runtime/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope.
@@ -112,4 +112,4 @@ append cannot interleave on failure.
 
 ## Gotcha — `specify init` and the version floor
 
-`specify init` bypasses the `specify_version` floor check (the file doesn't exist yet); every other project-aware verb inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a subcommand site.
+`specify init` bypasses the `specify` version floor check (the file doesn't exist yet); every other project-aware verb inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a subcommand site.

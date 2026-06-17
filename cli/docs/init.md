@@ -17,7 +17,7 @@ specify init ./path/to/adapter
 The adapter supplies the schemas, plan template, and registry hooks
 the project will use. The CLI writes:
 
-- `project.yaml` (adapter identifier, `specify_version` floor, and
+- `project.yaml` (adapter identifier, `specify` floor, and
   `platforms` when the target declares a platform capability).
 - `.specify/` (slices, archive, plans, cache, workspace, plan.lock).
 - `.specify/wasm-pkg.toml` — project-local wasm-pkg registry config,

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/authoring/scenario.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/authoring/scenario.schema.json",
   "title": "Scenario pack frontmatter",
   "description": "Validates the optional YAML frontmatter of a Specify scenario file. The discoverer in `specify lint framework` only validates files that live under an accepted scenario root and start with frontmatter. Bodies of opted-in scenarios follow the standard sections (`Intent`, `Workspace`, `Inputs`, `Invocation`, `Expected Artifacts`, `Assertions`, `Negative Expectations`, `Cleanup`).",
   "type": "object",

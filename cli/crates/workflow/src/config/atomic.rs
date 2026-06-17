@@ -96,7 +96,7 @@ impl AtomicYaml for ProjectConfig {
         layout.config_path()
     }
 
-    /// Delegate to the inherent loader so the `specify_version` floor
+    /// Delegate to the inherent loader so the `specify` floor
     /// check runs at load time. Map the canonical "absent" error
     /// ([`Error::NotInitialized`]) to `Ok(None)` so the trait's
     /// "absent → None" contract holds; callers that need the typed

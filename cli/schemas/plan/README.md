@@ -21,7 +21,7 @@ The JSON response produced by `specify plan validate --format json` is the neutr
 Add the following header to `plan.yaml` to opt in to autocomplete and diagnostics in editors with `yaml-language-server` support:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify-cli/main/schemas/plan/plan.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/cli/schemas/plan/plan.schema.json
 ```
 
 Pin to a commit or tag by replacing `main` with the desired ref.

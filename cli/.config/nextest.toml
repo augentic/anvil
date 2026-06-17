@@ -3,10 +3,12 @@
 [profile.default]
 # Bound total fan-out so the subprocess-heavy integration suites (each
 # forks a `specify` child per case, ~2x process amplification) cannot
-# oversubscribe CPU / file descriptors on macOS. `-2` is num-cpus minus
-# two logical CPUs — nextest accepts an integer, a negative integer
-# (relative to CPU count), or "num-cpus", but NOT a percentage string.
-test-threads = -2
+# oversubscribe CPU / file descriptors on macOS. A flat `4` keeps local
+# runs safe regardless of core count (the suite now lives in-tree, so an
+# unbounded `cargo make ci` would otherwise choke macOS); override ad hoc
+# with `--test-threads N`. CI opts into full parallelism via the `ci`
+# profile below.
+test-threads = 4
 # Flag hangs instead of letting a test sit forever. The period is
 # generous because a cold-cache WASI component compile is legitimate
 # work; four periods without progress terminates the test.
@@ -37,5 +39,10 @@ filter = 'binary(plan) or binary(slice) or binary(source) or binary(init) or bin
 test-group = 'host-subprocess'
 
 [profile.ci]
+# CI runs on Linux, where subprocess fan-out is cheap, so use every core.
+# The default profile's test-group caps (wasm-compile = 1, host-subprocess
+# = 4) and its overrides still apply here via nextest's override-resolution
+# fallback to `profile.default.overrides`, so wasm serialization is kept.
+test-threads = "num-cpus"
 failure-output = "immediate-final"
 fail-fast = false

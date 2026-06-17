@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/target/build-request.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/target/build-request.schema.json",
   "title": "Specify target build request",
   "description": "Closed-shape per-slice build request handed to a target adapter by `specify slice build`. Keyed on `(slice, target)`, but the payload omits `target` (the recipient adapter is the target), `execution` (the CLI uses the declared mode to choose delivery), brief paths, and `model.yaml` (audit/provenance input to the rendered artifacts, not a build input). Targets build from rendered artifacts; target-specific input growth goes through the explicit `inputs.artifacts.additional` list assembled from the bound adapter's manifest.",
   "type": "object",

@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://github.com/augentic/specify-cli/raw/main/schemas/target.schema.json
+# yaml-language-server: $schema=https://github.com/augentic/specify/raw/main/cli/schemas/target.schema.json
 name: omnia
 version: "1.0.0"
 axis: target

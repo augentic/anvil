@@ -1,7 +1,7 @@
 //! Embedded JSON Schemas.
 //!
 //! Each constant is the verbatim contents of a file under
-//! `specify-cli/schemas/` baked into the binary at compile time. See
+//! `specify/schemas/` baked into the binary at compile time. See
 //! `ResolvedRules` export contract and §"Structured lint finding
 //! schema" for the standards-layer schemas; the workflow schemas are
 //! pinned by the workflow contract under `docs/standards/workflow.md`.
@@ -139,10 +139,6 @@ pub const SCENARIO_JSON_SCHEMA: &str =
 pub const MARKETPLACE_JSON_SCHEMA: &str =
     include_str!("../../../schemas/authoring/marketplace.schema.json");
 
-/// Schema for `Specify.toml` framework authoring config.
-pub const FRAMEWORK_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/authoring/framework.schema.json");
-
 /// Schema for the per-slice target build request.
 ///
 /// The closed-shape request `specify slice build` hands to a target
@@ -228,7 +224,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         "schemas/authoring/marketplace.schema.json",
         MARKETPLACE_JSON_SCHEMA,
     ),
-    ("FRAMEWORK_JSON_SCHEMA", "schemas/authoring/framework.schema.json", FRAMEWORK_JSON_SCHEMA),
     (
         "BUILD_REQUEST_JSON_SCHEMA",
         "schemas/target/build-request.schema.json",

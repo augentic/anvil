@@ -76,10 +76,10 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 ## Validation
 
 ```bash
-make lint   # delegates to cargo +nightly -Zscript scripts/specify.rs lint framework
+make lint   # builds the in-tree binary and runs specify lint framework
 ```
 
-`make lint` runs `scripts/specify.rs`, a single-file Cargo script that reads the `cli` source spec from `Specify.toml` (or a gitignored `Specify.local.toml` overlay) and **builds** that pinned `specify-cli` source with Cargo — no published binary is downloaded, so only a Rust toolchain is required (currently nightly, since cargo-script needs `-Zscript`). Co-develop the CLI locally with a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }`.
+`make lint` builds the in-tree `specify` binary under `cli/` and runs `specify lint framework --framework-root ..` — only a Rust toolchain is required. The runtime is in-tree (`cli/`), so there is no source pin or sibling checkout to resolve; `make ci` runs the full Rust workspace gate (`cargo make ci` under `cli/`) plus `make lint`.
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
 

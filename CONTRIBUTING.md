@@ -14,16 +14,16 @@ Augentic welcomes contributions to the Specify framework. This document covers t
 
 Unless you are fixing a known bug, we recommend discussing your change with the core team via a GitHub issue before getting started to ensure alignment with the project roadmap.
 
-The framework spans two repositories:
+The framework lives in one repository with two trees:
 
-- **[augentic/specify](https://github.com/augentic/specify)** -- skills, schemas, briefs, shared references, and documentation (Markdown, YAML, and shell)
-- **[augentic/specify-cli](https://github.com/augentic/specify-cli)** -- the `specify` binary and its Rust workspace crates
+- **prose root** (`plugins/`, `docs/`, `.cursor-plugin/`) -- skills, briefs, shared references, and documentation (Markdown, YAML, and shell)
+- **[`cli/`](cli)** -- the `specify` binary, its Rust workspace crates, and the JSON schemas it distributes
 
 See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides.
 
 ## Code style
 
-### Rust (specify-cli)
+### Rust (cli/)
 
 - Format with `cargo fmt`
 - Lint with `cargo clippy -- -D warnings`
@@ -32,7 +32,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 ### Skills and documentation (specify)
 
 - Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Skill Authoring Standards](docs/standards/skill-authoring.md)
-- `make lint` must pass before submitting a pull request. It needs only a Rust toolchain: the `scripts/specify.rs` resolver builds the `specify-cli` source pinned by [`Specify.toml`](Specify.toml) `cli` and runs the checks. See [Consistency Checks](docs/contributing/checks.md#binding-to-a-specify-source).
+- `make lint` must pass before submitting a pull request. It needs only a Rust toolchain: it builds the in-tree `specify` binary under `cli/` and runs the checks. See [Consistency Checks](docs/contributing/checks.md).
 - Use kebab-case for file names, change names, and adapter identifiers
 
 ## Developer's Certificate of Origin
@@ -92,7 +92,7 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 1. Create a feature branch off of `main`.
 2. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against `main`.
-3. Run checks: `make lint` for the specify repo; `cargo make ci` for the specify-cli repo.
+3. Run checks: `make lint` for the prose surface; `make ci` (or `cargo make ci` under `cli/`) for the full Rust + prose gate.
 4. Accept the Developer's Certificate of Origin on all commits (see above).
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).

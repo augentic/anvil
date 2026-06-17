@@ -25,15 +25,14 @@ use serde::{Deserialize, Serialize};
 use specify_error::{Error, Result};
 
 /// `owner/repo` slug for the release probe and the cargo git source.
-const REPO_SLUG: &str = "augentic/specify-cli";
+const REPO_SLUG: &str = "augentic/specify";
 /// Git source `cargo install --git` points at.
-const REPO_GIT_URL: &str = "https://github.com/augentic/specify-cli";
+const REPO_GIT_URL: &str = "https://github.com/augentic/specify";
 /// Homebrew tap formula the `brew` channel upgrades.
 const BREW_FORMULA: &str = "augentic/tap/specify";
 /// Unauthenticated GitHub REST endpoint for the latest release; the
 /// `gh`-less probe fallback reads `tag_name` from its JSON.
-const RELEASES_LATEST_API: &str =
-    "https://api.github.com/repos/augentic/specify-cli/releases/latest";
+const RELEASES_LATEST_API: &str = "https://api.github.com/repos/augentic/specify/releases/latest";
 /// Env override: when set to a non-empty value, [`latest_release_tag`]
 /// resolves to it verbatim, skipping `gh`/network. Lets CI and
 /// air-gapped installs pin the target deterministically (and keeps the
@@ -48,7 +47,7 @@ const PROBE_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const MAX_PROBE_BYTES: u64 = 8 * 1024 * 1024;
 /// User-Agent for the REST probe. GitHub rejects requests without one.
 const PROBE_USER_AGENT: &str =
-    concat!("specify/", env!("CARGO_PKG_VERSION"), " (+https://github.com/augentic/specify-cli)");
+    concat!("specify/", env!("CARGO_PKG_VERSION"), " (+https://github.com/augentic/specify)");
 
 /// How the running `specify` binary was installed.
 ///

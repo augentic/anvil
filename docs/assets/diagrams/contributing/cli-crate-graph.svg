@@ -1,5 +1,5 @@
-<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="specify-cli workspace crate dependency graph with specify-error at the base">
-  <title>specify-cli crate dependency graph</title>
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cli/ workspace crate dependency graph with specify-error at the base">
+  <title>cli/ workspace crate dependency graph</title>
   <defs>
     <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="#555"/>

@@ -126,7 +126,7 @@ struct Body {
     directories_created: Vec<String>,
     scaffolded_rule_keys: Vec<String>,
     specify_version: String,
-    /// `true` when this run wrote `project.yaml.specify_version` — always
+    /// `true` when this run wrote `project.yaml.specify` — always
     /// `true` for fresh init and for an `--upgrade` that bumped an older
     /// pin; `false` on an `--upgrade` no-op where the pin already matched.
     /// Change G's re-entry template reads this to distinguish "upgraded"
@@ -163,9 +163,9 @@ fn write_text(w: &mut dyn Write, body: &Body) -> std::io::Result<()> {
         writeln!(w, "  directories created: {}", body.directories_created.join(", "))?;
     }
     if body.specify_version_changed {
-        writeln!(w, "  specify_version: {}", body.specify_version)?;
+        writeln!(w, "  specify: {}", body.specify_version)?;
     } else {
-        writeln!(w, "  specify_version: {} (already current)", body.specify_version)?;
+        writeln!(w, "  specify: {} (already current)", body.specify_version)?;
     }
     if body.wasm_pkg_config_written {
         writeln!(w, "  wrote .specify/wasm-pkg.toml (edit to add registry mappings)")?;

@@ -103,7 +103,7 @@ fn synthesis_validator() -> jsonschema::Validator {
     let model: Value = serde_json::from_str(SLICE_MODEL_JSON_SCHEMA).expect("model schema parses");
     let registry = Registry::new()
         .add(
-            "https://github.com/augentic/specify-cli/schemas/slice/model.schema.json",
+            "https://github.com/augentic/specify/schemas/slice/model.schema.json",
             Resource::from_contents(model),
         )
         .and_then(jsonschema::RegistryBuilder::prepare)
@@ -305,7 +305,7 @@ fn diagnostic_report_validator() -> jsonschema::Validator {
         serde_json::from_str(DIAGNOSTIC_JSON_SCHEMA).expect("finding schema parses");
     let registry = Registry::new()
         .add(
-            "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json",
+            "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
             Resource::from_contents(finding),
         )
         .and_then(jsonschema::RegistryBuilder::prepare)
@@ -404,7 +404,7 @@ fn build_report_validator() -> jsonschema::Validator {
         serde_json::from_str(DIAGNOSTIC_JSON_SCHEMA).expect("diagnostic schema parses");
     let registry = Registry::new()
         .add(
-            "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json",
+            "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
             Resource::from_contents(diagnostic),
         )
         .and_then(jsonschema::RegistryBuilder::prepare)

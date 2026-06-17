@@ -692,7 +692,7 @@ pub(super) fn check_requested_version(
 /// than the floor the adapter cannot be honored, so resolution aborts
 /// with [`Error::AdapterCliTooOld`] on the exit-3 `EXIT_VERSION_TOO_OLD`
 /// path — the adapter-granularity analog of the `project.yaml`
-/// `specify_version` floor.
+/// `specify` floor.
 ///
 /// `current` is parsed permissively: an unparseable running version is
 /// treated as "not older" rather than bricking resolution, mirroring

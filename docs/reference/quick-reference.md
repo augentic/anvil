@@ -104,7 +104,7 @@ specify extension run <name> [args...]                        # run a declared W
 specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
 specify plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
 specify plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
-specify init --upgrade                                   # bump specify_version + re-scaffold preservation-safe files only
+specify init --upgrade                                   # bump specify pin + re-scaffold preservation-safe files only
 ```
 
 A pin newer than the binary is exit `3` (upgrade the binary first); an older pin loads normally — pre-1.0 majors are re-init, not migration. For `specify upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specify plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).

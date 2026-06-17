@@ -14,7 +14,7 @@ use super::RenderError;
 use crate::diagnostic::DiagnosticReport;
 
 const FINDING_SCHEMA_URL: &str =
-    "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json";
+    "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json";
 
 /// Render `report` as the diagnostic-report wire envelope.
 ///

@@ -14,13 +14,18 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
+    env:
+      # Full-parallelism nextest profile; local runs keep the bounded
+      # default so macOS does not choke on the integration subprocesses.
+      NEXTEST_PROFILE: ci
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
-      # Symlink integrity check — fail early if broken
+      # Symlink integrity — fail early if a spec-runtime link is missing
+      # or broken (no materialised copies allowed).
       - name: Verify symlinks
         run: |
           status=0
@@ -35,50 +40,38 @@ jobs:
           done
           exit $status
 
-      # Resolve specify-cli version
-      - id: specify-cli
-        run: |
-          branch="${{ github.ref_name }}"
-          line=$(git ls-remote --heads https://github.com/augentic/specify-cli.git "refs/heads/$branch")
-          if [ -n "$line" ]; then
-            echo "ref=$branch" >> "$GITHUB_OUTPUT"
-            echo "sha=$(echo "$line" | cut -f1)" >> "$GITHUB_OUTPUT"
-          else
-            sha=$(git ls-remote https://github.com/augentic/specify-cli.git main | cut -f1)
-            echo "ref=main" >> "$GITHUB_OUTPUT"
-            echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Restore a prebuilt specify binary
-      - id: specify-bin
-        uses: actions/cache@v4
+      # The stable toolchain is pinned by cli/rust-toolchain.toml; nightly
+      # rustfmt is additionally needed for the `fmt-check` gate, which runs
+      # `cargo +nightly fmt --all -- --check`.
+      - name: Install nightly rustfmt
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          path: specify-cli/target/release/specify
-          key: specify-bin-${{ steps.specify-cli.outputs.sha }}
+          components: rustfmt
 
-      # Build a specify binary if not cached
-      - if: steps.specify-bin.outputs.cache-hit != 'true'
-        uses: actions/checkout@v6
-        with:
-          repository: augentic/specify-cli
-          path: specify-cli
-          ref: ${{ steps.specify-cli.outputs.ref }}
-          fetch-depth: 1
-
-      - if: steps.specify-bin.outputs.cache-hit != 'true'
+      - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
-
-      - if: steps.specify-bin.outputs.cache-hit != 'true'
-        uses: Swatinem/rust-cache@v2
         with:
-          workspaces: specify-cli
+          components: clippy, rust-src, rustfmt
+          targets: wasm32-wasip2
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cli
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - if: steps.specify-bin.outputs.cache-hit != 'true'
-        run: cargo build --release --locked --manifest-path specify-cli/Cargo.toml --bin specify
+      - name: Install cargo tooling
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make,cargo-nextest,cargo-deny,cargo-vet
 
-      # Run checks
+      # Full Rust workspace gate: fmt-check, clippy, nextest, doctests,
+      # doc, vet, deny.
+      - name: Rust workspace CI
+        working-directory: cli
+        run: cargo make ci
+
+      # Framework lint over the in-tree prose surface (plugins/, docs/,
+      # adapters/), built from the same in-tree binary.
       - name: Verify framework
-        run: specify-cli/target/release/specify lint framework --framework-root .
-
+        run: make lint

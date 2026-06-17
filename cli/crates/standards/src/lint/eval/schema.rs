@@ -31,9 +31,9 @@ use serde_json::Value;
 use specify_diagnostics::{Diagnostic, FindingEvidence, FindingLocation};
 use specify_schema::{
     ADAPTER_JSON_SCHEMA, COMPONENTS_JSON_SCHEMA, DIAGNOSTIC_JSON_SCHEMA,
-    DIAGNOSTIC_REPORT_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, FRAMEWORK_JSON_SCHEMA, PLAN_JSON_SCHEMA,
-    PROVENANCE_JSON_SCHEMA, RESOLVED_RULES_JSON_SCHEMA, RULE_JSON_SCHEMA, SCENARIO_JSON_SCHEMA,
-    SKILL_JSON_SCHEMA, WORKSPACE_MODEL_JSON_SCHEMA, compile_schema,
+    DIAGNOSTIC_REPORT_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, PLAN_JSON_SCHEMA, PROVENANCE_JSON_SCHEMA,
+    RESOLVED_RULES_JSON_SCHEMA, RULE_JSON_SCHEMA, SCENARIO_JSON_SCHEMA, SKILL_JSON_SCHEMA,
+    WORKSPACE_MODEL_JSON_SCHEMA, compile_schema,
 };
 
 use super::{HintError, make_finding};
@@ -50,7 +50,6 @@ static REGISTERED_SCHEMAS: LazyLock<HashMap<&'static str, &'static str>> = LazyL
         ("review-result", DIAGNOSTIC_REPORT_JSON_SCHEMA),
         ("workspace-model", WORKSPACE_MODEL_JSON_SCHEMA),
         ("scenario", SCENARIO_JSON_SCHEMA),
-        ("framework", FRAMEWORK_JSON_SCHEMA),
         ("plan", PLAN_JSON_SCHEMA),
         ("evidence", EVIDENCE_JSON_SCHEMA),
         ("provenance", PROVENANCE_JSON_SCHEMA),

@@ -43,10 +43,8 @@ fn version_too_old_exits_three_json() {
     // Pin a version far in the future.
     let config_path = tmp.path().join(".specify/project.yaml");
     let original = fs::read_to_string(&config_path).unwrap();
-    let edited = original.replace(
-        &format!("specify_version: {}", env!("CARGO_PKG_VERSION")),
-        "specify_version: 99.0.0",
-    );
+    let edited =
+        original.replace(&format!("specify: {}", env!("CARGO_PKG_VERSION")), "specify: 99.0.0");
     fs::write(&config_path, edited).unwrap();
 
     let assert = specify_cmd()
@@ -80,11 +78,9 @@ fn older_pin_loads_fine() {
 
     let config_path = tmp.path().join(".specify/project.yaml");
     let original = fs::read_to_string(&config_path).unwrap();
-    let edited = original.replace(
-        &format!("specify_version: {}", env!("CARGO_PKG_VERSION")),
-        "specify_version: 0.0.1",
-    );
-    assert_ne!(original, edited, "fixture must repin specify_version");
+    let edited =
+        original.replace(&format!("specify: {}", env!("CARGO_PKG_VERSION")), "specify: 0.0.1");
+    assert_ne!(original, edited, "fixture must repin specify");
     fs::write(&config_path, edited).unwrap();
 
     let assert = specify_cmd()

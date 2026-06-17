@@ -20,11 +20,6 @@ fn include_set_accepts_top_level_markers() {
 }
 
 #[test]
-fn include_set_accepts_specify_toml() {
-    assert!(is_included("Specify.toml"));
-}
-
-#[test]
 fn include_set_accepts_root_readme_only() {
     // Root README.md is a lintable documentation surface; nested
     // readmes outside the documented prefixes stay excluded.

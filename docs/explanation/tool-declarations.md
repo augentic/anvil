@@ -160,7 +160,7 @@ target: https://github.com/augentic/specify/adapters/targets/contracts
 tools:
   - name: contract
     version: 1.0.1-dev
-    source: "/Users/alex/dev/specify-cli/crates/contract-validate/dist/contract.wasm"
+    source: "/Users/alex/dev/specify-adapters/adapters/targets/contracts/extension/contract.wasm"
     permissions:
       read:
         - "$PROJECT_DIR/contracts"

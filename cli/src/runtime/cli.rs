@@ -100,7 +100,7 @@ pub enum Commands {
         #[arg(long, conflicts_with = "workspace")]
         platforms: Option<String>,
         /// Re-entry version bump: over an already-populated `.specify/`,
-        /// rewrite `project.yaml.specify_version` to this binary's
+        /// rewrite `project.yaml.specify` to this binary's
         /// version (preserving every other field) and regenerate
         /// `AGENTS.md` only when absent — scaffolding nothing else and
         /// never re-fetching the adapter cache. A project already at the

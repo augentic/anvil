@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/decision.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/decision.schema.json",
   "title": "Specify decision record front-matter",
   "description": "Validates the YAML front-matter block of a Decision Record. One schema validates both the slice-authored form under `.specify/slices/<slice>/decisions/<slug>.md` and the promoted baseline form under `.specify/decisions/DEC-NNNN-<slug>.md`. The slice authors `slug` plus `status: accepted | rejected` and optional `supersedes[]` / `related[]`; the engine stamps `id` / `slice` / `date` (and, on a superseded target, `status: superseded` + `superseded-by`) at merge. The engine-stamped fields are therefore optional here so the one schema serves both shapes; the persisted baseline form always carries `id` / `slice` / `date`.",
   "type": "object",

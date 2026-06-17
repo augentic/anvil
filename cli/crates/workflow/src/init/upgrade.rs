@@ -1,4 +1,4 @@
-//! Re-entry (`specify init --upgrade`) body: bumps `project.yaml.specify_version`
+//! Re-entry (`specify init --upgrade`) body: bumps `project.yaml.specify`
 //! to the running binary over an existing `.specify/` without re-scaffolding.
 //! Mutates only `project.yaml`; never touches slices, specs, archive, registry,
 //! or the adapter cache.
@@ -19,7 +19,7 @@ use crate::init::{InitOptions, InitResult, resolve_version, validate_platforms};
 
 /// Run the re-entry version bump.
 ///
-/// Loads the existing config, then bumps `specify_version` to the
+/// Loads the existing config, then bumps the `specify` pin to the
 /// running binary's version — but only when it differs, so an
 /// already-current project is a true no-op (no `project.yaml` write).
 ///

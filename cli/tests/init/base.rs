@@ -459,7 +459,7 @@ fn seed_brownfield_regular(root: &Path) {
     fs::create_dir_all(specify.join("design-system")).unwrap();
     fs::write(
         specify.join("project.yaml"),
-        "name: brownfield\ndescription: existing project\nadapter: omnia\nspecify_version: 0.1.0\nrules:\n  specs: specs.md\n",
+        "name: brownfield\ndescription: existing project\nadapter: omnia\nspecify: 0.1.0\nrules:\n  specs: specs.md\n",
     )
     .unwrap();
     fs::write(specify.join("slices/my-slice/spec.md"), "# operator slice\n").unwrap();
@@ -507,7 +507,7 @@ fn upgrade_bumps_version_keeps_artifacts() {
         assert_eq!(before[key], after[key], "file {} must be byte-identical", key.display());
     }
 
-    // Within project.yaml only `specify_version` changed.
+    // Within project.yaml only `specify` changed.
     let after_cfg: ProjectConfig =
         serde_saphyr::from_str(std::str::from_utf8(&after[&project_yaml]).unwrap())
             .expect("parse after");
@@ -516,7 +516,7 @@ fn upgrade_bumps_version_keeps_artifacts() {
         specify_version: before_cfg.specify_version.clone(),
         ..after_cfg
     };
-    assert_eq!(normalised, before_cfg, "only specify_version may change in project.yaml");
+    assert_eq!(normalised, before_cfg, "only specify may change in project.yaml");
 
     // Second run is a byte-stable no-op.
     let snapshot_after_first = snapshot_tree(tmp.path());
@@ -542,7 +542,7 @@ fn upgrade_preserves_workspace_registry() {
     fs::create_dir_all(&specify).unwrap();
     fs::write(
         specify.join("project.yaml"),
-        "name: platform-workspace\nspecify_version: 0.1.0\nworkspace: true\n",
+        "name: platform-workspace\nspecify: 0.1.0\nworkspace: true\n",
     )
     .unwrap();
     fs::write(tmp.path().join("registry.yaml"), "version: 1\nprojects: []\n").unwrap();

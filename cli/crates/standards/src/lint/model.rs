@@ -19,7 +19,7 @@
 //!
 //! - Top-level envelope keys are `snake_case` (`project_dir`,
 //!   `scan_profile`, `markdown_sections`, …) to match the JSON
-//!   Schema under `specify-cli/schemas/lint/workspace-model.schema.json`.
+//!   Schema under `specify/schemas/lint/workspace-model.schema.json`.
 //! - Nested entity-fact keys are kebab-case (`line-start`,
 //!   `from-path`, `frontmatter-ref`, …) per the same schema; each
 //!   entity struct carries `#[serde(rename_all = "kebab-case")]`.
@@ -124,7 +124,7 @@ pub enum ScanProfile {
 /// `specify model query <selector>` are reserved surfaces.
 ///
 /// Top-level keys are `snake_case` to match the schema under
-/// `specify-cli/schemas/lint/workspace-model.schema.json`; nested
+/// `specify/schemas/lint/workspace-model.schema.json`; nested
 /// entity facts carry their own kebab-case rename.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

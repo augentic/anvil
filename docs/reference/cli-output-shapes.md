@@ -6,7 +6,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 - `--format json` responses are a **flat envelope**: every successful body is a single JSON object whose first key is `envelope-version` and whose remaining keys are the command-specific body fields **at the same level** — there is no `ok` discriminant and no `data` wrapper. Example: `{"envelope-version": 6, "action": "create", "plan": {...}, "entry": {...}}`.
 - Failures keep the same flat shape with three extra top-level keys:
-  - `error` — a **kebab-case discriminant string** (e.g. `"plan-has-outstanding-work"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md` in `augentic/specify-cli`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes) for the catalogue.
+  - `error` — a **kebab-case discriminant string** (e.g. `"plan-has-outstanding-work"`). The discriminant is grep-stable and forms part of the public contract; see [`cli/AGENTS.md`](../../cli/AGENTS.md#exit-codes) for the catalogue.
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Body fields named `ok` / `passed` / `idempotent` are payload fields, not envelope discriminants — they describe the per-command result and do not change the envelope shape.
@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`augentic/specify-cli/tests/fixtures/plan/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/plan) and [`augentic/specify-cli/tests/fixtures/e2e/goldens/`](https://github.com/augentic/specify-cli/tree/main/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`cli/tests/fixtures/plan/`](../../cli/tests/fixtures/plan) and [`cli/tests/fixtures/e2e/goldens/`](../../cli/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
 ### `specify plan create`
 
@@ -376,7 +376,7 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
 }
 ```
 
-A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report. See the CLI repo's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
+A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report. See the CLI workspace's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](../../cli/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
 
 ## Bootstrap verbs
 
@@ -397,7 +397,7 @@ Reports the detected channel and resolved target version without mutating. `comm
   "head-fallback": false,
   "journaled": false,
   "commands": [
-    { "program": "cargo", "args": ["install", "--git", "https://github.com/augentic/specify-cli", "--tag", "v0.43.0"] }
+    { "program": "cargo", "args": ["install", "--git", "https://github.com/augentic/specify", "--tag", "v0.43.0"] }
   ]
 }
 ```
@@ -438,7 +438,7 @@ Read-only Cursor plugin-cache drift report. One `plugins[]` row per declared plu
 
 ### `specify init --upgrade`
 
-Re-entry version bump. It shares the `specify init` body; the field that distinguishes the re-entry outcome is `specify-version-changed` — `true` when this run rewrote `project.yaml.specify_version` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
+Re-entry version bump. It shares the `specify init` body; the field that distinguishes the re-entry outcome is `specify-version-changed` — `true` when this run rewrote `project.yaml.specify` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
 
 ```json
 {

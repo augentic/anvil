@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/target/build-report.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/target/build-report.schema.json",
   "title": "Specify target build report",
   "description": "Closed-shape per-slice build report returned by a target adapter to `specify slice build`. `status` is `success` or `failure`; partial success is `success` carrying non-blocking findings only (per the `blocking` predicate). The CLI rejects `status: success` reports carrying any blocking-severity finding (`target-build-success-with-blocking-finding`). `findings[]` elements are governed by `diagnostic.schema.json` (relative `$ref` resolved against this schema's directory).",
   "type": "object",

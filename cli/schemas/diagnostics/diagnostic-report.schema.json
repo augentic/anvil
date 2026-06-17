@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic-report.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/diagnostics/diagnostic-report.schema.json",
   "title": "Specify diagnostic report envelope (v1)",
   "description": "Envelope schema validated before stdout emit by every diagnostic surface — `specify lint --format json` and the workflow-gating validate surface alike — for the `DiagnosticReport` envelope. The `version` field is the discriminant any future consumer keys on; widening the envelope (new top-level fields, new `summary` keys) is a `version: 2` change and requires updating both this schema and at least one round-trip consumer fixture in the same PR. The inner `Diagnostic[]` element shape is owned by `diagnostic.schema.json`.",
   "type": "object",

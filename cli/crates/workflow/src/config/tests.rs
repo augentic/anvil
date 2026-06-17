@@ -80,7 +80,7 @@ fn load_not_initialized_when_missing() {
 #[test]
 fn load_refuses_future_specify_version() {
     let tmp = tempdir().unwrap();
-    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify_version: \"99.0.0\"\n");
+    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: \"99.0.0\"\n");
     let err = ProjectConfig::load(tmp.path()).expect_err("future version rejected");
     match err {
         Error::CliTooOld { required, found } => {
@@ -94,22 +94,19 @@ fn load_refuses_future_specify_version() {
 #[test]
 fn load_accepts_floor_lte_current() {
     let tmp = tempdir().unwrap();
-    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify_version: \"0.0.1\"\n");
+    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: \"0.0.1\"\n");
     ProjectConfig::load(tmp.path()).expect("older version loads");
 
     let tmp = tempdir().unwrap();
     let exact = env!("CARGO_PKG_VERSION");
-    write_config(
-        tmp.path(),
-        &format!("name: demo\nadapter: omnia\nspecify_version: \"{exact}\"\n"),
-    );
+    write_config(tmp.path(), &format!("name: demo\nadapter: omnia\nspecify: \"{exact}\"\n"));
     ProjectConfig::load(tmp.path()).expect("exact version loads");
 }
 
 #[test]
 fn load_same_major_injected_current() {
     let tmp = tempdir().unwrap();
-    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify_version: \"2.0.0\"\n");
+    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: \"2.0.0\"\n");
     let cfg = ProjectConfig::load_with_current(tmp.path(), "2.4.1").expect("same major loads");
     assert_eq!(cfg.specify_version.as_deref(), Some("2.0.0"));
 }
@@ -117,7 +114,7 @@ fn load_same_major_injected_current() {
 #[test]
 fn load_allows_invalid_pinned_version() {
     let tmp = tempdir().unwrap();
-    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify_version: not-a-semver\n");
+    write_config(tmp.path(), "name: demo\nadapter: omnia\nspecify: not-a-semver\n");
     let cfg = ProjectConfig::load(tmp.path()).expect("unparseable version is permissive");
     assert_eq!(cfg.specify_version.as_deref(), Some("not-a-semver"));
 }

@@ -17,6 +17,7 @@
 //! without a co-located framework checkout or a manual `--rules-root`
 //! (RM-07). Provenance is stamped in [`CodexMeta`].
 
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -136,8 +137,8 @@ impl CodexMeta {
 /// into the project codex cache and stamp [`CodexMeta`].
 ///
 /// The shared codex lives at a sibling path in the same source tree the
-/// target adapter resolves from. This walks up from the adapter's
-/// `source_dir` to the nearest ancestor that carries the shared
+/// target adapter resolves from. This anchors on the adapter's own
+/// `adapters/` parent (see [`repo_root_with_codex`]) to locate the shared
 /// `universal/` pack, replaces the out-of-tree `<project-cache>/codex/` with a fresh
 /// copy of that pack (and, when `include_framework`, the framework
 /// `core/` pack), and records provenance pinned to `source.adapter_value`.
@@ -173,13 +174,24 @@ pub(super) fn cache_codex(
     Ok(true)
 }
 
-/// Walk up from a resolved adapter `source_dir` to the nearest ancestor
-/// that carries the shared `universal/` pack. The same walk works for
-/// local sources (canonicalised adapter dir under a repo checkout) and
-/// for git sources (the sparse checkout temp dir, which now also fetches
-/// `adapters/shared/rules/` — see `init/git.rs`).
+/// Resolve the shared-codex root for a resolved adapter `source_dir`.
+///
+/// An adapter resolves from `<base>/adapters/{targets,sources}/<name>`,
+/// and its shared codex lives at `<base>/adapters/shared/rules/` — a
+/// sibling of the `targets`/`sources` dir under the *same* `adapters/`
+/// parent. We therefore anchor on the adapter's own `adapters/` ancestor
+/// and probe `<base>` for the shared pack, rather than accepting the pack
+/// at any outer ancestor. This anchor works for local sources
+/// (canonicalised adapter dir under a repo checkout) and for git sources
+/// (the sparse checkout temp dir, which fetches `adapters/shared/rules/`
+/// in the same sparse set — see `init/git.rs`), while keeping an adapter
+/// nested inside an unrelated outer repo from adopting that repo's
+/// `adapters/shared/rules/` tree.
 fn repo_root_with_codex(source_dir: &Path) -> Option<PathBuf> {
-    source_dir.ancestors().find(|dir| dir.join(UNIVERSAL_RULES_REL).is_dir()).map(Path::to_path_buf)
+    let adapters_dir =
+        source_dir.ancestors().find(|dir| dir.file_name() == Some(OsStr::new("adapters")))?;
+    let base = adapters_dir.parent()?;
+    base.join(UNIVERSAL_RULES_REL).is_dir().then(|| base.to_path_buf())
 }
 
 fn write_codex_meta(

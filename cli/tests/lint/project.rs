@@ -29,7 +29,7 @@ use specify_schema::{
 use tempfile::TempDir;
 
 const FINDING_SCHEMA_URL: &str =
-    "https://github.com/augentic/specify-cli/schemas/diagnostics/diagnostic.schema.json";
+    "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json";
 
 /// Compile the diagnostic-report envelope schema with the
 /// `diagnostic.schema.json` child resource wired through a

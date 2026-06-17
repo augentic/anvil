@@ -70,7 +70,7 @@ fn scaffold_greenfield(dest: &Path, adapter: &str) -> Result<(), Error> {
     let platforms_line = resolve_default_platforms(adapter, dest);
 
     let mut project_yaml = format!(
-        "name: {name}\nadapter: {adapter}\nspecify_version: \"{}\"\nrules: {{}}\n",
+        "name: {name}\nadapter: {adapter}\nspecify: \"{}\"\nrules: {{}}\n",
         env!("CARGO_PKG_VERSION")
     );
     if let Some(line) = platforms_line {

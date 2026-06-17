@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/slice/provenance.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/slice/provenance.schema.json",
   "title": "Specify slice provenance projection",
   "description": "Validates the provenance audit view per workflow \u00a7D4. This is **not** a persisted file: provenance is carried inline in the single `model.yaml` artifact, and `specify slice provenance <slice> [--format]` projects this shape on demand, listing every `REQ-*` id in `spec.md` and the `(source, id)` pairs that contributed plus the authority outcome. The projection is byte-stable across runs given the same model and is the operator's audit surface for synthesis decisions; it is regenerated from `model.yaml` on every invocation and is not an authoritative input to any downstream verb (see workflow \u00a7Provenance projection). Closed top-level shape; closed per-requirement shape; closed per-contributing-claim shape \u2014 unknown fields are rejected. Because the view is a pure projection of `model.yaml`, it cannot drift from its source.",
   "type": "object",

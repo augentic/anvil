@@ -13,7 +13,7 @@ const ALL_SUPPORTED: [Platform; 3] = [Platform::Core, Platform::Ios, Platform::A
 fn write_project_yaml(root: &Path, adapter: &str, platforms: &[&str]) {
     let yaml_platforms: Vec<String> = platforms.iter().map(|p| format!("  - {p}")).collect();
     let content = format!(
-        "name: detect-test\nadapter: {adapter}\nspecify_version: '{version}'\nplatforms:\n{platforms}",
+        "name: detect-test\nadapter: {adapter}\nspecify: '{version}'\nplatforms:\n{platforms}",
         version = env!("CARGO_PKG_VERSION"),
         platforms = yaml_platforms.join("\n"),
     );

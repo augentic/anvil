@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/authoring/skill.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/authoring/skill.schema.json",
   "title": "SKILL.md frontmatter",
   "description": "Validates the YAML frontmatter of a Specify skill definition file.",
   "type": "object",

@@ -35,7 +35,7 @@ fn bumps_older_major_preserving_fields() {
     let tmp = tempdir().unwrap();
     seed_project_yaml(
         tmp.path(),
-        "name: demo\ndescription: a project\nadapter: omnia\nspecify_version: 0.1.0\nrules:\n  specs: specs.md\n",
+        "name: demo\ndescription: a project\nadapter: omnia\nspecify: 0.1.0\nrules:\n  specs: specs.md\n",
     );
 
     let result = init(upgrade_opts(tmp.path()), fixed_now()).expect("upgrade ok");
@@ -59,7 +59,7 @@ fn byte_stable_noop_when_current() {
     let tmp = tempdir().unwrap();
     seed_project_yaml(
         tmp.path(),
-        &format!("name: demo\nadapter: omnia\nspecify_version: {}\n", env!("CARGO_PKG_VERSION")),
+        &format!("name: demo\nadapter: omnia\nspecify: {}\n", env!("CARGO_PKG_VERSION")),
     );
     let config_path = tmp.path().join(".specify/project.yaml");
     let before = fs::read(&config_path).expect("read before");
@@ -74,10 +74,7 @@ fn byte_stable_noop_when_current() {
 #[test]
 fn preserves_workspace_discriminator() {
     let tmp = tempdir().unwrap();
-    seed_project_yaml(
-        tmp.path(),
-        "name: platform-workspace\nspecify_version: 0.1.0\nworkspace: true\n",
-    );
+    seed_project_yaml(tmp.path(), "name: platform-workspace\nspecify: 0.1.0\nworkspace: true\n");
 
     let result = init(upgrade_opts(tmp.path()), fixed_now()).expect("upgrade ok");
     assert!(result.specify_version_changed);
@@ -134,7 +131,7 @@ fn seed_adapter_cache(project_dir: &Path, name: &str) {
 fn upgrade_with_platforms_updates_config() {
     let tmp = tempdir().unwrap();
     let _cache = scoped_cache(&tmp);
-    seed_project_yaml(tmp.path(), "name: demo\nadapter: vectis-stub\nspecify_version: 0.1.0\n");
+    seed_project_yaml(tmp.path(), "name: demo\nadapter: vectis-stub\nspecify: 0.1.0\n");
     seed_adapter_cache(tmp.path(), "vectis-stub");
 
     let platforms = [Platform::Core, Platform::Ios, Platform::Android];
@@ -162,7 +159,7 @@ fn upgrade_with_platforms_updates_config() {
 fn upgrade_platforms_no_core_fails() {
     let tmp = tempdir().unwrap();
     let _cache = scoped_cache(&tmp);
-    seed_project_yaml(tmp.path(), "name: demo\nadapter: vectis-stub\nspecify_version: 0.1.0\n");
+    seed_project_yaml(tmp.path(), "name: demo\nadapter: vectis-stub\nspecify: 0.1.0\n");
     seed_adapter_cache(tmp.path(), "vectis-stub");
 
     let platforms = [Platform::Ios, Platform::Android];
@@ -191,7 +188,7 @@ fn upgrade_preserves_platforms() {
     let tmp = tempdir().unwrap();
     seed_project_yaml(
         tmp.path(),
-        "name: demo\nadapter: vectis-stub\nspecify_version: 0.1.0\nplatforms:\n  - core\n  - ios\n",
+        "name: demo\nadapter: vectis-stub\nspecify: 0.1.0\nplatforms:\n  - core\n  - ios\n",
     );
 
     let result = init(upgrade_opts(tmp.path()), fixed_now()).expect("upgrade ok");

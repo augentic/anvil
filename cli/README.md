@@ -5,7 +5,7 @@
 The `specify` binary is required by `spec` plugin skills. It is the single CLI for the whole workflow, including the framework authoring lint (`specify lint framework`). Install using:
 
 ```bash
-cargo install --git https://github.com/augentic/specify-cli
+cargo install --git https://github.com/augentic/specify
 
 # brew install augentic/tap/specify         # macOS + Linux (primary)
 ```

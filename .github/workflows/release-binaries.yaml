@@ -1,4 +1,9 @@
-name: Release
+name: Release binaries
+
+# Cross-platform `specify` binary build. Triggered by the `v*.*.*` tag
+# that publish.yaml pushes on a merged release PR; publish.yaml creates
+# the GitHub Release (curated notes) and this workflow attaches the
+# built binary archives to it. The Cargo workspace lives under cli/.
 
 on:
   push:
@@ -6,12 +11,11 @@ on:
       - "v*.*.*"
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-binaries-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
   contents: write
-  packages: write
 
 jobs:
   build:
@@ -42,7 +46,7 @@ jobs:
             use_cross: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -52,6 +56,7 @@ jobs:
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
         with:
+          workspaces: cli
           key: release-${{ matrix.target }}
 
       - name: Install cross
@@ -61,12 +66,14 @@ jobs:
       - name: Build (cargo)
         if: ${{ !matrix.use_cross }}
         shell: bash
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        working-directory: cli
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
 
       - name: Build (cross)
         if: matrix.use_cross
         shell: bash
-        run: cross build --release --locked --target ${{ matrix.target }}
+        working-directory: cli
+        run: cross build --release --locked --target ${{ matrix.target }} --bin specify
 
       - name: Compute version
         id: version
@@ -79,7 +86,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ARCHIVE="specify-${VERSION}-${{ matrix.target }}.tar.gz"
-          tar -czf "${ARCHIVE}" -C "target/${{ matrix.target }}/release" specify
+          tar -czf "${ARCHIVE}" -C "cli/target/${{ matrix.target }}/release" specify
           shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
 
       - name: Package (windows)
@@ -88,7 +95,7 @@ jobs:
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $archive = "specify-$version-${{ matrix.target }}.zip"
-          7z a $archive "target\${{ matrix.target }}\release\specify.exe"
+          7z a $archive "cli\target\${{ matrix.target }}\release\specify.exe"
           (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower() + "  " + $archive | Out-File -FilePath "$archive.sha256" -Encoding ascii
 
       - name: Upload artifact
@@ -103,14 +110,13 @@ jobs:
           retention-days: 7
 
   release:
-    name: Publish GitHub Release
+    name: Attach binaries to release
     needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -118,23 +124,20 @@ jobs:
           pattern: specify-*
           merge-multiple: true
 
-      - name: Compute version
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-
       - name: List artifacts
         run: ls -la artifacts/
 
-      # The binary archives and the WASI tool packages are the only release
-      # artifacts. The workspace crates are not published to crates.io —
-      # there are no external crate consumers, and the path-only workspace
-      # deps are deliberate.
-      - name: Create GitHub Release
+      # The binary archives are the only release artifacts. The workspace
+      # crates are not published to crates.io — there are no external crate
+      # consumers, and the path-only workspace deps are deliberate. Notes
+      # are owned by publish.yaml; this step only attaches files to the
+      # already-created release for the tag.
+      - name: Attach binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
           files: artifacts/**/*
-          generate_release_notes: true
+          fail_on_unmatched_files: true
+          generate_release_notes: false
           draft: false
           prerelease: false

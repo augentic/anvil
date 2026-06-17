@@ -39,7 +39,7 @@ If the command succeeds, continue to step 2.
 
 If `specify` is not on PATH, tell the user:
 
-> "The `specify` CLI is required before I can initialize this project. I can install it now with `cargo install --git https://github.com/augentic/specify-cli`, then verify `specify --version` before continuing."
+> "The `specify` CLI is required before I can initialize this project. I can install it now with `cargo install --git https://github.com/augentic/specify`, then verify `specify --version` before continuing."
 
 Use the **AskQuestion tool** to confirm whether they want to install the CLI now.
 
@@ -47,7 +47,7 @@ Use the **AskQuestion tool** to confirm whether they want to install the CLI now
 - If they confirm, run:
 
   ```bash
-  cargo install --git https://github.com/augentic/specify-cli
+  cargo install --git https://github.com/augentic/specify
   ```
 
 After installation, run `specify --version` again.

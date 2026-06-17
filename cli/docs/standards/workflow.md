@@ -148,7 +148,7 @@ The `specify adapter` namespace carries adapter *authoring* verbs only — `spec
 
 ## Note to the implementing agent
 
-Touching `Slice.target`, `SliceSourceBinding`, `Divergence`, `crates/model/src/spec/provenance.rs`, `crates/workflow/src/adapter/`, `crates/workflow/src/journal.rs`, `crates/workflow/src/schema.rs`, the `$CAPABILITY_DIR` env var, or the `adapter--<axis>--<slug>` tool cache scope requires a cross-repo `rg` sweep against both [`augentic/specify-cli`](https://github.com/augentic/specify-cli) and [`augentic/specify`](https://github.com/augentic/specify) in the same PR — the contract spans both repos.
+Touching `Slice.target`, `SliceSourceBinding`, `Divergence`, `crates/model/src/spec/provenance.rs`, `crates/workflow/src/adapter/`, `crates/workflow/src/journal.rs`, `crates/workflow/src/schema.rs`, the `$CAPABILITY_DIR` env var, or the `adapter--<axis>--<slug>` tool cache scope requires a repo-wide `rg` sweep across both the in-tree [`cli/`](../..) workspace and the surrounding `augentic/specify` prose in the same PR — the contract spans both trees.
 
 ## D1 — Runtime source adapter (`captures`)
 

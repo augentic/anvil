@@ -36,7 +36,7 @@ fn dry_run_reports_channel_commands() {
         commands[0]["args"].as_array().expect("args").iter().map(|a| a.as_str().unwrap()).collect();
     assert_eq!(
         args,
-        ["install", "--git", "https://github.com/augentic/specify-cli", "--tag", "v9.9.9"]
+        ["install", "--git", "https://github.com/augentic/specify", "--tag", "v9.9.9"]
     );
 
     assert!(

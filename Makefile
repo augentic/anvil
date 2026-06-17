@@ -3,33 +3,45 @@
 # `make install-cli INSTALL_DIR=/usr/local/bin`.
 INSTALL_DIR ?= $(HOME)/.local/bin
 
-# Resolve CLI using Specify.toml or Specify.local.toml (gitignored overlay).
-# N.B. drop `+nightly -Zscript` once it stabilizes (rust-lang/cargo#16569). 
-RESOLVE := cargo +nightly -Zscript scripts/specify.rs
+# Cursor plugin cache root and this marketplace's name (see
+# .cursor-plugin/marketplace.json) for `make use-local-plugins`.
+CURSOR_HOME ?= $(HOME)/.cursor
+MARKETPLACE := augentic
 
-.PHONY: lint install-cli use-local-dev use-local-plugins use-team-plugins
+.PHONY: ci lint install-cli use-local-plugins use-team-plugins
 
+# Full local gate: the Rust workspace CI under cli/, then the framework
+# lint over the in-tree prose (plugins/, docs/, adapters/).
+ci:
+	cd cli && cargo make ci
+	$(MAKE) lint
+
+# Framework lint over the prose surface, built from the in-tree binary.
 lint:
-	$(RESOLVE) lint framework
+	cd cli && cargo run -q -p specify -- lint framework --framework-root ..
 
-# Adapter-local dev: materialize specify via scripts/specify.rs --install (same cli
-# contract as make lint / make install-cli) and repopulate the plugin cache. Requires
-# a gitignored Specify.local.toml with cli = { path = "../specify-cli" }. The nightly
-# shebang also allows ./scripts/use-local-dev.rs.
-use-local-dev:
-	@cargo +nightly -Zscript scripts/use-local-dev.rs $(ARGS)
-
+# Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:
 	@mkdir -p "$(INSTALL_DIR)"
-	@ln -sfn "$(CURDIR)/$$($(RESOLVE) --install)" "$(INSTALL_DIR)/specify"
+	cd cli && cargo build --release -p specify
+	@ln -sfn "$(CURDIR)/cli/target/release/specify" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
-# Repopulate the Cursor plugin cache from the working tree. The typed
-# marketplace.json parse lives in use-local-dev.rs --plugins-only (no jq/bash).
+# Mirror the working-tree plugins into the Cursor plugin cache so a local
+# Cursor picks up uncommitted skill changes. Restart Cursor afterwards.
 use-local-plugins:
-	@cargo +nightly -Zscript scripts/use-local-dev.rs --plugins-only
+	@cache="$(CURSOR_HOME)/plugins/cache/$(MARKETPLACE)"; \
+	rm -rf "$$cache"; \
+	for dir in plugins/*/; do \
+		name=$$(basename "$$dir"); \
+		dest="$$cache/$$name/main"; \
+		mkdir -p "$$dest"; \
+		cp -R "$$dir". "$$dest"; \
+		echo "cached $$name"; \
+	done; \
+	echo "Restart Cursor to pick up local plugin changes."
 
-# Clear the augentic plugin cache via the CLI's own verb (journaled, marketplace-
-# scoped). Cursor refetches the published plugins on restart.
+# Clear the augentic plugin cache via the in-tree binary's own verb
+# (journaled, marketplace-scoped). Cursor refetches on restart.
 use-team-plugins:
-	@$(RESOLVE) plugins refresh --yes
+	cd cli && cargo run -q -p specify -- plugins refresh --project-dir .. --yes

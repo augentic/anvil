@@ -1,9 +1,0 @@
-# The framework repo builds the pinned `specify-cli` SOURCE via scripts/specify.rs
-# (a single-file cargo-script). cargo-script is still nightly-only — it requires
-# the unstable `-Zscript` flag — so the resolver runs under nightly. Switch this
-# to a stable channel (the release that stabilizes single-file packages) once
-# cargo-script lands on stable (rust-lang/cargo#16569), and drop `+nightly
-# -Zscript` from the Makefile, scripts/specify.rs shebang, and CI in the same
-# change. A clean clone on a toolchain without `-Zscript` then fails clearly.
-[toolchain]
-channel = "nightly"

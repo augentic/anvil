@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify-cli/schemas/discovery/lead.schema.json",
+  "$id": "https://github.com/augentic/specify/schemas/discovery/lead.schema.json",
   "title": "Specify discovery lead",
   "description": "Validates a single raw, unmerged `Lead` block under `## Lead inventory` in `discovery.md` per workflow §Discovery handshake. Each block is one lead as surfaced by one source: a `source` naming the binding that produced it, a kebab-case `lead` (unique only within that `source`), and a content-bearing per-source `synopsis`. Identity is the `(source, lead)` pair; the same `lead` MAY appear under different source keys, and cross-source unification is deferred to `/spec:plan`'s plan-time `propose` sub-step. `slices[].sources[].lead` resolves against the canonical `lead` id within the binding's `source`.",
   "type": "object",

@@ -62,7 +62,7 @@ pub const EXIT_CODES: &[(u8, &str, &str)] = &[
         "validation-failed",
         "Validation findings, invalid arguments, or an undeclared/over-permissioned tool request.",
     ),
-    (3, "version-too-old", "project.yaml.specify_version is newer than the binary."),
+    (3, "version-too-old", "project.yaml.specify is newer than the binary."),
 ];
 
 impl From<Exit> for ExitCode {

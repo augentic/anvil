@@ -17,7 +17,7 @@ The binary commits to a four-slot exit-code table. `Exit::from(&Error)` in `src/
 | 0    | `EXIT_SUCCESS`            | Command succeeded.                                                                                                              |
 | 1    | `EXIT_GENERIC_FAILURE`    | Any `Error` variant not listed below (I/O, YAML, schema, merge, tool resolver/runtime, ...).                                    |
 | 2    | `EXIT_VALIDATION_FAILED`  | Validation findings, `Error::Validation`, `Error::Argument`, or a tool request rejected as undeclared.                          |
-| 3    | `EXIT_VERSION_TOO_OLD`    | `project.yaml.specify_version` is newer than `CARGO_PKG_VERSION`.                                                               |
+| 3    | `EXIT_VERSION_TOO_OLD`    | `project.yaml.specify` is newer than `CARGO_PKG_VERSION`.                                                               |
 
 `Exit::ArgumentError` and `Exit::ValidationFailed` are distinct Rust variants that share code `2`, keeping the wire contract four-slot while preserving dispatcher-side clarity — anything actionable by the operator is in the JSON envelope's `code` discriminant, and per-finding detail is on the stdout `DiagnosticReport`.
 
@@ -108,7 +108,7 @@ Test coverage rests on the per-kind evaluator unit suites (`crates/standards/src
 
 The output-role domain types are spelled `Target*` (`Target`, `Slice.target`, the `slice-create-target-missing` / `init-requires-adapter-or-workspace` discriminants, plus every fixture, JSON envelope, and call site). The shared manifest *shape* is loaded by the axis-aware module `crates/workflow/src/adapter/` (`SourceAdapter` / `TargetAdapter` / `Axis` / `ResolvedAdapter` / `AdapterLocation`). Briefs are resolved by path through `briefs.<op>`; they carry no YAML frontmatter and the CLI never reads their bodies. The slice-metadata wire uses `Operation { Shape, Build, Merge }` (`phase: shape | build | merge`).
 
-Per workflow §"Note to the implementing agent", touching any of these symbols requires a cross-repo `rg` sweep against `augentic/specify-cli` and `augentic/specify` in the same PR.
+Per workflow §"Note to the implementing agent", touching any of these symbols requires an `rg` sweep across both the in-tree `cli/` workspace and the surrounding `augentic/specify` prose in the same PR.
 
 ## Adapter loader axis routing
 
@@ -129,7 +129,7 @@ The loader threads identity through a value type — `AdapterRef { name: String,
 
 - **`adapter-version-malformed`** — the post-schema load gate (`check_version`) rejects a manifest whose raw `version` is absent or not exact semver, before typed deserialization, so the diagnostic names the field rather than surfacing a generic parse error.
 - **`adapter-version-required`** — `check_requested_version` rejects a pin (`AdapterRef.version = Some(_)`) that does not match the installed manifest identity. Latent in the single-identity world (a `None` pin always picks the installed identity); wired now so RFC-48's multi-identity store widens the same seam.
-- **`adapter-cli-too-old`** — RFC-47 D3 host-CLI compatibility floor. `adapter.yaml` carries an optional `specify` semver string (parsed into `requires_specify: Option<semver::Version>`); the post-schema gate `check_requires_specify` compares it against the running binary (`env!("CARGO_PKG_VERSION")`) and aborts with `Error::AdapterCliTooOld` on the exit-3 `EXIT_VERSION_TOO_OLD` path when the binary is older — the adapter-granularity analog of the `project.yaml.specify_version` floor. Exact floor only (no ranges, matching the version-pin posture); absent means no floor. The check is transport-independent (identical for `Local`, `Cached`, and any future registry tree).
+- **`adapter-cli-too-old`** — RFC-47 D3 host-CLI compatibility floor. `adapter.yaml` carries an optional `specify` semver string (parsed into `requires_specify: Option<semver::Version>`); the post-schema gate `check_requires_specify` compares it against the running binary (`env!("CARGO_PKG_VERSION")`) and aborts with `Error::AdapterCliTooOld` on the exit-3 `EXIT_VERSION_TOO_OLD` path when the binary is older — the adapter-granularity analog of the `project.yaml.specify` floor. Exact floor only (no ranges, matching the version-pin posture); absent means no floor. The check is transport-independent (identical for `Local`, `Cached`, and any future registry tree).
 
 A `sources.<key>.version` optional pin on `SourceBinding` (and `sourceBinding` in `plan.schema.json`) carries the same `Option<semver::Version>` — additive, so existing `plan.yaml` binds parse unchanged.
 

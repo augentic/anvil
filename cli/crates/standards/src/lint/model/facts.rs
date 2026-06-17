@@ -3,7 +3,7 @@
 //! Each struct is one fact family the `specify lint` indexer
 //! produces. Nested keys are kebab-case (`line-start`, `from-path`,
 //! `frontmatter-ref`, …) per
-//! `specify-cli/schemas/lint/workspace-model.schema.json`; every
+//! `specify/schemas/lint/workspace-model.schema.json`; every
 //! struct carries `#[serde(rename_all = "kebab-case")]`.
 
 use serde::{Deserialize, Serialize};

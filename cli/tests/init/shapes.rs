@@ -5,7 +5,7 @@
 //! and asserts the on-disk + JSON-envelope contract for one shape:
 //!
 //! - `greenfield` — a fresh `specify init <adapter>` over an empty dir
-//!   scaffolds `.specify/` and pins the current `specify_version`.
+//!   scaffolds `.specify/` and pins the current `specify` version.
 //! - `brownfield` — `specify init --upgrade` over a populated regular
 //!   project bumps only the pin, keeps operator artifacts byte-stable,
 //!   and re-runs as a no-op.
@@ -27,7 +27,7 @@ use tempfile::tempdir;
 
 use crate::common::{omnia_schema_dir, parse_json, specify_cmd};
 
-/// Version this binary stamps into `specify_version` (the `specify`
+/// Version this binary stamps into the `specify:` pin (the `specify`
 /// crate and this test crate share the workspace version).
 const BINARY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -79,7 +79,7 @@ fn brownfield() {
     fs::create_dir_all(specify.join("slices/my-slice")).unwrap();
     fs::write(
         specify.join("project.yaml"),
-        "name: brownfield\nadapter: omnia\nspecify_version: 0.1.0\nrules:\n  specs: specs.md\n",
+        "name: brownfield\nadapter: omnia\nspecify: 0.1.0\nrules:\n  specs: specs.md\n",
     )
     .unwrap();
     fs::write(specify.join("slices/my-slice/spec.md"), "# operator slice\n").unwrap();
@@ -116,7 +116,7 @@ fn workspace() {
     fs::create_dir_all(&specify).unwrap();
     fs::write(
         specify.join("project.yaml"),
-        "name: platform-workspace\nspecify_version: 0.1.0\nworkspace: true\n",
+        "name: platform-workspace\nspecify: 0.1.0\nworkspace: true\n",
     )
     .unwrap();
     fs::write(tmp.path().join("registry.yaml"), "version: 1\nprojects: []\n").unwrap();

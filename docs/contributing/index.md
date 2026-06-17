@@ -4,44 +4,39 @@ This section is for developers working on the Specify framework itself -- the sk
 
 ## Repository map
 
-Specify spans two repositories:
+The platform lives in one repository, [`augentic/specify`](https://github.com/augentic/specify):
 
-| Repository | Contents | Language |
-|------------|----------|----------|
-| [`augentic/specify`](https://github.com/augentic/specify) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
-| [`augentic/specify-cli`](https://github.com/augentic/specify-cli) | The `specify` binary (workflow runtime + `specify lint framework`) and workspace crates | Rust |
+| Path | Contents | Language |
+|------|----------|----------|
+| repo root (`plugins/`, `adapters/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/`) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
+| [`cli/`](https://github.com/augentic/specify/tree/main/cli) | The `specify` binary (workflow runtime + `specify lint framework`) and workspace crates | Rust |
 
-The `specify` repo defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The `specify-cli` repo implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
+The prose at the repo root defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace under `cli/` implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
-The two repos are independently versioned and released. Skills invoke the CLI as a subprocess (`specify plan add ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
+The prose and the runtime share one version line and ship in one release. Skills invoke the CLI as a subprocess (`specify plan add ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
 
 ## Who you're contributing for
 
 Two audiences share this repository:
 
-| Audience | Typical edits | `specify-cli` checkout needed? |
-|----------|---------------|--------------------------------|
+| Audience | Typical edits | Touches the Rust workspace? |
+|----------|---------------|-----------------------------|
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
-| **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work in the Rust workspace |
+| **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work under `cli/` |
 
-Markdown-only contributors run `make lint` locally with only a Rust toolchain: it builds the `specify-cli` source pinned by [`Specify.toml`](../../Specify.toml) `cli` and runs the framework checks (see [Consistency Checks](checks.md#binding-to-a-specify-source)). Tooling contributors actively co-developing the CLI point a gitignored `Specify.local.toml` `cli = { path = "../specify-cli" }` at their working tree — `make lint` then builds it directly — and run `cargo make test` in that checkout to exercise the `specify-standards` framework predicate suite before opening a PR. Slice/build work against local plugin changes uses `make use-local-dev` (same `cli.path` overlay; installs `specify` via the shared resolver, then refreshes the plugin cache).
+Every contributor runs `make lint` locally with only a Rust toolchain: it builds the in-tree `specify` binary under `cli/` and runs the framework checks (see [Consistency Checks](checks.md)). Tooling contributors additionally run `cargo make test` under `cli/` to exercise the `specify-standards` framework predicate suite before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
 
 ## Development environment
 
-**For skill and adapter work** (specify repo):
+**For skill and adapter work** (repo root):
 
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
 - [mdBook](https://rust-lang.github.io/mdBook/) — for building documentation locally (optional)
 
-**For tooling work** (`specify-cli` repo, `crates/standards/`):
+**For tooling and CLI work** (`cli/`):
 
-- Rust toolchain — `make lint` builds the pinned `specify-cli` source (currently a nightly toolchain, since the `scripts/specify.rs` resolver is a cargo-script and cargo-script is still nightly-only)
-- A checkout of [`augentic/specify-cli`](https://github.com/augentic/specify-cli) to co-develop the framework checker, pointed at by a gitignored `Specify.local.toml` `cli = { path = … }`
-
-**For CLI work** (specify-cli repo):
-
-- Rust stable toolchain
-- [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the `Makefile` forwards to `Makefile.toml`
+- Rust stable toolchain — `make lint` and `cd cli && cargo build` use the channel pinned in [`cli/rust-toolchain.toml`](../../cli/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
+- [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the `cli/Makefile` forwards to `cli/Makefile.toml`
 - [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks
 
@@ -50,7 +45,7 @@ Markdown-only contributors run `make lint` locally with only a Rust toolchain: i
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make lint` in the specify repo (works for every contributor — no `specify-cli` checkout required). `cargo make ci` in the specify-cli repo for CLI work. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make lint` over the prose (works for every contributor). `cd cli && cargo make ci` for CLI work, or `make ci` for the full Rust + prose gate. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 

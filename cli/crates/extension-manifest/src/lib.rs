@@ -445,15 +445,18 @@ mod tests {
     #[test]
     fn template_source_round_trips() {
         let manifest: ExtensionManifest = serde_saphyr::from_str(
-            "tools:\n  - name: vectis\n    version: 0.3.0\n    source: $PROJECT_DIR/../specify-cli/target/vectis.wasm\n",
+            "tools:\n  - name: vectis\n    version: 0.3.0\n    source: $PROJECT_DIR/../specify-adapters/target/vectis.wasm\n",
         )
         .expect("parse template source");
         let tool = &manifest.tools[0];
         assert!(
-            matches!(&tool.source, ExtensionSource::TemplatePath(t) if t == "$PROJECT_DIR/../specify-cli/target/vectis.wasm"),
+            matches!(&tool.source, ExtensionSource::TemplatePath(t) if t == "$PROJECT_DIR/../specify-adapters/target/vectis.wasm"),
         );
         let yaml = serde_saphyr::to_string(&manifest).expect("serialize template source");
-        assert!(yaml.contains("source: $PROJECT_DIR/../specify-cli/target/vectis.wasm"), "{yaml}");
+        assert!(
+            yaml.contains("source: $PROJECT_DIR/../specify-adapters/target/vectis.wasm"),
+            "{yaml}"
+        );
     }
 
     #[test]

@@ -4,7 +4,7 @@ Status record for the lint unification work originally tracked as **A19** (unify
 
 The framework lint engine is now a generic dispatcher with no rule-specific logic or policy; the steady-state posture is below and the authoritative decision is [DECISIONS.md §"Framework lint engine: generic dispatcher (Road A / Road B)"](./DECISIONS.md#framework-lint-engine-generic-dispatcher-road-a--road-b).
 
-Scope: `augentic/specify-cli` (primary) and `augentic/specify` (CORE rule files, docs).
+Scope: the in-tree `cli/` workspace (primary) and the surrounding `augentic/specify` prose (CORE rule files, docs).
 
 Related docs:
 
@@ -77,9 +77,9 @@ The lint surface is a generic dispatcher with no imperative `Check` substrate:
 
 | Topic | Repository | Files |
 | --- | --- | --- |
-| Steady-state posture | specify-cli | [DECISIONS.md §"Framework lint engine: generic dispatcher (Road A / Road B)"](./DECISIONS.md#framework-lint-engine-generic-dispatcher-road-a--road-b), this file §"Steady state" |
+| Steady-state posture | cli/ | [DECISIONS.md §"Framework lint engine: generic dispatcher (Road A / Road B)"](./DECISIONS.md#framework-lint-engine-generic-dispatcher-road-a--road-b), this file §"Steady state" |
 | Contributor model + extension guide | specify | [docs/contributing/checks.md](https://github.com/augentic/specify/blob/main/docs/contributing/checks.md) |
 | CORE rule authoring | specify | [adapters/shared/rules/core/README.md](https://github.com/augentic/specify/blob/main/adapters/shared/rules/core/README.md) |
 | Declarative CORE rules | specify | `adapters/shared/rules/core/CORE-*.md` |
-| Layer-3 policy guard | specify-cli | [crates/standards/tests/lint_engine_guards/no_embedded_policy.rs](./crates/standards/tests/lint_engine_guards/no_embedded_policy.rs) |
-| Per-kind evaluator suite | specify-cli | `crates/standards/tests/lint_hint_*.rs` |
+| Layer-3 policy guard | cli/ | [crates/standards/tests/lint_engine_guards/no_embedded_policy.rs](./crates/standards/tests/lint_engine_guards/no_embedded_policy.rs) |
+| Per-kind evaluator suite | cli/ | `crates/standards/tests/lint_hint_*.rs` |

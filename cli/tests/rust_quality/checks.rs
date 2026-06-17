@@ -1,6 +1,6 @@
 //! Repo-local Rust-quality predicates, dev-only.
 //!
-//! These scan the specify-cli workspace tree (`crates/` + `src/`,
+//! These scan the in-tree `cli/` workspace tree (`crates/` + `src/`,
 //! skipping `target/`) and back the
 //! `cargo test --test rust_quality` gate. They are deliberately not a
 //! lint producer: `specify lint framework` runs entirely through

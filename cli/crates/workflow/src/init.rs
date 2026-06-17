@@ -62,7 +62,7 @@ pub struct InitOptions<'a> {
     /// adapter declares `platforms.required`, this must be `Some`.
     pub platforms: Option<&'a [Platform]>,
     /// When `true`, run the re-entry **upgrade** path instead of a
-    /// fresh scaffold: bump `project.yaml.specify_version` to the
+    /// fresh scaffold: bump `project.yaml.specify` to the
     /// running binary's version over an already-populated `.specify/`,
     /// preserving every other field (including `adapter:` / `workspace:`)
     /// and every operator artifact (`slices/`, `specs/`, `archive/`,
@@ -101,10 +101,10 @@ pub struct InitResult {
     pub directories_created: Vec<PathBuf>,
     /// Brief IDs scaffolded into the `rules:` map.
     pub scaffolded_rule_keys: Vec<String>,
-    /// The `specify_version` value recorded in `project.yaml` after
+    /// The `specify` version recorded in `project.yaml` after
     /// this run (the running binary's version).
     pub specify_version: String,
-    /// `true` when this run actually wrote `project.yaml.specify_version`
+    /// `true` when this run actually wrote `project.yaml.specify`
     /// — always `true` for fresh init (the file is minted) and for an
     /// `--upgrade` that bumped an older pin; `false` only on an
     /// `--upgrade` no-op where the pin already matched the running
@@ -128,7 +128,7 @@ pub struct InitResult {
 /// upgrade runner (the re-entry version bump) ahead of the workspace /
 /// regular branch — one runner serves both regular and workspace
 /// projects because the preservation logic is identical (preserve every
-/// field, touch only `specify_version`).
+/// field, touch only `specify`).
 ///
 /// When [`InitOptions::workspace`] is `true`, dispatches to the private
 /// workspace runner for the workspace on-disk shape.

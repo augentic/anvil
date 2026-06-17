@@ -37,10 +37,11 @@ pub struct ProjectConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
 
-    /// Minimum `specify` CLI version required to operate on this project.
-    /// Written by `specify init` as the running binary's version and
-    /// enforced by [`ProjectConfig::load`] via the `semver` crate.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Minimum `specify` CLI version required to operate on this project,
+    /// serialised as the `specify:` key in `project.yaml`. Written by
+    /// `specify init` as the running binary's version and enforced by
+    /// [`ProjectConfig::load`] via the `semver` crate.
+    #[serde(rename = "specify", default, skip_serializing_if = "Option::is_none")]
     pub specify_version: Option<String>,
 
     /// Map of brief id (e.g. `proposal`, `specs`, `design`, `tasks`) to a
@@ -77,7 +78,7 @@ pub struct ProjectConfig {
 impl ProjectConfig {
     /// Load `.specify/project.yaml` from `project_dir`.
     ///
-    /// Enforces the `specify_version` floor: a pinned version newer than
+    /// Enforces the `specify` version floor: a pinned version newer than
     /// `CARGO_PKG_VERSION` is rejected, but an unparseable pin is
     /// tolerated — we prefer a permissive stance for a human-edited file.
     ///
@@ -86,7 +87,7 @@ impl ProjectConfig {
     /// - [`Error::NotInitialized`] if `.specify/project.yaml` is absent.
     /// - [`Error::Io`] if the file exists but cannot be read.
     /// - [`Error::YamlDe`] if the file is not valid project YAML.
-    /// - [`Error::CliTooOld`] if the pinned `specify_version` floor is
+    /// - [`Error::CliTooOld`] if the pinned `specify` version floor is
     ///   newer than this binary's version.
     pub fn load(project_dir: &Path) -> Result<Self, Error> {
         Self::load_with_current(project_dir, env!("CARGO_PKG_VERSION"))

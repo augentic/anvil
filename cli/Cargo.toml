@@ -55,9 +55,9 @@ authors = ["Augentic"]
 edition = "2024"
 homepage = "https://augentic.io"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/augentic/specify-cli"
+repository = "https://github.com/augentic/specify"
 rust-version = "1.95"
-version = "0.2.0"
+version = "0.27.0"
 
 [workspace.lints.rust]
 # https://dirname.github.io/rust-std-doc/rustc/lints/listing/allowed-by-default.html
