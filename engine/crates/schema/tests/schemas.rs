@@ -34,8 +34,8 @@ fn every_schema_compiles() {
     let _build_report = build_report_validator();
 
     let on_disk_only = [
-        ("manifest-meta", include_str!("../../../schemas/manifest-meta.schema.json")),
-        ("context-lock", include_str!("../../../schemas/context-lock.schema.json")),
+        ("manifest-meta", include_str!("../../../../schemas/manifest-meta.schema.json")),
+        ("context-lock", include_str!("../../../../schemas/context-lock.schema.json")),
     ];
     for (name, source) in on_disk_only {
         compile_schema(source).unwrap_or_else(|err| panic!("{name} schema compiles: {err}"));
@@ -53,7 +53,8 @@ fn embedded_schemas_match_on_disk_sources() {
     let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(std::path::Path::parent)
-        .expect("crates/schema has a repo root two levels up");
+        .and_then(std::path::Path::parent)
+        .expect("crates/schema has the monorepo root three levels up");
     assert!(!EMBEDDED_SCHEMAS.is_empty(), "EMBEDDED_SCHEMAS must list every embedded constant");
     for (name, relative, embedded) in EMBEDDED_SCHEMAS {
         let on_disk = std::fs::read_to_string(repo_root.join(relative))

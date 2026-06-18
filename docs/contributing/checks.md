@@ -11,15 +11,15 @@ Framework validation splits into two surfaces:
 | **Editor-first (YAML/JSON LSP)**                     | While you edit plain YAML or JSON                                                                  | Shape violations for files the language server can bind to a schema: `adapter.yaml`, `.cursor-plugin/marketplace.json`, and other plain YAML/JSON artifacts that declare a schema |
 | **`specify lint framework` (Markdown + cross-file)** | Local `make lint`, CI, and direct `cargo run -p specify -- lint framework` (under `engine/`) | Markdown frontmatter (`SKILL.md`, rules, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other predicate schemas cannot express   |
 
-**Authoritative schemas** live in-tree under [`engine/schemas/`](../../engine/schemas) and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
+**Authoritative schemas** live in-tree under [`schemas/`](../../schemas) and are embedded in the `specify` binary; `specify lint framework` validates against those embedded copies. Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
 **Plain YAML/JSON wiring.** Adapter manifests carry a first-line schema directive (and [`.vscode/settings.json`](../../.vscode/settings.json) binds `adapters/sources/*/adapter.yaml` and `adapters/targets/*/adapter.yaml` to the runtime schemas for editor squiggles):
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/engine/schemas/source.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/schemas/source.schema.json
 ```
 
-Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship in-tree under `engine/schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
+Use the same pattern for other plain YAML files when a framework or runtime schema exists. Workflow and consumer schemas (`adapter`, `plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`, `rules/rule`) all ship in-tree under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json).
 
 **Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. Until a frontmatter-aware editor integration lands, `specify lint framework` extracts the leading `---` block from `SKILL.md`, rules, and scenario Markdown files and validates it against the same JSON Schemas under `schemas/authoring/` and `schemas/rules/`.
 
@@ -133,7 +133,7 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 ### 2. Adapter manifest YAML validation
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship in-tree under `engine/schemas/` and are loaded by the `specify-standards` crate.
+Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship in-tree under `schemas/` and are loaded by the `specify-standards` crate.
 
 **Common fix:** check that all required fields (`name`, `version`, `axis`, `operations`, `briefs`) are present and that `operations` matches the per-axis enum (`survey` + `extract` for sources; `shape` + `build` + `merge` for targets).
 
@@ -201,7 +201,7 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 11. Eval scenario frontmatter
 
-Eval scenario files are validated against [`engine/schemas/authoring/scenario.schema.json`](../../engine/schemas/authoring/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+Eval scenario files are validated against [`schemas/authoring/scenario.schema.json`](../../schemas/authoring/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `evals/scenarios/<id>.md` — the flat platform scenario pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
 2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
@@ -277,7 +277,7 @@ The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
 
 - **Frontmatter schema** -- each file must begin with YAML frontmatter that
-  conforms to [`engine/schemas/rules/rule.schema.json`](../../engine/schemas/rules/rule.schema.json).
+  conforms to [`schemas/rules/rule.schema.json`](../../schemas/rules/rule.schema.json).
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.

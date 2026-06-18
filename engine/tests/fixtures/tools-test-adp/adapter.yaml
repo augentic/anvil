@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../schemas/adapter.schema.json
+# yaml-language-server: $schema=../../../../schemas/adapter.schema.json
 name: tools-test-adp
 version: "1.0.0"
 axis: target
