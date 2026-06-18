@@ -87,6 +87,3 @@ fn project_root_from_slice_dir(slice_path: &Path) -> Option<std::path::PathBuf> 
     let specify_dir = slices_parent.parent()?;
     specify_dir.parent().map(Path::to_path_buf)
 }
-
-#[cfg(test)]
-mod tests;

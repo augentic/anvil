@@ -56,4 +56,3 @@ const fn severity_token(severity: Severity) -> &'static str {
         Severity::Optional => "optional",
     }
 }
-

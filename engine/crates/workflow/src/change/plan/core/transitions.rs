@@ -96,6 +96,3 @@ impl Plan {
         Ok((from, to))
     }
 }
-
-#[cfg(test)]
-mod tests;

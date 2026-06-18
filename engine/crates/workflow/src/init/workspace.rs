@@ -119,6 +119,3 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         wasm_pkg_config_written,
     })
 }
-
-#[cfg(test)]
-mod tests;

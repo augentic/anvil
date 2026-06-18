@@ -150,6 +150,3 @@ pub fn create(
         restarted: matches!(if_exists, CreateIfExists::Restart),
     })
 }
-
-#[cfg(test)]
-mod tests;

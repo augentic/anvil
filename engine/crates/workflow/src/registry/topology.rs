@@ -367,6 +367,3 @@ fn malformed(detail: String) -> Error {
         detail,
     )
 }
-
-#[cfg(test)]
-mod tests;

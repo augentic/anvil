@@ -419,6 +419,3 @@ fn normalise_relative(path: &Path) -> PathBuf {
     }
     buf
 }
-
-#[cfg(test)]
-mod tests;

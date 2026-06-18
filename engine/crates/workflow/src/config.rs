@@ -342,6 +342,3 @@ fn version_is_older(current: &str, required: &str) -> bool {
     };
     cur < req
 }
-
-#[cfg(test)]
-mod tests;

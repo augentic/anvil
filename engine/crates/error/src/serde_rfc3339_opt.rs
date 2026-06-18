@@ -37,4 +37,3 @@ pub fn deserialize<'de, D: Deserializer<'de>>(
     let opt: Option<String> = Option::deserialize(deserializer)?;
     opt.map(|s| s.parse().map_err(serde::de::Error::custom)).transpose()
 }
-

@@ -65,4 +65,3 @@ fn compile_envelope_validator() -> Result<jsonschema::Validator, RenderError> {
         }
     })
 }
-

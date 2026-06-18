@@ -4779,13 +4779,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "specify-vectis-shell-detect"
-version = "0.27.0"
-dependencies = [
- "tempfile",
-]
-
-[[package]]
 name = "specify-workflow"
 version = "0.27.0"
 dependencies = [
@@ -4805,7 +4798,6 @@ dependencies = [
  "specify-extension-manifest",
  "specify-model",
  "specify-schema",
- "specify-vectis-shell-detect",
  "strum 0.28.0",
  "tempfile",
  "thiserror 2.0.18",

@@ -74,6 +74,3 @@ fn run_git(args: &[&str], action: &str) -> Result<(), Error> {
         },
     )
 }
-
-#[cfg(test)]
-mod tests;

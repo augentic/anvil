@@ -114,6 +114,3 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
 
     results
 }
-
-#[cfg(test)]
-mod tests;

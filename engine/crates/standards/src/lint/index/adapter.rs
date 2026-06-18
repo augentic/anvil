@@ -81,6 +81,3 @@ fn stringify_version(value: serde_json::Value) -> Option<String> {
         _ => None,
     }
 }
-
-#[cfg(test)]
-mod tests;

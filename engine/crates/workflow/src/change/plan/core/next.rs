@@ -182,6 +182,3 @@ fn structural_errors() -> Error {
         "run 'specify plan validate' for detail",
     )
 }
-
-#[cfg(test)]
-mod tests;

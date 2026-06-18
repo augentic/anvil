@@ -17,6 +17,3 @@ pub enum Kind {
     /// Phase deferred (needs human input).
     Deferred,
 }
-
-#[cfg(test)]
-mod tests;

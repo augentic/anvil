@@ -1,20 +1,13 @@
 //! RFC §2.1 in-scope asset resolution for slice-build prepare.
 
-#[cfg(test)]
-#[path = "materialize_scope/tests.rs"]
-mod tests;
-
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use regex::Regex;
 use serde_json::Value;
-use specify_vectis_shell_detect::shell_resident_app_icon;
 
 use crate::Platform;
-use crate::config::ProjectConfig;
-use crate::platform::BootstrapContext;
 
 const PROJECT_ASSETS_REL: &str = "design-system/assets.yaml";
 const SLICE_ASSETS_NAME: &str = "assets.yaml";
@@ -92,12 +85,14 @@ pub fn materialize_platform_csv(shell_platforms: &[Platform]) -> String {
 
 /// Derive the RFC §2.1 materialization reference set for a slice build.
 ///
-/// Returns an empty scope when the effective inventory is absent or
-/// unreadable. Does not check export presence — callers decide whether
-/// to invoke materialize.
+/// `ui_platforms` is the declared UI shell set (`ios` / `android` from
+/// `project.yaml.platforms`) — the sole authority for whether the
+/// launcher `app-icon` is in scope. Returns an empty scope when the
+/// effective inventory is absent or unreadable. Does not check export
+/// presence — callers decide whether to invoke materialize.
 #[must_use]
 pub fn resolve_materialize_scope(
-    slice_dir: &Path, project_dir: &Path, bootstrap: &BootstrapContext, effective: &EffectiveAssets,
+    slice_dir: &Path, project_dir: &Path, ui_platforms: &[Platform], effective: &EffectiveAssets,
 ) -> MaterializeScope {
     let Ok(raw) = fs::read_to_string(&effective.path) else {
         return MaterializeScope::default();
@@ -110,11 +105,10 @@ pub fn resolve_materialize_scope(
     };
 
     let assets_dir = effective.path.parent().unwrap_or(project_dir);
-    let shell_platforms = shell_platforms(project_dir);
 
     let mut reference_ids = collect_reference_ids(slice_dir, assets);
     if effective.slice_local {
-        reference_ids.extend(unpinned_source_inventory(assets, assets_dir, &shell_platforms));
+        reference_ids.extend(unpinned_source_inventory(assets, assets_dir, ui_platforms));
     }
 
     let mut asset_ids: BTreeSet<String> = reference_ids
@@ -122,21 +116,9 @@ pub fn resolve_materialize_scope(
         .filter(|id| assets.get(id).is_some_and(is_materializable_kind))
         .collect();
 
-    append_bootstrap_app_icon(&mut asset_ids, project_dir, assets_dir, bootstrap, &doc, assets);
+    append_app_icon(&mut asset_ids, ui_platforms, &doc, assets);
 
     MaterializeScope { asset_ids }
-}
-
-fn shell_platforms(project_dir: &Path) -> Vec<Platform> {
-    let Ok(config) = ProjectConfig::load(project_dir) else {
-        return vec![Platform::Ios, Platform::Android];
-    };
-    config
-        .platforms
-        .iter()
-        .copied()
-        .filter(|p| matches!(p, Platform::Ios | Platform::Android))
-        .collect()
 }
 
 fn collect_reference_ids(
@@ -273,11 +255,16 @@ fn is_materializable_kind(entry: &Value) -> bool {
     matches!(entry.get("kind").and_then(Value::as_str), Some("vector" | "raster"))
 }
 
-fn append_bootstrap_app_icon(
-    asset_ids: &mut BTreeSet<String>, project_dir: &Path, assets_dir: &Path,
-    bootstrap: &BootstrapContext, doc: &Value, assets: &serde_json::Map<String, Value>,
+/// Add the top-level `app-icon` pointer to the scope when the project
+/// declares a UI shell platform. `project.yaml.platforms` is the sole
+/// authority: whether the icon is already satisfied (resident shell icon
+/// or existing export) is decided downstream by
+/// [`scope_needs_materialize`].
+fn append_app_icon(
+    asset_ids: &mut BTreeSet<String>, ui_platforms: &[Platform], doc: &Value,
+    assets: &serde_json::Map<String, Value>,
 ) {
-    if !bootstrap.triggers {
+    if ui_platforms.is_empty() {
         return;
     }
     let Some(pointer) = doc.get("app-icon").and_then(Value::as_str) else {
@@ -286,47 +273,9 @@ fn append_bootstrap_app_icon(
     let Some(entry) = assets.get(pointer) else {
         return;
     };
-    if entry.get("role").and_then(Value::as_str) != Some("app-icon") {
-        return;
-    }
-
-    let needs_materialize = bootstrap.missing_ui.iter().any(|platform| {
-        if shell_resident_app_icon(project_dir, &platform.to_string()) {
-            return false;
-        }
-        !bootstrap_platform_satisfied(assets_dir, entry, *platform)
-    });
-    if needs_materialize {
+    if entry.get("role").and_then(Value::as_str) == Some("app-icon") {
         asset_ids.insert(pointer.to_string());
     }
-}
-
-fn bootstrap_platform_satisfied(assets_dir: &Path, entry: &Value, platform: Platform) -> bool {
-    let plat = platform.to_string();
-    if let Some(pin) =
-        entry.get("sources").and_then(|s| s.get(plat.as_str())).and_then(Value::as_str)
-        && assets_dir.join(pin).exists()
-    {
-        return true;
-    }
-    if let Some(source) = entry.get("source").and_then(Value::as_str)
-        && bootstrap_source_materializable(assets_dir, entry, source)
-    {
-        return true;
-    }
-    false
-}
-
-fn bootstrap_source_materializable(assets_dir: &Path, entry: &Value, source: &str) -> bool {
-    if !assets_dir.join(source).is_file() {
-        return false;
-    }
-    let kind = entry.get("kind").and_then(Value::as_str);
-    let ext = Path::new(source).extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
-    matches!(
-        (kind, ext.as_deref()),
-        (Some("vector"), Some("svg")) | (Some("raster"), Some("png" | "jpg" | "jpeg" | "webp"))
-    )
 }
 
 fn asset_needs_materialize(

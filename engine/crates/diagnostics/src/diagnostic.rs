@@ -542,4 +542,3 @@ pub fn count_status(diagnostics: &[Diagnostic], target: Option<FindingStatus>) -
         .count();
     u32::try_from(count).unwrap_or(u32::MAX)
 }
-

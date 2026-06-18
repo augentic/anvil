@@ -97,4 +97,3 @@ pub fn validate_evidence_size(diagnostic: &Diagnostic) -> Result<(), DiagnosticE
         Ok(())
     }
 }
-

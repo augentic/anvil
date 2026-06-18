@@ -1,0 +1,317 @@
+//! Enforce the repo-local Rust-quality predicates.
+//!
+//! Run with `cargo test --test rust_quality`. Hard gates: any
+//! `rust.test-fn-name-too-long`, `rust.workflow-clock-read`, or
+//! `rust.allow-without-reason` finding fails CI. The archaeology
+//! predicate (`rust.archaeology-in-doc-comment`) is advisory only —
+//! its markers over-fire on the canonical contract vocabulary the
+//! codebase and AGENTS.md use, so it is not gated. The predicates
+//! live in [`checks`], dev-only beside this gate.
+
+mod checks {
+    //! Repo-local Rust-quality predicates, dev-only.
+    //!
+    //! These scan the in-tree `engine/` workspace tree (`crates/` + `src/`,
+    //! skipping `target/`) and back the
+    //! `cargo test --test rust_quality` gate. They are deliberately not a
+    //! lint producer: `specify lint framework` runs entirely through
+    //! declarative hints and WASI tools, so this code lives with its only
+    //! consumer instead of in `specify-standards`.
+
+    use std::fs;
+    use std::path::Path;
+
+    /// Longest acceptable `#[test]` fn name (see docs/standards/testing.md).
+    const MAX_TEST_FN_LEN: usize = 40;
+
+    /// Rule id for sentence-length test fn names.
+    pub const RULE_TEST_FN_NAME: &str = "rust.test-fn-name-too-long";
+    /// Rule id for archaeology markers in doc comments (advisory only,
+    /// not gated).
+    pub const RULE_ARCHAEOLOGY: &str = "rust.archaeology-in-doc-comment";
+    /// Rule id for `#[allow]` without a `reason`.
+    pub const RULE_ALLOW_NO_REASON: &str = "rust.allow-without-reason";
+    /// Rule id for wall-clock reads in specify-workflow library code.
+    pub const RULE_WORKFLOW_CLOCK: &str = "rust.workflow-clock-read";
+
+    /// Forward-slash prefix marking `specify-workflow` library sources. Time
+    /// injection (architecture §Time injection) forbids `Timestamp::now()`
+    /// here; the clock is read once in `src/runtime/commands/**` handlers and
+    /// threaded down.
+    const WORKFLOW_SRC_PREFIX: &str = "crates/workflow/src/";
+
+    const ARCHAEOLOGY_MARKERS: &[&str] = &[
+        "RFC-",
+        "Phase ",
+        "formerly ",
+        "previously lived",
+        "old contract",
+        "pre-cutover",
+        "folded pair",
+    ];
+
+    /// One predicate hit: the rule id plus a human-readable message that
+    /// names the offending path and line.
+    pub struct Finding {
+        pub rule: &'static str,
+        pub message: String,
+    }
+
+    /// Run every Rust-quality predicate over the workspace rooted at `root`.
+    ///
+    /// The test-fn-name check covers every `.rs` test file in the tree;
+    /// the source-quality checks (archaeology, bare `#[allow]`, workflow
+    /// clock reads) are scoped to `crates/` and `src/`.
+    pub fn run(root: &Path) -> Vec<Finding> {
+        let mut findings = Vec::new();
+        walk(root, root, &mut findings);
+        findings.sort_by(|a, b| (a.rule, &a.message).cmp(&(b.rule, &b.message)));
+        findings
+    }
+
+    fn walk(root: &Path, dir: &Path, findings: &mut Vec<Finding>) {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if path.file_name().is_some_and(|n| n == "target") {
+                    continue;
+                }
+                walk(root, &path, findings);
+                continue;
+            }
+            if path.extension().is_some_and(|e| e == "rs") {
+                check_rust_file(root, &path, findings);
+            }
+        }
+    }
+
+    fn relative_display(root: &Path, path: &Path) -> String {
+        path.strip_prefix(root).unwrap_or(path).display().to_string().replace('\\', "/")
+    }
+
+    /// True for `specify-workflow` library sources subject to the
+    /// time-injection rule. Test modules (`tests.rs` files or anything under
+    /// a `tests/` directory) are exempt — they pin the clock with fixtures.
+    fn is_workflow_runtime_source(rel: &str) -> bool {
+        rel.starts_with(WORKFLOW_SRC_PREFIX)
+            && !rel.ends_with("/tests.rs")
+            && !rel.contains("/tests/")
+    }
+
+    fn is_test_rust_file(rel: &str) -> bool {
+        rel.ends_with("tests.rs") || rel.split('/').any(|part| part == "tests")
+    }
+
+    fn check_rust_file(root: &Path, path: &Path, findings: &mut Vec<Finding>) {
+        let Ok(content) = fs::read_to_string(path) else {
+            return;
+        };
+        let rel = relative_display(root, path);
+        let source_quality_scope = rel.starts_with("crates/") || rel.starts_with("src/");
+        let workflow_clock_scope = is_workflow_runtime_source(&rel);
+        let test_file = is_test_rust_file(&rel);
+        let lines: Vec<&str> = content.lines().collect();
+
+        for (line_idx, line) in lines.iter().enumerate() {
+            let trimmed = line.trim();
+            let line_no = line_idx + 1;
+
+            if test_file {
+                check_test_fn_name(&lines, line_idx, &rel, findings);
+            }
+            if !source_quality_scope {
+                continue;
+            }
+
+            // Time injection: library code never reads the wall clock. Skip
+            // comment lines so doc comments may still name the API.
+            if workflow_clock_scope
+                && !trimmed.starts_with("//")
+                && trimmed.contains("Timestamp::now()")
+            {
+                findings.push(Finding {
+                rule: RULE_WORKFLOW_CLOCK,
+                message: format!(
+                    "`Timestamp::now()` at {rel}:{line_no} — specify-workflow must accept an injected `now`; read the clock once in a `src/runtime/commands/**` handler and thread it down (architecture §Time injection)"
+                ),
+            });
+            }
+
+            if trimmed.starts_with("//!") || trimmed.starts_with("///") {
+                for marker in ARCHAEOLOGY_MARKERS {
+                    if trimmed.contains(marker) {
+                        findings.push(Finding {
+                        rule: RULE_ARCHAEOLOGY,
+                        message: format!(
+                            "archaeology marker `{marker}` in doc comment at {rel}:{line_no} — keep ≤3 lines of what-it-does-today; history belongs in DECISIONS.md"
+                        ),
+                    });
+                        break;
+                    }
+                }
+            }
+
+            if trimmed.contains("#[allow(") && !trimmed.contains("reason") {
+                findings.push(Finding {
+                rule: RULE_ALLOW_NO_REASON,
+                message: format!(
+                    "#[allow] without reason at {rel}:{line_no} — use #[expect] with reason or promote a module #![allow]"
+                ),
+            });
+            }
+        }
+    }
+
+    fn check_test_fn_name(lines: &[&str], line_idx: usize, rel: &str, findings: &mut Vec<Finding>) {
+        let trimmed = lines[line_idx].trim();
+        let Some(rest) = trimmed.strip_prefix("fn ").or_else(|| trimmed.strip_prefix("async fn "))
+        else {
+            return;
+        };
+        let Some((name, _)) = rest.split_once('(') else {
+            return;
+        };
+        if name.len() <= MAX_TEST_FN_LEN || !preceded_by_test_attr(lines, line_idx) {
+            return;
+        }
+        findings.push(Finding {
+        rule: RULE_TEST_FN_NAME,
+        message: format!(
+            "test fn `{name}` is {} chars; shorten per docs/standards/testing.md (got {rel}:{})",
+            name.len(),
+            line_idx + 1
+        ),
+    });
+    }
+
+    /// Walk upward over the attribute window above a `fn`, skipping blank lines and
+    /// other attributes (`#[ignore]`, `#[case(..)]`, …), and report whether a
+    /// `#[test]` / `#[tokio::test]` attribute introduces it.
+    fn preceded_by_test_attr(lines: &[&str], fn_idx: usize) -> bool {
+        for prev in lines[..fn_idx].iter().rev() {
+            let trimmed = prev.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if !trimmed.starts_with("#[") {
+                return false;
+            }
+            if trimmed.starts_with("#[test]") || trimmed.starts_with("#[tokio::test") {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+use std::fmt::Write as _;
+use std::fs;
+use std::path::PathBuf;
+
+use checks::{RULE_ALLOW_NO_REASON, RULE_TEST_FN_NAME, RULE_WORKFLOW_CLOCK};
+
+/// The gated rules and the standards-doc pointer rendered when one fires.
+const GATED_RULES: [(&str, &str); 3] = [
+    (RULE_TEST_FN_NAME, "test fn names must be <= 40 chars (see docs/standards/testing.md)"),
+    (
+        // Time injection (architecture §Time injection): `specify-workflow`
+        // must accept an injected `now`; the clock is read once in a
+        // `src/runtime/commands/**` handler and threaded down.
+        RULE_WORKFLOW_CLOCK,
+        "specify-workflow library code must not call `Timestamp::now()` (see docs/standards/architecture.md §Time injection)",
+    ),
+    (
+        // `#[allow]` without a `reason` is forbidden (style.md §Lint
+        // suppression posture): use `#[expect(.., reason = "…")]` at the
+        // smallest scope, or a contract-locked module `#![allow]`.
+        RULE_ALLOW_NO_REASON,
+        "`#[allow]` must carry a reason or be an `#[expect]` (see docs/standards/style.md)",
+    ),
+];
+
+#[test]
+fn no_gated_rust_quality_findings() {
+    // One repo scan; findings grouped per rule id so a failure stays
+    // attributable to the standard it breaches.
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let findings = checks::run(&root);
+
+    let mut failures = String::new();
+    for (rule, guidance) in GATED_RULES {
+        let offenders: Vec<&str> =
+            findings.iter().filter(|f| f.rule == rule).map(|f| f.message.as_str()).collect();
+        if !offenders.is_empty() {
+            writeln!(failures, "[{rule}] {guidance}; offenders: {offenders:#?}")
+                .expect("write to String");
+        }
+    }
+    assert!(failures.is_empty(), "rust-quality gates failed:\n{failures}");
+}
+
+#[test]
+fn flags_long_test_fn_name() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("crates/workflow/src/foo/tests.rs");
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, "#[test]\nfn this_test_function_name_is_way_too_long_for_policy() {}\n")
+        .expect("write");
+
+    let findings = checks::run(dir.path());
+    assert!(
+        findings.iter().any(|f| f.rule == RULE_TEST_FN_NAME),
+        "expected long-name finding, got: {:?}",
+        findings.iter().map(|f| &f.message).collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn flags_tokio_test_behind_attributes() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("crates/workflow/src/foo/tests.rs");
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(
+        &path,
+        "#[tokio::test]\n#[ignore]\nasync fn this_async_test_function_name_is_clearly_too_long() {}\n",
+    )
+    .expect("write");
+
+    let findings = checks::run(dir.path());
+    assert!(
+        findings.iter().any(|f| f.rule == RULE_TEST_FN_NAME),
+        "tokio::test behind an intervening attribute must still be flagged"
+    );
+}
+
+#[test]
+fn ignores_long_non_test_fn() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("crates/workflow/src/foo/tests.rs");
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(&path, "fn this_helper_function_name_is_long_but_not_a_test_case() {}\n")
+        .expect("write");
+
+    let findings = checks::run(dir.path());
+    assert!(
+        !findings.iter().any(|f| f.rule == RULE_TEST_FN_NAME),
+        "non-test fns must not be flagged"
+    );
+}
+
+#[test]
+fn flags_bare_allow_and_clock_read() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("crates/workflow/src/foo.rs");
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(
+        &path,
+        "#[allow(dead_code)]\nfn now() -> jiff::Timestamp { jiff::Timestamp::now() }\n",
+    )
+    .expect("write");
+
+    let findings = checks::run(dir.path());
+    assert!(findings.iter().any(|f| f.rule == RULE_ALLOW_NO_REASON), "bare allow must flag");
+    assert!(findings.iter().any(|f| f.rule == RULE_WORKFLOW_CLOCK), "clock read must flag");
+}

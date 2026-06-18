@@ -265,6 +265,3 @@ const INCLUDE_PREFIXES: &[&str] = &[
 
 const ALWAYS_IGNORE_GLOBS: &[&str] =
     &["!target/**", "!**/node_modules/**", "!.git/**", "!dist/**", "!.specify/**", "!**/.DS_Store"];
-
-#[cfg(test)]
-mod tests;

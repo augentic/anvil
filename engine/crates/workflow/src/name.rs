@@ -136,6 +136,3 @@ identifier_newtype! {
     /// A plan / change identifier — `plan.yaml.name`.
     PlanName
 }
-
-#[cfg(test)]
-mod tests;

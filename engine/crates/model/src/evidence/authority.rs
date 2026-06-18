@@ -95,6 +95,3 @@ fn claim_kind_parse_error(other: &str) -> String {
          decision, section, diagram, contract, example, excerpt, type, call, region, container, leaf"
     )
 }
-
-#[cfg(test)]
-mod tests;

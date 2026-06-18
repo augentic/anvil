@@ -19,9 +19,6 @@
 use serde::{Deserialize, Serialize};
 use specify_diagnostics::{Artifact, Diagnostic, FindingLocation};
 
-#[cfg(test)]
-mod tests;
-
 /// Maximum length of a Decision Record `slug` (`decision-slug-grammar`).
 pub const SLUG_MAX_LEN: usize = 64;
 

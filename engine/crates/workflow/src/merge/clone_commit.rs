@@ -100,6 +100,3 @@ pub fn auto_commit(project_dir: &Path, name: &str) -> Vec<String> {
 fn git(project_dir: &Path, args: &[&str]) -> std::io::Result<Output> {
     crate::cmd::git(&crate::cmd::real_cmd, Some(project_dir), args)
 }
-
-#[cfg(test)]
-mod tests;

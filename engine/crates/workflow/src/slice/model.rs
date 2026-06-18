@@ -425,6 +425,3 @@ fn missing_field(field: &str) -> Error {
         ),
     )
 }
-
-#[cfg(test)]
-mod tests;

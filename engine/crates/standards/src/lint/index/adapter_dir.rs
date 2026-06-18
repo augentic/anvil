@@ -64,6 +64,3 @@ fn collect_axis(project_dir: &Path, axis_dir: &Path, axis: AdapterAxis, out: &mu
 fn relative_display(root: &Path, path: &Path) -> String {
     path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")
 }
-
-#[cfg(test)]
-mod tests;

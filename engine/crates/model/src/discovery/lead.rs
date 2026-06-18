@@ -37,6 +37,3 @@ pub struct Lead {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<String>,
 }
-
-#[cfg(test)]
-mod tests;

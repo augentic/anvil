@@ -66,6 +66,3 @@ pub(super) fn split(content: &str) -> Option<(&str, &str)> {
     }
     None
 }
-
-#[cfg(test)]
-mod tests;

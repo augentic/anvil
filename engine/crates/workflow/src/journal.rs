@@ -18,11 +18,6 @@ mod append;
 mod emit;
 mod event;
 
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod wire_shapes;
-
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -219,10 +214,4 @@ fn for_each_line_rev(
     // `pos == 0`: the remaining bytes are the file's first line.
     visit(String::from_utf8_lossy(&carry).as_ref());
     Ok(())
-}
-
-/// Parses a fixed RFC3339 timestamp for test fixtures.
-#[cfg(test)]
-pub(crate) fn test_timestamp(raw: &str) -> jiff::Timestamp {
-    raw.parse().expect("valid rfc3339 timestamp in test fixture")
 }

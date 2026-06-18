@@ -222,6 +222,3 @@ const ALWAYS_IGNORE_GLOBS: &[&str] = &[
     "!out/**",
     "!**/.DS_Store",
 ];
-
-#[cfg(test)]
-mod tests;

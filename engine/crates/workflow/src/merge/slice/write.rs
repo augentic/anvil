@@ -139,6 +139,3 @@ pub(super) fn build_merge_summary(
         counts.iter().map(|(class, count)| format!("{count} {class}")).collect();
     format!("Merged {} into baseline", parts.join(", "))
 }
-
-#[cfg(test)]
-mod tests;

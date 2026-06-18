@@ -349,6 +349,3 @@ pub struct ResolvedRule {
     #[serde(default)]
     pub deprecated: Option<Deprecated>,
 }
-
-#[cfg(test)]
-mod tests;

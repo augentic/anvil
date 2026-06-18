@@ -26,7 +26,4 @@ pub mod upgrade;
 #[cfg(test)]
 pub(crate) mod test_cache;
 
-pub use platform::{
-    BootstrapContext, Platform, bootstrap_context, bootstrap_context_from_missing,
-    parse_platforms_csv, vectis_missing_platforms,
-};
+pub use platform::{Platform, parse_platforms_csv};

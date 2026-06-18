@@ -45,11 +45,9 @@ use specify_workflow::Platform;
 use specify_workflow::adapter::{
     BuildInputDeclaration, Execution, ResolvedTargetAdapter, TargetAdapter, TargetOperation,
 };
-use specify_workflow::change::{BOOTSTRAP_APP_ICON_MISSING, bootstrap_app_icon_findings};
 use specify_workflow::config::ProjectConfig;
 use specify_workflow::init::adapter_ref_from_value;
 use specify_workflow::journal::{self, EventKind};
-use specify_workflow::platform::bootstrap_context;
 use specify_workflow::schema::{validate_build_report_json, validate_build_request_json};
 use specify_workflow::slice::build::materialize_scope::{
     materialize_platform_csv, resolve_effective_assets, resolve_materialize_scope,
@@ -118,8 +116,7 @@ struct BuildResult {
 ///   `target-build-report-slice-mismatch` / `target-build-failed` and
 ///   the `lifecycle` gate error from the agent `finalize` phase.
 /// - `target-build-materialize-failed` from the Vectis prepare materialize
-///   hook; `plan-bootstrap-app-icon-missing` when §6.1 bootstrap context
-///   still fails §6.2 after materialize.
+///   hook.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
 pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
     let slice_dir = ctx.slices_dir().join(name);
@@ -176,24 +173,27 @@ fn prepare(
     ctx.write(&handoff, write_handoff_text)
 }
 
-/// RFC §2.1 prepare hook: auto-materialize missing in-scope exports, then
-/// re-run the bootstrap `app-icon` gate when §6.1 applies.
+/// RFC §2.1 prepare hook: auto-materialize missing in-scope exports.
+/// Takes `project.yaml.platforms` as the sole authority for platform
+/// intent — the host never scans the shell trees itself.
 fn prepare_vectis_assets(ctx: &Ctx, slice_dir: &Path) -> Result<()> {
     let project_dir = &ctx.project_dir;
-    let bootstrap = bootstrap_context(project_dir)?;
-    let shell_platforms = shell_platforms(project_dir);
+    let ui_platforms = ui_platforms(project_dir);
 
     if let Some(effective) = resolve_effective_assets(slice_dir, project_dir) {
-        let scope = resolve_materialize_scope(slice_dir, project_dir, &bootstrap, &effective);
-        if scope_needs_materialize(&scope, &effective, &shell_platforms) {
-            run_materialize_assets(ctx, project_dir, &effective.path, &shell_platforms)?;
+        let scope = resolve_materialize_scope(slice_dir, project_dir, &ui_platforms, &effective);
+        if scope_needs_materialize(&scope, &effective, &ui_platforms) {
+            run_materialize_assets(ctx, project_dir, &effective.path, &ui_platforms)?;
         }
     }
 
-    enforce_bootstrap_app_icon_gate(project_dir)
+    Ok(())
 }
 
-fn shell_platforms(project_dir: &Path) -> Vec<Platform> {
+/// Declared UI shell platforms (`ios` / `android`) from
+/// `project.yaml.platforms`. Falls back to both when the config is
+/// unreadable, matching the materialize scope's conservative default.
+fn ui_platforms(project_dir: &Path) -> Vec<Platform> {
     let Ok(config) = ProjectConfig::load(project_dir) else {
         return vec![Platform::Ios, Platform::Android];
     };
@@ -234,19 +234,6 @@ fn run_materialize_assets(
         ));
     }
     Ok(())
-}
-
-fn enforce_bootstrap_app_icon_gate(project_dir: &Path) -> Result<()> {
-    let findings = bootstrap_app_icon_findings(project_dir);
-    if findings.is_empty() {
-        return Ok(());
-    }
-    let detail = findings.iter().map(|f| f.impact.as_str()).collect::<Vec<_>>().join("\n");
-    Err(Error::validation_failed(
-        BOOTSTRAP_APP_ICON_MISSING,
-        "bootstrap context carries a satisfiable `app-icon` for each missing UI platform (RFC §6.2)",
-        detail,
-    ))
 }
 
 /// Agent `finalize` phase: validate the agent-produced report, gate the

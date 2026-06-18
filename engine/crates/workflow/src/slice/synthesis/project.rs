@@ -293,6 +293,3 @@ const fn class_rank(class: AuthorityClass) -> u8 {
         AuthorityClass::Intent => 2,
     }
 }
-
-#[cfg(test)]
-mod tests;

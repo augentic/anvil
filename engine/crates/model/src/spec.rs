@@ -347,6 +347,3 @@ fn parse_scenarios(body: &str) -> Vec<Scenario> {
     }
     scenarios
 }
-
-#[cfg(test)]
-mod tests;

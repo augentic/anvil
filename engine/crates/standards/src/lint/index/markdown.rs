@@ -342,6 +342,3 @@ pub fn extract_fenced_blocks(file: &DiscoveredFile) -> Vec<FencedBlock> {
     }
     out
 }
-
-#[cfg(test)]
-mod tests;

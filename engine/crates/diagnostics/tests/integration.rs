@@ -1,3 +1,4 @@
+//! Integration tests for `specify-diagnostics`.
 #![allow(clippy::too_many_lines)]
 
 mod test_support;

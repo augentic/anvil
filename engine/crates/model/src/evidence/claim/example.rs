@@ -63,6 +63,3 @@ pub enum ExampleKind {
     /// `kind: example`.
     Example,
 }
-
-#[cfg(test)]
-mod tests;

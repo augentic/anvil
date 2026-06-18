@@ -280,6 +280,3 @@ fn mint_synthetic(
     finding.status = Some(FindingStatus::Open);
     finding
 }
-
-#[cfg(test)]
-mod tests;

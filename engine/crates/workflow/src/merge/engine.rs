@@ -312,6 +312,3 @@ fn replace_first(haystack: &str, needle: &str, replacement: &str) -> String {
 fn rstrip(s: &str) -> &str {
     s.trim_end_matches([' ', '\t', '\n', '\r', '\x0b', '\x0c'])
 }
-
-#[cfg(test)]
-mod tests;

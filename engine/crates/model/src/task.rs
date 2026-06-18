@@ -223,6 +223,3 @@ pub fn mark_complete(content: &str, task_number: &str) -> Result<String, Error> 
     out.push_str(&content[bracket_abs + 3..]);
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests;

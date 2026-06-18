@@ -40,4 +40,3 @@ pub fn is_kebab(s: &str) -> bool {
 pub fn is_kebab_leading_alpha(s: &str) -> bool {
     s.starts_with(|c: char| c.is_ascii_lowercase()) && is_kebab(s)
 }
-

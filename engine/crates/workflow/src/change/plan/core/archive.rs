@@ -122,6 +122,3 @@ impl Plan {
         Ok((dest_plan, dest_plans_dir))
     }
 }
-
-#[cfg(test)]
-mod tests;

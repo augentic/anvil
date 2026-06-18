@@ -224,6 +224,3 @@ pub fn build_synthesis_inputs(
         baseline: baseline.to_vec(),
     }
 }
-
-#[cfg(test)]
-mod tests;

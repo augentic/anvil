@@ -474,6 +474,3 @@ pub fn refresh(marketplace_path: &Path, cache_root: &Path) -> Result<RefreshOutc
         deleted_paths,
     })
 }
-
-#[cfg(test)]
-mod tests;

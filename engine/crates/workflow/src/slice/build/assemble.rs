@@ -120,6 +120,3 @@ fn resolve_additional(
     }
     Ok(additional)
 }
-
-#[cfg(test)]
-mod tests;

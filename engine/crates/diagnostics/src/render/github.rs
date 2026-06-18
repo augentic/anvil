@@ -76,4 +76,3 @@ fn escape(s: &str, in_arg: bool) -> String {
     }
     out
 }
-

@@ -171,6 +171,3 @@ impl SliceMetadata {
         specify_model::atomic::yaml_write(&path, self)
     }
 }
-
-#[cfg(test)]
-mod tests;

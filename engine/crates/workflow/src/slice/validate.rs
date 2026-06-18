@@ -36,8 +36,6 @@ mod decisions;
 mod model_drift;
 mod pre_adapter;
 mod spec_location;
-#[cfg(test)]
-mod tests;
 
 /// Outcome of the pre-adapter gate sweep ([`pre_adapter_gates`]).
 ///

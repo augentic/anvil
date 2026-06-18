@@ -9,6 +9,9 @@ description = "Specify model crate: artifact types and parsers (spec, task, evid
 categories = ["development-tools"]
 keywords = ["specify", "model", "workflow"]
 readme = "../../README.md"
+# Integration tests compile to the single `it` binary (one binary per crate);
+# the per-area files are pulled in via tests/it.rs `#[path]` includes.
+autotests = false
 
 [lints]
 workspace = true
@@ -23,3 +26,7 @@ specify-diagnostics.workspace = true
 specify-error.workspace = true
 strum.workspace = true
 tempfile.workspace = true
+
+[[test]]
+name = "it"
+path = "tests/it.rs"

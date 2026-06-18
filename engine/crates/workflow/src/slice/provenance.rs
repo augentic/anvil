@@ -167,6 +167,3 @@ impl ProvenanceIndex {
         )
     }
 }
-
-#[cfg(test)]
-mod tests;

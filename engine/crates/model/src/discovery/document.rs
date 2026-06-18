@@ -291,6 +291,3 @@ impl std::fmt::Display for ResolveError {
 }
 
 impl std::error::Error for ResolveError {}
-
-#[cfg(test)]
-mod tests;

@@ -88,4 +88,3 @@ fn format_location(loc: &FindingLocation) -> String {
         _ => loc.path.clone(),
     }
 }
-

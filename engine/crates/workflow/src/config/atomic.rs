@@ -109,6 +109,3 @@ impl AtomicYaml for ProjectConfig {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

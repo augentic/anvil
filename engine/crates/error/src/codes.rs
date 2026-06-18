@@ -131,7 +131,6 @@ pub const WIRE_CODES: &[&str] = &[
     "plan-propose-project-adapter-missing",
     "plan-propose-response-not-found",
     "plan-propose-response-parse",
-    "plan-reconcile-bootstrap-name-collision",
     "plan-reconcile-depends-on-cycle",
     "plan-reconcile-empty-catalog",
     "plan-reconcile-lead-orphan",
@@ -308,4 +307,3 @@ pub const WIRE_CODES: &[&str] = &[
     "workspace-sync-failed",
     "yaml",
 ];
-

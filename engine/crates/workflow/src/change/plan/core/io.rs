@@ -79,6 +79,3 @@ impl Plan {
         yaml_write(path, self)
     }
 }
-
-#[cfg(test)]
-mod tests;

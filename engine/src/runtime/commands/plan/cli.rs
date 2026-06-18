@@ -112,12 +112,8 @@ pub enum PlanAction {
     ///   it re-reads `discovery.md`, rebuilds the lead catalog (never
     ///   trusting a prior dry-run snapshot), validates the agent's
     ///   grouping response, and replaces `plan.yaml.slices[]` wholesale —
-    ///   in the agent's response order. When a bound project declares
-    ///   non-empty `project.yaml.platforms`, a deterministic bootstrap
-    ///   post-pass runs via in-process shell detect (`vectis_missing_platforms`
-    ///   / `specify-vectis-shell-detect`; Vectis-bound projects only) and
-    ///   inserts bootstrap slices for declared-but-absent shells before
-    ///   emitting the single `plan.reconcile.completed` event.
+    ///   in the agent's response order — then emits the single
+    ///   `plan.reconcile.completed` event.
     ///
     /// Passing neither mode fails with `plan-propose-mode-required`
     /// (exit 2).

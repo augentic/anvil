@@ -62,6 +62,3 @@ fn body_line_count(file: &DiscoveredFile) -> u32 {
     let body = frontmatter::split(&text).map_or(text.as_str(), |(_, body)| body);
     u32::try_from(body.lines().count()).unwrap_or(u32::MAX)
 }
-
-#[cfg(test)]
-mod tests;

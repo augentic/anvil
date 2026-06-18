@@ -80,6 +80,3 @@ fn count_body_lines(file: &DiscoveredFile) -> u32 {
     let count = body.lines().filter(|line| !line.trim().is_empty()).count();
     u32::try_from(count).unwrap_or(u32::MAX)
 }
-
-#[cfg(test)]
-mod tests;

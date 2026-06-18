@@ -159,6 +159,3 @@ fn render_body(req: &ModelRequirement) -> String {
     }
     parts.join("\n\n")
 }
-
-#[cfg(test)]
-mod tests;

@@ -148,6 +148,3 @@ fn parse_date_prefix(name: &str) -> Result<Timestamp> {
         )
     })
 }
-
-#[cfg(test)]
-mod tests;

@@ -421,6 +421,3 @@ fn unknown_channel_error() -> Error {
             .to_string(),
     }
 }
-
-#[cfg(test)]
-mod tests;

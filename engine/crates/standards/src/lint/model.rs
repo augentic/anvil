@@ -189,6 +189,3 @@ pub struct WorkspaceModel {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub adapter_dirs: Vec<AdapterDir>,
 }
-
-#[cfg(test)]
-mod tests;

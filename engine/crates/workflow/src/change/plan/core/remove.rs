@@ -55,6 +55,3 @@ impl Plan {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests;

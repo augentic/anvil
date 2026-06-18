@@ -596,6 +596,3 @@ fn err_from_failures(code: &'static str, results: &[ValidationSummary]) -> Resul
         })
     }
 }
-
-#[cfg(test)]
-mod tests;

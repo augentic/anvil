@@ -46,7 +46,7 @@ path = "tests/it.rs"
 
 [[test]]
 name = "rust_quality"
-path = "tests/rust_quality/main.rs"
+path = "tests/rust_quality.rs"
 
 [lints]
 workspace = true
@@ -60,7 +60,6 @@ members = [
     "crates/schema",
     "crates/registry",
     "crates/extension-manifest",
-    "crates/vectis-shell-detect",
     "crates/workflow",
 ]
 
@@ -190,7 +189,6 @@ specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
 specify-registry = { path = "crates/registry" }
 specify-extension-manifest = { path = "crates/extension-manifest" }
-specify-vectis-shell-detect = { path = "crates/vectis-shell-detect" }
 strum = { version = "0.28", features = ["derive"] }
 tar = "0.4"
 tempfile = "3"

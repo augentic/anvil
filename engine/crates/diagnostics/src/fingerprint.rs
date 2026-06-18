@@ -163,4 +163,3 @@ fn evidence_payload(evidence: &FindingEvidence) -> String {
         }
     }
 }
-

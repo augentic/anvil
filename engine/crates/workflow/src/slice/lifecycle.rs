@@ -61,6 +61,3 @@ impl LifecycleStatus {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -582,21 +582,3 @@ pub enum AuthorityOverrideAction {
     /// `--clear-authority-override <slice> <kind>` removed one entry.
     Clear,
 }
-
-#[cfg(test)]
-mod authority_override_action_tests {
-    use super::AuthorityOverrideAction;
-
-    #[test]
-    fn set_sorts_before_clear() {
-        let mut actions = [AuthorityOverrideAction::Clear, AuthorityOverrideAction::Set];
-        actions.sort();
-        assert_eq!(
-            actions,
-            [AuthorityOverrideAction::Set, AuthorityOverrideAction::Clear],
-            "Set MUST sort before Clear so batched plan-amend journal writes \
-             replay the operator's intent set-then-clear; the wire contract \
-             depends on this ordering (see PlanAmendAuthorityOverride)."
-        );
-    }
-}

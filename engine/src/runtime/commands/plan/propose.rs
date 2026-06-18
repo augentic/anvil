@@ -17,11 +17,8 @@
 //!   `discovery.md` and the topology (never trusting a prior dry-run
 //!   snapshot), projects the response onto `plan.yaml.slices[]` through
 //!   [`Plan::propose_from`] under the atomic [`with_state`] write loop.
-//!   When a bound project declares non-empty `project.yaml.platforms`,
-//!   a deterministic bootstrap post-pass runs via
-//!   [`vectis_missing_platforms`] (Vectis-bound projects only) before
-//!   the write commits. Only after the write commits does the handler
-//!   emit the single `plan.reconcile.completed` journal event.
+//!   Only after the write commits does the handler emit the single
+//!   `plan.reconcile.completed` journal event.
 //!
 //! Passing neither mode fails with `plan-propose-mode-required`
 //! (exit 2); the clap layer rejects passing both.
@@ -34,14 +31,13 @@ use specify_diagnostics::Diagnostic;
 use specify_error::{Error, Result};
 use specify_model::discovery::Discovery;
 use specify_workflow::change::{
-    Plan, ProjectMissingPlatforms, ProjectRef, ProposalRequest, ProposalResponse, ProposeOutcome,
-    apply_greenfield_seed, build_request, resolve_topology,
+    Plan, ProjectRef, ProposalRequest, ProposalResponse, ProposeOutcome, apply_greenfield_seed,
+    build_request, resolve_topology,
 };
 use specify_workflow::config::{ProjectConfig, with_state};
 use specify_workflow::journal::{self, Event, EventKind};
 use specify_workflow::registry::Registry;
 use specify_workflow::schema::validate_proposal_json;
-use specify_workflow::vectis_missing_platforms;
 
 use super::{Ref, cli, plan_ref, require_file};
 use crate::runtime::context::Ctx;
@@ -120,25 +116,11 @@ fn from(ctx: &Ctx, response_path: &Path) -> Result<()> {
     let discovery = load_discovery(ctx)?;
     let (topology, seed_shadowed) = load_topology(ctx)?;
 
-    // Detect missing platforms before entering the write loop so shell
-    // scanning happens outside the atomic transaction.
-    let project_missing = detect_missing_for_topology(&topology, ctx)?;
-
     // The projection runs inside the atomic write loop: `propose_from`
     // replaces `plan.entries`, `with_state` writes `plan.yaml` on Ok and
     // rolls back on any Err.
     let projected = with_state::<Plan, _, _>(ctx.layout(), "plan.yaml", move |plan| {
-        let mut outcome = plan.propose_from(response, &discovery, &topology)?;
-
-        if !project_missing.is_empty() {
-            let bootstrap_names = plan.reconcile_platforms(&project_missing)?;
-            if !bootstrap_names.is_empty() {
-                let mut all_names = bootstrap_names;
-                all_names.extend(outcome.slice_names);
-                outcome.slice_names = all_names;
-            }
-        }
-
+        let outcome = plan.propose_from(response, &discovery, &topology)?;
         Ok(Projected {
             plan: plan_ref(plan, &plan_path),
             outcome,
@@ -149,31 +131,6 @@ fn from(ctx: &Ctx, response_path: &Path) -> Result<()> {
     emit_reconcile_event(ctx, &projected)?;
 
     ctx.write(&summary(projected, seed_shadowed), write_summary_text)
-}
-
-/// Detect missing platforms for each project in the topology.
-///
-/// Single-project mode checks `ctx.project_dir`; hub mode checks each
-/// member's workspace clone directory.
-fn detect_missing_for_topology(
-    topology: &[ProjectRef], ctx: &Ctx,
-) -> Result<Vec<ProjectMissingPlatforms>> {
-    topology
-        .iter()
-        .filter(|p| !p.platforms.is_empty())
-        .map(|p| {
-            let project_dir = if topology.len() == 1 {
-                ctx.project_dir.clone()
-            } else {
-                ctx.project_dir.join("workspace").join(&p.name)
-            };
-            let missing = vectis_missing_platforms(&project_dir, &p.platforms)?;
-            Ok(ProjectMissingPlatforms {
-                project: p.name.clone(),
-                missing,
-            })
-        })
-        .collect()
 }
 
 /// Successful projection carried out of the [`with_state`] write loop so

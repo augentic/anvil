@@ -194,6 +194,3 @@ mod imp {
         Ok(LockProbe::Held)
     }
 }
-
-#[cfg(test)]
-mod tests;

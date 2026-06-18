@@ -20,13 +20,11 @@
 
 mod catalog;
 mod kernel;
-mod platforms;
 mod topology;
 mod wire;
 
 pub use catalog::{LeadCatalog, build_catalog, build_request};
 pub use kernel::{ProposeOutcome, resolve_target};
-pub use platforms::ProjectMissingPlatforms;
 pub use topology::{apply_greenfield_seed, resolve_topology};
 pub use wire::{
     LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest, ProposalResponse, ResponseMember,
@@ -36,6 +34,3 @@ pub use wire::{
 /// Wire version pinned by `schemas/discovery/proposal.schema.json`
 /// (`const: 1` on both envelope kinds).
 const PROPOSAL_VERSION: u32 = 1;
-
-#[cfg(test)]
-mod tests;

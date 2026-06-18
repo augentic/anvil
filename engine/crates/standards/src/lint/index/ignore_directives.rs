@@ -129,6 +129,3 @@ fn is_comment_only(line: &str, family: Family) -> bool {
         Family::SqlLua => trimmed.starts_with("--"),
     }
 }
-
-#[cfg(test)]
-mod tests;

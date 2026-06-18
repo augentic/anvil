@@ -99,6 +99,3 @@ pub enum TargetOperation {
     /// Shape — synthesis-time guidance read by core during `/spec:refine`.
     Shape,
 }
-
-#[cfg(test)]
-mod tests;

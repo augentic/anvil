@@ -108,6 +108,3 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
         wasm_pkg_config_written,
     })
 }
-
-#[cfg(test)]
-mod tests;

@@ -30,4 +30,3 @@ pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Timesta
     let raw = String::deserialize(deserializer)?;
     raw.parse().map_err(serde::de::Error::custom)
 }
-

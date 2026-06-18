@@ -583,4 +583,32 @@ fn is_valid_source_key(s: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    //! Edge matrices for the two crate-private shape predicates, which are
+    //! unreachable through the crate's public surface.
+    use super::{is_valid_req_id, is_valid_source_key};
+
+    #[test]
+    fn source_key_shape_predicate() {
+        assert!(is_valid_source_key("a"));
+        assert!(is_valid_source_key("legacy-monolith"));
+        assert!(is_valid_source_key("a1-b2"));
+        assert!(!is_valid_source_key(""));
+        assert!(!is_valid_source_key("1abc"));
+        assert!(!is_valid_source_key("Abc"));
+        assert!(!is_valid_source_key("a--b"));
+        assert!(!is_valid_source_key("a-"));
+        assert!(!is_valid_source_key("a_b"));
+    }
+
+    #[test]
+    fn req_id_shape_predicate() {
+        assert!(is_valid_req_id("REQ-001"));
+        assert!(is_valid_req_id("REQ-999"));
+        assert!(!is_valid_req_id("REQ-1"));
+        assert!(!is_valid_req_id("REQ-1234"));
+        assert!(!is_valid_req_id("req-001"));
+        assert!(!is_valid_req_id("REQ-00A"));
+        assert!(!is_valid_req_id(""));
+    }
+}
