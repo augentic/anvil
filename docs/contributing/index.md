@@ -9,9 +9,9 @@ The platform lives in one repository, [`augentic/specify`](https://github.com/au
 | Path | Contents | Language |
 |------|----------|----------|
 | repo root (`plugins/`, `adapters/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/`) | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
-| [`cli/`](https://github.com/augentic/specify/tree/main/cli) | The `specify` binary (workflow runtime + `specify lint framework`) and workspace crates | Rust |
+| [`engine/`](https://github.com/augentic/specify/tree/main/engine) | The `specify` binary (workflow runtime + `specify lint framework`) and workspace crates | Rust |
 
-The prose at the repo root defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace under `cli/` implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
+The prose at the repo root defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace under `engine/` implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
 The prose and the runtime share one version line and ship in one release. Skills invoke the CLI as a subprocess (`specify plan add ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
 
@@ -22,9 +22,9 @@ Two audiences share this repository:
 | Audience | Typical edits | Touches the Rust workspace? |
 |----------|---------------|-----------------------------|
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
-| **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work under `cli/` |
+| **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work under `engine/` |
 
-Every contributor runs `make lint` locally with only a Rust toolchain: it builds the in-tree `specify` binary under `cli/` and runs the framework checks (see [Consistency Checks](checks.md)). Tooling contributors additionally run `cargo make test` under `cli/` to exercise the `specify-standards` framework predicate suite before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
+Every contributor runs `make lint` locally with only a Rust toolchain: it builds the in-tree `specify` binary under `engine/` and runs the framework checks (see [Consistency Checks](checks.md)). Tooling contributors additionally run `cargo make test` under `engine/` to exercise the `specify-standards` framework predicate suite before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
 
 ## Development environment
 
@@ -33,10 +33,10 @@ Every contributor runs `make lint` locally with only a Rust toolchain: it builds
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
 - [mdBook](https://rust-lang.github.io/mdBook/) — for building documentation locally (optional)
 
-**For tooling and CLI work** (`cli/`):
+**For tooling and CLI work** (`engine/`):
 
-- Rust stable toolchain — `make lint` and `cd cli && cargo build` use the channel pinned in [`cli/rust-toolchain.toml`](../../cli/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
-- [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the `cli/Makefile` forwards to `cli/Makefile.toml`
+- Rust stable toolchain — `make lint` and `cd engine && cargo build` use the channel pinned in [`engine/rust-toolchain.toml`](../../engine/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
+- [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the `engine/Makefile` forwards to `engine/Makefile.toml`
 - [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks
 
@@ -45,7 +45,7 @@ Every contributor runs `make lint` locally with only a Rust toolchain: it builds
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make lint` over the prose (works for every contributor). `cd cli && cargo make ci` for CLI work, or `make ci` for the full Rust + prose gate. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `make lint` over the prose (works for every contributor). `cd engine && cargo make ci` for CLI work, or `make ci` for the full Rust + prose gate. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
@@ -62,6 +62,6 @@ Every contributor runs `make lint` locally with only a Rust toolchain: it builds
 
 Advanced examples live beside the skills that own them, so they stay close to the implementation rules they illustrate:
 
-- [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this brief carries the crate-writer and test-writer behavior).
-- [`adapters/targets/vectis/references/`](https://github.com/augentic/specify-adapters/tree/main/adapters/targets/vectis/references/) and [`adapters/targets/vectis/examples/`](https://github.com/augentic/specify-adapters/tree/main/adapters/targets/vectis/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/briefs/`](https://github.com/augentic/specify-adapters/tree/main/adapters/targets/vectis/briefs/).
+- [`adapters/targets/omnia/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this brief carries the crate-writer and test-writer behavior).
+- [`adapters/targets/vectis/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/references/) and [`adapters/targets/vectis/references/examples/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/references/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/briefs/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/briefs/).
 - [`evals/scenarios/`](../../evals/scenarios/README.md) -- the unified scenario pack covering the `/spec:*` change lifecycle (`/spec:plan`, `/spec:execute`, `/spec:finalize`) from N=1 through multi-repo, happy-path through failure and recovery.

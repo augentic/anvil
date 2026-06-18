@@ -10,21 +10,21 @@ MARKETPLACE := augentic
 
 .PHONY: ci lint install-cli use-local-plugins use-team-plugins
 
-# Full local gate: the Rust workspace CI under cli/, then the framework
+# Full local gate: the Rust workspace CI under engine/, then the framework
 # lint over the in-tree prose (plugins/, docs/, adapters/).
 ci:
-	cd cli && cargo make ci
+	cd engine && cargo make ci
 	$(MAKE) lint
 
 # Framework lint over the prose surface, built from the in-tree binary.
 lint:
-	cd cli && cargo run -q -p specify -- lint framework --framework-root ..
+	cd engine && cargo run -q -p specify -- lint framework --framework-root ..
 
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:
 	@mkdir -p "$(INSTALL_DIR)"
-	cd cli && cargo build --release -p specify
-	@ln -sfn "$(CURDIR)/cli/target/release/specify" "$(INSTALL_DIR)/specify"
+	cd engine && cargo build --release -p specify
+	@ln -sfn "$(CURDIR)/engine/target/release/specify" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
 # Mirror the working-tree plugins into the Cursor plugin cache so a local
@@ -44,4 +44,4 @@ use-local-plugins:
 # Clear the augentic plugin cache via the in-tree binary's own verb
 # (journaled, marketplace-scoped). Cursor refetches on restart.
 use-team-plugins:
-	cd cli && cargo run -q -p specify -- plugins refresh --project-dir .. --yes
+	cd engine && cargo run -q -p specify -- plugins refresh --project-dir .. --yes

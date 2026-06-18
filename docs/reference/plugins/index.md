@@ -30,9 +30,9 @@ The Omnia and Vectis target adapters are not Cursor plugins — they live under 
 
 The **Specify** plugin provides the workflow skeleton. **Target adapters** (under `adapters/targets/<name>/`) own `shape`, `build`, and `merge` briefs — the build brief drives implementation work directly:
 
-- **Omnia target** drives crate, test, guest, and review phases inline from [`adapters/targets/omnia/briefs/build.md`](../../../adapters/targets/omnia/briefs/build.md).
-- **Vectis target** drives composition, core, iOS, and Android phases inline from [`adapters/targets/vectis/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md).
-- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside [`adapters/targets/contracts/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/briefs/build.md).
+- **Omnia target** drives crate, test, guest, and review phases inline from [`adapters/targets/omnia/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build.md).
+- **Vectis target** drives composition, core, iOS, and Android phases inline from [`adapters/targets/vectis/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/build.md).
+- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside [`adapters/targets/contracts/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/briefs/build.md).
 
 The Capture and Client plugins are target-independent — Capture supports legacy runtime capture regardless of the target platform; Client supports operator-facing deliverables.
 

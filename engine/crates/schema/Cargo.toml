@@ -1,0 +1,33 @@
+[package]
+name = "specify-schema"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Embedded JSON Schemas and JSON-Schema validation plumbing shared by Specify crates"
+categories = ["development-tools"]
+keywords = ["specify", "json-schema"]
+readme = "../../README.md"
+# Integration tests compile to the single `it` binary (one binary per crate);
+# the per-area files are pulled in via tests/it.rs `#[path]` includes.
+autotests = false
+
+[lints]
+workspace = true
+
+[dependencies]
+base16ct.workspace = true
+jsonschema.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+specify-error.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[[test]]
+name = "it"
+path = "tests/it.rs"

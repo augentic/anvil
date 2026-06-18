@@ -6,28 +6,37 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  checks:
-    name: Checks
+  # Full Rust workspace gate (clippy, fmt, test, doctests, doc, vet, deny)
+  # via the shared org workflow. The workspace lives under engine/, so the
+  # reusable workflow is pointed there with working-directory.
+  rust:
+    uses: augentic/.github/.github/workflows/ci.yaml@main
+    with:
+      working-directory: engine
+    secrets: inherit
+
+  # Repo-specific prose gate: spec-runtime symlink integrity plus the
+  # framework lint over the in-tree prose surface (plugins/, docs/,
+  # adapters/), built from the in-tree binary. Not part of the generic
+  # Rust workspace CI, so it stays a first-class job here.
+  framework-lint:
+    name: Framework lint
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      # Full-parallelism nextest profile; local runs keep the bounded
-      # default so macOS does not choke on the integration subprocesses.
-      NEXTEST_PROFILE: ci
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
       # Symlink integrity — fail early if a spec-runtime link is missing
-      # or broken (no materialised copies allowed).
+      # or broken (no materialised copies allowed). First-party adapter
+      # trees now live in augentic/specify-adapters, so `nullglob` lets
+      # this guard no-op cleanly until/unless an adapter tree returns to
+      # this repo (the adapters/shared/ rule pack carries no such links).
       - name: Verify symlinks
         run: |
+          shopt -s nullglob
           status=0
           for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
             if [ ! -L "$d" ]; then
@@ -40,38 +49,13 @@ jobs:
           done
           exit $status
 
-      # The stable toolchain is pinned by cli/rust-toolchain.toml; nightly
-      # rustfmt is additionally needed for the `fmt-check` gate, which runs
-      # `cargo +nightly fmt --all -- --check`.
-      - name: Install nightly rustfmt
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
-
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rust-src, rustfmt
-          targets: wasm32-wasip2
+      - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: cli
+          workspaces: engine
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - name: Install cargo tooling
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-make,cargo-nextest,cargo-deny,cargo-vet
-
-      # # Full Rust workspace gate: fmt-check, clippy, nextest, doctests,
-      # # doc, vet, deny.
-      # - name: Rust workspace CI
-      #   working-directory: cli
-      #   run: cargo make ci
-
-      # Framework lint over the in-tree prose surface (plugins/, docs/,
-      # adapters/), built from the same in-tree binary.
       - name: Verify framework
         run: make lint

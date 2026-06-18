@@ -68,7 +68,7 @@ This rule closes that seam. The running binary injects its own machine-readable 
 
 Named-test citations (`tests/….rs` claims against the binary's build-time test inventory) are the fourth selector of the same kind, scoped separately by [CORE-060](CORE-060-cli-test-citation-drift.md) — adapter references legitimately describe downstream generated-crate `tests/` layouts that are not CLI tests.
 
-Because the contract is rebuilt from the binary on every `make lint` run, every citation is re-checked against the in-tree binary in the same change — the rename sweep `cli/AGENTS.md` rule 5 prescribes is now machine-enforced on this side.
+Because the contract is rebuilt from the binary on every `make lint` run, every citation is re-checked against the in-tree binary in the same change — the rename sweep `engine/AGENTS.md` rule 5 prescribes is now machine-enforced on this side.
 
 ## Look For
 

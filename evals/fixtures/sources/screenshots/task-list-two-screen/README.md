@@ -29,7 +29,7 @@ The single input image depicts two screens stacked vertically. Vision triage dec
 
 ## Validation
 
-The Evidence YAMLs under `expected/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify/blob/main/cli/schemas/evidence.schema.json) in the CLI repo (the spatial `region` / `container` / `leaf` claim kinds land alongside the textual kinds in the closed `kind` enum). The lead blocks in `expected/discovery.md` follow the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify/blob/main/cli/schemas/discovery/lead.schema.json).
+The Evidence YAMLs under `expected/evidence/` validate against [`schemas/evidence.schema.json`](https://github.com/augentic/specify/blob/main/schemas/evidence.schema.json) in the CLI repo (the spatial `region` / `container` / `leaf` claim kinds land alongside the textual kinds in the closed `kind` enum). The lead blocks in `expected/discovery.md` follow the grammar in [`schemas/discovery/lead.schema.json`](https://github.com/augentic/specify/blob/main/schemas/discovery/lead.schema.json).
 
 Downstream `targets/vectis/build` consumes the spatial Evidence — after core synthesis folds the claims into `spec.md` / `design.md`, the Vectis target rebuilds `composition.yaml` from the synthesised hierarchy and the sibling `tokens.yaml` / `assets.yaml` in `design-system/`.
 

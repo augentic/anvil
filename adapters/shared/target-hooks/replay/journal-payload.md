@@ -21,7 +21,7 @@ Example NDJSON line (illustrative):
 - **`passed`** / **`failed`** / **`skipped`** — non-negative integers from the target runner's test classification.
 - **`runner`** — identifies the target adapter version and command (e.g. `omnia-target@1 (cargo nextest)`, `contracts-target@1 (specify extension run contract)`).
 
-Taxonomy reference: [`cli/DECISIONS.md` — journal events](https://github.com/augentic/specify/blob/main/cli/DECISIONS.md).
+Taxonomy reference: [`engine/DECISIONS.md` — journal events](https://github.com/augentic/specify/blob/main/engine/DECISIONS.md).
 
 ## Aspirational `metadata.yaml` block (future CLI)
 
@@ -46,4 +46,4 @@ The block is additive; it must not reshape other `metadata.yaml` fields. `/spec:
 ## See also
 
 - [`hook-contract.md`](hook-contract.md) — when to emit, advisory posture, merge rules
-- [`../../../targets/omnia/briefs/build/replay.md`](../../../targets/omnia/briefs/build/replay.md) — Omnia runner that produces these payloads
+- [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build/replay.md) — Omnia runner that produces these payloads

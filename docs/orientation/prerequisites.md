@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs the bundled plugins (Specify, Capture, Client) and their skills. Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](../../adapters/targets/), not in plugins.
+This installs the bundled plugins (Specify, Capture, Client) and their skills. Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](https://github.com/augentic/specify-adapters/tree/main/targets/), not in plugins.
 
 ## The `specify` CLI
 
@@ -68,15 +68,15 @@ The `cargo` and `brew` executors are fully wired; the `binary`-channel in-proces
 
 ### Contributing to the repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI under [`cli/`](https://github.com/augentic/specify/tree/main/cli) — needs only a Rust toolchain, not a separately installed `specify`. The CLI is an in-tree Cargo workspace, so the framework checks build it from source:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI under [`engine/`](https://github.com/augentic/specify/tree/main/engine) — needs only a Rust toolchain, not a separately installed `specify`. The CLI is an in-tree Cargo workspace, so the framework checks build it from source:
 
 ```bash
-make lint        # build cli/ and run specify lint framework over the prose tree
-make ci          # the full Rust workspace gate under cli/, then make lint
-make install-cli # build cli/target/release/specify and symlink it onto your PATH
+make lint        # build engine/ and run specify lint framework over the prose tree
+make ci          # the full Rust workspace gate under engine/, then make lint
+make install-cli # build engine/target/release/specify and symlink it onto your PATH
 ```
 
-No published binary is downloaded — every invocation builds from the in-tree `cli/` Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`cli/rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/cli/rust-toolchain.toml) (`cargo make fmt` uses nightly rustfmt). (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
+No published binary is downloaded — every invocation builds from the in-tree `engine/` Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`engine/rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/engine/rust-toolchain.toml) (`cargo make fmt` uses nightly rustfmt). (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
 
 ## Adapter-specific prerequisites
 

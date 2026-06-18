@@ -1,0 +1,31 @@
+[package]
+name = "specify-error"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Unified error types for the Specify CLI"
+categories = ["development-tools"]
+keywords = ["specify", "errors"]
+readme = "../../README.md"
+# Integration tests link through the single `it` binary (tests/it.rs);
+# per-area files are pulled in via `#[path]` submodules.
+autotests = false
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+strum.workspace = true
+jiff.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[[test]]
+name = "it"
+path = "tests/it.rs"

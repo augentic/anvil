@@ -17,7 +17,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis — that is **core
 Every target adapter ships a single `adapter.yaml` at `adapters/targets/<name>/`:
 
 ```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/cli/schemas/target.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/schemas/target.schema.json
 name: omnia
 version: "1.0.0"
 axis: target

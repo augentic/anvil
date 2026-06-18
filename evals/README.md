@@ -1,8 +1,8 @@
 # Eval packs
 
-Operator-driven eval scenarios and reference corpora for the Specify repo. The scenarios covered here are agent-based. All deterministic tests live under `cli/`.
+Operator-driven eval scenarios and reference corpora for the Specify repo. The scenarios covered here are agent-based. All deterministic tests live under `engine/`.
 
-Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree `cli/` workspace builds on first `make install-cli`) and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
+Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree `engine/` workspace builds on first `make install-cli`) and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
 
 ## Run all scenarios
 
@@ -54,7 +54,7 @@ The agent runs this for you as runbook step 1; run it directly only when you wan
 make install-cli
 ```
 
-`make install-cli` builds `cli/target/release/specify` from the in-tree `cli/` workspace and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those live under `cli/` (`cargo make test`).
+`make install-cli` builds `engine/target/release/specify` from the in-tree `engine/` workspace and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those live under `engine/` (`cargo make test`).
 
 ## Layout
 
@@ -71,4 +71,4 @@ make install-cli
 
 `.sandbox/` accumulates full per-scenario project trees (including Cargo target dirs) and is never pruned automatically — it can grow to multiple gigabytes across sweeps. Each scenario recreates its own root on the next run, so it is always safe to reclaim the space between runs with `rm -rf evals/.sandbox`.
 
-Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/tests/README.md)`.
+Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md)`.
