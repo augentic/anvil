@@ -1,11 +1,18 @@
+//! Byte-deterministic adapter packing (RFC-48 D1, Shape B).
+//!
+//! `pack_adapter` / `content_digest` / `unpack_adapter` / `verify_digest`
+//! are the crate's public packing API; these tests exercise it through that
+//! surface only, so they live in the crate integration suite rather than as
+//! `src` unit tests (see `docs/standards/testing.md`).
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
 
+use specify_registry::error::ExtensionError;
+use specify_registry::pack::{content_digest, pack_adapter, unpack_adapter, verify_digest};
 use tempfile::TempDir;
-
-use super::*;
 
 /// Extract a packed layer back into a map of `relative path -> bytes`
 /// (directories appear as keys with a trailing `/` and empty bytes), so

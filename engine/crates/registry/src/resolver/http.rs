@@ -169,8 +169,6 @@ fn map_streamed_body_error(url: &str, err: &ureq::Error) -> ExtensionError {
 
 #[cfg(test)]
 mod tests {
-    use std::net::TcpListener;
-
     use super::super::resolve;
     use super::*;
     use crate::error::ExtensionError;
@@ -211,33 +209,37 @@ mod tests {
         );
     }
 
+    // `map_network_error` (request path) and `map_streamed_body_error` (body
+    // path) are the funnels that give every ureq failure a stable kebab-case
+    // `code` the JSON envelope exposes; a `match` reorder or wrong constructor
+    // would silently relabel an operator-facing failure. The air-gapped
+    // closed-port case is asserted end-to-end by
+    // `engine/tests/extension.rs::run::https_network_failure_is_typed`, so that
+    // unit duplicate was deleted; the per-variant code mapping has no CLI
+    // fixture per ureq variant, so it collapses into one matrix that pins every
+    // former input.
     #[test]
-    fn air_gapped_https_error_names_url() {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind unused port");
-        let addr = listener.local_addr().expect("local addr");
-        drop(listener);
-        let url = format!("https://{addr}/tool.wasm");
-        let dest = scratch_dir("resolver-air-gapped-https").join("module.wasm");
-        let err = download_https(&url, &dest).expect_err("closed local port must fail");
-        assert!(err.to_string().contains(&url), "{err}");
-        assert!(
-            matches!(
-                err,
-                ExtensionError::Diag {
-                    code: "tool-network-other" | "tool-network-timeout" | "tool-network-malformed",
-                    ..
-                }
-            ),
-            "{err}"
-        );
-    }
+    fn network_error_codes_per_variant() {
+        let url = "https://example.test/tool.wasm";
+        // Request path: one row per `map_network_error` arm.
+        let request_cases: Vec<(ureq::Error, &str)> = vec![
+            (ureq::Error::Timeout(ureq::Timeout::Global), "tool-network-timeout"),
+            (ureq::Error::StatusCode(503), "tool-network-status"),
+            (ureq::Error::BadUri("not a uri".to_string()), "tool-network-malformed"),
+            (ureq::Error::BodyExceedsLimit(7), "tool-network-too-large"),
+            (ureq::Error::RequireHttpsOnly("http downgrade".to_string()), "tool-resolver"),
+        ];
+        for (err, expected_code) in request_cases {
+            let mapped = map_network_error(url, err);
+            let ExtensionError::Diag { code, .. } = mapped else {
+                panic!("expected a Diag for {expected_code}, got {mapped}");
+            };
+            assert_eq!(code, expected_code);
+        }
 
-    #[test]
-    fn network_error_mapping_variants() {
-        let timeout = map_network_error(
-            "https://example.test/tool.wasm",
-            ureq::Error::Timeout(ureq::Timeout::Global),
-        );
+        // Body path: `map_streamed_body_error` reuses the timeout and
+        // body-limit arms.
+        let timeout = map_streamed_body_error(url, &ureq::Error::Timeout(ureq::Timeout::Global));
         assert!(
             matches!(
                 timeout,
@@ -248,11 +250,7 @@ mod tests {
             ),
             "{timeout}"
         );
-
-        let too_large = map_streamed_body_error(
-            "https://example.test/tool.wasm",
-            &ureq::Error::BodyExceedsLimit(1),
-        );
+        let too_large = map_streamed_body_error(url, &ureq::Error::BodyExceedsLimit(1));
         assert!(
             matches!(
                 too_large,
@@ -263,28 +261,5 @@ mod tests {
             ),
             "{too_large}"
         );
-    }
-
-    // `map_network_error` is the funnel that gives every ureq failure a
-    // stable kebab-case `code` the JSON envelope exposes. Each arm routes
-    // to a different diagnostic code; a `match` reorder or a copy-paste
-    // of the wrong constructor would silently relabel an operator-facing
-    // failure. Pin the code per variant.
-    #[test]
-    fn map_network_error_codes_per_variant() {
-        let url = "https://example.test/tool.wasm";
-        let cases: Vec<(ureq::Error, &str)> = vec![
-            (ureq::Error::StatusCode(503), "tool-network-status"),
-            (ureq::Error::BadUri("not a uri".to_string()), "tool-network-malformed"),
-            (ureq::Error::BodyExceedsLimit(7), "tool-network-too-large"),
-            (ureq::Error::RequireHttpsOnly("http downgrade".to_string()), "tool-resolver"),
-        ];
-        for (err, expected_code) in cases {
-            let mapped = map_network_error(url, err);
-            let ExtensionError::Diag { code, .. } = mapped else {
-                panic!("expected a Diag, got {mapped}");
-            };
-            assert_eq!(code, expected_code);
-        }
     }
 }

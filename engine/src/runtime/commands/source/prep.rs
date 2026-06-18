@@ -264,64 +264,62 @@ mod tests {
 
     use super::*;
 
+    // CLI-unreachable invariant: the survey scratch segment constant must
+    // stay byte-equal to the `survey` operation's wire spelling.
     #[test]
     fn survey_segment_matches_wire_name() {
         assert_eq!(SURVEY_SCRATCH_SEGMENT, SourceOperation::Survey.to_string());
     }
 
+    // `scratch_dir` keys under the literal `survey/` segment for the
+    // slice-less survey op and under the slice name for extract.
     #[test]
-    fn scratch_keys_under_survey_segment() {
-        let scratch = scratch_dir(Path::new("/proj"), "demo-docs", &SourceOp::Survey);
-        assert_eq!(scratch, Path::new("/proj/.specify/scratch/demo-docs/survey"));
-    }
-
-    #[test]
-    fn extract_scratch_keys_under_slice_segment() {
-        let op = SourceOp::Extract {
+    fn scratch_keys_by_operation() {
+        assert_eq!(
+            scratch_dir(Path::new("/proj"), "demo-docs", &SourceOp::Survey),
+            Path::new("/proj/.specify/scratch/demo-docs/survey")
+        );
+        let extract = SourceOp::Extract {
             slice: "identity-password-reset".to_string(),
         };
-        let scratch = scratch_dir(Path::new("/proj"), "demo-source", &op);
         assert_eq!(
-            scratch,
+            scratch_dir(Path::new("/proj"), "demo-source", &extract),
             Path::new("/proj/.specify/scratch/demo-source/identity-password-reset")
         );
     }
 
+    // `SandboxLayout::new` mounts the four roots with fixed access modes: a
+    // path-bound source mounts `$SOURCE_DIR` read-only; a value-bound source
+    // leaves it absent. The other three roots are unaffected either way.
     #[test]
-    fn path_bound_mounts_four_roots() {
+    fn sandbox_layout_mounts_four_roots() {
         let source = PathBuf::from("/repo/legacy");
         let capability = PathBuf::from("/proj/adapters/sources/demo-source");
         let scratch = PathBuf::from("/proj/.specify/scratch/demo-source/s");
-        let layout = SandboxLayout::new(Some(&source), &capability, scratch.clone());
+        let bound = SandboxLayout::new(Some(&source), &capability, scratch.clone());
 
-        assert_eq!(layout.source.var, "SOURCE_DIR");
-        assert_eq!(layout.source.access, PreopenAccess::ReadOnly);
-        assert_eq!(layout.source.path, Some(source));
+        assert_eq!(bound.source.var, "SOURCE_DIR");
+        assert_eq!(bound.source.access, PreopenAccess::ReadOnly);
+        assert_eq!(bound.source.path, Some(source));
+        assert_eq!(bound.capability.var, "CAPABILITY_DIR");
+        assert_eq!(bound.capability.access, PreopenAccess::ReadOnly);
+        assert_eq!(bound.capability.path, Some(capability));
+        assert_eq!(bound.scratch.var, "SCRATCH_DIR");
+        assert_eq!(bound.scratch.access, PreopenAccess::WriteOnly);
+        assert_eq!(bound.scratch.path, Some(scratch));
+        assert_eq!(bound.project.var, "PROJECT_DIR");
+        assert_eq!(bound.project.access, PreopenAccess::None);
+        assert_eq!(bound.project.path, None);
 
-        assert_eq!(layout.capability.var, "CAPABILITY_DIR");
-        assert_eq!(layout.capability.access, PreopenAccess::ReadOnly);
-        assert_eq!(layout.capability.path, Some(capability));
-
-        assert_eq!(layout.scratch.var, "SCRATCH_DIR");
-        assert_eq!(layout.scratch.access, PreopenAccess::WriteOnly);
-        assert_eq!(layout.scratch.path, Some(scratch));
-
-        assert_eq!(layout.project.var, "PROJECT_DIR");
-        assert_eq!(layout.project.access, PreopenAccess::None);
-        assert_eq!(layout.project.path, None);
-    }
-
-    #[test]
-    fn value_bound_source_dir_absent() {
-        let capability = PathBuf::from("/proj/adapters/sources/intent");
-        let scratch = PathBuf::from("/proj/.specify/scratch/intent/survey");
-        let layout = SandboxLayout::new(None, &capability, scratch);
-
-        assert_eq!(layout.source.access, PreopenAccess::None);
-        assert_eq!(layout.source.path, None, "value-bound source has no $SOURCE_DIR");
-        // The other three roots are unaffected by the absent source.
-        assert_eq!(layout.capability.access, PreopenAccess::ReadOnly);
-        assert_eq!(layout.scratch.access, PreopenAccess::WriteOnly);
-        assert_eq!(layout.project.access, PreopenAccess::None);
+        let value = SandboxLayout::new(
+            None,
+            Path::new("/proj/adapters/sources/intent"),
+            PathBuf::from("/proj/.specify/scratch/intent/survey"),
+        );
+        assert_eq!(value.source.access, PreopenAccess::None);
+        assert_eq!(value.source.path, None, "value-bound source has no $SOURCE_DIR");
+        assert_eq!(value.capability.access, PreopenAccess::ReadOnly);
+        assert_eq!(value.scratch.access, PreopenAccess::WriteOnly);
+        assert_eq!(value.project.access, PreopenAccess::None);
     }
 }

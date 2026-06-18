@@ -20,12 +20,16 @@ fn packed_demo() -> Vec<u8> {
     pack_adapter(&root, &[]).expect("pack demo")
 }
 
+// `install_layer` writes a read-only tree with no surviving temp dir, and
+// is idempotent: a second call on a present immutable entry is a no-op
+// rather than a re-unpack. Both halves collapse into one test.
 #[test]
-fn install_layer_writes_read_only_tree() {
+fn install_layer_read_only_idempotent() {
     let store = TempDir::new().expect("store root");
     let entry = store.path().join("demo@1.0.0");
+    let layer = packed_demo();
 
-    install_layer(&entry, &packed_demo()).expect("install");
+    install_layer(&entry, &layer).expect("install");
 
     assert!(entry.join("adapter.yaml").is_file());
     assert_eq!(fs::read(entry.join("briefs/build.md")).expect("read brief"), b"# build\n");
@@ -37,17 +41,9 @@ fn install_layer_writes_read_only_tree() {
         .filter_map(Result::ok)
         .any(|e| e.file_name().to_string_lossy().contains(".tmp."));
     assert!(!leftover_temp, "no temp dir may survive a successful install");
-}
 
-#[test]
-fn install_layer_is_idempotent() {
-    let store = TempDir::new().expect("store root");
-    let entry = store.path().join("demo@1.0.0");
-    let layer = packed_demo();
-
-    install_layer(&entry, &layer).expect("first install");
-    // The immutable entry is present, so a second call is a no-op rather
-    // than a re-unpack — concurrent installers of one identity converge.
+    // Concurrent installers of one identity converge: the second call is a
+    // no-op against the present immutable entry.
     install_layer(&entry, &layer).expect("idempotent second install");
     assert!(entry.join("adapter.yaml").is_file());
 }

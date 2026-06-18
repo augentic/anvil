@@ -46,61 +46,8 @@ pub fn merge_scoped(
     (merged, warnings)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::manifest::{Axis, ExtensionPermissions, ExtensionSource};
-
-    fn tool(name: &str, version: &str, source: ExtensionSource) -> Extension {
-        Extension {
-            name: name.to_string(),
-            version: version.to_string(),
-            source,
-            sha256: None,
-            permissions: ExtensionPermissions::default(),
-        }
-    }
-
-    #[test]
-    fn merge_project_wins_and_warns() {
-        let project_scope = ExtensionScope::Project {
-            project_name: "demo".to_string(),
-        };
-        let plugin_scope = ExtensionScope::Plugin {
-            axis: Axis::Target,
-            plugin_slug: "demo-target".to_string(),
-            capability_dir: "/cap".into(),
-        };
-
-        let project = vec![(
-            project_scope,
-            tool(
-                "demo-tool",
-                "2.0.0",
-                ExtensionSource::LocalPath("/project/demo-tool.wasm".into()),
-            ),
-        )];
-        let plugin = vec![
-            (
-                plugin_scope.clone(),
-                tool(
-                    "demo-tool",
-                    "1.0.0",
-                    ExtensionSource::LocalPath("/cap/demo-tool.wasm".into()),
-                ),
-            ),
-            (
-                plugin_scope,
-                tool("other", "1.0.0", ExtensionSource::LocalPath("/cap/other.wasm".into())),
-            ),
-        ];
-
-        let (merged, warnings) = merge_scoped(project, plugin);
-        assert_eq!(warnings, vec!["demo-tool".to_string()]);
-        assert_eq!(
-            merged.iter().map(|(_, t)| t.name.as_str()).collect::<Vec<_>>(),
-            ["demo-tool", "other"]
-        );
-        assert_eq!(merged[0].1.version, "2.0.0");
-    }
-}
+// The project-wins-on-name-collision merge (project tool kept, plugin
+// dropped, `tool-name-collision` warning emitted) is asserted end-to-end by
+// `engine/tests/extension.rs::run::name_collision_project_scope_wins`, and the
+// non-colliding plugin merge by every adapter-tool run (e.g.
+// `adapter_non_zero_exit_caches_by_scope`), so the unit duplicate was deleted.

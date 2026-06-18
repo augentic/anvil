@@ -104,35 +104,38 @@ mod tests {
         }
     }
 
+    // `assemble::render_input` sorts active slices, registry dependencies,
+    // and the fingerprint input set for a normal project, and short-circuits
+    // for a workspace (no adapter, no dependencies, project.yaml the only
+    // input). Both modes collapse into one matrix.
     #[test]
-    fn assemble_render_input_sorted_metadata() {
-        let tmp = tempdir().expect("tempdir");
-        write_minimal_adapter(tmp.path());
-        let slices_dir = Layout::new(tmp.path()).slices_dir();
+    fn render_input_assembles_per_mode() {
+        let project = tempdir().expect("tempdir");
+        write_minimal_adapter(project.path());
+        let slices_dir = Layout::new(project.path()).slices_dir();
         fs::create_dir_all(slices_dir.join("zeta")).expect("create zeta");
         fs::create_dir_all(slices_dir.join("alpha")).expect("create alpha");
         fs::write(slices_dir.join("zeta").join("metadata.yaml"), "not parsed").expect("zeta meta");
         fs::write(slices_dir.join("alpha").join("metadata.yaml"), "also not parsed")
             .expect("alpha meta");
         fs::write(
-            Registry::path(tmp.path()),
+            Registry::path(project.path()),
             "version: 1\nprojects:\n  - name: zeta\n    url: ../zeta\n    adapter: mini@1.0.0\n    description: Zeta service\n  - name: alpha\n    url: ../alpha\n    adapter: mini@1.0.0\n    description: Alpha service\n",
         )
         .expect("write registry");
-        let cfg_path = Layout::new(tmp.path()).config_path();
+        let cfg_path = Layout::new(project.path()).config_path();
         fs::create_dir_all(cfg_path.parent().expect("config parent")).expect("create .specify");
         fs::write(&cfg_path, "name: demo\nadapter: mini\nrules:\n  proposal: rules/proposal.md\n")
             .expect("write project config");
         let ctx = Ctx {
             format: Format::Text,
-            project_dir: tmp.path().to_path_buf(),
+            project_dir: project.path().to_path_buf(),
             config: sample_config(),
             plan_dir: None,
         };
 
         let assembly = assemble::render_input(&ctx).expect("assemble render input");
         let input = &assembly.input;
-
         assert_eq!(input.active_slices, vec!["alpha".to_string(), "zeta".to_string()]);
         assert_eq!(
             input.dependencies.iter().map(|peer| peer.name.as_str()).collect::<Vec<_>>(),
@@ -159,17 +162,14 @@ mod tests {
                 "registry.yaml",
             ]
         );
-    }
 
-    #[test]
-    fn render_input_skips_for_workspaces() {
-        let tmp = tempdir().expect("tempdir");
-        let cfg_path = Layout::new(tmp.path()).config_path();
-        fs::create_dir_all(cfg_path.parent().expect("config parent")).expect("create .specify");
-        fs::write(&cfg_path, "name: platform\nworkspace: true\n").expect("write project config");
-        let ctx = Ctx {
+        let workspace = tempdir().expect("tempdir");
+        let ws_cfg = Layout::new(workspace.path()).config_path();
+        fs::create_dir_all(ws_cfg.parent().expect("config parent")).expect("create .specify");
+        fs::write(&ws_cfg, "name: platform\nworkspace: true\n").expect("write project config");
+        let ws_ctx = Ctx {
             format: Format::Text,
-            project_dir: tmp.path().to_path_buf(),
+            project_dir: workspace.path().to_path_buf(),
             config: ProjectConfig {
                 name: "platform".to_string(),
                 description: None,
@@ -183,14 +183,13 @@ mod tests {
             plan_dir: None,
         };
 
-        let assembly = assemble::render_input(&ctx).expect("workspace assembly");
-        let input = &assembly.input;
-
-        assert!(input.is_workspace);
-        assert!(input.adapter.is_none());
-        assert!(input.dependencies.is_empty());
+        let ws_assembly = assemble::render_input(&ws_ctx).expect("workspace assembly");
+        let ws_input = &ws_assembly.input;
+        assert!(ws_input.is_workspace);
+        assert!(ws_input.adapter.is_none());
+        assert!(ws_input.dependencies.is_empty());
         assert_eq!(
-            assembly.inputs.iter().map(|input| input.path.as_str()).collect::<Vec<_>>(),
+            ws_assembly.inputs.iter().map(|input| input.path.as_str()).collect::<Vec<_>>(),
             vec![".specify/project.yaml"]
         );
     }

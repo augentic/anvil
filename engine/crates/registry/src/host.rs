@@ -547,34 +547,11 @@ mod tests {
         assert!(preopens.iter().all(|p| !p.writable), "read templates stay read-only");
     }
 
-    #[test]
-    fn invalid_component_bytes_error() {
-        let tmp = tempdir().expect("tempdir");
-        let project = tmp.path().join("project");
-        fs::create_dir_all(&project).expect("project");
-        let wasm = tmp.path().join("not-a-component.wasm");
-        fs::write(&wasm, b"not wasm").expect("write wasm");
-        let resolved = resolved(
-            ExtensionScope::Project {
-                project_name: "demo".to_string(),
-            },
-            tool_with_permissions(Vec::new(), Vec::new()),
-            wasm,
-        );
-
-        let runner = WasiRunner::new().expect("runner");
-        let err = runner
-            .run(&resolved, &RunContext::new(&project, Vec::new()))
-            .expect_err("invalid component must fail");
-        assert!(
-            matches!(
-                err,
-                ExtensionError::Diag {
-                    code: "tool-runtime",
-                    ..
-                }
-            ),
-            "{err}"
-        );
-    }
+    // The invalid-component compile failure (`tool-runtime`) is asserted
+    // end-to-end by `engine/tests/extension.rs::run::invalid_wasm_runtime_failure_is_typed`,
+    // which reaches `invoke` → `Component::from_file` exactly as this unit did,
+    // so the duplicate was deleted. The cap-dir and lifecycle `run` rejections
+    // above are kept: the CLI rejects both at manifest validation (exit 2)
+    // before `run` is reached, so the `prepare_preopens` error arms they pin
+    // are CLI-unreachable defensive branches.
 }

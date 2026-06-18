@@ -57,17 +57,15 @@ mod tests {
 
     use super::{sha256_hex, sha256_output_hex};
 
+    // `sha256_hex` is pinned by the canonical empty-input known-answer
+    // vector, and `sha256_output_hex` over a finalized digest must agree
+    // with the one-shot `sha256_hex`.
     #[test]
-    fn sha256_hex_empty() {
+    fn sha256_hex_helpers() {
         assert_eq!(
             sha256_hex(b""),
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         );
-    }
-
-    #[test]
-    fn sha256_output_hex_matches_digest() {
-        let digest = Sha256::digest(b"specify");
-        assert_eq!(sha256_output_hex(digest), sha256_hex(b"specify"));
+        assert_eq!(sha256_output_hex(Sha256::digest(b"specify")), sha256_hex(b"specify"));
     }
 }

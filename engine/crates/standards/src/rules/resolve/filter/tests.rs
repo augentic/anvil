@@ -77,10 +77,11 @@ fn core_entry(id: &str) -> ResolvedRuleEntry {
 }
 
 /// One single-entry `filter` case: the entry survives (`pass: true` →
-/// one entry out) or is dropped. The three `*_dimension`/`*_matrix`
-/// tests below group these by applicability dimension; the
-/// AND-across-dimensions, deprecation-ordering, and `--include-core`
-/// interaction cases keep their own named tests further down.
+/// one entry out) or is dropped. `applicability_and_path_matrix` drives
+/// every single-entry case below; the deprecation-flag and
+/// `--include-core` interactions keep their own matrices because they
+/// need flags, multi-entry input, or `Origin::Core` entries this table
+/// does not model.
 struct Case {
     name: &'static str,
     applicability: Option<Applicability>,
@@ -104,10 +105,15 @@ fn check_filter_cases(cases: Vec<Case>) {
     }
 }
 
-/// `adapters` matches the caller's target or a bound source adapter; a
-/// populated list with no match is filtered; `@v<major>` is stripped.
+/// Every single-entry case across all four applicability dimensions —
+/// `adapters` (target / source match, no-match, `@v<major>` strip),
+/// `languages` (match / mismatch / absent ± include), `artifacts`
+/// (excluded by default ± include), and `paths` (`**` cross-segment,
+/// single `*` no-cross, caller-absent ± include, malformed glob) — plus
+/// the AND-across-dimensions interaction. One row per former input.
+#[expect(clippy::too_many_lines, reason = "collapsed filter matrix: one row per former case")]
 #[test]
-fn adapter_dimension_matrix() {
+fn applicability_and_path_matrix() {
     let app = applicability_with;
     check_filter_cases(vec![
         // No applicability block survives any inputs.
@@ -160,15 +166,6 @@ fn adapter_dimension_matrix() {
             include_unmatched: false,
             pass: true,
         },
-    ]);
-}
-
-/// `languages` is matched against caller tokens; excluded when the
-/// caller supplies none unless `include_unmatched` is set.
-#[test]
-fn language_dimension_matrix() {
-    let app = applicability_with;
-    check_filter_cases(vec![
         // `languages` matches a caller token.
         Case {
             name: "LANG-001",
@@ -209,15 +206,6 @@ fn language_dimension_matrix() {
             include_unmatched: true,
             pass: true,
         },
-    ]);
-}
-
-/// `artifacts` and `paths` dimensions: `artifacts` are excluded by
-/// default (no `--artifact-kind` input); path globs match by segment.
-#[test]
-fn artifact_and_path_matrix() {
-    let app = applicability_with;
-    check_filter_cases(vec![
         // `artifacts` populated — excluded by default (no `--artifact-kind`).
         Case {
             name: "ART-001",
@@ -258,90 +246,100 @@ fn artifact_and_path_matrix() {
             include_unmatched: false,
             pass: false,
         },
+        // `paths` populated, caller supplies none, include off → dropped.
+        Case {
+            name: "PATH-003a",
+            applicability: Some(app(None, None, None, Some(vec!["**/*.rs"]))),
+            sources: &[],
+            paths: &[],
+            languages: &[],
+            include_unmatched: false,
+            pass: false,
+        },
+        // ...same rule, include on → passes.
+        Case {
+            name: "PATH-003b",
+            applicability: Some(app(None, None, None, Some(vec!["**/*.rs"]))),
+            sources: &[],
+            paths: &[],
+            languages: &[],
+            include_unmatched: true,
+            pass: true,
+        },
+        // A single `*` segment does not cross `/`: matches `src/lib.rs`...
+        Case {
+            name: "PATH-004a",
+            applicability: Some(app(None, None, None, Some(vec!["src/*.rs"]))),
+            sources: &[],
+            paths: &["src/lib.rs"],
+            languages: &[],
+            include_unmatched: false,
+            pass: true,
+        },
+        // ...but not `src/nested/lib.rs`.
+        Case {
+            name: "PATH-004b",
+            applicability: Some(app(None, None, None, Some(vec!["src/*.rs"]))),
+            sources: &[],
+            paths: &["src/nested/lib.rs"],
+            languages: &[],
+            include_unmatched: false,
+            pass: false,
+        },
+        // AND across dimensions: adapter + language both match.
+        Case {
+            name: "MULTI-001a",
+            applicability: Some(app(Some(vec!["demo-target"]), Some(vec!["rust"]), None, None)),
+            sources: &[],
+            paths: &[],
+            languages: &["rust"],
+            include_unmatched: false,
+            pass: true,
+        },
+        // ...adapter matches but language disagrees → dropped.
+        Case {
+            name: "MULTI-001b",
+            applicability: Some(app(Some(vec!["demo-target"]), Some(vec!["rust"]), None, None)),
+            sources: &[],
+            paths: &[],
+            languages: &["typescript"],
+            include_unmatched: false,
+            pass: false,
+        },
+        // A malformed glob never panics and matches nothing → dropped.
+        Case {
+            name: "PATH-BAD",
+            applicability: Some(app(None, None, None, Some(vec!["[broken"]))),
+            sources: &[],
+            paths: &["src/lib.rs"],
+            languages: &[],
+            include_unmatched: false,
+            pass: false,
+        },
     ]);
 }
 
-/// `paths` populated but the caller supplies no paths: filtered when
-/// `include_unmatched` is off, passed when it is on.
+/// Deprecation-flag interactions (flag absent / present, and the
+/// deprecation-before-applicability ordering) — these need the
+/// `include_deprecated` flag the single-entry `Case` table omits.
 #[test]
-fn paths_caller_absent_excluded_by_default() {
-    let entry = make_entry(
-        "PATH-003",
-        Some(applicability_with(None, None, None, Some(vec!["**/*.rs"]))),
-        None,
-    );
-    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
-    let out = filter(vec![entry.clone()], &inputs);
-    assert!(out.is_empty());
-
-    let inputs = make_inputs("demo-target", &[], &[], &[], false, true);
-    let out = filter(vec![entry], &inputs);
-    assert_eq!(out.len(), 1);
-}
-
-/// A single `*` segment does not cross `/`. The same
-/// pattern matches `src/lib.rs` but not `src/nested/lib.rs`.
-#[test]
-fn single_star_no_cross_separator() {
-    let entry = make_entry(
-        "PATH-004",
-        Some(applicability_with(None, None, None, Some(vec!["src/*.rs"]))),
-        None,
-    );
-
-    let matching = vec![PathBuf::from("src/lib.rs")];
-    let inputs = make_inputs("demo-target", &[], &matching, &[], false, false);
-    assert_eq!(filter(vec![entry.clone()], &inputs).len(), 1);
-
-    let nested = vec![PathBuf::from("src/nested/lib.rs")];
-    let inputs = make_inputs("demo-target", &[], &nested, &[], false, false);
-    assert!(filter(vec![entry], &inputs).is_empty());
-}
-
-/// AND across dimensions — both `adapters` and
-/// `languages` must match. Adapter-only match still filters the
-/// rule when languages disagree.
-#[test]
-fn and_across_dimensions() {
-    let entry = make_entry(
-        "MULTI-001",
-        Some(applicability_with(Some(vec!["demo-target"]), Some(vec!["rust"]), None, None)),
-        None,
-    );
-
-    let rust = vec!["rust".to_string()];
-    let inputs = make_inputs("demo-target", &[], &[], &rust, false, false);
-    assert_eq!(filter(vec![entry.clone()], &inputs).len(), 1);
-
-    let ts = vec!["typescript".to_string()];
-    let inputs = make_inputs("demo-target", &[], &[], &ts, false, false);
-    assert!(filter(vec![entry], &inputs).is_empty());
-}
-
-/// A deprecated rule is filtered when `include_deprecated` is off.
-#[test]
-fn deprecated_filtered_by_default() {
+fn deprecation_matrix() {
+    // A deprecated rule is filtered when `include_deprecated` is off.
     let entry = make_entry("DEP-001", None, Some(deprecation_meta()));
     let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     assert!(filter(vec![entry], &inputs).is_empty());
-}
 
-/// A deprecated rule survives when `include_deprecated` is on AND its
-/// applicability (here `None`) passes.
-#[test]
-fn deprecated_passes_when_flag_set() {
+    // It survives when the flag is on AND its (here `None`) applicability
+    // passes; the deprecation metadata rides through.
     let entry = make_entry("DEP-002", None, Some(deprecation_meta()));
     let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     let out = filter(vec![entry], &inputs);
     assert_eq!(out.len(), 1);
     assert!(out[0].rule.deprecated.is_some());
-}
 
-/// Deprecation runs before applicability. A deprecated
-/// rule whose applicability also wouldn't match is filtered out
-/// silently — not via a partial-evaluation bypass.
-#[test]
-fn deprecation_runs_before_applicability() {
+    // Deprecation runs before applicability: a deprecated rule whose
+    // applicability also wouldn't match is filtered out either way (no
+    // partial-evaluation bypass).
     let entry = make_entry(
         "DEP-003",
         Some(applicability_with(Some(vec!["other-target"]), None, None, None)),
@@ -349,43 +347,24 @@ fn deprecation_runs_before_applicability() {
     );
     let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     assert!(filter(vec![entry.clone()], &inputs).is_empty());
-
-    // With include_deprecated on, applicability still rejects the
-    // rule because the adapter list does not match.
     let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     assert!(filter(vec![entry], &inputs).is_empty());
 }
 
-/// A malformed glob pattern in a rule must not panic; the rule is
-/// excluded because the pattern cannot match anything.
+/// `--include-core` interactions — these need `Origin::Core` entries,
+/// the `include_core` flag, and multi-entry input the single-entry
+/// `Case` table does not model.
 #[test]
-fn malformed_glob_pattern_is_safe() {
-    let entry = make_entry(
-        "PATH-BAD",
-        Some(applicability_with(None, None, None, Some(vec!["[broken"]))),
-        None,
-    );
-    let paths = vec![PathBuf::from("src/lib.rs")];
-    let inputs = make_inputs("demo-target", &[], &paths, &[], false, false);
-    let out = filter(vec![entry], &inputs);
-    assert!(out.is_empty());
-}
-
-/// A [`Origin::Core`] entry is dropped on a default consumer
-/// export — `--include-core` is off.
-#[test]
-fn core_origin_excluded_by_default() {
+fn core_origin_matrix() {
+    // A core entry is dropped on a default consumer export (flag off).
     let entry = core_entry("CORE-001");
     let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
-    let out = filter(vec![entry], &inputs);
-    assert!(out.is_empty(), "core rules must not appear without --include-core");
-}
+    assert!(
+        filter(vec![entry], &inputs).is_empty(),
+        "core rules must not appear without --include-core"
+    );
 
-/// With `--include-core` set, the core entry passes
-/// the origin filter and rides through the remaining filters
-/// unchanged. Origin metadata is preserved on the surviving entry.
-#[test]
-fn core_origin_passes_when_flag_set() {
+    // With the flag set, the core entry passes and keeps its origin.
     let entry = core_entry("CORE-001");
     let mut inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     inputs.include_core = true;
@@ -393,32 +372,24 @@ fn core_origin_passes_when_flag_set() {
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].origin, Origin::Core);
     assert_eq!(out[0].rule.id, "CORE-001");
-}
 
-/// `--include-core` is orthogonal to other origins: shared / source
-/// / target entries flow through whether the flag is on or off.
-#[test]
-fn core_filter_orthogonal() {
+    // The flag is orthogonal to other origins: a shared entry flows through
+    // regardless; toggling the flag only adds the core entry.
     let shared = make_entry("UNI-001", None, None);
     let core = core_entry("CORE-001");
     let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     let out = filter(vec![shared.clone(), core.clone()], &inputs);
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].rule.id, "UNI-001");
-
     let mut inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     inputs.include_core = true;
     let out = filter(vec![shared, core], &inputs);
     assert_eq!(out.len(), 2);
     assert!(out.iter().any(|e| e.rule.id == "UNI-001"));
     assert!(out.iter().any(|e| e.rule.id == "CORE-001"));
-}
 
-/// Origin runs before deprecation: a deprecated core rule with
-/// `--include-deprecated` set still falls out of the export when
-/// `--include-core` is off.
-#[test]
-fn core_filter_runs_before_deprecation() {
+    // Origin runs before deprecation: a deprecated core rule with
+    // `--include-deprecated` set still falls out when `--include-core` is off.
     let entry = ResolvedRuleEntry {
         rule: make_rule("CORE-DEP", None, Some(deprecation_meta())),
         origin: Origin::Core,
@@ -427,7 +398,6 @@ fn core_filter_runs_before_deprecation() {
     };
     let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     assert!(filter(vec![entry.clone()], &inputs).is_empty());
-
     let mut inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     inputs.include_core = true;
     let out = filter(vec![entry], &inputs);

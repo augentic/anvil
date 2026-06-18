@@ -246,5 +246,7 @@ fn append_entry(
     }
 }
 
-#[cfg(test)]
-mod tests;
+// The public pack API (`pack_adapter` / `content_digest` / `unpack_adapter`
+// / `verify_digest`) is exercised through the crate integration suite at
+// `tests/pack.rs`, not as `src` unit tests — it is isolated domain logic
+// reachable entirely through the crate's public surface.

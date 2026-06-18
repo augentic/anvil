@@ -339,55 +339,34 @@ mod tests {
         tree_content_digest,
     };
 
+    // `project_cache_dir` is keyed by the canonicalised project path:
+    // distinct projects get distinct dirs under one shared projects root,
+    // and the same project is stable across calls.
     #[test]
-    fn distinct_projects_get_distinct_dirs() {
+    fn project_cache_dir_keys_by_project() {
         let a = project_cache_dir(Path::new("/some/project/a"));
         let b = project_cache_dir(Path::new("/some/project/b"));
         assert_ne!(a, b);
         assert_eq!(a.parent(), b.parent(), "both live under the same projects root");
+        assert_eq!(a, project_cache_dir(Path::new("/some/project/a")), "stable across calls");
     }
 
+    // The adapter store is keyed by the immutable `(name, version)`
+    // identity: the entry is `<root>/<name>@<version>`, distinct versions
+    // never collide, the same identity is stable, and the verify-on-read
+    // sidecar (RFC-48 D4) is a `.meta` *sibling* of the entry — never
+    // inside the tree `tree_content_digest` walks.
     #[test]
-    fn same_project_is_stable() {
-        let first = project_cache_dir(Path::new("/some/project/a"));
-        let second = project_cache_dir(Path::new("/some/project/a"));
-        assert_eq!(first, second);
-    }
-
-    #[test]
-    fn store_entry_keys_by_name_and_version() {
+    fn store_entry_and_meta_paths() {
         let entry = adapter_store_entry("demo-target", "1.2.0");
         assert_eq!(entry.file_name().unwrap(), "demo-target@1.2.0");
         assert_eq!(entry.parent().unwrap(), adapter_store_root());
-    }
+        assert_ne!(entry, adapter_store_entry("demo-target", "1.3.0"));
+        assert_eq!(entry, adapter_store_entry("demo-target", "1.2.0"), "stable across calls");
 
-    #[test]
-    fn store_entry_distinct_per_pinned_identity() {
-        // The store is keyed by the immutable identity, so two versions
-        // of one adapter never collide and share no entry.
-        assert_ne!(
-            adapter_store_entry("demo-target", "1.2.0"),
-            adapter_store_entry("demo-target", "1.3.0")
-        );
-        assert_eq!(
-            adapter_store_entry("demo-target", "1.2.0"),
-            adapter_store_entry("demo-target", "1.2.0"),
-            "the same pinned identity is stable across calls"
-        );
-    }
-
-    #[test]
-    fn store_meta_path_is_entry_sibling_not_child() {
-        // RFC-48 D4: the verify-on-read sidecar must sit beside the entry,
-        // never inside the tree `tree_content_digest` walks, so recording
-        // it cannot perturb the entry's own digest.
-        let entry = adapter_store_entry("demo-target", "1.2.0");
         let meta = store_meta_path("demo-target", "1.2.0");
         assert_eq!(meta.parent(), entry.parent(), "the sidecar is a sibling of the entry");
-        assert!(
-            !meta.starts_with(&entry),
-            "the sidecar must not live inside the walked entry tree"
-        );
+        assert!(!meta.starts_with(&entry), "the sidecar must not live inside the walked tree");
         assert_eq!(meta.file_name().expect("sidecar file name"), "demo-target@1.2.0.meta");
     }
 

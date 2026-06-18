@@ -247,43 +247,46 @@ mod tests {
         (home, guards)
     }
 
+    // `load_config` is the private wasm-pkg config layering funnel; the CLI
+    // never exposes its per-layer precedence, only the resolved fetch. The
+    // five layering cases — embedded first-party inject, non-`specify`
+    // skip, project-local override, WKG_CONFIG-over-project, and missing
+    // project config — collapse into one matrix that holds the env lock
+    // once and re-scopes the HOME / WKG_CONFIG guards per case.
     #[test]
-    fn embedded_injects_first_party() {
+    fn load_config_layering_matrix() {
         let _guard = env_lock();
-        let (_home, _isolated) = isolate_global_config_dir("package-embedded-default");
-        let _wkg = EnvGuard::scoped("WKG_CONFIG", None);
 
-        let package = package_ref();
-        let runtime =
-            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-        let config = runtime.block_on(load_config(&package, None)).expect("load_config ok");
-        let resolved = config.resolve_registry(&package).expect("specify namespace mapped");
-        assert_eq!(resolved.to_string(), FIRST_PARTY_REGISTRY);
-    }
+        let resolve = |label: &str,
+                       package: &PackageRef,
+                       project: Option<&Path>,
+                       wkg: Option<&Path>|
+         -> Option<String> {
+            let (_home, _isolated) = isolate_global_config_dir(label);
+            let _wkg = EnvGuard::scoped("WKG_CONFIG", wkg);
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime");
+            let config = runtime.block_on(load_config(package, project)).expect("load_config ok");
+            config.resolve_registry(package).map(ToString::to_string)
+        };
 
-    #[test]
-    fn embedded_skipped_for_others() {
-        let _guard = env_lock();
-        let (_home, _isolated) = isolate_global_config_dir("package-embedded-other");
-        let _wkg = EnvGuard::scoped("WKG_CONFIG", None);
+        // First-party namespace with no project layer → embedded augentic.io.
+        assert_eq!(
+            resolve("package-embedded-default", &package_ref(), None, None).as_deref(),
+            Some(FIRST_PARTY_REGISTRY)
+        );
 
-        let package = third_party_ref();
-        let runtime =
-            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-        let config = runtime.block_on(load_config(&package, None)).expect("load_config ok");
-        // wasm-pkg ships a `ba -> bytecodealliance.org` hard-coded
-        // fallback; the contract here is only that we did NOT inject
-        // `augentic.io` for a non-`specify` namespace.
-        let resolved = config.resolve_registry(&package).map(ToString::to_string);
-        assert_ne!(resolved.as_deref(), Some(FIRST_PARTY_REGISTRY));
-    }
+        // wasm-pkg ships a `ba -> bytecodealliance.org` fallback; the
+        // contract is only that we did NOT inject augentic.io for a
+        // non-`specify` namespace.
+        assert_ne!(
+            resolve("package-embedded-other", &third_party_ref(), None, None).as_deref(),
+            Some(FIRST_PARTY_REGISTRY)
+        );
 
-    #[test]
-    fn local_config_overrides_default() {
-        let _guard = env_lock();
-        let (_home, _isolated) = isolate_global_config_dir("package-project-config-home");
-        let _wkg = EnvGuard::scoped("WKG_CONFIG", None);
-
+        // Project-local `.specify/wasm-pkg.toml` overrides the embedded default.
         let project = scratch_dir("package-project-config");
         fs::create_dir_all(project.join(".specify")).expect("create .specify");
         fs::write(
@@ -291,61 +294,33 @@ mod tests {
             "[namespace_registries]\nspecify = \"mirror.example.com\"\n",
         )
         .expect("write project wasm-pkg.toml");
+        assert_eq!(
+            resolve("package-project-config-home", &package_ref(), Some(project.as_path()), None)
+                .as_deref(),
+            Some("mirror.example.com")
+        );
 
-        let package = package_ref();
-        let runtime =
-            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-        let config = runtime
-            .block_on(load_config(&package, Some(project.as_path())))
-            .expect("load_config ok");
-        let resolved = config.resolve_registry(&package).expect("namespace mapped");
-        assert_eq!(resolved.to_string(), "mirror.example.com");
-    }
-
-    #[test]
-    fn wkg_config_overrides_project_local() {
-        let _guard = env_lock();
-        let (_home, _isolated) = isolate_global_config_dir("package-wkg-overrides-home");
-
-        let project = scratch_dir("package-wkg-overrides-project");
-        fs::create_dir_all(project.join(".specify")).expect("create .specify");
-        fs::write(
-            project.join(WASM_PKG_CONFIG_PATH),
-            "[namespace_registries]\nspecify = \"mirror.example.com\"\n",
-        )
-        .expect("write project wasm-pkg.toml");
-
+        // WKG_CONFIG wins over the project-local layer.
         let wkg_config = project.join("wkg-override.toml");
         fs::write(&wkg_config, "[namespace_registries]\nspecify = \"override.example.com\"\n")
             .expect("write wkg override");
-        let _wkg = EnvGuard::scoped("WKG_CONFIG", Some(&wkg_config));
+        assert_eq!(
+            resolve(
+                "package-wkg-overrides-home",
+                &package_ref(),
+                Some(project.as_path()),
+                Some(wkg_config.as_path()),
+            )
+            .as_deref(),
+            Some("override.example.com")
+        );
 
-        let package = package_ref();
-        let runtime =
-            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-        let config = runtime
-            .block_on(load_config(&package, Some(project.as_path())))
-            .expect("load_config ok");
-        let resolved = config.resolve_registry(&package).expect("namespace mapped");
-        assert_eq!(resolved.to_string(), "override.example.com");
-    }
-
-    #[test]
-    fn missing_config_skipped() {
-        let _guard = env_lock();
-        let (_home, _isolated) = isolate_global_config_dir("package-missing-project-home");
-        let _wkg = EnvGuard::scoped("WKG_CONFIG", None);
-
-        let project = scratch_dir("package-missing-project-config");
-        // Intentionally do not create `.specify/wasm-pkg.toml`.
-
-        let package = package_ref();
-        let runtime =
-            tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-        let config = runtime
-            .block_on(load_config(&package, Some(project.as_path())))
-            .expect("load_config ok");
-        let resolved = config.resolve_registry(&package).expect("specify namespace mapped");
-        assert_eq!(resolved.to_string(), FIRST_PARTY_REGISTRY);
+        // A missing project config is skipped, leaving the embedded default.
+        let missing = scratch_dir("package-missing-project-config");
+        assert_eq!(
+            resolve("package-missing-project-home", &package_ref(), Some(missing.as_path()), None)
+                .as_deref(),
+            Some(FIRST_PARTY_REGISTRY)
+        );
     }
 }

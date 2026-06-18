@@ -295,51 +295,45 @@ mod tests {
         "properties": { "name": { "type": "string" } }
     }"#;
 
+    // `compile_schema` distinguishes a non-JSON source (`schema-meta-loadable`)
+    // from valid JSON that is not a valid schema (`schema-meta-compilable`).
     #[test]
-    fn compile_schema_rejects_non_json_source() {
-        let err = compile_schema("{ not json").expect_err("garbage source fails to parse");
-        match err {
-            Error::Diag { code, .. } => assert_eq!(code, "schema-meta-loadable"),
-            other => panic!("expected schema-meta-loadable Diag, got {other:?}"),
+    fn compile_schema_meta_failures() {
+        let cases = [
+            ("{ not json", "schema-meta-loadable"),
+            (r#"{ "type": "frobnicate" }"#, "schema-meta-compilable"),
+        ];
+        for (source, expected_code) in cases {
+            match compile_schema(source).expect_err("meta-failure") {
+                Error::Diag { code, .. } => assert_eq!(code, expected_code),
+                other => panic!("expected {expected_code} Diag, got {other:?}"),
+            }
         }
     }
 
+    // `validate_value` returns one Pass entry (no detail) for a conforming
+    // instance, one Fail entry whose pointer names the offending key for a
+    // schema mismatch, and a single Fail for an unparsable embedded schema.
     #[test]
-    fn rejects_non_schema_json() {
-        let err = compile_schema(r#"{ "type": "frobnicate" }"#)
-            .expect_err("unknown type keyword fails to compile");
-        match err {
-            Error::Diag { code, .. } => assert_eq!(code, "schema-meta-compilable"),
-            other => panic!("expected schema-meta-compilable Diag, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn passes_conforming_instance() {
-        let summaries =
+    fn validate_value_pass_fail_meta() {
+        let pass =
             validate_value(&json!({ "name": "ok" }), OBJECT_SCHEMA, "object", "object shape");
-        assert_eq!(summaries.len(), 1);
-        assert_eq!(summaries[0].status, ValidationStatus::Pass);
-        assert!(summaries[0].detail.is_none(), "pass carries no detail");
-    }
+        assert_eq!(pass.len(), 1);
+        assert_eq!(pass[0].status, ValidationStatus::Pass);
+        assert!(pass[0].detail.is_none(), "pass carries no detail");
 
-    #[test]
-    fn reports_additional_property() {
-        let summaries = validate_value(
+        let fail = validate_value(
             &json!({ "name": "ok", "extra": 1 }),
             OBJECT_SCHEMA,
             "object",
             "object shape",
         );
-        assert_eq!(summaries[0].status, ValidationStatus::Fail);
-        let detail = summaries[0].detail.as_deref().expect("fail carries detail");
+        assert_eq!(fail[0].status, ValidationStatus::Fail);
+        let detail = fail[0].detail.as_deref().expect("fail carries detail");
         assert!(detail.starts_with("/extra:"), "pointer names the offending key, got {detail:?}");
-    }
 
-    #[test]
-    fn surfaces_meta_failure() {
-        let summaries = validate_value(&json!({}), "{ not json", "bad", "bad schema");
-        assert_eq!(summaries[0].status, ValidationStatus::Fail);
+        let meta = validate_value(&json!({}), "{ not json", "bad", "bad schema");
+        assert_eq!(meta[0].status, ValidationStatus::Fail);
     }
 
     #[derive(Serialize)]
@@ -386,45 +380,26 @@ mod tests {
         assert!(joined.contains("name"), "missing required field appears in joined detail");
     }
 
+    // The `&'static`-schema cache compiles once per schema (the same source
+    // yields one `Arc`, not a recompile) and is byte-identical to the
+    // uncached path on both a pass and an additional-property fail.
     #[test]
-    fn cached_validator_compiles_once_per_schema() {
+    fn cached_validator_behaviour() {
         let first = cached_validator(OBJECT_SCHEMA).expect("first compile succeeds");
         let second = cached_validator(OBJECT_SCHEMA).expect("cache hit on second call");
         assert!(
             std::sync::Arc::ptr_eq(&first, &second),
             "the same `&'static` schema yields one cached validator, not a recompile"
         );
-    }
 
-    #[test]
-    fn cached_matches_uncached_behaviour() {
-        let pass = validate_value_cached(
-            &json!({ "name": "ok" }),
-            OBJECT_SCHEMA,
-            "object",
-            "object shape",
-        );
-        assert_eq!(
-            pass,
-            validate_value(&json!({ "name": "ok" }), OBJECT_SCHEMA, "object", "object shape")
-        );
+        let pass_instance = json!({ "name": "ok" });
+        let pass = validate_value_cached(&pass_instance, OBJECT_SCHEMA, "object", "object shape");
+        assert_eq!(pass, validate_value(&pass_instance, OBJECT_SCHEMA, "object", "object shape"));
         assert_eq!(pass[0].status, ValidationStatus::Pass);
 
-        let fail = validate_value_cached(
-            &json!({ "name": "ok", "extra": 1 }),
-            OBJECT_SCHEMA,
-            "object",
-            "object shape",
-        );
-        assert_eq!(
-            fail,
-            validate_value(
-                &json!({ "name": "ok", "extra": 1 }),
-                OBJECT_SCHEMA,
-                "object",
-                "object shape"
-            )
-        );
+        let fail_instance = json!({ "name": "ok", "extra": 1 });
+        let fail = validate_value_cached(&fail_instance, OBJECT_SCHEMA, "object", "object shape");
+        assert_eq!(fail, validate_value(&fail_instance, OBJECT_SCHEMA, "object", "object shape"));
         assert_eq!(fail[0].status, ValidationStatus::Fail);
     }
 

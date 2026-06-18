@@ -352,9 +352,6 @@ mod tests {
         // A schema-valid contiguous scenario flags nothing.
         let dir = tempfile::tempdir().expect("tempdir");
         write_scenario(dir.path(), "ok.md", &valid_frontmatter("ok"));
-        assert!(
-            run_all(dir.path()).is_empty(),
-            "a schema-valid contiguous scenario flags nothing"
-        );
+        assert!(run_all(dir.path()).is_empty(), "a schema-valid contiguous scenario flags nothing");
     }
 }

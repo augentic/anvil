@@ -188,8 +188,13 @@ mod tests {
 
     use super::*;
 
+    // `substitute` expands `$PROJECT_DIR` / `$CAPABILITY_DIR` and rejects
+    // every malformed template; the `$`-scanner distinguishes a named
+    // variable from a bare `$`. All happy expansions and rejection arms —
+    // out-of-scope capability dir, unsupported variable, parent segment,
+    // no variable, bare `$`, trailing `$` — collapse into one matrix.
     #[test]
-    fn substitute_expands_dirs() {
+    fn substitute_matrix() {
         let project = Path::new("/tmp/project");
         let adapter = Path::new("/tmp/adapter");
 
@@ -201,131 +206,88 @@ mod tests {
             substitute("$CAPABILITY_DIR/templates", project, Some(adapter)).expect("adapter"),
             "/tmp/adapter/templates"
         );
-    }
-
-    #[test]
-    fn substitute_rejects_out_of_scope() {
-        let err = substitute("$CAPABILITY_DIR/templates", Path::new("/tmp/project"), None)
-            .expect_err("project-scope capability dir must fail");
-        assert!(matches!(err, ExtensionError::InvalidPermission { .. }), "{err}");
-        assert!(err.to_string().contains("$CAPABILITY_DIR"), "{err}");
-    }
-
-    #[test]
-    fn substitute_rejects_bad_variables() {
-        for template in ["$HOME/contracts", "$PROJECT_DIR/../contracts", "contracts"] {
-            let err = substitute(template, Path::new("/tmp/project"), None)
-                .expect_err("invalid template must fail");
-            assert!(matches!(err, ExtensionError::InvalidPermission { .. }), "{err}");
-        }
-    }
-
-    #[test]
-    fn canonicalise_rejects_symlink_escape() {
-        let tmp = tempdir().expect("tempdir");
-        let project = tmp.path().join("project");
-        let outside = tmp.path().join("outside");
-        fs::create_dir_all(&project).expect("project");
-        fs::create_dir_all(&outside).expect("outside");
-
-        #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(&outside, project.join("escape")).expect("symlink");
-            let err = canonicalise_under(&project.join("escape"), &[&project])
-                .expect_err("symlink escape must fail");
-            assert!(matches!(err, ExtensionError::PermissionDenied { .. }), "{err}");
-        }
-    }
-
-    #[test]
-    fn canonicalise_accepts_descendant() {
-        let tmp = tempdir().expect("tempdir");
-        let project = tmp.path().join("project");
-        let contracts = project.join("contracts");
-        fs::create_dir_all(&contracts).expect("contracts");
-
-        let canonical = canonicalise_under(&contracts, &[&project]).expect("canonical");
-        assert_eq!(canonical, contracts.canonicalize().expect("canonical contracts"));
-    }
-
-    #[test]
-    fn lifecycle_denies_specify_state() {
-        let tmp = tempdir().expect("tempdir");
-        let project = tmp.path().join("project");
-        let specify = project.join(".specify");
-        fs::create_dir_all(&specify).expect("specify");
-
-        let err = deny_lifecycle_write(&specify.canonicalize().expect("canonical"), &project)
-            .expect_err("lifecycle write must fail");
-        assert!(matches!(err, ExtensionError::PermissionDenied { .. }), "{err}");
-        assert!(err.to_string().contains(LIFECYCLE_RULE_ID), "{err}");
-    }
-
-    // `canonicalise_under` is the symlink-escape gate. The empty-roots
-    // arm is a defensive deny (no roots means nothing is allowed); the
-    // multi-root arm must accept a target under the *second* root, not
-    // just the first.
-    #[test]
-    fn canonicalise_root_handling() {
-        let tmp = tempdir().expect("tempdir");
-        let first = tmp.path().join("first");
-        let second = tmp.path().join("second");
-        let nested = second.join("nested");
-        fs::create_dir_all(&first).expect("first");
-        fs::create_dir_all(&nested).expect("nested");
-
-        let no_roots = canonicalise_under(&nested, &[]).expect_err("empty roots must deny");
-        assert!(matches!(no_roots, ExtensionError::PermissionDenied { .. }), "{no_roots}");
-
-        let canonical =
-            canonicalise_under(&nested, &[first.as_path(), second.as_path()]).expect("second root");
-        assert_eq!(canonical, nested.canonicalize().expect("canonical nested"));
-    }
-
-    // The `$`-variable scanner has to distinguish a named variable from a
-    // bare `$`. A `$` with no following name, and a fully unsupported
-    // name, must both fail; multiple supported variables in one template
-    // must all expand.
-    #[test]
-    fn substitute_variable_grammar() {
-        let project = Path::new("/tmp/project");
-        let adapter = Path::new("/tmp/adapter");
-
-        let bare_dollar = substitute("$/contracts", project, Some(adapter))
-            .expect_err("bare `$` is not a named variable");
-        assert!(matches!(bare_dollar, ExtensionError::InvalidPermission { .. }), "{bare_dollar}");
-
-        let trailing_dollar =
-            substitute("$PROJECT_DIR/sub$", project, Some(adapter)).expect_err("trailing bare `$`");
-        assert!(
-            matches!(trailing_dollar, ExtensionError::InvalidPermission { .. }),
-            "{trailing_dollar}"
-        );
-
         assert_eq!(
             substitute("$PROJECT_DIR/$CAPABILITY_DIR-mixed", project, Some(adapter))
                 .expect("both variables expand"),
             "/tmp/project//tmp/adapter-mixed"
         );
+
+        // Every rejection arm lands on `InvalidPermission`; the optional
+        // needle pins the `$CAPABILITY_DIR`-out-of-scope message.
+        let rejects: Vec<(&str, Option<&Path>, Option<&str>)> = vec![
+            ("$CAPABILITY_DIR/templates", None, Some("$CAPABILITY_DIR")),
+            ("$HOME/contracts", None, None),
+            ("$PROJECT_DIR/../contracts", None, None),
+            ("contracts", None, None),
+            ("$/contracts", Some(adapter), None),
+            ("$PROJECT_DIR/sub$", Some(adapter), None),
+        ];
+        for (template, cap, needle) in rejects {
+            let err = substitute(template, project, cap).expect_err(template);
+            assert!(matches!(err, ExtensionError::InvalidPermission { .. }), "{template}: {err}");
+            if let Some(needle) = needle {
+                assert!(err.to_string().contains(needle), "{template}: {err}");
+            }
+        }
     }
 
-    // `deny_lifecycle_write` must match `.specify` as a path *component*,
-    // not a textual prefix: a sibling like `.specify-data` is a legitimate
-    // write target and must NOT be denied, while a descendant of
-    // `.specify` must be.
+    // `canonicalise_under` is the symlink-escape gate: empty roots are a
+    // defensive deny, a descendant is accepted under the first *or* a later
+    // root, and a symlink that textually lives under a root but points
+    // outside is rejected after canonicalisation. One matrix per arm.
     #[test]
-    fn lifecycle_boundary_is_component_wise() {
+    fn canonicalise_matrix() {
+        let tmp = tempdir().expect("tempdir");
+        let first = tmp.path().join("first");
+        let second = tmp.path().join("second");
+        let nested = second.join("nested");
+        let contracts = first.join("contracts");
+        fs::create_dir_all(&nested).expect("nested");
+        fs::create_dir_all(&contracts).expect("contracts");
+
+        let no_roots = canonicalise_under(&nested, &[]).expect_err("empty roots must deny");
+        assert!(matches!(no_roots, ExtensionError::PermissionDenied { .. }), "{no_roots}");
+
+        assert_eq!(
+            canonicalise_under(&contracts, &[first.as_path()]).expect("descendant"),
+            contracts.canonicalize().expect("canonical contracts")
+        );
+        assert_eq!(
+            canonicalise_under(&nested, &[first.as_path(), second.as_path()]).expect("second root"),
+            nested.canonicalize().expect("canonical nested")
+        );
+
+        #[cfg(unix)]
+        {
+            let outside = tmp.path().join("outside");
+            fs::create_dir_all(&outside).expect("outside");
+            std::os::unix::fs::symlink(&outside, first.join("escape")).expect("symlink");
+            let err = canonicalise_under(&first.join("escape"), &[first.as_path()])
+                .expect_err("symlink escape must fail");
+            assert!(matches!(err, ExtensionError::PermissionDenied { .. }), "{err}");
+        }
+    }
+
+    // `deny_lifecycle_write` matches `.specify` as a path *component*, not a
+    // textual prefix: `.specify` and any descendant are denied with the rule
+    // id, while a `.specify`-prefixed sibling stays writable. One matrix.
+    #[test]
+    fn lifecycle_matrix() {
         let tmp = tempdir().expect("tempdir");
         let project = tmp.path().join("project");
-        fs::create_dir_all(&project).expect("project");
+        fs::create_dir_all(project.join(".specify")).expect("specify");
         let canonical_project = project.canonicalize().expect("canonical project");
+
+        for denied in
+            [canonical_project.join(".specify"), canonical_project.join(".specify").join("slices")]
+        {
+            let err =
+                deny_lifecycle_write(&denied, &project).expect_err("lifecycle write must fail");
+            assert!(matches!(err, ExtensionError::PermissionDenied { .. }), "{err}");
+            assert!(err.to_string().contains(LIFECYCLE_RULE_ID), "{err}");
+        }
 
         let sibling = canonical_project.join(".specify-data");
         deny_lifecycle_write(&sibling, &project).expect("sibling of .specify is writable");
-
-        let descendant = canonical_project.join(".specify").join("slices");
-        let err = deny_lifecycle_write(&descendant, &project)
-            .expect_err("descendant of .specify is denied");
-        assert!(err.to_string().contains(LIFECYCLE_RULE_ID), "{err}");
     }
 }

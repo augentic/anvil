@@ -435,7 +435,6 @@ mod tests {
     // into three matrices — row value / parity, record agreement, and config /
     // IO — each preserving every former input.
 
-    #[expect(clippy::too_many_lines, reason = "collapsed catalog matrix: one block per former test")]
     #[test]
     fn row_value_and_parity_matrix() {
         // A fully consistent catalog is silent.
@@ -475,7 +474,8 @@ mod tests {
             &["alpha"],
             &[],
         );
-        let texts = messages(&check_catalog_runs(dir.path(), &policy()));
+        let findings = check_catalog_runs(dir.path(), &policy());
+        let texts = messages(&findings);
         assert!(texts.iter().any(|m| m.contains("status 'shipped' is not one of")));
         assert!(texts.iter().any(|m| m.contains("gate 'blocking' is not one of")));
 
@@ -501,7 +501,8 @@ mod tests {
             &["alpha"],
             &[],
         );
-        let texts = messages(&check_catalog_runs(dir.path(), &policy()));
+        let findings = check_catalog_runs(dir.path(), &policy());
+        let texts = messages(&findings);
         assert!(texts.iter().any(|m| m.contains("row label 'alfa' disagrees with linked file")));
         assert!(texts.iter().any(|m| m.contains("duplicate catalog rows for 'alpha'")));
     }
@@ -569,7 +570,8 @@ mod tests {
             &["alpha"],
             &["ghost.pass.md", "alpha.aced.md"],
         );
-        let texts = messages(&check_catalog_runs(dir.path(), &policy()));
+        let findings = check_catalog_runs(dir.path(), &policy());
+        let texts = messages(&findings);
         assert!(texts.iter().any(|m| m.contains("record names scenario 'ghost'")));
         assert!(texts.iter().any(|m| m.contains("record result 'aced' is not one of")));
     }

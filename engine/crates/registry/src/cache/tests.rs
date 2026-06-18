@@ -50,37 +50,65 @@ fn write_cached_version(
     dir
 }
 
+// `root()` resolves the cache root from `SPECIFY_EXTENSIONS_CACHE` →
+// `XDG_CACHE_HOME` → `HOME`, and rejects an empty / relative override or a
+// missing fallback. The happy precedence ladder and every `tool-cache-root`
+// error arm collapse into one matrix that holds the env lock once and
+// re-scopes the env guards per case.
 #[test]
-fn cache_root_honours_override_precedence() {
+fn cache_root_matrix() {
+    let _g = env_lock();
+
+    // Resolve the cache root under one explicit (cache, xdg, home) env
+    // combination, scoping each guard to the `root()` call.
+    let root_with = |cache: Option<&Path>, xdg: Option<&Path>, home: Option<&Path>| {
+        let _cache = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", cache);
+        let _xdg = EnvGuard::scoped("XDG_CACHE_HOME", xdg);
+        let _home = EnvGuard::scoped("HOME", home);
+        root()
+    };
+    let rejected = |result: Result<PathBuf, ExtensionError>, context: &str| {
+        assert!(
+            matches!(
+                result,
+                Err(ExtensionError::Diag {
+                    code: "tool-cache-root",
+                    ..
+                })
+            ),
+            "{context}"
+        );
+    };
+
+    // Happy precedence ladder: explicit override → XDG → HOME.
     let override_dir = scratch_dir("override");
-    let xdg_dir = scratch_dir("xdg");
-    let home_dir = scratch_dir("home");
-    let _g = env_lock();
-    let _cache = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", Some(&override_dir));
-    let _xdg = EnvGuard::scoped("XDG_CACHE_HOME", Some(&xdg_dir));
-    let _home = EnvGuard::scoped("HOME", Some(&home_dir));
-    assert_eq!(root().expect("cache root"), override_dir);
-}
-
-#[test]
-fn cache_root_prefers_xdg() {
+    assert_eq!(
+        root_with(Some(&override_dir), Some(&scratch_dir("xdg")), Some(&scratch_dir("home")))
+            .expect("override root"),
+        override_dir
+    );
     let xdg_dir = scratch_dir("xdg-only");
-    let home_dir = scratch_dir("home-only");
-    let _g = env_lock();
-    let _cache = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", None);
-    let _xdg = EnvGuard::scoped("XDG_CACHE_HOME", Some(&xdg_dir));
-    let _home = EnvGuard::scoped("HOME", Some(&home_dir));
-    assert_eq!(root().expect("cache root"), xdg_dir.join("specify").join("tools"));
-}
-
-#[test]
-fn cache_root_falls_back_home() {
+    assert_eq!(
+        root_with(None, Some(&xdg_dir), Some(&scratch_dir("home-only"))).expect("xdg root"),
+        xdg_dir.join("specify").join("tools")
+    );
     let home_dir = scratch_dir("home-fallback");
-    let _g = env_lock();
-    let _cache = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", None);
-    let _xdg = EnvGuard::scoped("XDG_CACHE_HOME", None);
-    let _home = EnvGuard::scoped("HOME", Some(&home_dir));
-    assert_eq!(root().expect("cache root"), home_dir.join(".cache").join("specify").join("tools"));
+    assert_eq!(
+        root_with(None, None, Some(&home_dir)).expect("home root"),
+        home_dir.join(".cache").join("specify").join("tools")
+    );
+
+    // Error arms: relative / empty override, relative HOME, no source at all.
+    rejected(
+        root_with(Some(Path::new("relative/dir")), None, None),
+        "a relative override must be rejected",
+    );
+    rejected(root_with(Some(Path::new("")), None, None), "an empty override must be rejected");
+    rejected(
+        root_with(None, None, Some(Path::new("relative-home"))),
+        "a relative HOME fallback must be rejected",
+    );
+    rejected(root_with(None, None, None), "no env source at all must be rejected");
 }
 
 #[test]
@@ -273,45 +301,4 @@ fn tool_dir_rejects_traversal_segments() {
             "version `{bad}` must be rejected"
         );
     }
-}
-
-// The cache-root precedence resolves from env vars; the *error* arms
-// (empty / relative override, no fallback at all) are easy to break
-// when reordering the precedence ladder. Pin each rejection.
-#[test]
-fn cache_root_rejects_unusable_env() {
-    fn rejected(context: &str) {
-        assert!(
-            matches!(
-                root(),
-                Err(ExtensionError::Diag {
-                    code: "tool-cache-root",
-                    ..
-                })
-            ),
-            "{context}"
-        );
-    }
-
-    let _g = env_lock();
-
-    let relative = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", Some(Path::new("relative/dir")));
-    rejected("a relative override must be rejected");
-    drop(relative);
-
-    let empty = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", Some(Path::new("")));
-    rejected("an empty override must be rejected");
-    drop(empty);
-
-    // The remaining cases clear the explicit override so the XDG / HOME
-    // fallbacks are the ones under test.
-    let _cache = EnvGuard::scoped("SPECIFY_EXTENSIONS_CACHE", None);
-    let _xdg = EnvGuard::scoped("XDG_CACHE_HOME", None);
-
-    let relative_home = EnvGuard::scoped("HOME", Some(Path::new("relative-home")));
-    rejected("a relative HOME fallback must be rejected");
-    drop(relative_home);
-
-    let _home = EnvGuard::scoped("HOME", None);
-    rejected("no env source at all must be rejected");
 }

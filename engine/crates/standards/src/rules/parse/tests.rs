@@ -6,15 +6,21 @@ const HARDCODED_CONFIGURATION: &str =
 const DOCUMENTATION_VERBATIM_PRESERVATION: &str =
     include_str!("../../../tests/fixtures/rules/documentation-verbatim-preservation.md");
 
-/// Real shared `UNI-014` rule (rule file shape worked
-/// example). Frontmatter fields land in the typed shape and the
-/// body carries the policy headings verbatim. The fixture has a
-/// blank line between the closing `---` and `## Rule`, so the
-/// body opens with that preserved blank — only the single
-/// newline immediately after the delimiter is stripped, per
-/// contract-fidelity rules.
+// `parse_rule` and the `parse_rule_file` I/O wrapper are crate-public, but the
+// CLI e2e (`engine/tests/rules.rs`) exercises export end-to-end, not the
+// per-input parse matrix. The thirteen `parse_rule*` cases collapse into one
+// success matrix and one error matrix, each preserving every former input; the
+// private `snake_to_kebab_keys` helper test stays on its own.
+
+#[expect(
+    clippy::too_many_lines,
+    reason = "collapsed parse-success matrix: one block per former test"
+)]
 #[test]
-fn parses_hardcoded_configuration_fixture() {
+fn parse_success_matrix() {
+    // Real shared UNI-014 fixture: typed frontmatter fields land and the body
+    // preserves the blank line before '## Rule' plus the documented headings
+    // (only the single newline after the delimiter is stripped).
     let rule = parse_rule(HARDCODED_CONFIGURATION).expect("parses");
     assert_eq!(rule.id, "UNI-014");
     assert_eq!(rule.title, "Hardcoded Configuration Values");
@@ -24,17 +30,11 @@ fn parses_hardcoded_configuration_fixture() {
         "body must preserve the blank line before '## Rule', got: {:?}",
         &rule.body[..rule.body.len().min(40)]
     );
-    // Rule file shape: body carries the documented
-    // section headings verbatim.
     assert!(rule.body.contains("\n## Look For\n"));
     assert!(rule.body.contains("\n## Spec Guidance\n"));
-}
 
-/// Real source-axis `SRC-001` rule. Exercises optional
-/// frontmatter blocks (`applicability.adapters`, `references`)
-/// and confirms the body preserves multi-paragraph prose.
-#[test]
-fn parses_verbatim_fixture() {
+    // Real source-axis SRC-001 fixture: optional applicability / references
+    // blocks parse and multi-paragraph body prose survives.
     let rule = parse_rule(DOCUMENTATION_VERBATIM_PRESERVATION).expect("parses");
     assert_eq!(rule.id, "SRC-001");
     assert_eq!(rule.severity, Severity::Important);
@@ -48,35 +48,9 @@ fn parses_verbatim_fixture() {
         Some("adapters/sources/documentation/briefs/extract.md"),
     );
     assert!(rule.body.contains("\n## Rule\n"));
-}
 
-/// [`parse_rule_file`] reads a path and delegates to [`parse_rule`].
-/// Synthetic tempfile coverage of the thin I/O wrapper (no sibling
-/// checkout required).
-#[test]
-fn parse_rule_file_reads_and_delegates() {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("UNI-001.md");
-    fs::write(
-        &path,
-        "---\nid: UNI-001\ntitle: File wrapper\nseverity: important\ntrigger: Synthetic parse_rule_file fixture trigger sentence long enough for schema.\n---\n\n## Rule\n\nBody.\n",
-    )
-    .expect("write rule file");
-
-    let rule = parse_rule_file(&path).expect("parse_rule_file parses a real file");
-    assert_eq!(rule.id, "UNI-001");
-    assert!(rule.body.contains("## Rule"));
-
-    let missing = parse_rule_file(&dir.path().join("absent.md"));
-    assert!(matches!(missing, Err(ParseError::Io(_))), "missing file maps to Io error");
-}
-
-/// `snake_case` authoring keys lift to the kebab-case wire shape
-/// carried by [`Rule`]. Covers every documented rename:
-/// `lint_mode`, `rule_hints`, and the nested
-/// `deprecated.replaced_by`.
-#[test]
-fn snake_case_keys_lift_to_kebab_case() {
+    // snake_case authoring keys lift to the kebab-case wire shape carried by
+    // `Rule`; no snake_case key leaks on re-serialize.
     let content = r"---
 id: UNI-014
 title: Sample
@@ -104,9 +78,6 @@ Body.
     let deprecated = rule.deprecated.as_ref().expect("deprecated present");
     assert_eq!(deprecated.reason, "superseded by SEC-001");
     assert_eq!(deprecated.replaced_by.as_deref(), Some("SEC-001"));
-
-    // Re-serialize and confirm the kebab-case wire form is
-    // intact (no snake_case key leaks).
     let json = serde_json::to_string(&rule).expect("serialize");
     assert!(json.contains("\"lint-mode\""));
     assert!(json.contains("\"rule-hints\""));
@@ -114,14 +85,9 @@ Body.
     assert!(!json.contains("\"lint_mode\""));
     assert!(!json.contains("\"rule_hints\""));
     assert!(!json.contains("\"replaced_by\""));
-}
 
-/// Body bytes are preserved verbatim, including code fences
-/// containing `---` separators and inner blank lines. Reviewers
-/// consume the body as policy text, so any byte-level edit here
-/// is a correctness break.
-#[test]
-fn body_preserved_with_fences() {
+    // Body bytes are preserved verbatim, including fenced blocks with inner
+    // '---' separators and inner blank lines.
     let content = "---\n\
 id: UNI-014\n\
 title: Body fidelity\n\
@@ -152,64 +118,15 @@ other: doc\n\
 \n\
 Trailing line.\n";
     assert_eq!(rule.body, expected_body);
-}
 
-/// CRLF line endings on the closing delimiter and inside the
-/// body round-trip into the typed rule. The leading newline
-/// after the closing `---\r\n` is stripped, every other byte
-/// is preserved.
-#[test]
-fn body_preserves_crlf_line_endings() {
+    // CRLF line endings round-trip; the single newline after the closing
+    // `---\r\n` is stripped, every other byte preserved.
     let content = "---\r\nid: UNI-014\r\ntitle: CRLF\r\nseverity: optional\r\ntrigger: CRLF body fidelity covering Windows-style line endings end-to-end.\r\n---\r\n## Rule\r\n\r\nLine one.\r\nLine two.\r\n";
     let rule = parse_rule(content).expect("parses");
     assert_eq!(rule.body, "## Rule\r\n\r\nLine one.\r\nLine two.\r\n");
-}
 
-/// Missing leading `---` line surfaces as
-/// [`ParseError::MissingOpeningDelimiter`].
-#[test]
-fn missing_opening_delimiter_errors() {
-    let content = "## Rule\nNo frontmatter at all.\n";
-    let err = parse_rule(content).expect_err("must error");
-    assert!(matches!(err, ParseError::MissingOpeningDelimiter), "got: {err:?}");
-}
-
-/// Opening delimiter without a matching close surfaces as
-/// [`ParseError::MissingClosingDelimiter`].
-#[test]
-fn missing_closing_delimiter_errors() {
-    let content = "---\nid: UNI-014\ntitle: dangling\nseverity: optional\ntrigger: t.\n";
-    let err = parse_rule(content).expect_err("must error");
-    assert!(matches!(err, ParseError::MissingClosingDelimiter), "got: {err:?}");
-}
-
-/// Unparseable YAML in the frontmatter surfaces as
-/// [`ParseError::Yaml`].
-#[test]
-fn invalid_yaml_errors() {
-    let content = "---\nid: UNI-014\n  bad: : indent\n---\n## Rule\n";
-    let err = parse_rule(content).expect_err("must error");
-    assert!(matches!(err, ParseError::Yaml(_)), "got: {err:?}");
-}
-
-/// Schema-mandated `id` field missing surfaces as
-/// [`ParseError::Schema`].
-#[test]
-fn schema_violation_errors_when_id_missing() {
-    let content = "---\ntitle: No Id\nseverity: important\ntrigger: t.\n---\n## Rule\n";
-    let err = parse_rule(content).expect_err("must error");
-    assert!(matches!(err, ParseError::Schema(_)), "got: {err:?}");
-    if let ParseError::Schema(detail) = err {
-        assert!(detail.contains("id"), "expected 'id' in schema detail, got: {detail}");
-    }
-}
-
-/// Deterministic-hints extensibility: "the runtime
-/// resolver MUST NOT compile a regex it never executes". A hint
-/// with an unparseable regex pattern MUST still parse — regex
-/// compilation belongs to the hint evaluator.
-#[test]
-fn invalid_regex_hint_value_still_parses() {
+    // A hint with an unparseable regex value still parses — regex compilation
+    // belongs to the evaluator, not the parser.
     let content = r"---
 id: UNI-014
 title: Broken regex tolerated
@@ -226,13 +143,8 @@ rule_hints:
     assert_eq!(hints.len(), 1);
     assert_eq!(hints[0].kind, HintKind::Regex);
     assert_eq!(hints[0].value, "[invalid regex)(");
-}
 
-/// Reserved hint kind hint kinds (`set-coverage`, etc.) round-trip
-/// successfully even though no execution semantics exist for
-/// them yet.
-#[test]
-fn reserved_hint_kinds_round_trip() {
+    // Reserved hint kinds shape-validate without execution semantics.
     let content = r"---
 id: UNI-014
 title: Reserved hint kinds
@@ -251,15 +163,9 @@ rule_hints:
     assert_eq!(hints.len(), 2);
     assert_eq!(hints[0].kind, HintKind::SetCoverage);
     assert_eq!(hints[1].kind, HintKind::ConstantEq);
-}
 
-/// Framework-side `applicability.artifacts` tokens
-/// (`skill`, `adapter`, `brief`, `reference`, `codex`, `rfc`,
-/// `doc`) compose with the consumer-side tokens in the closed
-/// schema enum. A rule whose applicability mixes both sides
-/// must shape-validate cleanly.
-#[test]
-fn artifacts_accepts_framework_tokens() {
+    // Framework-side applicability.artifacts tokens compose with consumer-side
+    // tokens in the closed schema enum.
     let content = r"---
 id: UNI-014
 title: Framework artifact tokens
@@ -278,6 +184,46 @@ applicability:
         applicability.artifacts.as_deref(),
         Some(&["skill".to_string(), "adapter".to_string()][..]),
     );
+}
+
+#[test]
+fn parse_error_matrix() {
+    // `parse_rule_file` reads a path and delegates to `parse_rule`; a missing
+    // file maps to `ParseError::Io` (thin I/O wrapper, no sibling checkout).
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("UNI-001.md");
+    fs::write(
+        &path,
+        "---\nid: UNI-001\ntitle: File wrapper\nseverity: important\ntrigger: Synthetic parse_rule_file fixture trigger sentence long enough for schema.\n---\n\n## Rule\n\nBody.\n",
+    )
+    .expect("write rule file");
+    let rule = parse_rule_file(&path).expect("parse_rule_file parses a real file");
+    assert_eq!(rule.id, "UNI-001");
+    assert!(rule.body.contains("## Rule"));
+    let missing = parse_rule_file(&dir.path().join("absent.md"));
+    assert!(matches!(missing, Err(ParseError::Io(_))), "missing file maps to Io error");
+
+    // Missing leading `---` line.
+    let err = parse_rule("## Rule\nNo frontmatter at all.\n").expect_err("must error");
+    assert!(matches!(err, ParseError::MissingOpeningDelimiter), "got: {err:?}");
+
+    // Opening delimiter without a matching close.
+    let err = parse_rule("---\nid: UNI-014\ntitle: dangling\nseverity: optional\ntrigger: t.\n")
+        .expect_err("must error");
+    assert!(matches!(err, ParseError::MissingClosingDelimiter), "got: {err:?}");
+
+    // Unparseable YAML in the frontmatter.
+    let err =
+        parse_rule("---\nid: UNI-014\n  bad: : indent\n---\n## Rule\n").expect_err("must error");
+    assert!(matches!(err, ParseError::Yaml(_)), "got: {err:?}");
+
+    // Schema-mandated `id` field missing.
+    let err = parse_rule("---\ntitle: No Id\nseverity: important\ntrigger: t.\n---\n## Rule\n")
+        .expect_err("must error");
+    assert!(matches!(err, ParseError::Schema(_)), "got: {err:?}");
+    if let ParseError::Schema(detail) = err {
+        assert!(detail.contains("id"), "expected 'id' in schema detail, got: {detail}");
+    }
 }
 
 /// Helper: snake-to-kebab lift only rewrites keys, never

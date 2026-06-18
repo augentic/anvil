@@ -401,36 +401,37 @@ mod tests {
         assert_eq!(parsed, manifest);
     }
 
+    // serde rejects both a tool whose `source:` is an unsupported wire
+    // string (the `TryFrom` error propagates) and the retired top-level
+    // scalar shorthand (RFC-48 D10: a tool is always a full object with its
+    // own `source` and `permissions`). Both rejection arms collapse here.
     #[test]
-    fn unsupported_source_fails() {
-        serde_saphyr::from_str::<ExtensionManifest>(
+    fn manifest_serde_rejects() {
+        let rejected = [
             "tools:\n  - name: bad\n    version: 1.0.0\n    source: relative.wasm\n",
-        )
-        .expect_err("relative source must fail");
+            "tools:\n  - \"specify:contract@1.2.3\"\n",
+            "tools:\n  - \"other:helper@latest\"\n",
+        ];
+        for yaml in rejected {
+            assert!(
+                serde_saphyr::from_str::<ExtensionManifest>(yaml).is_err(),
+                "must be rejected: {yaml}"
+            );
+        }
     }
 
+    // The retired top-level scalar shorthand aside, a package or template
+    // `source:` string inside the object form still parses to its own
+    // variant and serializes back to the same wire string. Both extra
+    // source forms collapse into one round-trip matrix.
     #[test]
-    fn scalar_package_form_rejected() {
-        // The first-party scalar shorthand and its embedded permissions
-        // catalog are retired (RFC-48 D10): a tool is always a full
-        // object spelling out its own `source` and `permissions`. A bare
-        // package string no longer deserializes.
-        serde_saphyr::from_str::<ExtensionManifest>("tools:\n  - \"specify:contract@1.2.3\"\n")
-            .expect_err("scalar first-party form must be rejected");
-        serde_saphyr::from_str::<ExtensionManifest>("tools:\n  - \"other:helper@latest\"\n")
-            .expect_err("scalar package form must be rejected");
-    }
-
-    #[test]
-    fn object_package_source_round_trips() {
-        // A package `source:` string inside the object form is still a
-        // valid `ExtensionSource::Package` — only the top-level scalar
-        // entry shorthand is gone.
-        let manifest: ExtensionManifest = serde_saphyr::from_str(
+    fn object_extra_sources_round_trip() {
+        // Package `source:` inside the object form.
+        let package: ExtensionManifest = serde_saphyr::from_str(
             "tools:\n  - name: contract\n    version: 1.2.3\n    source: \"specify:contract@1.2.3\"\n",
         )
         .expect("parse object package manifest");
-        let tool = &manifest.tools[0];
+        let tool = &package.tools[0];
         assert_eq!(tool.name, "contract");
         assert!(matches!(
             &tool.source,
@@ -440,58 +441,49 @@ mod tests {
                     && package.version == "1.2.3"
         ));
         assert_eq!(tool.permissions, ExtensionPermissions::default());
-    }
 
-    #[test]
-    fn template_source_round_trips() {
-        let manifest: ExtensionManifest = serde_saphyr::from_str(
+        // Template `source:` parses to `TemplatePath` and serializes back.
+        let template: ExtensionManifest = serde_saphyr::from_str(
             "tools:\n  - name: demo-tool\n    version: 0.3.0\n    source: $PROJECT_DIR/../specify-adapters/target/demo-tool.wasm\n",
         )
         .expect("parse template source");
-        let tool = &manifest.tools[0];
+        let tool = &template.tools[0];
         assert!(
             matches!(&tool.source, ExtensionSource::TemplatePath(t) if t == "$PROJECT_DIR/../specify-adapters/target/demo-tool.wasm"),
         );
-        let yaml = serde_saphyr::to_string(&manifest).expect("serialize template source");
+        let yaml = serde_saphyr::to_string(&template).expect("serialize template source");
         assert!(
             yaml.contains("source: $PROJECT_DIR/../specify-adapters/target/demo-tool.wasm"),
             "{yaml}"
         );
     }
 
+    // `expand` substitutes `$PROJECT_DIR` / `$CAPABILITY_DIR` in a template
+    // source, rejects `$CAPABILITY_DIR` without a capability dir, and returns
+    // non-template variants unchanged. One matrix per arm.
     #[test]
-    fn expand_replaces_project_dir() {
-        let source = ExtensionSource::TemplatePath("$PROJECT_DIR/tools/demo-tool.wasm".to_string());
-        let expanded = source.expand(Path::new("/home/user/project"), None).expect("expand");
+    fn expand_matrix() {
         assert_eq!(
-            expanded,
+            ExtensionSource::TemplatePath("$PROJECT_DIR/tools/demo-tool.wasm".to_string())
+                .expand(Path::new("/home/user/project"), None)
+                .expect("expand project dir"),
             ExtensionSource::LocalPath(PathBuf::from("/home/user/project/tools/demo-tool.wasm"))
         );
-    }
-
-    #[test]
-    fn expand_replaces_capability_dir() {
-        let source = ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/tool.wasm".to_string());
-        let expanded = source
-            .expand(Path::new("/project"), Some(Path::new("/caps/demo-tool")))
-            .expect("expand");
         assert_eq!(
-            expanded,
+            ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/tool.wasm".to_string())
+                .expand(Path::new("/project"), Some(Path::new("/caps/demo-tool")))
+                .expect("expand capability dir"),
             ExtensionSource::LocalPath(PathBuf::from("/caps/demo-tool/bin/tool.wasm"))
         );
-    }
-
-    #[test]
-    fn expand_rejects_capability_dir() {
-        let source = ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/tool.wasm".to_string());
-        source.expand(Path::new("/project"), None).expect_err("must reject missing adapter dir");
-    }
-
-    #[test]
-    fn expand_identity_for_non_template() {
-        let source = ExtensionSource::LocalPath(PathBuf::from("/absolute/path.wasm"));
-        let expanded = source.expand(Path::new("/project"), None).expect("expand");
-        assert_eq!(expanded, ExtensionSource::LocalPath(PathBuf::from("/absolute/path.wasm")));
+        ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/tool.wasm".to_string())
+            .expand(Path::new("/project"), None)
+            .expect_err("must reject missing adapter dir");
+        assert_eq!(
+            ExtensionSource::LocalPath(PathBuf::from("/absolute/path.wasm"))
+                .expand(Path::new("/project"), None)
+                .expect("expand identity"),
+            ExtensionSource::LocalPath(PathBuf::from("/absolute/path.wasm"))
+        );
     }
 
     #[test]

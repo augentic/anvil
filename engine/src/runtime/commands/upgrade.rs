@@ -197,19 +197,15 @@ fn emit(format: Format, body: &Body) -> Result<()> {
 mod tests {
     use super::*;
 
+    // `target_display` strips a leading `v` and falls back to HEAD when the
+    // tag is unresolved; `resolve_channel` maps each forced flag to its
+    // channel (the `Auto` arm resolves via filesystem detection and is left
+    // to the integration surface).
     #[test]
-    fn target_display_strips_v_prefix() {
+    fn channel_and_target_helpers() {
         assert_eq!(target_display(Some("v0.43.0")), "0.43.0");
         assert_eq!(target_display(Some("0.43.0")), "0.43.0");
-    }
-
-    #[test]
-    fn target_display_head_when_unresolved() {
         assert_eq!(target_display(None), HEAD_TARGET);
-    }
-
-    #[test]
-    fn resolve_channel_maps_forced_flags() {
         assert_eq!(resolve_channel(ChannelArg::Cargo), InstallChannel::Cargo);
         assert_eq!(resolve_channel(ChannelArg::Brew), InstallChannel::Brew);
         assert_eq!(resolve_channel(ChannelArg::Binary), InstallChannel::Binary);
