@@ -1,6 +1,6 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over the binary, **one integration binary per crate** (each crate's `tests/it.rs` pulls every area in as a `#[path]` submodule), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a new test or harness.
+Integration-first test posture: `cargo nextest` over the binary, **one integration binary per crate** (each crate's `tests/it.rs` pulls every area in as a `#[path]` submodule), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. A ratchet gate (`tests/rust_quality.rs`, seeded by `tests/rust_quality_budget.toml`) holds the per-crate `src` unit-test count down — the lever is designing tests against the public surface, not widening it. Read this before adding a new test or harness.
 
 ## Posture
 
@@ -32,6 +32,26 @@ Rules of thumb:
 - **Collapse matrices, don't enumerate them.** A unit test that walks a closed set of `(input → code)` cases is one table-driven `#[test]` with a block per case, not one `#[test]` per case. The five workflow matrices reduced in the 2026-06 sweep (`config`, `adapter/core`, `build/wire`, plan `validate`, `propose`) each collapsed this way with **zero** `cargo llvm-cov` movement.
 - **Re-home, don't 1:1 port.** When deleting a unit test removes the only coverage of a CLI-reachable behavior, add a *small number* of representative integration cases — never a case-per-cell port (the subprocess pool is the scarce budget).
 - **Don't promote pure-library tests into the binary harness.** A test that never spawns the binary belongs in the crate that owns the code (this is a policy violation the harness comment cannot excuse).
+
+### Reaching the behavior: design against the public surface
+
+Before writing a unit test, decide whether integration can reach the behavior. Ask three questions, then check visibility:
+
+1. **Reachable?** Does some CLI input (or a crate-`pub` fn) actually run this code?
+2. **Observable?** Does its effect surface at a public boundary — stdout JSON, exit code, filesystem, a `pub` return value?
+3. **Affordable?** Can you construct the input and observe the effect through that surface without a subprocess-pool explosion (a case-per-cell CLI port) or compiling a fixture per case?
+
+- **Reachable + observable + affordable** → write the integration test against the **existing** public surface. No new API; this is the default and covers the large majority.
+- **Reachable + observable but cheap only in-process** (proptests, dense matrices) → if the kernel is already `pub`, relocate the test to `crates/<crate>/tests/`; if it is private, **collapse and keep** a table-driven unit test in place.
+- **Unreachable or unobservable** → it is dead code or an implementation detail: make the state un-representable (`unreachable!`, typestate) or delete the assertion. Don't test it.
+
+**Widening production API to test a private kernel is a last resort, not the lever.** It trades durable public-surface stability for coverage you already have, so prefer collapse-and-keep over widening. The target is *near-zero* `src` unit tests — no redundant or integration-reachable ones — not literal zero (see [`unit-test-reduction.md`](../../unit-test-reduction.md) §9).
+
+This is enforced by a strict ratchet in [`tests/rust_quality.rs`](../../tests/rust_quality.rs): `unit_test_budget_holds` holds each crate's `src` `#[test]` / `#[tokio::test]` count to the committed budget in [`tests/rust_quality_budget.toml`](../../tests/rust_quality_budget.toml). Adding a `src` unit test fails CI unless you raise the budget (a reviewable edit that must be justified); removing one fails until you ratchet the number down. The gate counts tests; `cargo llvm-cov` still guards behavior — they are independent and both stay.
+
+### Phase 2 (deferred): per-test waiver markers
+
+The count budgets are the phase-1 ratchet — they catch *new* `src` unit tests but don't force a justification for each surviving one. Once the residue is small (the re-triaged `Keep` set in [`unit-test-reduction.md`](../../unit-test-reduction.md) §9), phase 2 swaps the numeric budgets for a per-test marker: every surviving `src` `#[cfg(test)]` must carry a `// rust-quality:allow(unit-test) reason: …` line saying why integration cannot get the same signal. The gate then flags any unmarked `src` `#[test]` as `rust.unit-test-missing-waiver`, and the `rust_quality_budget.toml` files retire. This trades a coarse per-crate count for a reviewable per-test rationale. It is **not built yet** — it waits on the reduction reaching the residue.
 
 ### Coverage is the brake on deletion
 

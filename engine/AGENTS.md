@@ -78,10 +78,11 @@ See [DECISIONS.md §"Exit codes"](./DECISIONS.md#exit-codes) for the long-form r
 ## Rust quality {#rust-quality}
 
 **Aggressive Integration-First Posture:**
-Specify mandates an aggressive integration-first test strategy. Agents must actively work to remove unit tests (`#[cfg(test)]`) in favor of crate-level (`crates/<name>/tests/`) and binary integration tests (`tests/<area>.rs`). 
-- **Default to deletion:** Unit tests survive only if they cover a genuinely CLI-unreachable branch or an edge matrix that would cause subprocess explosion.
+Specify mandates an aggressive integration-first test strategy. Agents must actively work to remove unit tests (`#[cfg(test)]`) in favor of crate-level (`crates/<name>/tests/`) and binary integration tests (`tests/<area>.rs`).
+- **Design against the public surface first:** before adding a unit test, ask whether integration can reach the behavior — is it reachable through a CLI input or a `pub` fn, is its effect observable at a public boundary (stdout JSON, exit code, filesystem), and is that affordable without a subprocess-pool explosion? If yes, write the integration test; the unit test is redundant.
+- **Default to deletion:** a `src` unit test survives only when it is reachable and observable but cheap *only* in-process against a **private** kernel (a proptest or dense matrix), or it covers a genuinely CLI-unreachable branch. If the kernel is already `pub`, relocate the test to `crates/<name>/tests/` rather than leaving it in `src`.
+- **Do NOT widen public APIs to test a private kernel.** Widening trades durable surface stability for coverage you already have; prefer collapse-and-keep. The target is *near-zero* `src` unit tests — no redundant or integration-reachable ones — not literal zero. Use `cargo llvm-cov nextest` to prove coverage holds when removing unit tests.
 - **Push crate-specific tests down:** `tests/` at the root of the workspace is for E2E workflows. Crate-specific logic must be tested in `crates/<name>/tests/` via the crate's public API.
-- Do NOT change public APIs just to test them. Use `cargo llvm-cov nextest` to prove coverage holds when deleting unit tests.
 
 Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standards/coding-standards.md), and [testing.md § Test naming](./docs/standards/testing.md#test-naming) before adding types, suppressions, or tests. Run `cargo make ci` (not bare `cargo test` — CI uses `RUSTFLAGS=-Dwarnings`).
 
@@ -89,7 +90,7 @@ Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standar
 
 **Lint suppressions:** Refactor first. Use `#[expect(lint, reason = "…")]` at the smallest scope. `#![allow]` only at module root when the lint applies to every item below and the reason is contract-locked. `#[allow]` without `reason` fails CI.
 
-**Rust-quality CI:** `cargo test --test rust_quality` runs the dev-only predicates in `tests/rust_quality/checks.rs` over this repo (long test fn names, archaeology in `//!`/`///`, bare `#[allow]`, workflow clock reads).
+**Rust-quality CI:** `cargo test --test rust_quality` runs the dev-only predicates in `tests/rust_quality.rs` over this repo (long test fn names, archaeology in `//!`/`///`, bare `#[allow]`, workflow clock reads) plus the **src unit-test ratchet** `unit_test_budget_holds`, which holds each crate's `src` `#[test]` / `#[tokio::test]` count to the committed budget in [`tests/rust_quality_budget.toml`](./tests/rust_quality_budget.toml): adding a `src` unit test fails CI unless the budget is raised with a review justification, and removing one fails until the budget is ratcheted down. See [testing.md](./docs/standards/testing.md).
 
 | Do not                                                    | Do instead                                                        | See                                                                                                   |
 | --------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -99,6 +100,7 @@ Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standar
 | `match ctx.format { Json, Text }` in handlers             | `ctx.write` / `output::report`                                    | [handler-shape.md](./docs/standards/handler-shape.md)                                                 |
 | RFC/Phase/migration history in `//!` / `///`              | ≤ 3 lines “what today”; history in [DECISIONS.md](./DECISIONS.md) | [style.md § No archaeology](./docs/standards/style.md#no-archaeology-in-code)                         |
 | Sentence-length test fn names                             | Short name + `mod` grouping                                       | [testing.md § Test naming](./docs/standards/testing.md#test-naming)                                   |
+| Add a `src` `#[cfg(test)]` for CLI-reachable behavior     | Exercise it through the public surface in `crates/<name>/tests/`  | [testing.md § minimize the unit layer](./docs/standards/testing.md#the-three-layers--minimize-the-unit-layer) |
 | Nested `struct Body` inside `fn`                          | Top-level `*Body` + `From` impl                                   | [coding-standards § DTOs](./docs/standards/coding-standards.md#dtos)                                  |
 | New `Error::Diag` for one-off shapes                      | Typed variant after ≥3 identical call sites                       | [style.md § Error variants](./docs/standards/style.md#error-variants-budgeted-by-recovery-not-source) |
 

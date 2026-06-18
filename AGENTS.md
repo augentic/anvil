@@ -114,9 +114,10 @@ Vectis-bound projects commit per-platform exports under `design-system/assets/ex
 
 Specify strictly enforces an **aggressive integration-first posture**. 
 
-- **Default to Deletion:** Unit tests are actively discouraged unless they cover a CLI-unreachable branch or a dense edge matrix that would otherwise bloat integration tests. Default to deleting `#[cfg(test)]` modules and unit tests in favor of crate-level integration tests or binary integration tests.
+- **Design against the public surface:** before adding a unit test, ask whether integration can reach the behavior — reachable through a CLI input or `pub` fn, observable at a public boundary (stdout JSON, exit code, filesystem), and affordable to assert there without a subprocess explosion. If yes, write the integration test; the unit test is redundant.
+- **Default to Deletion:** a `src` unit test survives only when it is reachable and observable but cheap *only* in-process against a **private** kernel (a proptest or dense matrix), or covers a genuinely CLI-unreachable branch. If the kernel is already `pub`, re-home the test to `crates/<name>/tests/` instead.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of `engine/tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in `engine/tests/`.
-- **Coverage is the Brake:** Use `cargo llvm-cov nextest` to ensure that coverage holds during test migrations. Do NOT alter public APIs simply to support integration tests.
+- **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. A ratchet gate enforces this in both repos (engine `tests/rust_quality.rs`; adapters `tools/rust-quality`); `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations.
 
 ## Commands
 

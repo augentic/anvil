@@ -18,6 +18,7 @@ mod checks {
     //! declarative hints and WASI tools, so this code lives with its only
     //! consumer instead of in `specify-standards`.
 
+    use std::collections::BTreeMap;
     use std::fs;
     use std::path::Path;
 
@@ -67,6 +68,75 @@ mod checks {
         walk(root, root, &mut findings);
         findings.sort_by(|a, b| (a.rule, &a.message).cmp(&(b.rule, &b.message)));
         findings
+    }
+
+    /// Count `#[test]` / `#[tokio::test]` declarations in crate `src/`
+    /// trees, keyed by crate directory name (the root binary's `src/`
+    /// keys to `specify`). Integration tests under any `tests/` tree are
+    /// excluded by construction — only `src/` files are scoped. Backs the
+    /// unit-test ratchet (docs/standards/testing.md).
+    #[must_use]
+    pub fn count_src_unit_tests(root: &Path) -> BTreeMap<String, usize> {
+        let mut counts = BTreeMap::new();
+        count_walk(root, root, &mut counts);
+        counts
+    }
+
+    fn count_walk(root: &Path, dir: &Path, counts: &mut BTreeMap<String, usize>) {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if path.file_name().is_some_and(|n| n == "target") {
+                    continue;
+                }
+                count_walk(root, &path, counts);
+                continue;
+            }
+            if path.extension().is_some_and(|e| e == "rs") {
+                count_src_file(root, &path, counts);
+            }
+        }
+    }
+
+    fn count_src_file(root: &Path, path: &Path, counts: &mut BTreeMap<String, usize>) {
+        let Some(scope) = src_scope(&relative_display(root, path)) else {
+            return;
+        };
+        let Ok(content) = fs::read_to_string(path) else {
+            return;
+        };
+        let n = content
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim();
+                trimmed.starts_with("#[test]") || trimmed.starts_with("#[tokio::test")
+            })
+            .count();
+        if n > 0 {
+            *counts.entry(scope).or_default() += n;
+        }
+    }
+
+    /// Scope key for a crate `src/` Rust file, or `None` when the file is
+    /// not crate `src/` source (integration tests under `tests/`, build
+    /// scripts, fixtures). `crates/<dir>/src/**` keys to `<dir>`; the root
+    /// binary's `src/**` keys to `specify`.
+    fn src_scope(rel: &str) -> Option<String> {
+        if let Some(rest) = rel.strip_prefix("crates/") {
+            let mut parts = rest.split('/');
+            let dir = parts.next()?;
+            if parts.next() == Some("src") {
+                return Some(dir.to_owned());
+            }
+            return None;
+        }
+        if rel.starts_with("src/") {
+            return Some("specify".to_owned());
+        }
+        None
     }
 
     fn walk(root: &Path, dir: &Path, findings: &mut Vec<Finding>) {
@@ -207,9 +277,10 @@ mod checks {
     }
 }
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use checks::{RULE_ALLOW_NO_REASON, RULE_TEST_FN_NAME, RULE_WORKFLOW_CLOCK};
 
@@ -314,4 +385,89 @@ fn flags_bare_allow_and_clock_read() {
     let findings = checks::run(dir.path());
     assert!(findings.iter().any(|f| f.rule == RULE_ALLOW_NO_REASON), "bare allow must flag");
     assert!(findings.iter().any(|f| f.rule == RULE_WORKFLOW_CLOCK), "clock read must flag");
+}
+
+/// Per-crate src unit-test budget file, relative to the crate root.
+const BUDGET_FILE: &str = "tests/rust_quality_budget.toml";
+
+/// Read the ratchet budget. Deliberately a minimal `key = <int>` reader
+/// (skips blank lines, `#` comments, and the `[crate]` header) so this
+/// dev-gate stays dependency-free rather than pulling in a TOML parser.
+fn load_budget(root: &Path) -> BTreeMap<String, usize> {
+    let path = root.join(BUDGET_FILE);
+    let content =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let mut budget = BTreeMap::new();
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim().trim_matches('"').to_owned();
+        let count = value
+            .trim()
+            .parse()
+            .unwrap_or_else(|e| panic!("budget for `{key}` is not a usize: {e}"));
+        budget.insert(key, count);
+    }
+    budget
+}
+
+/// Strict ratchet on src unit tests: the committed budget must equal the
+/// live count per crate. Above budget means a new unit test was added —
+/// exercise the behavior through the public surface in `tests/` instead
+/// (docs/standards/testing.md); below budget means a reduction landed and
+/// the number must be lowered to lock it in. Either way the budget edit is
+/// the reviewable signal that catches a unit test being added.
+#[test]
+fn unit_test_budget_holds() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let counts = checks::count_src_unit_tests(&root);
+    let budget = load_budget(&root);
+
+    let scopes: BTreeSet<&String> = counts.keys().chain(budget.keys()).collect();
+    let mut failures = String::new();
+    for scope in scopes {
+        let current = counts.get(scope).copied().unwrap_or(0);
+        let allowed = budget.get(scope).copied().unwrap_or(0);
+        if current > allowed {
+            writeln!(
+                failures,
+                "[{scope}] {current} src unit tests > budget {allowed}: do not add src unit tests — exercise the behavior through the public surface in tests/, or justify and raise the budget in review (docs/standards/testing.md)"
+            )
+            .expect("write to String");
+        } else if current < allowed {
+            writeln!(
+                failures,
+                "[{scope}] {current} src unit tests < budget {allowed}: ratchet down — set `{scope} = {current}` in {BUDGET_FILE}"
+            )
+            .expect("write to String");
+        }
+    }
+    assert!(failures.is_empty(), "unit-test ratchet failed:\n{failures}");
+}
+
+#[test]
+fn counts_src_unit_tests_by_scope() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+    let crate_src = root.join("crates/demo/src/foo.rs");
+    fs::create_dir_all(crate_src.parent().expect("parent")).expect("mkdir");
+    fs::write(&crate_src, "#[test]\nfn a() {}\n#[tokio::test]\nasync fn b() {}\n").expect("write");
+    // Integration tests under tests/ must never be counted.
+    let crate_it = root.join("crates/demo/tests/it.rs");
+    fs::create_dir_all(crate_it.parent().expect("parent")).expect("mkdir");
+    fs::write(&crate_it, "#[test]\nfn c() {}\n").expect("write");
+    // Root-binary src/ keys to `specify`.
+    let bin_src = root.join("src/main.rs");
+    fs::create_dir_all(bin_src.parent().expect("parent")).expect("mkdir");
+    fs::write(&bin_src, "#[test]\nfn d() {}\n").expect("write");
+
+    let counts = checks::count_src_unit_tests(root);
+    assert_eq!(counts.get("demo").copied(), Some(2));
+    assert_eq!(counts.get("specify").copied(), Some(1));
+    assert_eq!(counts.len(), 2, "integration tests under tests/ are excluded");
 }

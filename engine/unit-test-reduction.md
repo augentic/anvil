@@ -202,3 +202,19 @@ Suggested ordering (highest ROI / lowest risk first):
 - **Private items cannot re-home** — `framework_tools` is a private module and `eval::evaluate` arms are `pub(crate)`; `adapter/core` and `init/adapter_uri` gate fns are `pub(super)`. Collapse or keep, do not widen visibility.
 - **Keep set is legitimate (~71)** — evidence-clamp paths, fake-`ToolRunner` branches, journal/resume overlays, output-gate subcases, proptests, private parser helpers. The goal is not zero unit tests; it is no *redundant* or *integration-reachable* ones.
 - **Re-homes are count-neutral** — they relocate coverage from `src` to `tests/`, they do not reduce total `#[test]` count.
+
+## 9. Re-triage and gate seeding (live counts)
+
+The working tree already carries most of the §4 reduction: live `#[test]` / `#[tokio::test]` counts under `src/` are now **204**, not the 506 of §2. The ratchet gate (`unit_test_budget_holds` in [`tests/rust_quality.rs`](tests/rust_quality.rs), seeded from [`tests/rust_quality_budget.toml`](tests/rust_quality_budget.toml)) is seeded from these and only moves down:
+
+- `standards` 72, `workflow` 61, `registry` 40, `extension` 13, `schema` 10, `specify` (root binary) 7, `model` 1.
+- `diagnostics` and `error` hold 0 — any new `src` unit test there trips the gate.
+
+### Keep re-triage
+
+The corrected direction (see [`docs/standards/testing.md`](docs/standards/testing.md)) is: design positive/negative tests against the **existing** public surface; relocate already-`pub` kernels; collapse the private affordability residue *in place*; widen production API only as a last resort. Run the three-question test (reachable? observable? affordable through the public surface?) plus a visibility check, and split the §5/§6 `Keep` rows two ways:
+
+- **True Keep (private kernel + affordability).** Reachable and observable, but the *cheap* test is in-process against a private item, so the choice is collapse-and-keep, not widen. These earn a phase-2 waiver marker. Examples, with the §5/§6 reason: `eval/finding.rs` (≥128 KiB clamp on private `clamp_evidence` / `single_adapter`), `eval/tool.rs` (fake `ToolRunner` against `pub(crate) evaluate`), `eval/regex*` (private config / continuation-lexer edges), `lint/diagnostics.rs` (exhaustive D8 table), workflow `status` journal/resume overlay, `slice/build/wire` output gate.
+- **Cheap re-home (kernel already `pub`).** No widening needed — relocate to `crates/<crate>/tests/` and delete the `src` copy. Worked example: [`change/plan/doctor/cycle.rs`](crates/workflow/src/change/plan/doctor/cycle.rs) — `pub fn detect` is already crate-public and the cycle diagnostic is already CLI-covered (`tests/plan.rs::validate_reports_all_health_diagnostics`); its three proptests move to `crates/workflow/tests/` against `detect` as-is, building `Entry` values through the public path rather than the crate-internal `change_with_deps` helper. Re-homing them drops the `workflow` budget by 3 — the kind of edit the ratchet expects.
+
+Method per reduction PR: apply reachable / observable / affordable, then check visibility. Reachable + observable + affordable through the current public surface → integration test, no widening. Already-`pub` kernel → relocate. Private + affordability-only → collapse and keep with a waiver. Genuinely unreachable → delete or `unreachable!`, never widen to test it. The §4 estimate of ~71 surviving unit tests is therefore an upper bound; the cheap re-homes pull it lower without touching any public API.
