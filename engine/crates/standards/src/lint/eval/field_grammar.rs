@@ -209,7 +209,7 @@ mod unit {
     use serde_json::json;
 
     use super::*;
-    use crate::lint::eval::testkit::{candidates, empty_model, hint, hint_with_config, rule};
+    use crate::lint::eval::testkit::{candidates, empty_model, hint_with_config, rule};
 
     fn frontmatter(path: &str, field: &str, value: serde_json::Value) -> Frontmatter {
         let mut fields = serde_json::Map::new();
@@ -221,8 +221,15 @@ mod unit {
         }
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the two grammar modes
+    // and their rejection arms collapse into one matrix. Every former input is
+    // preserved. The private `first_invalid_token` later-offender matrix stays
+    // in its own `tests` module (it cannot re-home).
+
     #[test]
-    fn tokens_flag_bad_and_pass_good() {
+    fn grammar_modes_and_rejections() {
+        // `field-tokens`: a prose value and a non-string value are flagged; a
+        // conforming token list passes.
         let mut model = empty_model();
         model.frontmatter = vec![
             frontmatter("good.md", "argument-hint", json!("<slice-dir> [crate-name]")),
@@ -237,10 +244,9 @@ mod unit {
         let paths: Vec<&str> =
             out.iter().filter_map(|f| f.location.as_ref().map(|l| l.path.as_str())).collect();
         assert_eq!(paths, vec!["bad.md", "non-string.md"]);
-    }
 
-    #[test]
-    fn first_word_allow_list() {
+        // `field-first-word`: a non-allowed first word and a no-leading-word
+        // value are flagged; an allowed first word passes.
         let mut model = empty_model();
         model.frontmatter = vec![
             frontmatter("good.md", "description", json!("Build the demo fixtures.")),
@@ -254,10 +260,8 @@ mod unit {
         let paths: Vec<&str> =
             out.iter().filter_map(|f| f.location.as_ref().map(|l| l.path.as_str())).collect();
         assert_eq!(paths, vec!["bad.md", "no-word.md"]);
-    }
 
-    #[test]
-    fn invalid_token_pattern_is_hard_error() {
+        // An uncompilable `token-pattern` is a hard error.
         let model = empty_model();
         let cfg = json!({ "field": "x", "token-pattern": "(unclosed" });
         let hint = hint_with_config(HintKind::FieldGrammar, "field-tokens", Some(cfg));
@@ -265,12 +269,9 @@ mod unit {
             evaluate(&rule(), &hint, &[], &model, &mut 1),
             Err(HintError::RegexCompile { .. })
         ));
-    }
 
-    #[test]
-    fn missing_config_and_unknown_mode_rejected() {
-        let model = empty_model();
-        let bare = hint(HintKind::FieldGrammar, "field-tokens");
+        // A bare hint (no config) and an unknown mode are both rejected.
+        let bare = hint_with_config(HintKind::FieldGrammar, "field-tokens", None);
         evaluate(&rule(), &bare, &[], &model, &mut 1).unwrap_err();
         let unknown =
             hint_with_config(HintKind::FieldGrammar, "no-such-mode", Some(json!({ "field": "x" })));

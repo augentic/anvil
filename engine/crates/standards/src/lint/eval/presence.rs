@@ -291,8 +291,13 @@ mod unit {
         }
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the four presence
+    // selectors collapse into one finding matrix and the unsupported-config
+    // rejections into a second test. Every former input is preserved.
+
     #[test]
-    fn missing_or_empty_frontmatter_flagged() {
+    fn selectors_flag_absences() {
+        // `frontmatter`: candidates absent or empty in the model are flagged.
         let mut model = empty_model();
         let mut fields = serde_json::Map::new();
         fields.insert("name".to_string(), json!("x"));
@@ -306,25 +311,21 @@ mod unit {
         let paths: Vec<&str> =
             out.iter().filter_map(|f| f.location.as_ref().map(|l| l.path.as_str())).collect();
         assert_eq!(paths, vec!["docs/empty.md", "docs/none.md"]);
-    }
 
-    #[test]
-    fn required_file_absence_flagged() {
-        let model = model_with_paths(&["README.md"]);
+        // `file`: the required `config: { path }` is flagged when absent,
+        // silent when present.
         let cfg = json!({ "path": "AGENTS.md" });
+        let model = model_with_paths(&["README.md"]);
         let hint = hint_with_config(HintKind::Presence, "file", Some(cfg.clone()));
         let out = evaluate(&rule(), &hint, &[], &model, &mut 1).expect("evaluate");
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("'AGENTS.md'"), "{}", out[0].title);
-
         let model = model_with_paths(&["AGENTS.md"]);
         let hint = hint_with_config(HintKind::Presence, "file", Some(cfg));
-        let out = evaluate(&rule(), &hint, &[], &model, &mut 1).expect("evaluate");
-        assert!(out.is_empty());
-    }
+        assert!(evaluate(&rule(), &hint, &[], &model, &mut 1).expect("evaluate").is_empty());
 
-    #[test]
-    fn section_required_above_metric_threshold() {
+        // `markdown-section`: only skills crossing the metric threshold and
+        // lacking the section are flagged.
         let mut model = empty_model();
         let big = "plugins/p/skills/big/SKILL.md";
         let small = "plugins/p/skills/small/SKILL.md";
@@ -359,13 +360,11 @@ mod unit {
         });
         let hint = hint_with_config(HintKind::Presence, "markdown-section", Some(cfg));
         let out = evaluate(&rule(), &hint, &[], &model, &mut 1).expect("evaluate");
-        // Only the big skill crosses the threshold, and it lacks the section.
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].location.as_ref().map(|l| l.path.as_str()), Some(big));
-    }
 
-    #[test]
-    fn directory_missing_index_flagged() {
+        // `directory-index`: a roots-matching directory over `min-files`
+        // without its index file is flagged.
         let model = model_with_paths(&[
             "refs/corpus/a.md",
             "refs/corpus/b.md",
@@ -380,7 +379,8 @@ mod unit {
     }
 
     #[test]
-    fn unsupported_metric_rejected() {
+    fn rejects_unsupported_config() {
+        // An unsupported `when.metric` is rejected.
         let model = empty_model();
         let cfg = json!({
             "title": "T",
@@ -389,12 +389,9 @@ mod unit {
         });
         let hint = hint_with_config(HintKind::Presence, "markdown-section", Some(cfg));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
 
-    #[test]
-    fn unknown_selector_is_unsupported() {
-        let model = empty_model();
-        let hint = hint(HintKind::Presence, "no-such-selector");
+        // An unknown selector token is rejected.
+        let hint = hint_with_config(HintKind::Presence, "no-such-selector", None);
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
     }
 }

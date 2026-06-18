@@ -60,51 +60,12 @@ fn build_failed(seconds: i64, slice: &str, reason: &str) -> Event {
 mod next_action {
     use super::*;
 
-    #[test]
-    fn pending_plan_stops() {
-        let dir = TempDir::new().expect("tempdir");
-        let plan = plan_with_changes(vec![change("a", Status::Pending)]);
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.action, NextActionKind::Stop);
-        assert_eq!(body.next_action, "stop plan-not-approved");
-        assert_eq!(body.stop.expect("stop body").reason, StopReason::PlanNotApproved);
-    }
-
-    #[test]
-    fn fresh_active_refines() {
-        let dir = TempDir::new().expect("tempdir");
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.next_action, "refine a");
-        assert_eq!(body.slice.as_deref(), Some("a"));
-        assert_eq!(body.active.as_deref(), Some("a"));
-        assert_eq!(body.project.as_deref(), Some("default"));
-    }
-
-    #[test]
-    fn lifecycle_dispatch() {
-        for (status, expected) in [
-            (LifecycleStatus::Refining, "refine a"),
-            (LifecycleStatus::Refined, "build a"),
-            (LifecycleStatus::Built, "merge a"),
-        ] {
-            let dir = TempDir::new().expect("tempdir");
-            write_slice(dir.path(), "a", status);
-            let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-            let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-            assert_eq!(body.next_action, expected, "lifecycle {status}");
-        }
-    }
-
-    #[test]
-    fn drained_when_all_done() {
-        let dir = TempDir::new().expect("tempdir");
-        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.action, NextActionKind::Drained);
-        assert_eq!(body.next_action, "drained");
-        assert!(body.stop.is_none());
-    }
+    // The base happy-path dispatch arms (pending-stops, fresh-active-refine,
+    // lifecycle refine/build/merge, drained, eligible-pending preview) are
+    // asserted end-to-end by `engine/tests/plan.rs::status_*` /
+    // `plan_next_picks_first_pending_json` (with full-body goldens). What
+    // stays here is the dispatch that has no CLI status fixture: a stuck
+    // dependency graph and a dropped slice.
 
     #[test]
     fn stuck_when_deps_unmet() {
@@ -113,20 +74,6 @@ mod next_action {
             approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
         let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
         assert_eq!(body.next_action, "stop stuck");
-    }
-
-    #[test]
-    fn eligible_pending_previews_refine() {
-        // No active entry: the projection names the entry `plan next`
-        // would claim, dispatched on its (absent) slice tree.
-        let dir = TempDir::new().expect("tempdir");
-        let plan = approved(plan_with_changes(vec![
-            change("a", Status::Done),
-            change("b", Status::Pending),
-        ]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.next_action, "refine b");
-        assert_eq!(body.active, None);
     }
 
     #[test]
@@ -142,20 +89,12 @@ mod next_action {
 mod failure_overlay {
     use super::*;
 
-    #[test]
-    fn awaited_build_failure_stops() {
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Refined);
-        append(
-            dir.path(),
-            &[advanced(0, "test", "a"), build_failed(10, "a", "exhausted repair budget")],
-        );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.next_action, "stop build-failed");
-        let stop = body.stop.expect("stop body");
-        assert_eq!(stop.detail.as_deref(), Some("exhausted repair budget"));
-    }
+    // The build-failure overlay is asserted end-to-end by
+    // `plan.rs::status_build_failure_stops` (incl. the `status-build-failed`
+    // golden). The remaining overlay classifications below have no CLI
+    // status fixture: merge-conflict / refine-failed mapping, newest-marker
+    // precedence, stale / pre-claim shadowing, and the torn merge-incomplete
+    // state.
 
     #[test]
     fn merge_failure_maps_to_conflict() {
@@ -295,41 +234,13 @@ mod failure_overlay {
 mod re_entry {
     use super::*;
 
-    #[test]
-    fn dispatch_carries_steps_and_resume() {
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Refined);
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.current_step, Some(LoopStep::Build));
-        assert_eq!(body.last_completed, Some(LoopStep::Refine));
-        assert_eq!(body.resume.as_deref(), Some("/spec:build a"));
-    }
-
-    #[test]
-    fn fresh_slice_has_no_completed_step() {
-        let dir = TempDir::new().expect("tempdir");
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.current_step, Some(LoopStep::Refine));
-        assert_eq!(body.last_completed, None);
-        assert_eq!(body.resume.as_deref(), Some("/spec:refine a"));
-    }
-
-    #[test]
-    fn stop_keeps_current_step_and_retry_resume() {
-        // A build failure parks *inside* the build step: the re-entry
-        // point is the same phase skill the loop would dispatch.
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Refined);
-        append(dir.path(), &[advanced(0, "test", "a"), build_failed(10, "a", "repair budget")]);
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
-        assert_eq!(body.next_action, "stop build-failed");
-        assert_eq!(body.current_step, Some(LoopStep::Build));
-        assert_eq!(body.last_completed, Some(LoopStep::Refine));
-        assert_eq!(body.resume.as_deref(), Some("/spec:build a"));
-    }
+    // The dispatch + resume projection for the fresh-refine and
+    // refined/build-failed scenarios is captured by the full-body
+    // `status-refine` / `status-build-failed` goldens in
+    // `engine/tests/plan.rs`. The re-entry overlays with no CLI fixture
+    // remain: the torn merge-incomplete resume, the drained finalize
+    // resume, the Gate-1 approved-stamp resume, and the repair-shaped
+    // stops that carry no resume.
 
     #[test]
     fn merge_incomplete_resumes_at_done_stamp() {

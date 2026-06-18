@@ -832,8 +832,15 @@ mod unit {
         result.unwrap_err();
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the six finding tests
+    // collapse into two (invocation drift; id + citation drift). The three
+    // unsupported-arm tests (no contract, missing config, unknown source) stay
+    // as distinct Keeps. Every former input is preserved.
+
     #[test]
-    fn unknown_verb_and_flag_flagged() {
+    fn flags_invocation_drift() {
+        // Fenced `bash` bodies: an unknown verb and an undeclared flag fire;
+        // the declared `add --target` line is silent.
         let mut model = empty_model();
         let body = "specify plan add my-slice --target demo-target\n\
                     specify plan destroy my-slice\n\
@@ -850,10 +857,8 @@ mod unit {
         assert_eq!(out.len(), 2, "{titles:?}");
         assert!(titles.iter().any(|t| t.contains("`destroy`")), "{titles:?}");
         assert!(titles.iter().any(|t| t.contains("`--bogus`")), "{titles:?}");
-    }
 
-    #[test]
-    fn comments_and_brace_expansion_end_the_walk() {
+        // A shell comment and a brace-expansion shorthand both end the walk.
         let mut model = empty_model();
         let body = "specify plan add x # specify plan destroy y\n\
                     specify plan {add, transition} whatever-junk\n";
@@ -866,18 +871,15 @@ mod unit {
             Path::new("/tmp"),
         );
         assert!(out.is_empty(), "{:?}", out.iter().map(|f| &f.title).collect::<Vec<_>>());
-    }
 
-    #[test]
-    fn inline_spans_checked_in_markdown() {
+        // Inline `specify …` spans in markdown prose are checked too.
         let tmp = tempfile::tempdir().expect("tmp");
         fs::write(tmp.path().join("doc.md"), "Run `specify plan destroy x` to clean up.\n")
             .expect("doc");
-        let model = empty_model();
         let out = run(
             "invocations",
             json!({ "langs": ["bash"] }),
-            &model,
+            &empty_model(),
             &candidates(&["doc.md"]),
             tmp.path(),
         );
@@ -886,7 +888,9 @@ mod unit {
     }
 
     #[test]
-    fn unknown_event_id_flagged_in_namespace_only() {
+    fn flags_id_and_citation_drift() {
+        // `event-ids`: an in-namespace unknown id fires; a declared id and an
+        // out-of-namespace token (`users.register`) are silent.
         let mut model = empty_model();
         let body = r#"{ "event": "plan.transition.approved" }
 { "event": "plan.no-such-event" }
@@ -900,13 +904,10 @@ mod unit {
             &candidates(&["docs/a.md"]),
             Path::new("/tmp"),
         );
-        // `users.register` is outside the declared family namespace.
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("`plan.no-such-event`"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn unknown_error_code_flagged() {
+        // `error-codes`: an unknown code fires; a declared code is silent.
         let mut model = empty_model();
         let body = r#"{ "code": "adapter-not-found" }
 { "code": "no-such-error" }
@@ -921,21 +922,19 @@ mod unit {
         );
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("`no-such-error`"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn stale_test_citation_flagged() {
+        // `test-citations`: a citation absent from the contract inventory
+        // fires; an inventoried one is silent.
         let tmp = tempfile::tempdir().expect("tmp");
         fs::write(
             tmp.path().join("doc.md"),
             "See `tests/plan/end_to_end.rs` and `tests/gone/deleted.rs`.\n",
         )
         .expect("doc");
-        let model = empty_model();
         let out = run(
             "test-citations",
             json!({ "link-prefixes": ["blob/main/"] }),
-            &model,
+            &empty_model(),
             &candidates(&["doc.md"]),
             tmp.path(),
         );

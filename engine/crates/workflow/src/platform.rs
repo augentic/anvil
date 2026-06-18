@@ -70,8 +70,12 @@ pub fn parse_platforms_csv(csv: &str) -> Result<Vec<Platform>, String> {
 mod tests {
     use super::*;
 
+    // The `--platforms` reject branch (unknown token) is covered end-to-end
+    // by `engine/tests/init.rs`; the wire-name coherence and the CSV
+    // sort/dedup/whitespace accept-half below have no CLI fixture, so both
+    // former tests collapse here (every assertion preserved).
     #[test]
-    fn wire_names_coherent() {
+    fn wire_names_and_csv() {
         // The strum-derived `Display` / `FromStr` (`serialize_all =
         // "kebab-case"`) must not drift from the serde
         // `#[serde(rename_all = "kebab-case")]` wire name.
@@ -83,10 +87,7 @@ mod tests {
             let yaml = serde_saphyr::to_string(&platform).unwrap();
             assert_eq!(yaml.trim(), name, "serde wire name must match Display");
         }
-    }
 
-    #[test]
-    fn parse_csv_edge_cases() {
         // Whitespace and empty tokens are tolerated; duplicates collapse;
         // output is sorted with `Core` first; the first unknown token is
         // named in the error.

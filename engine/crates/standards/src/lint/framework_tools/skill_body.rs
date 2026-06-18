@@ -445,8 +445,13 @@ mod tests {
         (0..count).map(|i| format!("padding {i}")).collect::<Vec<_>>().join("\n")
     }
 
+    // The three filesystem checkers are private, so they cannot re-home; the
+    // CLI e2e defers per-`kind` eval semantics. The matrix below collapses into
+    // one test, preserving every former input.
     #[test]
-    fn invalid_critical_path_flags_wrong_count() {
+    fn skill_body_matrix() {
+        // CORE-040: a long skill whose Critical Path lists the wrong number of
+        // items is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         let body =
             format!("## Critical Path\n\n1. one\n2. two\n3. three\n4. four\n\n{}", padding(150));
@@ -454,10 +459,9 @@ mod tests {
         let findings = check_invalid_critical_path(dir.path(), 150, 5, 7);
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("found 4"));
-    }
 
-    #[test]
-    fn variable_coverage_flags_undefined_use() {
+        // CORE-048: a `$VAR` used in the body but never defined in Arguments
+        // is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         let body = "## Arguments\n\n```text\n$SLICE=<name>\n```\n\n## Steps\n\nValidate $PROJECT for $SLICE before continuing.";
         write_skill(dir.path(), "vars", body);
@@ -466,10 +470,9 @@ mod tests {
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("Undefined variable"));
         assert!(findings[0].message.contains("$PROJECT"));
-    }
 
-    #[test]
-    fn clean_short_skill_is_silent() {
+        // A short clean skill trips neither the critical-path (CORE-040) nor
+        // the step-body-duplicate (CORE-046) check.
         let dir = tempfile::tempdir().expect("tempdir");
         write_skill(dir.path(), "ok", "Just a short body.");
         assert!(check_invalid_critical_path(dir.path(), 150, 5, 7).is_empty());

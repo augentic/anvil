@@ -196,8 +196,15 @@ mod unit {
         }
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the two source
+    // discriminators (with their config filters) collapse into one
+    // unresolved-reference matrix and the rejection arms into a second test.
+    // Every former input is preserved.
+
     #[test]
-    fn only_failed_resolutions_fire() {
+    fn flags_unresolved_refs() {
+        // `markdown-link`: only `resolves == Some(false)` links fire; resolved
+        // and URL-style (unset) links are silent.
         let mut model = empty_model();
         model.markdown_links = vec![
             link("docs/a.md", "missing.md", Some(false), false),
@@ -209,10 +216,8 @@ mod unit {
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("missing.md"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn image_and_target_filters_narrow() {
+        // The image / suffix / prefix config filters narrow to one link.
         let mut model = empty_model();
         model.markdown_links = vec![
             link("docs/a.md", "img/missing.svg", Some(false), true),
@@ -225,10 +230,8 @@ mod unit {
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("img/missing.svg"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn broken_symlinks_scoped_by_prefix() {
+        // `symlink`: only broken links under the `path-prefix` scope fire.
         let mut model = empty_model();
         model.symlinks = vec![
             symlink("plugins/spec/refs/x.md", "../gone.md", true),
@@ -243,15 +246,12 @@ mod unit {
     }
 
     #[test]
-    fn unknown_source_is_unsupported() {
+    fn rejects_bad_config() {
         let model = empty_model();
+        // An unknown source discriminator is rejected.
         let hint = hint(HintKind::ReferenceResolves, "no-such-source");
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn invalid_config_is_unsupported() {
-        let model = empty_model();
+        // A config with an unknown field is rejected.
         let hint = hint_with_config(
             HintKind::ReferenceResolves,
             "markdown-link",

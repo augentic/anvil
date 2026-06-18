@@ -234,11 +234,19 @@ impl MetadataKeyByte for u8 {
 mod tests {
     use super::*;
 
+    // `parse_document` is a pure `(bytes -> Ok(Some) | Ok(None) | Err)` matrix
+    // with no CLI fixture exercising the per-shape errors, so the 11 former
+    // single-case tests collapse here. The success case keeps its rich
+    // multi-field assertions (and the `#[cfg(test)]`-only `metadata()`
+    // accessor, which forces this to stay an in-`src` unit test); the error
+    // cases — each a distinct code path — drive a table. Every former input is
+    // preserved.
     #[test]
-    fn parser_splits_document_and_metadata() {
+    fn parse_document_matrix() {
+        // The one well-formed document: prefix / body / suffix / metadata /
+        // generated-block all split as expected.
         let input = b"# hand title\n\n<!-- specify:context begin\nfingerprint: sha256:old\n-->\n\nold body\n\n<!-- specify:context end -->\n\noperator notes\n";
         let parsed = parse_document(input).expect("parse ok").expect("fences present");
-
         assert_eq!(parsed.prefix(), b"# hand title\n\n");
         assert_eq!(parsed.body(), b"\nold body\n\n");
         assert_eq!(parsed.suffix(), b"\n\noperator notes\n");
@@ -247,103 +255,69 @@ mod tests {
             parsed.generated_block(),
             b"<!-- specify:context begin\nfingerprint: sha256:old\n-->\n\nold body\n\n<!-- specify:context end -->"
         );
-    }
 
-    #[test]
-    fn parser_none_for_unfenced() {
-        let parsed =
-            parse_document(b"# hand-authored\n\nNo managed context here.\n").expect("parse ok");
+        // A document with no fence markers at all is `Ok(None)`.
+        assert!(
+            parse_document(b"# hand-authored\n\nNo managed context here.\n")
+                .expect("parse ok")
+                .is_none()
+        );
 
-        assert!(parsed.is_none());
-    }
-
-    #[test]
-    fn parser_rejects_missing_terminator() {
-        let err = parse_document(b"<!-- specify:context begin\nfingerprint: sha256:test\nbody")
-            .expect_err("unterminated fence must fail");
-
-        assert_eq!(err, FenceError::MissingOpeningFenceTerminator);
-    }
-
-    #[test]
-    fn parser_rejects_invalid_metadata_line() {
-        let err = parse_document(
-            b"<!-- specify:context begin\nfingerprint sha256:test\n-->\nbody\n<!-- specify:context end -->",
-        )
-        .expect_err("invalid metadata must fail");
-
-        assert_eq!(err, FenceError::InvalidMetadataLine("fingerprint sha256:test".to_string()));
-    }
-
-    #[test]
-    fn parser_rejects_missing_metadata() {
-        let err =
-            parse_document(b"<!-- specify:context begin\n-->\nbody\n<!-- specify:context end -->")
-                .expect_err("missing metadata must fail");
-
-        assert_eq!(err, FenceError::MissingOpeningFenceMetadata);
-    }
-
-    #[test]
-    fn parser_rejects_duplicate_metadata_key() {
-        let err = parse_document(
-            b"<!-- specify:context begin\nfingerprint: sha256:a\nfingerprint: sha256:b\n-->\nbody\n<!-- specify:context end -->",
-        )
-        .expect_err("duplicate metadata must fail");
-
-        assert_eq!(err, FenceError::DuplicateMetadataKey("fingerprint".to_string()));
-    }
-
-    #[test]
-    fn parser_rejects_trailing_space() {
-        let err = parse_document(
-            b"<!-- specify:context begin\nfingerprint: sha256:test\n-->\nbody\n<!-- specify:context end --> \n",
-        )
-        .expect_err("strict closing line must fail");
-
-        assert_eq!(err, FenceError::MissingClosingFence);
-    }
-
-    #[test]
-    fn parser_rejects_multiple_context_blocks() {
-        let input = b"<!-- specify:context begin\nfingerprint: sha256:a\n-->\na\n<!-- specify:context end -->\n<!-- specify:context begin\nfingerprint: sha256:b\n-->\nb\n<!-- specify:context end -->";
-        let err = parse_document(input).expect_err("multiple fences must fail");
-
-        assert_eq!(err, FenceError::MultipleOpeningFences);
-    }
-
-    // A single opening fence followed by *two* well-formed closing fences
-    // is ambiguous for in-place replacement — the planner cannot know
-    // which close ends the managed block — so it must be its own error,
-    // distinct from the multiple-opening case.
-    #[test]
-    fn parser_rejects_multiple_closing_fences() {
-        let input = b"<!-- specify:context begin\nfingerprint: sha256:a\n-->\nbody\n<!-- specify:context end -->\nmore\n<!-- specify:context end -->";
-        let err = parse_document(input).expect_err("two closing fences must fail");
-
-        assert_eq!(err, FenceError::MultipleClosingFences);
-    }
-
-    // A well-formed opening fence with no closing fence at all hits the
-    // empty-positions arm — a different code path than the malformed
-    // (trailing-space) close, even though both surface MissingClosingFence.
-    #[test]
-    fn parser_rejects_absent_closing_fence() {
-        let err =
-            parse_document(b"<!-- specify:context begin\nfingerprint: sha256:a\n-->\nbody only\n")
-                .expect_err("absent closing fence must fail");
-
-        assert_eq!(err, FenceError::MissingClosingFence);
-    }
-
-    // A document carrying only a closing fence (no opening) is malformed,
-    // not "unfenced": the lone close means the opening terminator is what
-    // went missing.
-    #[test]
-    fn parser_rejects_closing_without_opening() {
-        let err = parse_document(b"hand notes\n<!-- specify:context end -->\n")
-            .expect_err("closing-only document must fail");
-
-        assert_eq!(err, FenceError::MissingOpeningFenceTerminator);
+        // Every malformed shape maps to its distinct `FenceError`. Inputs are
+        // ASCII so a `&str` table keeps the rows readable.
+        let error_cases: &[(&str, FenceError)] = &[
+            // Unterminated opening fence.
+            (
+                "<!-- specify:context begin\nfingerprint: sha256:test\nbody",
+                FenceError::MissingOpeningFenceTerminator,
+            ),
+            // Metadata line without the `: ` separator.
+            (
+                "<!-- specify:context begin\nfingerprint sha256:test\n-->\nbody\n<!-- specify:context end -->",
+                FenceError::InvalidMetadataLine("fingerprint sha256:test".to_string()),
+            ),
+            // Opening fence terminated before any metadata.
+            (
+                "<!-- specify:context begin\n-->\nbody\n<!-- specify:context end -->",
+                FenceError::MissingOpeningFenceMetadata,
+            ),
+            // A repeated metadata key.
+            (
+                "<!-- specify:context begin\nfingerprint: sha256:a\nfingerprint: sha256:b\n-->\nbody\n<!-- specify:context end -->",
+                FenceError::DuplicateMetadataKey("fingerprint".to_string()),
+            ),
+            // Trailing space after the close marker fails the strict line end.
+            (
+                "<!-- specify:context begin\nfingerprint: sha256:test\n-->\nbody\n<!-- specify:context end --> \n",
+                FenceError::MissingClosingFence,
+            ),
+            // Two opening fences.
+            (
+                "<!-- specify:context begin\nfingerprint: sha256:a\n-->\na\n<!-- specify:context end -->\n<!-- specify:context begin\nfingerprint: sha256:b\n-->\nb\n<!-- specify:context end -->",
+                FenceError::MultipleOpeningFences,
+            ),
+            // One opening fence, two well-formed closing fences (ambiguous).
+            (
+                "<!-- specify:context begin\nfingerprint: sha256:a\n-->\nbody\n<!-- specify:context end -->\nmore\n<!-- specify:context end -->",
+                FenceError::MultipleClosingFences,
+            ),
+            // A well-formed open with no close at all (empty-positions arm).
+            (
+                "<!-- specify:context begin\nfingerprint: sha256:a\n-->\nbody only\n",
+                FenceError::MissingClosingFence,
+            ),
+            // A lone closing fence (no opening) — terminator is what's missing.
+            (
+                "hand notes\n<!-- specify:context end -->\n",
+                FenceError::MissingOpeningFenceTerminator,
+            ),
+        ];
+        for (input, expected) in error_cases {
+            assert_eq!(
+                parse_document(input.as_bytes()).expect_err("malformed fence must fail"),
+                *expected,
+                "input: {input:?}"
+            );
+        }
     }
 }

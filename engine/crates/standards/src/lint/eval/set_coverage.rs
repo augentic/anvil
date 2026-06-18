@@ -340,22 +340,25 @@ mod unit {
         json!({ "mode": "exact", "expected-operations": { "sources": ["alpha", "beta"], "targets": ["gamma", "delta", "epsilon"] } })
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the two source
+    // discriminators (with both brief modes) collapse into one divergence
+    // matrix and the config-rejection arms into a second test. Every former
+    // input is preserved.
+
     #[test]
-    fn missing_operation_flagged_extras_silent() {
+    fn flags_set_divergences() {
+        // `adapter-briefs` default `subset`: only the missing `epsilon` fires;
+        // the `extra` key is `mode: exact`'s job.
         let mut model = empty_model();
         model.adapter_manifests =
             vec![manifest("demo", AdapterAxis::Targets, &["gamma", "delta", "extra"])];
         let cands = candidates(&["adapters/targets/demo/adapter.yaml"]);
         let hint = hint_with_config(HintKind::SetCoverage, "adapter-briefs", Some(expected_ops()));
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
-        // Default `subset` mode: only the missing `epsilon` fires; the
-        // `extra` key is `mode: exact`'s job.
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("missing brief for operation 'epsilon'"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn exact_mode_flags_missing_and_unexpected() {
+        // `mode: exact` flags both the missing and the unexpected operation.
         let mut model = empty_model();
         model.adapter_manifests =
             vec![manifest("demo", AdapterAxis::Targets, &["gamma", "delta", "rogue"])];
@@ -372,30 +375,20 @@ mod unit {
             titles.iter().any(|t| t.contains("unexpected brief operation 'rogue'")),
             "{titles:?}"
         );
-    }
 
-    #[test]
-    fn exact_mode_silent_on_exact_set() {
+        // `mode: exact` is silent on an exactly-matching set; default `subset`
+        // is likewise silent when every expected operation is declared.
         let mut model = empty_model();
         model.adapter_manifests = vec![manifest("demo", AdapterAxis::Sources, &["alpha", "beta"])];
         let cands = candidates(&["adapters/sources/demo/adapter.yaml"]);
-        let hint = hint_with_config(HintKind::SetCoverage, "adapter-briefs", Some(exact_ops()));
-        let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
-        assert!(out.is_empty());
-    }
+        let exact = hint_with_config(HintKind::SetCoverage, "adapter-briefs", Some(exact_ops()));
+        assert!(evaluate(&rule(), &exact, &cands, &model, &mut 1).expect("eval").is_empty());
+        let subset =
+            hint_with_config(HintKind::SetCoverage, "adapter-briefs", Some(expected_ops()));
+        assert!(evaluate(&rule(), &subset, &cands, &model, &mut 1).expect("eval").is_empty());
 
-    #[test]
-    fn covered_manifest_is_silent() {
-        let mut model = empty_model();
-        model.adapter_manifests = vec![manifest("demo", AdapterAxis::Sources, &["alpha", "beta"])];
-        let cands = candidates(&["adapters/sources/demo/adapter.yaml"]);
-        let hint = hint_with_config(HintKind::SetCoverage, "adapter-briefs", Some(expected_ops()));
-        let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
-        assert!(out.is_empty());
-    }
-
-    #[test]
-    fn uncovered_tool_flagged() {
+        // `skill-allowed-tools`: a tool neither in `allowed` nor matching an
+        // `allowed-prefixes` exemption is flagged; covered/prefixed are silent.
         let mut model = empty_model();
         let path = "plugins/p/skills/s/SKILL.md";
         model.frontmatter = vec![skill_frontmatter(path, "Read Write mcp__custom rogue")];
@@ -408,15 +401,12 @@ mod unit {
     }
 
     #[test]
-    fn missing_config_is_unsupported() {
+    fn rejects_bad_config() {
         let model = empty_model();
+        // A selector with no `config` is rejected.
         let hint = hint(HintKind::SetCoverage, "skill-allowed-tools");
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn unknown_source_is_unsupported() {
-        let model = empty_model();
+        // An unknown source discriminator is rejected.
         let hint = hint_with_config(HintKind::SetCoverage, "no-such-source", Some(json!({})));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
     }

@@ -337,30 +337,35 @@ mod unit {
         evaluate(&rule(), &hint, cands, project_dir, model, &mut 1, &mut cache)
     }
 
-    #[test]
-    fn http_refs_rejected() {
-        let model = empty_model();
-        let result = run("https://example.com/schema.json", &[], Path::new("/tmp"), &model);
-        assert!(matches!(result, Err(HintError::SchemaResolve { .. })));
-    }
+    // The CLI e2e defers per-`kind` eval semantics, so the schema arm's
+    // reference-resolution and validation matrices collapse into two
+    // table-style tests rather than deleting. Every former input is preserved.
 
     #[test]
-    fn unknown_registered_id_rejected() {
+    fn rejects_unresolvable_refs() {
         let model = empty_model();
-        let result = run("no-such-schema", &[], Path::new("/tmp"), &model);
-        assert!(matches!(result, Err(HintError::SchemaResolve { .. })));
-    }
-
-    #[test]
-    fn escaping_ref_rejected() {
+        // External http(s) refs are refused so `specify lint` runs offline.
+        assert!(matches!(
+            run("https://example.com/schema.json", &[], Path::new("/tmp"), &model),
+            Err(HintError::SchemaResolve { .. })
+        ));
+        // A bare token that is not a registered schema id.
+        assert!(matches!(
+            run("no-such-schema", &[], Path::new("/tmp"), &model),
+            Err(HintError::SchemaResolve { .. })
+        ));
+        // A project-relative `$ref` that escapes the project dir via `..`.
         let tmp = tempfile::tempdir().expect("tmp");
-        let model = empty_model();
-        let result = run("../outside.schema.json", &[], tmp.path(), &model);
-        assert!(matches!(result, Err(HintError::SchemaResolve { .. })));
+        assert!(matches!(
+            run("../outside.schema.json", &[], tmp.path(), &model),
+            Err(HintError::SchemaResolve { .. })
+        ));
     }
 
     #[test]
-    fn project_ref_validates_json_candidates() {
+    fn validates_candidates_and_scenarios() {
+        // A project-relative `$ref` validates JSON candidates: only the
+        // schema-violating file yields a finding.
         let tmp = tempfile::tempdir().expect("tmp");
         fs::write(tmp.path().join("name.schema.json"), NAME_SCHEMA).expect("schema");
         fs::write(tmp.path().join("good.json"), r#"{ "name": "x" }"#).expect("good");
@@ -371,10 +376,8 @@ mod unit {
                 .expect("evaluate");
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].location.as_ref().map(|l| l.path.as_str()), Some("bad.json"));
-    }
 
-    #[test]
-    fn markdown_candidates_validate_frontmatter() {
+        // Markdown candidates validate their extracted frontmatter.
         let tmp = tempfile::tempdir().expect("tmp");
         fs::write(tmp.path().join("name.schema.json"), NAME_SCHEMA).expect("schema");
         let mut model = empty_model();
@@ -399,10 +402,9 @@ mod unit {
                 .expect("evaluate");
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].location.as_ref().map(|l| l.path.as_str()), Some("bad.md"));
-    }
 
-    #[test]
-    fn scenario_family_validated_whole_tree() {
+        // The `scenario` selector validates the scenario fact family
+        // whole-tree, ignoring the candidate set entirely.
         let mut model = empty_model();
         model.scenarios = vec![crate::lint::Scenario {
             path: "evals/scenarios/empty.md".to_string(),
@@ -412,7 +414,6 @@ mod unit {
             body_id: None,
             fields: serde_json::Map::new(),
         }];
-        // The scenario selector ignores the candidate set entirely.
         let out = run("scenario", &[], Path::new("/tmp"), &model).expect("evaluate");
         assert!(!out.is_empty(), "an empty frontmatter map must fail the scenario schema");
         assert!(

@@ -168,6 +168,12 @@ mod tests {
         }
     }
 
+    // The public `load` / `save` codec (cold-start `None`, save/load
+    // round-trip, snake_case serialisation) is re-homed to
+    // `crates/workflow/tests/agents_lock.rs`. What stays here exercises code
+    // no public input reaches: the test-only `diff_inputs` helper, and the
+    // version gate's forward-incompatible / unsupported-older / malformed
+    // shapes (a normal `save` only ever writes the current version).
     #[test]
     fn input_diff_sorts_by_path() {
         let expected = vec![input("a.txt", "old"), input("b.txt", "same"), input("d.txt", "gone")];
@@ -178,70 +184,6 @@ mod tests {
         assert_eq!(diff.changed, vec!["a.txt"]);
         assert_eq!(diff.added, vec!["c.txt"]);
         assert_eq!(diff.removed, vec!["d.txt"]);
-    }
-
-    #[test]
-    fn lock_serializes_snake_case_keys() {
-        let lock = ContextLock {
-            version: 1,
-            fingerprint: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-                .to_string(),
-            cli_version: "0.2.0".to_string(),
-            inputs: vec![input(
-                ".specify/project.yaml",
-                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            )],
-            fences: Fences {
-                body_sha256:
-                    "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-                        .to_string(),
-            },
-        };
-
-        let yaml = serde_saphyr::to_string(&lock).expect("serialize lock");
-
-        assert!(yaml.contains("cli_version: 0.2.0"), "{yaml}");
-        assert!(yaml.contains("body_sha256: sha256:cccc"), "{yaml}");
-        assert!(!yaml.contains("cli-version"), "{yaml}");
-        assert!(!yaml.contains("body-sha256"), "{yaml}");
-    }
-
-    fn sample_lock() -> ContextLock {
-        ContextLock {
-            version: CURRENT_LOCK_VERSION,
-            fingerprint: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-                .to_string(),
-            cli_version: "0.2.0".to_string(),
-            inputs: vec![input(
-                ".specify/project.yaml",
-                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            )],
-            fences: Fences {
-                body_sha256:
-                    "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-                        .to_string(),
-            },
-        }
-    }
-
-    // A missing lock file is the cold-start path and must read as
-    // `Ok(None)`, not an error.
-    #[test]
-    fn load_missing_is_none() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let path = dir.path().join("context.lock");
-        assert_eq!(load(&path).expect("missing lock is ok"), None);
-    }
-
-    // `save` then `load` must round-trip a lock byte-for-byte through the
-    // YAML codec.
-    #[test]
-    fn save_load_round_trips() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let path = dir.path().join("context.lock");
-        let lock = sample_lock();
-        save(&path, &lock).expect("save lock");
-        assert_eq!(load(&path).expect("load lock"), Some(lock));
     }
 
     // The version gate distinguishes three failure shapes: a future

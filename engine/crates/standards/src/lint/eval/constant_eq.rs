@@ -253,7 +253,7 @@ mod unit {
     use serde_json::json;
 
     use super::*;
-    use crate::lint::eval::testkit::{candidates, empty_model, hint, hint_with_config, rule};
+    use crate::lint::eval::testkit::{candidates, empty_model, hint_with_config, rule};
     use crate::lint::{AdapterAxis, AdapterManifest, Skill};
 
     fn manifest(name: &str, version: Option<&str>) -> AdapterManifest {
@@ -276,8 +276,14 @@ mod unit {
         }
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the two source
+    // discriminators collapse into one divergence matrix and the
+    // config-rejection arms into a second test. Every former input is preserved.
+
     #[test]
-    fn version_mismatch_and_absence_flagged() {
+    fn flags_constant_divergences() {
+        // `adapter-manifest-field` / `version`: a mismatch and an absent
+        // version both fire; the matching manifest is silent.
         let mut model = empty_model();
         model.adapter_manifests =
             vec![manifest("ok", Some("2")), manifest("old", Some("1")), manifest("none", None)];
@@ -293,18 +299,9 @@ mod unit {
         assert_eq!(out.len(), 2, "{titles:?}");
         assert!(titles.iter().any(|t| t.contains("'old' version '1'")), "{titles:?}");
         assert!(titles.iter().any(|t| t.contains("'none' version '(absent)'")), "{titles:?}");
-    }
 
-    #[test]
-    fn non_version_field_is_unsupported() {
-        let model = empty_model();
-        let cfg = json!({ "field": "name", "equals": "x" });
-        let hint = hint_with_config(HintKind::ConstantEq, "adapter-manifest-field", Some(cfg));
-        evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn prefix_violations_flagged_with_overrides() {
+        // `skill-name-plugin-prefix`: only the override-violating name fires;
+        // the overridden, un-overridden, and malformed names are silent.
         let mut model = empty_model();
         model.skills = vec![
             skill("spec-plan", "spec"),    // wrong: spec maps to specify-
@@ -326,15 +323,16 @@ mod unit {
     }
 
     #[test]
-    fn missing_config_is_unsupported() {
+    fn rejects_bad_config() {
         let model = empty_model();
-        let hint = hint(HintKind::ConstantEq, "skill-name-plugin-prefix");
+        // A field other than `version` is unsupported for `adapter-manifest-field`.
+        let cfg = json!({ "field": "name", "equals": "x" });
+        let hint = hint_with_config(HintKind::ConstantEq, "adapter-manifest-field", Some(cfg));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn unknown_source_is_unsupported() {
-        let model = empty_model();
+        // A selector with no `config` is rejected.
+        let hint = hint_with_config(HintKind::ConstantEq, "skill-name-plugin-prefix", None);
+        evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
+        // An unknown source discriminator is rejected.
         let hint = hint_with_config(HintKind::ConstantEq, "no-such-source", Some(json!({})));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
     }

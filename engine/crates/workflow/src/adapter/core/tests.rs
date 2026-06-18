@@ -6,6 +6,10 @@ use crate::Platform;
 // core is adapter-agnostic, so no real adapter identity is load-bearing
 // here (RFC-50). Adapter-specific manifest invariants belong in the
 // adapter's own suite under `specify-adapters`.
+//
+// The nine former single-purpose tests collapse into three: the manifest
+// serde matrix, the typed `pub(super)` gate functions (which cannot re-home),
+// and the cache-path router. Every former assertion is preserved.
 
 #[test]
 fn axis_routing() {
@@ -25,8 +29,9 @@ fn axis_routing() {
     );
 }
 
+#[expect(clippy::too_many_lines, reason = "collapsed serde matrix: one block per former test")]
 #[test]
-fn briefs_typed_at_parse_boundary() {
+fn manifest_serde_shapes() {
     // Source operations are a closed enum; BTreeMap key order is extract < survey.
     let source: SourceAdapter = serde_saphyr::from_str(
         r"name: demo-source
@@ -63,11 +68,8 @@ briefs:
         target.operations().copied().collect::<Vec<_>>(),
         vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape]
     );
-}
 
-#[test]
-fn execution_mode_and_gate() {
-    // `agent` round-trips kebab-case...
+    // `execution: agent` round-trips kebab-case; `tool` parses on the target axis.
     let manifest: SourceAdapter = serde_saphyr::from_str(
         r"name: demo-source
 version: 1.0.0
@@ -83,8 +85,6 @@ briefs:
     let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
     assert!(rendered.contains("execution: agent"), "execution round-trips kebab-case:\n{rendered}");
     assert_eq!(manifest, serde_saphyr::from_str::<SourceAdapter>(&rendered).expect("reparse"));
-
-    // ...and `tool` parses on the target axis.
     let target: TargetAdapter = serde_saphyr::from_str(
         r"name: demo-target
 version: 1.0.0
@@ -99,19 +99,6 @@ briefs:
     .expect("parse tool");
     assert_eq!(target.execution, Some(Execution::Tool));
 
-    // The typed gate refuses a missing mode (exit 2) and accepts a declared one.
-    let Error::Validation { code, .. } = check_execution(None, Path::new("adapter.yaml"))
-        .expect_err("missing execution must be rejected")
-    else {
-        panic!("expected Error::Validation");
-    };
-    assert_eq!(code, "adapter-execution-mode-required");
-    check_execution(Some(Execution::Agent), Path::new("adapter.yaml")).expect("agent passes");
-    check_execution(Some(Execution::Tool), Path::new("adapter.yaml")).expect("tool passes");
-}
-
-#[test]
-fn extension_parse_and_rejections() {
     // RFC-48 D11: the singular `extension` object carries an optional run
     // `name` plus structured `{read, write}` permissions and round-trips.
     let manifest: TargetAdapter = serde_saphyr::from_str(
@@ -184,10 +171,7 @@ tools:
             "extension must reject retired field `{retired}`",
         );
     }
-}
 
-#[test]
-fn version_semver_parse_and_gate() {
     // RFC-47 D1: `version` is a semver string on the wire, typed in memory.
     let manifest: SourceAdapter = serde_saphyr::from_str(
         r"name: demo-source
@@ -201,42 +185,8 @@ briefs:
     .expect("parse");
     assert_eq!(manifest.version, semver::Version::new(2, 3, 4));
 
-    // The belt-and-suspenders gate: a non-semver version is `adapter-version-malformed`.
-    let Error::Validation { code, .. } =
-        check_version(&serde_json::json!({ "version": "1" }), Path::new("adapter.yaml"))
-            .expect_err("integer-shaped version must be rejected")
-    else {
-        panic!("expected Error::Validation");
-    };
-    assert_eq!(code, "adapter-version-malformed");
-    check_version(&serde_json::json!({ "version": "1.2.3" }), Path::new("adapter.yaml"))
-        .expect("exact semver passes");
-}
-
-#[test]
-fn requested_version_matches_identity() {
-    // RFC-47 D2: a `None` pin always picks the installed identity; a
-    // matching `Some(_)` pin passes; a mismatched pin cannot resolve a
-    // single installed identity (`adapter-version-required`).
-    let installed = semver::Version::new(1, 0, 0);
-    check_requested_version(None, "demo-target", &installed, Path::new("adapter.yaml"))
-        .expect("bare ref resolves the single identity");
-    check_requested_version(Some(&installed), "demo-target", &installed, Path::new("adapter.yaml"))
-        .expect("matching pin resolves");
-
-    let other = semver::Version::new(2, 0, 0);
-    let Error::Validation { code, .. } =
-        check_requested_version(Some(&other), "demo-target", &installed, Path::new("adapter.yaml"))
-            .expect_err("mismatched pin must be rejected")
-    else {
-        panic!("expected Error::Validation");
-    };
-    assert_eq!(code, "adapter-version-required");
-}
-
-#[test]
-fn requires_specify_floor() {
-    // RFC-47 D3: the optional `specify` key parses into the typed floor and round-trips.
+    // RFC-47 D3: the optional `specify` floor parses into the typed version
+    // and round-trips; an absent floor is `None`.
     let manifest: TargetAdapter = serde_saphyr::from_str(
         r#"name: demo-target
 version: 1.0.0
@@ -254,8 +204,6 @@ briefs:
     let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
     assert!(rendered.contains("specify: 0.28.0"), "specify floor round-trips:\n{rendered}");
     assert_eq!(manifest, serde_saphyr::from_str::<TargetAdapter>(&rendered).expect("reparse"));
-
-    // An absent floor never gates, even against an ancient binary.
     let source: SourceAdapter = serde_saphyr::from_str(
         r"name: demo-source
 version: 1.0.0
@@ -268,40 +216,9 @@ briefs:
     )
     .expect("parse");
     assert_eq!(source.requires_specify, None);
-    check_requires_specify(
-        source.requires_specify.as_ref(),
-        "0.1.0",
-        "demo-source",
-        Path::new("adapter.yaml"),
-    )
-    .expect("absent floor never gates");
 
-    // A binary at or above the floor passes; below the floor aborts on the exit-3 path.
-    let floor = semver::Version::new(0, 28, 0);
-    check_requires_specify(Some(&floor), "0.28.0", "demo-target", Path::new("adapter.yaml"))
-        .expect("exact floor passes");
-    check_requires_specify(Some(&floor), "0.29.1", "demo-target", Path::new("adapter.yaml"))
-        .expect("newer passes");
-
-    let two = semver::Version::new(2, 0, 0);
-    let err = check_requires_specify(Some(&two), "1.5.0", "demo-target", Path::new("adapter.yaml"))
-        .expect_err("a binary below the floor must be rejected");
-    assert_eq!(err.variant_str(), "adapter-cli-too-old");
-    let Error::AdapterCliTooOld { required, found, .. } = err else {
-        panic!("expected Error::AdapterCliTooOld, got: {err:?}");
-    };
-    assert_eq!(required, "2.0.0");
-    assert_eq!(found, "1.5.0");
-
-    // An unparseable running version is permissive (mirrors config::version_is_older).
-    check_requires_specify(Some(&two), "not-a-version", "demo-target", Path::new("adapter.yaml"))
-        .expect("unparseable current version is permissive");
-}
-
-#[test]
-fn unknown_brief_key_rejected() {
-    // `shape` is a target operation; on a source manifest it must fail at
-    // the typed `briefs: BTreeMap<SourceOperation, _>` boundary.
+    // `shape` is a target operation; on a source manifest it must fail at the
+    // typed `briefs: BTreeMap<SourceOperation, _>` boundary.
     let err = serde_saphyr::from_str::<SourceAdapter>(
         r"name: bogus
 version: 1.0.0
@@ -317,10 +234,7 @@ briefs:
         detail.contains("shape") || detail.contains("survey"),
         "expected closed-enum diagnostic, got: {detail}"
     );
-}
 
-#[test]
-fn platforms_capability_round_trip() {
     // Absent platforms default to None and elide on write.
     let bare: TargetAdapter = serde_saphyr::from_str(
         r"name: demo-target
@@ -400,4 +314,66 @@ platforms:
         serde_saphyr::from_str::<TargetAdapter>(&serde_saphyr::to_string(&optional).unwrap())
             .expect("reparse")
     );
+}
+
+#[test]
+fn typed_gates() {
+    // The typed execution gate refuses a missing mode (exit 2) and accepts a declared one.
+    let Error::Validation { code, .. } = check_execution(None, Path::new("adapter.yaml"))
+        .expect_err("missing execution must be rejected")
+    else {
+        panic!("expected Error::Validation");
+    };
+    assert_eq!(code, "adapter-execution-mode-required");
+    check_execution(Some(Execution::Agent), Path::new("adapter.yaml")).expect("agent passes");
+    check_execution(Some(Execution::Tool), Path::new("adapter.yaml")).expect("tool passes");
+
+    // The belt-and-suspenders version gate: a non-semver version is `adapter-version-malformed`.
+    let Error::Validation { code, .. } =
+        check_version(&serde_json::json!({ "version": "1" }), Path::new("adapter.yaml"))
+            .expect_err("integer-shaped version must be rejected")
+    else {
+        panic!("expected Error::Validation");
+    };
+    assert_eq!(code, "adapter-version-malformed");
+    check_version(&serde_json::json!({ "version": "1.2.3" }), Path::new("adapter.yaml"))
+        .expect("exact semver passes");
+
+    // RFC-47 D2: a `None` pin always picks the installed identity; a matching
+    // `Some(_)` pin passes; a mismatched pin cannot resolve (`adapter-version-required`).
+    let installed = semver::Version::new(1, 0, 0);
+    check_requested_version(None, "demo-target", &installed, Path::new("adapter.yaml"))
+        .expect("bare ref resolves the single identity");
+    check_requested_version(Some(&installed), "demo-target", &installed, Path::new("adapter.yaml"))
+        .expect("matching pin resolves");
+    let other = semver::Version::new(2, 0, 0);
+    let Error::Validation { code, .. } =
+        check_requested_version(Some(&other), "demo-target", &installed, Path::new("adapter.yaml"))
+            .expect_err("mismatched pin must be rejected")
+    else {
+        panic!("expected Error::Validation");
+    };
+    assert_eq!(code, "adapter-version-required");
+
+    // RFC-47 D3: an absent floor never gates; a binary at/above the floor
+    // passes; below the floor aborts on the exit-3 path; an unparseable
+    // current version is permissive (mirrors config::version_is_older).
+    check_requires_specify(None, "0.1.0", "demo-source", Path::new("adapter.yaml"))
+        .expect("absent floor never gates");
+    let floor = semver::Version::new(0, 28, 0);
+    check_requires_specify(Some(&floor), "0.28.0", "demo-target", Path::new("adapter.yaml"))
+        .expect("exact floor passes");
+    check_requires_specify(Some(&floor), "0.29.1", "demo-target", Path::new("adapter.yaml"))
+        .expect("newer passes");
+    let two = semver::Version::new(2, 0, 0);
+    let err = check_requires_specify(Some(&two), "1.5.0", "demo-target", Path::new("adapter.yaml"))
+        .expect_err("a binary below the floor must be rejected");
+    assert_eq!(err.variant_str(), "adapter-cli-too-old");
+    let Error::AdapterCliTooOld { required, found, .. } = err else {
+        panic!("expected Error::AdapterCliTooOld, got: {err:?}");
+    };
+    assert_eq!(required, "2.0.0");
+    assert_eq!(found, "1.5.0");
+    check_requires_specify(Some(&two), "not-a-version", "demo-target", Path::new("adapter.yaml"))
+        .expect("unparseable current version is permissive");
 }

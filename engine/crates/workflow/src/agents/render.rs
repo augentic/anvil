@@ -272,10 +272,14 @@ mod tests {
         }
     }
 
+    // `render_body` is a deterministic `(Input -> Markdown)` projection with no
+    // CLI fixture pinning the section shapes, so the five former body tests
+    // collapse here. Every former input is preserved.
     #[test]
-    fn regular_project_section_order() {
+    fn render_body_matrix() {
+        // A regular (non-workspace) project renders all seven sections in
+        // order, with the detection sections defaulting to "not detected".
         let rendered = render_body(&regular_input());
-
         let headings: Vec<&str> = rendered.lines().filter(|line| line.starts_with("## ")).collect();
         assert_eq!(
             headings,
@@ -292,25 +296,19 @@ mod tests {
         assert!(rendered.contains("## Runtime\n- not detected\n"));
         assert!(rendered.contains("## Tests\n- not detected\n"));
         assert!(rendered.contains("## Linting\n- not detected\n"));
-    }
 
-    #[test]
-    fn workspace_omits_detection_sections() {
+        // A workspace omits the per-language detection sections.
         let mut input = regular_input();
         input.is_workspace = true;
         input.adapter = None;
-
         let rendered = render_body(&input);
-
         assert!(!rendered.contains("## Runtime"));
         assert!(!rendered.contains("## Tests"));
         assert!(!rendered.contains("## Linting"));
         assert!(rendered.contains("## Navigation"));
         assert!(rendered.contains("## Dependencies"));
-    }
 
-    #[test]
-    fn dependency_bullets_sorted() {
+        // Dependencies render in sorted order.
         let mut input = regular_input();
         input.dependencies = vec![
             Dep {
@@ -326,17 +324,13 @@ mod tests {
                 description: None,
             },
         ];
-
         let rendered = render_body(&input);
         let alpha =
             rendered.find("`alpha` @ `demo-target@1.0.0`").expect("alpha dependency rendered");
         let zeta = rendered.find("`zeta` @ `demo-target@1.0.0`").expect("zeta dependency rendered");
-
         assert!(alpha < zeta, "dependencies must render in sorted order:\n{rendered}");
-    }
 
-    #[test]
-    fn dependency_bullets_include_descriptions() {
+        // A dependency description renders when present.
         let mut input = regular_input();
         input.dependencies = vec![Dep {
             name: "alpha".to_string(),
@@ -344,27 +338,21 @@ mod tests {
             url: "../alpha".to_string(),
             description: Some("Alpha service".to_string()),
         }];
-
         let rendered = render_body(&input);
-
         assert!(
             rendered.contains(
                 "`alpha` @ `demo-target@1.0.0` -> `../alpha`. Description: Alpha service."
             ),
             "dependency description must render when present:\n{rendered}"
         );
-    }
 
-    #[test]
-    fn navigation_lists_workspace_peers() {
+        // Navigation lists materialized workspace peers with repo-relative paths.
         let mut input = regular_input();
         input.workspace_peers = vec![Peer {
             name: "billing".to_string(),
             path: "workspace/billing/".to_string(),
         }];
-
         let rendered = render_body(&input);
-
         assert!(
             rendered.contains(
                 "`workspace/billing/` is the materialized workspace clone for registry peer `billing`."

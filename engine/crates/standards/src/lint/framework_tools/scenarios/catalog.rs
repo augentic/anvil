@@ -429,8 +429,16 @@ mod tests {
         findings.iter().map(|finding| finding.message.as_str()).collect()
     }
 
+    // CORE-056 is one private whole-tree checker (`check_catalog_runs`) plus the
+    // config gate (`CatalogPolicy::parse` / `findings_from_config`); the CLI
+    // e2e defers per-`kind` eval semantics. The fifteen former cases collapse
+    // into three matrices — row value / parity, record agreement, and config /
+    // IO — each preserving every former input.
+
+    #[expect(clippy::too_many_lines, reason = "collapsed catalog matrix: one block per former test")]
     #[test]
-    fn clean_catalog_is_silent() {
+    fn row_value_and_parity_matrix() {
+        // A fully consistent catalog is silent.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(
             dir.path(),
@@ -443,29 +451,23 @@ mod tests {
         );
         let findings = check_catalog_runs(dir.path(), &policy());
         assert!(findings.is_empty(), "unexpected findings: {:?}", messages(&findings));
-    }
 
-    #[test]
-    fn flags_row_without_scenario_file() {
+        // A row whose scenario file is absent is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(dir.path(), &["| One | [`ghost`](ghost.md) | pending | full |"], &[], &[]);
         let findings = check_catalog_runs(dir.path(), &policy());
         assert_eq!(messages(&findings).len(), 1);
         assert!(findings[0].message.contains("no scenario file evals/scenarios/ghost.md"));
-    }
 
-    #[test]
-    fn flags_scenario_file_without_row() {
+        // A scenario file with no catalog row is flagged, pathed to the file.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(dir.path(), &[], &["orphan"], &[]);
         let findings = check_catalog_runs(dir.path(), &policy());
         assert_eq!(messages(&findings).len(), 1);
         assert!(findings[0].message.contains("evals/scenarios/orphan.md has no catalog row"));
         assert_eq!(findings[0].path.as_deref(), Some("evals/scenarios/orphan.md"));
-    }
 
-    #[test]
-    fn flags_illegal_status_and_gate() {
+        // Illegal Status and Gate values are each flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(
             dir.path(),
@@ -473,31 +475,40 @@ mod tests {
             &["alpha"],
             &[],
         );
-        let findings = check_catalog_runs(dir.path(), &policy());
-        let texts = messages(&findings);
+        let texts = messages(&check_catalog_runs(dir.path(), &policy()));
         assert!(texts.iter().any(|m| m.contains("status 'shipped' is not one of")));
         assert!(texts.iter().any(|m| m.contains("gate 'blocking' is not one of")));
-    }
 
-    #[test]
-    fn flags_missing_gate_column() {
+        // A missing Gate column is flagged when the policy declares gates, and
+        // silent when the policy's gate list is empty.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(dir.path(), &["| One | [`alpha`](alpha.md) | pending |"], &["alpha"], &[]);
         let findings = check_catalog_runs(dir.path(), &policy());
         assert!(findings.iter().any(|f| f.message.contains("missing the Gate column")));
-    }
-
-    #[test]
-    fn empty_gates_skips_gate_validation() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_tree(dir.path(), &["| One | [`alpha`](alpha.md) | pending |"], &["alpha"], &[]);
         let mut relaxed = policy();
         relaxed.gates.clear();
         assert!(check_catalog_runs(dir.path(), &relaxed).is_empty());
+
+        // A label that disagrees with its linked file, and a duplicate row, are
+        // both flagged.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_tree(
+            dir.path(),
+            &[
+                "| One | [`alpha`](alpha.md) | pending | full |",
+                "| Bis | [`alfa`](alpha.md) | pending | full |",
+            ],
+            &["alpha"],
+            &[],
+        );
+        let texts = messages(&check_catalog_runs(dir.path(), &policy()));
+        assert!(texts.iter().any(|m| m.contains("row label 'alfa' disagrees with linked file")));
+        assert!(texts.iter().any(|m| m.contains("duplicate catalog rows for 'alpha'")));
     }
 
     #[test]
-    fn status_bearing_row_requires_record() {
+    fn record_agreement_matrix() {
+        // A status-bearing row with no committed record is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(dir.path(), &["| One | [`alpha`](alpha.md) | passed | full |"], &["alpha"], &[]);
         let findings = check_catalog_runs(dir.path(), &policy());
@@ -507,10 +518,8 @@ mod tests {
                 .message
                 .contains("status 'passed' requires committed record evals/runs/alpha.pass.md")
         );
-    }
 
-    #[test]
-    fn record_result_must_agree_with_status() {
+        // A record whose result disagrees with the row status is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(
             dir.path(),
@@ -518,14 +527,11 @@ mod tests {
             &["alpha"],
             &["alpha.pass.md"],
         );
-        let findings = check_catalog_runs(dir.path(), &policy());
-        assert!(findings.iter().any(|f| {
+        assert!(check_catalog_runs(dir.path(), &policy()).iter().any(|f| {
             f.message.contains("status 'failed' requires committed record evals/runs/alpha.fail.md")
         }));
-    }
 
-    #[test]
-    fn pending_row_with_record_is_drift() {
+        // A pending row that nonetheless carries a record is drift.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(
             dir.path(),
@@ -540,10 +546,8 @@ mod tests {
                 .message
                 .contains("record evals/runs/alpha.pass.md disagrees with the 'pending' row")
         );
-    }
 
-    #[test]
-    fn flags_multiple_records_per_id() {
+        // Two records for one id is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(
             dir.path(),
@@ -551,12 +555,13 @@ mod tests {
             &["alpha"],
             &["alpha.pass.md", "alpha.fail.md"],
         );
-        let findings = check_catalog_runs(dir.path(), &policy());
-        assert!(findings.iter().any(|f| f.message.contains("multiple run records for 'alpha'")));
-    }
+        assert!(
+            check_catalog_runs(dir.path(), &policy())
+                .iter()
+                .any(|f| f.message.contains("multiple run records for 'alpha'"))
+        );
 
-    #[test]
-    fn flags_orphan_and_unknown_result_records() {
+        // An orphan record and an unknown result token are both flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_tree(
             dir.path(),
@@ -564,52 +569,29 @@ mod tests {
             &["alpha"],
             &["ghost.pass.md", "alpha.aced.md"],
         );
-        let findings = check_catalog_runs(dir.path(), &policy());
-        let texts = messages(&findings);
+        let texts = messages(&check_catalog_runs(dir.path(), &policy()));
         assert!(texts.iter().any(|m| m.contains("record names scenario 'ghost'")));
         assert!(texts.iter().any(|m| m.contains("record result 'aced' is not one of")));
     }
 
     #[test]
-    fn flags_duplicate_rows_and_label_drift() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_tree(
-            dir.path(),
-            &[
-                "| One | [`alpha`](alpha.md) | pending | full |",
-                "| Bis | [`alfa`](alpha.md) | pending | full |",
-            ],
-            &["alpha"],
-            &[],
-        );
-        let findings = check_catalog_runs(dir.path(), &policy());
-        let texts = messages(&findings);
-        assert!(texts.iter().any(|m| m.contains("row label 'alfa' disagrees with linked file")));
-        assert!(texts.iter().any(|m| m.contains("duplicate catalog rows for 'alpha'")));
-    }
-
-    #[test]
-    fn missing_catalog_is_one_finding() {
+    fn config_and_io_matrix() {
+        // A missing catalog file is exactly one finding.
         let dir = tempfile::tempdir().expect("tempdir");
         let findings = check_catalog_runs(dir.path(), &policy());
         assert_eq!(messages(&findings).len(), 1);
         assert!(findings[0].message.contains("cannot be read"));
-    }
 
-    #[test]
-    fn config_parse_modes() {
+        // Config gate: absent / unrelated config disables the check, a full
+        // policy parses, and a partial config naming `catalog` errors.
         assert!(CatalogPolicy::parse(None).expect("absent ok").is_none());
         let unrelated = json!({"known-schemas": []});
         assert!(CatalogPolicy::parse(Some(&unrelated)).expect("unrelated ok").is_none());
         assert!(CatalogPolicy::parse(Some(&policy_json())).expect("full ok").is_some());
         let broken = json!({"catalog": "x.md"});
         CatalogPolicy::parse(Some(&broken)).expect_err("partial config must fail to parse");
-    }
 
-    #[test]
-    fn invalid_config_is_a_finding() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let broken = json!({"catalog": "x.md"});
+        // A malformed config that declares `catalog` surfaces as one finding.
         let findings = findings_from_config(dir.path(), Some(&broken));
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_CATALOG_RUNS_DRIFT);

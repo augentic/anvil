@@ -184,7 +184,7 @@ mod unit {
     use serde_json::json;
 
     use super::*;
-    use crate::lint::eval::testkit::{candidates, empty_model, hint, hint_with_config, rule};
+    use crate::lint::eval::testkit::{candidates, empty_model, hint_with_config, rule};
     use crate::lint::{Scenario, Skill};
 
     fn skill(name: &str, path: &str) -> Skill {
@@ -208,42 +208,36 @@ mod unit {
         }
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the duplicate-detection
+    // selectors collapse into one matrix and the config-rejection arms into a
+    // second test. Every former input is preserved.
+
     #[test]
-    fn duplicate_skill_names_flagged() {
+    fn flags_duplicates() {
+        // `skill` / `skill-name`: a name shared by two candidate skills is
+        // flagged once; a solo name is silent.
         let mut model = empty_model();
         model.skills = vec![
             skill("dup", "plugins/a/skills/x/SKILL.md"),
             skill("dup", "plugins/b/skills/y/SKILL.md"),
             skill("solo", "plugins/c/skills/z/SKILL.md"),
         ];
+        let skill_hint =
+            hint_with_config(HintKind::Unique, "skill", Some(json!({ "field": "skill-name" })));
         let cands = candidates(&[
             "plugins/a/skills/x/SKILL.md",
             "plugins/b/skills/y/SKILL.md",
             "plugins/c/skills/z/SKILL.md",
         ]);
-        let hint =
-            hint_with_config(HintKind::Unique, "skill", Some(json!({ "field": "skill-name" })));
-        let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
+        let out = evaluate(&rule(), &skill_hint, &cands, &model, &mut 1).expect("evaluate");
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("'dup'"), "{}", out[0].title);
-    }
-
-    #[test]
-    fn duplicate_outside_candidates_skipped() {
-        let mut model = empty_model();
-        model.skills = vec![
-            skill("dup", "plugins/a/skills/x/SKILL.md"),
-            skill("dup", "plugins/b/skills/y/SKILL.md"),
-        ];
+        // Narrowing the candidate set to one of the pair drops the duplicate.
         let cands = candidates(&["plugins/a/skills/x/SKILL.md"]);
-        let hint =
-            hint_with_config(HintKind::Unique, "skill", Some(json!({ "field": "skill-name" })));
-        let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
-        assert!(out.is_empty());
-    }
+        assert!(evaluate(&rule(), &skill_hint, &cands, &model, &mut 1).expect("eval").is_empty());
 
-    #[test]
-    fn duplicate_scenario_ids_flagged_whole_tree() {
+        // `scenario` / `id`: duplicate ids are flagged whole-tree; a `None`
+        // id never groups.
         let mut model = empty_model();
         model.scenarios = vec![
             scenario(Some("s-1"), "evals/scenarios/a.md"),
@@ -257,22 +251,15 @@ mod unit {
     }
 
     #[test]
-    fn wrong_field_is_unsupported() {
+    fn rejects_bad_config() {
         let model = empty_model();
+        // A field unsupported by the selected fact family is rejected.
         let hint = hint_with_config(HintKind::Unique, "skill", Some(json!({ "field": "id" })));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn missing_config_is_unsupported() {
-        let model = empty_model();
-        let hint = hint(HintKind::Unique, "skill");
+        // A missing `config: { field }` is rejected.
+        let hint = hint_with_config(HintKind::Unique, "skill", None);
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn unknown_selector_is_unsupported() {
-        let model = empty_model();
+        // An unknown fact-family selector is rejected.
         let hint = hint_with_config(HintKind::Unique, "adapter", Some(json!({ "field": "name" })));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
     }

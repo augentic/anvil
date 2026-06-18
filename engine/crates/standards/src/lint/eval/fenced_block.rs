@@ -290,8 +290,14 @@ mod unit {
         }
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the three source
+    // discriminators collapse into one violation matrix and the
+    // config-rejection arms into a second test. Every former input is preserved.
+
     #[test]
-    fn envelope_shapes_detected() {
+    fn flags_fence_violations() {
+        // `skill-envelope-json-in-body`: the version and ok+data fences fire;
+        // a bare `ok` fence and a non-json fence stay silent.
         let mut model = empty_model();
         let path = "plugins/p/skills/s/SKILL.md";
         model.fenced_blocks = vec![
@@ -303,12 +309,10 @@ mod unit {
         let cands = candidates(&[path]);
         let hint = hint(HintKind::FencedBlock, "skill-envelope-json-in-body");
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
-        // The bare `ok` fence and the non-json fence stay silent.
         assert_eq!(out.len(), 2);
-    }
 
-    #[test]
-    fn long_json_fence_flagged() {
+        // `inline-json-too-long`: only the over-cap `json` fence fires; a short
+        // `json` fence and an out-of-scope `yaml` fence are silent.
         let mut model = empty_model();
         let path = "docs/a.md";
         model.fenced_blocks = vec![
@@ -322,10 +326,9 @@ mod unit {
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("docs/a.md:1"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn banned_substring_flagged() {
+        // `fenced-body-contains`: only the fence carrying a banned substring
+        // fires; plain prose is silent.
         let mut model = empty_model();
         let path = "docs/a.md";
         model.fenced_blocks =
@@ -339,16 +342,13 @@ mod unit {
     }
 
     #[test]
-    fn missing_config_is_unsupported() {
+    fn rejects_bad_config() {
         let model = empty_model();
+        // A config-driven selector with no `config` is rejected.
         let hint = hint(HintKind::FencedBlock, "inline-json-too-long");
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn unknown_source_is_unsupported() {
-        let model = empty_model();
-        let hint = hint(HintKind::FencedBlock, "no-such-source");
+        // An unknown source discriminator is rejected.
+        let hint = hint_with_config(HintKind::FencedBlock, "no-such-source", None);
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
     }
 }

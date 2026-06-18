@@ -295,8 +295,13 @@ mod tests {
         std::fs::write(path, body).expect("write");
     }
 
+    // The two filesystem checkers are private, so they cannot re-home; the CLI
+    // e2e defers per-`kind` eval semantics. The matrix below collapses into one
+    // test, preserving every former input.
     #[test]
-    fn schema_links_flag_unknown_tool_schema() {
+    fn link_registry_matrix() {
+        // CORE-018: a schemas.specify.dev URL naming an unknown schema is
+        // flagged; a registered one is silent.
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
@@ -306,10 +311,7 @@ mod tests {
         let findings = check_schema_links(dir.path(), &sample_registry());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_BRIEF_SCHEMA_LINK_RESOLVE);
-    }
 
-    #[test]
-    fn schema_links_accept_known_schema() {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
@@ -317,28 +319,22 @@ mod tests {
             "See https://schemas.specify.dev/demo-target/tokens.schema.json for details.\n",
         );
         assert!(check_schema_links(dir.path(), &sample_registry()).is_empty());
-    }
 
-    #[test]
-    fn directives_flag_unknown_plugin() {
+        // CORE-020: a directive naming an unknown plugin, and one naming an
+        // unknown skill in a known plugin, are both flagged; a registered skill
+        // is silent.
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "docs/guide.md", "<!-- skill: ghost:refine -->\n");
         let findings = check_directives(dir.path());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_UNRESOLVED_DIRECTIVE);
         assert!(findings[0].message.contains("plugin 'ghost' not found"));
-    }
 
-    #[test]
-    fn directives_accept_registered_skill() {
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "plugins/spec/skills/refine/SKILL.md", "---\nname: refine\n---\n");
         write(dir.path(), "docs/guide.md", "<!-- skill: spec:refine -->\n");
         assert!(check_directives(dir.path()).is_empty());
-    }
 
-    #[test]
-    fn directives_flag_unknown_skill_in_known_plugin() {
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "plugins/spec/skills/refine/SKILL.md", "---\nname: refine\n---\n");
         write(dir.path(), "docs/guide.md", "<!-- skill: spec:ghost -->\n");

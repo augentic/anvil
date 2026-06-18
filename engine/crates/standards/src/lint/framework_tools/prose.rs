@@ -129,25 +129,30 @@ mod tests {
         std::fs::write(path, body).expect("write");
     }
 
+    // The absent-standards-doc skip (an adapters-only RFC-48 H1 root carries no
+    // `docs/standards/skill-authoring.md`) is asserted end-to-end by
+    // `engine/tests/lint.rs::framework_adapters::adapters_only_root_lints_clean`,
+    // so that unit duplicate was deleted. The cap-drift matrix below — caps in
+    // sync, a body-cap missing from prose, and a description cap that disagrees
+    // with the schema `maxLength` — has no CLI fixture and collapses into one
+    // test. Every former input is preserved.
     #[test]
-    fn clean_tree_is_silent() {
+    fn numeric_cap_matrix() {
+        // Caps that match the schema (512) and appear in the prose are silent.
         let dir = tempfile::tempdir().expect("tempdir");
         write_standards(dir.path(), "Description cap: 512 characters. Body cap: 200 lines.\n");
         assert!(check_numeric_caps(dir.path(), 512, 200).is_empty());
-    }
 
-    #[test]
-    fn flags_body_cap_drift() {
+        // A body cap missing from the prose is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_standards(dir.path(), "Description cap: 512 characters.\n");
         let findings = check_numeric_caps(dir.path(), 512, 200);
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_NUMERIC_CAP_EXCEEDED);
         assert!(findings[0].message.contains("body cap drift"));
-    }
 
-    #[test]
-    fn flags_schema_max_length_drift() {
+        // A description cap that disagrees with the canonical schema
+        // `maxLength` (512) is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_standards(dir.path(), "Description cap: 400 characters. Body cap: 200 lines.\n");
         let findings = check_numeric_caps(dir.path(), 400, 200);
@@ -155,13 +160,5 @@ mod tests {
             findings.iter().any(|f| f.message.contains("description.maxLength is 512")),
             "expected parsed maxLength drift finding, got {findings:?}"
         );
-    }
-
-    #[test]
-    fn absent_standards_doc_is_silent() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        // An adapters-only framework root (RFC-48 H1) carries no
-        // standards doc: absent is a skip, not a missing-source finding.
-        assert!(check_numeric_caps(dir.path(), 512, 200).is_empty());
     }
 }

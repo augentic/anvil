@@ -297,39 +297,31 @@ mod unit {
         out.iter().filter_map(|f| Some(f.location.as_ref()?.path.clone())).collect()
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the four metric
+    // selectors collapse into one over-cap matrix and the config-rejection
+    // arms into a second test. Every former input is preserved.
+
     #[test]
-    fn skill_body_over_cap() {
+    fn metrics_flag_over_cap() {
+        // `skill-body-line-count`: an over-cap skill in the candidate set is
+        // flagged; a candidate-set miss is silent.
         let mut model = empty_model();
         model.skills = vec![
             skill("big", "plugins/p/skills/big/SKILL.md", 6),
             skill("small", "plugins/p/skills/small/SKILL.md", 1),
         ];
+        let cfg = Some(json!({ "max": 3 }));
         let cands =
             candidates(&["plugins/p/skills/big/SKILL.md", "plugins/p/skills/small/SKILL.md"]);
-        let hint = hint_with_config(
-            HintKind::Cardinality,
-            "skill-body-line-count",
-            Some(json!({ "max": 3 })),
-        );
+        let hint = hint_with_config(HintKind::Cardinality, "skill-body-line-count", cfg.clone());
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
         assert_eq!(flagged_paths(&out), vec!["plugins/p/skills/big/SKILL.md"]);
-    }
+        // The same over-cap skill outside the candidate set is skipped.
+        let hint = hint_with_config(HintKind::Cardinality, "skill-body-line-count", cfg);
+        assert!(evaluate(&rule(), &hint, &[], &model, &mut 1).expect("evaluate").is_empty());
 
-    #[test]
-    fn skill_outside_candidates_skipped() {
-        let mut model = empty_model();
-        model.skills = vec![skill("big", "plugins/p/skills/big/SKILL.md", 6)];
-        let hint = hint_with_config(
-            HintKind::Cardinality,
-            "skill-body-line-count",
-            Some(json!({ "max": 3 })),
-        );
-        let out = evaluate(&rule(), &hint, &[], &model, &mut 1).expect("evaluate");
-        assert!(out.is_empty());
-    }
-
-    #[test]
-    fn h2_sections_over_cap_only() {
+        // `markdown-h2-section-body-line-count`: only the over-cap level-2
+        // section fires; an over-cap H3 is out of scope.
         let mut model = empty_model();
         let path = "plugins/p/skills/s/SKILL.md";
         model.markdown_sections = vec![
@@ -344,13 +336,11 @@ mod unit {
             Some(json!({ "max": 3 })),
         );
         let out = evaluate(&rule(), &hint, &cands, &model, &mut 1).expect("evaluate");
-        // Only the over-cap level-2 section fires; the over-cap H3 is out of scope.
         assert_eq!(out.len(), 1);
         assert!(out[0].title.contains("'Big'"), "{}", out[0].title);
-    }
 
-    #[test]
-    fn brief_scopes_isolated() {
+        // `brief-parent` / `brief-phase`: the two scopes are isolated, each
+        // flagging only its own over-cap brief.
         let mut model = empty_model();
         model.briefs = vec![
             brief("adapters/targets/demo/briefs/build.md", BriefScope::Parent, 5),
@@ -363,9 +353,6 @@ mod unit {
         );
         let out = evaluate(&rule(), &parent, &[], &model, &mut 1).expect("evaluate");
         assert_eq!(flagged_paths(&out), vec!["adapters/targets/demo/briefs/build.md"]);
-
-        // A phase cap the phase brief clears but the parent would exceed:
-        // scope isolation keeps the parent silent under the phase metric.
         let phase = hint_with_config(
             HintKind::Cardinality,
             "brief-phase-body-line-count",
@@ -376,15 +363,12 @@ mod unit {
     }
 
     #[test]
-    fn missing_config_is_unsupported() {
+    fn rejects_bad_config() {
         let model = empty_model();
+        // A metric with no `config: { max }` is rejected.
         let hint = hint(HintKind::Cardinality, "markdown-h2-section-body-line-count");
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();
-    }
-
-    #[test]
-    fn unknown_metric_is_unsupported() {
-        let model = empty_model();
+        // An unknown metric selector is rejected.
         let hint =
             hint_with_config(HintKind::Cardinality, "no-such-metric", Some(json!({ "max": 1 })));
         evaluate(&rule(), &hint, &[], &model, &mut 1).unwrap_err();

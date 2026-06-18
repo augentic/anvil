@@ -2,23 +2,6 @@ use serde_json::{Value, json};
 
 use super::*;
 
-/// A minimal schema-valid [`Diagnostic`] JSON of the given severity,
-/// left at the default `violation` kind and untriaged status so
-/// `critical` / `important` instances block.
-fn finding(severity: &str) -> Value {
-    json!({
-        "id": "DIAG-0001",
-        "title": "test finding",
-        "severity": severity,
-        "source": "tool",
-        "artifact": "code",
-        "evidence": { "kind": "snippet", "value": "x" },
-        "impact": "impact",
-        "remediation": "fix it",
-        "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-    })
-}
-
 fn report(status: &str, findings: &[Value]) -> BuildReport {
     serde_json::from_value(json!({
         "version": 1,
@@ -64,59 +47,52 @@ fn staged_composition(body: &str) -> (tempfile::TempDir, PathBuf) {
     (dir, path)
 }
 
-#[test]
-fn ui_surface_serialisation() {
-    // Present: round-trips and renders kebab-case.
-    let with_surface = report_with_ui_surface(3);
-    assert_eq!(with_surface.ui_surface, Some(UiSurface { screens: 3 }));
-    let serialised = serde_json::to_string(&with_surface).expect("serialise");
-    assert!(serialised.contains("ui-surface"), "ui-surface renders kebab-case: {serialised}");
-    let reparsed: BuildReport = serde_json::from_str(&serialised).expect("re-deserialise");
-    assert_eq!(with_surface, reparsed);
+// The success-with-blocking gate is asserted end-to-end by
+// `engine/tests/slice.rs` (the build-finalize blocking-finding test), so its
+// unit duplicate was deleted. The UI-surface coherence warnings surface in the
+// e2e suite only through `screens:` compositions, so the `delta:` envelope and
+// unreadable/malformed-file branches of `composition_declares_surface` have no
+// CLI fixture — the three former coherence tests are collapsed into one below
+// to keep those branches covered. The output-existence gate likewise has no CLI
+// fixture (`target-build-output-missing` never surfaces e2e), so it stays as
+// the two kept tests below.
 
-    // Absent: defaults to None and is skipped on the wire.
-    let plain = report("success", &[]);
-    assert!(plain.ui_surface.is_none(), "missing ui-surface defaults to None");
-    let serialised = serde_json::to_string(&plain).expect("serialise");
-    assert!(!serialised.contains("ui-surface"), "absent ui-surface is skipped: {serialised}");
-}
-
-/// The two A4 mismatch warnings, each non-blocking: a UI-surface claim
-/// against a non-UI composition (`composition-unexpected-for-non-ui-slice`)
-/// and a UI slice against an empty / absent composition
-/// (`composition-empty-for-ui-slice`).
+/// A4 UI-surface coherence across the full matrix: the two mismatch warnings
+/// (non-UI slice with a `screens:` / `delta:` surface, UI slice with an
+/// empty/absent composition), the coherent silent pairs, the absent-ui-surface
+/// back-compat path, and the all-empty `delta:` envelope. Collapsed from the
+/// three former coherence tests; every assertion is preserved.
 #[test]
-fn coherence_flags_mismatches() {
+fn coherence() {
+    // screens == 0 against a non-empty `screens:` composition warns
+    // unexpected-for-non-ui; the warning never blocks.
     let (_d0, screens) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
     let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(0), &screens);
     assert_eq!(warnings.len(), 1, "expected one warning, got {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-unexpected-for-non-ui-slice"));
     assert!(!blocking(&warnings[0]), "A4 warnings must never block");
 
+    // screens > 0 against an empty `screens: {}` composition warns
+    // empty-for-ui-slice.
     let (_d1, empty) = staged_composition("version: 1\nscreens: {}\n");
     let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(2), &empty);
     assert_eq!(warnings.len(), 1, "expected one warning, got {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-empty-for-ui-slice"));
     assert!(!blocking(&warnings[0]), "A4 warnings must never block");
 
-    // An absent composition with a UI-surface claim also flags empty-for-ui-slice.
+    // An absent composition with a UI-surface claim also flags empty-for-ui
+    // (the unreadable-file early return treats the file as empty).
     let dir = tempfile::tempdir().expect("tempdir");
     let missing = dir.path().join("composition.yaml");
     let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(1), &missing);
     assert_eq!(warnings.len(), 1, "absent composition for a UI slice warns: {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-empty-for-ui-slice"));
-}
 
-/// Coherent and back-compat cases stay silent: matched surface/composition
-/// pairs, and any report without a `ui_surface` claim.
-#[test]
-fn coherence_silent_cases() {
-    let (_s, screens) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
+    // Coherent pairs and any report without a `ui_surface` claim stay silent.
     assert!(
         evaluate_ui_surface_coherence(&report_with_ui_surface(1), &screens).is_empty(),
         "ui slice + non-empty composition is coherent"
     );
-    let (_e, empty) = staged_composition("version: 1\nscreens: {}\n");
     assert!(
         evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty).is_empty(),
         "non-ui slice + empty composition is coherent"
@@ -125,29 +101,43 @@ fn coherence_silent_cases() {
         evaluate_ui_surface_coherence(&report("success", &[]), &screens).is_empty(),
         "absent ui-surface emits no warnings even with a non-empty composition"
     );
-}
 
-/// A non-empty `delta:` envelope counts as a UI surface, so a non-UI
-/// slice that emits one is flagged; an all-empty `delta:` does not.
-#[test]
-fn coherence_reads_delta_envelope() {
-    let (_added_dir, added) = staged_composition(
+    // A non-empty `delta:` envelope counts as a UI surface; an all-empty
+    // `delta:` does not.
+    let (_added, added) = staged_composition(
         "version: 1\ndelta:\n  added:\n    home:\n      name: Home\n  modified: {}\n  removed: {}\n",
     );
     let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(0), &added);
     assert_eq!(warnings.len(), 1, "non-empty delta is a UI surface: {warnings:?}");
     assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-unexpected-for-non-ui-slice"));
 
-    let (_empty_dir, empty) =
+    let (_empty_delta, empty_delta) =
         staged_composition("version: 1\ndelta:\n  added: {}\n  modified: {}\n  removed: {}\n");
     assert!(
-        evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty).is_empty(),
+        evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty_delta).is_empty(),
         "an all-empty delta carries no UI surface"
     );
 }
 
+/// The `BuildRequest` / `BuildReport` serde envelope: the optional `ui-surface`
+/// claim, the `project-dir` request round-trip, `deny_unknown_fields`
+/// rejection, and the per-platform `outputs` round-trip. Collapsed from the
+/// four former single-shape serde tests; every input is preserved.
 #[test]
-fn request_round_trips() {
+fn wire_serde() {
+    // `ui-surface` present round-trips kebab-case; absent defaults to None
+    // and is skipped on the wire.
+    let with_surface = report_with_ui_surface(3);
+    assert_eq!(with_surface.ui_surface, Some(UiSurface { screens: 3 }));
+    let serialised = serde_json::to_string(&with_surface).expect("serialise");
+    assert!(serialised.contains("ui-surface"), "ui-surface renders kebab-case: {serialised}");
+    assert_eq!(with_surface, serde_json::from_str::<BuildReport>(&serialised).expect("reparse"));
+    let plain = report("success", &[]);
+    assert!(plain.ui_surface.is_none(), "missing ui-surface defaults to None");
+    let serialised = serde_json::to_string(&plain).expect("serialise");
+    assert!(!serialised.contains("ui-surface"), "absent ui-surface is skipped: {serialised}");
+
+    // A `BuildRequest` round-trips, rendering `project-dir` kebab-case.
     let req = json!({
         "version": 1,
         "slice": "identity-service",
@@ -168,37 +158,27 @@ fn request_round_trips() {
     assert_eq!(parsed.slice, "identity-service");
     assert_eq!(parsed.inputs.artifacts.specs, vec!["specs/identity/spec.md".to_string()]);
     assert_eq!(parsed.inputs.artifacts.additional, vec!["tokens.yaml".to_string()]);
-
     let serialised = serde_json::to_string(&parsed).expect("serialise request");
     assert!(serialised.contains("project-dir"), "project-dir renders kebab-case");
-    let reparsed: BuildRequest = serde_json::from_str(&serialised).expect("re-deserialise");
-    assert_eq!(parsed, reparsed);
-}
+    assert_eq!(parsed, serde_json::from_str::<BuildRequest>(&serialised).expect("reparse"));
 
-#[test]
-fn report_rejects_unknown_field() {
-    let bogus = json!({
+    // `deny_unknown_fields` rejects a stray report key.
+    serde_json::from_value::<BuildReport>(json!({
         "version": 1,
         "slice": "identity-service",
         "target": "demo-target@1.0.0",
         "status": "success",
         "findings": [],
         "stray": true
-    });
-    serde_json::from_value::<BuildReport>(bogus)
-        .expect_err("deny_unknown_fields rejects stray keys");
-}
+    }))
+    .expect_err("deny_unknown_fields rejects stray keys");
 
-#[test]
-fn report_outputs_round_trip() {
-    // Empty outputs default to empty and are skipped on the wire.
+    // `outputs` default to empty (skipped on the wire) and round-trip when present.
     let report = report("success", &[]);
     assert!(report.outputs.is_empty(), "missing outputs defaults to empty");
     let serialised = serde_json::to_string(&report).expect("serialise");
     assert!(!serialised.contains("outputs"), "empty outputs is skipped in serialisation");
-    assert_eq!(report, serde_json::from_str::<BuildReport>(&serialised).expect("re-deserialise"));
-
-    // Present per-platform outputs parse and round-trip.
+    assert_eq!(report, serde_json::from_str::<BuildReport>(&serialised).expect("reparse"));
     let report = report_with_outputs(
         "success",
         &[
@@ -211,23 +191,7 @@ fn report_outputs_round_trip() {
     assert_eq!(report.outputs[0].path, "shared/src/app.rs");
     assert_eq!(report.outputs[1].platform, Platform::Ios);
     let serialised = serde_json::to_string(&report).expect("serialise");
-    assert_eq!(report, serde_json::from_str::<BuildReport>(&serialised).expect("re-deserialise"));
-}
-
-/// A `success` report may carry only non-blocking findings; a blocking
-/// finding fires the gate. `failure` reports may carry blocking findings.
-#[test]
-fn blocking_finding_gate() {
-    match enforce_report_no_blocking_on_success(&report("success", &[finding("critical")])) {
-        Err(Error::Validation { code, .. }) => {
-            assert_eq!(code, "target-build-success-with-blocking-finding");
-        }
-        other => panic!("expected blocking-finding gate to fire, got {other:?}"),
-    }
-    enforce_report_no_blocking_on_success(&report("success", &[finding("suggestion")]))
-        .expect("non-blocking success passes");
-    enforce_report_no_blocking_on_success(&report("failure", &[finding("critical")]))
-        .expect("failure may carry blocking findings");
+    assert_eq!(report, serde_json::from_str::<BuildReport>(&serialised).expect("reparse"));
 }
 
 /// Outputs that exist (file or non-empty tree), an empty outputs list, and

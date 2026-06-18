@@ -219,24 +219,22 @@ mod tests {
         write(root, &format!("plugins/{source}/.cursor-plugin/plugin.json"), "{\"name\":\"x\"}");
     }
 
+    // The absent-manifest skip (an adapters-only RFC-48 H1 root has no
+    // marketplace.json) is asserted end-to-end by
+    // `engine/tests/lint.rs::framework_adapters::adapters_only_root_lints_clean`,
+    // so that unit duplicate was deleted. The remaining drift matrix — clean
+    // tree, undeclared plugin, schema violation, declared-but-missing-skills —
+    // has no CLI fixture and collapses into one table-style test below. Every
+    // former input is preserved.
     #[test]
-    fn clean_tree_is_silent() {
+    fn marketplace_drift_matrix() {
+        // A valid manifest matching the on-disk plugin layout is silent.
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), ".cursor-plugin/marketplace.json", VALID_MANIFEST);
         write_plugin(dir.path(), "spec");
         assert!(check_marketplace_drift(dir.path()).is_empty());
-    }
 
-    #[test]
-    fn absent_manifest_is_silent() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        // An adapters-only framework root (RFC-48 H1) has no
-        // marketplace.json at all: absent is a skip, not drift.
-        assert!(check_marketplace_drift(dir.path()).is_empty());
-    }
-
-    #[test]
-    fn flags_undeclared_plugin() {
+        // An on-disk plugin not declared in the manifest is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), ".cursor-plugin/marketplace.json", VALID_MANIFEST);
         write_plugin(dir.path(), "spec");
@@ -249,10 +247,8 @@ mod tests {
                     && f.message.contains("not in marketplace.json")),
             "expected undeclared plugin finding, got {findings:?}"
         );
-    }
 
-    #[test]
-    fn flags_schema_violation() {
+        // A schema-invalid manifest yields CORE-022 schema-violation findings.
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
@@ -268,10 +264,8 @@ mod tests {
             findings.iter().any(|f| f.message.contains("schema violation")),
             "expected schema violation finding, got {findings:?}"
         );
-    }
 
-    #[test]
-    fn flags_declared_plugin_missing_skills() {
+        // A declared plugin with no skills/ directory is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), ".cursor-plugin/marketplace.json", VALID_MANIFEST);
         write(dir.path(), "plugins/spec/.cursor-plugin/plugin.json", "{\"name\":\"x\"}");

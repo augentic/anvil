@@ -113,23 +113,21 @@ mod tests {
         assert!(!is_framework_checker("contract"), "adapter tools stay WASI-resolved");
     }
 
-    #[test]
-    fn marketplace_skips_absent_manifest() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        let findings =
-            run_checker("marketplace", dir.path(), &["sentinel.md".to_string()]).expect("declared");
-        // An adapters-only tree (RFC-48 H1) has no marketplace.json:
-        // absent is a skip, so no findings.
-        assert!(findings.is_empty());
-    }
+    // The per-checker behaviours (marketplace absent-manifest skip, extension
+    // silent-on-no-declarations) live with each checker's own module. What the
+    // dispatch tests below pin has no e2e equivalent: the framework-lint engine
+    // resolves `kind: tool` hints through `crate::lint::eval::tool`, which calls
+    // the checker fn directly — no fixture routes through `run_checker` itself,
+    // so its name-resolution arms are CLI-unreachable and stay as unit Keeps.
 
     #[test]
-    fn extension_silent_on_tree_without_declarations() {
+    fn run_checker_routes_to_named_checker() {
+        // The Some-path: a declared name resolves and the checker's findings
+        // are handed back as typed diagnostics. An empty tree carries no
+        // marketplace, so the checker returns no findings.
         let dir = tempfile::tempdir().expect("tempdir");
-        let findings =
-            run_checker("extension", dir.path(), &["sentinel.md".to_string()]).expect("declared");
-        // No adapter declares an extension: the checker stays silent.
-        assert!(findings.is_empty());
+        let diagnostics = run_checker("marketplace", dir.path(), &[]).expect("declared checker");
+        assert!(diagnostics.is_empty(), "empty tree has no marketplace drift");
     }
 
     #[test]

@@ -407,8 +407,14 @@ mod tests {
         assert!(check_rule_body_heading(dir.path()).is_empty());
     }
 
+    // The three whole-tree checkers are private, so they cannot re-home; the
+    // CLI e2e defers per-`kind` eval semantics. The five former flagging cases
+    // — CORE-053 missing heading, CORE-009 misplaced prefix / reserved FRAME /
+    // unknown owner, CORE-026 duplicate id — collapse into one matrix, with the
+    // clean-tree silent case kept as its own test.
     #[test]
-    fn flags_missing_rule_heading() {
+    fn flags_violations() {
+        // CORE-053: a rule whose body lacks the `## Rule` heading is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "adapters/shared/rules/core/CORE-001.md", "CORE-001");
         write_rule_without_heading(
@@ -421,10 +427,8 @@ mod tests {
         assert_eq!(findings[0].rule_id, RULE_BODY_HEADING_MISSING);
         assert_eq!(findings[0].path.as_deref(), Some("adapters/shared/rules/universal/UNI-001.md"));
         assert!(findings[0].message.contains("`## Rule`"));
-    }
 
-    #[test]
-    fn flags_misplaced_prefix() {
+        // CORE-009: a prefix the owning directory does not own is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "adapters/targets/omnia/rules/VECTIS-001.md", "VECTIS-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
@@ -432,29 +436,23 @@ mod tests {
         assert_eq!(findings[0].rule_id, RULE_NAMESPACE_OWNERSHIP_VIOLATION);
         assert!(findings[0].message.contains("rules owner 'omnia' may only use"));
         assert!(findings[0].message.contains("VECTIS-001"));
-    }
 
-    #[test]
-    fn flags_reserved_frame_under_adapter() {
+        // CORE-009: a reserved FRAME-* id under an adapter tree is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "adapters/targets/omnia/rules/FRAME-001.md", "FRAME-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("FRAME-* ids are reserved"));
         assert!(findings[0].message.contains("FRAME-001"));
-    }
 
-    #[test]
-    fn flags_unknown_owner() {
+        // CORE-009: an owner with no configured namespace is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "adapters/targets/newadapter/rules/OMNIA-001.md", "OMNIA-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("has no configured namespace"));
-    }
 
-    #[test]
-    fn flags_duplicate_id() {
+        // CORE-026: the same id in two files is a whole-tree duplicate.
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "adapters/shared/rules/core/first.md", "CORE-100");
         write_rule(dir.path(), "adapters/shared/rules/core/second.md", "CORE-100");

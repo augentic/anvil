@@ -1,9 +1,22 @@
-use std::fs;
+//! Integration coverage for the CH-12 rule resolver
+//! (`specify_standards::{resolve, map_resolve_error}`). Re-homed from the
+//! former `rules/resolve/tests.rs` unit module: every case drives the public
+//! `resolve` entry point (and `map_resolve_error`) over a real codex/overlay
+//! tree. The `duplicate-rule-id` and `rules-root-required` emit branches are
+//! asserted end-to-end by `engine/tests/lint.rs::framework::duplicate_rule_id_aborts_fatally`
+//! and `engine/tests/rules.rs::export::negative_rules_root_required`, so their
+//! `resolve()`-side unit duplicates were deleted; both `ResolveError` variants
+//! still flow through `map_resolve_error_codes` below.
+
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
+use specify_error::Error;
+use specify_schema::cache::project_cache_dir;
+use specify_standards::{
+    Origin, PathRoot, ResolveError, ResolveInputs, map_resolve_error, resolve,
+};
 use tempfile::TempDir;
-
-use super::*;
 
 /// Minimal frontmatter + body that satisfies the CH-11 parser and
 /// the codex-rule schema. The shared `id` namespace varies by
@@ -21,7 +34,7 @@ fn write_rule(path: &Path, id: &str, title: &str) {
     fs::write(path, rule_markdown(id, title)).expect("write rule fixture");
 }
 
-fn inputs<'a>(
+const fn inputs<'a>(
     project_dir: &'a Path, rules_root: Option<&'a Path>, target_adapter: &'a str,
     source_adapters: &'a [String],
 ) -> ResolveInputs<'a> {
@@ -38,7 +51,7 @@ fn inputs<'a>(
     }
 }
 
-fn no_sources() -> Vec<String> {
+const fn no_sources() -> Vec<String> {
     Vec::new()
 }
 
@@ -73,12 +86,12 @@ fn scoped_cache(tmp: &TempDir) -> CacheGuard {
 
 /// Out-of-tree distributed-codex cache root for `project`.
 fn codex_cache(project: &Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project).join("codex")
+    project_cache_dir(project).join("codex")
 }
 
 /// Out-of-tree manifest-mirror cache root for `project`.
 fn manifest_cache(project: &Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project).join("manifests")
+    project_cache_dir(project).join("manifests")
 }
 
 /// Test 1: shared rules under explicit `--rules-root` flow through
@@ -158,17 +171,6 @@ fn rules_root_probe_falls_back() {
     assert_eq!(entry.origin, Origin::Shared);
     assert_eq!(entry.path_root, PathRoot::RulesRoot);
     assert_eq!(entry.path, "adapters/shared/rules/universal/uni-001.md");
-}
-
-/// Test 3: probe step 4 — no explicit root, no monorepo fallback,
-/// no distributed codex cache — must produce the closed
-/// `rules-root-required` error.
-#[test]
-fn rules_root_required_when_no_probe() {
-    let project = TempDir::new().expect("project");
-    let sources = no_sources();
-    let err = resolve(&inputs(project.path(), None, "demo-target", &sources)).unwrap_err();
-    assert!(matches!(err, ResolveError::RulesRootRequired), "got: {err:?}");
 }
 
 /// Probe step 3 (RM-07): with no `--rules-root` and no monorepo
@@ -394,43 +396,6 @@ fn cache_overlay_when_local_missing() {
     assert_eq!(src.origin, Origin::Source);
     assert_eq!(src.path_root, PathRoot::Cache);
     assert_eq!(src.path, "manifests/sources/demo-source/rules/src-001.md");
-}
-
-/// Test 9: duplicate id across overlays — same `UNI-001` declared
-/// twice — fails with [`ResolveError::DuplicateRuleId`] regardless
-/// of namespace ownership (which is `check::rules`'s problem).
-#[test]
-fn duplicate_rule_id_errors() {
-    let rules_root = TempDir::new().expect("rules root");
-    let project = TempDir::new().expect("project");
-    write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
-        "UNI-001",
-        "Shared universal",
-    );
-    write_rule(
-        &project.path().join("adapters/targets/demo-target/rules/uni-001-clone.md"),
-        "UNI-001",
-        "Clone in demo overlay",
-    );
-
-    let sources = no_sources();
-    let err = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
-        .unwrap_err();
-    match err {
-        ResolveError::DuplicateRuleId { id, paths } => {
-            assert_eq!(id, "UNI-001");
-            assert!(
-                paths.contains("adapters/shared/rules/universal/uni-001.md"),
-                "duplicate paths must cite the shared file: {paths}",
-            );
-            assert!(
-                paths.contains("adapters/targets/demo-target/rules/uni-001-clone.md"),
-                "duplicate paths must cite the target overlay file: {paths}",
-            );
-        }
-        other => panic!("expected DuplicateRuleId, got {other:?}"),
-    }
 }
 
 /// Test 10: README.md (case-insensitive) is excluded from

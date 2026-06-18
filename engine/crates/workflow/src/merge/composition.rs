@@ -176,5 +176,7 @@ pub fn baseline_is_non_empty(text: &str) -> bool {
         .is_some_and(|screens| !screens.is_empty())
 }
 
-#[cfg(test)]
-mod tests;
+// The merge kernel's delta-operation matrix and the two shape predicates are
+// exercised through the crate's public API in
+// `crates/workflow/tests/merge_composition.rs` (the screen-level delta matrix
+// has no CLI fixture).

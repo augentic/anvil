@@ -67,42 +67,35 @@ mod unit {
         hint(HintKind::PathPattern, value)
     }
 
+    // The CLI e2e defers per-`kind` eval semantics, so the glob-filter matrix
+    // collapses into one table-style test. Every former input is preserved.
     #[test]
-    fn exclusion_prefix_matches_paths() {
+    fn glob_matching_matrix() {
+        // A `!`-prefixed exclusion still matches its glob (the umbrella does
+        // the subtraction; `evaluate` only strips the `!`).
         let model = model_with_paths(&["docs/a.md", "docs/explanation/decision-log.md"]);
-        let hint = path_hint("!docs/explanation/decision-log.md");
-        let matched = evaluate(&rule(), &hint, &model).expect("evaluate");
+        let matched =
+            evaluate(&rule(), &path_hint("!docs/explanation/decision-log.md"), &model).expect("ev");
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0].to_string_lossy(), "docs/explanation/decision-log.md");
-    }
 
-    #[test]
-    fn include_pattern_unchanged() {
+        // A plain include glob matches by extension.
         let model = model_with_paths(&["a.rs", "b.md"]);
-        let hint = path_hint("*.rs");
-        let matched = evaluate(&rule(), &hint, &model).expect("evaluate");
+        let matched = evaluate(&rule(), &path_hint("*.rs"), &model).expect("evaluate");
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0].to_string_lossy(), "a.rs");
-    }
 
-    #[test]
-    fn invalid_glob_is_unsupported() {
+        // An invalid glob is rejected.
         let model = model_with_paths(&["a.rs"]);
-        let hint = path_hint("[");
-        evaluate(&rule(), &hint, &model).unwrap_err();
-    }
+        evaluate(&rule(), &path_hint("["), &model).unwrap_err();
 
-    #[test]
-    fn star_does_not_cross_separators() {
+        // `*` must not cross `/`.
         let model = model_with_paths(&["docs/a.md", "docs/sub/b.md"]);
-        let hint = path_hint("docs/*.md");
-        let matched = evaluate(&rule(), &hint, &model).expect("evaluate");
+        let matched = evaluate(&rule(), &path_hint("docs/*.md"), &model).expect("evaluate");
         assert_eq!(matched.len(), 1, "`*` must not cross `/`; got {matched:?}");
         assert_eq!(matched[0].to_string_lossy(), "docs/a.md");
-    }
 
-    #[test]
-    fn brace_alternation_unions_patterns() {
+        // `{a,b}` brace alternation unions several patterns into one hint.
         let model = model_with_paths(&[
             "docs/a.md",
             "plugins/spec/skills/refine/SKILL.md",

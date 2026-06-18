@@ -477,5 +477,7 @@ fn detect_duplicates(entries: &[ResolvedRuleEntry]) -> Result<(), ResolveError> 
     Ok(())
 }
 
-#[cfg(test)]
-mod tests;
+// The resolver kernel is exercised through the crate's public `resolve` /
+// `map_resolve_error` API in `crates/standards/tests/resolve.rs`. The
+// `duplicate-rule-id` and `rules-root-required` emit branches additionally have
+// CLI e2e coverage (`engine/tests/lint.rs`, `engine/tests/rules.rs`).

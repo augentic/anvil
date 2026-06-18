@@ -286,14 +286,12 @@ mod tests {
         run_with_config(project_dir, None)
     }
 
+    // The stage-contiguity predicate is private; its accept and reject cases
+    // collapse into one test.
     #[test]
-    fn contiguous_accepts_anchored_slice() {
+    fn contiguous_stages_prefix_predicate() {
         assert!(is_contiguous_stages_prefix(&json!(["refine", "build"])));
         assert!(is_contiguous_stages_prefix(&json!(["plan", "refine", "build", "merge", "drop"])));
-    }
-
-    #[test]
-    fn contiguous_rejects_gap_and_unknown() {
         assert!(!is_contiguous_stages_prefix(&json!(["plan", "build"])));
         assert!(!is_contiguous_stages_prefix(&json!(["draft"])));
         assert!(!is_contiguous_stages_prefix(&json!([])));
@@ -316,20 +314,23 @@ mod tests {
         findings.iter().filter(|f| f.rule_id == rule_id).map(|f| f.path.clone()).collect()
     }
 
+    // The three frontmatter checks are private and run through `run_all`; the
+    // CLI e2e defers per-`kind` eval semantics. The CORE-033 / CORE-028 /
+    // CORE-029 flagging cases and the clean-tree silent case collapse into one
+    // matrix, preserving every former input.
     #[test]
-    fn flags_non_contiguous_eval_scenario() {
+    fn scenario_frontmatter_matrix() {
+        // CORE-033: a non-contiguous stages list is flagged, a valid one
+        // silent.
         let dir = tempfile::tempdir().expect("tempdir");
         write_scenario(dir.path(), "good.md", &valid_frontmatter("good"));
         let mut bad = valid_frontmatter("bad");
         bad = bad.replace("[refine, build]", "[plan, build]");
         write_scenario(dir.path(), "bad.md", &bad);
-
         let stages = flagged(&run_all(dir.path()), RULE_STAGES_NOT_CONTIGUOUS);
         assert_eq!(stages, vec![Some("evals/scenarios/bad.md".to_string())]);
-    }
 
-    #[test]
-    fn flags_unsafe_expected_artifact() {
+        // CORE-028: an escaping expected-artifact path is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         let mut body = valid_frontmatter("arts");
         body = body.replace(
@@ -339,21 +340,21 @@ mod tests {
         write_scenario(dir.path(), "arts.md", &body);
         let unsafe_paths = flagged(&run_all(dir.path()), RULE_ARTIFACT_PATH_UNSAFE);
         assert_eq!(unsafe_paths, vec![Some("evals/scenarios/arts.md".to_string())]);
-    }
 
-    #[test]
-    fn flags_body_id_mismatch() {
+        // CORE-029: a body 'Scenario ID' line disagreeing with the frontmatter
+        // id is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         let body = format!("{}\nScenario ID: `other`\n", valid_frontmatter("real"));
         write_scenario(dir.path(), "mismatch.md", &body);
         let mismatch = flagged(&run_all(dir.path()), RULE_BODY_ID_MISMATCH);
         assert_eq!(mismatch, vec![Some("evals/scenarios/mismatch.md".to_string())]);
-    }
 
-    #[test]
-    fn clean_tree_is_silent() {
+        // A schema-valid contiguous scenario flags nothing.
         let dir = tempfile::tempdir().expect("tempdir");
         write_scenario(dir.path(), "ok.md", &valid_frontmatter("ok"));
-        assert!(run_all(dir.path()).is_empty(), "a schema-valid contiguous scenario flags nothing");
+        assert!(
+            run_all(dir.path()).is_empty(),
+            "a schema-valid contiguous scenario flags nothing"
+        );
     }
 }

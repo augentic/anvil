@@ -1,16 +1,36 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
 use specify_diagnostics::{Severity, blocking};
-use specify_model::evidence::ClaimKind;
 use tempfile::tempdir;
 
 use super::super::model::{
-    Disagreement, DisagreementValue, Divergence, Plan, SliceAuthorityOverride, SliceSourceBinding,
-    SourceBinding, Status,
+    Disagreement, DisagreementValue, Divergence, Plan, SliceSourceBinding, Status,
 };
 use super::super::{PLAN_EXAMPLE_YAML, change, plan_with_changes};
-use crate::change::{CYCLE, detect};
 use crate::registry::{Registry, RegistryProject};
+
+// The `duplicate-name`, `cycle-in-depends-on`, `duplicate-source-key`, and
+// `slice-authority-override-orphan-source` emit branches are asserted
+// end-to-end by `engine/tests/plan.rs` (`plan_validate_with_errors_json`,
+// `validate_reports_all_health_diagnostics`,
+// `amend_add_source_duplicate_key_rejected`) and `cycle.rs` proptests, so
+// their unit duplicates were deleted. What stays below are the
+// `plan.validate()` emit branches no CLI fixture triggers: unknown-source /
+// unknown-depends-on, the divergence-coherence quartet, multiple-in-progress,
+// slice-dir consistency (orphan + None-skip), no-short-circuit, the registry
+// project-binding matrix, and context-path validation (plus the clean
+// many-slice baseline, which keeps the shared `PLAN_EXAMPLE_YAML` fixture
+// exercised).
+
+#[test]
+fn clean_plan_validates() {
+    let plan: Plan = serde_saphyr::from_str(PLAN_EXAMPLE_YAML).expect("parse plan fixture");
+    let results = plan.validate(None, None);
+    assert!(
+        results.is_empty(),
+        "expected a clean fixture to validate with no findings, got: {results:#?}"
+    );
+}
 
 /// Match a neutral diagnostic on its stable check code (`rule_id`).
 fn has_code(d: &specify_diagnostics::Diagnostic, code: &str) -> bool {
@@ -43,26 +63,6 @@ fn reg_project(name: &str, adapter: &str) -> RegistryProject {
 
 fn registry(projects: Vec<RegistryProject>) -> Registry {
     Registry { version: 1, projects }
-}
-
-#[test]
-fn clean_plan_validates() {
-    let plan: Plan = serde_saphyr::from_str(PLAN_EXAMPLE_YAML).expect("parse plan fixture");
-    let results = plan.validate(None, None);
-    assert!(
-        results.is_empty(),
-        "expected a clean fixture to validate with no findings, got: {results:#?}"
-    );
-}
-
-#[test]
-fn duplicate_name_error() {
-    let plan = plan_with_changes(vec![change("foo", Status::Done), change("foo", Status::Pending)]);
-    let results = plan.validate(None, None);
-    let dupes: Vec<_> = results.iter().filter(|r| has_code(r, "duplicate-name")).collect();
-    assert_eq!(dupes.len(), 1, "expected one duplicate-name result, got {results:#?}");
-    assert_eq!(dupes[0].severity, Severity::Important);
-    assert_eq!(dupes[0].slice.as_deref(), Some("foo"));
 }
 
 /// The divergence-coherence quartet: a flag with no recorded multi-source
@@ -111,34 +111,6 @@ fn divergence_checks() {
 }
 
 #[test]
-fn cycle_detection() {
-    // A 3-cycle names all members...
-    let mut a = change("a", Status::Pending);
-    a.depends_on = vec!["c".into()];
-    let mut b = change("b", Status::Pending);
-    b.depends_on = vec!["a".into()];
-    let mut c = change("c", Status::Pending);
-    c.depends_on = vec!["b".into()];
-    let plan = plan_with_changes(vec![a, b, c]);
-    let cycles: Vec<_> = detect(&plan.entries).into_iter().filter(|d| has_code(d, CYCLE)).collect();
-    assert!(!cycles.is_empty(), "expected at least one {CYCLE}, got {cycles:#?}");
-    let msg = &cycles[0].impact;
-    assert!(
-        msg.contains('a') && msg.contains('b') && msg.contains('c'),
-        "cycle message should name all members: {msg}"
-    );
-
-    // ...and a self-edge is a cycle too.
-    let mut a = change("a", Status::Pending);
-    a.depends_on = vec!["a".into()];
-    let plan = plan_with_changes(vec![a]);
-    assert!(
-        detect(&plan.entries).iter().any(|d| has_code(d, CYCLE)),
-        "expected a {CYCLE} result for a self-edge"
-    );
-}
-
-#[test]
 fn unknown_depends_on_error() {
     let mut entry = change("depends-on-ghost", Status::Pending);
     entry.depends_on = vec!["bogus".into()];
@@ -160,38 +132,6 @@ fn unknown_source_error() {
     assert_eq!(hits.len(), 1, "expected one unknown-source, got {results:#?}");
     assert_eq!(hits[0].slice.as_deref(), Some("source-ghost"));
     assert!(hits[0].impact.contains("monolith"));
-}
-
-#[test]
-fn source_key_uniqueness() {
-    // Two bindings on the same source key block as duplicate-source-key...
-    let mut entry = change("doubled", Status::Pending);
-    entry.sources = vec![
-        SliceSourceBinding::structured("docs", "lead-a"),
-        SliceSourceBinding::structured("docs", "lead-b"),
-    ];
-    let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("docs".into(), SourceBinding::path("demo-source", "/tmp/docs"));
-    let results = plan.validate(None, None);
-    let hits: Vec<_> = results.iter().filter(|r| has_code(r, "duplicate-source-key")).collect();
-    assert_eq!(hits.len(), 1, "expected one duplicate-source-key, got {results:#?}");
-    assert_eq!(hits[0].slice.as_deref(), Some("doubled"));
-    assert!(hits[0].impact.contains("docs"));
-    assert!(blocking(hits[0]), "duplicate-source-key must block");
-
-    // ...but distinct keys (even sharing a lead) pass.
-    let mut entry = change("multi", Status::Pending);
-    entry.sources = vec![
-        SliceSourceBinding::structured("docs", "lead-a"),
-        SliceSourceBinding::structured("legacy", "lead-a"),
-    ];
-    let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("docs".into(), SourceBinding::path("demo-source", "/tmp/docs"));
-    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp/legacy"));
-    assert!(
-        !plan.validate(None, None).iter().any(|r| has_code(r, "duplicate-source-key")),
-        "distinct keys must not trip duplicate-source-key"
-    );
 }
 
 #[test]
@@ -376,98 +316,4 @@ fn context_path_validation() {
         !plan.validate(None, None).into_iter().any(|r| has_code(&r, "plan.context-path-invalid")),
         "valid relative paths must not produce errors"
     );
-}
-
-/// `slice-authority-override-orphan-source`: an override naming an unbound
-/// source is flagged (with kind + bad key in the message); empty and
-/// all-valid maps pass; multiple orphans sort by `ClaimKind` declaration
-/// order (requirement, criterion, decision).
-#[test]
-fn authority_override_checks() {
-    let mut entry = change("identity-user-registration", Status::Pending);
-    entry.sources = vec![SliceSourceBinding::bare("legacy")];
-    entry.authority_override = SliceAuthorityOverride {
-        by_kind: BTreeMap::from([
-            (ClaimKind::Requirement, "phantom".to_string()),
-            (ClaimKind::Criterion, "legacy".to_string()),
-        ]),
-    };
-    let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp"));
-    let hits: Vec<_> = plan
-        .validate(None, None)
-        .into_iter()
-        .filter(|r| has_code(r, "slice-authority-override-orphan-source"))
-        .collect();
-    assert_eq!(hits.len(), 1, "expected one orphan finding, got: {hits:#?}");
-    assert_eq!(hits[0].slice.as_deref(), Some("identity-user-registration"));
-    assert!(
-        hits[0].impact.contains("requirement") && hits[0].impact.contains("phantom"),
-        "message must name kind + bad source key, got: {}",
-        hits[0].impact
-    );
-
-    let mut entry = change("any", Status::Pending);
-    entry.sources = vec![SliceSourceBinding::bare("legacy")];
-    let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp"));
-    assert!(
-        !plan
-            .validate(None, None)
-            .iter()
-            .any(|r| has_code(r, "slice-authority-override-orphan-source")),
-        "empty override map must not trip orphan check"
-    );
-
-    let mut entry = change("any", Status::Pending);
-    entry.sources = vec![SliceSourceBinding::bare("legacy"), SliceSourceBinding::bare("runtime")];
-    entry.authority_override = SliceAuthorityOverride {
-        by_kind: BTreeMap::from([
-            (ClaimKind::Requirement, "runtime".to_string()),
-            (ClaimKind::Criterion, "legacy".to_string()),
-        ]),
-    };
-    let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp/legacy"));
-    plan.sources.insert("runtime".into(), SourceBinding::path("demo-source", "/tmp/runtime"));
-    assert!(
-        !plan
-            .validate(None, None)
-            .iter()
-            .any(|r| has_code(r, "slice-authority-override-orphan-source")),
-        "all-valid overrides must pass"
-    );
-
-    let mut entry = change("identity-user-registration", Status::Pending);
-    entry.sources = vec![SliceSourceBinding::bare("legacy")];
-    entry.authority_override = SliceAuthorityOverride {
-        by_kind: BTreeMap::from([
-            (ClaimKind::Requirement, "ghost-a".to_string()),
-            (ClaimKind::Criterion, "ghost-b".to_string()),
-            (ClaimKind::Decision, "ghost-c".to_string()),
-        ]),
-    };
-    let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp"));
-    let codes: Vec<&str> = plan
-        .validate(None, None)
-        .iter()
-        .filter(|r| has_code(r, "slice-authority-override-orphan-source"))
-        .map(|r| {
-            // Pull the kind out of the message (between "kind '" and "'").
-            let msg = &r.impact;
-            let start = msg.find("kind '").unwrap() + "kind '".len();
-            let end = start + msg[start..].find('\'').unwrap();
-            &msg[start..end]
-        })
-        .map(|s| -> &'static str {
-            match s {
-                "requirement" => "requirement",
-                "criterion" => "criterion",
-                "decision" => "decision",
-                _ => "other",
-            }
-        })
-        .collect();
-    assert_eq!(codes, vec!["requirement", "criterion", "decision"]);
 }

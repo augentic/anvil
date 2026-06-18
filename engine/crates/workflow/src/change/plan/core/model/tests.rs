@@ -36,36 +36,50 @@ slices:
     status: pending
 ";
 
+fn entry(name: &str, status: Status) -> Entry {
+    Entry {
+        name: name.into(),
+        project: Some("default".into()),
+        status,
+        depends_on: vec![],
+        sources: vec![],
+        context: vec![],
+        description: None,
+        divergence: None,
+        disagreements: Vec::new(),
+        authority_override: SliceAuthorityOverride::default(),
+    }
+}
+
+/// Every parse / serialize / round-trip / default case for `Plan`,
+/// `Entry`, the source-binding shapes, `TargetRef`, and `EntryPatch`.
+/// Each block is one of the former single-purpose serde tests; the
+/// inputs are exhaustive so coverage is identical to the split form.
+#[expect(clippy::too_many_lines, reason = "collapsed serde matrix: one block per former test")]
 #[test]
-fn round_trips_plan_fixture() {
+fn serde_shapes() {
+    // The §The Plan reference fixture round-trips and parses every entry.
     let original: Plan = serde_saphyr::from_str(PLAN_EXAMPLE_YAML).expect("parse plan fixture");
     let yaml = serde_saphyr::to_string(&original).expect("serialize plan");
     let reparsed: Plan = serde_saphyr::from_str(&yaml).expect("reparse plan");
     assert_eq!(original, reparsed, "plan should survive a serialize/parse round-trip");
-
     assert_eq!(original.name, "platform-v2");
     assert_eq!(original.sources.len(), 4);
     assert_eq!(original.entries.len(), 3);
     assert_eq!(original.entries[0].status, Status::Done);
     assert_eq!(original.entries[1].status, Status::InProgress);
     assert_eq!(original.entries[2].status, Status::Pending);
-}
 
-#[test]
-fn lifecycle_round_trips() {
-    let yaml = "name: foo\nlifecycle: approved\nslices: []\n";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse approved");
+    // `lifecycle: approved` round-trips kebab-case.
+    let plan: Plan =
+        serde_saphyr::from_str("name: foo\nlifecycle: approved\nslices: []\n").expect("parse");
     assert_eq!(plan.lifecycle, Lifecycle::Approved);
-
-    let rendered = serde_saphyr::to_string(&plan).expect("serialize");
     assert!(
-        rendered.contains("lifecycle: approved"),
-        "serialised plan must carry kebab-case lifecycle: approved, got:\n{rendered}"
+        serde_saphyr::to_string(&plan).expect("serialize").contains("lifecycle: approved"),
+        "serialised plan must carry kebab-case lifecycle: approved"
     );
-}
 
-#[test]
-fn serializes_kebab_case() {
+    // A constructed plan serialises kebab-case keys and enum values.
     let plan = Plan {
         name: "demo".into(),
         lifecycle: Lifecycle::Pending,
@@ -85,83 +99,46 @@ fn serializes_kebab_case() {
     };
     let yaml = serde_saphyr::to_string(&plan).expect("serialize plan");
     assert!(yaml.contains("depends-on:"), "expected kebab-case depends-on in:\n{yaml}");
-    assert!(
-        yaml.contains("status: in-progress"),
-        "expected kebab-case enum value in-progress in:\n{yaml}"
-    );
+    assert!(yaml.contains("status: in-progress"), "expected kebab-case in-progress in:\n{yaml}");
     assert!(!yaml.contains("depends_on"), "snake_case depends_on leaked into output:\n{yaml}");
-}
 
-#[test]
-fn missing_fields_default() {
-    let yaml = "name: foo\nslices: []\n";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse minimal plan");
+    // Omitted optionals default: lifecycle pending, empty maps.
+    let plan: Plan = serde_saphyr::from_str("name: foo\nslices: []\n").expect("parse minimal plan");
     assert_eq!(plan.name, "foo");
     assert_eq!(plan.lifecycle, Lifecycle::Pending);
     assert!(plan.sources.is_empty(), "sources should default to empty map");
     assert!(plan.entries.is_empty(), "slices should be empty");
-}
 
-#[test]
-fn project_defaults_to_none() {
-    let yaml = "\
-name: foo
-status: pending
-";
-    let parsed: Entry = serde_saphyr::from_str(yaml).expect("parses without project");
+    // An entry without `project` parses to `None`.
+    let parsed: Entry =
+        serde_saphyr::from_str("name: foo\nstatus: pending\n").expect("parses without project");
     assert_eq!(parsed.project, None);
-}
 
-#[test]
-fn project_only_round_trips() {
-    // The target adapter is not stored on the slice; a slice
-    // carries only its `project` (or omits it to resolve the sole
-    // topology project). The bound project survives a YAML round-trip.
-    let yaml = r"name: test
-slices:
-  - name: define-contracts
-    project: identity-contracts
-    status: pending
-  - name: impl-auth
-    project: auth-service
-    status: pending
-";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse");
+    // The bound `project` survives a YAML round-trip.
+    let plan: Plan = serde_saphyr::from_str(
+        "name: test\nslices:\n  - name: define-contracts\n    project: identity-contracts\n    status: pending\n  - name: impl-auth\n    project: auth-service\n    status: pending\n",
+    )
+    .expect("parse");
     assert_eq!(plan.entries[0].project.as_deref(), Some("identity-contracts"));
     assert_eq!(plan.entries[1].project.as_deref(), Some("auth-service"));
-
     let rendered = serde_saphyr::to_string(&plan).expect("serialize");
-    let reparsed: Plan = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(plan, reparsed, "plan must survive a YAML round-trip");
+    assert_eq!(serde_saphyr::from_str::<Plan>(&rendered).expect("reparse"), plan);
     assert!(
         rendered.contains("project: identity-contracts")
             && rendered.contains("project: auth-service"),
         "the bound project must serialise back, got:\n{rendered}",
     );
-}
 
-#[test]
-fn context_round_trips() {
-    let yaml = r"
-name: ctx-test
-slices:
-  - name: with-ctx
-    project: default
-    status: pending
-    context:
-      - contracts/http/user-api.yaml
-      - specs/user-registration/spec.md
-  - name: without-ctx
-    project: default
-    status: pending
-";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse yaml");
+    // `context` round-trips when populated and is omitted when empty.
+    let plan: Plan = serde_saphyr::from_str(
+        "\nname: ctx-test\nslices:\n  - name: with-ctx\n    project: default\n    status: pending\n    context:\n      - contracts/http/user-api.yaml\n      - specs/user-registration/spec.md\n  - name: without-ctx\n    project: default\n    status: pending\n",
+    )
+    .expect("parse yaml");
     assert_eq!(
         plan.entries[0].context,
         vec!["contracts/http/user-api.yaml", "specs/user-registration/spec.md"],
     );
     assert!(plan.entries[1].context.is_empty(), "missing context defaults to empty");
-
     let serialized = serde_saphyr::to_string(&plan).expect("serialize");
     assert!(
         serialized.contains("contracts/http/user-api.yaml"),
@@ -172,37 +149,20 @@ slices:
             || !serialized.split("without-ctx").nth(1).unwrap_or("").contains("context"),
         "empty context must be omitted from serialized output"
     );
-}
 
-#[test]
-fn patch_omits_status() {
+    // A default `EntryPatch` keeps everything and omits status.
     let patch = EntryPatch::default();
     assert!(patch.depends_on.is_none());
     assert!(patch.sources.is_none());
     assert_eq!(patch.project, Patch::Keep);
     assert_eq!(patch.description, Patch::Keep);
     assert!(patch.context.is_none());
-}
 
-#[test]
-fn binding_round_trips_both_shapes() {
-    let yaml = r"
-name: bindings
-slices:
-  - name: bare-binding
-    project: app
-    sources: [demo-source]
-    status: pending
-  - name: combined
-    project: app
-    sources:
-      - source: docs
-        lead: account-pwd-reset
-      - source: legacy
-        lead: account-pwd-reset
-    status: pending
-";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse");
+    // Both source-binding shapes (bare + structured) round-trip.
+    let plan: Plan = serde_saphyr::from_str(
+        "\nname: bindings\nslices:\n  - name: bare-binding\n    project: app\n    sources: [demo-source]\n    status: pending\n  - name: combined\n    project: app\n    sources:\n      - source: docs\n        lead: account-pwd-reset\n      - source: legacy\n        lead: account-pwd-reset\n    status: pending\n",
+    )
+    .expect("parse");
     let bare = &plan.entries[0].sources[0];
     assert!(bare.lead.is_none(), "expected bare shorthand, got {bare:?}");
     assert_eq!(bare.source(), "demo-source");
@@ -211,221 +171,109 @@ slices:
     assert_eq!(structured.source(), "docs");
     assert_eq!(structured.lead("ignored-slice-name"), "account-pwd-reset");
     let rendered = serde_saphyr::to_string(&plan).expect("serialize");
-    let reparsed: Plan = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(plan, reparsed, "both binding shapes must survive a round-trip");
-}
+    assert_eq!(serde_saphyr::from_str::<Plan>(&rendered).expect("reparse"), plan);
 
-#[test]
-fn binding_normalises_shorthand() {
+    // The binding constructors normalise the shorthand vs structured forms.
     let bare = SliceSourceBinding::bare("demo-source");
     assert_eq!(bare.source(), "demo-source");
     assert_eq!(bare.lead("add-search-filter"), "add-search-filter");
     assert!(bare.lead.is_none());
-
     let structured = SliceSourceBinding::structured("docs", "user-reg");
     assert_eq!(structured.source(), "docs");
     assert_eq!(structured.lead("ignored-slice-name"), "user-reg");
     assert!(structured.lead.is_some());
-}
 
-#[test]
-fn source_binding_version_round_trips() {
-    // RFC-47 D2: a `sources.<key>.version` semver pin survives a
-    // parse → serialize → reparse round-trip, while a binding that
-    // omits `version` stays `None` (existing plans parse unchanged).
-    let yaml = r"name: pinned
-sources:
-  pinned-src:
-    adapter: demo-source
-    version: 2.3.1
-    path: /repo
-  bare-src:
-    adapter: demo-source
-    value: do the thing
-slices: []
-";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse");
+    // RFC-47 D2: an optional `sources.<key>.version` pin round-trips.
+    let plan: Plan = serde_saphyr::from_str(
+        "name: pinned\nsources:\n  pinned-src:\n    adapter: demo-source\n    version: 2.3.1\n    path: /repo\n  bare-src:\n    adapter: demo-source\n    value: do the thing\nslices: []\n",
+    )
+    .expect("parse");
     assert_eq!(plan.sources["pinned-src"].version, Some(semver::Version::new(2, 3, 1)));
     assert_eq!(plan.sources["bare-src"].version, None, "an omitted version stays None");
-
     let rendered = serde_saphyr::to_string(&plan).expect("serialize");
-    let reparsed: Plan = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(plan, reparsed, "the optional version pin must survive a round-trip");
+    assert_eq!(serde_saphyr::from_str::<Plan>(&rendered).expect("reparse"), plan);
     assert_eq!(
         rendered.matches("version:").count(),
         1,
         "only the pinned binding emits a `version:` key, got:\n{rendered}"
     );
-}
 
-#[test]
-fn target_ref_parses_semver() {
-    // RFC-47 D1: a `name@<semver>` target parses and renders verbatim;
-    // the legacy `name@vN` git-ref form is no longer a valid target.
-    let parsed = TargetRef::parse("demo-target@1.0.0").expect("semver target parses");
-    assert_eq!(parsed.to_string(), "demo-target@1.0.0");
+    // The `SourceBinding` builders normalise the path- vs value-bound shapes
+    // (each is mutually exclusive and leaves `version` unset).
+    let path_bound = SourceBinding::path("typescript", "/repo/legacy");
+    assert_eq!(path_bound.adapter, "typescript");
+    assert_eq!(path_bound.path.as_deref(), Some("/repo/legacy"));
+    assert!(path_bound.value.is_none() && path_bound.version.is_none());
+    let value_bound = SourceBinding::value("intent", "do the thing");
+    assert_eq!(value_bound.adapter, "intent");
+    assert_eq!(value_bound.value.as_deref(), Some("do the thing"));
+    assert!(value_bound.path.is_none() && value_bound.version.is_none());
+
+    // RFC-47 D1: `name@<semver>` parses; the legacy `name@vN` form is rejected.
+    assert_eq!(
+        TargetRef::parse("demo-target@1.0.0").expect("semver target").to_string(),
+        "demo-target@1.0.0"
+    );
     TargetRef::parse("demo-target@v1").expect_err("the legacy @vN form must be rejected");
-}
 
-#[test]
-fn is_drained_only_when_all_done() {
-    let plan = Plan {
-        name: "demo".into(),
-        lifecycle: Lifecycle::Approved,
-        sources: BTreeMap::new(),
-        entries: vec![
-            Entry {
-                name: "a".into(),
-                project: Some("default".into()),
-                status: Status::Done,
-                depends_on: vec![],
-                sources: vec![],
-                context: vec![],
-                description: None,
-                divergence: None,
-                disagreements: Vec::new(),
-                authority_override: SliceAuthorityOverride::default(),
-            },
-            Entry {
-                name: "b".into(),
-                project: Some("default".into()),
-                status: Status::Done,
-                depends_on: vec![],
-                sources: vec![],
-                context: vec![],
-                description: None,
-                divergence: None,
-                disagreements: Vec::new(),
-                authority_override: SliceAuthorityOverride::default(),
-            },
-        ],
-    };
-    assert!(plan.is_drained(), "all-done plan must report drained");
-    assert!(!plan.is_executing(), "no in-progress entry => not executing");
-}
-
-#[test]
-fn is_executing_when_any_in_progress() {
-    let plan = Plan {
-        name: "demo".into(),
-        lifecycle: Lifecycle::Approved,
-        sources: BTreeMap::new(),
-        entries: vec![
-            Entry {
-                name: "a".into(),
-                project: Some("default".into()),
-                status: Status::Done,
-                depends_on: vec![],
-                sources: vec![],
-                context: vec![],
-                description: None,
-                divergence: None,
-                disagreements: Vec::new(),
-                authority_override: SliceAuthorityOverride::default(),
-            },
-            Entry {
-                name: "b".into(),
-                project: Some("default".into()),
-                status: Status::InProgress,
-                depends_on: vec![],
-                sources: vec![],
-                context: vec![],
-                description: None,
-                divergence: None,
-                disagreements: Vec::new(),
-                authority_override: SliceAuthorityOverride::default(),
-            },
-        ],
-    };
-    assert!(plan.is_executing(), "any in-progress => executing");
-    assert!(!plan.is_drained(), "in-progress entry => not drained");
-}
-
-#[test]
-fn authority_override_round_trips() {
-    let yaml = r"name: synthesis-plan
-slices:
-  - name: identity-user-registration
-    project: identity-svc
-    status: pending
-    sources:
-      - source: runtime
-        lead: user-registration
-      - source: legacy-monolith
-        lead: user-registration
-    authority-override:
-      requirement: runtime
-      criterion: legacy-monolith
-";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse");
-    let entry = &plan.entries[0];
-    assert_eq!(
-        entry.authority_override.by_kind.get(&ClaimKind::Requirement).map(String::as_str),
-        Some("runtime")
-    );
-    assert_eq!(
-        entry.authority_override.by_kind.get(&ClaimKind::Criterion).map(String::as_str),
-        Some("legacy-monolith")
-    );
-
+    // The `authority-override` map round-trips and elides when empty.
+    let plan: Plan = serde_saphyr::from_str(
+        "name: synthesis-plan\nslices:\n  - name: identity-user-registration\n    project: identity-svc\n    status: pending\n    sources:\n      - source: runtime\n        lead: user-registration\n      - source: legacy-monolith\n        lead: user-registration\n    authority-override:\n      requirement: runtime\n      criterion: legacy-monolith\n",
+    )
+    .expect("parse");
+    let ov = &plan.entries[0].authority_override;
+    assert_eq!(ov.by_kind.get(&ClaimKind::Requirement).map(String::as_str), Some("runtime"));
+    assert_eq!(ov.by_kind.get(&ClaimKind::Criterion).map(String::as_str), Some("legacy-monolith"));
     let rendered = serde_saphyr::to_string(&plan).expect("serialize");
     assert!(rendered.contains("authority-override:"));
     assert!(rendered.contains("requirement: runtime"));
-    let reparsed: Plan = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(plan, reparsed);
-}
-
-#[test]
-fn empty_authority_override_elides() {
-    let yaml = r"name: tiny
-slices:
-  - name: x
-    project: app
-    status: pending
-";
-    let plan: Plan = serde_saphyr::from_str(yaml).expect("parse");
+    assert_eq!(serde_saphyr::from_str::<Plan>(&rendered).expect("reparse"), plan);
+    let plan: Plan = serde_saphyr::from_str(
+        "name: tiny\nslices:\n  - name: x\n    project: app\n    status: pending\n",
+    )
+    .expect("parse");
     assert!(plan.entries[0].authority_override.by_kind.is_empty());
-    let rendered = serde_saphyr::to_string(&plan).expect("serialize");
     assert!(
-        !rendered.contains("authority-override"),
-        "empty override map must elide on write, got:\n{rendered}"
+        !serde_saphyr::to_string(&plan).expect("serialize").contains("authority-override"),
+        "empty override map must elide on write"
     );
-}
 
-#[test]
-fn divergence_likely_round_trips_yaml() {
-    // divergence and writer-ownership contract: the CLI is the single writer of every variant
-    // of `slices[].divergence`. The on-disk shape for `Likely`
-    // is one kebab-case line on the slice entry, byte-identical
-    // to the legacy skill-written output we are retiring.
-    let reference = r"name: demo
-slices:
-  - name: checkout
-    project: default
-    status: pending
-    divergence: likely
-";
-    let plan: Plan = serde_saphyr::from_str(reference).expect("parse reference yaml");
+    // `divergence: likely` round-trips as one kebab-case line.
+    let plan: Plan = serde_saphyr::from_str(
+        "name: demo\nslices:\n  - name: checkout\n    project: default\n    status: pending\n    divergence: likely\n",
+    )
+    .expect("parse reference yaml");
     assert_eq!(plan.entries[0].divergence, Some(Divergence::Likely));
     let rendered = serde_saphyr::to_string(&plan).expect("serialize");
-    assert!(
-        rendered.contains("divergence: likely"),
-        "Divergence::Likely must serialise as kebab-case `divergence: likely`, got:\n{rendered}"
-    );
-    let reparsed: Plan = serde_saphyr::from_str(&rendered).expect("reparse");
-    assert_eq!(plan, reparsed, "plan with divergence: likely must round-trip");
+    assert!(rendered.contains("divergence: likely"), "got:\n{rendered}");
+    assert_eq!(serde_saphyr::from_str::<Plan>(&rendered).expect("reparse"), plan);
 }
 
+/// `Plan::is_drained` / `is_executing` over the closed status matrix:
+/// all-done is drained-not-executing, any-in-progress is
+/// executing-not-drained, and an empty plan is vacuously drained.
 #[test]
-fn empty_plan_is_drained_vacuously() {
-    let plan = Plan {
-        name: "demo".into(),
-        lifecycle: Lifecycle::Pending,
-        sources: BTreeMap::new(),
-        entries: vec![],
-    };
-    assert!(plan.is_drained(), "empty plan reports drained vacuously");
-    assert!(!plan.is_executing(), "empty plan is not executing");
+fn drained_and_executing() {
+    let cases: &[(Vec<Status>, bool, bool)] = &[
+        (vec![Status::Done, Status::Done], true, false),
+        (vec![Status::Done, Status::InProgress], false, true),
+        (vec![], true, false),
+    ];
+    for (statuses, drained, executing) in cases {
+        let entries: Vec<Entry> = statuses
+            .iter()
+            .enumerate()
+            .map(|(i, status)| entry(&format!("slice-{i}"), *status))
+            .collect();
+        let plan = Plan {
+            name: "demo".into(),
+            lifecycle: Lifecycle::Approved,
+            sources: BTreeMap::new(),
+            entries,
+        };
+        assert_eq!(plan.is_drained(), *drained, "is_drained for {statuses:?}");
+        assert_eq!(plan.is_executing(), *executing, "is_executing for {statuses:?}");
+    }
 }
 
 /// A2/A13: plan validation findings are built directly on the neutral

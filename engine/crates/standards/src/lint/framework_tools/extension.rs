@@ -125,14 +125,19 @@ mod tests {
     use super::*;
 
     const MANIFEST_WITH_EXTENSION: &str = "name: withext\nversion: \"1.0.0\"\naxis: target\nextension:\n  name: withext\n  permissions:\n    read:\n      - $PROJECT_DIR\n";
-    const MANIFEST_WITHOUT_EXTENSION: &str =
-        "name: plain\nversion: \"1.0.0\"\naxis: target\nbriefs:\n  shape: briefs/shape.md\n";
 
     fn write(root: &Path, rel: &str, body: &str) {
         let path = root.join(rel);
         std::fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
         std::fs::write(path, body).expect("write");
     }
+
+    // The missing-crate flag (`extension_rule_fires_for_missing_crate`) and the
+    // not-declared / clean-tree silence (`adapters_only_root_lints_clean`,
+    // which walks a real both-axes adapters tree) are asserted end-to-end in
+    // `engine/tests/lint.rs::framework_adapters`, so those two unit duplicates
+    // were deleted. The complete-and-silent path and the distinct missing-wasm
+    // branch below have no e2e equivalent and stay.
 
     #[test]
     fn declared_and_complete_is_silent() {
@@ -144,18 +149,6 @@ mod tests {
     }
 
     #[test]
-    fn declared_missing_crate_dir_is_flagged() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "adapters/targets/withext/adapter.yaml", MANIFEST_WITH_EXTENSION);
-        write(dir.path(), "adapters/targets/withext/adapter.wasm", "wasm-bytes");
-        let findings = check_extension_crates(dir.path());
-        assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0].rule_id, RULE_EXTENSION_CRATE_MISSING);
-        assert_eq!(findings[0].path.as_deref(), Some("adapters/targets/withext/adapter.yaml"));
-        assert!(findings[0].message.contains("extension/"));
-    }
-
-    #[test]
     fn declared_missing_wasm_is_flagged() {
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "adapters/targets/withext/adapter.yaml", MANIFEST_WITH_EXTENSION);
@@ -164,13 +157,5 @@ mod tests {
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_EXTENSION_CRATE_MISSING);
         assert!(findings[0].message.contains("adapter.wasm"));
-    }
-
-    #[test]
-    fn not_declared_is_silent() {
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "adapters/targets/plain/adapter.yaml", MANIFEST_WITHOUT_EXTENSION);
-        write(dir.path(), "adapters/sources/demo-source/adapter.yaml", MANIFEST_WITHOUT_EXTENSION);
-        assert!(check_extension_crates(dir.path()).is_empty());
     }
 }

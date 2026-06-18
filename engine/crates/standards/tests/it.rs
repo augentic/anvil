@@ -15,3 +15,7 @@ mod lint_engine_guards;
 mod lint_hint;
 #[path = "lint_index.rs"]
 mod lint_index;
+#[path = "resolve.rs"]
+mod resolve;
+#[path = "resolve_sort.rs"]
+mod resolve_sort;

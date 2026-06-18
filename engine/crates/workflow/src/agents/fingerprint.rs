@@ -161,8 +161,12 @@ mod tests {
         }
     }
 
+    // The pure hashing functions are a `(inputs/version/body -> digest)`
+    // matrix with no CLI fixture pinning the canonical encoding, so the five
+    // former hash tests collapse here. Every former input is preserved.
     #[test]
-    fn aggregate_hash_sorts_inputs() {
+    fn hashing_matrix() {
+        // `aggregate` sorts inputs by path before hashing, yielding a stable digest.
         let inputs = vec![
             input(
                 "registry.yaml",
@@ -173,17 +177,12 @@ mod tests {
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             ),
         ];
-
-        let fingerprint = aggregate("0.2.0", inputs);
-
         assert_eq!(
-            fingerprint,
+            aggregate("0.2.0", inputs),
             "sha256:96f096c433da7e43d6ab7ce7aa305882f3eb2933fa160d00640af8a0df17e73f"
         );
-    }
 
-    #[test]
-    fn aggregate_hash_order_stable() {
+        // It is order-independent: the same multiset hashes identically.
         let alpha = input(
             ".specify/project.yaml",
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -194,27 +193,46 @@ mod tests {
         );
         let gamma =
             input("Cargo.toml", "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+        assert_eq!(
+            aggregate("0.2.0", vec![alpha.clone(), beta.clone(), gamma.clone()]),
+            aggregate("0.2.0", vec![gamma, alpha, beta])
+        );
 
-        let left = aggregate("0.2.0", vec![alpha.clone(), beta.clone(), gamma.clone()]);
-        let right = aggregate("0.2.0", vec![gamma, alpha, beta]);
+        // The CLI version is the first aggregate line, so a bump alone changes
+        // the digest even when every input digest is identical.
+        let pinned = vec![input(
+            ".specify/project.yaml",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        )];
+        assert_ne!(aggregate("0.2.0", pinned.clone()), aggregate("0.3.0", pinned));
 
-        assert_eq!(left, right);
-    }
+        // `body_sha256` changes with the fenced body bytes.
+        assert_ne!(
+            body_sha256(b"\n## Runtime\n- detected: Rust.\n\n"),
+            body_sha256(b"\n## Runtime\n- detected: Node.js.\n\n")
+        );
 
-    #[test]
-    fn body_hash_changes_with_body() {
-        let original = body_sha256(b"\n## Runtime\n- detected: Rust.\n\n");
-        let edited = body_sha256(b"\n## Runtime\n- detected: Node.js.\n\n");
-
-        assert_ne!(original, edited);
+        // `for_context` wires cli_version / inputs / aggregate / body digest.
+        let inputs = vec![input(
+            "registry.yaml",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )];
+        let body = b"\n## Runtime\n- detected: Rust.\n\n";
+        let fp = for_context("0.2.0", inputs.clone(), body);
+        assert_eq!(fp.cli_version, "0.2.0");
+        assert_eq!(fp.inputs, inputs.clone());
+        assert_eq!(fp.fingerprint, aggregate("0.2.0", inputs));
+        assert_eq!(fp.body_sha256, body_sha256(body));
     }
 
     // The collector keys inputs by repo-relative path and dedups, then
-    // `finalize` hashes content in sorted path order. A regression that
-    // dropped the dedup or the sort would shuffle the canonical aggregate
-    // and break lock stability across runs.
+    // `finalize` hashes content in sorted path order; `add_file_if_present` is
+    // the soft variant that silently skips a missing path and a directory. A
+    // regression that dropped the dedup or the sort would shuffle the canonical
+    // aggregate and break lock stability across runs. Collapsed from the two
+    // former collector tests.
     #[test]
-    fn collector_dedups_and_sorts() {
+    fn collector_dedups_and_filters() {
         let project = tempfile::tempdir().expect("tempdir");
         let root = project.path();
         fs::write(root.join("z.txt"), b"zed").expect("write z");
@@ -226,36 +244,29 @@ mod tests {
         collector.add_file(&root.join("sub/a.txt")).expect("add a");
         // Adding the same file again must not produce a second entry.
         collector.add_file(&root.join("z.txt")).expect("re-add z");
-
         let inputs = collector.finalize().expect("finalize");
         assert_eq!(
             inputs.iter().map(|i| i.path.as_str()).collect::<Vec<_>>(),
             vec!["sub/a.txt", "z.txt"]
         );
         assert_eq!(inputs[1].sha256, specify_schema::digest::sha256_hex(b"zed"));
-    }
 
-    // `add_file_if_present` is the soft variant: a missing path and a
-    // directory are both silently skipped; only a real file is recorded.
-    #[test]
-    fn add_if_present_skips_non_files() {
         let project = tempfile::tempdir().expect("tempdir");
         let root = project.path();
         fs::create_dir_all(root.join("a-dir")).expect("dir");
         fs::write(root.join("real.txt"), b"x").expect("file");
-
         let mut collector = InputCollector::new(root);
         collector.add_file_if_present(&root.join("missing.txt")).expect("missing skipped");
         collector.add_file_if_present(&root.join("a-dir")).expect("dir skipped");
         collector.add_file_if_present(&root.join("real.txt")).expect("real recorded");
-
         let inputs = collector.finalize().expect("finalize");
         assert_eq!(inputs.iter().map(|i| i.path.as_str()).collect::<Vec<_>>(), vec!["real.txt"]);
     }
 
     // An input path outside the project root is a programmer error and
     // must surface as the typed `context-fingerprint-input-outside-project`
-    // diagnostic rather than producing a bogus relative path.
+    // diagnostic rather than producing a bogus relative path. Kept: no public
+    // caller routes an out-of-project path into the collector.
     #[test]
     fn input_outside_project_errors() {
         let project = tempfile::tempdir().expect("project");
@@ -274,33 +285,5 @@ mod tests {
             ),
             "{err}"
         );
-    }
-
-    // The CLI version is the first line of the canonical aggregate, so a
-    // version bump alone must change the fingerprint even when every input
-    // digest is identical — otherwise an upgrade would not re-trigger
-    // regeneration.
-    #[test]
-    fn aggregate_depends_on_cli_version() {
-        let inputs = vec![input(
-            ".specify/project.yaml",
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        )];
-        assert_ne!(aggregate("0.2.0", inputs.clone()), aggregate("0.3.0", inputs));
-    }
-
-    #[test]
-    fn for_context_wires_fields() {
-        let inputs = vec![input(
-            "registry.yaml",
-            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        )];
-        let body = b"\n## Runtime\n- detected: Rust.\n\n";
-        let fp = for_context("0.2.0", inputs.clone(), body);
-
-        assert_eq!(fp.cli_version, "0.2.0");
-        assert_eq!(fp.inputs, inputs.clone());
-        assert_eq!(fp.fingerprint, aggregate("0.2.0", inputs));
-        assert_eq!(fp.body_sha256, body_sha256(body));
     }
 }
