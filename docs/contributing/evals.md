@@ -1,40 +1,26 @@
 # Running Evals
 
-This is the single entry point for Specify evals. It defines the two proof surfaces, how an operator (or agent) runs the eval sweep, the group ordering and halt gate, and the green-gate signal.
+This is the single entry point for Specify evals. It defines what the eval sweep is, how an operator (or agent) runs it, the group ordering and halt gate, and the green-gate signal. The eval sweep is agent-based; specify's own Rust/deterministic surface (`cargo make test`, `make lint`) runs separately in CI on every commit and is **not** part of running evals.
 
 The scenario catalog — the canonical list of every scenario, its grouping, release-blocker status, and run status — lives in [`evals/scenarios/README.md`](../../evals/scenarios/README.md). This document does not duplicate that table.
 
-## The two proof surfaces
+## What the eval sweep is
 
-A release is proven only when **both** surfaces are green:
+The eval sweep is the **agent-based** proof surface. The operator-driven scenarios in [`evals/scenarios/`](../../evals/scenarios/) exercise the full `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`, plus the per-target generated-output-correctness gate. A schema-valid `build/report.yaml` with `status: success` proves the build envelope held, **not** that the generated code compiles or replays — so each exercised target must also pass `cargo check` / `cargo test` / its replay suite (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of envelope validity.
 
-1. **Deterministic proof.** `cargo make test` under [`engine/`](../../engine) (including [`engine/tests/plan.rs`](../../engine/tests/plan.rs)) asserts the envelope, ordering, and re-projection determinism of the whole CLI path: `source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection. It does **not** execute real target codegen. Plus the static repository checks: `make lint` runs `specify lint framework` against the live tree (skill frontmatter, adapter manifests, rule shape, links, marketplace consistency, scenario frontmatter).
-2. **Eval sweep.** The operator-driven scenarios in [`evals/scenarios/`](../../evals/scenarios/) exercise the full `/spec:plan` → Gate 1 → `/spec:execute` → `/spec:finalize` rhythm against live `cursor-agent`, plus the per-target generated-output-correctness gate. A schema-valid `build/report.yaml` with `status: success` proves the build envelope held, **not** that the generated code compiles or replays — so each exercised target must also pass `cargo check` / `cargo test` / its replay suite (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of envelope validity.
+Specify's own deterministic surface — `cargo make test` under [`engine/`](../../engine) and `make lint` (`specify lint framework`) — is a **separate** gate that runs in CI on every commit. It is not run, re-run, or reported as part of the eval sweep.
 
 The eval sweep is intentionally **not** an automated harness: no runner, fake forge, recorded transcript, CI target, or golden-output comparison. That posture is encoded as the `negative-expectations` frontmatter on every scenario and is the one place this rationale is stated — individual scenarios do not repeat it in prose. It is operator-driven because it judges LLM-emitted output; `specify lint framework` does not pin synthesised bytes. The negative expectations constrain *driving*; **grading** is mechanical where it can be — the post-run probes in the [assertion taxonomy](../../evals/shared/assertions.md) violate none of them.
 
 Multi-step execute scenarios also ship optional replay helpers under [`evals/drivers/`](../../evals/drivers/README.md): checked-in operator scripts that shell out to the real CLI (always delegating driver locking to `specify plan lock --`). They are not wired into CI and do not change the negative-expectation posture — they replace ad-hoc copies under the gitignored sandbox, not unattended automation.
 
-**What makes something an eval scenario.** A behavior earns a catalog entry only when at least one assertion is irreducible to deterministic CLI/host behavior. Three admission categories, each with the deterministic substrate that *is* covered by surface 1 named alongside:
+**What makes something an eval scenario.** A behavior earns a catalog entry only when at least one assertion is irreducible to deterministic CLI/host behavior. Three admission categories, each with the deterministic substrate that *is* covered separately under `engine/` named alongside:
 
 1. **LLM-prose judgment** — whether a synthesized `spec.md` / `design.md` reads correctly, or a plan decomposes a brief sensibly (e.g. `intent-only`, `documentation-one-slice`, `single-project-plan`, `target-shape`, `lead-reconciliation`). The CLI substrate — provenance/`Sources:` rendering, `[conflict]`/`[divergence]` tagging, propose routing, the embedded `shape` brief in the synthesis envelope — is covered by `tests/slice.rs` (synthesize) and `tests/plan.rs` (propose, end-to-end).
 2. **Skill-loop orchestration** — the `/spec:execute` stop / resume / `all-done` behavior emitted by skill markdown, not by any single CLI verb (e.g. `execute-fail-resume`, `execute-pause-resume`, `workspace-stale-recovery`, `workspace-fail-resume`). The per-step primitives — build-finalize gating (`tests/slice.rs`), `plan next` advance, `slice merge` stamping `done`, `workspace sync` dirty-slot detection (`tests/workspace.rs`) — are covered; the loop that sequences them is not.
 3. **Cross-repo finalize orchestration** — `/spec:finalize` sequencing `specify workspace push` (publishing each routed project's `specify/<change>` branch to its `origin`) and `specify plan archive` in one run across multiple project remotes (e.g. `contract-lifecycle`). Pull requests are opened and merged by the operator outside Specify, so no forge client is exercised; the scenario runs against local bare-repo remotes. (Dual-driving refusal used to sit here as a skill-enforced pre-flight; the CLI's plan-lock probe made it deterministic, so it is now the named test [`engine/tests/plan.rs`](../../engine/tests/plan.rs) with no catalog entry.)
 
 This is the boundary: a behavior whose every assertion falls outside these three categories is **not an eval scenario at all** — it is a named deterministic test under `engine/`, run under `cargo make test` on every commit, and it never gets a catalog entry here. Re-confirm against this list before adding a scenario to the catalog.
-
-## Running the deterministic surface
-
-```bash
-make lint          # static repository checks; builds the in-tree specify binary
-make install-cli    # builds the in-tree specify binary, then symlinks it onto your PATH for the sweep
-```
-
-Both targets build the same `specify` binary from the in-tree Cargo workspace under [`engine/`](../../engine) (see [Consistency Checks](checks.md)). A Rust toolchain is the only prerequisite; no published binary is downloaded. `make install-cli` builds `engine/target/release/specify`, then symlinks that onto your PATH.
-
-`make install-cli` **prepares the eval sweep**: it builds `engine/target/release/specify` and symlinks it into `~/.local/bin` (overridable with `INSTALL_DIR=`, warning if it is not on your `PATH`), then points at the eval sweep below. It does **not** re-run the deterministic tests — `cargo make test` under `engine/` is the single authoritative deterministic surface, and it runs in CI on every commit, so re-running the `plan` / `source` / `slice` / `workspace` test binaries by hand would only duplicate that work. `make install-cli` does not run, fake, record, or golden-compare the scenario pack, and the sweep is deliberately **not** wired into CI, so it is not a required CI check — every scenario's `negative-expectation` stays held.
-
-Run `specify lint framework` from the repo root, or pass `--framework-root` / set `SPECIFY_ROOT` when invoking directly from another cwd. To run the predicate regression suite, use `cargo make test` under `engine/`.
 
 ## Running the eval sweep
 
@@ -52,9 +38,9 @@ Operators who prefer an agent to do the clerical work can paste the reusable pro
 
 ## Agent runbook — "run specify's evals"
 
-When asked to "run specify's evals and report any issues", an agent should follow this exact sequence. The proof surface is two-tier, and the eval tier has irreducible human seams, so the agent reports the deterministic surface as a clean pass/fail and the eval sweep as a per-scenario table that may include "paused — needs you" rows.
+When asked to "run specify's evals and report any issues", an agent should follow this exact sequence. The eval sweep has irreducible human seams, so the agent reports it as a per-scenario table that may include "paused — needs you" rows.
 
-1. **Deterministic surface.** Run `make lint` (builds the in-tree `specify` binary and runs the framework checks) and report pass/fail with the failing finding ids, then run `make install-cli` to build + symlink the binary under test. The deterministic tests (`plan`, `source`, `slice`, `workspace`) live under `engine/` and run in CI on every commit; run `cargo make test` under `engine/` when you need to prove the full deterministic surface locally. This step needs no human input. Then make the build under test resolvable in the agent's own shells: run `specify --version` and, if the bare command does not resolve to the freshly built binary, prepend the symlink dir to `PATH` for the rest of the sweep (`export PATH="$HOME/.local/bin:$PATH"`, matching `make install-cli`'s `INSTALL_DIR`) or fall back to the absolute `engine/target/release/specify` path. Re-confirm with `specify --version` before driving any scenario — a Makefile recipe cannot mutate the agent's shell `PATH`, so the agent owns this self-heal.
+1. **Build the binary under test.** Run `make install-cli` to build + symlink the binary under test. (Specify's own Rust tests and `make lint` are a separate CI gate, run on every commit — not part of running evals.) This step needs no human input. Then make the build under test resolvable in the agent's own shells: run `specify --version` and, if the bare command does not resolve to the freshly built binary, prepend the symlink dir to `PATH` for the rest of the sweep (`export PATH="$HOME/.local/bin:$PATH"`, matching `make install-cli`'s `INSTALL_DIR`) or fall back to the absolute `engine/target/release/specify` path. Re-confirm with `specify --version` before driving any scenario — a Makefile recipe cannot mutate the agent's shell `PATH`, so the agent owns this self-heal.
 2. **Eval sweep — per scenario, in group order** (see [catalog](../../evals/scenarios/README.md)):
    - Drive setup with [`shared/prompts.md`](../../evals/shared/prompts.md) Prompt A, then the lifecycle with Prompt B.
    - Grade through the [assertion taxonomy](../../evals/shared/assertions.md): run each assertion's **probe** and record its verdict from the probe output; for **judgment-flagged** assertions, judge with an evidence pointer or mark `needs-human`. Record negative-expectations as held/violated per scenario.
@@ -82,7 +68,7 @@ Within a group, scenarios are independent and may run in any order; a failure ou
 
 - Each run commits its filled run-summary under [`evals/runs/`](../../evals/runs/README.md) as the audit trail.
 - On failure, preserve the workspace state, `plan.yaml`, `registry.yaml`, push/finalize output, and branch/PR identifiers per the template. The sandbox at `evals/.sandbox/<scenario>/` ([`setup.md`](../../evals/shared/setup.md)) is stable and gitignored, so it survives for inspection; paste trimmed failure output into the run-summary's **Failure detail** section and point **Evidence** at `scripts/snapshot.sh "$SANDBOX"`. File a follow-up issue in `augentic/specify` linked back to the run-summary.
-- The gate is **tiered by the catalog's Gate column**. The **release gate is green** when `cargo make test` is green under `engine/` (it runs in CI on every commit) and every `release-blocker` row (`intent-only`, `execute-fail-resume`, `workspace-two-projects`) is `passed` — the `intent-only` hard halt is unchanged. The **full catalog** drains per minor release or monthly, whichever comes first; a non-blocking `failed` row is triaged via its linked follow-up issue but does not hold a release on its own. A `parked` row (no owner) sits outside the drain expectation until someone claims it and flips it back to `pending`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
+- The gate is **tiered by the catalog's Gate column**. The **release gate is green** when every `release-blocker` row (`intent-only`, `execute-fail-resume`, `workspace-two-projects`) is `passed` — the `intent-only` hard halt is unchanged. (Specify's deterministic surface, `cargo make test` under `engine/`, is a separate CI gate that runs on every commit.) The **full catalog** drains per minor release or monthly, whichever comes first; a non-blocking `failed` row is triaged via its linked follow-up issue but does not hold a release on its own. A `parked` row (no owner) sits outside the drain expectation until someone claims it and flips it back to `pending`. A `deferred` entry (capability genuinely missing on the binary under test) must carry a linked follow-up issue and explicit release-owner sign-off.
 
 When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green in the [catalog](../../evals/scenarios/README.md).
 
@@ -99,10 +85,7 @@ The deterministic substrate beneath these — reconciliation tagging, authority 
 
 ## Fan-in / fan-out proof
 
-The cross-source fan-in / cross-slice fan-out proof splits across the two surfaces above, and **both** must pass before a release is complete:
-
-1. **Deterministic CLI proof.** [`engine/tests/plan.rs`](../../engine/tests/plan.rs) runs under `cargo make test` and asserts the envelope, ordering, and determinism of the whole path. It does not execute real target codegen.
-2. **Generated-output-correctness release gate (manual / CI).** Each target build must pass the target's own replay/golden suite plus `cargo check` / `cargo test` for generated crates (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of build-envelope validity.
+The cross-source fan-in / cross-slice fan-out proof on the eval side is the **generated-output-correctness gate**: each exercised target build must pass the target's own replay/golden suite plus `cargo check` / `cargo test` for generated crates (and the equivalent verification for non-Rust targets). A slice whose generated output fails these checks is not done, regardless of build-envelope validity. (The deterministic envelope/ordering proof for the same path, [`engine/tests/plan.rs`](../../engine/tests/plan.rs), runs separately under `cargo make test` and is not part of the eval sweep.)
 
 ## Synthesis byte-replay (deferred)
 
