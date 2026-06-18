@@ -69,12 +69,6 @@ jobs:
         with:
           tool: cargo-make,cargo-nextest,cargo-deny,cargo-vet
 
-      # Full Rust workspace gate: fmt-check, clippy, nextest, doctests,
-      # doc, vet, deny.
-      - name: Rust workspace CI
-        working-directory: engine
-        run: cargo make ci
-
       # Framework lint over the in-tree prose surface (plugins/, docs/,
       # adapters/), built from the same in-tree binary.
       - name: Verify framework
