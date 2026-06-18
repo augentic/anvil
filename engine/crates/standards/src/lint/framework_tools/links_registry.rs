@@ -282,9 +282,9 @@ fn inline_code_pattern() -> &'static Regex {
 mod tests {
     use super::*;
 
-    fn vectis_registry() -> Vec<KnownSchema> {
+    fn sample_registry() -> Vec<KnownSchema> {
         vec![KnownSchema {
-            tool: "vectis".to_string(),
+            tool: "demo-target".to_string(),
             schemas: vec!["tokens".to_string(), "assets".to_string(), "composition".to_string()],
         }]
     }
@@ -300,10 +300,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "adapters/targets/vectis/briefs/build.md",
-            "See https://schemas.specify.dev/vectis/unknown.schema.json for details.\n",
+            "adapters/targets/demo-target/briefs/build.md",
+            "See https://schemas.specify.dev/demo-target/unknown.schema.json for details.\n",
         );
-        let findings = check_schema_links(dir.path(), &vectis_registry());
+        let findings = check_schema_links(dir.path(), &sample_registry());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_BRIEF_SCHEMA_LINK_RESOLVE);
     }
@@ -313,10 +313,10 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "adapters/targets/vectis/briefs/build.md",
-            "See https://schemas.specify.dev/vectis/tokens.schema.json for details.\n",
+            "adapters/targets/demo-target/briefs/build.md",
+            "See https://schemas.specify.dev/demo-target/tokens.schema.json for details.\n",
         );
-        assert!(check_schema_links(dir.path(), &vectis_registry()).is_empty());
+        assert!(check_schema_links(dir.path(), &sample_registry()).is_empty());
     }
 
     #[test]

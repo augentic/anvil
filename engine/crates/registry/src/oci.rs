@@ -184,15 +184,15 @@ mod tests {
         let _guard = crate::test_support::env_lock();
         let unset = EnvGuard::scoped("SPECIFY_REGISTRY", None);
         assert_eq!(
-            adapter_reference("specify", "omnia", "1.2.0"),
-            "augentic.io/specify/omnia:1.2.0"
+            adapter_reference("specify", "demo-target", "1.2.0"),
+            "augentic.io/specify/demo-target:1.2.0"
         );
         drop(unset);
 
         let _set = EnvGuard::scoped("SPECIFY_REGISTRY", Some(Path::new("ghcr.io/augentic")));
         assert_eq!(
-            adapter_reference("specify", "omnia", "1.2.0"),
-            "ghcr.io/augentic/specify/omnia:1.2.0"
+            adapter_reference("specify", "demo-target", "1.2.0"),
+            "ghcr.io/augentic/specify/demo-target:1.2.0"
         );
     }
 }

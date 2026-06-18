@@ -7,16 +7,16 @@ use super::*;
 const PLAN_EXAMPLE_YAML: &str = r"name: platform-v2
 sources:
   monolith:
-    adapter: typescript
+    adapter: demo-source
     path: /path/to/legacy-codebase
   orders:
-    adapter: typescript
+    adapter: demo-source
     path: git@github.com:org/orders-service.git
   payments:
-    adapter: typescript
+    adapter: demo-source
     path: git@github.com:org/payments-service.git
   frontend:
-    adapter: typescript
+    adapter: demo-source
     path: git@github.com:org/web-app.git
 slices:
   - name: user-registration
@@ -189,9 +189,9 @@ fn binding_round_trips_both_shapes() {
     let yaml = r"
 name: bindings
 slices:
-  - name: pure-intent
+  - name: bare-binding
     project: app
-    sources: [intent]
+    sources: [demo-source]
     status: pending
   - name: combined
     project: app
@@ -205,7 +205,7 @@ slices:
     let plan: Plan = serde_saphyr::from_str(yaml).expect("parse");
     let bare = &plan.entries[0].sources[0];
     assert!(bare.lead.is_none(), "expected bare shorthand, got {bare:?}");
-    assert_eq!(bare.source(), "intent");
+    assert_eq!(bare.source(), "demo-source");
     let structured = &plan.entries[1].sources[0];
     assert!(structured.lead.is_some(), "expected structured form, got {structured:?}");
     assert_eq!(structured.source(), "docs");
@@ -217,8 +217,8 @@ slices:
 
 #[test]
 fn binding_normalises_shorthand() {
-    let bare = SliceSourceBinding::bare("intent");
-    assert_eq!(bare.source(), "intent");
+    let bare = SliceSourceBinding::bare("demo-source");
+    assert_eq!(bare.source(), "demo-source");
     assert_eq!(bare.lead("add-search-filter"), "add-search-filter");
     assert!(bare.lead.is_none());
 
@@ -236,11 +236,11 @@ fn source_binding_version_round_trips() {
     let yaml = r"name: pinned
 sources:
   pinned-src:
-    adapter: typescript
+    adapter: demo-source
     version: 2.3.1
     path: /repo
   bare-src:
-    adapter: intent
+    adapter: demo-source
     value: do the thing
 slices: []
 ";
@@ -262,9 +262,9 @@ slices: []
 fn target_ref_parses_semver() {
     // RFC-47 D1: a `name@<semver>` target parses and renders verbatim;
     // the legacy `name@vN` git-ref form is no longer a valid target.
-    let parsed = TargetRef::parse("omnia@1.0.0").expect("semver target parses");
-    assert_eq!(parsed.to_string(), "omnia@1.0.0");
-    TargetRef::parse("omnia@v1").expect_err("the legacy @vN form must be rejected");
+    let parsed = TargetRef::parse("demo-target@1.0.0").expect("semver target parses");
+    assert_eq!(parsed.to_string(), "demo-target@1.0.0");
+    TargetRef::parse("demo-target@v1").expect_err("the legacy @vN form must be rejected");
 }
 
 #[test]

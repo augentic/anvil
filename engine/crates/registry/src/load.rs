@@ -68,18 +68,26 @@ mod tests {
         };
         let plugin_scope = ExtensionScope::Plugin {
             axis: Axis::Target,
-            plugin_slug: "contracts".to_string(),
+            plugin_slug: "demo-target".to_string(),
             capability_dir: "/cap".into(),
         };
 
         let project = vec![(
             project_scope,
-            tool("contract", "2.0.0", ExtensionSource::LocalPath("/project/contract.wasm".into())),
+            tool(
+                "demo-tool",
+                "2.0.0",
+                ExtensionSource::LocalPath("/project/demo-tool.wasm".into()),
+            ),
         )];
         let plugin = vec![
             (
                 plugin_scope.clone(),
-                tool("contract", "1.0.0", ExtensionSource::LocalPath("/cap/contract.wasm".into())),
+                tool(
+                    "demo-tool",
+                    "1.0.0",
+                    ExtensionSource::LocalPath("/cap/demo-tool.wasm".into()),
+                ),
             ),
             (
                 plugin_scope,
@@ -88,10 +96,10 @@ mod tests {
         ];
 
         let (merged, warnings) = merge_scoped(project, plugin);
-        assert_eq!(warnings, vec!["contract".to_string()]);
+        assert_eq!(warnings, vec!["demo-tool".to_string()]);
         assert_eq!(
             merged.iter().map(|(_, t)| t.name.as_str()).collect::<Vec<_>>(),
-            ["contract", "other"]
+            ["demo-tool", "other"]
         );
         assert_eq!(merged[0].1.version, "2.0.0");
     }

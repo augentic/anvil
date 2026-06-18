@@ -170,7 +170,7 @@ mod tests {
     fn not_declared_is_silent() {
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "adapters/targets/plain/adapter.yaml", MANIFEST_WITHOUT_EXTENSION);
-        write(dir.path(), "adapters/sources/intent/adapter.yaml", MANIFEST_WITHOUT_EXTENSION);
+        write(dir.path(), "adapters/sources/demo-source/adapter.yaml", MANIFEST_WITHOUT_EXTENSION);
         assert!(check_extension_crates(dir.path()).is_empty());
     }
 }

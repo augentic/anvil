@@ -49,14 +49,14 @@ mod test_support {
     pub fn plugin_target_scope(root: &Path) -> ExtensionScope {
         ExtensionScope::Plugin {
             axis: Axis::Target,
-            plugin_slug: "contracts".to_string(),
+            plugin_slug: "demo-target".to_string(),
             capability_dir: root.to_path_buf(),
         }
     }
 
     pub fn tool(source: ExtensionSource, sha256: Option<String>) -> Extension {
         Extension {
-            name: "contract".to_string(),
+            name: "demo-tool".to_string(),
             version: "1.0.0".to_string(),
             source,
             sha256,

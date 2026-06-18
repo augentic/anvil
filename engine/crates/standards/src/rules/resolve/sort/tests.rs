@@ -58,12 +58,12 @@ fn sort_puts_non_deprecated_first() {
 #[test]
 fn sort_breaks_ties_by_rule_id() {
     let mut entries = vec![
-        entry("OMNIA-002", Severity::Critical, Origin::Target, false),
-        entry("OMNIA-001", Severity::Critical, Origin::Target, false),
-        entry("OMNIA-003", Severity::Critical, Origin::Target, false),
+        entry("ORG-002", Severity::Critical, Origin::Target, false),
+        entry("ORG-001", Severity::Critical, Origin::Target, false),
+        entry("ORG-003", Severity::Critical, Origin::Target, false),
     ];
     sort_resolved(&mut entries);
-    assert_eq!(ids(&entries), vec!["OMNIA-001", "OMNIA-002", "OMNIA-003"]);
+    assert_eq!(ids(&entries), vec!["ORG-001", "ORG-002", "ORG-003"]);
 }
 
 /// Test 5: full-tuple precedence — deprecation dominates severity
@@ -103,7 +103,7 @@ fn run_build(rules_root: &Path, project_dir: &Path) -> ResolvedRules {
     let inputs = ResolveInputs {
         project_dir,
         rules_root: Some(rules_root),
-        target_adapter: "omnia",
+        target_adapter: "demo-target",
         source_adapters: &sources,
         artifact_paths: &[],
         languages: &[],
@@ -134,8 +134,8 @@ fn build_emits_versioned_envelope() {
         "critical",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
+        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
         "Important target",
         "important",
     );
@@ -143,13 +143,13 @@ fn build_emits_versioned_envelope() {
     let resolved = run_build(rules_root.path(), project.path());
 
     assert_eq!(resolved.version, 1);
-    assert_eq!(resolved.target_adapter, "omnia");
+    assert_eq!(resolved.target_adapter, "demo-target");
     assert!(resolved.source_adapters.is_empty());
     assert_eq!(resolved.rules.len(), 3);
-    // UNI-001 is Critical (beats OMNIA-001 Important); OMNIA-001
+    // UNI-001 is Critical (beats ORG-001 Important); ORG-001
     // is Important + Target (beats UNI-002 Important + Shared);
     // UNI-002 trails.
-    assert_eq!(ids_of_rules(&resolved.rules), vec!["UNI-001", "OMNIA-001", "UNI-002"]);
+    assert_eq!(ids_of_rules(&resolved.rules), vec!["UNI-001", "ORG-001", "UNI-002"]);
 }
 
 /// Test 7: paths on the wire envelope are anchored to `path-root`
@@ -167,8 +167,8 @@ fn paths_anchored_not_absolute() {
         "important",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
+        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
         "Target",
         "important",
     );
@@ -219,8 +219,8 @@ fn build_byte_stable() {
         "optional",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
+        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
         "Target",
         "important",
     );

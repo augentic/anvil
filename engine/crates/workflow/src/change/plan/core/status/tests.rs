@@ -15,7 +15,7 @@ fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
     let slice_dir = root.join(".specify").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
     let metadata = SliceMetadata {
-        target: "omnia@1.0.0".to_string(),
+        target: "demo-target@1.0.0".to_string(),
         status,
         created_at: None,
         defined_at: None,

@@ -445,38 +445,39 @@ mod tests {
     #[test]
     fn template_source_round_trips() {
         let manifest: ExtensionManifest = serde_saphyr::from_str(
-            "tools:\n  - name: vectis\n    version: 0.3.0\n    source: $PROJECT_DIR/../specify-adapters/target/vectis.wasm\n",
+            "tools:\n  - name: demo-tool\n    version: 0.3.0\n    source: $PROJECT_DIR/../specify-adapters/target/demo-tool.wasm\n",
         )
         .expect("parse template source");
         let tool = &manifest.tools[0];
         assert!(
-            matches!(&tool.source, ExtensionSource::TemplatePath(t) if t == "$PROJECT_DIR/../specify-adapters/target/vectis.wasm"),
+            matches!(&tool.source, ExtensionSource::TemplatePath(t) if t == "$PROJECT_DIR/../specify-adapters/target/demo-tool.wasm"),
         );
         let yaml = serde_saphyr::to_string(&manifest).expect("serialize template source");
         assert!(
-            yaml.contains("source: $PROJECT_DIR/../specify-adapters/target/vectis.wasm"),
+            yaml.contains("source: $PROJECT_DIR/../specify-adapters/target/demo-tool.wasm"),
             "{yaml}"
         );
     }
 
     #[test]
     fn expand_replaces_project_dir() {
-        let source = ExtensionSource::TemplatePath("$PROJECT_DIR/tools/vectis.wasm".to_string());
+        let source = ExtensionSource::TemplatePath("$PROJECT_DIR/tools/demo-tool.wasm".to_string());
         let expanded = source.expand(Path::new("/home/user/project"), None).expect("expand");
         assert_eq!(
             expanded,
-            ExtensionSource::LocalPath(PathBuf::from("/home/user/project/tools/vectis.wasm"))
+            ExtensionSource::LocalPath(PathBuf::from("/home/user/project/tools/demo-tool.wasm"))
         );
     }
 
     #[test]
     fn expand_replaces_capability_dir() {
         let source = ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/tool.wasm".to_string());
-        let expanded =
-            source.expand(Path::new("/project"), Some(Path::new("/caps/vectis"))).expect("expand");
+        let expanded = source
+            .expand(Path::new("/project"), Some(Path::new("/caps/demo-tool")))
+            .expect("expand");
         assert_eq!(
             expanded,
-            ExtensionSource::LocalPath(PathBuf::from("/caps/vectis/bin/tool.wasm"))
+            ExtensionSource::LocalPath(PathBuf::from("/caps/demo-tool/bin/tool.wasm"))
         );
     }
 

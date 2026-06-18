@@ -171,7 +171,7 @@ fn source_key_uniqueness() {
         SliceSourceBinding::structured("docs", "lead-b"),
     ];
     let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("docs".into(), SourceBinding::path("documentation", "/tmp/docs"));
+    plan.sources.insert("docs".into(), SourceBinding::path("demo-source", "/tmp/docs"));
     let results = plan.validate(None, None);
     let hits: Vec<_> = results.iter().filter(|r| has_code(r, "duplicate-source-key")).collect();
     assert_eq!(hits.len(), 1, "expected one duplicate-source-key, got {results:#?}");
@@ -186,8 +186,8 @@ fn source_key_uniqueness() {
         SliceSourceBinding::structured("legacy", "lead-a"),
     ];
     let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("docs".into(), SourceBinding::path("documentation", "/tmp/docs"));
-    plan.sources.insert("legacy".into(), SourceBinding::path("typescript", "/tmp/legacy"));
+    plan.sources.insert("docs".into(), SourceBinding::path("demo-source", "/tmp/docs"));
+    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp/legacy"));
     assert!(
         !plan.validate(None, None).iter().any(|r| has_code(r, "duplicate-source-key")),
         "distinct keys must not trip duplicate-source-key"
@@ -294,14 +294,16 @@ fn project_binding_checks() {
     let mut e = change("registry-missing", Status::Pending);
     e.project = Some("nonexistent".to_string());
     let plan = plan_with_changes(vec![e]);
-    let reg = registry(vec![reg_project("real-project", "omnia@1.0.0")]);
+    let reg = registry(vec![reg_project("real-project", "demo-target@1.0.0")]);
     assert!(plan.validate(None, Some(&reg)).iter().any(|r| has_code(r, "project-not-in-registry")));
 
     let mut e = change("project-alpha", Status::Pending);
     e.project = Some("alpha".to_string());
     let plan = plan_with_changes(vec![e]);
-    let reg =
-        registry(vec![reg_project("alpha", "omnia@1.0.0"), reg_project("beta", "omnia@1.0.0")]);
+    let reg = registry(vec![
+        reg_project("alpha", "demo-target@1.0.0"),
+        reg_project("beta", "demo-target@1.0.0"),
+    ]);
     assert!(!plan.validate(None, Some(&reg)).iter().any(blocking));
 
     let mut e = change("orphan", Status::Pending);
@@ -315,7 +317,7 @@ fn project_binding_checks() {
     let mut e = change("solo", Status::Pending);
     e.project = None;
     let plan = plan_with_changes(vec![e]);
-    let reg = registry(vec![reg_project("only", "omnia@1.0.0")]);
+    let reg = registry(vec![reg_project("only", "demo-target@1.0.0")]);
     assert!(
         !plan
             .validate(None, Some(&reg))
@@ -327,8 +329,10 @@ fn project_binding_checks() {
     let mut e = change("ambiguous", Status::Pending);
     e.project = None;
     let plan = plan_with_changes(vec![e]);
-    let reg =
-        registry(vec![reg_project("alpha", "omnia@1.0.0"), reg_project("beta", "contracts@1.0.0")]);
+    let reg = registry(vec![
+        reg_project("alpha", "demo-target@1.0.0"),
+        reg_project("beta", "other-target@1.0.0"),
+    ]);
     assert!(
         plan.validate(None, Some(&reg))
             .iter()
@@ -389,7 +393,7 @@ fn authority_override_checks() {
         ]),
     };
     let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("typescript", "/tmp"));
+    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp"));
     let hits: Vec<_> = plan
         .validate(None, None)
         .into_iter()
@@ -406,7 +410,7 @@ fn authority_override_checks() {
     let mut entry = change("any", Status::Pending);
     entry.sources = vec![SliceSourceBinding::bare("legacy")];
     let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("typescript", "/tmp"));
+    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp"));
     assert!(
         !plan
             .validate(None, None)
@@ -424,8 +428,8 @@ fn authority_override_checks() {
         ]),
     };
     let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("typescript", "/tmp/legacy"));
-    plan.sources.insert("runtime".into(), SourceBinding::path("captures", "/tmp/runtime"));
+    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp/legacy"));
+    plan.sources.insert("runtime".into(), SourceBinding::path("demo-source", "/tmp/runtime"));
     assert!(
         !plan
             .validate(None, None)
@@ -444,7 +448,7 @@ fn authority_override_checks() {
         ]),
     };
     let mut plan = plan_with_changes(vec![entry]);
-    plan.sources.insert("legacy".into(), SourceBinding::path("typescript", "/tmp"));
+    plan.sources.insert("legacy".into(), SourceBinding::path("demo-source", "/tmp"));
     let codes: Vec<&str> = plan
         .validate(None, None)
         .iter()

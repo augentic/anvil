@@ -228,13 +228,13 @@ mod tests {
 
     #[test]
     fn single_adapter_strips_version_suffix() {
-        let r = rule(Some(vec!["omnia@2.0.0".into()]));
-        assert_eq!(single_adapter(&r).as_deref(), Some("omnia"));
+        let r = rule(Some(vec!["demo-target@2.0.0".into()]));
+        assert_eq!(single_adapter(&r).as_deref(), Some("demo-target"));
     }
 
     #[test]
     fn single_adapter_none_when_multiple() {
-        let r = rule(Some(vec!["omnia".into(), "vectis".into()]));
+        let r = rule(Some(vec!["demo-target".into(), "other-target".into()]));
         assert!(single_adapter(&r).is_none());
     }
 

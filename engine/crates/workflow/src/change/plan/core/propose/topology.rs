@@ -199,7 +199,7 @@ mod tests {
     fn project_ref(name: &str, surface: Vec<Surface>) -> ProjectRef {
         ProjectRef {
             name: name.to_string(),
-            target: "omnia@1.0.0".to_string(),
+            target: "demo-target@1.0.0".to_string(),
             description: None,
             surface,
             recent: Vec::new(),
@@ -215,7 +215,7 @@ mod tests {
             projects: vec![RegistryProject {
                 name: name.to_string(),
                 url: ".".to_string(),
-                adapter: Some("omnia@1.0.0".to_string()),
+                adapter: Some("demo-target@1.0.0".to_string()),
                 description: None,
                 contracts: None,
                 greenfield_seed: Some(GreenfieldSeed {

@@ -835,7 +835,7 @@ mod unit {
     #[test]
     fn unknown_verb_and_flag_flagged() {
         let mut model = empty_model();
-        let body = "specify plan add my-slice --target omnia\n\
+        let body = "specify plan add my-slice --target demo-target\n\
                     specify plan destroy my-slice\n\
                     specify plan add my-slice --bogus\n";
         model.fenced_blocks = vec![block("docs/a.md", "bash", body)];

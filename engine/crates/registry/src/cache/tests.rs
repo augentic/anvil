@@ -15,8 +15,8 @@ fn project_scope() -> ExtensionScope {
 fn plugin_target_scope() -> ExtensionScope {
     ExtensionScope::Plugin {
         axis: Axis::Target,
-        plugin_slug: "contracts".to_string(),
-        capability_dir: PathBuf::from("/adapters/contracts"),
+        plugin_slug: "demo-target".to_string(),
+        capability_dir: PathBuf::from("/adapters/demo-target"),
     }
 }
 
@@ -88,7 +88,7 @@ fn scope_segment_rejects_empty() {
     assert_eq!(scope_segment(&project_scope()).expect("project segment"), "project--demo");
     assert_eq!(
         scope_segment(&plugin_target_scope()).expect("plugin segment"),
-        "adapter--target--contracts"
+        "adapter--target--demo-target"
     );
     let empty = ExtensionScope::Project {
         project_name: String::new(),
@@ -106,15 +106,19 @@ fn scope_segment_rejects_empty() {
 fn sidecar_round_trips_rejects_invalid() {
     let root = scratch_dir("sidecar");
     let path = root.join(SIDECAR_FILENAME);
-    let sidecar =
-        fixed_sidecar(&project_scope(), "contract", "1.0.0", "https://example.test/contract.wasm");
+    let sidecar = fixed_sidecar(
+        &project_scope(),
+        "demo-tool",
+        "1.0.0",
+        "https://example.test/demo-tool.wasm",
+    );
 
     write_sidecar(&path, &sidecar).expect("write sidecar");
     assert_eq!(read_sidecar(&path).expect("read sidecar"), Some(sidecar));
 
     fs::write(
         &path,
-        "schema-version: 2\nscope: project--demo\ntool-name: contract\ntool-version: 1.0.0\nsource: https://example.test/contract.wasm\nfetched-at: 2026-05-07T00:00:00Z\npermissions-snapshot:\n  read: []\n  write: []\n",
+        "schema-version: 2\nscope: project--demo\ntool-name: demo-tool\ntool-version: 1.0.0\nsource: https://example.test/demo-tool.wasm\nfetched-at: 2026-05-07T00:00:00Z\npermissions-snapshot:\n  read: []\n  write: []\n",
     )
     .expect("write invalid sidecar");
     assert!(matches!(
@@ -137,9 +141,9 @@ fn cache_status_distinguishes_states() {
     assert_eq!(
         status(
             &project_scope(),
-            "contract",
+            "demo-tool",
             "1.0.0",
-            "https://example.test/contract.wasm",
+            "https://example.test/demo-tool.wasm",
             Some("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
         )
         .expect("cold status"),
@@ -147,16 +151,16 @@ fn cache_status_distinguishes_states() {
     );
     write_cached_version(
         &project_scope(),
-        "contract",
+        "demo-tool",
         "1.0.0",
-        "https://example.test/contract.wasm",
+        "https://example.test/demo-tool.wasm",
     );
     assert_eq!(
         status(
             &project_scope(),
-            "contract",
+            "demo-tool",
             "1.0.0",
-            "https://example.test/contract.wasm",
+            "https://example.test/demo-tool.wasm",
             Some("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
         )
         .expect("hit status"),
@@ -165,9 +169,9 @@ fn cache_status_distinguishes_states() {
     assert_eq!(
         status(
             &project_scope(),
-            "contract",
+            "demo-tool",
             "1.0.0",
-            "https://example.test/contract.wasm",
+            "https://example.test/demo-tool.wasm",
             Some("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
         )
         .expect("changed status"),
@@ -179,7 +183,7 @@ fn cache_status_distinguishes_states() {
 fn stage_and_install_replaces_existing() {
     let root = scratch_dir("stage");
     let staged = root.join("staged");
-    let dest = root.join("cache").join("project--demo").join("contract").join("1.0.0");
+    let dest = root.join("cache").join("project--demo").join("demo-tool").join("1.0.0");
     fs::create_dir_all(staged.join("nested")).expect("create staged");
     fs::write(staged.join(MODULE_FILENAME), b"new").expect("write module");
     fs::write(staged.join("nested").join("probe.txt"), b"probe").expect("write nested");
@@ -209,27 +213,27 @@ fn scan_for_gc_isolates_scope() {
 
     let kept_project = write_cached_version(
         &project_scope(),
-        "contract",
+        "demo-tool",
         "1.0.0",
-        "https://example.test/contract.wasm",
+        "https://example.test/demo-tool.wasm",
     );
     let stale_project = write_cached_version(
         &project_scope(),
-        "contract",
+        "demo-tool",
         "1.1.0",
-        "https://example.test/contract-new.wasm",
+        "https://example.test/demo-tool-new.wasm",
     );
     let stale_adapter = write_cached_version(
         &plugin_target_scope(),
-        "contract",
+        "demo-tool",
         "1.0.0",
-        "https://example.test/contract.wasm",
+        "https://example.test/demo-tool.wasm",
     );
 
     let kept = HashSet::from([(
-        "contract".to_string(),
+        "demo-tool".to_string(),
         "1.0.0".to_string(),
-        "https://example.test/contract.wasm".to_string(),
+        "https://example.test/demo-tool.wasm".to_string(),
     )]);
 
     let project_gc = scan_for_gc(&project_scope(), &kept).expect("project gc");
@@ -260,7 +264,7 @@ fn tool_dir_rejects_traversal_segments() {
         );
         assert!(
             matches!(
-                tool_dir(&scope, "contract", bad),
+                tool_dir(&scope, "demo-tool", bad),
                 Err(ExtensionError::Diag {
                     code: "tool-resolver",
                     ..

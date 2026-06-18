@@ -180,9 +180,9 @@ fn schema_accepts_template_sources() {
         serde_json::from_str(EXTENSION_JSON_SCHEMA).expect("schema parses");
     let validator = jsonschema::validator_for(&schema).expect("schema compiles");
     for case in [
-        json!({ "tools": [{ "name": "vectis", "version": "0.3.0", "source": "$PROJECT_DIR/../cli/target/vectis.wasm" }] }),
-        json!({ "tools": [{ "name": "vectis", "version": "0.3.0", "source": "$PROJECT_DIR/tools/vectis.wasm" }] }),
-        json!({ "tools": [{ "name": "vectis", "version": "0.3.0", "source": "$CAPABILITY_DIR/bin/vectis.wasm" }] }),
+        json!({ "tools": [{ "name": "demo-tool", "version": "0.3.0", "source": "$PROJECT_DIR/../cli/target/demo-tool.wasm" }] }),
+        json!({ "tools": [{ "name": "demo-tool", "version": "0.3.0", "source": "$PROJECT_DIR/tools/demo-tool.wasm" }] }),
+        json!({ "tools": [{ "name": "demo-tool", "version": "0.3.0", "source": "$CAPABILITY_DIR/bin/demo-tool.wasm" }] }),
     ] {
         assert!(validator.is_valid(&case), "schema should accept template source: {case}");
     }
@@ -191,9 +191,11 @@ fn schema_accepts_template_sources() {
 #[test]
 fn template_source_passes_validation() {
     let tool = Extension {
-        name: "vectis".to_string(),
+        name: "demo-tool".to_string(),
         version: "0.3.0".to_string(),
-        source: ExtensionSource::TemplatePath("$PROJECT_DIR/../cli/target/vectis.wasm".to_string()),
+        source: ExtensionSource::TemplatePath(
+            "$PROJECT_DIR/../cli/target/demo-tool.wasm".to_string(),
+        ),
         sha256: None,
         permissions: ExtensionPermissions {
             read: vec!["$PROJECT_DIR".to_string()],
@@ -222,9 +224,9 @@ fn lifecycle_state_boundary() {
 #[test]
 fn template_capability_dir_rejected() {
     let tool = Extension {
-        name: "vectis".to_string(),
+        name: "demo-tool".to_string(),
         version: "0.3.0".to_string(),
-        source: ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/vectis.wasm".to_string()),
+        source: ExtensionSource::TemplatePath("$CAPABILITY_DIR/bin/demo-tool.wasm".to_string()),
         sha256: None,
         permissions: ExtensionPermissions::default(),
     };

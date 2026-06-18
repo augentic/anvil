@@ -271,8 +271,8 @@ mod tests {
 
     #[test]
     fn scratch_keys_under_survey_segment() {
-        let scratch = scratch_dir(Path::new("/proj"), "documentation", &SourceOp::Survey);
-        assert_eq!(scratch, Path::new("/proj/.specify/scratch/documentation/survey"));
+        let scratch = scratch_dir(Path::new("/proj"), "demo-docs", &SourceOp::Survey);
+        assert_eq!(scratch, Path::new("/proj/.specify/scratch/demo-docs/survey"));
     }
 
     #[test]
@@ -280,15 +280,18 @@ mod tests {
         let op = SourceOp::Extract {
             slice: "identity-password-reset".to_string(),
         };
-        let scratch = scratch_dir(Path::new("/proj"), "typescript", &op);
-        assert_eq!(scratch, Path::new("/proj/.specify/scratch/typescript/identity-password-reset"));
+        let scratch = scratch_dir(Path::new("/proj"), "demo-source", &op);
+        assert_eq!(
+            scratch,
+            Path::new("/proj/.specify/scratch/demo-source/identity-password-reset")
+        );
     }
 
     #[test]
     fn path_bound_mounts_four_roots() {
         let source = PathBuf::from("/repo/legacy");
-        let capability = PathBuf::from("/proj/adapters/sources/typescript");
-        let scratch = PathBuf::from("/proj/.specify/scratch/typescript/s");
+        let capability = PathBuf::from("/proj/adapters/sources/demo-source");
+        let scratch = PathBuf::from("/proj/.specify/scratch/demo-source/s");
         let layout = SandboxLayout::new(Some(&source), &capability, scratch.clone());
 
         assert_eq!(layout.source.var, "SOURCE_DIR");

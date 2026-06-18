@@ -228,7 +228,7 @@ mod tests {
     use crate::test_support::{EnvGuard, env_lock, scratch_dir};
 
     fn package_ref() -> PackageRef {
-        "specify:contract".parse().expect("parse first-party package ref")
+        "specify:demo-tool".parse().expect("parse first-party package ref")
     }
 
     fn third_party_ref() -> PackageRef {

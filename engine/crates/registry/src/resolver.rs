@@ -289,7 +289,7 @@ mod tests {
         assert_ne!(project_resolved.bytes_path, adapter_resolved.bytes_path);
         assert!(project_resolved.bytes_path.to_string_lossy().contains("project--demo"));
         assert!(
-            adapter_resolved.bytes_path.to_string_lossy().contains("adapter--target--contracts")
+            adapter_resolved.bytes_path.to_string_lossy().contains("adapter--target--demo-target")
         );
     }
 
@@ -300,7 +300,7 @@ mod tests {
         let scope = project_scope();
         let package = PackageRequest {
             namespace: "specify".to_string(),
-            name: "contract".to_string(),
+            name: "demo-tool".to_string(),
             version: "1.0.0".to_string(),
         };
         let declared = tool(ExtensionSource::Package(package), None);
@@ -336,9 +336,9 @@ mod tests {
         )
         .expect("read sidecar")
         .expect("sidecar exists");
-        assert_eq!(sidecar.source, "specify:contract@1.0.0");
+        assert_eq!(sidecar.source, "specify:demo-tool@1.0.0");
         let sidecar_package = sidecar.package.as_ref().expect("sidecar package");
-        assert_eq!(sidecar_package.name.as_str(), "specify:contract");
+        assert_eq!(sidecar_package.name.as_str(), "specify:demo-tool");
         assert_eq!(sidecar_package.version.as_str(), "1.0.0");
         assert_eq!(sidecar_package.registry.as_str(), "augentic.io");
 
@@ -353,11 +353,13 @@ mod tests {
         let project_dir = scratch_dir("resolver-template-project");
         let wasm_dir = project_dir.join("tools");
         fs::create_dir_all(&wasm_dir).expect("create tools dir");
-        fs::write(wasm_dir.join("vectis.wasm"), b"template-bytes").expect("write wasm");
+        fs::write(wasm_dir.join("demo-target.wasm"), b"template-bytes").expect("write wasm");
 
         let scope = project_scope();
-        let declared =
-            tool(ExtensionSource::TemplatePath("$PROJECT_DIR/tools/vectis.wasm".to_string()), None);
+        let declared = tool(
+            ExtensionSource::TemplatePath("$PROJECT_DIR/tools/demo-target.wasm".to_string()),
+            None,
+        );
 
         let _env = cache_env(&cache_dir);
 
@@ -372,11 +374,13 @@ mod tests {
         let project_dir = scratch_dir("resolver-template-parent-project");
         let sibling_dir = project_dir.parent().expect("parent").join("sibling-cli");
         fs::create_dir_all(&sibling_dir).expect("create sibling dir");
-        fs::write(sibling_dir.join("vectis.wasm"), b"sibling-bytes").expect("write wasm");
+        fs::write(sibling_dir.join("demo-target.wasm"), b"sibling-bytes").expect("write wasm");
 
         let scope = project_scope();
         let declared = tool(
-            ExtensionSource::TemplatePath("$PROJECT_DIR/../sibling-cli/vectis.wasm".to_string()),
+            ExtensionSource::TemplatePath(
+                "$PROJECT_DIR/../sibling-cli/demo-target.wasm".to_string(),
+            ),
             None,
         );
 

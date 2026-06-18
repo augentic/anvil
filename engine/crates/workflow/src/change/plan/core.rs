@@ -53,16 +53,16 @@ mod test_fixtures {
     pub const PLAN_EXAMPLE_YAML: &str = r"name: platform-v2
 sources:
   monolith:
-    adapter: typescript
+    adapter: demo-source
     path: /path/to/legacy-codebase
   orders:
-    adapter: typescript
+    adapter: demo-source
     path: git@github.com:org/orders-service.git
   payments:
-    adapter: typescript
+    adapter: demo-source
     path: git@github.com:org/payments-service.git
   frontend:
-    adapter: typescript
+    adapter: demo-source
     path: git@github.com:org/web-app.git
 slices:
   - name: user-registration

@@ -242,9 +242,9 @@ mod tests {
             detection: Detection::default(),
             description: Some("Rust services".to_string()),
             adapter: Some(Adapter {
-                name: "omnia".to_string(),
+                name: "demo-target".to_string(),
                 version: semver::Version::new(1, 0, 0),
-                description: "Omnia Rust WASM workflow".to_string(),
+                description: "Demo target workflow".to_string(),
                 briefs: vec![
                     Brief {
                         phase: "define".to_string(),
@@ -263,7 +263,7 @@ mod tests {
                 path: ".specify/rules/proposal.md".to_string(),
             }],
             declared_tools: vec![Extension {
-                name: "contract".to_string(),
+                name: "demo-tool".to_string(),
                 version: "1.0.0".to_string(),
             }],
             active_slices: vec!["alpha".to_string(), "zeta".to_string()],
@@ -315,21 +315,22 @@ mod tests {
         input.dependencies = vec![
             Dep {
                 name: "zeta".to_string(),
-                adapter: "omnia@1.0.0".to_string(),
+                adapter: "demo-target@1.0.0".to_string(),
                 url: "../zeta".to_string(),
                 description: None,
             },
             Dep {
                 name: "alpha".to_string(),
-                adapter: "omnia@1.0.0".to_string(),
+                adapter: "demo-target@1.0.0".to_string(),
                 url: "../alpha".to_string(),
                 description: None,
             },
         ];
 
         let rendered = render_body(&input);
-        let alpha = rendered.find("`alpha` @ `omnia@1.0.0`").expect("alpha dependency rendered");
-        let zeta = rendered.find("`zeta` @ `omnia@1.0.0`").expect("zeta dependency rendered");
+        let alpha =
+            rendered.find("`alpha` @ `demo-target@1.0.0`").expect("alpha dependency rendered");
+        let zeta = rendered.find("`zeta` @ `demo-target@1.0.0`").expect("zeta dependency rendered");
 
         assert!(alpha < zeta, "dependencies must render in sorted order:\n{rendered}");
     }
@@ -339,7 +340,7 @@ mod tests {
         let mut input = regular_input();
         input.dependencies = vec![Dep {
             name: "alpha".to_string(),
-            adapter: "omnia@1.0.0".to_string(),
+            adapter: "demo-target@1.0.0".to_string(),
             url: "../alpha".to_string(),
             description: Some("Alpha service".to_string()),
         }];
@@ -347,7 +348,9 @@ mod tests {
         let rendered = render_body(&input);
 
         assert!(
-            rendered.contains("`alpha` @ `omnia@1.0.0` -> `../alpha`. Description: Alpha service."),
+            rendered.contains(
+                "`alpha` @ `demo-target@1.0.0` -> `../alpha`. Description: Alpha service."
+            ),
             "dependency description must render when present:\n{rendered}"
         );
     }

@@ -95,7 +95,7 @@ fn shared_rules_from_explicit_rules_root() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
 
     assert_eq!(result.len(), 1, "exactly one shared rule expected");
@@ -125,7 +125,7 @@ fn core_rules_from_explicit_rules_root() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds with core pack");
 
     let core = result.iter().find(|e| e.rule.id == "CORE-001").expect("core rule present");
@@ -150,7 +150,7 @@ fn rules_root_probe_falls_back() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), None, "omnia", &sources))
+    let result = resolve(&inputs(project.path(), None, "demo-target", &sources))
         .expect("resolve succeeds in monorepo layout");
 
     assert_eq!(result.len(), 1);
@@ -167,7 +167,7 @@ fn rules_root_probe_falls_back() {
 fn rules_root_required_when_no_probe() {
     let project = TempDir::new().expect("project");
     let sources = no_sources();
-    let err = resolve(&inputs(project.path(), None, "omnia", &sources)).unwrap_err();
+    let err = resolve(&inputs(project.path(), None, "demo-target", &sources)).unwrap_err();
     assert!(matches!(err, ResolveError::RulesRootRequired), "got: {err:?}");
 }
 
@@ -186,7 +186,7 @@ fn shared_rules_from_codex_cache() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), None, "omnia", &sources))
+    let result = resolve(&inputs(project.path(), None, "demo-target", &sources))
         .expect("resolve succeeds via the distributed codex cache");
 
     assert_eq!(result.len(), 1);
@@ -216,7 +216,7 @@ fn monorepo_wins_over_codex_cache() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), None, "omnia", &sources))
+    let result = resolve(&inputs(project.path(), None, "demo-target", &sources))
         .expect("resolve succeeds choosing the monorepo root");
 
     assert_eq!(result.len(), 1, "only the monorepo tree should be walked");
@@ -242,7 +242,7 @@ fn explicit_root_wins_over_codex_cache() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds choosing the explicit rules root");
 
     assert_eq!(result.len(), 1, "only the explicit rules root should be walked");
@@ -262,23 +262,23 @@ fn target_overlay_from_project_local() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
-        "Omnia overlay",
+        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
+        "Demo overlay",
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
 
     assert_eq!(result.len(), 2);
     let shared = result.iter().find(|e| e.rule.id == "UNI-001").expect("shared present");
-    let target = result.iter().find(|e| e.rule.id == "OMNIA-001").expect("target present");
+    let target = result.iter().find(|e| e.rule.id == "ORG-001").expect("target present");
     assert_eq!(shared.origin, Origin::Shared);
     assert_eq!(shared.path_root, PathRoot::RulesRoot);
     assert_eq!(target.origin, Origin::Target);
     assert_eq!(target.path_root, PathRoot::ProjectDir);
-    assert_eq!(target.path, "adapters/targets/omnia/rules/omnia-001.md");
+    assert_eq!(target.path, "adapters/targets/demo-target/rules/org-001.md");
 }
 
 /// Test 5: rules-root fallback — project-local rung empty, manifest
@@ -293,19 +293,19 @@ fn target_overlay_falls_back_to_rules_root() {
         "Shared universal",
     );
     write_rule(
-        &rules_root.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
-        "Omnia fallback overlay",
+        &rules_root.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
+        "Demo fallback overlay",
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
 
-    let target = result.iter().find(|e| e.rule.id == "OMNIA-001").expect("target present");
+    let target = result.iter().find(|e| e.rule.id == "ORG-001").expect("target present");
     assert_eq!(target.origin, Origin::Target);
     assert_eq!(target.path_root, PathRoot::RulesRoot);
-    assert_eq!(target.path, "adapters/targets/omnia/rules/omnia-001.md");
+    assert_eq!(target.path, "adapters/targets/demo-target/rules/org-001.md");
 }
 
 /// Test 6: source overlay from project-local rung. Confirms
@@ -320,19 +320,19 @@ fn source_overlay_from_project_local() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/sources/typescript/rules/src-001.md"),
+        &project.path().join("adapters/sources/demo-source/rules/src-001.md"),
         "SRC-001",
-        "TS source overlay",
+        "Source overlay",
     );
 
-    let sources = vec!["typescript".to_string()];
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let sources = vec!["demo-source".to_string()];
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
 
     let src = result.iter().find(|e| e.rule.id == "SRC-001").expect("source present");
     assert_eq!(src.origin, Origin::Source);
     assert_eq!(src.path_root, PathRoot::ProjectDir);
-    assert_eq!(src.path, "adapters/sources/typescript/rules/src-001.md");
+    assert_eq!(src.path, "adapters/sources/demo-source/rules/src-001.md");
 }
 
 /// Test 7: multiple bound source adapters each contribute their
@@ -347,18 +347,18 @@ fn multiple_source_overlays() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/sources/typescript/rules/src-001.md"),
+        &project.path().join("adapters/sources/demo-source/rules/src-001.md"),
         "SRC-001",
-        "TS overlay",
+        "Source overlay",
     );
     write_rule(
-        &project.path().join("adapters/sources/documentation/rules/src-002.md"),
+        &project.path().join("adapters/sources/demo-docs/rules/src-002.md"),
         "SRC-002",
         "Docs overlay",
     );
 
-    let sources = vec!["typescript".to_string(), "documentation".to_string()];
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let sources = vec!["demo-source".to_string(), "demo-docs".to_string()];
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
 
     let source_entries: Vec<_> = result.iter().filter(|e| e.origin == Origin::Source).collect();
@@ -381,19 +381,19 @@ fn cache_overlay_when_local_missing() {
         "Shared universal",
     );
     write_rule(
-        &manifest_cache(project.path()).join("sources/typescript/rules/src-001.md"),
+        &manifest_cache(project.path()).join("sources/demo-source/rules/src-001.md"),
         "SRC-001",
-        "TS cache overlay",
+        "Source cache overlay",
     );
 
-    let sources = vec!["typescript".to_string()];
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let sources = vec!["demo-source".to_string()];
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
 
     let src = result.iter().find(|e| e.rule.id == "SRC-001").expect("source present");
     assert_eq!(src.origin, Origin::Source);
     assert_eq!(src.path_root, PathRoot::Cache);
-    assert_eq!(src.path, "manifests/sources/typescript/rules/src-001.md");
+    assert_eq!(src.path, "manifests/sources/demo-source/rules/src-001.md");
 }
 
 /// Test 9: duplicate id across overlays — same `UNI-001` declared
@@ -409,14 +409,14 @@ fn duplicate_rule_id_errors() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/uni-001-clone.md"),
+        &project.path().join("adapters/targets/demo-target/rules/uni-001-clone.md"),
         "UNI-001",
-        "Clone in omnia overlay",
+        "Clone in demo overlay",
     );
 
     let sources = no_sources();
-    let err =
-        resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources)).unwrap_err();
+    let err = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
+        .unwrap_err();
     match err {
         ResolveError::DuplicateRuleId { id, paths } => {
             assert_eq!(id, "UNI-001");
@@ -425,7 +425,7 @@ fn duplicate_rule_id_errors() {
                 "duplicate paths must cite the shared file: {paths}",
             );
             assert!(
-                paths.contains("adapters/targets/omnia/rules/uni-001-clone.md"),
+                paths.contains("adapters/targets/demo-target/rules/uni-001-clone.md"),
                 "duplicate paths must cite the target overlay file: {paths}",
             );
         }
@@ -451,7 +451,7 @@ fn readme_md_is_skipped() {
     fs::write(&readme, "# Shared codex\n\nNotes about shared rules.\n").expect("write readme");
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds with README present");
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].rule.id, "UNI-001");
@@ -470,22 +470,22 @@ fn monorepo_split_anchors() {
         "Shared",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
+        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
         "Target",
     );
     write_rule(
-        &project.path().join("adapters/sources/typescript/rules/src-001.md"),
+        &project.path().join("adapters/sources/demo-source/rules/src-001.md"),
         "SRC-001",
         "Source",
     );
 
-    let sources = vec!["typescript".to_string()];
-    let result = resolve(&inputs(project.path(), None, "omnia", &sources))
+    let sources = vec!["demo-source".to_string()];
+    let result = resolve(&inputs(project.path(), None, "demo-target", &sources))
         .expect("resolve succeeds in monorepo layout");
 
     let shared = result.iter().find(|e| e.rule.id == "UNI-001").expect("shared present");
-    let target = result.iter().find(|e| e.rule.id == "OMNIA-001").expect("target present");
+    let target = result.iter().find(|e| e.rule.id == "ORG-001").expect("target present");
     let source = result.iter().find(|e| e.rule.id == "SRC-001").expect("source present");
 
     assert_eq!(shared.path_root, PathRoot::RulesRoot);
@@ -507,12 +507,12 @@ fn monorepo_no_double_fallback_walk() {
         "Shared",
     );
     write_rule(
-        &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
-        "OMNIA-001",
+        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        "ORG-001",
         "Target",
     );
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), None, "omnia", &sources))
+    let result = resolve(&inputs(project.path(), None, "demo-target", &sources))
         .expect("resolve must not produce a duplicate-id error");
     assert_eq!(result.len(), 2);
 }
@@ -535,7 +535,7 @@ fn discovery_is_non_recursive() {
     );
 
     let sources = no_sources();
-    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources))
+    let result = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
         .expect("resolve succeeds");
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].rule.id, "UNI-001");
@@ -572,8 +572,8 @@ fn parse_error_includes_path() {
     fs::write(&bad_path, "no frontmatter here\n").expect("write broken rule");
 
     let sources = no_sources();
-    let err =
-        resolve(&inputs(project.path(), Some(rules_root.path()), "omnia", &sources)).unwrap_err();
+    let err = resolve(&inputs(project.path(), Some(rules_root.path()), "demo-target", &sources))
+        .unwrap_err();
     match err {
         ResolveError::Parse { path, .. } => {
             assert_eq!(path, bad_path);
@@ -603,7 +603,7 @@ fn ch13_inputs_are_accepted_but_ignored() {
     let inputs = ResolveInputs {
         project_dir: project.path(),
         rules_root: Some(rules_root.path()),
-        target_adapter: "omnia",
+        target_adapter: "demo-target",
         source_adapters: &sources,
         artifact_paths: &artifact_paths,
         languages: &languages,

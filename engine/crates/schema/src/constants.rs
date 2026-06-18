@@ -49,7 +49,8 @@ pub const PROPOSAL_JSON_SCHEMA: &str =
 /// the persisted file: kernel-owned and header fields are optional so
 /// the kernel re-derives/stamps them on projection. Provenance is
 /// carried inline; the provenance view is projected on demand.
-pub const SLICE_MODEL_JSON_SCHEMA: &str = include_str!("../../../../schemas/slice/model.schema.json");
+pub const SLICE_MODEL_JSON_SCHEMA: &str =
+    include_str!("../../../../schemas/slice/model.schema.json");
 
 /// Schema for the agent synthesis-response envelope.
 ///

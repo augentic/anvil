@@ -54,7 +54,7 @@ fn install_layer_is_idempotent() {
 
 #[test]
 fn entry_key_is_name_at_version() {
-    assert_eq!(entry_key(Path::new("/store/omnia@1.2.0")).expect("key"), "omnia@1.2.0");
+    assert_eq!(entry_key(Path::new("/store/demo-target@1.2.0")).expect("key"), "demo-target@1.2.0");
 }
 
 #[test]

@@ -98,7 +98,7 @@ fn check_filter_cases(cases: Vec<Case>) {
         let paths: Vec<PathBuf> = case.paths.iter().map(PathBuf::from).collect();
         let languages: Vec<String> = case.languages.iter().map(|s| (*s).to_string()).collect();
         let inputs =
-            make_inputs("omnia", &sources, &paths, &languages, false, case.include_unmatched);
+            make_inputs("demo-target", &sources, &paths, &languages, false, case.include_unmatched);
         let out = filter(vec![entry], &inputs);
         assert_eq!(out.len(), usize::from(case.pass), "case {}", case.name);
     }
@@ -122,8 +122,8 @@ fn adapter_dimension_matrix() {
         },
         // `adapters` matches the caller's target adapter.
         Case {
-            name: "OMNIA-001",
-            applicability: Some(app(Some(vec!["omnia"]), None, None, None)),
+            name: "ORG-001",
+            applicability: Some(app(Some(vec!["demo-target"]), None, None, None)),
             sources: &[],
             paths: &[],
             languages: &[],
@@ -133,8 +133,8 @@ fn adapter_dimension_matrix() {
         // `adapters` matches a bound source adapter.
         Case {
             name: "SRC-001",
-            applicability: Some(app(Some(vec!["typescript"]), None, None, None)),
-            sources: &["typescript"],
+            applicability: Some(app(Some(vec!["demo-source"]), None, None, None)),
+            sources: &["demo-source"],
             paths: &[],
             languages: &[],
             include_unmatched: false,
@@ -142,18 +142,18 @@ fn adapter_dimension_matrix() {
         },
         // `adapters` populated but neither target nor source matches.
         Case {
-            name: "VEC-001",
-            applicability: Some(app(Some(vec!["vectis"]), None, None, None)),
+            name: "OTHER-001",
+            applicability: Some(app(Some(vec!["other-target"]), None, None, None)),
             sources: &[],
             paths: &[],
             languages: &[],
             include_unmatched: false,
             pass: false,
         },
-        // `omnia@1.0.0` on the rule matches bare `omnia` — v1 strips `@v<major>`.
+        // `demo-target@1.0.0` on the rule matches bare `demo-target` — v1 strips `@v<major>`.
         Case {
-            name: "OMNIA-002",
-            applicability: Some(app(Some(vec!["omnia@1.0.0"]), None, None, None)),
+            name: "ORG-002",
+            applicability: Some(app(Some(vec!["demo-target@1.0.0"]), None, None, None)),
             sources: &[],
             paths: &[],
             languages: &[],
@@ -270,11 +270,11 @@ fn paths_caller_absent_excluded_by_default() {
         Some(applicability_with(None, None, None, Some(vec!["**/*.rs"]))),
         None,
     );
-    let inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     let out = filter(vec![entry.clone()], &inputs);
     assert!(out.is_empty());
 
-    let inputs = make_inputs("omnia", &[], &[], &[], false, true);
+    let inputs = make_inputs("demo-target", &[], &[], &[], false, true);
     let out = filter(vec![entry], &inputs);
     assert_eq!(out.len(), 1);
 }
@@ -290,11 +290,11 @@ fn single_star_no_cross_separator() {
     );
 
     let matching = vec![PathBuf::from("src/lib.rs")];
-    let inputs = make_inputs("omnia", &[], &matching, &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &matching, &[], false, false);
     assert_eq!(filter(vec![entry.clone()], &inputs).len(), 1);
 
     let nested = vec![PathBuf::from("src/nested/lib.rs")];
-    let inputs = make_inputs("omnia", &[], &nested, &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &nested, &[], false, false);
     assert!(filter(vec![entry], &inputs).is_empty());
 }
 
@@ -305,16 +305,16 @@ fn single_star_no_cross_separator() {
 fn and_across_dimensions() {
     let entry = make_entry(
         "MULTI-001",
-        Some(applicability_with(Some(vec!["omnia"]), Some(vec!["rust"]), None, None)),
+        Some(applicability_with(Some(vec!["demo-target"]), Some(vec!["rust"]), None, None)),
         None,
     );
 
     let rust = vec!["rust".to_string()];
-    let inputs = make_inputs("omnia", &[], &[], &rust, false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &rust, false, false);
     assert_eq!(filter(vec![entry.clone()], &inputs).len(), 1);
 
     let ts = vec!["typescript".to_string()];
-    let inputs = make_inputs("omnia", &[], &[], &ts, false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &ts, false, false);
     assert!(filter(vec![entry], &inputs).is_empty());
 }
 
@@ -322,7 +322,7 @@ fn and_across_dimensions() {
 #[test]
 fn deprecated_filtered_by_default() {
     let entry = make_entry("DEP-001", None, Some(deprecation_meta()));
-    let inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     assert!(filter(vec![entry], &inputs).is_empty());
 }
 
@@ -331,7 +331,7 @@ fn deprecated_filtered_by_default() {
 #[test]
 fn deprecated_passes_when_flag_set() {
     let entry = make_entry("DEP-002", None, Some(deprecation_meta()));
-    let inputs = make_inputs("omnia", &[], &[], &[], true, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     let out = filter(vec![entry], &inputs);
     assert_eq!(out.len(), 1);
     assert!(out[0].rule.deprecated.is_some());
@@ -344,15 +344,15 @@ fn deprecated_passes_when_flag_set() {
 fn deprecation_runs_before_applicability() {
     let entry = make_entry(
         "DEP-003",
-        Some(applicability_with(Some(vec!["vectis"]), None, None, None)),
+        Some(applicability_with(Some(vec!["other-target"]), None, None, None)),
         Some(deprecation_meta()),
     );
-    let inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     assert!(filter(vec![entry.clone()], &inputs).is_empty());
 
     // With include_deprecated on, applicability still rejects the
     // rule because the adapter list does not match.
-    let inputs = make_inputs("omnia", &[], &[], &[], true, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     assert!(filter(vec![entry], &inputs).is_empty());
 }
 
@@ -366,7 +366,7 @@ fn malformed_glob_pattern_is_safe() {
         None,
     );
     let paths = vec![PathBuf::from("src/lib.rs")];
-    let inputs = make_inputs("omnia", &[], &paths, &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &paths, &[], false, false);
     let out = filter(vec![entry], &inputs);
     assert!(out.is_empty());
 }
@@ -376,7 +376,7 @@ fn malformed_glob_pattern_is_safe() {
 #[test]
 fn core_origin_excluded_by_default() {
     let entry = core_entry("CORE-001");
-    let inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     let out = filter(vec![entry], &inputs);
     assert!(out.is_empty(), "core rules must not appear without --include-core");
 }
@@ -387,7 +387,7 @@ fn core_origin_excluded_by_default() {
 #[test]
 fn core_origin_passes_when_flag_set() {
     let entry = core_entry("CORE-001");
-    let mut inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let mut inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     inputs.include_core = true;
     let out = filter(vec![entry], &inputs);
     assert_eq!(out.len(), 1);
@@ -401,12 +401,12 @@ fn core_origin_passes_when_flag_set() {
 fn core_filter_orthogonal() {
     let shared = make_entry("UNI-001", None, None);
     let core = core_entry("CORE-001");
-    let inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     let out = filter(vec![shared.clone(), core.clone()], &inputs);
     assert_eq!(out.len(), 1);
     assert_eq!(out[0].rule.id, "UNI-001");
 
-    let mut inputs = make_inputs("omnia", &[], &[], &[], false, false);
+    let mut inputs = make_inputs("demo-target", &[], &[], &[], false, false);
     inputs.include_core = true;
     let out = filter(vec![shared, core], &inputs);
     assert_eq!(out.len(), 2);
@@ -425,10 +425,10 @@ fn core_filter_runs_before_deprecation() {
         path_root: PathRoot::RulesRoot,
         path: "adapters/shared/rules/core/CORE-DEP.md".to_string(),
     };
-    let inputs = make_inputs("omnia", &[], &[], &[], true, false);
+    let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     assert!(filter(vec![entry.clone()], &inputs).is_empty());
 
-    let mut inputs = make_inputs("omnia", &[], &[], &[], true, false);
+    let mut inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     inputs.include_core = true;
     let out = filter(vec![entry], &inputs);
     assert_eq!(out.len(), 1);

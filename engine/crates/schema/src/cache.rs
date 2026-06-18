@@ -356,8 +356,8 @@ mod tests {
 
     #[test]
     fn store_entry_keys_by_name_and_version() {
-        let entry = adapter_store_entry("omnia", "1.2.0");
-        assert_eq!(entry.file_name().unwrap(), "omnia@1.2.0");
+        let entry = adapter_store_entry("demo-target", "1.2.0");
+        assert_eq!(entry.file_name().unwrap(), "demo-target@1.2.0");
         assert_eq!(entry.parent().unwrap(), adapter_store_root());
     }
 
@@ -365,10 +365,13 @@ mod tests {
     fn store_entry_distinct_per_pinned_identity() {
         // The store is keyed by the immutable identity, so two versions
         // of one adapter never collide and share no entry.
-        assert_ne!(adapter_store_entry("omnia", "1.2.0"), adapter_store_entry("omnia", "1.3.0"));
+        assert_ne!(
+            adapter_store_entry("demo-target", "1.2.0"),
+            adapter_store_entry("demo-target", "1.3.0")
+        );
         assert_eq!(
-            adapter_store_entry("omnia", "1.2.0"),
-            adapter_store_entry("omnia", "1.2.0"),
+            adapter_store_entry("demo-target", "1.2.0"),
+            adapter_store_entry("demo-target", "1.2.0"),
             "the same pinned identity is stable across calls"
         );
     }
@@ -378,14 +381,14 @@ mod tests {
         // RFC-48 D4: the verify-on-read sidecar must sit beside the entry,
         // never inside the tree `tree_content_digest` walks, so recording
         // it cannot perturb the entry's own digest.
-        let entry = adapter_store_entry("omnia", "1.2.0");
-        let meta = store_meta_path("omnia", "1.2.0");
+        let entry = adapter_store_entry("demo-target", "1.2.0");
+        let meta = store_meta_path("demo-target", "1.2.0");
         assert_eq!(meta.parent(), entry.parent(), "the sidecar is a sibling of the entry");
         assert!(
             !meta.starts_with(&entry),
             "the sidecar must not live inside the walked entry tree"
         );
-        assert_eq!(meta.file_name().expect("sidecar file name"), "omnia@1.2.0.meta");
+        assert_eq!(meta.file_name().expect("sidecar file name"), "demo-target@1.2.0.meta");
     }
 
     #[test]
@@ -396,9 +399,9 @@ mod tests {
         // same bytes hash identically across calls, and changing any
         // file's bytes changes the digest (RFC-48 D4 verify-on-read).
         let dir = tempfile::tempdir().expect("tempdir");
-        let entry = dir.path().join("omnia@1.0.0");
+        let entry = dir.path().join("demo-target@1.0.0");
         fs::create_dir_all(entry.join("briefs")).expect("mkdir briefs");
-        fs::write(entry.join("adapter.yaml"), b"name: omnia\n").expect("write manifest");
+        fs::write(entry.join("adapter.yaml"), b"name: demo-target\n").expect("write manifest");
         fs::write(entry.join("briefs/build.md"), b"# build\n").expect("write brief");
 
         let first = tree_content_digest(&entry);
