@@ -1,8 +1,4 @@
-//! Shared diagnostic fixtures for the crate's unit tests.
-#![allow(
-    dead_code,
-    reason = "fixtures consumed by sibling test modules; this file also compiles standalone"
-)]
+//! Shared diagnostic fixtures consumed by the sibling integration modules.
 
 use specify_diagnostics::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence,

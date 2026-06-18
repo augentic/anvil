@@ -7,7 +7,7 @@
 //! links exactly once. See
 //! [docs/standards/testing.md](../../../docs/standards/testing.md).
 
-#![allow(clippy::too_many_lines)]
+#![allow(clippy::too_many_lines, reason = "edge-matrix test fns are intentionally long")]
 
 #[path = "codes.rs"]
 mod codes;

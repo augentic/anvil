@@ -1,9 +1,0 @@
-# yaml-language-server: $schema=https://github.com/augentic/specify/raw/main/engine/schemas/source.schema.json
-name: screenshots
-version: "1.0.0"
-axis: source
-execution: agent
-description: Vision-assisted spatial inference over a directory of screen images. `survey` identifies one lead per screen from `$SOURCE_DIR`; `extract` emits `documentation`-authority Evidence with the `region` / `container` / `leaf` claim kinds for downstream targets (Vectis) that need layout structure.
-briefs:
-  extract: briefs/extract.md
-  survey: briefs/survey.md

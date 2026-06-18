@@ -12,6 +12,8 @@ mod common;
 mod adapter;
 #[path = "goldens.rs"]
 mod goldens;
+#[path = "materialize_scope.rs"]
+mod materialize_scope;
 #[path = "merge_slice.rs"]
 mod merge_slice;
 #[path = "plan_schema.rs"]
@@ -20,5 +22,7 @@ mod plan_schema;
 mod registry;
 #[path = "runner.rs"]
 mod runner;
+#[path = "upgrade.rs"]
+mod upgrade;
 #[path = "workspace.rs"]
 mod workspace;

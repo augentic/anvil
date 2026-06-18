@@ -60,7 +60,7 @@ Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **e
 ## Reference Documentation
 - **[references/design.md](references/design.md)** — Detection table, file structure, and constraints. The authoritative source for generated code structure.
 - **[references/adapters/](references/adapters/)** — Full TypeScript code for each adapter; generate code that matches these references exactly.
-- **[Capture output format](../../../../adapters/sources/captures/references/capture-format.md)** — directory layout wiretap output must satisfy for `captures` source binding (`tests/data/replays/<handler>/<scenario>.json`).
+- **[Capture output format](https://github.com/augentic/specify-adapters/blob/main/adapters/sources/captures/references/capture-format.md)** — directory layout wiretap output must satisfy for `captures` source binding (`tests/data/replays/<handler>/<scenario>.json`).
 
 ## Verification Checklist
 

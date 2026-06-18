@@ -8,6 +8,8 @@
 
 mod common;
 
+#[path = "adapter.rs"]
+mod adapter;
 #[path = "archive.rs"]
 mod archive;
 #[path = "bootstrap.rs"]

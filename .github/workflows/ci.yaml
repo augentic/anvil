@@ -25,9 +25,13 @@ jobs:
           fetch-depth: 1
 
       # Symlink integrity — fail early if a spec-runtime link is missing
-      # or broken (no materialised copies allowed).
+      # or broken (no materialised copies allowed). First-party adapter
+      # trees now live in augentic/specify-adapters, so `nullglob` lets
+      # this guard no-op cleanly until/unless an adapter tree returns to
+      # this repo (the adapters/shared/ rule pack carries no such links).
       - name: Verify symlinks
         run: |
+          shopt -s nullglob
           status=0
           for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
             if [ ! -L "$d" ]; then

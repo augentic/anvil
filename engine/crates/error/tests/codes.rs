@@ -1,4 +1,4 @@
-//! The WIRE_CODES table: sorted, unique, kebab-case.
+//! The `WIRE_CODES` table: sorted, unique, kebab-case.
 
 use specify_error::codes::WIRE_CODES;
 

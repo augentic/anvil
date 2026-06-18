@@ -50,8 +50,8 @@ These three shapes are the contract `/spec:execute` matches when invoking refine
 - [`../../references/synthesis/provenance.md`](../../references/synthesis/provenance.md) — the on-demand provenance projection (`specify slice provenance`): inline-in-`model.yaml` shape, truncation rule, `resolution` enum, and `resolution-trace` step names.
 - [`../../references/spec-format.md`](../../references/spec-format.md) — canonical heading conventions for requirement blocks and scenario headings in spec files.
 - [`../../references/artifact-conventions.md`](../../references/artifact-conventions.md) — Decision Records (optional): the `decisions/<slug>.md` front-matter + Nygard body format authored at refine.
-- [`adapters/targets/<target>/briefs/shape.md`](../../../../adapters/targets/) — per-target idiom guidance synthesis folds into `design.md`.
-- [`adapters/sources/<adapter>/briefs/extract.md`](../../../../adapters/sources/) — per-source-adapter extract brief invoked in step 4.
+- [`adapters/targets/<target>/briefs/shape.md`](https://github.com/augentic/specify-adapters/tree/main/adapters/targets/) — per-target idiom guidance synthesis folds into `design.md`.
+- [`adapters/sources/<adapter>/briefs/extract.md`](https://github.com/augentic/specify-adapters/tree/main/adapters/sources/) — per-source-adapter extract brief invoked in step 4.
 
 ## Guardrails
 

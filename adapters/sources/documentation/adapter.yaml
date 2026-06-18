@@ -1,9 +1,0 @@
-# yaml-language-server: $schema=https://github.com/augentic/specify/raw/main/engine/schemas/source.schema.json
-name: documentation
-version: "1.0.0"
-axis: source
-execution: agent
-briefs:
-  extract: briefs/extract.md
-  survey: briefs/survey.md
-description: Operator-bound documentation source. Walks a read-only directory under `$SOURCE_DIR`, surveys one lead per top-level concept, and extracts structured `documentation`-authority Evidence (requirement, criterion, decision, section claims).

@@ -24,3 +24,5 @@ mod spec;
 mod spec_provenance;
 #[path = "task.rs"]
 mod task;
+#[path = "validate.rs"]
+mod validate;

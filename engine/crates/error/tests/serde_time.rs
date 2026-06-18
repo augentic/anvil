@@ -1,4 +1,4 @@
-//! RFC 3339 serde helpers: serde_rfc3339 and serde_rfc3339_opt.
+//! RFC 3339 serde helpers: `serde_rfc3339` and `serde_rfc3339_opt`.
 
 mod rfc3339 {
     use jiff::Timestamp;

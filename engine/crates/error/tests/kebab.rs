@@ -1,4 +1,4 @@
-//! Kebab-case validators: is_kebab and is_kebab_leading_alpha.
+//! Kebab-case validators: `is_kebab` and `is_kebab_leading_alpha`.
 
 use specify_error::{is_kebab, is_kebab_leading_alpha};
 

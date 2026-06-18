@@ -9,6 +9,9 @@ description = "Specify neutral diagnostic substrate: the Diagnostic currency, fi
 categories = ["development-tools"]
 keywords = ["specify", "diagnostic", "lint"]
 readme = "../../README.md"
+# Integration tests link through the single `it` binary (tests/it.rs);
+# per-area files are pulled in via `#[path]` submodules.
+autotests = false
 
 [lints]
 workspace = true
@@ -23,3 +26,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 proptest = { workspace = true }
+
+[[test]]
+name = "it"
+path = "tests/it.rs"
