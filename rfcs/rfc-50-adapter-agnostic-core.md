@@ -48,9 +48,9 @@ Severity legend: **B** = behavioral branch (engine changes its behavior based on
 | Sev | Location | Coupling |
 | --- | --- | --- |
 | B | `engine/crates/workflow/src/init/adapter_uri.rs:337` `first_party_repo()` | Routes `"contracts" \| "vectis" => "specify-adapters"`, everything else (incl. `omnia` + all sources) `=> "specify"`. **After the migration this is wrong** — `omnia` and the sources now live in `specify-adapters`, so `specify init omnia` fetches a dead path. See [Phase 0](#phase-0-unblock-init-urgent). |
-| B | `engine/src/runtime/commands/slice/build.rs:66,147,179` | `const VECTIS_TARGET`/`VECTIS_TOOL`; `if manifest.name == VECTIS_TARGET { prepare_vectis_assets(...) }` runs Vectis asset auto-materialization in the build `prepare` phase. |
+| B | `engine/src/runtime/commands/slice/build.rs:66,147,179` | `const VECTIS_TARGET`/`VECTIS_TOOL`; `if manifest.name == VECTIS_TARGET { prepare_vectis_assets(...) }` runs Vectis asset auto-materialization in the build `prepare` phase. Resolution: fold `materialize → verify` into the target's own `build` brief (see [Mechanism](#mechanism-a-uniform-operation-envelope-runtime)). |
 | B | `engine/src/runtime/commands/catalog/infer.rs:64,131` | `specify catalog infer` is a thin host wrapper around the `vectis` WASI tool (`run_captured(ctx, VECTIS_TOOL, ...)`). The whole `specify catalog` command exists to drive one target. |
-| B | `engine/src/runtime/commands/slice.rs:28-40` | `artifact_classes()` hard-codes the "omnia default" `ArtifactClass` set (`specs` 3-way, `contracts` opaque). Comment already flags: *"future adapter manifests should drive this."* |
+| B | `engine/src/runtime/commands/slice.rs:28-40` | `artifact_classes()` hard-codes the "omnia default" `ArtifactClass` set (`specs` 3-way, `contracts` opaque) and `slice merge` string-filters `class_name == "specs"` / `"contracts"` on the wire (the merge engine itself is already name-agnostic — dispatch is on `MergeStrategy`). Resolution: keep the universal `spec.md`/decisions merge as core; move target-specific promotion behind the target's `merge` operation via a `MergeRequest`/`MergeReport` envelope (see [Mechanism](#mechanism-a-uniform-operation-envelope-runtime)). |
 | B | `engine/crates/workflow/src/design_system.rs` | Component catalog factoring described/scoped as the Vectis target's build behavior. |
 | B | `engine/crates/workflow/src/platform/{detect,bootstrap}.rs` + `crates/vectis-shell-detect/` | `vectis_missing_platforms`, `BootstrapContext`, and the in-process Crux shell-detection crate are Vectis-specific platform logic linked into the host (RFC-46). |
 | B | `engine/crates/workflow/src/change/plan/core/propose/topology.rs` | Bootstrap DAG inserts `app-foundation` / `bootstrap-<platform>` slices driven by Vectis platform capability. |
@@ -108,15 +108,32 @@ Severity legend: **B** = behavioral branch (engine changes its behavior based on
 | D | `README.md`, `REVIEW.md`, `branding/names*.md`, `update_names_again.py` / `fix_table_again.py` (root helper scripts) | Assorted named-adapter mentions. |
 | — | `rfcs/**` | Historical RFCs (e.g. `rfc-24-omnia.md`) legitimately name adapters; leave as history. |
 
-## Mechanism: replace name branches with adapter-declared capability
+## Mechanism: a uniform operation-envelope runtime
 
-The through-line for category **A** is to move each behavior from a host name-branch to a declaration on the adapter, then have the host dispatch generically.
+The through-line for category **A** is one idea: the host's contract with a target is a **wire ABI dispatched generically**, and the host holds only *core* artifacts. The end state is **no adapter-specific code at all** in `specify` (the `evals/` + fixtures exception aside).
 
-- **Build prepare hooks** (`prepare_vectis_assets`): add an optional `prepare` capability/extension to the target manifest. The host runs *whatever the bound target declares* in the `prepare` phase. No `if name == "vectis"`.
+**Why not a host-side Rust trait.** The obvious Rust move — `trait TargetAdapter` with an `impl` per adapter compiled into the host — is the *strongest* coupling, not the weakest: it reintroduces the compile-time dependency RFC-48/49 removed (adapters are out-of-tree, content-addressed, independently versioned artifacts), it cannot cross the WASI process boundary the adapters live behind, and it cannot represent the half of each adapter that is **agent-executed markdown** (the briefs). The host already has the correctly-shaped abstraction: one trait (`ToolRunner`) with a single generic impl (`WasiToolRunner`) that dispatches on a runtime tool *name*, not a type. The core defines one seam with one impl; *which* adapter is data.
+
+**The interface is the closed operation set + versioned envelopes.** The "methods" are the closed `TargetOperation` enum (`shape | build | merge`); each exchanges a fixed-shape, schema-validated JSON envelope, dispatched by a single host runtime that routes to the bound target's declared WASI tool (`execution: tool`) or its two-phase brief handoff (`execution: agent`). `build` is the reference implementation — the host assembles a `BuildRequest` from the manifest's declared `inputs[]`, hands off, and validates a `BuildReport`, never reading adapter internals. De-branching category A is, in one sentence: **make every operation look like `build`.** Each operation is two-phase with a dry-run / preview pass so the host keeps deterministic preview / drift checks by rendering *whatever the report says* — never an `if name ==` or a `class_name == "specs"` literal.
+
+**Core vs adapter — the partition that makes "no adapter-specific code" true and checkable.** "No adapter-specific code" does *not* mean "no merge/build code in the host." It means **no host code that names, or varies by, any adapter or its private taxonomy.** The host legitimately owns the workflow artifacts Specify itself defines; everything that varies by target is reached only through the fixed envelope + brief handoff.
+
+| Layer | Owns | Varies by adapter? |
+| --- | --- | --- |
+| **Core (host)** | Workflow artifacts Specify defines — `spec.md` / `model.yaml` / decisions / plan / slice lifecycle / archive — plus the generic operation-dispatch runtime | No — identical for every adapter |
+| **Adapter (out-of-tree)** | Opaque `contracts/`, generated crates, shells, design-system, and *how* they fold into the baseline | Yes — reached only via the fixed envelope + brief handoff |
+
+Litmus test for "done": a brand-new third-party target drops in with only `adapter.yaml` + briefs + an optional `adapter.wasm` and reaches every host code path identically, with no host change.
+
+The per-item moves, each an instance of that model:
+
+- **Build prepare hooks** (`prepare_vectis_assets`): fold the prepare work into the target's own `build` execution rather than adding a host `prepare` capability. The bound target's `build` brief opens with its own `materialize → verify` steps (for Vectis: materialize assets, then the asset / app-icon verification); the verify step fails fast on missing or contradictory exports — one step into the build, before any render/codegen — giving the same early failure the host gate provided, with no host precondition. The host keeps only its already-generic two-phase `prepare` (request assemble + schema-validate) / `finalize` (report validate + transition gate) seam and drops `VECTIS_TARGET`/`VECTIS_TOOL`, `prepare_vectis_assets`, and the entire `materialize_scope` module. A failed verify surfaces as a blocking finding the existing `finalize` already rejects (`target-build-success-with-blocking-finding` / `target-build-failed`). No `if name == "vectis"`, and no new host capability to declare or dispatch.
 - **`specify catalog`** (`vectis infer`): retire the bespoke command in favor of the existing generic `specify extension run <target> -- infer`, or make `catalog` dispatch to the bound target's declared `infer` tool. The host stops naming `vectis`.
-- **Artifact classes** (`omnia` default in `slice.rs`): let the target manifest declare its `ArtifactClass` set + `MergeStrategy` per class; the host reads it (the `artifact_class.rs` `name` field is already documented as diagnostics-only — the engine must not branch on it). Fall back to a neutral default (`specs` 3-way) when unspecified.
+- **Artifact classes** (`omnia` default in `slice.rs`): the merge engine is *already* name-agnostic (dispatch is on the closed `MergeStrategy`, never on `ArtifactClass::name`); the coupling is that `slice merge` is **target-blind** — it applies an unconditional omnia-shaped class set (`specs` 3-way + `contracts` opaque) to every slice and even string-filters `class_name == "specs"` / `"contracts"` on the wire. Resolution is **not** "let the manifest declare its `ArtifactClass` set for the host to interpret" — that re-teaches the host every adapter's taxonomy (coupling-by-config, the same trap as a host `prepare` capability). Instead: the host keeps the **universal** `spec.md` 3-way merge + decisions promotion as *core* behavior (these are core artifacts, not adapter-specific) and drops the hard-coded `contracts` class and the `class_name` wire filters; target-specific promotion (opaque `contracts/`, generated trees) moves behind the bound target's `merge` operation via a fixed `MergeRequest` / `MergeReport` envelope (sibling to `build`'s), two-phase with a preview pass so the host keeps deterministic preview / conflict-check by rendering the report's operations generically.
 - **Component factoring / `design_system.rs`**: move into the Vectis extension; the host exposes only the generic component-catalog plumbing (`components.yaml` validation already lives behind `specify slice validate` + the vectis extension).
 - **Platform detection / bootstrap** (RFC-46): the hardest. `vectis-shell-detect` is linked in-process for plan-time speed. Options: (a) keep an in-process detector but drive it from a target-declared `platforms` capability + a generic "shell present?" probe interface; (b) move detection behind the target extension and accept a plan-time WASI call. Track as its own follow-up; it need not block Phases 0–1.
+
+**The one thing no abstraction removes.** A target's briefs are prompts, not callable code, so the envelope captures only the deterministic seams (assemble request, validate report, gate lifecycle); the agent work crosses as a generic brief handoff. The contract is therefore hybrid by necessity — typed JSON envelopes for the deterministic boundary plus a brief handoff for the agent boundary — which is exactly why a single Rust trait is insufficient and the wire ABI is the real interface. (If the deterministic-tool seam ever wants a *typed* cross-process interface, the idiom is a WIT / Component-Model world each `execution: tool` adapter exports — a complement for tools, not a replacement for the handoff.)
 
 ## Phased plan
 
@@ -149,7 +166,7 @@ Update `adapter_uri/tests.rs` accordingly, and fix the `docs/reference/targets/o
 
 ### Phase 2 — De-branch the engine (category A)
 
-Apply the [Mechanism](#mechanism-replace-name-branches-with-adapter-declared-capability): prepare hooks, `catalog`, artifact classes, `design_system`. Each removal of a `== "vectis"` / `omnia` branch lands with the manifest-declaration that replaces it and an updated adapter manifest in `specify-adapters`. Platform detection/bootstrap (RFC-46) is tracked separately.
+Apply the [Mechanism](#mechanism-a-uniform-operation-envelope-runtime): prepare hooks, `catalog`, artifact classes, `design_system`. The headline engine work is the `MergeRequest` / `MergeReport` envelope that makes `merge` look like `build`, shrinking the host's `slice merge` to the universal `spec.md` / decisions merge plus generic operation dispatch — dropping the hard-coded `artifact_classes()` and the `class_name == "specs"` / `"contracts"` wire filters. Each removal of a `== "vectis"` / `omnia` branch lands with the adapter-side change that replaces it (an operation brief/tool, or the `materialize → verify` steps folded into the target's own `build` brief) and an updated adapter in `specify-adapters`. Platform detection/bootstrap (RFC-46) is tracked separately.
 
 ### Phase 3 — Documentation (category E)
 
@@ -166,6 +183,10 @@ Apply the [Mechanism](#mechanism-replace-name-branches-with-adapter-declared-cap
 
 - **Rule-pack home:** top-level `specify/rules/{core,universal}` (not `standards/`, not back into `specify-adapters`). `specify` keeps its own framework + universal packs for self-lint and for the consumer export contract.
 - **Sequencing:** content move first (done) → Phase 0 routing fix → Phase 1 empty `adapters/` → Phase 2 de-branch → Phases 3–4 prose. Engine de-branching and prose were intentionally deferred out of the content move to keep each step green.
+- **Prepare hook:** fold the Vectis `materialize → verify` steps into the target's own `build` execution (the build brief's opening steps) rather than adding a host `prepare` capability. The build's verify step preserves the early-failure guarantee with no host precondition gate, so the host drops the prepare hook and `materialize_scope` module outright instead of replacing them with new generic dispatch.
+- **Adapter interface = wire ABI, not a Rust trait.** A host-side `trait TargetAdapter` with per-adapter `impl`s is rejected: it reintroduces compile-time coupling, cannot cross the WASI boundary, and cannot represent agent-executed briefs. The interface is the closed `TargetOperation` set exchanging versioned JSON envelopes, dispatched by one generic host runtime (the `ToolRunner` / `WasiToolRunner` "one seam, one impl, dispatch-by-name" shape) that routes to the declared WASI tool or the two-phase brief handoff.
+- **Core vs adapter partition.** The host owns the workflow artifacts Specify defines (`spec.md` / `model.yaml` / decisions / plan / lifecycle / archive) plus the generic dispatch runtime; everything that varies by target is reached only through the fixed envelope + brief handoff. "No adapter-specific code" means no host code that names or varies by an adapter or its taxonomy — not "no merge/build code."
+- **Artifact classes / merge.** Keep the universal `spec.md` 3-way merge + decisions promotion in the host as core; drop the hard-coded `contracts` opaque class and the `class_name` wire filters. Target-specific promotion moves behind the bound target's `merge` operation via a `MergeRequest` / `MergeReport` envelope (sibling to `build`'s), two-phase with a preview pass. Do not have the manifest declare an `ArtifactClass` set for the host to interpret.
 
 ## Risks and invariants
 
@@ -176,13 +197,16 @@ Apply the [Mechanism](#mechanism-replace-name-branches-with-adapter-declared-cap
 
 ## Acceptance criteria
 
-1. **Engine.** No behavioral branch on a specific adapter name:
+1. **Engine — no adapter names *or* taxonomy.** The host carries no adapter-name literal and no adapter-*taxonomy* literal (artifact-class names used as routing, per-class baseline/staged dir assumptions) outside `evals/` + fixtures:
    ```bash
    rg -n -i 'omnia|vectis' engine/src engine/crates --type rust \
      -g '!**/tests/**' -g '!**/fixtures/**'
+   rg -n '"specs"|"contracts"' engine/src engine/crates --type rust \
+     -g '!**/tests/**' -g '!**/fixtures/**'
    ```
-   returns only generic/justified hits (and `contracts`/`contract` hits are confirmed to be the artifact-class / WASI-tool / cross-project usages, not the adapter).
+   returns only generic/justified hits (and `contracts`/`contract` hits are confirmed to be the artifact-class / WASI-tool / cross-project usages, not the adapter). A standing guard test enforces this, so "no adapter-specific code" stays a regression-proof property rather than a one-time cleanup.
 2. **Tree.** `specify/adapters/` no longer exists; the rule packs resolve from `rules/{core,universal}`; `make lint` is green.
 3. **Docs/plugins.** No dedicated per-adapter page or adapter-specific plugin prose remains in `specify` (beyond pointer stubs); `docs/SUMMARY.md` carries no per-adapter nav.
 4. **Prose.** `AGENTS.md`, `DECISIONS.md`, `.cursor/rules/project.mdc`, `README.md` use neutral role vocabulary; specific adapter names survive only as clearly-labelled examples or history.
 5. **Exception honored.** `evals/` and test fixtures may still name adapters; nothing in this RFC removes them.
+6. **Drop-in.** A synthetic third-party target with only `adapter.yaml` + briefs + an optional `adapter.wasm` reaches every host code path (`shape` / `build` / `merge`, prepare / preview / finalize) with no host change.
