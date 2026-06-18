@@ -15,8 +15,10 @@
 //! `kind: cross-reference` evaluator performs the set-difference against
 //! [`crate::lint::AdapterManifest`] itself, so the "missing manifest"
 //! join lives in the generic evaluator rather than baked into this
-//! extractor. The only path knowledge here is the `adapters/{sources,
-//! targets}` axis layout — mechanism, not policy.
+//! extractor. The only path knowledge here is the `{sources, targets}`
+//! axis layout, resolved through `crate::lint::layout` so a nested
+//! (`adapters/…`) or flattened framework root both work — mechanism,
+//! not policy.
 
 use std::path::Path;
 
@@ -28,7 +30,7 @@ use crate::lint::{AdapterAxis, AdapterDir};
 pub fn extract(project_dir: &Path) -> Vec<AdapterDir> {
     let mut dirs: Vec<AdapterDir> = Vec::new();
     for (axis_str, axis) in [("sources", AdapterAxis::Sources), ("targets", AdapterAxis::Targets)] {
-        let axis_dir = project_dir.join("adapters").join(axis_str);
+        let axis_dir = crate::lint::layout::framework_axis_dir(project_dir, axis_str);
         collect_axis(project_dir, &axis_dir, axis, &mut dirs);
     }
     dirs.sort_by(|a, b| a.path.cmp(&b.path));

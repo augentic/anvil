@@ -28,6 +28,7 @@ pub mod eval;
 mod framework_tools;
 pub mod ignore;
 pub mod index;
+mod layout;
 pub mod model;
 pub mod runner;
 

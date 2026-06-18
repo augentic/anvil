@@ -66,7 +66,7 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The contracts target adapter declares the WASI extension inline in [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/adapter.yaml) under the singular `extension` object. The declaration carries the run handle `contract` and a read-only permission on `$PROJECT_DIR/contracts`; the extension's bytes ship as a committed `adapter.wasm` built from the co-located `extension/` crate and bundled into the published adapter artifact.
+The contracts target adapter declares the WASI extension inline in [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/adapter.yaml) under the singular `extension` object. The declaration carries the run handle `contract` and a read-only permission on `$PROJECT_DIR/contracts`; the extension's bytes ship as a committed `adapter.wasm` built from the co-located `extension/` crate and bundled into the published adapter artifact.
 
 Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify extension run contract` resolves the extension from the installed adapter tree, applies the filesystem preopen, and runs it through the embedded WASI host.
 
@@ -76,6 +76,6 @@ During local development, project authors may override the adapter declaration w
 
 - [specify extension](extension.md) — the declared WASI tool runner surface.
 - [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
-- [`adapters/targets/contracts/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
+- [`adapters/targets/contracts/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
-- [`adapters/targets/contracts/briefs/merge.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.
+- [`adapters/targets/contracts/briefs/merge.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.

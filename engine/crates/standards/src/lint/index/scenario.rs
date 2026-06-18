@@ -103,7 +103,7 @@ fn body_scenario_id(body: &str) -> Option<String> {
 pub fn discover_scenario_candidates(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     collect_evals(&root.join("evals").join("scenarios"), &mut out);
-    collect_targets(&root.join("adapters").join("targets"), &mut out);
+    collect_targets(&crate::lint::layout::framework_axis_dir(root, "targets"), &mut out);
     collect_plugin_fixtures(&root.join("plugins"), &mut out);
     out.sort();
     out.dedup();

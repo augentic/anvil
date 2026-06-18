@@ -2,7 +2,7 @@
 
 Specify ships as a Cursor plugin marketplace. Each plugin provides skills and optional reference documents. This page covers the development workflow, marketplace manifest structure, shared references, and testing.
 
-> Domain-specific code generation lives in **target adapters** (`adapters/targets/<name>/`), not plugins. Omnia and Vectis are target adapters — see [`adapters/targets/omnia/`](https://github.com/augentic/specify-adapters/tree/main/adapters/targets/omnia/) and [`adapters/targets/vectis/`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/) — and their `shape` / `build` / `merge` briefs drive code generation directly without slash-command skills.
+> Domain-specific code generation lives in **target adapters** (`adapters/targets/<name>/`), not plugins. Omnia and Vectis are target adapters — see [`adapters/targets/omnia/`](https://github.com/augentic/specify-adapters/tree/main/targets/omnia/) and [`adapters/targets/vectis/`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/) — and their `shape` / `build` / `merge` briefs drive code generation directly without slash-command skills.
 
 ## Plugins overview
 

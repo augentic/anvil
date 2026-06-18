@@ -79,8 +79,8 @@ Optional frontmatter fields (`applicability`, `lint_mode`, `rule_hints`, `refere
 
 Target review briefs read this directory directly and apply each rule with target-specific heuristics:
 
-- **Omnia** — [`adapters/targets/omnia/briefs/build/review.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/omnia/briefs/build/review.md) phase 3 ("Universal checks (lead)") applies every `UNI-*` rule in the inventory above, skipping rules already covered by the SEC / COR / QUA specialists per the table in [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/omnia/references/review-categories.md).
-- **Vectis** — [`adapters/targets/vectis/references/review/universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/references/review/universal-checks.md) lists the Crux/Rust heuristics for each `UNI-*` and the overlaps to skip.
+- **Omnia** — [`adapters/targets/omnia/briefs/build/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build/review.md) phase 3 ("Universal checks (lead)") applies every `UNI-*` rule in the inventory above, skipping rules already covered by the SEC / COR / QUA specialists per the table in [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/references/review-categories.md).
+- **Vectis** — [`adapters/targets/vectis/references/review/universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/references/review/universal-checks.md) lists the Crux/Rust heuristics for each `UNI-*` and the overlaps to skip.
 - **Contracts** — [`docs/reference/targets/contracts.md`](../../../../docs/reference/targets/contracts.md) cites its overlay alongside this shared set.
 
 A review finding always carries:
@@ -94,7 +94,7 @@ Adapter overlays are preferred over the shared rule when both match — e.g. a h
 
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
-3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/references/review/universal-checks.md), etc.) — `make lint` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
+3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/references/review/universal-checks.md), etc.) — `make lint` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
 4. Run `make lint` (which forwards to `specify lint framework`). The relevant predicate is `framework::check::rules` in `specify-standards`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

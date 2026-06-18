@@ -4,11 +4,13 @@
 
 ## Abstract
 
-Adapters are invoked today through the generic `wasi:cli/run` world: the host packs **argv**, reads an **exit code**, and exchanges data as **stdout/stderr JSON** plus **preopened directories**. Operation semantics live in argv conventions and in JSON envelopes validated *at runtime* against embedded `*.schema.json` constants. This RFC proposes replacing that loose contract with a typed **WebAssembly Component Model** contract: one versioned **WIT package** defining every operation's request/report records, **per-axis worlds** that export the deterministic operations, and an **agent brief handoff that reuses the same WIT types** as its serialized envelope. The host calls deterministic adapters through generated, typed bindings; the schema-constant + parity-test machinery collapses into the WIT package as a single source of truth.
+Adapters are invoked today through the generic `wasi:cli/run` world: the host packs **argv**, reads an **exit code**, and exchanges data as **stdout/stderr JSON** plus **preopened directories**. Operation semantics live in argv conventions and in JSON envelopes validated *at runtime* against embedded `*.schema.json` constants.
+
+This RFC proposes replacing that loose contract with a typed **WebAssembly Component Model** contract: one versioned **WIT package** defining every operation's request/report records, **per-axis worlds** that export the deterministic operations, and an **agent brief handoff that reuses the same WIT types** as its serialized envelope. The host calls deterministic adapters through generated, typed bindings; the schema-constant + parity-test machinery collapses into the WIT package as a single source of truth.
 
 This is the *typed realization* of RFC-50's "uniform operation-envelope runtime": RFC-50 says the host's contract is a fixed envelope dispatched generically; this RFC says those envelopes are WIT records and the deterministic operations are WIT exports.
 
-This revision extends the contract one layer further, to the prose. A **brief is the agent-side implementation of a WIT operation**: a `tool`-executed operation is implemented by a WASM component (a callable export), and an `agent`-executed operation is implemented by a markdown brief (an LLM-fulfilled "export"). Both satisfy the *same* WIT signature from `specify:adapter`; only the executor differs. That reframing lets the brief's **contract** — the signature it fulfils, the request fields its prose references, the report it returns, the capabilities it touches, and the example payloads it embeds — bind to and be checked against the same WIT world, even though the brief *body* stays prose and the brief *execution* stays an LLM handoff.
+The contract reaches the prose as well. A **brief is the agent-side implementation of a WIT operation**: a `tool`-executed operation is implemented by a WASM component (a callable export), and an `agent`-executed operation is implemented by a markdown brief (an LLM-fulfilled "export"). Both satisfy the *same* WIT signature from `specify:adapter`; only the executor differs. A brief's **contract** — the signature it fulfils, the request fields its prose references, the report it returns, the capabilities it touches, and the example payloads it embeds — therefore binds to and is checked against the same WIT world, even though the brief *body* stays prose and its *execution* stays an LLM handoff.
 
 **Explicit non-goal up front:** adapter **briefs do not become callable WIT functions.** They are markdown executed by an LLM; there is no component to instantiate and no export to invoke. WIT types the data crossing the boundary, makes the *deterministic* operations callable, and binds the *brief contract* to the world for static checking — but the agent execution stays a two-phase handoff and the prose body is never machine-executed.
 
@@ -16,17 +18,17 @@ This revision extends the contract one layer further, to the prose. A **brief is
 
 RFC-50 routes every adapter behavior through one generic operation-envelope runtime and forbids adapter-specific code in the host. The contract those envelopes ride on is still untyped, and that creates five standing costs:
 
-- **Schema/code drift.** The embedded `*_JSON_SCHEMA` constants in `engine/crates/schema/src/constants.rs` exist alongside a dedicated byte-parity test (`engine/crates/schema/tests/schemas.rs`) and wire fixtures precisely to police drift between hand-maintained schemas and the DTOs that round-trip them. A typed boundary removes the drift surface instead of policing it.
+- **Schema/code drift.** The embedded `*_JSON_SCHEMA` constants in `engine/crates/schema/src/constants.rs` need a dedicated byte-parity test (`engine/crates/schema/tests/schemas.rs`) and wire fixtures to police drift between hand-maintained schemas and the DTOs that round-trip them. A typed boundary removes the drift surface instead of policing it.
 - **Untyped invocation.** The `wasi:cli/run` path means the operation contract is "argv conventions + parse stdout as JSON." Mistakes surface at runtime as validation errors, not at the binding boundary.
 - **Broad capability grants.** Adapters receive filesystem access via preopened directories and the `$CAPABILITY_DIR` env var rather than a *named* set of host capabilities. The world cannot tell, by inspection, what an adapter is allowed to touch.
 - **Convention-based errors.** Failures cross as exit codes + stderr text rather than a typed `result<_, error>`.
-- **Untyped brief contracts.** A brief's inputs (`$SLICE_NAME`, `inputs.artifacts.*`, `<lead>`), its output shape, and the capabilities it reads are expressed only as prose convention. Nothing links "this brief produces an `Evidence` document" to the schema that document is validated against, so a brief's placeholder references, embedded examples, and capability use can drift from the operation contract with nothing to catch it until runtime.
+- **Untyped brief contracts.** A brief's inputs (`$SLICE_NAME`, `inputs.artifacts.`*, `<lead>`), its output shape, and the capabilities it reads are expressed only as prose convention. Nothing links "this brief produces an `Evidence` document" to the schema that document is validated against, so a brief's placeholder references, embedded examples, and capability use can drift from the operation contract with nothing to catch it until runtime.
 
 The Component Model is the native idiom here, not a new dependency: **WASI Preview 2 is itself defined in WIT**, and the host already compiles with the `component-model` feature (see [Starting state](#starting-state)). The interface-definition layer is already present; this RFC uses it for the adapter contract rather than only for WASI.
 
 ## Starting state
 
-- **Runtime.** `wasmtime` and `wasmtime-wasi` are pinned at `45.0.0` with the `component-model`, `cranelift`, `runtime`, `cache`, and (for `wasmtime-wasi`) `p2` features enabled — `engine/Cargo.toml:201`. The Component Model machinery (records, variants, `result`, resources) is therefore already linked into the host binary.
+- **Runtime.** `wasmtime` and `wasmtime-wasi` are pinned at `45.0.0` with the `component-model`, `cranelift`, `runtime`, `cache`, and (for `wasmtime-wasi`) `p2` features enabled (`engine/Cargo.toml`). The Component Model machinery (records, variants, `result`, resources) is therefore already linked into the host binary.
 - **Invocation ABI.** `engine/crates/registry/src/host.rs` instantiates each adapter `.wasm` as the prebuilt `wasi:cli/command` world (`Command::instantiate(...)`) and calls `command.wasi_cli_run().call_run(...)`. Arguments are passed via `WasiCtxBuilder::args` (argv[0] = tool name); data crosses via captured stdout/stderr and `preopened_dir` grants plus `$CAPABILITY_DIR`.
 - **Operation set.** `SourceOperation` ∈ `{ survey, extract }` and `TargetOperation` ∈ `{ shape, build, merge }` (`engine/crates/workflow/src/adapter/operation.rs`). Each operation is `execution: tool` (single-phase WASI dispatch) or `execution: agent` (two-phase brief handoff, the default). No first-party `build`/`merge` *tool* is wired today — every first-party target is `execution: agent`; source `survey`/`extract` are agent-only.
 - **Envelopes.** Request/report shapes are embedded JSON-Schema constants in `crates/schema/src/constants.rs` (`BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`, `EVIDENCE_JSON_SCHEMA`, `LEAD_JSON_SCHEMA`, …), byte-parity-tested against the on-disk `schemas/` tree.
@@ -135,20 +137,22 @@ This rides existing machinery. Brief frontmatter is already parsed and stripped 
 
 The typed contract governs the **boundary** (request in, report out, host capabilities granted), not the **interior** navigation of the prose. Briefs are deliberately a lazily-discovered graph: a parent orchestrator brief links to phase sub-briefs and a "reference shelf" the agent loads on demand to stay within its context budget. Nothing in §F forces that graph to load eagerly, and nothing should.
 
-- **Only the parent brief binds the signature.** Phase sub-briefs (`briefs/build/**`, `briefs/extract/**`) are internal decomposition of one operation's implementation, not separate operations; the indexer's `BriefScope::Parent` / `BriefScope::Phase` discriminant is where the binding stops. The agent still loads each phase at the marked step.
+- **Only the parent brief binds the signature.** Phase sub-briefs (`briefs/build/`**, `briefs/extract/**`) are internal decomposition of one operation's implementation, not separate operations; the indexer's `BriefScope::Parent` / `BriefScope::Phase` discriminant is where the binding stops. The agent still loads each phase at the marked step.
 - **References are adapter-internal context, not boundary data.** They are read from the adapter's own bundle on demand (the agent path) or behind a coarse own-bundle grant (the tool path); §D's narrowing targets host/project data, so it does not constrain which references an operation may consult.
 - **Typing adds integrity, not eagerness.** Lint can prove the discovery graph resolves (the existing `reference-resolves` / `links-registry` checks) so a dead reference link fails at authoring time rather than mid-run; the agent gains a *declared, bounded universe* it may reach without loading it; and the authoring-time checks stay incremental per file (placeholder and example checks apply to brief files and opt-in annotated blocks, never the whole reference corpus). Lazy discovery is preserved and is the point.
 
 An optional further step makes discovery a structured *query* without making it eager: expose the reference shelf as a `resource references { list: func() -> list<reference-meta>; get: func(id: string) -> result<string, adapter-error>; }` on the tool path and a parallel `references:` frontmatter catalog on the agent path (same currency, two executors, per §C). Splitting cheap metadata from on-demand bodies keeps loading lazy by construction. This is polish, not load-bearing — the freeform shelf plus link resolution already yields a safe lazy graph.
 
-## The hard boundary (non-goal, restated precisely)
+## The hard boundary (non-goal)
 
 A brief is a prompt executed by the LLM; **no WASM component runs the prose**, so there is no export to instantiate or invoke. But the brief is still the *implementation* of a WIT signature, so its contract binds to the world even though its body does not. The contract is therefore hybrid by design, not by accident:
 
-| Operation execution | WIT role |
-| --- | --- |
-| `execution: tool` (deterministic WASM) | Callable world export (`build`/`merge`/validators) + typed envelope |
-| `execution: agent` (markdown brief) | Typed envelope + typed brief contract (signature binding, input environment, output examples, capabilities — §F); execution stays a two-phase host handoff and the prose body is never machine-executed |
+
+| Operation execution                    | WIT role                                                                                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `execution: tool` (deterministic WASM) | Callable world export (`build`/`merge`/validators) + typed envelope                                                                                                                                     |
+| `execution: agent` (markdown brief)    | Typed envelope + typed brief contract (signature binding, input environment, output examples, capabilities — §F); execution stays a two-phase host handoff and the prose body is never machine-executed |
+
 
 The dominant mode today is `agent`, so most operations gain *typed envelopes and a typed contract* but not *callable exports*. The honest ceiling is that the contract types the data and the brief's shell, not the *semantics* of the instructions: an LLM can follow a perfectly-typed brief and still emit a structurally-valid-but-wrong report. Typing raises the floor — no orphan operations, no unresolved placeholders, no drifted examples, no ungranted capabilities, structurally-valid I/O — while correctness stays with the eval / review layer. That ceiling is a feature: it is exactly what lets the host stay agent-runtime-agnostic.
 
@@ -195,11 +199,11 @@ Graduate briefs from prose-with-frontmatter toward a structured skeleton (signat
 ## Decisions to record (open until reviewed)
 
 - **WIT package as schema source of truth** — the fate of the `*_JSON_SCHEMA` constants, the byte-parity test, and the wire fixtures once shapes are generated from WIT.
-- **`wasi:cli/run` → custom world migration** — a breaking extension ABI cut; confirm it stays contained to `specify extension run` and the `specify-adapters` `.wasm` build.
+- `**wasi:cli/run` → custom world migration** — a breaking extension ABI cut; confirm it stays contained to `specify extension run` and the `specify-adapters` `.wasm` build.
 - **Capability model** — named `import`s / `resource`s vs. the current preopen grant; which host functions the world exposes.
 - **Agent-handoff serialization** — the JSON projection of the WIT records used by the brief handoff.
 - **Versioning** — how the world version relates to RFC-47 identity and `requires_specify`.
-- **`shape` semantics** — whether `shape` is a world export, a host-read manifest-declared file, or an envelope.
+- `**shape` semantics** — whether `shape` is a world export, a host-read manifest-declared file, or an envelope.
 - **Operation set vs declared tools** — whether the manifest's declared-tool set (`contract`, `vectis`) and the operation set unify under one world.
 - **Brief frontmatter contract** — the `implements` / `consumes` / `produces` / `capabilities` frontmatter shape and its schema, and whether phase sub-briefs may carry their own narrower scoped annotations.
 - **Coverage authority** — confirming the §F1 `{world exports} ∪ {brief bindings}` coverage is a `specify lint framework` authoring check with no lifecycle authority, consistent with the standards-vs-workflow split.
@@ -208,7 +212,7 @@ Graduate briefs from prose-with-frontmatter toward a structured skeleton (signat
 
 ## Risks and invariants
 
-- **Agent path unchanged.** Most operations remain a handoff; manage expectations that this is "type the envelopes, type the brief contract, and make the deterministic tools callable," not "turn briefs into functions." The prose body is never machine-executed and instruction *semantics* are unverified — typing raises the structural floor, not the correctness ceiling (see [The hard boundary](#the-hard-boundary-non-goal-restated-precisely)).
+- **Agent path unchanged.** Most operations remain a handoff; this is "type the envelopes, type the brief contract, and make the deterministic tools callable," not "turn briefs into functions." Typing raises the structural floor, not the correctness ceiling (see [The hard boundary](#the-hard-boundary-non-goal)).
 - **Toolchain.** Components + `wit-bindgen` add build steps for adapter authors. Language-agnostic implementation is a benefit, but every adapter author needs a component toolchain (already true for the validators).
 - **wasmtime feature maturity.** v45 ships stable Component Model support (records, variants, `result`, resources); confirm async-export and cross-boundary `resource` ergonomics before relying on them in Phase 3.
 - **Cross-repo seam.** The adapter `.wasm` builds live in `specify-adapters`; the world re-export and the ABI cut must land in lockstep across both repos (workflow contract spans both).
@@ -226,3 +230,4 @@ Graduate briefs from prose-with-frontmatter toward a structured skeleton (signat
 6. **Operation coverage.** `{world exports} ∪ {brief bindings}` covers every operation on both axes exactly once, enforced as a `specify lint framework` check.
 7. **Lazy discovery intact.** Reference shelves and phase sub-briefs are still loaded on demand; lint proves the discovery graph resolves, and no check requires loading the whole reference corpus (§G).
 8. **RFC-50 invariant intact.** The host still passes the no-adapter-names / no-taxonomy grep + guard test from RFC-50's acceptance criteria.
+

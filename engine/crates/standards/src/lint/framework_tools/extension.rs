@@ -92,12 +92,14 @@ fn declares_extension(manifest_path: &Path) -> bool {
 }
 
 /// Immediate adapter directories under both axes
-/// (`adapters/{sources,targets}/<adapter>/`), skipping symlinks and
-/// non-directories. Sorted for deterministic finding order.
+/// (`{sources,targets}/<adapter>/`, resolved through
+/// `crate::lint::layout` so nested `adapters/…` and flattened roots
+/// both work), skipping symlinks and non-directories. Sorted for
+/// deterministic finding order.
 fn adapter_dirs(project_dir: &Path) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     for axis in ["sources", "targets"] {
-        let axis_dir = project_dir.join("adapters").join(axis);
+        let axis_dir = crate::lint::layout::framework_axis_dir(project_dir, axis);
         let Ok(entries) = std::fs::read_dir(&axis_dir) else {
             continue;
         };
@@ -153,6 +155,31 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "adapters/targets/withext/adapter.yaml", MANIFEST_WITH_EXTENSION);
         write(dir.path(), "adapters/targets/withext/extension/Cargo.toml", "[package]\n");
+        let findings = check_extension_crates(dir.path());
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].rule_id, RULE_EXTENSION_CRATE_MISSING);
+        assert!(findings[0].message.contains("adapter.wasm"));
+    }
+
+    // A flattened framework root (no `adapters/` prefix; axes promoted to
+    // the repo root, as in the extracted `specify-adapters`) is resolved
+    // through `crate::lint::layout`. These two mirror the nested cases
+    // above to prove the routed discovery sees a flattened tree.
+
+    #[test]
+    fn declared_and_complete_is_silent_on_flattened_root() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "targets/withext/adapter.yaml", MANIFEST_WITH_EXTENSION);
+        write(dir.path(), "targets/withext/extension/Cargo.toml", "[package]\n");
+        write(dir.path(), "targets/withext/adapter.wasm", "wasm-bytes");
+        assert!(check_extension_crates(dir.path()).is_empty());
+    }
+
+    #[test]
+    fn declared_missing_wasm_is_flagged_on_flattened_root() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "targets/withext/adapter.yaml", MANIFEST_WITH_EXTENSION);
+        write(dir.path(), "targets/withext/extension/Cargo.toml", "[package]\n");
         let findings = check_extension_crates(dir.path());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_EXTENSION_CRATE_MISSING);

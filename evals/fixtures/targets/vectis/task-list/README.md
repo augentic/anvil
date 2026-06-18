@@ -54,5 +54,5 @@ Re-commit `assets/exports/` and any auto-written `sources.<platform>` pins. Gold
 ## See also
 
 - [`evals/fixtures/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
-- [`adapters/targets/vectis/briefs/shape.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/specs/task-list/spec.md` + `input/design.md`.
-- [`adapters/targets/vectis/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/vectis/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.
+- [`adapters/targets/vectis/briefs/shape.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/shape.md) — the shape brief whose injection produced `input/specs/task-list/spec.md` + `input/design.md`.
+- [`adapters/targets/vectis/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.

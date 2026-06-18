@@ -6,8 +6,8 @@ Cross-target, build-time `replay` rules under `adapters/shared/` — read by any
 
 The **wire format** for runtime captures lives on the source axis:
 
-- [`adapters/sources/captures/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/sources/captures/references/capture-format.md) — directory layout and behavioural JSON fields
-- [`adapters/sources/captures/briefs/extract.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/sources/captures/briefs/extract.md) — `kind: example` claim emission
+- [`adapters/sources/captures/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/references/capture-format.md) — directory layout and behavioural JSON fields
+- [`adapters/sources/captures/briefs/extract.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/briefs/extract.md) — `kind: example` claim emission
 
 This directory owns the **target-side hook contract**: when to run, how to record results, merge posture, and advisory v1 semantics. Test-harness depth (MockProvider, Crux effects, contract tool invocation) stays under each target adapter's `references/` and `briefs/build/replay.md`.
 
@@ -15,7 +15,7 @@ This directory owns the **target-side hook contract**: when to run, how to recor
 
 | Target | Hook status | Entry point |
 |---|---|---|
-| **Omnia** | Implemented | [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/omnia/briefs/build/replay.md) |
+| **Omnia** | Implemented | [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build/replay.md) |
 | **Vectis** | Not implemented (v1) | — |
 | **Contracts** | Not implemented (v1) | — |
 | **default** | Not implemented | — |

@@ -107,7 +107,7 @@ cargo clippy -- -D warnings
 
 ### WASM And Omnia SDK Constraints
 
-See [guardrails.md](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
+See [guardrails.md](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
 
 ## File Locations
 

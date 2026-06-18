@@ -14,7 +14,7 @@ Before invoking the target-specific runner:
 2. **Evidence or captures available** — the slice's Evidence includes `kind: example` claims from the `captures` extract pass, or the bound capture tree remains readable at the plan-level source path.
 3. **Replay tests exist** — the target's test-generation phase has produced tests that exercise the captured scenarios (each implementing target documents where those tests live).
 
-Capture wire format: [`captures/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/sources/captures/references/capture-format.md). Claim shape and 64 KiB inline cap: [`captures/briefs/extract.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/sources/captures/briefs/extract.md).
+Capture wire format: [`captures/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/references/capture-format.md). Claim shape and 64 KiB inline cap: [`captures/briefs/extract.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/briefs/extract.md).
 
 ## Advisory posture
 
@@ -59,4 +59,4 @@ Capture the block before archival if present — `specify slice merge` moves the
 
 - [`README.md`](README.md) — target adoption table
 - [`journal-payload.md`](journal-payload.md) — closed payload shapes
-- [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/adapters/targets/omnia/briefs/build/replay.md) — Omnia runner (reference implementation)
+- [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build/replay.md) — Omnia runner (reference implementation)

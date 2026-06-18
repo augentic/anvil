@@ -105,8 +105,8 @@ fn known_schema_row(row: &JsonValue) -> Option<KnownSchema> {
 /// tool-owned schema named in the supplied `registry`. URLs in fenced or
 /// inline code are ignored.
 fn check_schema_links(project_dir: &Path, registry: &[KnownSchema]) -> Vec<LinkFinding> {
-    let adapters_dir = project_dir.join("adapters");
-    if !adapters_dir.is_dir() {
+    let adapter_roots = crate::lint::layout::framework_adapter_roots(project_dir);
+    if adapter_roots.is_empty() {
         return Vec::new();
     }
 
@@ -114,7 +114,7 @@ fn check_schema_links(project_dir: &Path, registry: &[KnownSchema]) -> Vec<LinkF
     let inline_re = inline_code_pattern();
     let mut findings = Vec::new();
 
-    for path in walk_markdown(&adapters_dir) {
+    for path in adapter_roots.iter().flat_map(|root| walk_markdown(root)) {
         let Ok(content) = std::fs::read_to_string(&path) else {
             continue;
         };

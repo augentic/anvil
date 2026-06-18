@@ -378,7 +378,7 @@ Give every fact one writer; derive everything else. A project's *authored intent
 
 ## Tool-owned schemas
 
-Every JSON Schema is owned by the repo of the WASI tool (or the CLI) that runs it. Plugin briefs reference schemas exclusively by their canonical `$id` URL and never contain schema bodies. The three Vectis runtime schemas live solely with the vectis extension crate in `augentic/specify-adapters` (`adapters/targets/vectis/extension/embedded/`), with no byte-identity duplication or manual mirroring obligation; this repo no longer carries any vectis schema body.
+Every JSON Schema is owned by the repo of the WASI tool (or the CLI) that runs it. Plugin briefs reference schemas exclusively by their canonical `$id` URL and never contain schema bodies. The three Vectis runtime schemas live solely with the vectis extension crate in `augentic/specify-adapters` (`targets/vectis/extension/schemas/`), with no byte-identity duplication or manual mirroring obligation; this repo no longer carries any vectis schema body.
 
 ## Schema `$id` convention
 

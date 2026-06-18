@@ -251,7 +251,7 @@ fn allowed_prefixes<'a>(
 fn discover_rule_files(project_dir: &Path) -> Vec<PathBuf> {
     let mut paths = Vec::new();
     for axis in ["sources", "targets"] {
-        let axis_dir = project_dir.join("adapters").join(axis);
+        let axis_dir = crate::lint::layout::framework_axis_dir(project_dir, axis);
         let mut files = Vec::new();
         walk_files(&axis_dir, &mut files);
         for path in files {
@@ -264,7 +264,8 @@ fn discover_rule_files(project_dir: &Path) -> Vec<PathBuf> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir = project_dir.join("adapters").join("shared").join("rules").join(pack);
+        let pack_dir =
+            crate::lint::layout::framework_shared_dir(project_dir).join("rules").join(pack);
         let mut files = Vec::new();
         walk_files(&pack_dir, &mut files);
         for path in files {
@@ -289,7 +290,7 @@ fn is_rule_in_axis(path: &Path, axis_root: &Path) -> bool {
 
 fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
     for axis in ["sources", "targets"] {
-        let axis_dir = project_dir.join("adapters").join(axis);
+        let axis_dir = crate::lint::layout::framework_axis_dir(project_dir, axis);
         if let Ok(rel) = path.strip_prefix(&axis_dir) {
             let parts = normal_parts(rel);
             if parts.len() >= 3 && parts.get(1).copied() == Some("rules") {
@@ -298,7 +299,8 @@ fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir = project_dir.join("adapters").join("shared").join("rules").join(pack);
+        let pack_dir =
+            crate::lint::layout::framework_shared_dir(project_dir).join("rules").join(pack);
         if path.strip_prefix(&pack_dir).is_ok() {
             return Some(pack.to_string());
         }
@@ -307,7 +309,7 @@ fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
 }
 
 fn is_source_rule(project_dir: &Path, path: &Path) -> bool {
-    let axis_dir = project_dir.join("adapters").join("sources");
+    let axis_dir = crate::lint::layout::framework_axis_dir(project_dir, "sources");
     is_rule_in_axis(path, &axis_dir)
 }
 
