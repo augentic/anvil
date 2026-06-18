@@ -203,7 +203,7 @@ D11 replaced this with the singular `extension:` object, and `additionalProperti
 ## Low
 
 ### L1 — `specify-cli/AGENTS.md` crate-graph predates the rename {#l1}
-The top-of-file crate graph still lists `specify-tool-manifest` and `specify-tool` (lines 14–18) and the `specify-workflow` dependency line cites `tool-manifest`; the actual crates are `extension-manifest` and `registry`. The new transport modules (`crates/registry/src/{pack,oci,store}.rs`) are absent from "Modules of note." Since AGENTS.md is the agent's primary map (and RFC-49 will make it the unified repo's map), this should track the rename. The `adapter_uri.rs` bullet *was* updated, so the drift is partial.
+The top-of-file crate graph still lists `specify-tool-manifest` and `specify-tool` (lines 14–18) and the `specify-workflow` dependency line cites `tool-manifest`; the actual crates are `extension` and `registry`. The new transport modules (`crates/registry/src/{pack,oci,store}.rs`) are absent from "Modules of note." Since AGENTS.md is the agent's primary map (and RFC-49 will make it the unified repo's map), this should track the rename. The `adapter_uri.rs` bullet *was* updated, so the drift is partial.
 
 ### L2 — Vestigial local-dev tooling (RFC-49 T4 not yet started) {#l2}
 `specify/scripts/use-local-dev.rs` still builds WASI tool sidecars from `cli_root.join("wasi-tools")` — a directory removed from `specify-cli`. The `Makefile` `use-local-dev` help still says "build WASI tools … write tools.yaml sidecars." RFC-49 T4 designates these for deletion; they are currently dead/misleading. Expected, since RFC-49 has not been executed, but worth tracking as cleanup debt.

@@ -4689,7 +4689,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "specify-extension-manifest"
+name = "specify-extension"
 version = "0.27.0"
 dependencies = [
  "jsonschema",
@@ -4729,7 +4729,7 @@ dependencies = [
  "serde-saphyr",
  "serde_json",
  "specify-error",
- "specify-extension-manifest",
+ "specify-extension",
  "specify-schema",
  "strum 0.28.0",
  "tar",
@@ -4795,7 +4795,7 @@ dependencies = [
  "serde_json",
  "specify-diagnostics",
  "specify-error",
- "specify-extension-manifest",
+ "specify-extension",
  "specify-model",
  "specify-schema",
  "strum 0.28.0",

@@ -11,10 +11,10 @@ specify-error                    # leaf — thiserror + serde-saphyr only
 specify-schema                   # depends on specify-error (embedded JSON Schemas + jsonschema plumbing; also owns schema::digest — SHA-256 hex via sha2 + base16ct)
 specify-diagnostics              # depends on specify-{error,schema} (Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
 specify-model                    # depends on specify-{error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; model::validate artifact rule registry — NOT on specify-workflow or anything named lint)
-specify-extension-manifest       # depends on specify-{diagnostics,schema} (WASI extension manifest DTOs + structural validation; wasmtime-free leaf)
-specify-registry                 # depends on specify-{error,schema,extension-manifest} (WASI runner + OCI transport + adapter pack/store; wasmtime, gated)
+specify-extension                # depends on specify-{diagnostics,schema} (WASI extension manifest DTOs + structural validation; wasmtime-free leaf)
+specify-registry                 # depends on specify-{error,schema,extension} (WASI runner + OCI transport + adapter pack/store; wasmtime, gated)
 specify-standards                # standards layer — depends on specify-{error,schema,diagnostics}; NOT on specify-workflow or specify-registry
-specify-workflow                 # workflow layer — depends on specify-{error,schema,extension-manifest,model,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation); NOT on specify-standards / specify-registry (no wasmtime in its graph)
+specify-workflow                 # workflow layer — depends on specify-{error,schema,extension,model,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation); NOT on specify-standards / specify-registry (no wasmtime in its graph)
 specify (root crate)             # wires runtime + framework crates into the specify binary
 ```
 

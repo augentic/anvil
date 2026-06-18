@@ -1,5 +1,5 @@
 [package]
-name = "specify-extension-manifest"
+name = "specify-extension"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

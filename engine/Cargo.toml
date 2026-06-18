@@ -59,7 +59,7 @@ members = [
     "crates/model",
     "crates/schema",
     "crates/registry",
-    "crates/extension-manifest",
+    "crates/extension",
     "crates/workflow",
 ]
 
@@ -188,7 +188,7 @@ specify-workflow = { path = "crates/workflow" }
 specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
 specify-registry = { path = "crates/registry" }
-specify-extension-manifest = { path = "crates/extension-manifest" }
+specify-extension = { path = "crates/extension" }
 strum = { version = "0.28", features = ["derive"] }
 tar = "0.4"
 tempfile = "3"

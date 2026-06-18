@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use specify_error::Error;
-use specify_extension_manifest::ExtensionPermissions;
+use specify_extension::ExtensionPermissions;
 
 use crate::Platform;
 use crate::adapter::operation::{SourceOperation, TargetOperation};
@@ -114,7 +114,7 @@ pub fn adapter_axis_dir(project_dir: &Path, axis: Axis) -> PathBuf {
 ///
 /// An adapter ships at most one binary, so the manifest carries one
 /// `extension` object rather than a `tools[]` array. Decoupled from
-/// [`specify_extension_manifest::Extension`] so adapter loading does not
+/// [`specify_extension::Extension`] so adapter loading does not
 /// pull in the WASI runtime surface; the wasm builds from the co-located
 /// `extension/` crate (D10) and rides the adapter's own semver identity
 /// (RFC-47), so a per-extension `version` / `source` / `sha256` is
@@ -614,7 +614,7 @@ pub(super) fn check_execution(
 /// `adapter-version-malformed` finding rather than the free-form
 /// `adapter-manifest-malformed` serde error.
 ///
-/// Mirrors `specify_extension_manifest`'s `tool.version-is-semver` rule:
+/// Mirrors `specify_extension`'s `tool.version-is-semver` rule:
 /// the per-axis JSON Schemas already mark `version` with the semver
 /// `pattern`, so this typed gate is the belt-and-suspenders for a
 /// manifest that reaches the loader through a path that bypassed
