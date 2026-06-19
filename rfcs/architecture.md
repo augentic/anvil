@@ -20,7 +20,7 @@ It is deliberately **not** a numbered RFC. In this repo an RFC is a discrete, la
 
 ## The shape of the system
 
-![The shape of the system](../docs/assets/diagrams/effect-architecture/system-shape.png)
+![The shape of the system](../docs/assets/diagrams/effect-architecture/system-shape.svg)
 
 Three layers, one contract.
 
@@ -32,7 +32,7 @@ The two program kinds differ only in *where they draw the line* between structur
 
 ## The mental model: programs, effects, interpreters
 
-![The effect model](../docs/assets/diagrams/effect-architecture/effect-model.png)
+![The effect model](../docs/assets/diagrams/effect-architecture/effect-model.svg)
 
 The model borrows its discipline from **algebraic effects**: a program is mostly pure control flow; the messy, non-deterministic world is reached only through named, typed *effects*; and a separate *interpreter* (a "handler") decides how each effect is actually carried out. Swap the handler and the same program runs interactively, headless, or against a recording — without the program changing. The vocabulary:
 
@@ -46,7 +46,7 @@ The deep move is **directional**. Today a child process (the CLI) cannot reach u
 
 ## Lifecycle of one operation
 
-![Lifecycle of one operation](../docs/assets/diagrams/effect-architecture/operation-lifecycle.png)
+![Lifecycle of one operation](../docs/assets/diagrams/effect-architecture/operation-lifecycle.svg)
 
 Concretely, a `build` flows like this:
 
@@ -100,13 +100,13 @@ Both layers speak the same effects; they simply draw the structure / judgment li
 
 ## From today to the north star
 
-![Today to north star](../docs/assets/diagrams/effect-architecture/evolution.png)
+![Today to north star](../docs/assets/diagrams/effect-architecture/evolution.svg)
 
 The transformation is narrow because the bones are already in place. Today an agent runs `/spec:*` skill prose and drives the loop; it shells out to the LLM-free CLI host, which dispatches adapters and hands agent work back up through prepare/finalize; boundaries are argv + JSON, largely untyped. The north star keeps every one of those pieces and changes only two things: the boundaries become **typed**, and the agent handoff becomes a typed **`infer` effect** the program calls into. Nothing is rewritten; the seam is named and typed.
 
 ## The incremental path
 
-![Staged path to the effect-oriented harness](../docs/assets/diagrams/effect-architecture/roadmap.png)
+![Staged path to the effect-oriented harness](../docs/assets/diagrams/effect-architecture/roadmap.svg)
 
 The architecture lands in stages, each independently mergeable, independently valuable, and forward-compatible on the same typed contract. None requires the next.
 
