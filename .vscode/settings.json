@@ -2,19 +2,5 @@
     "[markdown]": {
         "editor.wordWrap": "wordWrapColumn",
         "editor.wordWrapColumn": 100
-    },
-    "json.schemas": [
-        {
-            "fileMatch": [".cursor-plugin/marketplace.json"],
-            "url": "https://github.com/augentic/specify/raw/main/schemas/authoring/marketplace.schema.json"
-        }
-    ],
-    "yaml.schemas": {
-        "https://github.com/augentic/specify/raw/main/schemas/source.schema.json": [
-            "adapters/sources/*/adapter.yaml"
-        ],
-        "https://github.com/augentic/specify/raw/main/schemas/target.schema.json": [
-            "adapters/targets/*/adapter.yaml"
-        ]
     }
 }

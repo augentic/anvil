@@ -1,10 +1,10 @@
-# RFC-55: Workflow as Effects (Stage 4 — The Thin Interpreter)
+# RFC-54: Workflow as Effects (Stage 4 — The Thin Interpreter)
 
-> Status: Draft (skeleton) · **Deferred / optional** · Implements: the effect-oriented harness architecture (Stage 4) · Depends: RFC-54 (orchestration components proven on the adapter axis) · Decided with: data from RFC-54, not now
+> Status: Draft (skeleton) · **Deferred / optional** · Implements: the effect-oriented harness architecture (Stage 4) · Depends: RFC-53 (orchestration components proven on the adapter axis) · Decided with: data from RFC-53, not now
 
 ## Abstract
 
-The final, optional stage of the [effect-oriented harness](architecture.md): apply the orchestration-component model proven on adapters (RFC-54) to the **workflow** itself, so `/spec:plan`, `/spec:execute`, and the slice loop run as effect-driven orchestration and the harness becomes a thin interpreter. This RFC exists to capture the end-state so it is not lost — **not** to commit to it. The architecture north star establishes a coherent stopping point after RFC-54; this stage is a deliberate, separately-justified bet.
+The final, optional stage of the [effect-oriented harness](architecture.md): apply the orchestration-component model proven on adapters (RFC-53) to the **workflow** itself, so `/spec:plan`, `/spec:execute`, and the slice loop run as effect-driven orchestration and the harness becomes a thin interpreter. This RFC exists to capture the end-state so it is not lost — **not** to commit to it. The architecture north star establishes a coherent stopping point after RFC-53; this stage is a deliberate, separately-justified bet.
 
 ## Motivation (and the case against)
 
@@ -31,7 +31,7 @@ The final, optional stage of the [effect-oriented harness](architecture.md): app
 - **Skill fate.** Whether skills dissolve into typed orchestration + `infer` bodies, or remain the operator entry surface with orchestration underneath.
 - **Operator UX.** Whether moving orchestration prose into compiled control flow regresses the "tweak the skill" malleability operators rely on.
 - **Lifecycle authority boundary.** Exactly which transitions remain CLI-only versus reachable as effects.
-- **Activation trigger.** What evidence from RFC-54 (adapter orchestration in production, replay paying off, async ABI stable) justifies starting this stage at all.
+- **Activation trigger.** What evidence from RFC-53 (adapter orchestration in production, replay paying off, async ABI stable) justifies starting this stage at all.
 
 ## Phased plan (only if activated)
 
@@ -51,4 +51,4 @@ The final, optional stage of the [effect-oriented harness](architecture.md): app
 
 - **Ossifying the fluid.** The chief risk is encoding adaptive, recovery-heavy orchestration as rigid control flow. The "against" case is the guard; if a phase needs the LLM's judgment to sequence, it does not belong here.
 - **CLI authority.** Lifecycle authority must not migrate into components, services, or skills (roadmap Non-Goal).
-- **Deferral is the default.** Absent a clear trigger and owner, this stage stays parked; RFC-54 is the coherent endpoint.
+- **Deferral is the default.** Absent a clear trigger and owner, this stage stays parked; RFC-53 is the coherent endpoint.

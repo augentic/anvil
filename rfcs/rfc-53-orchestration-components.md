@@ -1,10 +1,10 @@
-# RFC-54: Orchestration Components (Stage 3 — Adapters Orchestrate)
+# RFC-53: Orchestration Components (Stage 3 — Adapters Orchestrate)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented harness architecture (Stage 3) · Depends: RFC-53 (effect interfaces) · Gated on: async-ABI confirmation (see Risks)
+> Status: Draft (skeleton) · Implements: the effect-oriented harness architecture (Stage 3) · Depends: RFC-52 (effect interfaces) · Gated on: async-ABI confirmation (see Risks)
 
 ## Abstract
 
-This stage is where the [effect-oriented harness](architecture.md) first becomes visible. An adapter operation stops being a single prepare/finalize handoff and becomes a **typed multi-step orchestration**: the adapter's wasm component owns the control flow of its own `build` / `extract` / `merge`, and reaches the LLM through the `infer` effect (RFC-53) rather than by handing the whole operation back to the agent. It lands in two steps — **Realization B** (a serializable step-reducer driven over the existing handoff) first, then **Realization A** (the component calls `infer` directly through an imported effect) where operation depth justifies the cost.
+This stage is where the [effect-oriented harness](architecture.md) first becomes visible. An adapter operation stops being a single prepare/finalize handoff and becomes a **typed multi-step orchestration**: the adapter's wasm component owns the control flow of its own `build` / `extract` / `merge`, and reaches the LLM through the `infer` effect (RFC-52) rather than by handing the whole operation back to the agent. It lands in two steps — **Realization B** (a serializable step-reducer driven over the existing handoff) first, then **Realization A** (the component calls `infer` directly through an imported effect) where operation depth justifies the cost.
 
 ## Motivation
 
@@ -16,7 +16,7 @@ The prepare/finalize handoff is already a degenerate two-step orchestration (`pr
 
 ### Non-goals
 
-- **The workflow layer is out of scope.** `/spec:plan` / `/spec:execute` orchestration is RFC-55 (deferred). This RFC is adapter-local.
+- **The workflow layer is out of scope.** `/spec:plan` / `/spec:execute` orchestration is RFC-54 (deferred). This RFC is adapter-local.
 - **No eager reference loading.** architecture invariant 4 holds: steps carry `brief-ref` + handles; bodies are pulled lazily.
 
 ## The model (sketch)
@@ -44,13 +44,13 @@ interface target {
 
 The agent driver loop runs each `infer` directive in its own context, exactly as today's single handoff does — so context inheritance is preserved with no async ABI and no store snapshots.
 
-**Realization A — the `infer` import (migration target).** Where depth justifies it, collapse the external loop into a straight-line export that calls the RFC-53 `infer` effect directly:
+**Realization A — the `infer` import (migration target).** Where depth justifies it, collapse the external loop into a straight-line export that calls the RFC-52 `infer` effect directly:
 
 ```wit
 world target-adapter {
   import host-config;
   import host-data;
-  import infer;            // RFC-53 — the upward LLM channel
+  import infer;            // RFC-52 — the upward LLM channel
   export target;           // build/merge/shape always callable
 }
 ```
@@ -64,9 +64,9 @@ RFC-51 originally proposed binding each agent brief to the WIT signature it fulf
 - **Signature binding (was §F1).** A brief declares which operation it implements; a set-coverage check guarantees every agent operation has exactly one binding brief and every brief binds a real operation. *Survives as lint* — the binding may move from frontmatter to the `infer` call-site.
 - **Typed input environment (was §F2).** A brief's placeholders (`$SLICE_NAME`, `inputs.artifacts.*`, `<lead>`) are checked against the request record's fields, so a brief can only reference real, typed inputs. *Survives as lint.*
 - **Output example validation (was §F3).** A brief's embedded fenced examples validate against the WIT-derived report schema at authoring time; the agent's actual output validates at the step's terminal `done(report)`. *Survives* — the runtime check is already the validation point in both realizations.
-- **Capability binding (was §F4).** A brief's declared capabilities mirror the world's host-data imports. *Folded into [RFC-53](rfc-53-effect-interfaces.md)* — the effect imports are the capability surface; the brief declaration becomes advisory lint.
+- **Capability binding (was §F4).** A brief's declared capabilities mirror the world's host-data imports. *Folded into [RFC-52](rfc-52-effect-interfaces.md)* — the effect imports are the capability surface; the brief declaration becomes advisory lint.
 
-**Lazy discovery (was §G) is preserved by construction.** The contract governs the boundary (request in, report out, effects imported), not the interior navigation of the prose. Phase sub-briefs and the reference shelf load on demand — through the RFC-53 `references` effect (tool path) or the brief's own links (agent path) — and architecture invariant 4 forbids any step from pushing a corpus across the boundary. Only the parent brief binds the operation signature; sub-briefs are internal decomposition. Lint proves the discovery graph resolves without loading it.
+**Lazy discovery (was §G) is preserved by construction.** The contract governs the boundary (request in, report out, effects imported), not the interior navigation of the prose. Phase sub-briefs and the reference shelf load on demand — through the RFC-52 `references` effect (tool path) or the brief's own links (agent path) — and architecture invariant 4 forbids any step from pushing a corpus across the boundary. Only the parent brief binds the operation signature; sub-briefs are internal decomposition. Lint proves the discovery graph resolves without loading it.
 
 ## Decisions to record (open until reviewed)
 
@@ -94,6 +94,6 @@ RFC-51 originally proposed binding each agent brief to the WIT signature it fulf
 ## Risks and invariants
 
 - **Async maturity.** Realization A leans on the async/effect ABI; confirm before committing (architecture bet 1). B needs none, so the stage delivers value even if async slips.
-- **Scope creep into the workflow.** Keep this adapter-local; the workflow is RFC-55.
+- **Scope creep into the workflow.** Keep this adapter-local; the workflow is RFC-54.
 - **Prose holism.** `infer` passes *whole* briefs, not chopped micro-prompts — the component sequences and types; it does not fragment the prompt.
 - **RFC-50 preserved.** Orchestration components carry adapter logic; the host still holds zero adapter names and reaches them only through generic effects.

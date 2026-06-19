@@ -177,7 +177,7 @@ interface types {
 // ------------------------------------------------------
 // Target and Source interfaces — the typed operation signatures a
 // `tool` component exports. Capability params (project / slice handles)
-// are deferred to RFC-53, which promotes them from a raw grant into
+// are deferred to RFC-52, which promotes them from a raw grant into
 // named host-data effects; until then `tool` operations reach host data
 // through the existing preopen / $CAPABILITY_DIR grant.
 // ------------------------------------------------------
@@ -209,7 +209,7 @@ interface source {
 world source-adapter {}
 
 world target-adapter {
-  // Host-capability imports are deferred to RFC-53 (named host-data
+  // Host-capability imports are deferred to RFC-52 (named host-data
   // effects); until then `tool` operations use the existing
   // preopen / $CAPABILITY_DIR grant.
   export target;   // only the operations this component implements

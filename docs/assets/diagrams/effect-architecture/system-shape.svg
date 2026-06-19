@@ -1,0 +1,54 @@
+<svg viewBox="0 0 960 450" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The shape of the system: workflow and adapter programs sit on top, request typed effects across one typed WIT contract, and are satisfied by the host acting as an effect interpreter">
+  <title>The shape of the system</title>
+  <defs>
+    <marker id="ss-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="30" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE SHAPE OF THE SYSTEM</text>
+
+  <!-- programs caption -->
+  <text x="48" y="70" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#888">PROGRAMS &#8212; deterministic control flow; request a typed effect for judgment, data, or prose</text>
+
+  <!-- workflow program -->
+  <rect x="48" y="80" width="420" height="104" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="66" y="108" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Workflow program</text>
+  <text x="66" y="130" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">/spec:plan &#183; /spec:execute &#183; the slice loop</text>
+  <text x="66" y="148" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">agent-driver over deterministic CLI guardrails</text>
+  <text x="66" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#7c6aa0">judgment-leaning</text>
+
+  <!-- adapter program -->
+  <rect x="492" y="80" width="420" height="104" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="510" y="108" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Adapter orchestration components</text>
+  <text x="510" y="130" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">survey &#183; extract &#183; shape &#183; build &#183; merge</text>
+  <text x="510" y="148" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">typed multi-step control flow + lazy refs</text>
+  <text x="510" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#7c6aa0">structure-leaning</text>
+
+  <!-- typed contract boundary -->
+  <line x1="48" y1="224" x2="912" y2="224" stroke="#bbb" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="48" y="216" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">one typed WIT contract &#183; handles, not corpora</text>
+
+  <!-- effect down / result up -->
+  <path d="M300 186 L300 262" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
+  <text x="312" y="214" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">typed effect &#8595;</text>
+  <path d="M660 262 L660 186" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
+  <text x="672" y="214" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">&#8593; typed result</text>
+
+  <!-- interpreter -->
+  <rect x="48" y="264" width="864" height="158" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
+  <text x="66" y="290" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#1c1c1c">Host = effect interpreter</text>
+  <text x="66" y="308" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">knows effects, not adapters and not brains</text>
+
+  <rect x="66" y="320" width="300" height="42" rx="8" fill="#f0e0d6" stroke="#d8a06e"/>
+  <text x="80" y="346" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">infer(brief-ref, request) &#8594; output</text>
+  <rect x="380" y="320" width="200" height="42" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="480" y="346" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">read-artifact / get-asset</text>
+  <rect x="594" y="320" width="150" height="42" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="669" y="346" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">load-reference(id)</text>
+  <rect x="758" y="320" width="130" height="42" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="823" y="346" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#1c1c1c">journal / transition</text>
+
+  <text x="66" y="386" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">infer is pluggable &#8212; Cursor session &#183; headless API &#183; CI replay stub</text>
+  <text x="66" y="410" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Deterministic modulo the infer oracle &#8594; mock infer and the whole run replays.</text>
+</svg>

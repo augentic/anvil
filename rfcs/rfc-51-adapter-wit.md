@@ -1,13 +1,13 @@
 # RFC-51: Adapter WIT
 
-> Status: Draft - Depends: RFC-47 (adapter identity), RFC-48 (adapter packaging/registry), RFC-49 (adapter extraction to `specify-adapters`), RFC-50 (adapter-agnostic core) - Framed by: [the effect-oriented harness architecture](architecture.md) as Stages 0–1 - Hands off: capabilities → [RFC-53](rfc-53-effect-interfaces.md), brief-typing → [RFC-54](rfc-54-orchestration-components.md)
+> Status: Draft - Depends: RFC-47 (adapter identity), RFC-48 (adapter packaging/registry), RFC-49 (adapter extraction to `specify-adapters`), RFC-50 (adapter-agnostic core) - Framed by: [the effect-oriented harness architecture](architecture.md) as Stages 0–1 - Hands off: capabilities → [RFC-52](rfc-52-effect-interfaces.md), brief-typing → [RFC-53](rfc-53-orchestration-components.md)
 
 ## Position in the architecture
 
 This RFC is the **foundation** (Stages 0–1) of the [effect-oriented harness](architecture.md): the typed WIT contract (the stratum-1 transfer records) and typed tool dispatch that every later stage rides on. It is deliberately scoped to that foundation — two concerns earlier drafts folded in here now live in the stage that owns them:
 
-- **Capabilities / resources** (the narrow host-data accessors) move to [RFC-53](rfc-53-effect-interfaces.md), which generalizes them from a capability grant into the harness's first named **data effect**.
-- **The typed brief contract and lazy discovery** move to [RFC-54](rfc-54-orchestration-components.md): once a brief becomes the *body of the `infer` effect*, "the brief binds a WIT signature" becomes "the `infer` call-site declares the signature," so the heavier `implements` / `consumes` / `produces` / `capabilities` machinery is re-evaluated there rather than built out here. Lazy discovery is a standing invariant in the architecture north star.
+- **Capabilities / resources** (the narrow host-data accessors) move to [RFC-52](rfc-52-effect-interfaces.md), which generalizes them from a capability grant into the harness's first named **data effect**.
+- **The typed brief contract and lazy discovery** move to [RFC-53](rfc-53-orchestration-components.md): once a brief becomes the *body of the `infer` effect*, "the brief binds a WIT signature" becomes "the `infer` call-site declares the signature," so the heavier `implements` / `consumes` / `produces` / `capabilities` machinery is re-evaluated there rather than built out here. Lazy discovery is a standing invariant in the architecture north star.
 
 What remains in RFC-51 is durable and unaffected: the transfer records (stratum 1), typed tool dispatch, and the typed agent envelopes that reuse the same records.
 
@@ -19,7 +19,7 @@ This RFC proposes replacing that loose contract with a typed **WebAssembly Compo
 
 This is the *typed realization* of RFC-50's "uniform operation-envelope runtime": RFC-50 says the host's contract is a fixed envelope dispatched generically; this RFC says those envelopes are WIT records and the deterministic operations are WIT exports.
 
-The contract reaches the agent path too, but here only as **shared envelope currency**: an `agent`-executed operation is fulfilled by an LLM running a markdown brief, and the host serializes the *same* WIT request record into that brief's handoff and validates the *same* report record on return. Binding a brief more deeply to its signature — the `implements` / `consumes` / `produces` contract — is deferred to [RFC-54](rfc-54-orchestration-components.md); here the agent path simply reuses the records, and the brief body stays prose executed by an LLM.
+The contract reaches the agent path too, but here only as **shared envelope currency**: an `agent`-executed operation is fulfilled by an LLM running a markdown brief, and the host serializes the *same* WIT request record into that brief's handoff and validates the *same* report record on return. Binding a brief more deeply to its signature — the `implements` / `consumes` / `produces` contract — is deferred to [RFC-53](rfc-53-orchestration-components.md); here the agent path simply reuses the records, and the brief body stays prose executed by an LLM.
 
 **Every adapter is a component.** Both axes are now *required* to ship a WASM component that implements their axis world — the prose-only / types-only adapter is gone. That component and the adapter's prose (briefs, phase sub-briefs, references) are co-packaged and published to the registry as a single composite extension (RFC-48 packaging/transport), downloaded and resolved as one unit. The `tool` / `agent` split therefore describes *how an operation is executed inside a component-backed adapter*, not *whether a component exists*: a `tool` operation is a callable world export the host invokes through wasmtime; an `agent` operation is fulfilled by the LLM running the co-packaged brief, exchanging the same WIT records through the handoff. The component is the mandatory wasm half of every adapter; the briefs are its prose half.
 
@@ -49,7 +49,7 @@ The Component Model is the native idiom here, not a new dependency: **WASI Previ
 
 ### Non-goals
 
-- **Brief bodies stay markdown; brief execution stays an LLM handoff.** The agent path is not a WIT export and is not made callable. This RFC types the *envelopes* the briefs exchange; it does not type, generate, or machine-execute the prose body, and the deeper brief-to-signature contract is [RFC-54](rfc-54-orchestration-components.md). Correctness of the instructions themselves remains the eval / review layer's job (see [Risks and invariants](#risks-and-invariants)).
+- **Brief bodies stay markdown; brief execution stays an LLM handoff.** The agent path is not a WIT export and is not made callable. This RFC types the *envelopes* the briefs exchange; it does not type, generate, or machine-execute the prose body, and the deeper brief-to-signature contract is [RFC-53](rfc-53-orchestration-components.md). Correctness of the instructions themselves remains the eval / review layer's job (see [Risks and invariants](#risks-and-invariants)).
 - **No workflow or operation-set change.** The lifecycle, the `survey/extract/shape/build/merge` operation set, and adapter identity (RFC-47) are unchanged.
 - **Source axis exports nothing callable today, but still ships a component.** Both source operations are agent-only, so the source world currently exports nothing callable; the source adapter is nonetheless required to ship a component (the composite's wasm half — the typed `source` world) and gains callable exports only when a deterministic source tool is written. Mandating the component does *not* turn `survey` / `extract` into deterministic functions; their execution stays a brief handoff.
 - **No compatibility shim.** Consistent with the project's pre-1.0 "hard cut" posture, the `wasi:cli/run` → world migration is a clean ABI cut at `specify extension run`, not a dual-path bridge.
@@ -95,7 +95,7 @@ interface target {
 
 world target-adapter {
   export target;   // only the operations this component implements
-  // Host-capability imports are deferred to RFC-53 (named host-data
+  // Host-capability imports are deferred to RFC-52 (named host-data
   // effects); until then `tool` operations use the existing
   // preopen / $CAPABILITY_DIR grant.
 }
@@ -117,9 +117,9 @@ The `specify` repo **owns and publishes** the `specify:adapter@<semver>` WIT pac
 
 The package is semver-versioned and ties into RFC-47 adapter identity and the `requires_specify` floor: the host advertises the world version(s) it supports, an adapter targets a world version, and a mismatch is a typed resolve error rather than a runtime surprise.
 
-### E. Brief-typing and lazy discovery → RFC-54
+### E. Brief-typing and lazy discovery → RFC-53
 
-Earlier drafts continued here with a full **typed brief contract** — binding each agent brief to its operation signature via `implements` / `consumes` / `produces` / `capabilities` frontmatter and four authoring-time checks — plus a **lazy reference-discovery** model. That material is **relocated to [RFC-54](rfc-54-orchestration-components.md)**: once a brief becomes the body of the `infer` effect, the signature is declared at the call-site rather than re-stated in frontmatter, so RFC-54 is the right place to decide how much of that contract is worth building as authoring-time lint. RFC-51 keeps only the shared records those briefs exchange (§A) and the agent handoff that carries them (§C); lazy discovery is a standing invariant of the [architecture north star](architecture.md).
+Earlier drafts continued here with a full **typed brief contract** — binding each agent brief to its operation signature via `implements` / `consumes` / `produces` / `capabilities` frontmatter and four authoring-time checks — plus a **lazy reference-discovery** model. That material is **relocated to [RFC-53](rfc-53-orchestration-components.md)**: once a brief becomes the body of the `infer` effect, the signature is declared at the call-site rather than re-stated in frontmatter, so RFC-53 is the right place to decide how much of that contract is worth building as authoring-time lint. RFC-51 keeps only the shared records those briefs exchange (§A) and the agent handoff that carries them (§C); lazy discovery is a standing invariant of the [architecture north star](architecture.md).
 
 ## The hard boundary (non-goal)
 
@@ -128,7 +128,7 @@ A brief is a prompt executed by the LLM; **no WASM component runs the prose**, s
 | Operation execution                    | WIT role                                                                                                                                                                                          |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `execution: tool` (deterministic WASM) | Callable world export (`build`/`merge`/validators) + typed envelope                                                                                                                               |
-| `execution: agent` (markdown brief)    | Typed envelope only — request in, report out, validated at `finalize`; execution stays a two-phase host handoff and the prose body is never machine-executed. Deeper brief-to-signature binding is [RFC-54](rfc-54-orchestration-components.md). |
+| `execution: agent` (markdown brief)    | Typed envelope only — request in, report out, validated at `finalize`; execution stays a two-phase host handoff and the prose body is never machine-executed. Deeper brief-to-signature binding is [RFC-53](rfc-53-orchestration-components.md). |
 
 The dominant mode today is `agent`, so most operations gain *typed envelopes* but not *callable exports* — yet the adapter still ships a component on both axes (the composite's wasm half), so "no callable export" no longer means "no component." The honest ceiling is that the contract types the data crossing the seam, not the *semantics* of the instructions: an LLM can follow a perfectly-typed brief and still emit a structurally-valid-but-wrong report. Typing raises the floor — no orphan operations, structurally-valid I/O — while correctness stays with the eval / review layer. That ceiling is a feature: it is exactly what lets the host stay agent-runtime-agnostic.
 
@@ -152,8 +152,8 @@ Project the WIT `types` records into the survey/extract/shape/build/merge handof
 
 Two follow-on tracks build on the records and bindings this RFC lands, each in the stage that owns it:
 
-- **Capability / resource model** — replacing `$CAPABILITY_DIR` + broad preopens with named host-data effects — continues in [RFC-53](rfc-53-effect-interfaces.md).
-- **Typed brief contract and lazy discovery** — binding briefs to their signatures and the reference-shelf model — continues in [RFC-54](rfc-54-orchestration-components.md).
+- **Capability / resource model** — replacing `$CAPABILITY_DIR` + broad preopens with named host-data effects — continues in [RFC-52](rfc-52-effect-interfaces.md).
+- **Typed brief contract and lazy discovery** — binding briefs to their signatures and the reference-shelf model — continues in [RFC-53](rfc-53-orchestration-components.md).
 
 ## Decisions to record (open until reviewed)
 
@@ -163,14 +163,14 @@ Two follow-on tracks build on the records and bindings this RFC lands, each in t
 - **Versioning, ownership & publishing** — that the `specify` repo owns and publishes `specify:adapter@<semver>` (`wkg publish`) while `specify-adapters` consumes a pinned version (one-way dependency); and how the world version relates to RFC-47 identity and `requires_specify`.
 - `**shape` semantics** — whether `shape` is a world export, a host-read manifest-declared file, or an envelope.
 - **Operation set vs declared tools** — whether the manifest's declared-tool set (`contract`, `vectis`) and the operation set unify under one world.
-- **Capability model** — deferred to [RFC-53](rfc-53-effect-interfaces.md): named host-data effects vs. the current preopen grant, and which host functions the world exposes.
-- **Brief-typing surface** — deferred to [RFC-54](rfc-54-orchestration-components.md): how much of the `implements` / `consumes` / `produces` / `capabilities` brief contract, its coverage check, and the reference catalog survives once a brief is the body of the `infer` effect.
+- **Capability model** — deferred to [RFC-52](rfc-52-effect-interfaces.md): named host-data effects vs. the current preopen grant, and which host functions the world exposes.
+- **Brief-typing surface** — deferred to [RFC-53](rfc-53-orchestration-components.md): how much of the `implements` / `consumes` / `produces` / `capabilities` brief contract, its coverage check, and the reference catalog survives once a brief is the body of the `infer` effect.
 
 ## Risks and invariants
 
 - **Agent path unchanged.** Most operations remain a handoff; this is "type the envelopes and make the deterministic tools callable," not "turn briefs into functions." The prose-only adapter is gone, but prose *execution* is unchanged. Typing raises the structural floor, not the correctness ceiling (see [The hard boundary](#the-hard-boundary-non-goal)).
 - **Toolchain — now mandatory on both axes.** Components + `wit-bindgen` add build steps for adapter authors, and shipping a component is now required for *every* adapter — including the agent-only source adapters (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) and the currently all-agent first-party targets, not just the validators that already pay this cost. Language-agnostic implementation is a benefit, but this is the principal adoption cost; an all-agent adapter still has to produce and publish a component (the composite's wasm half) even when it exports nothing callable yet.
-- **wasmtime feature maturity.** v45 ships stable Component Model support for the records, variants, and `result` this RFC uses; the `resource` ergonomics that the named host-data effects need are confirmed in [RFC-53](rfc-53-effect-interfaces.md) before that stage relies on them.
+- **wasmtime feature maturity.** v45 ships stable Component Model support for the records, variants, and `result` this RFC uses; the `resource` ergonomics that the named host-data effects need are confirmed in [RFC-52](rfc-52-effect-interfaces.md) before that stage relies on them.
 - **Cross-repo seam (one-directional).** The `specify` repo owns and publishes the `specify:adapter` WIT package; the adapter `.wasm` builds live in `specify-adapters` and consume a pinned published version. The ABI cut is therefore a publish-then-pin sequence — specify ships the world version, `specify-adapters` bumps its pin and re-exports — rather than a symmetric lockstep edit. The workflow contract still spans both repos, so the version bump and the consuming build must be sequenced deliberately.
 - **RFC-50 invariant preserved.** The WIT package is generic — it carries no adapter *name* and no adapter *taxonomy*. The host still holds zero adapter-specific code; this RFC types the contract, it does not re-open the host to any adapter.
 

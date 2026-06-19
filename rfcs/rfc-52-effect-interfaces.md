@@ -1,6 +1,6 @@
-# RFC-53: Effect Interfaces (Stage 2 — Name the Effects)
+# RFC-52: Effect Interfaces (Stage 2 — Name the Effects)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented harness architecture (Stage 2) · Depends: RFC-51 (typed records + host bindings) · Sequences into: RFC-54 (orchestration components)
+> Status: Draft (skeleton) · Implements: the effect-oriented harness architecture (Stage 2) · Depends: RFC-51 (typed records + host bindings) · Sequences into: RFC-53 (orchestration components)
 
 ## Abstract
 
@@ -12,7 +12,7 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 
 - makes the seam a single, typed surface (one place for context-injection policy, recording, rate-limiting);
 - lets a **replay stub** satisfy `infer` so a whole run is deterministic in CI (architecture acceptance #4);
-- gives RFC-54 a stable import to build orchestration components against, without RFC-54 also having to invent the effect vocabulary.
+- gives RFC-53 a stable import to build orchestration components against, without RFC-53 also having to invent the effect vocabulary.
 
 ## Scope
 
@@ -20,8 +20,8 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 
 ### Non-goals
 
-- **No orchestration components yet.** S2 names the effects; S3 (RFC-54) makes components *call* them. The two-phase handoff stays the execution model through S2.
-- **No async ABI commitment.** `infer` is specified synchronously here (`-> result<output, error>`); streaming/cancellation is deferred to RFC-54 where the async-ABI bet is made.
+- **No orchestration components yet.** S2 names the effects; S3 (RFC-53) makes components *call* them. The two-phase handoff stays the execution model through S2.
+- **No async ABI commitment.** `infer` is specified synchronously here (`-> result<output, error>`); streaming/cancellation is deferred to RFC-53 where the async-ABI bet is made.
 - **No brief-frontmatter expansion.** RFC-51 §F's `implements` / `consumes` / `produces` machinery is *not* extended here; this RFC may subsume part of it (see Decisions).
 
 ## The model (sketch)
@@ -82,7 +82,7 @@ The host satisfies `infer` with today's handoff in S2 (print envelope, run brief
 - **Lifecycle as effect vs CLI-only.** Whether `journal` / `transition` become component-callable effects now, or stay CLI-owned and are reached only through the driver. (Leaning: stay CLI-owned through S2; expose later only if S4 needs it.)
 - **Fate of RFC-51 §F frontmatter.** How much of `implements` / `consumes` / `produces` / `capabilities` is subsumed by the typed `infer` boundary, and how much survives as authoring-time lint.
 - **Replay backend shape.** The on-disk format of recorded `(brief-ref, request) -> output` pairs and how a run selects record vs replay.
-- **Sync vs async deferral.** Confirm the synchronous `infer` here is forward-compatible with the async ABI RFC-54 may adopt (no signature churn).
+- **Sync vs async deferral.** Confirm the synchronous `infer` here is forward-compatible with the async ABI RFC-53 may adopt (no signature churn).
 
 ## Phased plan
 
