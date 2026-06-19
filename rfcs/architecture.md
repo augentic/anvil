@@ -24,8 +24,8 @@ It is deliberately **not** a numbered RFC. In this repo an RFC is a discrete, la
 
 Three layers, one contract.
 
-- **Programs sit on top.** There are two kinds, and they are the *same shape*: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the **adapters** (`survey` / `extract` / `shape` / `build` / `merge`). A program expresses deterministic control flow and, whenever it needs something it cannot compute — a judgment, a datum, a piece of prose — it requests a **typed effect** rather than doing the impure thing itself.
-- **The host is the interpreter underneath.** It instantiates the programs and satisfies a small, fixed vocabulary of effects: `infer` (run a brief on the LLM), the host-data accessors, `load-reference`, and the lifecycle hooks. It knows *effects*, not adapters and not brains.
+- **Programs sit on top.** There are two kinds, and they are the *same shape* — each (at the north star) a **Wasm component** (Component Model): the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the **adapters** (`survey` / `extract` / `shape` / `build` / `merge`). A program expresses deterministic control flow and, whenever it needs something it cannot compute — a judgment, a datum, a piece of prose — it requests a **typed effect** rather than doing the impure thing itself.
+- **The host — the `specify` CLI, a Rust binary embedding Wasmtime — is the interpreter underneath.** It instantiates the programs and satisfies a small, fixed vocabulary of effects: `infer` (run a brief on the LLM), the host-data accessors, `load-reference`, and the lifecycle hooks. It knows *effects*, not adapters and not brains.
 - **One typed contract is the boundary** between them. Every datum and every effect crosses it typed; nothing crosses untyped, and nothing crosses as a corpus — only handles.
 
 The two program kinds differ only in *where they draw the line* between structure and judgment — adapters lean toward structure, the workflow toward judgment (developed below). They speak the same effects to the same interpreter, which is what lets one architecture serve both.
@@ -34,13 +34,29 @@ The two program kinds differ only in *where they draw the line* between structur
 
 ![The effect model](../docs/assets/diagrams/effect-architecture/effect-model.svg)
 
-The model borrows its discipline from **algebraic effects**: a program is mostly pure control flow; the messy, non-deterministic world is reached only through named, typed *effects*; and a separate *interpreter* (a "handler") decides how each effect is actually carried out. Swap the handler and the same program runs interactively, headless, or against a recording — without the program changing. The vocabulary:
+The model borrows its discipline from **algebraic effects**: a program is mostly pure control flow; the messy, non-deterministic world is reached only through named, typed *effects*; and a separate *interpreter* (a "handler") decides how each effect is actually carried out. Swap an effect's handler and the same program runs interactively, headless, or against a recording — without the program changing. The vocabulary:
 
 - **Effect** — a typed request a program makes for something it cannot compute itself (run a brief, read an artifact, fetch a reference, record a lifecycle event). The effect names *what* is needed; it does not say *how* to get it.
-- **Interpreter** — the harness. It owns the *how* of every effect and is the only place impurity lives. Programs are deterministic between effects.
-- **`infer`** — the marquee effect. Prose is its *body*, the LLM is its *interpreter*, and the brief's typed request and report are its *signature*. "Run this brief and give me back a typed answer" is a function call whose implementation happens to be a language model.
-- **Oracle** — the LLM seen from the program's side: an opaque source of typed answers. The program trusts the *shape* of what comes back (validated at the boundary), never the runtime that produced it.
+- **Interpreter** — the **host** (this document's *harness*): one runtime under three lenses — the wasm **host** that satisfies a guest's imports, the algebraic-effects **interpreter** that handles effects, the **harness** of the title. It owns the *how* of every effect and is the only place impurity lives; programs are deterministic between effects. It *performs* the data, reference, and lifecycle effects itself, and *dispatches* `infer` to a pluggable backend — so the host stays brain-agnostic.
+- **`infer`** — the marquee effect. Prose is its *body*, the brief's typed request and report are its *signature*, and the LLM is its *backend* — the thing the host dispatches to. "Run this brief and give me back a typed answer" is a function call whose implementation happens to be a language model.
+- **Oracle** — the LLM seen from the program's side: an opaque source of typed answers. The program trusts the *shape* of what comes back (validated at the boundary), never the runtime that produced it. The same thing seen from the host's side is the pluggable **`infer` backend** (informally, the *brain*); **agent** names only its *interactive* form — alongside the headless API and the CI replay stub, neither of which is an agent.
 - **Handle** — a reference (`brief-ref`, artifact path, reference id) that *names* data without carrying it. Handles are how laziness becomes structural rather than aspirational.
+
+Each model term names a durable abstraction; here is the concrete technology (shorthand) behind each, so the names and the stack read side by side:
+
+| Model term | Technology (shorthand) |
+| --- | --- |
+| Program | a **Wasm component** (Component Model); adapters compiled to `wasm32-wasip2` |
+| Host · interpreter · harness | the **`specify` CLI** — a **Rust** binary embedding **Wasmtime** (Component Model · Cranelift JIT · WASI Preview 2) |
+| Effect | a **WIT** interface import |
+| Typed contract · boundary | **WIT** — records for data, interfaces for effects (package `specify:adapter`) |
+| Handle | a **WIT** handle / id — `brief-ref`, artifact path, reference id |
+| `infer` backend | the **LLM** — a Cursor agent session or a headless API — or a **CI replay stub** |
+| Oracle | the **LLM**, seen by the program as an opaque source of typed answers |
+| `read-artifact` · `load-reference` | **WASI** host-data + preopens (RFC-51 `host-data`) |
+| `journal` · `transition` | the **`specify` CLI** lifecycle owner |
+
+What runs **today**: the wasm *exports* and deterministic `tool` ops go through Wasmtime; `infer`, the host-data accessors, and `load-reference` become typed **WIT imports** only at S2–S3 (until then `infer` is the agent prepare/finalize handoff). The model terms stay constant across that transition — only the technology behind a few of them changes.
 
 The deep move is **directional**. Today a child process (the CLI) cannot reach up into its parent agent's context, so agent work is handed *back up* out of band via prepare/finalize. In the effect model the program calls *down* into wasm and the wasm calls *up* into the interpreter through an import — so the LLM step runs in the interpreter's context, where the agent already lives. The handoff stops being a workaround and becomes a typed function call.
 

@@ -20,15 +20,15 @@
   <!-- headers -->
   <rect x="65" y="48" width="150" height="48" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
   <text x="140" y="69" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">Workflow</text>
-  <text x="140" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">program</text>
+  <text x="140" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">program (agent)</text>
 
   <rect x="303" y="48" width="150" height="48" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
   <text x="378" y="69" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">Adapter</text>
-  <text x="378" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">component</text>
+  <text x="378" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">wasm component</text>
 
   <rect x="537" y="48" width="150" height="48" rx="10" fill="#d9e7f1" stroke="#6ea8d8" stroke-width="1.5"/>
   <text x="612" y="69" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">Interpreter</text>
-  <text x="612" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">(host)</text>
+  <text x="612" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">specify CLI &#183; Wasmtime</text>
 
   <rect x="777" y="48" width="130" height="48" rx="10" fill="#f0e0d6" stroke="#d8a06e" stroke-width="1.5"/>
   <text x="842" y="69" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">LLM</text>
