@@ -38,7 +38,7 @@ The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a 
 
 #### Deferred until trigger conditions or prerequisites
 
-- [RFC-46a](future/rfc-46a-web-asset-materialization.md) — web asset materialization (`sources.web`, favicon / manifest icons, `bootstrap-web`); deferred until a web shell scaffold exists. Extends the existing asset-materialization capability additively.
+- [RFC-46a](future/rfc-46a-web-asset-materialization.md) — web asset materialization (build-time `app-icon` gate extension for `web`, `sources.web`, favicon / manifest icons); deferred until a web shell scaffold exists. Extends the existing asset-materialization capability additively.
 - RM-12 / RM-13 — catalog import and read-oriented MCP; integration surfaces that enrich an already-trustworthy core loop.
 
 ---
