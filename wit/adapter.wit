@@ -1,0 +1,225 @@
+package specify:adapter@1.0.0;
+
+interface types {
+  // ------------------------------------------------------
+  // Source survey
+  // ------------------------------------------------------
+
+  // Request to survey a source.
+  record survey-request {
+    // The source being surveyed.
+    source: string,
+    // The project root in the workspace.
+    project-root: string,
+    // The source's configured input location in the workspace.
+    input-root: string,
+  }
+
+  // The lead returned by the survey operation.
+  record lead {
+    // The lead's unique identifier.
+    lead: string,
+    // The source that surfaced the lead.
+    source: string,
+    // A reconciliation-grade per-source headline of the lead as this source surfaced it.
+    synopsis: string,
+    // Optional agent-authored per-lead topic slugs (kebab-case).
+    topics: list<string>,
+  }
+
+  // ------------------------------------------------------
+  // Source extract
+  // ------------------------------------------------------
+
+  // Request to extract evidence from a source.
+  record extract-request {
+    // The slice being extracted (path identity for the Evidence).
+    slice: string,
+    // The source that surfaced the leads.
+    source: string,
+    // The leads bound to this slice.
+    leads: list<string>,
+    // The project root in the workspace.
+    project-root: string,
+    // The source's configured input location in the workspace.
+    input-root: string,
+  }
+
+  // The evidence's "authority", i.e. how seriously to take the evidence.
+  enum authority { intent, documentation, behaviour }
+
+  // The kind of claim being extracted.
+  enum claim-kind {
+    intent, requirement, criterion, decision, section, diagram, contract,
+    example, excerpt, %type, call, region, container, leaf,
+  }
+
+  // A claim extracted from the source.
+  record claim {
+    // The kind of claim being extracted.
+    kind: claim-kind,
+    // The claim's unique identifier.
+    id: option<string>,
+    // The claim's path in the source.
+    path: option<string>,
+    // The claim's statement.
+    statement: option<string>,
+    // The claim's criterion.
+    criterion: option<string>,
+    // The claim's decision.
+    decision: option<string>,
+    // The claim's replay digest.
+    replay-digest: option<string>,
+    // The claim's input.
+    input: option<string>,
+    // The claim's output.
+    output: option<string>,
+  }
+
+  // The evidence returned by the extract operation.
+  record evidence {
+    // The evidence's "authority", i.e. how seriously to take the evidence.
+    authority: authority,
+    // The lead that the evidence is bound to.
+    lead: string,
+    // The claims extracted from the source.
+    claims: list<claim>,
+  }
+
+  // ------------------------------------------------------
+  // Target build
+  // ------------------------------------------------------
+
+  // Request to build a slice.
+  record build-request {
+    // The slice being built.
+    slice: string,
+    // The project root in the workspace.
+    project-root: string,
+    // The inputs to the build.
+    inputs: list<tuple<string, string>>,
+  }
+
+  // The severity of a finding.
+  enum severity {
+    critical,
+    important,
+    suggestion,
+    optional
+  }
+
+  // A finding from the build operation.
+  record finding {
+    // The finding's rule identifier.
+    rule-id: string,
+    // The severity of the finding.
+    severity: severity,
+    // The detail of the finding.
+    detail: string,
+  }
+
+  // The status of the build operation.
+  enum build-status {
+    success,
+    failure,
+  }
+
+  record build-output {
+    // The platform being built.
+    platform: string,
+    // The path to the built output.
+    path: string,
+  }
+
+  record build-report {
+    // The slice being built.
+    slice: string,
+    // The status of the build operation.
+    status: build-status,
+    // The findings from the build operation.
+    findings: list<finding>,
+    // The outputs from the build operation.
+    outputs: list<build-output>,
+  }
+
+  // ------------------------------------------------------
+  // Target merge
+  // ------------------------------------------------------
+
+  // Request to merge a built slice into the project's codebase.
+  record merge-request {
+    // The slice being merged.
+    slice: string,
+    // The project root in the workspace.
+    project-root: string,
+  }
+
+  // The report returned by the merge operation.
+  type merge-report = build-report;
+
+  // The error returned by operations.
+  variant error {
+    invalid-request(string),
+    io(string),
+    internal(string)
+  }
+}
+
+
+// Narrow, host-provided accessor onto the project's project.yaml.
+// Replaces the broad $CAPABILITY_DIR + preopened-dir grant for the
+// "read project configuration" capability (RFC-51 §D). The CLI validates
+// project.yaml before any operation runs, so the typed getters don't
+// need a result<>; `get` is the open fallback for other scalar fields.
+interface host-config {
+  // Registry project name (project.yaml `name`).
+  project-name: func() -> string;
+
+  // The project's bound target adapter, e.g. "omnia@1.0.0".
+  target-ref: func() -> string;
+
+  // Declared target platforms (project.yaml `platforms`): always includes
+  // "core"; the UI platforms drive e.g. Vectis materialize scope.
+  platforms: func() -> list<string>;
+
+  // Whether this is a registry-only workspace (project.yaml `workspace: true`).
+  workspace: func() -> bool;
+
+  // Open fallback for any other scalar project.yaml field.
+  get: func(key: string) -> option<string>;
+}
+
+// ------------------------------------------------------
+// Target and Source interfaces
+// ------------------------------------------------------
+
+// Every operation's signature — the shared contract a `tool` component
+// EXPORTS and an `agent` brief BINDS TO (§F). The signature is identical
+// either way; only the executor differs.
+interface target {
+  use types.{ build-request, build-report, merge-request, merge-report, error };
+  build: func(req: build-request) -> result<build-report, error>;
+  merge: func(req: merge-request) -> result<merge-report, error>;
+}
+
+interface source {
+  use types.{ survey-request, lead, extract-request, evidence, error };
+  survey: func(req: survey-request) -> result<list<lead>, error>;
+  extract: func(req: extract-request) -> result<evidence, error>;
+}
+
+// Agent-only today: the world imports host capabilities but exports nothing.
+// Both ops are brief-bound (§F); the world gains exports only if a
+// deterministic source *tool* is ever written.
+world source-adapter {
+  import wasi:filesystem/types@0.2.0;
+  import host-config;
+  export source;
+}
+
+world target-adapter {
+  import wasi:filesystem/types@0.2.0;   // capability-scoped host access
+  import host-config;                   // small host interface: read project.yaml, etc.
+  export target;                    // only the operations this component implements
+}
+
