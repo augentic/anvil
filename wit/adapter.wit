@@ -174,100 +174,44 @@ interface types {
   type merge-report = build-report;
 }
 
-// Narrow, host-provided accessor onto the project's project.yaml.
-// Replaces the broad $CAPABILITY_DIR + preopened-dir grant for the
-// "read project configuration" capability (RFC-51 §D). The CLI validates
-// project.yaml before any operation runs, so the typed getters don't
-// need a result<>; `get` is the open fallback for other scalar fields.
-interface host-config {
-  // Registry project name (project.yaml `name`).
-  project-name: func() -> string;
-
-  // The project's bound target adapter, e.g. "omnia@1.0.0".
-  target-ref: func() -> string;
-
-  // Declared target platforms (project.yaml `platforms`): always includes
-  // "core"; the UI platforms drive e.g. Vectis materialize scope.
-  platforms: func() -> list<string>;
-
-  // Whether this is a registry-only workspace (project.yaml `workspace: true`).
-  workspace: func() -> bool;
-
-  // Open fallback for any other scalar project.yaml field.
-  get: func(key: string) -> option<string>;
-}
-
 // ------------------------------------------------------
-// Phase 3: Narrow host resources replacing raw file paths
-// ------------------------------------------------------
-interface host-data {
-  use types.{adapter-error};
-
-  // A dummy asset record for the example
-  record asset {
-    id: string,
-    content-type: string,
-    data: list<u8>,
-  }
-
-  // A handle representing capability access to the Project
-  resource project {
-    // Narrow method: Can only fetch designated assets, not arbitrary files
-    get-asset: func(id: string) -> option<asset>;
-    
-    // Narrow method: Can only read the config, nothing else
-    read-config: func() -> result<string, adapter-error>;
-  }
-
-  // A handle representing capability access to a specific Slice
-  resource slice {
-    // The adapter doesn't know *where* the slice is on disk, 
-    // it just asks the host to read an artifact by its relative path.
-    read-artifact: func(path: string) -> result<string, adapter-error>;
-  }
-}
-
-// ------------------------------------------------------
-// Target and Source interfaces
+// Target and Source interfaces — the typed operation signatures a
+// `tool` component exports. Capability params (project / slice handles)
+// are deferred to RFC-53, which promotes them from a raw grant into
+// named host-data effects; until then `tool` operations reach host data
+// through the existing preopen / $CAPABILITY_DIR grant.
 // ------------------------------------------------------
 
-// Every operation's signature — the shared contract a `tool` component
-// EXPORTS and an `agent` brief BINDS TO (§F). The signature is identical
-// either way; only the executor differs.
 interface target {
-  use types.{ 
-    shape-request, shape-report, 
-    build-request, build-report, 
-    merge-request, merge-report, 
-    adapter-error 
+  use types.{
+    shape-request, shape-report,
+    build-request, build-report,
+    merge-request, merge-report,
+    adapter-error
   };
-  use host-data.{project, slice};
 
-  shape: func(req: shape-request, proj: borrow<project>, sl: borrow<slice>) -> result<shape-report, adapter-error>;
-  build: func(req: build-request, proj: borrow<project>, sl: borrow<slice>) -> result<build-report, adapter-error>;
-  merge: func(req: merge-request, proj: borrow<project>, sl: borrow<slice>) -> result<merge-report, adapter-error>;
+  shape: func(req: shape-request) -> result<shape-report, adapter-error>;
+  build: func(req: build-request) -> result<build-report, adapter-error>;
+  merge: func(req: merge-request) -> result<merge-report, adapter-error>;
 }
 
 interface source {
   use types.{ survey-request, lead, extract-request, evidence, adapter-error };
-  use host-data.{project, slice};
 
-  survey: func(req: survey-request, proj: borrow<project>) -> result<list<lead>, adapter-error>;
-  extract: func(req: extract-request, proj: borrow<project>, sl: borrow<slice>) -> result<evidence, adapter-error>;
+  survey: func(req: survey-request) -> result<list<lead>, adapter-error>;
+  extract: func(req: extract-request) -> result<evidence, adapter-error>;
 }
 
-// Agent-only today: the world imports host capabilities but exports nothing.
-// Both ops are brief-bound (§F); the world gains exports only if a
-// deterministic source *tool* is ever written.
-world source-adapter {
-  import host-config;
-  import host-data;
-}
+// Agent-only today: both source operations are brief-bound, so this world
+// exports nothing callable yet. The source adapter still ships a component
+// (the composite's wasm half); it gains exports only when a deterministic
+// source tool is written.
+world source-adapter {}
 
 world target-adapter {
-  import host-config;                   // small host interface: read project.yaml, etc.
-  import host-data;                     // Phase 3 resources replacing broad filesystem access
-  
-  export target;                        // only the operations this component implements
+  // Host-capability imports are deferred to RFC-53 (named host-data
+  // effects); until then `tool` operations use the existing
+  // preopen / $CAPABILITY_DIR grant.
+  export target;   // only the operations this component implements
 }
 

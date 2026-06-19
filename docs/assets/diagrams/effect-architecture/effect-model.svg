@@ -1,0 +1,59 @@
+<svg viewBox="0 0 940 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The effect model: an orchestration component requests typed effects from the harness interpreter, which satisfies infer, data, references, and lifecycle">
+  <title>The effect model</title>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="32" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE EFFECT MODEL</text>
+
+  <!-- orchestration program -->
+  <rect x="36" y="168" width="250" height="120" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="52" y="200" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Orchestration program</text>
+  <text x="52" y="218" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">(wasm component)</text>
+  <text x="52" y="244" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">deterministic control flow</text>
+  <text x="52" y="262" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">calls effects, gets typed</text>
+  <text x="52" y="278" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">results back</text>
+
+  <!-- boundary -->
+  <line x1="362" y1="150" x2="362" y2="392" stroke="#bbb" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="362" y="142" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">typed boundary &#183; handles, not corpora</text>
+
+  <!-- request / result arrows -->
+  <path d="M286 196 L436 196" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#arr)"/>
+  <text x="300" y="188" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">effect request (typed)</text>
+  <path d="M436 262 L286 262" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#arr)"/>
+  <text x="298" y="280" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">typed result &#8594; steers control flow</text>
+
+  <!-- interpreter container -->
+  <rect x="436" y="60" width="468" height="330" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
+  <text x="452" y="84" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#1c1c1c">Effect interpreter (harness)</text>
+
+  <!-- infer row -->
+  <rect x="452" y="96" width="436" height="40" rx="8" fill="#f0e0d6" stroke="#d8a06e"/>
+  <text x="466" y="121" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">infer(brief-ref, request) &#8594; output  &#183;  inherits agent context</text>
+  <rect x="452" y="142" width="132" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
+  <text x="518" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">Cursor session</text>
+  <rect x="590" y="142" width="120" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
+  <text x="650" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">headless API</text>
+  <rect x="716" y="142" width="172" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
+  <text x="802" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">CI replay (record/replay)</text>
+  <text x="452" y="186" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">pluggable backends &#8212; the brain is one swappable interface</text>
+
+  <!-- data row -->
+  <rect x="452" y="198" width="436" height="40" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="466" y="223" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">read-artifact / get-asset &#8594; host data (narrow)</text>
+
+  <!-- refs row -->
+  <rect x="452" y="246" width="436" height="40" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="466" y="271" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">load-reference(id) &#8594; adapter bundle (lazy)</text>
+
+  <!-- lifecycle row -->
+  <rect x="452" y="294" width="436" height="40" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="466" y="319" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">journal / transition &#8594; lifecycle (CLI-owned)</text>
+
+  <text x="452" y="360" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">Host knows effects, not adapters and not brains.</text>
+
+  <text x="40" y="430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" fill="#3c7a52">Deterministic modulo the infer oracle: mock infer &#8658; the whole run replays.</text>
+</svg>
