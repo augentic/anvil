@@ -1,4 +1,4 @@
-# RFC-51: Typed Adapter ABI via a WIT / Component-Model World
+# RFC-51: Adapter WIT
 
 > Status: Draft - Depends: RFC-47 (adapter identity), RFC-48 (adapter packaging/registry), RFC-49 (adapter extraction to `specify-adapters`), RFC-50 (adapter-agnostic core)
 
@@ -11,6 +11,8 @@ This RFC proposes replacing that loose contract with a typed **WebAssembly Compo
 This is the *typed realization* of RFC-50's "uniform operation-envelope runtime": RFC-50 says the host's contract is a fixed envelope dispatched generically; this RFC says those envelopes are WIT records and the deterministic operations are WIT exports.
 
 The contract reaches the prose as well. A **brief is the agent-side implementation of a WIT operation**: a `tool`-executed operation is implemented by a WASM component (a callable export), and an `agent`-executed operation is implemented by a markdown brief (an LLM-fulfilled "export"). Both satisfy the *same* WIT signature from `specify:adapter`; only the executor differs. A brief's **contract** — the signature it fulfils, the request fields its prose references, the report it returns, the capabilities it touches, and the example payloads it embeds — therefore binds to and is checked against the same WIT world, even though the brief *body* stays prose and its *execution* stays an LLM handoff.
+
+**Every adapter is a component.** Both axes are now *required* to ship a WASM component that implements their axis world — the prose-only / types-only adapter is gone. That component and the adapter's prose (briefs, phase sub-briefs, references) are co-packaged and published to the registry as a single composite extension (RFC-48 packaging/transport), downloaded and resolved as one unit. The `tool` / `agent` split therefore describes *how an operation is executed inside a component-backed adapter*, not *whether a component exists*: a `tool` operation is a callable world export the host invokes through wasmtime; an `agent` operation is fulfilled by the LLM running the co-packaged brief, framed by the same WIT signature. The component is the mandatory wasm half of every adapter; the briefs are its prose half.
 
 **Explicit non-goal up front:** adapter **briefs do not become callable WIT functions.** They are markdown executed by an LLM; there is no component to instantiate and no export to invoke. WIT types the data crossing the boundary, makes the *deterministic* operations callable, and binds the *brief contract* to the world for static checking — but the agent execution stays a two-phase handoff and the prose body is never machine-executed.
 
@@ -41,7 +43,7 @@ The Component Model is the native idiom here, not a new dependency: **WASI Previ
 
 - **Brief bodies stay markdown; brief execution stays an LLM handoff.** The agent path is not a WIT export and is not made callable. This RFC types the *envelopes* the briefs exchange and the *contract* each brief declares (signature, inputs, outputs, capabilities, examples); it does not type, generate, or machine-execute the prose body. Correctness of the instructions themselves remains the eval / review layer's job (see [Risks and invariants](#risks-and-invariants)).
 - **No workflow or operation-set change.** The lifecycle, the `survey/extract/shape/build/merge` operation set, and adapter identity (RFC-47) are unchanged.
-- **Source axis is types-only today.** Both source operations are agent-only, so the source world exports nothing callable; sources gain typed envelopes but no callable exports until a deterministic source tool exists.
+- **Source axis exports nothing callable today, but still ships a component.** Both source operations are agent-only, so the source world currently exports nothing callable; the source adapter is nonetheless required to ship a component (the composite's wasm half — the host-capability imports plus the typed `source` world) and gains callable exports only when a deterministic source tool is written. Mandating the component does *not* turn `survey` / `extract` into deterministic functions; their execution stays a brief handoff.
 - **No compatibility shim.** Consistent with the project's pre-1.0 "hard cut" posture, the `wasi:cli/run` → world migration is a clean ABI cut at `specify extension run`, not a dual-path bridge.
 
 ## The model
@@ -93,9 +95,13 @@ world target-tool {
 
 A deterministic target `world` exports the subset of `target-ops` it implements; the host calls `instance.call_build(&mut store, &req)` and gets a typed `result<build-report, adapter-error>`. An operation a target fulfils with a brief is *not* exported by any world — it is bound by that brief's frontmatter and checked against the `target-ops` signature at authoring time (§F). The interface is therefore the union of operation signatures; `{world exports} ∪ {brief bindings}` must cover it exactly once. The `source` world is analogous; both source operations are agent-only today, so the source world exports nothing and `survey` / `extract` are brief-bound.
 
+Mandating a component on both axes does **not** collapse this union: an adapter's component exports only its `tool` operations (so an all-agent adapter's component currently exports nothing callable), while its `agent` operations stay brief-bound and LLM-executed. What is now required is that the component *ships* on both axes — ending the prose-only adapter — and that it, plus the adapter's prose, travels as one composite package (§A, Abstract). The coverage math is unchanged; the wasm artifact is simply always present.
+
 ### C. The agent handoff reuses the WIT types
 
 For `execution: agent`, there is no export to call. The host serializes the WIT `build-request` record into the two-phase brief handoff alongside the `implements:` contract id the brief declares (§F1), the agent runs the brief, and the host parses a `build-report` back and validates it at `finalize` against the operation's WIT-derived report type. Host-side Rust types come from `wasmtime::component::bindgen!`; the JSON the brief reads and writes is a projection of the *same* records, so there is one definition for both the typed (tool) path and the serialized (agent) path. Structurally the handoff becomes a typed call — "here is your `build-request` value, here is the signature you fulfil, return a `build-report`" — with an LLM rather than wasmtime as the interpreter and the `finalize` validation as the return-type check.
+
+The brief the agent runs is the prose half of the same composite adapter the component anchors: tool path and agent path share one package and one contract. The component always ships (§B); the host runs the co-packaged brief for `agent` operations and invokes the component export for `tool` operations, but either way the request and report cross as the same WIT records.
 
 ### D. Capabilities become named imports / resources
 
@@ -105,7 +111,9 @@ The capability model targets **host/project data** — the slice tree, artifacts
 
 ### E. Versioning
 
-The WIT package is semver-versioned and ties into RFC-47 adapter identity and the `requires_specify` floor: the host advertises the world version(s) it supports, an adapter targets a world version, and a mismatch is a typed resolve error rather than a runtime surprise.
+The `specify` repo **owns and publishes** the `specify:adapter@<semver>` WIT package: it is authored under `specify/wit/`, published to the registry from specify CI (`wkg publish`), and consumed by `specify-adapters` (and any third-party adapter) as a pinned dependency resolved through `wkg`. The dependency direction is strictly one-way — specify produces the contract, adapters consume it — so the package is the single upstream source for both repos' generated bindings.
+
+The package is semver-versioned and ties into RFC-47 adapter identity and the `requires_specify` floor: the host advertises the world version(s) it supports, an adapter targets a world version, and a mismatch is a typed resolve error rather than a runtime surprise.
 
 ### F. Briefs as typed agent-fulfilled implementations
 
@@ -154,7 +162,7 @@ A brief is a prompt executed by the LLM; **no WASM component runs the prose**, s
 | `execution: agent` (markdown brief)    | Typed envelope + typed brief contract (signature binding, input environment, output examples, capabilities — §F); execution stays a two-phase host handoff and the prose body is never machine-executed |
 
 
-The dominant mode today is `agent`, so most operations gain *typed envelopes and a typed contract* but not *callable exports*. The honest ceiling is that the contract types the data and the brief's shell, not the *semantics* of the instructions: an LLM can follow a perfectly-typed brief and still emit a structurally-valid-but-wrong report. Typing raises the floor — no orphan operations, no unresolved placeholders, no drifted examples, no ungranted capabilities, structurally-valid I/O — while correctness stays with the eval / review layer. That ceiling is a feature: it is exactly what lets the host stay agent-runtime-agnostic.
+The dominant mode today is `agent`, so most operations gain *typed envelopes and a typed contract* but not *callable exports* — yet the adapter still ships a component on both axes (the composite's wasm half), so "no callable export" no longer means "no component." The honest ceiling is that the contract types the data and the brief's shell, not the *semantics* of the instructions: an LLM can follow a perfectly-typed brief and still emit a structurally-valid-but-wrong report. Typing raises the floor — no orphan operations, no unresolved placeholders, no drifted examples, no ungranted capabilities, structurally-valid I/O — while correctness stays with the eval / review layer. That ceiling is a feature: it is exactly what lets the host stay agent-runtime-agnostic.
 
 ## Phased plan
 
@@ -162,11 +170,11 @@ Each phase is independently mergeable and **must keep `make lint` and `cargo mak
 
 ### Phase 0 — Author the WIT package + host bindings (no behavior change)
 
-Define `specify:adapter` with the `types` interface and the per-axis worlds; wire `wasmtime::component::bindgen!` host-side. Assert the generated types match the current envelope records (transitional parity), so nothing changes at runtime yet.
+Define `specify:adapter` with the `types` interface and the per-axis worlds; wire `wasmtime::component::bindgen!` host-side. Assert the generated types match the current envelope records (transitional parity), so nothing changes at runtime yet. Publish the package from specify CI (`wkg publish`) so `specify-adapters` can resolve a pinned version (§E) — this establishes specify as the owner/publisher before any adapter consumes the contract.
 
 ### Phase 1 — Typed exports for the existing tool components
 
-Re-export a world from the deterministic components (`contract`, `vectis`) instead of `wasi:cli/run`, and route the `execution: tool` dispatch through the generated bindings. Lowest-risk first step: these are real callable exports that exist today behind the argv contract.
+Re-export a world from the deterministic components (`contract`, `vectis`) instead of `wasi:cli/run`, and route the `execution: tool` dispatch through the generated bindings. Lowest-risk first step: these are real callable exports that exist today behind the argv contract. Shipping a component becomes mandatory on both axes from here on (the composite's wasm half, even when an adapter exports nothing callable yet); the deterministic components are simply the first to carry real exports.
 
 ### Phase 2 — Type the agent envelopes
 
@@ -202,7 +210,7 @@ Graduate briefs from prose-with-frontmatter toward a structured skeleton (signat
 - `**wasi:cli/run` → custom world migration** — a breaking extension ABI cut; confirm it stays contained to `specify extension run` and the `specify-adapters` `.wasm` build.
 - **Capability model** — named `import`s / `resource`s vs. the current preopen grant; which host functions the world exposes.
 - **Agent-handoff serialization** — the JSON projection of the WIT records used by the brief handoff.
-- **Versioning** — how the world version relates to RFC-47 identity and `requires_specify`.
+- **Versioning, ownership & publishing** — that the `specify` repo owns and publishes `specify:adapter@<semver>` (`wkg publish`) while `specify-adapters` consumes a pinned version (one-way dependency); and how the world version relates to RFC-47 identity and `requires_specify`.
 - `**shape` semantics** — whether `shape` is a world export, a host-read manifest-declared file, or an envelope.
 - **Operation set vs declared tools** — whether the manifest's declared-tool set (`contract`, `vectis`) and the operation set unify under one world.
 - **Brief frontmatter contract** — the `implements` / `consumes` / `produces` / `capabilities` frontmatter shape and its schema, and whether phase sub-briefs may carry their own narrower scoped annotations.
@@ -212,10 +220,10 @@ Graduate briefs from prose-with-frontmatter toward a structured skeleton (signat
 
 ## Risks and invariants
 
-- **Agent path unchanged.** Most operations remain a handoff; this is "type the envelopes, type the brief contract, and make the deterministic tools callable," not "turn briefs into functions." Typing raises the structural floor, not the correctness ceiling (see [The hard boundary](#the-hard-boundary-non-goal)).
-- **Toolchain.** Components + `wit-bindgen` add build steps for adapter authors. Language-agnostic implementation is a benefit, but every adapter author needs a component toolchain (already true for the validators).
+- **Agent path unchanged.** Most operations remain a handoff; this is "type the envelopes, type the brief contract, and make the deterministic tools callable," not "turn briefs into functions." The prose-only adapter is gone, but prose *execution* is unchanged. Typing raises the structural floor, not the correctness ceiling (see [The hard boundary](#the-hard-boundary-non-goal)).
+- **Toolchain — now mandatory on both axes.** Components + `wit-bindgen` add build steps for adapter authors, and shipping a component is now required for *every* adapter — including the agent-only source adapters (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) and the currently all-agent first-party targets, not just the validators that already pay this cost. Language-agnostic implementation is a benefit, but this is the principal adoption cost; an all-agent adapter still has to produce and publish a component (the composite's wasm half) even when it exports nothing callable yet.
 - **wasmtime feature maturity.** v45 ships stable Component Model support (records, variants, `result`, resources); confirm async-export and cross-boundary `resource` ergonomics before relying on them in Phase 3.
-- **Cross-repo seam.** The adapter `.wasm` builds live in `specify-adapters`; the world re-export and the ABI cut must land in lockstep across both repos (workflow contract spans both).
+- **Cross-repo seam (one-directional).** The `specify` repo owns and publishes the `specify:adapter` WIT package; the adapter `.wasm` builds live in `specify-adapters` and consume a pinned published version. The ABI cut is therefore a publish-then-pin sequence — specify ships the world version, `specify-adapters` bumps its pin and re-exports — rather than a symmetric lockstep edit. The workflow contract still spans both repos, so the version bump and the consuming build must be sequenced deliberately.
 - **RFC-50 invariant preserved.** The WIT package is generic — it carries no adapter *name* and no adapter *taxonomy*. The host still holds zero adapter-specific code; this RFC types the contract, it does not re-open the host to any adapter.
 - **Lazy discovery preserved.** The brief-typing seams must not force eager loading of the reference shelf or phase sub-briefs (§G). The contract binds the boundary; the prose interior stays a lazily-walked graph and the authoring-time checks stay incremental per file. Regressing this would trade the brief tree's context-budget economy for nothing.
 - **Frontmatter churn across adapters.** The brief-contract frontmatter lands in `specify-adapters`, so Phases 4–7 touch every first-party brief. Keeping the frontmatter optional through Phase 4 lets adoption stay incremental and `make lint` stay green per adapter.
@@ -230,4 +238,5 @@ Graduate briefs from prose-with-frontmatter toward a structured skeleton (signat
 6. **Operation coverage.** `{world exports} ∪ {brief bindings}` covers every operation on both axes exactly once, enforced as a `specify lint framework` check.
 7. **Lazy discovery intact.** Reference shelves and phase sub-briefs are still loaded on demand; lint proves the discovery graph resolves, and no check requires loading the whole reference corpus (§G).
 8. **RFC-50 invariant intact.** The host still passes the no-adapter-names / no-taxonomy grep + guard test from RFC-50's acceptance criteria.
+9. **Component on both axes.** Every source and target adapter ships a WASM component implementing its axis world, co-packaged with its prose and published as one composite extension (RFC-48); there are no prose-only adapters, and `specify:adapter` is owned and published by the `specify` repo (§E).
 

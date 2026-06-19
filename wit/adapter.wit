@@ -1,6 +1,13 @@
 package specify:adapter@1.0.0;
 
 interface types {
+  // The error returned by operations.
+  variant adapter-error {
+    invalid-request(string),
+    io(string),
+    internal(string)
+  }
+
   // ------------------------------------------------------
   // Source survey
   // ------------------------------------------------------
@@ -9,10 +16,6 @@ interface types {
   record survey-request {
     // The source being surveyed.
     source: string,
-    // The project root in the workspace.
-    project-root: string,
-    // The source's configured input location in the workspace.
-    input-root: string,
   }
 
   // The lead returned by the survey operation.
@@ -34,46 +37,50 @@ interface types {
   // Request to extract evidence from a source.
   record extract-request {
     // The slice being extracted (path identity for the Evidence).
-    slice: string,
+    slice-name: string,
     // The source that surfaced the leads.
     source: string,
     // The leads bound to this slice.
     leads: list<string>,
-    // The project root in the workspace.
-    project-root: string,
-    // The source's configured input location in the workspace.
-    input-root: string,
   }
 
   // The evidence's "authority", i.e. how seriously to take the evidence.
   enum authority { intent, documentation, behaviour }
 
-  // The kind of claim being extracted.
-  enum claim-kind {
-    intent, requirement, criterion, decision, section, diagram, contract,
-    example, excerpt, %type, call, region, container, leaf,
+  // The data for an example claim.
+  record example-data {
+    input: option<string>,
+    output: option<string>,
+  }
+
+  // The specific detail for the kind of claim being extracted.
+  variant claim-detail {
+    intent(option<string>),
+    requirement(option<string>),
+    criterion(option<string>),
+    decision(option<string>),
+    section(option<string>),
+    diagram(option<string>),
+    contract(option<string>),
+    example(example-data),
+    excerpt(option<string>),
+    %type(option<string>),
+    call(option<string>),
+    region(option<string>),
+    container(option<string>),
+    leaf(option<string>),
   }
 
   // A claim extracted from the source.
   record claim {
-    // The kind of claim being extracted.
-    kind: claim-kind,
     // The claim's unique identifier.
     id: option<string>,
     // The claim's path in the source.
     path: option<string>,
-    // The claim's statement.
-    statement: option<string>,
-    // The claim's criterion.
-    criterion: option<string>,
-    // The claim's decision.
-    decision: option<string>,
     // The claim's replay digest.
     replay-digest: option<string>,
-    // The claim's input.
-    input: option<string>,
-    // The claim's output.
-    output: option<string>,
+    // The detail specific to the claim's kind.
+    detail: claim-detail,
   }
 
   // The evidence returned by the extract operation.
@@ -87,17 +94,13 @@ interface types {
   }
 
   // ------------------------------------------------------
-  // Target build
+  // Target shape
   // ------------------------------------------------------
 
-  // Request to build a slice.
-  record build-request {
-    // The slice being built.
-    slice: string,
-    // The project root in the workspace.
-    project-root: string,
-    // The inputs to the build.
-    inputs: list<tuple<string, string>>,
+  // Request to shape a slice.
+  record shape-request {
+    // The slice being shaped.
+    slice-name: string,
   }
 
   // The severity of a finding.
@@ -108,7 +111,7 @@ interface types {
     optional
   }
 
-  // A finding from the build operation.
+  // A finding from the operation.
   record finding {
     // The finding's rule identifier.
     rule-id: string,
@@ -118,7 +121,7 @@ interface types {
     detail: string,
   }
 
-  // The status of the build operation.
+  // The status of the operation.
   enum build-status {
     success,
     failure,
@@ -133,13 +136,28 @@ interface types {
 
   record build-report {
     // The slice being built.
-    slice: string,
-    // The status of the build operation.
+    slice-name: string,
+    // The status of the operation.
     status: build-status,
-    // The findings from the build operation.
+    // The findings from the operation.
     findings: list<finding>,
-    // The outputs from the build operation.
+    // The outputs from the operation.
     outputs: list<build-output>,
+  }
+
+  // The report returned by the shape operation.
+  type shape-report = build-report;
+
+  // ------------------------------------------------------
+  // Target build
+  // ------------------------------------------------------
+
+  // Request to build a slice.
+  record build-request {
+    // The slice being built.
+    slice-name: string,
+    // The inputs to the build.
+    inputs: list<tuple<string, string>>,
   }
 
   // ------------------------------------------------------
@@ -149,22 +167,12 @@ interface types {
   // Request to merge a built slice into the project's codebase.
   record merge-request {
     // The slice being merged.
-    slice: string,
-    // The project root in the workspace.
-    project-root: string,
+    slice-name: string,
   }
 
   // The report returned by the merge operation.
   type merge-report = build-report;
-
-  // The error returned by operations.
-  variant error {
-    invalid-request(string),
-    io(string),
-    internal(string)
-  }
 }
-
 
 // Narrow, host-provided accessor onto the project's project.yaml.
 // Replaces the broad $CAPABILITY_DIR + preopened-dir grant for the
@@ -190,6 +198,36 @@ interface host-config {
 }
 
 // ------------------------------------------------------
+// Phase 3: Narrow host resources replacing raw file paths
+// ------------------------------------------------------
+interface host-data {
+  use types.{adapter-error};
+
+  // A dummy asset record for the example
+  record asset {
+    id: string,
+    content-type: string,
+    data: list<u8>,
+  }
+
+  // A handle representing capability access to the Project
+  resource project {
+    // Narrow method: Can only fetch designated assets, not arbitrary files
+    get-asset: func(id: string) -> option<asset>;
+    
+    // Narrow method: Can only read the config, nothing else
+    read-config: func() -> result<string, adapter-error>;
+  }
+
+  // A handle representing capability access to a specific Slice
+  resource slice {
+    // The adapter doesn't know *where* the slice is on disk, 
+    // it just asks the host to read an artifact by its relative path.
+    read-artifact: func(path: string) -> result<string, adapter-error>;
+  }
+}
+
+// ------------------------------------------------------
 // Target and Source interfaces
 // ------------------------------------------------------
 
@@ -197,29 +235,39 @@ interface host-config {
 // EXPORTS and an `agent` brief BINDS TO (§F). The signature is identical
 // either way; only the executor differs.
 interface target {
-  use types.{ build-request, build-report, merge-request, merge-report, error };
-  build: func(req: build-request) -> result<build-report, error>;
-  merge: func(req: merge-request) -> result<merge-report, error>;
+  use types.{ 
+    shape-request, shape-report, 
+    build-request, build-report, 
+    merge-request, merge-report, 
+    adapter-error 
+  };
+  use host-data.{project, slice};
+
+  shape: func(req: shape-request, proj: borrow<project>, sl: borrow<slice>) -> result<shape-report, adapter-error>;
+  build: func(req: build-request, proj: borrow<project>, sl: borrow<slice>) -> result<build-report, adapter-error>;
+  merge: func(req: merge-request, proj: borrow<project>, sl: borrow<slice>) -> result<merge-report, adapter-error>;
 }
 
 interface source {
-  use types.{ survey-request, lead, extract-request, evidence, error };
-  survey: func(req: survey-request) -> result<list<lead>, error>;
-  extract: func(req: extract-request) -> result<evidence, error>;
+  use types.{ survey-request, lead, extract-request, evidence, adapter-error };
+  use host-data.{project, slice};
+
+  survey: func(req: survey-request, proj: borrow<project>) -> result<list<lead>, adapter-error>;
+  extract: func(req: extract-request, proj: borrow<project>, sl: borrow<slice>) -> result<evidence, adapter-error>;
 }
 
 // Agent-only today: the world imports host capabilities but exports nothing.
 // Both ops are brief-bound (§F); the world gains exports only if a
 // deterministic source *tool* is ever written.
 world source-adapter {
-  import wasi:filesystem/types@0.2.0;
   import host-config;
-  export source;
+  import host-data;
 }
 
 world target-adapter {
-  import wasi:filesystem/types@0.2.0;   // capability-scoped host access
   import host-config;                   // small host interface: read project.yaml, etc.
-  export target;                    // only the operations this component implements
+  import host-data;                     // Phase 3 resources replacing broad filesystem access
+  
+  export target;                        // only the operations this component implements
 }
 
