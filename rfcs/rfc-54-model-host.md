@@ -1,6 +1,6 @@
 # RFC-54: The Omnia Model Host (the `judge` Host Service and Backend Contract)
 
-> Status: Draft (skeleton) · Repo: implemented in [augentic/omnia](https://github.com/augentic/omnia); authored here as the cross-repo companion to [RFC-55](rfc-55-runtime-move.md) · Provides: the model-host slot + backend plug-in contract [RFC-55](rfc-55-runtime-move.md) depends on and [RFC-56](rfc-56-judge-fleet.md) plugs into · Hosts: the Specify-owned `judge` interface ([RFC-52](rfc-52-effects.md))
+> Status: Draft (skeleton) · Repo: implemented in [augentic/omnia](https://github.com/augentic/omnia); authored here as the cross-repo companion to [RFC-55](rfc-55-runtime-move.md) · Provides: the model-host slot + backend plug-in contract [RFC-55](rfc-55-runtime-move.md) depends on and [RFC-56](rfc-56-judge-fleet.md) plugs into · Hosts: the Specify-owned `judge` interface ([RFC-52](rfc-52-effect.md))
 
 ## Abstract
 
@@ -18,7 +18,7 @@ RFC-55 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 
 **In scope (Omnia side):**
 
-- Registering `judge` as a pluggable host service in Omnia's host-service framework, bound to the Specify-owned WIT interface ([RFC-52](rfc-52-effects.md)).
+- Registering `judge` as a pluggable host service in Omnia's host-service framework, bound to the Specify-owned WIT interface ([RFC-52](rfc-52-effect.md)).
 - The generic **`ModelBackend` trait** — the plug-in contract every concrete backend implements.
 - The **`ReferenceResolver` callback** the host exposes to a backend — the host side of `resolve`, including the fresh-instance path for *computed* references and KV memoization.
 - **Per-deployment backend binding/selection** (one backend per host), reusing Omnia's existing host-service backend-selection mechanism.
@@ -28,7 +28,7 @@ RFC-55 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 
 ### Non-goals
 
-- **The `judge` interface itself.** Specify owns and versions the WIT interface ([RFC-52](rfc-52-effects.md)); this RFC *hosts* it, it does not define it.
+- **The `judge` interface itself.** Specify owns and versions the WIT interface ([RFC-52](rfc-52-effect.md)); this RFC *hosts* it, it does not define it.
 - **The concrete backends and the fleet router.** The frontier-API and spawned-agent backends and the difficulty/cost router are [RFC-56](rfc-56-judge-fleet.md); the replay backend is RFC-52; the SLM backend is [RFC-18](future/rfc-18-slm.md). Omnia provides the slot, never the fleet.
 - **The deterministic effect host services.** Data, `kv`, and lifecycle ride the same generic framework but are [RFC-55](rfc-55-runtime-move.md)'s subject, not this RFC's.
 - **The generic host-service framework at large.** This RFC is scoped to the *model* host (the marquee addition); the interpreter and the conventional host plumbing are assumed Omnia machinery.
@@ -41,8 +41,8 @@ RFC-55 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 | The model-host **slot** in the host-service framework; registration + dispatch  | **Omnia** (this RFC)                           |
 | The `ModelBackend` trait + `ReferenceResolver` callback                         | **Omnia** (this RFC)                           |
 | Per-deployment backend binding; generic host capabilities (spawn / egress / fs) | **Omnia** (this RFC)                           |
-| The `judge` **WIT interface** the host satisfies                                | **Specify** — [RFC-52](rfc-52-effects.md)      |
-| The **replay backend** (zero-config member that proves the slot)                | **Specify** — [RFC-52](rfc-52-effects.md)      |
+| The `judge` **WIT interface** the host satisfies                                | **Specify** — [RFC-52](rfc-52-effect.md)      |
+| The **replay backend** (zero-config member that proves the slot)                | **Specify** — [RFC-52](rfc-52-effect.md)      |
 | The **model-service backend**: fleet router + frontier-API + spawned-agent      | **Specify** — [RFC-56](rfc-56-judge-fleet.md)  |
 | The **SLM backend**                                                             | **Specify** — [RFC-18](future/rfc-18-slm.md)   |
 | Binding `judge` during the runtime move (Specify-side adoption)                 | **Specify** — [RFC-55](rfc-55-runtime-move.md) |

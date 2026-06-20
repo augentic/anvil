@@ -1,4 +1,4 @@
-package specify:adapter@1.0.0;
+package augentic:specify@1.0.0;
 
 interface types {
   // The error returned by operations.

@@ -1,10 +1,10 @@
 # RFC-52: Effect Interfaces (Stage 2 — Name the Effects)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 2) · Depends: RFC-51 (typed records + host bindings) · Sequences into: RFC-53 (orchestration components)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 2) · Depends: RFC-51 (typed records + host bindings) · Absorbs from RFC-51: agent-envelope typing + `*_JSON_SCHEMA` retirement, and the named host-data capability model · Sequences into: RFC-53 (orchestration components)
 
 ## Abstract
 
-This is the **pivot stage** of the [effect-oriented architecture](architecture.md). It names — as typed WIT interfaces — the small, fixed vocabulary of effects the runtime already performs implicitly: `judge` (run a brief on a model), the host-data accessors (already seeded by RFC-51 §D), `resolve` (the fallback resolver for adapter-bundle prose), `kv` (host-held state for memoization), and the `journal` / `transition` lifecycle hooks. Crucially, S2 changes **no runtime behavior**: each named effect is *initially backed by the machinery that exists today* (the prepare/finalize handoff for `judge`, the CLI for lifecycle). The value is that the implicit boundary becomes explicit, typed, and — above all — **mockable**, which is what unlocks deterministic record/replay.
+This is the **pivot stage** of the [effect-oriented architecture](architecture.md). It names — as typed WIT interfaces — the small, fixed vocabulary of effects the runtime already performs implicitly: `judge` (run a brief on a model), the host-data accessors (already seeded by RFC-51), `resolve` (the fallback resolver for adapter-bundle prose), `kv` (host-held state for memoization), and the `journal` / `transition` lifecycle hooks. Crucially, S2 changes **no runtime behavior**: each named effect is *initially backed by the machinery that exists today* (the prepare/finalize handoff for `judge`, the CLI for lifecycle). The value is that the implicit boundary becomes explicit, typed, and — above all — **mockable**, which is what unlocks deterministic record/replay.
 
 ## Motivation
 
@@ -16,7 +16,7 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 
 ## Scope
 
-**In scope:** the WIT interface definitions for `judge`, host-data (promote RFC-51 §D), `resolve`, `kv`, and `journal` / `transition`; the host-side handlers that satisfy them using existing machinery; a replay/record backend for `judge` sufficient for CI.
+**In scope:** the WIT interface definitions for `judge`, host-data (promote RFC-51), `resolve`, `kv`, and `journal` / `transition`; the host-side handlers that satisfy them using existing machinery; a replay/record backend for `judge` sufficient for CI; and **typing the agent handoff** — projecting the RFC-51 request/report records into the prepare/finalize handoff envelopes and retiring the `*_JSON_SCHEMA` constants + byte-parity test in favour of the package (relocated from RFC-51 §C).
 
 ### Non-goals
 
@@ -45,7 +45,7 @@ interface references {
   resolve: func(id: string) -> result<list<u8>, adapter-error>;
 }
 
-// Narrow, host-provided accessor onto project.yaml (promoted from RFC-51 §D).
+// Narrow, host-provided accessor onto project.yaml (promoted from RFC-51).
 // The CLI validates project.yaml first, so the typed getters skip result<>;
 // `get` is the open scalar fallback for other fields.
 interface host-config {
@@ -58,7 +58,7 @@ interface host-config {
 
 // Narrow host accessor replacing the raw $CAPABILITY_DIR + preopen grant: the
 // adapter reads host/project data (slice artifacts, project assets) through one
-// typed call, never by walking a preopened tree (promoted from RFC-51 §D).
+// typed call, never by walking a preopened tree (promoted from RFC-51).
 // Bytes in; the caller deserializes at the call site (String::from_utf8,
 // serde_yaml, raw bytes) — the host attaches no content-type.
 interface host-data {
@@ -81,7 +81,9 @@ interface kv {
 
 The host satisfies `judge` with today's handoff in S2 (print envelope, run brief, parse report); the typed interface is the contract, the handoff is the temporary implementation. `brief-path` is the load-bearing simplification: a filesystem-capable backend (a frontier agent CLI, or a local agent) is handed the brief's on-disk path and follows its relative links itself, so the common path makes no callback into the runtime; `references.resolve` is the fallback only a backend that cannot read disk uses.
 
-**Host-data narrows the blast radius (promoted from RFC-51 §D).** The `host-config` / `host-data` accessors name exactly the host capabilities an adapter may use, replacing the broad `$CAPABILITY_DIR` + preopened-directory grant. They target *host/project* data — the slice tree, artifacts, and assets that flow *into* an operation — and deliberately do **not** govern an adapter reading its *own* bundled prose: that corpus is reached by the brief's own relative links (a filesystem-capable backend follows them directly) or, for a backend that cannot read disk, through the `references` fallback. Keeping the two access kinds distinct is what lets reference discovery stay open while host data stays narrowly typed.
+**Host-data narrows the blast radius (promoted from RFC-51).** The `host-config` / `host-data` accessors name exactly the host capabilities an adapter may use, replacing the broad `$CAPABILITY_DIR` + preopened-directory grant. They target *host/project* data — the slice tree, artifacts, and assets that flow *into* an operation — and deliberately do **not** govern an adapter reading its *own* bundled prose: that corpus is reached by the brief's own relative links (a filesystem-capable backend follows them directly) or, for a backend that cannot read disk, through the `references` fallback. Keeping the two access kinds distinct is what lets reference discovery stay open while host data stays narrowly typed.
+
+**Typing the agent handoff (relocated from RFC-51 §C).** `judge` is the typed seam the prepare/finalize handoff already morally is, so naming it is also where the handoff's *envelope* becomes typed: the host serializes the RFC-51 `build-request` (and the survey/extract/shape/merge requests) into the brief handoff and validates the `build-report` back at `finalize` against the WIT-derived report type. With the records as the live envelope, the `*_JSON_SCHEMA` constants and their byte-parity test are retired or regenerated from the package — one definition for the tool path and the agent path alike, and the drift surface RFC-51 named is finally removed rather than policed.
 
 ## Decisions to record (open until reviewed)
 
@@ -98,6 +100,7 @@ The host satisfies `judge` with today's handoff in S2 (print envelope, run brief
 1. Define the effect interfaces in `wit/adapter.wit` (or a sibling `wit/effects.wit`); wire host bindings; assert no behavior change.
 2. Implement the host handlers over existing machinery (handoff for `judge`, CLI for lifecycle).
 3. Add the `judge` record/replay backend; prove a single operation replays deterministically in CI.
+4. Project the RFC-51 records into the live survey/extract/shape/build/merge handoff envelopes and retire (or regenerate) the `*_JSON_SCHEMA` constants + parity test against the package, so the records are the single source of truth.
 
 ## Acceptance criteria
 
@@ -105,6 +108,7 @@ The host satisfies `judge` with today's handoff in S2 (print envelope, run brief
 2. A replay stub can satisfy `judge`, making at least one operation deterministic end-to-end.
 3. No runtime behavior changes versus RFC-51; `make lint` and `cargo make ci` stay green.
 4. Every effect carries handles/references — no brief body or artifact content crosses as an inlined value (architecture invariant 4).
+5. The agent handoff envelopes are typed against the RFC-51 records, and the `*_JSON_SCHEMA` constants + byte-parity test are retired or regenerated from the WIT package — no hand-maintained schema duplicates the records.
 
 ## Risks and invariants
 

@@ -153,9 +153,9 @@ This combination provides a small binary that can still bootstrap offline, while
 
 The architecture is being approached in stages. Each stage is valuable on its own and forward-compatible:
 
-- **S0–S1 (Typed contract)**: Moving to typed records and callable deterministic tools.
-- **S2 (Name the effects)**: Formalising `judge`, data, and lifecycle events as typed WIT imports. This unlocks record/replay testing.
-- **S3 (Guests orchestrate)**: Adapters start running their own multi-step operations on the runtime.
+- **S0–S1 (Typed contract)**: Authoring the typed-records WIT package as the single source of truth (callable `tool` dispatch and the schema-drift retirement follow in S3 / S2).
+- **S2 (Name the effects)**: Formalising `judge`, data, and lifecycle events as typed WIT imports. This unlocks record/replay testing and retires the schema-drift surface.
+- **S3 (Guests orchestrate)**: Deterministic tools become callable through the typed bindings, and adapters start running their own multi-step operations on the runtime.
 - **S4 (Runtime move)**: Replacing the bespoke `specify` host with the generic Omnia binary, running the workflow as a guest.
 - **Parallel (The model fleet)**: Building routing and backends for the `judge` effect.
 

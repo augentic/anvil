@@ -1,10 +1,10 @@
 # RFC-55: The Omnia Runtime Move (Stage 4 — Retire the Bespoke Host)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Cross-repo: pairs with the Omnia model host ([RFC-54](rfc-54-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-57](rfc-57-specify-guests.md) (workflow and development as guests)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Absorbs from RFC-51: the component-on-both-axes mandate · Cross-repo: pairs with the Omnia model host ([RFC-54](rfc-54-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-57](rfc-57-specify-guests.md) (workflow and development as guests)
 
 ## Abstract
 
-This is the keystone of the [effect-oriented architecture](architecture.md): the move that makes the one-idea sentence literally true — *"Specify is the binary resulting from Omnia compiled with Specify-specific backends."* [RFC-52](rfc-52-effects.md) named the effect vocabulary but left every effect *initially backed by the machinery that exists today* (the prepare/finalize handoff, the bespoke CLI). This RFC replaces that scaffolding with the real runtime: the generic `omnia <guest>.wasm <args…>` binary, instance-per-call execution, stateless guests with host-held state, and **real Specify-specific backends** for the deterministic effects — data (`read`), `kv`, and lifecycle (`journal` / `transition`). The bespoke `specify` wasm host retires; what is left is a generic interpreter plus a set of swappable host-service backends.
+This is the keystone of the [effect-oriented architecture](architecture.md): the move that makes the one-idea sentence literally true — *"Specify is the binary resulting from Omnia compiled with Specify-specific backends."* [RFC-52](rfc-52-effect.md) named the effect vocabulary but left every effect *initially backed by the machinery that exists today* (the prepare/finalize handoff, the bespoke CLI). This RFC replaces that scaffolding with the real runtime: the generic `omnia <guest>.wasm <args…>` binary, instance-per-call execution, stateless guests with host-held state, and **real Specify-specific backends** for the deterministic effects — data (`read`), `kv`, and lifecycle (`journal` / `transition`). The bespoke `specify` wasm host retires; what is left is a generic interpreter plus a set of swappable host-service backends.
 
 ## Motivation
 
@@ -18,7 +18,7 @@ This RFC is the engineering behind the architecture's "Omnia as the runtime — 
 
 ## Scope
 
-**In scope:** the generic `omnia <guest>.wasm <args…>` invocation surface and guest selection; instance-per-call execution; the real host-service backends for the deterministic effects (data, `kv`, lifecycle); the `kv` backend set (filesystem · Redis · NATS) that holds what stateless guests cannot; binding one backend per host per deployment; and retiring the bespoke `specify` wasm-host dispatch on the adapter axis.
+**In scope:** the generic `omnia <guest>.wasm <args…>` invocation surface and guest selection; instance-per-call execution; the real host-service backends for the deterministic effects (data, `kv`, lifecycle); the `kv` backend set (filesystem · Redis · NATS) that holds what stateless guests cannot; binding one backend per host per deployment; retiring the bespoke `specify` wasm-host dispatch on the adapter axis; and the **component-on-both-axes mandate** (relocated from RFC-51) — every source and target adapter ships a WASM component implementing its axis world, co-packaged with its prose as one composite extension, ending the prose-only adapter now that guests are instantiated generically.
 
 ### Non-goals
 
@@ -46,6 +46,8 @@ The runtime is a separate project, so this RFC is genuinely two coordinated halv
 
 Each call is a new instance (component instances are not re-entrant), so the `resolve` fallback that re-enters guest code for a *computed* reference lands in a fresh instance — the synchronous ABI closes the loop with no async machinery.
 
+**Every adapter is a component now (relocated from RFC-51).** Standing the guests on the generic `omnia <guest>` surface is the point at which shipping a WASM component stops being optional: the runtime instantiates a component per call, so an adapter with no component cannot be a guest. Both axes therefore ship the composite's wasm half — including the agent-only source adapters (`intent`, `documentation`, `typescript`, `screenshots`, `captures`), whose component may still export nothing callable while their `survey` / `extract` run as `judge` handoffs. RFC-51 authored the axis world; this stage is where *implementing* it becomes mandatory, because the toolchain cost only buys something once the generic runtime is the thing instantiating the component.
+
 ## Decisions to record (open until reviewed)
 
 - **Operator CLI surface.** Whether operators keep typing `specify <verb>` against a thin shim that forwards to `omnia <guest> <args…>`, or the raw runtime surface is exposed. Pre-1.0 posture favours a hard cut over a long-lived compatibility shim.
@@ -68,7 +70,8 @@ Each call is a new instance (component instances are not re-entrant), so the `re
 3. Execution is instance-per-call; no durable in-process guest state — what persists lives in `kv`.
 4. The runtime holds zero adapter names and zero workflow knowledge (law 2); the no-adapter-names guard from RFC-50 still passes.
 5. A run is still recordable / replayable end-to-end (the RFC-52 property is preserved across the host swap).
-6. `make lint` and `cargo make ci` stay green.
+6. Every source and target adapter ships a WASM component implementing its axis world, co-packaged with its prose as one composite extension; there are no prose-only adapters.
+7. `make lint` and `cargo make ci` stay green.
 
 ## Risks and invariants
 
@@ -76,3 +79,4 @@ Each call is a new instance (component instances are not re-entrant), so the `re
 - **Operator-UX disruption.** Retiring the bespoke binary changes the operator surface; the shim decision above bounds the blast radius.
 - **Backend correctness.** KV memoization and the data host service must be correct under instance-per-call concurrency; statelessness is the invariant that makes this tractable.
 - **Law 2 preserved.** The move must not smuggle domain knowledge into the runtime; everything Specify-specific lives in the backends and the guests, never in the generic floor.
+- **Toolchain cost (relocated from RFC-51).** Components + `wit-bindgen` add build steps for every adapter author, now including the agent-only source adapters that previously shipped prose only. This is the principal adoption cost of the move; it is borne here because the generic runtime is what makes a component mandatory rather than merely available.
