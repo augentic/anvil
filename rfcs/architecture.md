@@ -8,9 +8,9 @@ The new Specify architecture boils down to one core concept:
 
 > Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is Omnia compiled with Specify-specific backends.
 
-Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to host Wasm guests and how to handle a fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within these guests.
+Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to host Wasm guests and handle a fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within these guests.
 
-Context comes from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This is a deliberate choice to avoid the overloaded context windows that often cause failures. 
+Context comes from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This avoids the overloaded context windows that often cause failures. 
 
 This approach provides two major benefits:
 1. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a massive CI pipeline.
@@ -53,7 +53,7 @@ Here is the vocabulary used:
 - **Interpreter**: Omnia. It handles the *how* for every effect. Guests remain deterministic, while Omnia deals with the impurity of the outside world.
 - **`judge`**: The primary effect for judgment. It takes a brief and a typed request, and returns a typed answer. The implementation happens to be an AI model.
 - **Oracle**: How the guest views the model — as an opaque source of typed answers. The guest trusts the shape of the response, not the system that generated it.
-- **Handle**: A reference (like a file path or an ID) that points to data without carrying the data itself. This is how things are kept lazy to avoid blowing up context windows.
+- **Handle**: A reference (like a file path or an ID) that points to data without carrying the data itself. This keeps things lazy to avoid blowing up context windows.
 
 For context, here is how these concepts map to the tech stack:
 
@@ -73,7 +73,7 @@ When a guest calls `judge`, it doesn't pass the entire text of a brief. Instead,
 
 If the backend is a filesystem-capable agent (like Cursor or Claude Code), Omnia gives it the path. The agent reads the brief, follows any relative links to supporting docs, and only pulls in the context it needs to make a decision. This keeps context windows lean.
 
-This is why the adapters remain a hybrid of Wasm and prose. The Wasm handles the orchestration, while the prose (the briefs and references) lives on disk, linked together naturally.
+Therefore, the adapters remain a hybrid of Wasm and prose. The Wasm handles the orchestration, while the prose (the briefs and references) lives on disk, linked together naturally.
 
 ![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
 
@@ -94,7 +94,7 @@ Let's look at how a `build` operation flows in practice. (Note that in this logi
 7. The guest uses this typed result to decide what to do next (loop, validate, or make another `judge` call).
 8. Finally, the guest returns a typed `build-report`, and Omnia handles the lifecycle transition.
 
-The key takeaway here is the flow: control moves *into* guests via exports, effects flow *up* to Omnia, judgment is handled by a swappable backend, and references are loaded lazily. 
+In short: control moves *into* guests via exports, effects flow *up* to Omnia, judgment is handled by a swappable backend, and references are loaded lazily. 
 
 ## Core principles
 
@@ -113,13 +113,21 @@ These specific principles apply across the entire architecture. If a proposed ch
 
 ![The model fleet and deployment topologies](../docs/assets/diagrams/effect-architecture/model-fleet.svg)
 
-Because Omnia is a thin interpreter for effects and every `judge` call is self-contained, there is no reliance on a single, long-lived conversation. This allows the model service to act as a router, choosing the right backend for each specific task based on difficulty and cost. Several different deployment modes naturally fall out of this design:
+Because Omnia is a thin interpreter for effects and every `judge` call is self-contained, there is no reliance on a single, long-lived conversation. The model service can thus act as a router, choosing the right backend for each specific task based on difficulty and cost. Several different deployment modes naturally fall out of this design:
 
 - **Interactive (Frontier LLMs)**: When a phase is triggered from an editor, `judge` is handled by a spawned, context-free agent session using a frontier LLM for complex synthesis and review. It runs against concrete artifacts, not chat history.
 - **Headless (Small Local Models)**: For fleet-scale operations and narrow, high-volume transformations, `judge` can be routed to a hosted API or a local model without any editor in the loop. Constrained decoding can be used to ensure valid typed reports are returned.
 - **CI / Testing (Deterministic Replay)**: In a CI environment, `judge` can be swapped out for a deterministic replay stub, turning AI evaluations into reliable regression tests.
 
-This setup allows for progressive optimisation. As a specific transformation becomes well-understood, it can be migrated from an expensive LLM down to a cheaper local model, or even to deterministic code, without having to rewrite the guest that calls it. This architecture also means "runtime-agnostic" is enforced by the type system, and because context is loaded lazily, deep orchestration doesn't blow token budgets.
+This setup enables progressive optimisation. As a specific transformation becomes well-understood, it can be migrated from an expensive LLM down to a cheaper local model, or even to deterministic code, without having to rewrite the guest that calls it. This architecture also enforces "runtime-agnostic" via the type system, and because context is loaded lazily, deep orchestration doesn't blow token budgets.
+
+## Journalling: progress and restarts
+
+Because guests are stateless and instance-per-call, progress and restart state can't live in guest memory — they live in the durable `journal` effect. A guest records forward progress by emitting typed, closed-taxonomy events (`slice.build.started`, `slice.build.succeeded`, …); it never holds them.
+
+Restart is a consequence of determinism. A fresh instance recomputes its position by folding the journal tail and stepping the deterministic state machine forward — only `judge` is non-deterministic, so the durable record is enough to reconstruct "what next".
+
+The storage is a swappable backend, not part of the contract. A natural one is Omnia's [`wasi-jsondb`](https://github.com/augentic/omnia/tree/main/crates/wasi-jsondb) host service: each event is an immutable, sequence-keyed JSON document, so re-entry is a filter/sort/limit query rather than a full-file scan, and concurrent appends from a horizontally-scaled fleet stay correct. Specify owns the closed `journal` effect; `wasi-jsondb` is just one backend behind it (alongside filesystem · Redis · NATS), and the guest stays oblivious to the choice.
 
 ## CLI bootstrapping
 
