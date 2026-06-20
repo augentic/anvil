@@ -12,9 +12,10 @@ Everything that follows — the system's shape, core principles, how operations 
 
 Context comes from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This avoids the overloaded context windows that often cause failures. 
 
-This approach provides two major benefits:
-1. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a massive CI pipeline.
-2. **Cost efficiency**: Because judgment is a typed call over specific inputs, easy tasks can be routed to deterministic code and narrow tasks to small local models, reserving expensive frontier LLMs only for the hardest problems.
+This approach provides three major benefits:
+1. **Cloud-native portability**: Specify scales seamlessly from a local desktop CLI to a cloud-hosted service. Because the execution environment is entirely abstracted behind Omnia's effects, moving to the cloud requires zero changes to Specify's core logic—it only requires swapping Omnia's backends.
+2. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a massive CI pipeline.
+3. **Cost efficiency**: Because judgment is a typed call over specific inputs, easy tasks can be routed to deterministic code and narrow tasks to small local models, reserving expensive frontier LLMs only for the hardest problems.
 
 ## The shape of the system
 
@@ -39,7 +40,7 @@ Three key properties of the runtime make this architecture possible:
 
 - **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` is run, and the guest decides what to do. There is no longer a bespoke `specify` host.
 - **Instance-per-call execution**: A fresh instance spins up every time a guest is called. Wasm component instances aren't re-entrant, avoiding a whole class of async complexity.
-- **Stateless guests, host-held state**: Guests cannot hold state in memory between calls. Persistent data lives in a host service (like a filesystem backed key-value store), making the runtime horizontally scalable.
+- **Stateless guests, host-held state**: Guests cannot hold state in memory between calls. Persistent data lives in a host service. In a local CLI context, this might be a filesystem-backed store; in a cloud context, it can be swapped for Redis or S3. This decoupling is what allows Specify to instantly transition from a desktop tool to a horizontally scalable cloud service.
 
 ## The mental model: programs, effects, and interpreters
 
@@ -128,6 +129,8 @@ Guests are stateless and instance-per-call, so anything that must outlive a sing
 - **Data** (`read`): Narrow, typed access to the project tree and assets through one accessor returning bytes, replacing a broad filesystem grant.
 - **`state`**: Host-held scratch and memoization (e.g., caching a computed reference). uses KeyValue interface backed locally by filesystem, or Redis/NATS for fleet-shared state.
 - **`journal`**: The durable lifecycle log and its legal moves. Uses `JsonStore` backed by a filesystem backend.
+
+Because guests only interact with typed interfaces (like `KeyValue` or `read`), the deployment topology is dictated entirely by the host backends. A local CLI binary wires these interfaces to the local filesystem. A cloud deployment wires the exact same interfaces to cloud-native infrastructure (like S3 for `read` and Redis for `state`). The Specify Wasm components do not change.
 
 ### Journalling progress
 
