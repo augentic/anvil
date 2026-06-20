@@ -121,13 +121,19 @@ Because Omnia is a thin interpreter for effects and every `judge` call is self-c
 
 This setup enables progressive optimisation. As a specific transformation becomes well-understood, it can be migrated from an expensive LLM down to a cheaper local model, or even to deterministic code, without having to rewrite the guest that calls it. This architecture also enforces "runtime-agnostic" via the type system, and because context is loaded lazily, deep orchestration doesn't blow token budgets.
 
-## Journalling: progress and restarts
+## Host services and state
 
-Because guests are stateless and instance-per-call, progress and restart state can't live in guest memory — they live in the durable `journal` effect. A guest records forward progress by emitting typed, closed-taxonomy events (`slice.build.started`, `slice.build.succeeded`, …); it never holds them.
+Guests are stateless and instance-per-call, so anything that must outlive a single call lives in a host service, not in guest memory. These are the *deterministic* effects — the counterpart to the judgment backend above — and each is satisfied by a swappable backend the guest never sees:
 
-Restart is a consequence of determinism. A fresh instance recomputes its position by folding the journal tail and stepping the deterministic state machine forward — only `judge` is non-deterministic, so the durable record is enough to reconstruct "what next".
+- **Data** (`read-artifact` / `get-asset`) — narrow, typed access to the project tree and assets that flow into an operation, in place of a broad filesystem grant.
+- **`kv`** — host-held scratch and memoization (where `load-reference` caches a computed reference, or a guest stashes a deterministic sub-result). Backed by filesystem locally, Redis or NATS when a fleet shares state.
+- **`journal` / `transition`** — the durable lifecycle log and the legal moves over it.
 
-The storage is a swappable backend, not part of the contract. A natural one is Omnia's [`wasi-jsondb`](https://github.com/augentic/omnia/tree/main/crates/wasi-jsondb) host service: each event is an immutable, sequence-keyed JSON document, so re-entry is a filter/sort/limit query rather than a full-file scan, and concurrent appends from a horizontally-scaled fleet stay correct. Specify owns the closed `journal` effect; `wasi-jsondb` is just one backend behind it (alongside filesystem · Redis · NATS), and the guest stays oblivious to the choice.
+### Journalling: progress and restarts
+
+Because guests hold nothing, progress and restart state live in the durable `journal`. A guest records forward progress by emitting typed, closed-taxonomy events (`slice.build.started`, `slice.build.succeeded`, …).
+
+Omnia's [`wasi-jsondb`](https://github.com/augentic/omnia/tree/main/crates/wasi-jsondb) host service is a natural fit: each event is a JSON document and `wasi-jsondb` is backed by filesystem, Redis, NATS, etc..
 
 ## CLI bootstrapping
 
