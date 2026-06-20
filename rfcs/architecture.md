@@ -34,7 +34,7 @@ The runtime and guests interact in both directions. Omnia instantiates a guest a
 
 ## The runtime: Omnia
 
-Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so implementations can be swapped without changing the guest code. Specify's effects are another set of host services, with the model service being the most notable addition ([RFC-57](rfc-57-omnia-model-host.md)).
+Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so implementations can be swapped without changing the guest code. Specify's effects are another set of host services, with the model service being the most notable addition ([RFC-54](rfc-54-omnia-model-host.md)).
 
 Three key properties of the runtime make this architecture possible:
 

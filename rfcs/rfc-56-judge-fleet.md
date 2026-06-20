@@ -1,6 +1,6 @@
 # RFC-56: The judge Fleet — Dispatch, Router, and Frontier Backends
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (the model fleet) · Depends: RFC-52 (the `judge` interface + replay backend) · Parallel to: RFC-53 / RFC-54 (needs only the seam, not the runtime move) · Plugs into: [RFC-57](rfc-57-omnia-model-host.md) (the Omnia model-host backend contract) · Enables: [RFC-18](future/rfc-18-slm.md) (the SLM fleet member)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (the model fleet) · Depends: RFC-52 (the `judge` interface + replay backend) · Parallel to: RFC-53 / RFC-55 (needs only the seam, not the runtime move) · Plugs into: [RFC-54](rfc-54-omnia-model-host.md) (the Omnia model-host backend contract) · Enables: [RFC-18](future/rfc-18-slm.md) (the SLM fleet member)
 
 ## Abstract
 
@@ -23,7 +23,7 @@ The replay backend proves the seam is mockable; it does no real work. Every payo
 
 ## The model (sketch)
 
-The **model service** is the single materialization of the `judge` host; the fleet lives *inside* it. A call carries a `brief-path` handle and a typed `request`; the service routes it to a fleet member and returns a typed report — the guest never names a model. The service registers into Omnia's model-host slot as one `ModelBackend` ([RFC-57](rfc-57-omnia-model-host.md)) — Omnia sees a single backend; the fleet fans out within it.
+The **model service** is the single materialization of the `judge` host; the fleet lives *inside* it. A call carries a `brief-path` handle and a typed `request`; the service routes it to a fleet member and returns a typed report — the guest never names a model. The service registers into Omnia's model-host slot as one `ModelBackend` ([RFC-54](rfc-54-omnia-model-host.md)) — Omnia sees a single backend; the fleet fans out within it.
 
 - **Frontier LLM** — hard synthesis and review, reached either through a hosted inference API or by spawning a headless agent CLI / SDK session.
 - **Spawned agent (topology).** Omnia spawns a *fresh, context-free* agent session as the backend, hands it the `brief-path` + `request`, and parses the typed report back. This is also the **interactive** path: an editor command shells out to the runtime, which spawns the session — a separate conversation, never the operator's transcript.

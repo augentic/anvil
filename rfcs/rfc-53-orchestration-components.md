@@ -16,7 +16,7 @@ The prepare/finalize handoff is already a degenerate two-step orchestration (`pr
 
 ### Non-goals
 
-- **The workflow layer is out of scope.** `/spec:plan` / `/spec:execute` orchestration is [RFC-55](rfc-55-workflow-and-development-guests.md) (gated). This RFC is adapter-local.
+- **The workflow layer is out of scope.** `/spec:plan` / `/spec:execute` orchestration is [RFC-57](rfc-57-workflow-and-development-guests.md) (gated). This RFC is adapter-local.
 - **No eager reference loading.** architecture invariant 4 holds: steps carry `brief-path` + handles; bodies are pulled lazily.
 
 ## The model (sketch)
@@ -94,6 +94,6 @@ RFC-51 originally proposed binding each agent brief to the WIT signature it fulf
 ## Risks and invariants
 
 - **Async maturity.** Instance-per-call and the `brief-path` simplification close the reference loop on the *synchronous* ABI, so neither Realization B nor a synchronous Realization A needs async. The Component-Model async path is required only for **streaming** `judge` output and **concurrent** slices — confirm it before those, not before this stage.
-- **Scope creep into the workflow.** Keep this adapter-local; the workflow is [RFC-55](rfc-55-workflow-and-development-guests.md).
+- **Scope creep into the workflow.** Keep this adapter-local; the workflow is [RFC-57](rfc-57-workflow-and-development-guests.md).
 - **Prose holism.** `judge` passes *whole* briefs, not chopped micro-prompts — the component sequences and types; it does not fragment the prompt.
 - **RFC-50 preserved.** Orchestration components carry adapter logic; the host still holds zero adapter names and reaches them only through generic effects.

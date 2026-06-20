@@ -1,6 +1,6 @@
-# RFC-54: The Omnia Runtime Move (Stage 4 — Retire the Bespoke Host)
+# RFC-55: The Omnia Runtime Move (Stage 4 — Retire the Bespoke Host)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Cross-repo: pairs with the Omnia model host ([RFC-57](rfc-57-omnia-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-55](rfc-55-workflow-and-development-guests.md) (workflow and development as guests)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Cross-repo: pairs with the Omnia model host ([RFC-54](rfc-54-omnia-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-57](rfc-57-workflow-and-development-guests.md) (workflow and development as guests)
 
 ## Abstract
 
@@ -14,7 +14,7 @@ After RFC-52 the effects are typed and mockable but still satisfied by the old h
 - **Statelessness is not yet load-bearing.** Instance-per-call execution and host-held KV state are what make the runtime horizontally trivial; today's host does not enforce them.
 - **Deployment modes are not yet "just backend swaps."** They become swaps only once the host-service surface — including `judge` — is the single seam every backend plugs into.
 
-This RFC is the engineering behind the architecture's "Omnia as the runtime — committed" bet. It is deliberately *not* the model fleet (that is [RFC-56](rfc-56-judge-fleet.md)) and *not* the workflow-as-guest move (that is [RFC-55](rfc-55-workflow-and-development-guests.md)); it is the floor both of those stand on.
+This RFC is the engineering behind the architecture's "Omnia as the runtime — committed" bet. It is deliberately *not* the model fleet (that is [RFC-56](rfc-56-judge-fleet.md)) and *not* the workflow-as-guest move (that is [RFC-57](rfc-57-workflow-and-development-guests.md)); it is the floor both of those stand on.
 
 ## Scope
 
@@ -23,7 +23,7 @@ This RFC is the engineering behind the architecture's "Omnia as the runtime — 
 ### Non-goals
 
 - **The model fleet is out of scope.** Real `judge` backends, the router, and the deployment topologies are [RFC-56](rfc-56-judge-fleet.md); this RFC only requires that `judge` is *a* host like the others (satisfied at minimum by the RFC-52 replay backend).
-- **The workflow guest is out of scope.** Moving `/spec:plan` / `/spec:execute` onto the runtime is [RFC-55](rfc-55-workflow-and-development-guests.md); through this RFC the workflow may keep running on the legacy driver behind a shim.
+- **The workflow guest is out of scope.** Moving `/spec:plan` / `/spec:execute` onto the runtime is [RFC-57](rfc-57-workflow-and-development-guests.md); through this RFC the workflow may keep running on the legacy driver behind a shim.
 - **No adapter-orchestration redesign.** RFC-53's component orchestration is consumed unchanged; this RFC swaps the *host*, not the guests.
 - **No effect-vocabulary change.** The interfaces are RFC-52's; this RFC supplies their real backends.
 
@@ -31,10 +31,10 @@ This RFC is the engineering behind the architecture's "Omnia as the runtime — 
 
 The runtime is a separate project, so this RFC is genuinely two coordinated halves:
 
-- **Omnia (the repo) provides the generic floor** — the Wasmtime-based interpreter, the pluggable host-service framework (the same mechanism that swaps an in-memory KV for Redis), and the extension point an `judge` backend plugs into — the **model host**, specified in [RFC-57](rfc-57-omnia-model-host.md). It carries zero Specify domain knowledge.
+- **Omnia (the repo) provides the generic floor** — the Wasmtime-based interpreter, the pluggable host-service framework (the same mechanism that swaps an in-memory KV for Redis), and the extension point an `judge` backend plugs into — the **model host**, specified in [RFC-54](rfc-54-omnia-model-host.md). It carries zero Specify domain knowledge.
 - **Specify provides the backends** — the concrete host-service implementations for its effect vocabulary, the guest packaging, and the operator CLI surface. "Specify" *is* Omnia compiled with these.
 
-**Who owns the effect WIT.** The effect interfaces are Specify's host services, not Omnia's, so Specify owns and versions them; Omnia owns only the generic framework that hosts them. This keeps the runtime brain- and domain-agnostic by construction. The Omnia-side model-host capability is specified in its companion [RFC-57](rfc-57-omnia-model-host.md); this RFC owns the Specify-side adoption.
+**Who owns the effect WIT.** The effect interfaces are Specify's host services, not Omnia's, so Specify owns and versions them; Omnia owns only the generic framework that hosts them. This keeps the runtime brain- and domain-agnostic by construction. The Omnia-side model-host capability is specified in its companion [RFC-54](rfc-54-omnia-model-host.md); this RFC owns the Specify-side adoption.
 
 ## The model (sketch)
 
@@ -59,7 +59,7 @@ Each call is a new instance (component instances are not re-entrant), so the `re
 1. Stand up the generic `omnia <guest>.wasm` binary running one target-adapter guest, with real data + lifecycle backends replacing the RFC-52 handoff scaffolding (no behaviour change versus RFC-53).
 2. Add the `kv` host service + its backend set; route `resolve` memoization through it.
 3. Retire the bespoke `specify` wasm-host dispatch on the adapter axis; both axes now run via `omnia <guest>`.
-4. Leave the workflow on the legacy driver/shim until [RFC-55](rfc-55-workflow-and-development-guests.md).
+4. Leave the workflow on the legacy driver/shim until [RFC-57](rfc-57-workflow-and-development-guests.md).
 
 ## Acceptance criteria
 
