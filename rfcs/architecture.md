@@ -4,18 +4,18 @@
 
 ## The core idea
 
-The new Specify architecture boils down to one core concept:
+The refreshed Specify architecture boils down to a single concept:
 
-> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is Omnia compiled with Specify-specific backends.
+> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is Omnia compiled with Specify-specific backends.
 
-Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to host Wasm guests and handle a fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within these guests.
+Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to host Wasm guests and handle a fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within the guests.
 
-Context comes from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This avoids the overloaded context windows that often cause failures. 
+Context comes from artifacts, not conversational history. Every call out to a model for "judgement" is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This avoids the overloaded context windows that often cause failures. 
 
 This approach provides three major benefits:
-1. **Cloud-native portability**: Specify scales seamlessly from a local desktop CLI to a cloud-hosted service. Because the execution environment is entirely abstracted behind Omnia's effects, moving to the cloud requires zero changes to Specify's core logic—it only requires swapping Omnia's backends.
-2. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a massive CI pipeline.
-3. **Cost efficiency**: Because judgment is a typed call over specific inputs, easy tasks can be routed to deterministic code and narrow tasks to small local models, reserving expensive frontier LLMs only for the hardest problems.
+1. **Cloud-native portability**: Specify scales seamlessly from a desktop CLI to a cloud-hosted service. Because the execution environment is entirely abstracted behind Omnia's effects, moving to the cloud requires zero changes to Specify's core logic—it only requires swapping Omnia's backends.
+2. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a CI pipeline.
+3. **Cost efficiency**: Because judgment is a typed call over specific inputs, selected tasks can be routed to deterministic code or to small local models, reserving expensive frontier LLMs only for the hardest problems.
 
 ## The shape of the system
 
@@ -34,7 +34,7 @@ The runtime and guests interact in both directions. Omnia instantiates a guest a
 
 ## The runtime: Omnia
 
-Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so implementations can be swapped without changing the guest code. Specify's effects are another set of host services, with the `judge` model service being the most notable addition ([RFC-57](rfc-57-omnia-model-host.md)).
+Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so implementations can be swapped without changing the guest code. Specify's effects are another set of host services, with the model service being the most notable addition ([RFC-57](rfc-57-omnia-model-host.md)).
 
 Three key properties of the runtime make this architecture possible:
 
