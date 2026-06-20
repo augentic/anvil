@@ -6,9 +6,9 @@
 
 The new Specify architecture boils down to one core concept:
 
-> Specify is a family of WebAssembly (Wasm) guests running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is simply Omnia compiled with Specify-specific backends.
+> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is simply Omnia compiled with Specify-specific backends.
 
-Everything that follows — the system's shape, our core principles, how operations flow, and our deployment modes — is a natural consequence of this idea. The runtime doesn't need to understand our domain: it just knows how to run Wasm and how to handle a small, fixed set of effects. All of Specify's actual behavior — orchestrating workflows, extracting from sources, building for targets, and our development tooling — lives entirely within the guests.
+Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand our domain: it just knows how to run Wasm and how to handle a small, fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives entirely within the guests.
 
 This formalises a split that was already happening in the codebase. Previously, the deterministic parts (plan lifecycle, validation, merging) lived in a bespoke `specify` binary, while judgment (surveying, extracting, synthesising) lived in text briefs run by a model. This new architecture moves both onto a single generic runtime and ensures the boundary between structure and judgment is strictly typed.
 
@@ -39,7 +39,7 @@ Omnia is built on Wasmtime. Its design centers around providing pluggable host s
 
 Three key properties of the runtime make this architecture possible:
 
-- **One binary, guest-selected behavior.** We no longer have a bespoke `specify` host. Instead, you run `omnia <guest>.wasm <args…>`, and the guest decides what to do with the invocation. 
+- **One binary, guest-selected behaviour.** We no longer have a bespoke `specify` host. Instead, you run `omnia <guest>.wasm <args…>`, and the guest decides what to do with the invocation. 
 - **Instance-per-call execution.** Every time we call a guest, we spin up a fresh instance. Wasm component instances aren't re-entrant, so this avoids a whole class of async complexity. If a judgment step needs to resolve a reference by calling back into a guest, it happens in a brand new instance.
 - **Stateless guests, host-held state.** Because we use fresh instances per call, guests can't hold onto state in memory. Anything that needs to persist lives in a host service, like a key-value store. This makes the runtime incredibly easy to scale horisontally.
 
