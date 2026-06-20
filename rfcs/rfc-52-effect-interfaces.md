@@ -4,7 +4,7 @@
 
 ## Abstract
 
-This is the **pivot stage** of the [effect-oriented architecture](architecture.md). It names — as typed WIT interfaces — the small, fixed vocabulary of effects the runtime already performs implicitly: `infer` (run a brief on a model), the host-data accessors (already seeded by RFC-51 §D), `load-reference` (the fallback resolver for adapter-bundle prose), and the `journal` / `transition` lifecycle hooks. Crucially, S2 changes **no runtime behavior**: each named effect is *initially backed by the machinery that exists today* (the prepare/finalize handoff for `infer`, the CLI for lifecycle). The value is that the implicit boundary becomes explicit, typed, and — above all — **mockable**, which is what unlocks deterministic record/replay.
+This is the **pivot stage** of the [effect-oriented architecture](architecture.md). It names — as typed WIT interfaces — the small, fixed vocabulary of effects the runtime already performs implicitly: `infer` (run a brief on a model), the host-data accessors (already seeded by RFC-51 §D), `load-reference` (the fallback resolver for adapter-bundle prose), `kv` (host-held state for memoization), and the `journal` / `transition` lifecycle hooks. Crucially, S2 changes **no runtime behavior**: each named effect is *initially backed by the machinery that exists today* (the prepare/finalize handoff for `infer`, the CLI for lifecycle). The value is that the implicit boundary becomes explicit, typed, and — above all — **mockable**, which is what unlocks deterministic record/replay.
 
 ## Motivation
 
@@ -16,7 +16,7 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 
 ## Scope
 
-**In scope:** the WIT interface definitions for `infer`, host-data (promote RFC-51 §D), `load-reference`, and `journal` / `transition`; the host-side handlers that satisfy them using existing machinery; a replay/record backend for `infer` sufficient for CI.
+**In scope:** the WIT interface definitions for `infer`, host-data (promote RFC-51 §D), `load-reference`, `kv`, and `journal` / `transition`; the host-side handlers that satisfy them using existing machinery; a replay/record backend for `infer` sufficient for CI.
 
 ### Non-goals
 
@@ -71,6 +71,15 @@ interface host-data {
   }
 }
 
+// Host-held state: memoize expensive-to-compute resources so stateless,
+// instance-per-call guests keep nothing durable in process. Backed per
+// deployment (filesystem · Redis · NATS); also where load-reference memoizes.
+interface kv {
+  use types.{adapter-error};
+  get: func(key: string) -> option<list<u8>>;
+  set: func(key: string, value: list<u8>) -> result<_, adapter-error>;
+}
+
 // A lifecycle interface (journal / transition) is named here too.
 ```
 
@@ -81,7 +90,8 @@ The host satisfies `infer` with today's handoff in S2 (print envelope, run brief
 ## Decisions to record (open until reviewed)
 
 - **The `infer` signature.** `brief-path` (the brief's on-disk path handle) + JSON `request` + (later) a context-injection policy knob (same-thread vs subagent). Confirm `request` is a JSON projection of the stratum-1 record, not a new shape.
-- **Model-service routing key.** How the model service picks a fleet backend per call — keyed on the `brief-path`, or on an abstract difficulty hint, never a vendor model id. The architecture defers this signature-level detail here.
+- **Model-service routing key → [RFC-56](rfc-56-infer-fleet.md).** The router that keys backend selection on the `brief-path` / an abstract difficulty hint (never a vendor model id) is the fleet's concern; this RFC fixes only the `infer` *signature* it routes over.
+- **`kv` exposure.** Whether guests call `kv` directly to memoize their own deterministic sub-results, or it stays the host's backing for `load-reference` memoization. Either way the backend set (filesystem · Redis · NATS) is the runtime's concern ([RFC-54](rfc-54-omnia-runtime-move.md)).
 - **Lifecycle as effect vs CLI-only.** Whether `journal` / `transition` become component-callable effects now, or stay CLI-owned and are reached only through the driver. (Leaning: stay CLI-owned through S2; expose later only if S4 needs it.)
 - **Fate of the relocated brief-frontmatter contract.** How much of `implements` / `consumes` / `produces` / `capabilities` (now carried by [RFC-53](rfc-53-orchestration-components.md)) is subsumed by the typed `infer` boundary, and how much survives as authoring-time lint.
 - **Replay backend shape.** The on-disk format of recorded `(brief-path, request) -> output` pairs and how a run selects record vs replay.
@@ -95,7 +105,7 @@ The host satisfies `infer` with today's handoff in S2 (print envelope, run brief
 
 ## Acceptance criteria
 
-1. The effect vocabulary (`infer`, host-data, `references`, lifecycle) exists as typed WIT interfaces.
+1. The effect vocabulary (`infer`, host-data, `references`, `kv`, lifecycle) exists as typed WIT interfaces.
 2. A replay stub can satisfy `infer`, making at least one operation deterministic end-to-end.
 3. No runtime behavior changes versus RFC-51; `make lint` and `cargo make ci` stay green.
 4. Every effect carries handles/references — no brief body or artifact content crosses as an inlined value (architecture invariant 4).
