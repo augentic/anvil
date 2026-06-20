@@ -4,7 +4,7 @@
 
 ## Abstract
 
-This is the keystone of the [effect-oriented architecture](architecture.md): the move that makes the one-idea sentence literally true — *"Specify is the binary resulting from Omnia compiled with Specify-specific backends."* [RFC-52](rfc-52-effect-interfaces.md) named the effect vocabulary but left every effect *initially backed by the machinery that exists today* (the prepare/finalize handoff, the bespoke CLI). This RFC replaces that scaffolding with the real runtime: the generic `omnia <guest>.wasm <args…>` binary, instance-per-call execution, stateless guests with host-held state, and **real Specify-specific backends** for the deterministic effects — data (`read-artifact` / `get-asset`), `kv`, and lifecycle (`journal` / `transition`). The bespoke `specify` wasm host retires; what is left is a generic interpreter plus a set of swappable host-service backends.
+This is the keystone of the [effect-oriented architecture](architecture.md): the move that makes the one-idea sentence literally true — *"Specify is the binary resulting from Omnia compiled with Specify-specific backends."* [RFC-52](rfc-52-effect-interfaces.md) named the effect vocabulary but left every effect *initially backed by the machinery that exists today* (the prepare/finalize handoff, the bespoke CLI). This RFC replaces that scaffolding with the real runtime: the generic `omnia <guest>.wasm <args…>` binary, instance-per-call execution, stateless guests with host-held state, and **real Specify-specific backends** for the deterministic effects — data (`read`), `kv`, and lifecycle (`journal` / `transition`). The bespoke `specify` wasm host retires; what is left is a generic interpreter plus a set of swappable host-service backends.
 
 ## Motivation
 
@@ -41,10 +41,10 @@ The runtime is a separate project, so this RFC is genuinely two coordinated halv
 `omnia <guest>.wasm <args…>` instantiates a fresh guest instance, forwards the remaining arguments for the guest to interpret, and satisfies the guest's effect imports from the backends bound for this deployment:
 
 - **Data / lifecycle** — backed by real host services over the project tree and the lifecycle store, replacing the handoff/CLI scaffolding RFC-52 stood up.
-- **`kv`** — backed by filesystem locally, Redis / NATS when a fleet shares state; this is where `load-reference` memoizes computed references and where any deterministic sub-result is cached.
+- **`kv`** — backed by filesystem locally, Redis / NATS when a fleet shares state; this is where `resolve` memoizes computed references and where any deterministic sub-result is cached.
 - **`judge`** — bound to whatever backend the deployment selects; the replay stub suffices until [RFC-56](rfc-56-judge-fleet.md).
 
-Each call is a new instance (component instances are not re-entrant), so the `load-reference` fallback that re-enters guest code for a *computed* reference lands in a fresh instance — the synchronous ABI closes the loop with no async machinery.
+Each call is a new instance (component instances are not re-entrant), so the `resolve` fallback that re-enters guest code for a *computed* reference lands in a fresh instance — the synchronous ABI closes the loop with no async machinery.
 
 ## Decisions to record (open until reviewed)
 
@@ -57,7 +57,7 @@ Each call is a new instance (component instances are not re-entrant), so the `lo
 ## Phased plan
 
 1. Stand up the generic `omnia <guest>.wasm` binary running one target-adapter guest, with real data + lifecycle backends replacing the RFC-52 handoff scaffolding (no behaviour change versus RFC-53).
-2. Add the `kv` host service + its backend set; route `load-reference` memoization through it.
+2. Add the `kv` host service + its backend set; route `resolve` memoization through it.
 3. Retire the bespoke `specify` wasm-host dispatch on the adapter axis; both axes now run via `omnia <guest>`.
 4. Leave the workflow on the legacy driver/shim until [RFC-55](rfc-55-workflow-and-development-guests.md).
 

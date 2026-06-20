@@ -28,7 +28,7 @@ interface types {
   type op-state = list<u8>;                 // component-owned, serialized into the resume token
   variant directive {
     judge(judge-request),                   // run a brief (whole prose) with a typed request
-    load-reference(string),                 // FALLBACK ref fetch by id (non-filesystem backends)
+    resolve(string),                        // FALLBACK ref fetch by id (non-filesystem backends)
     done(build-report),                     // validated terminal report
     fail(adapter-error),
   }

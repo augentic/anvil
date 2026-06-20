@@ -4,7 +4,7 @@
 
 ## Abstract
 
-This is the **cross-repo companion** to [RFC-54](rfc-54-omnia-runtime-move.md). The runtime move stands Specify's guests on the generic Omnia runtime, but it assumes one capability Specify cannot supply from its own side: a first-class, pluggable **model host** — the host service that satisfies the `judge` effect — and the **backend plug-in contract** that real model backends register into. This RFC specifies that Omnia-side capability: `judge` as "one more host service in Omnia's mould" ([architecture](architecture.md) — *"`judge` (the model service) as the marquee addition"*), the generic `ModelBackend` trait plus the inbound `load-reference` resolver callback, per-deployment backend binding (the same mechanism that swaps an in-memory KV for Redis), and the dispatch primitive that routes a guest's `judge` call to the bound backend. Omnia provides the **slot**; Specify owns the **interface** (RFC-52) and provides the **backends** (RFC-56). The slot carries zero vendor knowledge, so [law 2](architecture.md#the-four-laws) holds at the runtime floor.
+This is the **cross-repo companion** to [RFC-54](rfc-54-omnia-runtime-move.md). The runtime move stands Specify's guests on the generic Omnia runtime, but it assumes one capability Specify cannot supply from its own side: a first-class, pluggable **model host** — the host service that satisfies the `judge` effect — and the **backend plug-in contract** that real model backends register into. This RFC specifies that Omnia-side capability: `judge` as "one more host service in Omnia's mould" ([architecture](architecture.md) — *"`judge` (the model service) as the marquee addition"*), the generic `ModelBackend` trait plus the inbound `resolve` callback, per-deployment backend binding (the same mechanism that swaps an in-memory KV for Redis), and the dispatch primitive that routes a guest's `judge` call to the bound backend. Omnia provides the **slot**; Specify owns the **interface** (RFC-52) and provides the **backends** (RFC-56). The slot carries zero vendor knowledge, so [law 2](architecture.md#the-four-laws) holds at the runtime floor.
 
 ## Motivation
 
@@ -20,7 +20,7 @@ RFC-54 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 
 - Registering `judge` as a pluggable host service in Omnia's host-service framework, bound to the Specify-owned WIT interface ([RFC-52](rfc-52-effect-interfaces.md)).
 - The generic **`ModelBackend` trait** — the plug-in contract every concrete backend implements.
-- The **`ReferenceResolver` callback** the host exposes to a backend — the host side of `load-reference`, including the fresh-instance path for *computed* references and KV memoization.
+- The **`ReferenceResolver` callback** the host exposes to a backend — the host side of `resolve`, including the fresh-instance path for *computed* references and KV memoization.
 - **Per-deployment backend binding/selection** (one backend per host), reusing Omnia's existing host-service backend-selection mechanism.
 - The **dispatch primitive**: guest `judge` call → bound backend → typed result handed back for the guest to validate.
 - The generic **host capabilities** a backend may need under deployment policy (subprocess spawn, network egress, filesystem read) — granted brain-agnostically.
@@ -73,7 +73,7 @@ pub trait ModelBackend: Send + Sync {
 }
 
 /// The inbound (model-initiated) reference leg — the host side of
-/// `load-reference`. Backed by a host file-read, or a FRESH guest instance
+/// `resolve`. Backed by a host file-read, or a FRESH guest instance
 /// for a computed reference (safe under RFC-54 instance-per-call), memoized in KV.
 pub trait ReferenceResolver {
     fn load_reference(&self, id: &str) -> Result<Vec<u8>, ModelError>;
@@ -113,5 +113,5 @@ Omnia binds exactly one `Box<dyn ModelBackend>` per deployment, selected by conf
 - **A brain leaking into the runtime.** The chief risk is a vendor SDK or a model id creeping into Omnia core. The `ModelBackend` trait is the structural guard — every brain is a backend behind it, never a runtime assumption.
 - **Cross-repo version skew.** The Omnia trait and the Specify `judge` WIT can drift; version the seam explicitly and treat it as a contract, not a shared build.
 - **One-backend-per-host honoured.** The fleet must stay *inside* the single Specify backend; a second `judge` host binding is a regression of the architecture's one-backend-per-host rule.
-- **Reentrancy via the resolver.** The inbound `load-reference` leg must only ever re-enter on a fresh instance (RFC-54), never the operation instance suspended in `judge`.
+- **Reentrancy via the resolver.** The inbound `resolve` leg must only ever re-enter on a fresh instance (RFC-54), never the operation instance suspended in `judge`.
 - **Async stays gated.** The host must not force async on backends that do not stream; the synchronous contract is the baseline.

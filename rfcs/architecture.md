@@ -27,7 +27,7 @@ The system is split into two roles communicating over a single contract: a gener
 - **The model fleet sits below**: When a guest needs judgment, it requests the `judge` effect. Omnia dispatches this to a pluggable backend (a frontier LLM, local model, or replay stub). The "brain" is swappable.
 - **The boundary is typed**: Every piece of data and effect crosses the boundary with a defined type. Untyped text is never passed across this line — only typed data and handles.
 
-The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build` or `extract`). In turn, the guest calls back into Omnia's host services (like `judge`, `load-reference`, or `journal`) whenever it needs to do something impure. 
+The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build` or `extract`). In turn, the guest calls back into Omnia's host services (like `judge`, `resolve`, or `journal`) whenever it needs to do something impure. 
 
 > **A quick note on naming:** In this document, "Omnia" refers to two things: the runtime itself, and the `omnia` target guest (the adapter that generates code for the Omnia runtime). This document will be explicit when the context isn't obvious.
 
@@ -65,7 +65,7 @@ For context, here is how these concepts map to the tech stack:
 | Typed boundary        | WIT records and interfaces                                                                  |
 | Handle                | A brief path, artifact path, or reference ID                                                |
 | `judge` backend       | The model service (LLM, local model, or replay stub)                                        |
-| `load-reference`      | Omnia's fallback for resolving references when the model can't read the filesystem directly |
+| `resolve`      | Omnia's fallback for resolving references when the model can't read the filesystem directly |
 
 ## How the model reads a brief
 
@@ -77,7 +77,7 @@ Therefore, the adapters remain a hybrid of Wasm and prose. The Wasm handles the 
 
 ![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
 
-If a backend is used that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `load-reference` fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance. Most of the time, the agent reads the files it needs directly.
+If a backend is used that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `resolve` fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance. Most of the time, the agent reads the files it needs directly.
 
 ## Lifecycle of an operation
 
@@ -125,7 +125,7 @@ This setup enables progressive optimisation. As a specific transformation become
 
 Guests are stateless and instance-per-call, so anything that must outlive a single call lives in a host service, not in guest memory. These are the *deterministic* effects — the counterpart to the judgment backend above — and each is satisfied by a swappable backend the guest never sees:
 
-- **Data** (`read-artifact` / `get-asset`): Narrow, typed access to the project tree and assets, replacing a broad filesystem grant.
+- **Data** (`read`): Narrow, typed access to the project tree and assets through one accessor returning bytes, replacing a broad filesystem grant.
 - **`state`**: Host-held scratch and memoization (e.g., caching a computed reference). uses KeyValue interface backed locally by filesystem, or Redis/NATS for fleet-shared state.
 - **`journal`**: The durable lifecycle log and its legal moves. Uses `JsonStore` backed by a filesystem backend.
 

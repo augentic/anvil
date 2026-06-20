@@ -1,4 +1,4 @@
-<svg viewBox="0 0 960 484" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The effect model: a guest requests typed effects from Omnia, the interpreter, which performs data, references, key-value memoization, and lifecycle effects through its host services and dispatches judge to a pluggable backend of a frontier LLM, a local SLM, or a replay stub; a filesystem-capable agent backend reads the brief and its references by path, while a non-filesystem backend falls back to load-reference, which Omnia resolves &#8212; serving a computed reference from a fresh guest instance">
+<svg viewBox="0 0 960 484" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The effect model: a guest requests typed effects from Omnia, the interpreter, which performs data, references, key-value memoization, and lifecycle effects through its host services and dispatches judge to a pluggable backend of a frontier LLM, a local SLM, or a replay stub; a filesystem-capable agent backend reads the brief and its references by path, while a non-filesystem backend falls back to the resolve effect, which Omnia performs &#8212; serving a computed reference from a fresh guest instance">
   <title>The effect model</title>
   <defs>
     <marker id="em-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
@@ -18,10 +18,10 @@
   <text x="52" y="214" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">calls effects, gets typed</text>
   <text x="52" y="232" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">results back</text>
 
-  <!-- fresh instance (inbound load-reference target) -->
+  <!-- fresh instance (inbound resolve target) -->
   <rect x="36" y="300" width="252" height="70" rx="10" fill="#f3ecfa" stroke="#a489d8" stroke-width="1.3" stroke-dasharray="5 4"/>
   <text x="52" y="326" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">Fresh guest instance</text>
-  <text x="52" y="346" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">load-reference fallback: a computed ref</text>
+  <text x="52" y="346" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">resolve fallback: a computed ref</text>
   <text x="52" y="361" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">(instance per call &#8212; never re-entrant)</text>
 
   <!-- boundary -->
@@ -34,9 +34,9 @@
   <path d="M398 224 L288 224" stroke="#555" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#em-arr)"/>
   <text x="300" y="240" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">typed result &#8594; steers control flow</text>
 
-  <!-- inbound load-reference into a fresh instance -->
+  <!-- inbound resolve into a fresh instance -->
   <path d="M398 268 C 340 268, 330 332, 292 332" stroke="#c08040" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#em-arrO)"/>
-  <text x="300" y="292" font-family="ui-monospace, monospace" font-size="9.5" fill="#a05a3c">load-reference (fallback)</text>
+  <text x="300" y="292" font-family="ui-monospace, monospace" font-size="9.5" fill="#a05a3c">resolve (fallback)</text>
 
   <!-- interpreter -->
   <rect x="380" y="70" width="544" height="346" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
@@ -54,11 +54,11 @@
 
   <!-- data -->
   <rect x="396" y="188" width="512" height="34" rx="8" fill="#dceede" stroke="#7bbf8f"/>
-  <text x="410" y="210" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">read-artifact / get-asset &#8594; host data (narrow)</text>
+  <text x="410" y="210" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">read(id) &#8594; bytes  &#183;  host data (narrow)</text>
 
   <!-- refs -->
   <rect x="396" y="228" width="512" height="34" rx="8" fill="#dceede" stroke="#7bbf8f"/>
-  <text x="410" y="250" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">load-reference(id) &#8594; bytes  &#183;  fallback for non-fs backends (inbound)</text>
+  <text x="410" y="250" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">resolve(id) &#8594; bytes  &#183;  fallback for non-fs backends (inbound)</text>
 
   <!-- kv -->
   <rect x="396" y="268" width="512" height="34" rx="8" fill="#dceede" stroke="#7bbf8f"/>
@@ -72,5 +72,5 @@
   <text x="396" y="382" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">It knows effects, not adapters and not brains.</text>
 
   <text x="40" y="446" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" fill="#3c7a52">Deterministic modulo the judge oracle: mock judge &#8658; the whole run replays.</text>
-  <text x="40" y="466" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#888">judge is the outbound path; load-reference is the inbound fallback for a backend that cannot read the brief by path.</text>
+  <text x="40" y="466" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#888">judge is the outbound path; resolve is the inbound fallback for a backend that cannot read the brief by path.</text>
 </svg>

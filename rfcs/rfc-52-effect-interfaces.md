@@ -4,7 +4,7 @@
 
 ## Abstract
 
-This is the **pivot stage** of the [effect-oriented architecture](architecture.md). It names — as typed WIT interfaces — the small, fixed vocabulary of effects the runtime already performs implicitly: `judge` (run a brief on a model), the host-data accessors (already seeded by RFC-51 §D), `load-reference` (the fallback resolver for adapter-bundle prose), `kv` (host-held state for memoization), and the `journal` / `transition` lifecycle hooks. Crucially, S2 changes **no runtime behavior**: each named effect is *initially backed by the machinery that exists today* (the prepare/finalize handoff for `judge`, the CLI for lifecycle). The value is that the implicit boundary becomes explicit, typed, and — above all — **mockable**, which is what unlocks deterministic record/replay.
+This is the **pivot stage** of the [effect-oriented architecture](architecture.md). It names — as typed WIT interfaces — the small, fixed vocabulary of effects the runtime already performs implicitly: `judge` (run a brief on a model), the host-data accessors (already seeded by RFC-51 §D), `resolve` (the fallback resolver for adapter-bundle prose), `kv` (host-held state for memoization), and the `journal` / `transition` lifecycle hooks. Crucially, S2 changes **no runtime behavior**: each named effect is *initially backed by the machinery that exists today* (the prepare/finalize handoff for `judge`, the CLI for lifecycle). The value is that the implicit boundary becomes explicit, typed, and — above all — **mockable**, which is what unlocks deterministic record/replay.
 
 ## Motivation
 
@@ -16,7 +16,7 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 
 ## Scope
 
-**In scope:** the WIT interface definitions for `judge`, host-data (promote RFC-51 §D), `load-reference`, `kv`, and `journal` / `transition`; the host-side handlers that satisfy them using existing machinery; a replay/record backend for `judge` sufficient for CI.
+**In scope:** the WIT interface definitions for `judge`, host-data (promote RFC-51 §D), `resolve`, `kv`, and `journal` / `transition`; the host-side handlers that satisfy them using existing machinery; a replay/record backend for `judge` sufficient for CI.
 
 ### Non-goals
 
@@ -30,7 +30,7 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 // The marquee effect. `brief-path` is a HANDLE — the brief's on-disk path,
 // never its body (architecture invariant 4). A filesystem-capable backend
 // reads the brief and follows its relative links itself; only a backend that
-// cannot read disk falls back to `references.load-reference` below.
+// cannot read disk falls back to `references.resolve` below.
 interface judge {
   use types.{adapter-error};
   // request: JSON projection of the typed op request (handles, not corpora).
@@ -42,7 +42,7 @@ interface judge {
 // call this; bodies are pulled by id, never pushed.
 interface references {
   use types.{adapter-error};
-  load-reference: func(id: string) -> result<list<u8>, adapter-error>;
+  resolve: func(id: string) -> result<list<u8>, adapter-error>;
 }
 
 // Narrow, host-provided accessor onto project.yaml (promoted from RFC-51 §D).
@@ -56,24 +56,20 @@ interface host-config {
   get: func(key: string) -> option<string>;
 }
 
-// Narrow host resources replacing the raw $CAPABILITY_DIR + preopen grant:
-// the adapter reads host/project data through typed methods, never by walking
-// a preopened tree (promoted from RFC-51 §D).
+// Narrow host accessor replacing the raw $CAPABILITY_DIR + preopen grant: the
+// adapter reads host/project data (slice artifacts, project assets) through one
+// typed call, never by walking a preopened tree (promoted from RFC-51 §D).
+// Bytes in; the caller deserializes at the call site (String::from_utf8,
+// serde_yaml, raw bytes) — the host attaches no content-type.
 interface host-data {
   use types.{adapter-error};
-  record asset { id: string, content-type: string, data: list<u8> }
-  resource project {
-    get-asset: func(id: string) -> option<asset>;
-    read-config: func() -> result<string, adapter-error>;
-  }
-  resource slice {
-    read-artifact: func(path: string) -> result<string, adapter-error>;
-  }
+  read: func(id: string) -> result<list<u8>, adapter-error>;
+  read-config: func() -> result<string, adapter-error>;
 }
 
 // Host-held state: memoize expensive-to-compute resources so stateless,
 // instance-per-call guests keep nothing durable in process. Backed per
-// deployment (filesystem · Redis · NATS); also where load-reference memoizes.
+// deployment (filesystem · Redis · NATS); also where resolve memoizes.
 interface kv {
   use types.{adapter-error};
   get: func(key: string) -> option<list<u8>>;
@@ -83,7 +79,7 @@ interface kv {
 // A lifecycle interface (journal / transition) is named here too.
 ```
 
-The host satisfies `judge` with today's handoff in S2 (print envelope, run brief, parse report); the typed interface is the contract, the handoff is the temporary implementation. `brief-path` is the load-bearing simplification: a filesystem-capable backend (a frontier agent CLI, or a local agent) is handed the brief's on-disk path and follows its relative links itself, so the common path makes no callback into the runtime; `references.load-reference` is the fallback only a backend that cannot read disk uses.
+The host satisfies `judge` with today's handoff in S2 (print envelope, run brief, parse report); the typed interface is the contract, the handoff is the temporary implementation. `brief-path` is the load-bearing simplification: a filesystem-capable backend (a frontier agent CLI, or a local agent) is handed the brief's on-disk path and follows its relative links itself, so the common path makes no callback into the runtime; `references.resolve` is the fallback only a backend that cannot read disk uses.
 
 **Host-data narrows the blast radius (promoted from RFC-51 §D).** The `host-config` / `host-data` accessors name exactly the host capabilities an adapter may use, replacing the broad `$CAPABILITY_DIR` + preopened-directory grant. They target *host/project* data — the slice tree, artifacts, and assets that flow *into* an operation — and deliberately do **not** govern an adapter reading its *own* bundled prose: that corpus is reached by the brief's own relative links (a filesystem-capable backend follows them directly) or, for a backend that cannot read disk, through the `references` fallback. Keeping the two access kinds distinct is what lets reference discovery stay open while host data stays narrowly typed.
 
@@ -91,7 +87,7 @@ The host satisfies `judge` with today's handoff in S2 (print envelope, run brief
 
 - **The `judge` signature.** `brief-path` (the brief's on-disk path handle) + JSON `request` + (later) a context-injection policy knob (same-thread vs subagent). Confirm `request` is a JSON projection of the stratum-1 record, not a new shape.
 - **Model-service routing key → [RFC-56](rfc-56-judge-fleet.md).** The router that keys backend selection on the `brief-path` / an abstract difficulty hint (never a vendor model id) is the fleet's concern; this RFC fixes only the `judge` *signature* it routes over.
-- **`kv` exposure.** Whether guests call `kv` directly to memoize their own deterministic sub-results, or it stays the host's backing for `load-reference` memoization. Either way the backend set (filesystem · Redis · NATS) is the runtime's concern ([RFC-54](rfc-54-omnia-runtime-move.md)).
+- **`kv` exposure.** Whether guests call `kv` directly to memoize their own deterministic sub-results, or it stays the host's backing for `resolve` memoization. Either way the backend set (filesystem · Redis · NATS) is the runtime's concern ([RFC-54](rfc-54-omnia-runtime-move.md)).
 - **Lifecycle as effect vs CLI-only.** Whether `journal` / `transition` become component-callable effects now, or stay CLI-owned and are reached only through the driver. (Leaning: stay CLI-owned through S2; expose later only if S4 needs it.)
 - **Fate of the relocated brief-frontmatter contract.** How much of `implements` / `consumes` / `produces` / `capabilities` (now carried by [RFC-53](rfc-53-orchestration-components.md)) is subsumed by the typed `judge` boundary, and how much survives as authoring-time lint.
 - **Replay backend shape.** The on-disk format of recorded `(brief-path, request) -> output` pairs and how a run selects record vs replay.
@@ -113,5 +109,5 @@ The host satisfies `judge` with today's handoff in S2 (print envelope, run brief
 ## Risks and invariants
 
 - **Pivot must be behavior-neutral.** If S2 changes execution, it has overreached — it only *names* what exists.
-- **No corpus across the boundary.** `judge` takes a `brief-path`; `references.load-reference` is pull-by-id. Regressing this re-introduces the context-budget blow-up architecture invariant 4 forbids.
+- **No corpus across the boundary.** `judge` takes a `brief-path`; `references.resolve` is pull-by-id. Regressing this re-introduces the context-budget blow-up architecture invariant 4 forbids.
 - **RFC-50 preserved.** Effect interfaces are generic — no adapter name, no taxonomy, no LLM vendor in the contract.
