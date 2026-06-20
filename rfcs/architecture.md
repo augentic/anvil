@@ -1,22 +1,20 @@
 # Specify on Omnia — The Effect-Oriented Architecture
 
-> Status: This is our standing architecture — the agreed-upon direction we are working toward. It helps sequence our work rather than landing as a single massive change, and it lives alongside [roadmap.md](roadmap.md).
+> Status: This is the standing architecture — the agreed-upon direction being worked toward. It helps sequence work rather than landing as a single massive change, and it lives alongside [roadmap.md](roadmap.md).
 
 ## The core idea
 
 The new Specify architecture boils down to one core concept:
 
-> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is simply Omnia compiled with Specify-specific backends.
+> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is Omnia compiled with Specify-specific backends.
 
-Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand our domain: it just knows how to run Wasm and how to handle a small, fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives entirely within the guests.
+Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to run Wasm and how to handle a small, fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within the guests.
 
-This formalises a split that was already happening in the codebase. Previously, the deterministic parts (plan lifecycle, validation, merging) lived in a bespoke `specify` binary, while judgment (surveying, extracting, synthesising) lived in text briefs run by a model. This new architecture moves both onto a single generic runtime and ensures the boundary between structure and judgment is strictly typed.
+Context must come from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This is a deliberate choice to avoid the bloated, overloaded context windows that often cause failures. 
 
-There's a second important lesson we've learned: context should come from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This is a deliberate choice to avoid the bloated, overloaded context windows that often cause failures. 
-
-This approach gives us two major benefits:
-1. **Scalability and auditability**: An operation runs exactly the same way whether you trigger it from your editor or it runs in a massive CI pipeline.
-2. **Cost efficiency**: Because judgment is a typed call over specific inputs, we can route easy tasks to deterministic code and narrow tasks to small local models, reserving expensive frontier LLMs only for the hardest problems.
+This approach provides two major benefits:
+1. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a massive CI pipeline.
+2. **Cost efficiency**: Because judgment is a typed call over specific inputs, easy tasks can be routed to deterministic code and narrow tasks to small local models, reserving expensive frontier LLMs only for the hardest problems.
 
 ## The shape of the system
 
@@ -25,39 +23,39 @@ This approach gives us two major benefits:
 The system is split into two roles communicating over a single contract: a generic runtime and the guests that run on it.
 
 - **Omnia is the foundation.** It's a command-line executable. Its main job is to run a guest (e.g., `omnia workflow.wasm plan …`) and pass along any arguments. It instantiates the guest and handles a small vocabulary of effects, but it doesn't know anything about adapters, workflows, or AI models.
-- **Everything else is a guest.** The workflow (`plan`, `execute`) and our development tools are first-party guests. The adapters are guests too, whether they are source guests (like `typescript` or `documentation`) or target guests (like `omnia` or `vectis`). They all run as peers on the runtime.
-- **The model fleet sits below.** When a guest needs to make a judgment call, it requests the `judge` effect. Omnia then dispatches this request to a pluggable backend — which could be a frontier LLM, a small local model, or even a deterministic replay stub for testing. The "brain" is just a swappable implementation detail.
-- **The boundary is strictly typed.** Every piece of data and every effect crosses the boundary with a strict type. We don't pass raw, untyped text corpora across this line — only typed data and handles.
+- **Everything else is a guest.** The workflow (`plan`, `execute`) and the development tools are first-party guests. The adapters are guests too, whether they are source guests (like `typescript` or `documentation`) or target guests (like `omnia` or `vectis`). They all run as peers on the runtime.
+- **The model fleet sits below.** When a guest needs to make a judgment call, it requests the `judge` effect. Omnia then dispatches this request to a pluggable backend — which could be a frontier LLM, a small local model, or even a deterministic replay stub for testing. The "brain" is a swappable implementation detail.
+- **The boundary is strictly typed.** Every piece of data and every effect crosses the boundary with a strict type. Raw, untyped text corpora are not passed across this line — only typed data and handles.
 
 The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build` or `extract`). In turn, the guest calls back into Omnia's host services (like `judge`, `load-reference`, or `journal`) whenever it needs to do something impure. 
 
-> **A quick note on naming:** In this document, "Omnia" refers to two things: the runtime itself, and the `omnia` target guest (the adapter that generates code for the Omnia runtime). We'll try to be explicit when the context isn't obvious.
+> **A quick note on naming:** In this document, "Omnia" refers to two things: the runtime itself, and the `omnia` target guest (the adapter that generates code for the Omnia runtime). This document will be explicit when the context isn't obvious.
 
 ## The runtime: Omnia
 
-Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so you can swap implementations without changing the guest code. Specify's effects are just another set of host services, with the `judge` model service being the most notable addition ([RFC-57](rfc-57-omnia-model-host.md)).
+Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so implementations can be swapped without changing the guest code. Specify's effects are another set of host services, with the `judge` model service being the most notable addition ([RFC-57](rfc-57-omnia-model-host.md)).
 
 Three key properties of the runtime make this architecture possible:
 
-- **One binary, guest-selected behaviour.** We no longer have a bespoke `specify` host. Instead, you run `omnia <guest>.wasm <args…>`, and the guest decides what to do with the invocation. 
-- **Instance-per-call execution.** Every time we call a guest, we spin up a fresh instance. Wasm component instances aren't re-entrant, so this avoids a whole class of async complexity. If a judgment step needs to resolve a reference by calling back into a guest, it happens in a brand new instance.
-- **Stateless guests, host-held state.** Because we use fresh instances per call, guests can't hold onto state in memory. Anything that needs to persist lives in a host service, like a key-value store. This makes the runtime incredibly easy to scale horisontally.
+- **One binary, guest-selected behaviour.** There is no longer a bespoke `specify` host. Instead, `omnia <guest>.wasm <args…>` is run, and the guest decides what to do with the invocation. 
+- **Instance-per-call execution.** Every time a guest is called, a fresh instance is spun up. Wasm component instances aren't re-entrant, so this avoids a whole class of async complexity. If a judgment step needs to resolve a reference by calling back into a guest, it happens in a brand new instance.
+- **Stateless guests, host-held state.** Because fresh instances are used per call, guests can't hold onto state in memory. Anything that needs to persist lives in a host service, like a key-value store. This makes the runtime easy to scale horisontally.
 
 ## The mental model: programs, effects, and interpreters
 
 ![The effect model](../docs/assets/diagrams/effect-architecture/effect-model.svg)
 
-This design borrows heavily from the concept of algebraic effects. The guest program handles pure control flow, and whenever it needs to interact with the messy, non-deterministic outside world, it requests a named, typed effect. A separate interpreter (Omnia) decides how to actually perform that effect. 
+This design borrows heavily from the concept of algebraic effects. The guest program handles pure control flow, and whenever it needs to interact with the messy, non-deterministic outside world, it requests a named, typed effect. A separate interpreter (Omnia) decides how to perform that effect. 
 
-Here's the vocabulary we use:
+Here is the vocabulary used:
 
 - **Effect**: A typed request from a guest for something it can't do itself (like running a brief, reading a file, or logging an event). The effect says *what* is needed, not *how* to do it.
 - **Interpreter**: Omnia. It handles the *how* for every effect. Guests remain deterministic, while Omnia deals with the impurity of the outside world.
-- **`judge`**: Our primary effect for judgment. It takes a brief and a typed request, and returns a typed answer. The implementation just happens to be an AI model.
+- **`judge`**: The primary effect for judgment. It takes a brief and a typed request, and returns a typed answer. The implementation happens to be an AI model.
 - **Oracle**: How the guest views the model — as an opaque source of typed answers. The guest trusts the shape of the response, not the system that generated it.
-- **Handle**: A reference (like a file path or an ID) that points to data without actually carrying the data itself. This is how we keep things lazy and avoid blowing up context windows.
+- **Handle**: A reference (like a file path or an ID) that points to data without carrying the data itself. This is how things are kept lazy to avoid blowing up context windows.
 
-For context, here is how these concepts map to our actual tech stack:
+For context, here is how these concepts map to the tech stack:
 
 | Concept | Technology |
 | --- | --- |
@@ -73,19 +71,19 @@ For context, here is how these concepts map to our actual tech stack:
 
 When a guest calls `judge`, it doesn't pass the entire text of a brief. Instead, it passes a handle — usually the file path to the brief on disk. 
 
-If the backend is a filesystem-capable agent (like Cursor or Claude Code), Omnia just gives it the path. The agent reads the brief, follows any relative links to supporting docs, and only pulls in the context it actually needs to make a decision. This keeps our context windows lean.
+If the backend is a filesystem-capable agent (like Cursor or Claude Code), Omnia gives it the path. The agent reads the brief, follows any relative links to supporting docs, and only pulls in the context it needs to make a decision. This keeps context windows lean.
 
-This is why our adapters remain a hybrid of Wasm and prose. The Wasm handles the orchestration, while the prose (the briefs and references) lives on disk, linked together naturally.
+This is why the adapters remain a hybrid of Wasm and prose. The Wasm handles the orchestration, while the prose (the briefs and references) lives on disk, linked together naturally.
 
 ![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
 
-If we're using a backend that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `load-reference` fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance, but it's strictly a fallback. Most of the time, the agent just reads the files it needs directly.
+If a backend is used that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `load-reference` fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance, but it's a fallback. Most of the time, the agent reads the files it needs directly.
 
 ## Lifecycle of an operation
 
 ![Logical sequence: build](../docs/assets/diagrams/effect-architecture/sequence-build.svg)
 
-Let's look at how a `build` operation flows in practice. (Note that in this logical view, every step is technically an Omnia invocation running either Wasm or a model backend).
+Let's look at how a `build` operation flows in practice. (Note that in this logical view, every step is an Omnia invocation running either Wasm or a model backend).
 
 1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(build-request)`).
 2. The target guest runs its deterministic setup code.
@@ -104,30 +102,40 @@ When evaluating future design decisions — whether something should be prose or
 
 > Run everything as a guest on a runtime that only understands effects. Keep the structure in deterministic guest code, delegate judgment to the `judge` effect, and always pass handles instead of raw text across boundaries.
 
-These specific principles apply across the entire architecture. If a proposed change conflicts with them, we should step back and reconsider the approach.
+These specific principles apply across the entire architecture. If a proposed change conflicts with them, the approach should be reconsidered.
 
-1. **Strictly typed boundaries.** We use WIT records for data and WIT interfaces for effects. We don't pass raw, untyped text corpora across boundaries.
-2. **The runtime only knows about effects.** Omnia doesn't know about workflows, adapters, or AI models. It just knows how to handle effects. 
-3. **Determinism by default, judgment by exception.** The core state machine (loops, logic, sequencing) lives in deterministic guest code. When we need judgment, we call `judge` and get back a typed decision that steers the next deterministic step. We don't ask models to guess our control flow.
-4. **Laziness is essential.** We pass handles (like file paths) across boundaries, not massive text bodies. This ensures our context windows stay manageable and our operations remain scalable.
+1. **Strictly typed boundaries.** WIT records are used for data and WIT interfaces for effects. Raw, untyped text corpora are not passed across boundaries.
+2. **The runtime only knows about effects.** Omnia doesn't know about workflows, adapters, or AI models. It knows how to handle effects. 
+3. **Determinism by default, judgment by exception.** The core state machine (loops, logic, sequencing) lives in deterministic guest code. When judgment is needed, `judge` is called and returns a typed decision that steers the next deterministic step. Models are not asked to guess control flow.
+4. **Laziness is essential.** Handles (like file paths) are passed across boundaries, not massive text bodies. This ensures context windows stay manageable and operations remain scalable.
 
 ## The model fleet and deployment modes
 
 ![The model fleet and deployment topologies](../docs/assets/diagrams/effect-architecture/model-fleet.svg)
 
-Because Omnia is just a thin interpreter for effects and every `judge` call is self-contained, we don't have to rely on a single, long-lived conversation. This allows our model service to act as a router, choosing the right backend for each specific task based on difficulty and cost. Several different deployment modes naturally fall out of this design:
+Because Omnia is a thin interpreter for effects and every `judge` call is self-contained, there is no reliance on a single, long-lived conversation. This allows the model service to act as a router, choosing the right backend for each specific task based on difficulty and cost. Several different deployment modes naturally fall out of this design:
 
-- **Interactive (Frontier LLMs)**: When you trigger a phase from your editor, `judge` is handled by a spawned, context-free agent session using a frontier LLM for complex synthesis and review. It runs against concrete artifacts, not your chat history.
-- **Headless (Small Local Models)**: For fleet-scale operations and narrow, high-volume transformations, `judge` can be routed to a hosted API or a local model without any editor in the loop. We can use constrained decoding to ensure they return valid typed reports.
+- **Interactive (Frontier LLMs)**: When a phase is triggered from an editor, `judge` is handled by a spawned, context-free agent session using a frontier LLM for complex synthesis and review. It runs against concrete artifacts, not chat history.
+- **Headless (Small Local Models)**: For fleet-scale operations and narrow, high-volume transformations, `judge` can be routed to a hosted API or a local model without any editor in the loop. Constrained decoding can be used to ensure valid typed reports are returned.
 - **CI / Testing (Deterministic Replay)**: In a CI environment, `judge` can be swapped out for a deterministic replay stub, turning AI evaluations into reliable regression tests.
 
-This setup allows us to progressively optimise. As a specific transformation becomes well-understood, we can migrate it from an expensive LLM down to a cheaper local model, or even to deterministic code, without having to rewrite the guest that calls it. This architecture also means "runtime-agnostic" is actually enforced by the type system, and because we load context lazily, deep orchestration doesn't blow our token budgets.
+This setup allows for progressive optimisation. As a specific transformation becomes well-understood, it can be migrated from an expensive LLM down to a cheaper local model, or even to deterministic code, without having to rewrite the guest that calls it. This architecture also means "runtime-agnostic" is enforced by the type system, and because context is loaded lazily, deep orchestration doesn't blow token budgets.
+
+## CLI bootstrapping
+
+Because "Specify is Omnia compiled with Specify-specific backends", there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The runtime acquires its guests through a composed approach:
+
+- **Embedded core seed:** Core first-party guests (like the workflow guest) can be compiled directly into the binary using `include_bytes!`. This ensures that initialization works offline and eliminates version skew between the runtime and its most critical guests.
+
+- **Config-driven resolution:** The long tail of adapters and third-party guests are resolved dynamically via digest-pinned references. Omnia is enhanced with a generic resolver to fetch these into a local cache. Because adapters are mixed Wasm and prose trees (rather than pure Wasm components), they are distributed via an OCI store.
+
+This combination provides a small binary that can still bootstrap offline, while decoupling the release cadence of most adapters from the core runtime.
 
 ## The incremental path
 
 ![Staged path to the architecture](../docs/assets/diagrams/effect-architecture/roadmap.svg)
 
-We are moving toward this architecture in stages. Each stage is valuable on its own and forward-compatible:
+The architecture is being approached in stages. Each stage is valuable on its own and forward-compatible:
 
 - **S0–S1 (Typed contract)**: Moving to typed records and callable deterministic tools.
 - **S2 (Name the effects)**: Formalising `judge`, data, and lifecycle events as typed WIT imports. This unlocks record/replay testing.
@@ -139,15 +147,7 @@ For more details on the staging, see [roadmap.md](roadmap.md).
 
 ## Key trade-offs
 
-We are making a few deliberate bets with this architecture:
+A few deliberate bets are being made with this architecture:
 
-- **Omnia is the runtime.** We are retiring the bespoke `specify` host in favor of Omnia. This gives us flexible deployment modes, but it does mean we have a hard dependency on Omnia's host-service surface.
-- **Judgment requires a host.** Running a judgment step means we need a host that can satisfy the `judge` effect. We aren't trying to embed the runtime directly inside the user's live editor session.
-
-## How this builds on what exists
-
-This architecture doesn't throw away what we've built; it just makes the foundations more explicit:
-
-- **Adapter-agnostic core**: The runtime still doesn't know about specific adapters, and now it doesn't know about the workflow either.
-- **Identity and packaging**: Adapters are still published as a mix of Wasm and prose. We've just changed the Wasm to be an orchestrating guest and improved how the prose is loaded.
-- **The typed contract**: This remains our foundation, but we've expanded it to cover effects and lazy discovery as well.
+- **Omnia is the sole runtime.** This provides flexible deployment modes, but it does mean there is a hard dependency on Omnia's host-service surface.
+- **Judgment requires a host.** Running a judgment step means a host is needed that can satisfy the `judge` effect. There is no attempt to embed the runtime directly inside a user's live editor session.
