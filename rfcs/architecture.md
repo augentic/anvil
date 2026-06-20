@@ -39,7 +39,7 @@ Three key properties of the runtime make this architecture possible:
 
 - **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` is run, and the guest decides what to do. There is no longer a bespoke `specify` host.
 - **Instance-per-call execution**: A fresh instance spins up every time a guest is called. Wasm component instances aren't re-entrant, avoiding a whole class of async complexity.
-- **Stateless guests, host-held state**: Guests cannot hold state in memory between calls. Persistent data lives in a host service (like a file-system backed key-value store), making the runtime horizontally scalable.
+- **Stateless guests, host-held state**: Guests cannot hold state in memory between calls. Persistent data lives in a host service (like a filesystem backed key-value store), making the runtime horizontally scalable.
 
 ## The mental model: programs, effects, and interpreters
 
@@ -126,8 +126,8 @@ This setup enables progressive optimisation. As a specific transformation become
 Guests are stateless and instance-per-call, so anything that must outlive a single call lives in a host service, not in guest memory. These are the *deterministic* effects — the counterpart to the judgment backend above — and each is satisfied by a swappable backend the guest never sees:
 
 - **Data** (`read-artifact` / `get-asset`): Narrow, typed access to the project tree and assets, replacing a broad filesystem grant.
-- **`kv`**: Host-held scratch and memoization (e.g., caching a computed reference). Backed locally by filesystem, or Redis/NATS for fleet-shared state.
-- **`journal` / `transition`**: The durable lifecycle log and its legal moves.
+- **`state`**: Host-held scratch and memoization (e.g., caching a computed reference). uses KeyValue interface backed locally by filesystem, or Redis/NATS for fleet-shared state.
+- **`journal`**: The durable lifecycle log and its legal moves. Uses `JsonStore` backed by a filesystem backend.
 
 ### Journalling progress
 
