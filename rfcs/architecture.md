@@ -38,7 +38,7 @@ Runtime and guest meet in both directions, as any wasm runtime and its guests do
 
 ## The runtime: Omnia
 
-Omnia is a Wasmtime-based wasm runtime whose entire design is **pluggable host services behind typed interfaces** — HTTP, key-value, SQL, messaging, observability, identity — swappable without changing guest code. Specify's effect vocabulary is just one more set of host services in that mould, with `infer` (the model service) as the marquee addition. Three runtime properties carry the architecture:
+Omnia is a Wasmtime-based wasm runtime whose entire design is **pluggable host services behind typed interfaces** — HTTP, key-value, SQL, messaging, observability, identity — swappable without changing guest code. Specify's effect vocabulary is just one more set of host services in that mould, with `infer` (the model service) as the marquee addition ([RFC-57](rfc-57-omnia-model-host.md)). Three runtime properties carry the architecture:
 
 - **One binary, guest-selected behaviour.** There is no bespoke `specify` host anymore. The runtime is generic; `omnia <guest>.wasm <args…>` selects which guest interprets the invocation. The workflow guest interprets `plan` / `execute`; a source guest interprets `survey` / `extract`; a target guest interprets `build` / `merge`. The CLI surface *is* "pick a guest, forward the arguments."
 

@@ -1,6 +1,6 @@
 # RFC-54: The Omnia Runtime Move (Stage 4 — Retire the Bespoke Host)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Cross-repo: pairs with a host-service capability in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-55](rfc-55-workflow-and-development-guests.md) (workflow and development as guests)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Cross-repo: pairs with the Omnia model host ([RFC-57](rfc-57-omnia-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-55](rfc-55-workflow-and-development-guests.md) (workflow and development as guests)
 
 ## Abstract
 
@@ -31,10 +31,10 @@ This RFC is the engineering behind the architecture's "Omnia as the runtime — 
 
 The runtime is a separate project, so this RFC is genuinely two coordinated halves:
 
-- **Omnia (the repo) provides the generic floor** — the Wasmtime-based interpreter, the pluggable host-service framework (the same mechanism that swaps an in-memory KV for Redis), and the extension point an `infer` backend plugs into. It carries zero Specify domain knowledge.
+- **Omnia (the repo) provides the generic floor** — the Wasmtime-based interpreter, the pluggable host-service framework (the same mechanism that swaps an in-memory KV for Redis), and the extension point an `infer` backend plugs into — the **model host**, specified in [RFC-57](rfc-57-omnia-model-host.md). It carries zero Specify domain knowledge.
 - **Specify provides the backends** — the concrete host-service implementations for its effect vocabulary, the guest packaging, and the operator CLI surface. "Specify" *is* Omnia compiled with these.
 
-**Who owns the effect WIT.** The effect interfaces are Specify's host services, not Omnia's, so Specify owns and versions them; Omnia owns only the generic framework that hosts them. This keeps the runtime brain- and domain-agnostic by construction. The Omnia-side framework work may warrant a companion RFC in `augentic/omnia`; this RFC owns the Specify-side adoption.
+**Who owns the effect WIT.** The effect interfaces are Specify's host services, not Omnia's, so Specify owns and versions them; Omnia owns only the generic framework that hosts them. This keeps the runtime brain- and domain-agnostic by construction. The Omnia-side model-host capability is specified in its companion [RFC-57](rfc-57-omnia-model-host.md); this RFC owns the Specify-side adoption.
 
 ## The model (sketch)
 
