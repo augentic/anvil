@@ -1,156 +1,192 @@
-# The Effect-Oriented Harness (Architecture North Star)
+# Specify on Omnia — The Effect-Oriented Architecture
 
-> Status: Standing architecture (north star) — durable direction, not a change RFC; it does not land or get deleted · Implemented by: RFC-52 (effect interfaces), RFC-53 (orchestration components), RFC-54 (workflow as effects) · Foundation: RFC-51 (typed adapter contract), Stages 0–1 · Preserves: RFC-47 (identity), RFC-48 (packaging), RFC-50 (adapter-agnostic core) · Sibling to [roadmap.md](roadmap.md)
+> Status: Standing architecture — the committed shape the work converges on. It sequences the work rather than landing as a single change, and persists alongside [roadmap.md](roadmap.md).
 
 ## The one idea
 
-Specify is converging on a single architecture. This document names it, so future work aims at one shape instead of rediscovering it a decision at a time:
+Specify has reconceived itself around a single sentence:
 
-> **Specify is a typed effect system. The workflow is a program. Adapters are programs. The LLM is an effect. The harness is the interpreter that runs the programs and satisfies their effects.**
+> **Specify is a family of wasm guests on a generic runtime. The workflow is a guest; every adapter is a guest. Judgment is an effect — `infer` — that the runtime satisfies from a pluggable fleet of models. [Omnia](https://github.com/augentic/omnia) is the runtime; "Specify" is what Omnia becomes when it runs the Specify guests.**
 
-Everything below — the shape of the system, the four laws, the way a single operation flows, the deployment modes that fall out for free — is a consequence of taking that one sentence seriously. RFC-51's typed records, "wasm as the adapter surface," the tool-vs-agent split, and lazy reference discovery are not four features; they are four facets of this one model.
+Everything below — the shape of the system, the four laws, the way one operation flows, the deployment modes that fall out for free — is a consequence of taking that sentence seriously. The runtime owns no domain knowledge: it knows how to run wasm and how to satisfy a small, fixed vocabulary of effects. *All* Specify behaviour — orchestrating the workflow, surveying and extracting from sources, shaping and building and merging for targets, and the framework's own development tooling — lives in guests that run on it.
 
-This is **not a new direction.** It is the completion of a split already present in the codebase: the deterministic skeleton (plan lifecycle, lock enforcement, `specify plan next` refusing illegal transitions, validation, merge) already lives in the CLI; the judgment (survey, extract, synthesis, review) already lives in briefs run by an LLM; the skills are glue between them. The architecture names that endpoint and makes the seam between the two **typed**.
+This completes a split already present in the codebase. The deterministic skeleton (plan lifecycle, lock enforcement, validation, merge) and the judgment (survey, extract, synthesis, review) were already separate concerns; the skeleton lived in a bespoke `specify` binary and the judgment in briefs run by a model, glued by skill prose. The reconceived architecture relocates *both* onto one generic runtime and makes the seam between structure and judgment **typed**.
 
-## Why this is a standing document, not an RFC
+A second sentence rides alongside the first, and it is the one the project learned the hard way: **context is artifact-borne, not conversational.** Every `infer` call is self-contained — it names a brief and a typed request over concrete artifacts (`spec.md`, evidence, a build request), never an accumulated transcript of prior turns. That is deliberate, not a limitation: bloated, overloaded context was the recurring failure, so the architecture refuses to depend on it. Two payoffs follow. The work becomes **scalable and auditable** — the same operation runs identically whether an operator triggers it from the editor or a CI job fires it at fleet scale. And it becomes **progressively cheaper**: once judgment is a typed call over concrete inputs, deterministic code can absorb the easy cases (survey already does) and small local models the narrow ones (a Qwen variant already generates Omnia-target code), shrinking the frontier-LLM share call by call without rewriting the workflow.
 
-Specify has accumulated point decisions — RFC-47 identity, RFC-48 packaging, RFC-50 adapter-agnostic core, RFC-51 typed contract — that each independently push toward the same structure without ever stating it. Leaving the destination implicit means every new decision is re-litigated from first principles, and the answers drift. This document fixes the north star and hands down a **decision rule** (below) that resolves the recurring questions — "prose or code?", "callable export or handoff?", "what does this function take?" — the same way every time.
+## Why name the architecture
 
-It is deliberately **not** a numbered RFC. In this repo an RFC is a discrete, landable change proposal that is deleted once merged (RFC-47–50 already have been). This is the opposite: a durable framing document that must persist and that *sequences* the change RFCs rather than being one. It therefore lives alongside [roadmap.md](roadmap.md) as a standing strategic doc, and the change RFCs (RFC-52/53/54) cite it by name.
+Specify accumulated point decisions that each independently pushed toward this structure without ever stating it. Leaving the destination implicit means every new decision is re-litigated from first principles, and the answers drift. Naming the architecture ends that: it hands down a **decision rule** (below) that resolves the recurring questions — "prose or code?", "callable export or handoff?", "what does this function take?", "where does this run?" — the same way every time. This is a durable framing document; it persists and sequences the work rather than landing as a single change.
 
 ## The shape of the system
 
 ![The shape of the system](../docs/assets/diagrams/effect-architecture/system-shape.svg)
 
-Three layers, one contract.
+Two roles over one contract: a generic **runtime** and the **guests** that run on it.
 
-- **Programs sit on top.** There are two kinds, and they are the *same shape* — each (at the north star) a **Wasm component** (Component Model): the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the **adapters** (`survey` / `extract` / `shape` / `build` / `merge`). A program expresses deterministic control flow and, whenever it needs something it cannot compute — a judgment, a datum, a piece of prose — it requests a **typed effect** rather than doing the impure thing itself.
-- **The host — the `specify` CLI, a Rust binary embedding Wasmtime — is the interpreter underneath.** It instantiates the programs and satisfies a small, fixed vocabulary of effects: `infer` (run a brief on the LLM), the host-data accessors, `load-reference`, and the lifecycle hooks. It knows *effects*, not adapters and not brains.
-- **One typed contract is the boundary** between them. Every datum and every effect crosses it typed; nothing crosses untyped, and nothing crosses as a corpus — only handles.
+- **Omnia is the runtime, and the foundation.** It ships as an executable invoked from the command line. Its only required argument is the guest to run — `omnia workflow.wasm plan …` — and every remaining argument is forwarded to the guest to interpret. The runtime instantiates the guest, satisfies a small, fixed vocabulary of effects, and otherwise knows nothing: not adapters, not the workflow, not brains. Everything stands on it.
 
-The two program kinds differ only in *where they draw the line* between structure and judgment — adapters lean toward structure, the workflow toward judgment (developed below). They speak the same effects to the same interpreter, which is what lets one architecture serve both.
+- **Everything else is a guest.** The **workflow** (`plan`, `execute`, the slice loop) and **development** (the framework's own authoring and standards tooling) are first-party guests; the **adapters** are guests too — source guests (`typescript`, `documentation`, …) that `survey` and `extract`, and target guests (`omnia`, `vectis`, …) that `shape`, `build`, and `merge`. They are peers on the runtime, differing only in *where they draw the structure / judgment line* (developed below), not in kind.
+
+- **The model fleet sits below.** When a guest needs judgment it requests the `infer` effect, and Omnia dispatches it *down* to a pluggable backend — a frontier LLM, a small local model (SLM), or a deterministic replay stub. The brain is a swappable implementation, never an assumption.
+
+- **One typed contract is the boundary.** Every datum and every effect crosses it typed; nothing crosses untyped, and nothing crosses as a corpus — only handles.
+
+Runtime and guest meet in both directions, as any wasm runtime and its guests do: Omnia instantiates a guest and **calls its exports** (`build`, `extract`) to invoke it; the guest **calls back into Omnia's host services** (`infer`, `load-reference`, `read-artifact`, `journal`) for everything impure. Neither "leads" — the runtime is the floor every guest stands on, and the guests are the code that runs on it.
+
+> **A naming note.** "Omnia" names two things in this document: the **runtime** (the foundation), and the **`omnia` target guest** (the adapter that emits code *for* the Omnia runtime). Where ambiguity is possible the text says "Omnia (the runtime)" or "the `omnia` target guest" explicitly.
+
+## The runtime: Omnia
+
+Omnia is a Wasmtime-based wasm runtime whose entire design is **pluggable host services behind typed interfaces** — HTTP, key-value, SQL, messaging, observability, identity — swappable without changing guest code. Specify's effect vocabulary is just one more set of host services in that mould, with `infer` (the model service) as the marquee addition. Three runtime properties carry the architecture:
+
+- **One binary, guest-selected behaviour.** There is no bespoke `specify` host anymore. The runtime is generic; `omnia <guest>.wasm <args…>` selects which guest interprets the invocation. The workflow guest interprets `plan` / `execute`; a source guest interprets `survey` / `extract`; a target guest interprets `build` / `merge`. The CLI surface *is* "pick a guest, forward the arguments."
+
+- **Instance-per-call execution.** Every call to a guest instantiates a **fresh** guest instance — the standard wasm-serving model, because component instances are not re-entrant. This single fact removes a whole class of hazards: when a running judgment step needs to call back into a guest — the `load-reference` fallback that serves a *computed* reference (see *how the model reads a brief*) — it lands in a *new* instance, never re-entering the one already on the stack, so the loop closes on the synchronous ABI with no async machinery required.
+
+- **Stateless guests, host-held state.** Because instances are per-call, guests hold no durable in-process state; what must persist lives in a host service — the KV store, with a filesystem backend for memoizing expensive-to-compute resources locally (and Redis / NATS backends when a fleet wants to share). Statelessness is not a constraint to work around; it is what makes instance-per-call correct and the runtime horizontally trivial.
+
+The backends behind each host service are chosen per deployment — the same mechanism Omnia already uses to swap an in-memory KV for Redis selects the `infer` backend: the **model service** for real work, or a replay stub for CI. Omnia binds one backend per host, so the model service is itself that *single* backend — it fans out to the fleet internally (developed below), never requiring a second `infer` host.
 
 ## The mental model: programs, effects, interpreters
 
 ![The effect model](../docs/assets/diagrams/effect-architecture/effect-model.svg)
 
-The model borrows its discipline from **algebraic effects**: a program is mostly pure control flow; the messy, non-deterministic world is reached only through named, typed *effects*; and a separate *interpreter* (a "handler") decides how each effect is actually carried out. Swap an effect's handler and the same program runs interactively, headless, or against a recording — without the program changing. The vocabulary:
+The model borrows its discipline from **algebraic effects**: a program is mostly pure control flow; the messy, non-deterministic world is reached only through named, typed *effects*; and a separate *interpreter* decides how each effect is actually carried out. Swap an effect's handler and the same program runs interactively, headless, or against a recording — without the program changing. The vocabulary:
 
-- **Effect** — a typed request a program makes for something it cannot compute itself (run a brief, read an artifact, fetch a reference, record a lifecycle event). The effect names *what* is needed; it does not say *how* to get it.
-- **Interpreter** — the **host** (this document's *harness*): one runtime under three lenses — the wasm **host** that satisfies a guest's imports, the algebraic-effects **interpreter** that handles effects, the **harness** of the title. It owns the *how* of every effect and is the only place impurity lives; programs are deterministic between effects. It *performs* the data, reference, and lifecycle effects itself, and *dispatches* `infer` to a pluggable backend — so the host stays brain-agnostic.
-- **`infer`** — the marquee effect. Prose is its *body*, the brief's typed request and report are its *signature*, and the LLM is its *backend* — the thing the host dispatches to. "Run this brief and give me back a typed answer" is a function call whose implementation happens to be a language model.
-- **Oracle** — the LLM seen from the program's side: an opaque source of typed answers. The program trusts the *shape* of what comes back (validated at the boundary), never the runtime that produced it. The same thing seen from the host's side is the pluggable **`infer` backend** (informally, the *brain*); **agent** names only its *interactive* form — alongside the headless API and the CI replay stub, neither of which is an agent.
-- **Handle** — a reference (`brief-ref`, artifact path, reference id) that *names* data without carrying it. Handles are how laziness becomes structural rather than aspirational.
+- **Effect** — a typed request a guest makes for something it cannot compute itself (run a brief, read an artifact, fetch a reference, memoize a result, record a lifecycle event). The effect names *what* is needed; it does not say *how*.
+- **Interpreter** — Omnia. It owns the *how* of every effect and is the only place impurity lives; guests are deterministic between effects. It *performs* the data, reference, memoization, and lifecycle effects through its host services, and *dispatches* `infer` to a pluggable backend — so the runtime stays brain-agnostic.
+- **`infer`** — the marquee effect. Prose is its *body*, the brief's typed request and report are its *signature*, and a model is its *backend*. "Run this brief and give me back a typed answer" is a function call whose implementation happens to be a language model.
+- **Oracle** — the model seen from the guest's side: an opaque source of typed answers. The guest trusts the *shape* of what comes back (validated at the boundary), never the runtime that produced it. The same thing seen from Omnia's side is the pluggable **`infer` backend** (informally, the *brain*).
+- **Handle** — a reference (a brief **path**, artifact path, reference id) that *names* data without carrying it. Handles are how laziness becomes structural rather than aspirational.
 
-Each model term names a durable abstraction; here is the concrete technology (shorthand) behind each, so the names and the stack read side by side:
+Each model term names a durable abstraction; here is the concrete technology behind each, so the names and the stack read side by side:
 
 | Model term | Technology (shorthand) |
 | --- | --- |
-| Program | a **Wasm component** (Component Model); adapters compiled to `wasm32-wasip2` |
-| Host · interpreter · harness | the **`specify` CLI** — a **Rust** binary embedding **Wasmtime** (Component Model · Cranelift JIT · WASI Preview 2) |
-| Effect | a **WIT** interface import |
-| Typed contract · boundary | **WIT** — records for data, interfaces for effects (package `specify:adapter`) |
-| Handle | a **WIT** handle / id — `brief-ref`, artifact path, reference id |
-| `infer` backend | the **LLM** — a Cursor agent session or a headless API — or a **CI replay stub** |
-| Oracle | the **LLM**, seen by the program as an opaque source of typed answers |
-| `read-artifact` · `load-reference` | **WASI** host-data + preopens (RFC-51 `host-data`) |
-| `journal` · `transition` | the **`specify` CLI** lifecycle owner |
+| Program / guest | a **Wasm component** (`wasm32-wasip2`) — the workflow, development, and adapter guests |
+| Runtime · interpreter | **Omnia** — a Wasmtime-based wasm runtime, shipped as a CLI binary (`omnia <guest>.wasm <args…>`) |
+| Effect | a **WIT** interface import, satisfied by an Omnia **host service** |
+| Typed contract · boundary | **WIT** — records for data, interfaces for effects |
+| Handle | a **WIT** handle — a **brief path** (resolved on disk), an artifact path, a reference id |
+| `infer` backend | the **model service** — a fleet: a hosted frontier **LLM**, a local **SLM**, or a **replay stub** |
+| Oracle | the **model**, seen by the guest as an opaque source of typed answers |
+| `load-reference(id)` | **fallback** for non-filesystem backends — Omnia resolves prose (a host file-read, or a fresh guest instance for *computed* refs), memoized in KV |
+| `read-artifact` · data | Omnia **data host services** |
+| `journal` · `transition` | the Omnia **lifecycle host service** |
 
-What runs **today**: the wasm *exports* and deterministic `tool` ops go through Wasmtime; `infer`, the host-data accessors, and `load-reference` become typed **WIT imports** only at S2–S3 (until then `infer` is the agent prepare/finalize handoff). The model terms stay constant across that transition — only the technology behind a few of them changes.
+## How the model reads a brief
 
-The deep move is **directional**. Today a child process (the CLI) cannot reach up into its parent agent's context, so agent work is handed *back up* out of band via prepare/finalize. In the effect model the program calls *down* into wasm and the wasm calls *up* into the interpreter through an import — so the LLM step runs in the interpreter's context, where the agent already lives. The handoff stops being a workaround and becomes a typed function call.
+`infer`'s first argument is a **handle**, not prose — and for the backends Specify leans on, that handle is a **brief path**. A frontier agent CLI (cursor-agent, Claude Code) or a local agent (qwen-code) runs with filesystem access, so Omnia hands it the absolute path to the brief inside the adapter's on-disk package; the agent reads the brief and follows its relative links — sub-briefs, supporting docs, examples — pulling only the bodies the judgment actually touches. The agent's own file reads *are* the lazy loading: no second hop, no callback into a guest. A reference tree of dozens of files contributes only the handful the judgment opens; the rest never enters context.
+
+This is why an adapter stays a **wasm + prose hybrid**. The wasm half is the guest that orchestrates; the prose half is the brief-and-reference tree, materialised on disk and authored exactly as briefs already are — relative links, loaded on demand. The `brief-path` simplification asks nothing new of authors; it just lets a filesystem-capable model resolve those links itself instead of routing every one back through the runtime.
+
+![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
+
+Two backends have no shared filesystem to read from — a raw inference API and an SLM completion endpoint — and for them Omnia resolves the brief and injects the references the model asks for. **`load-reference` is that fallback resolver**: the model-initiated (inbound) leg back into the runtime, the mirror of the guest-initiated `infer`. Instance-per-call keeps it safe — any *computed* reference is served by a *fresh* guest instance, never the operation instance suspended in `infer` — but it is a fallback, not the headline. Most references are static prose a host file-read satisfies; only computed references touch guest code at all; and the replay backend reads nothing, because its answers are recorded.
 
 ## Lifecycle of one operation
 
-![Lifecycle of one operation](../docs/assets/diagrams/effect-architecture/operation-lifecycle.svg)
+![Logical sequence: build](../docs/assets/diagrams/effect-architecture/sequence-build.svg)
 
-Concretely, a `build` flows like this:
+Concretely, a `build` flows like the sequence above. It is a **logical** view: Omnia is not drawn as a separate actor because *every box is an Omnia invocation* — `+wasm` runs a guest, `+backend` runs a model — and the runtime is simply what they all run on. The mechanics each arrow stands for:
 
-1. The **workflow** calls *down* into the adapter: `build(build-request)` — a typed value, not argv.
-2. The adapter runs a **deterministic step** in its own code (assemble inputs, decide what comes next).
-3. When it needs judgment, the adapter calls *up* into the interpreter: `infer(brief-ref, request)`. It passes a *handle* to the brief, not the brief's text.
-4. The interpreter runs that brief on the LLM **in the agent's context**.
-5. The LLM returns its output to the interpreter.
-6. The interpreter hands the adapter a **typed result**, validated against the operation's report type — a value that *steers* the adapter's next deterministic step.
-7. The adapter loops: validate, sequence, perhaps another `infer` or a lazy `load-reference`.
-8. The adapter returns a typed `build-report` *up* to the workflow.
+1. The **workflow guest** drives the loop and invokes the **target adapter** (the `omnia` or `vectis` guest): `build(build-request)` — a typed value, not argv. (Each invocation is a fresh `omnia +wasm` instance.)
+2. The target guest runs a **deterministic step** in its own code (assemble inputs, decide what comes next).
+3. When it needs judgment, it requests `infer(brief-path, request)` — a *handle* (here, the brief's on-disk path), not the brief's text.
+4. Omnia dispatches the request to the configured **model backend**, handing a filesystem-capable agent the brief path and resolving the brief itself only for a backend that cannot read disk.
+5. As the model works the brief, it pulls supporting material lazily: an agent backend reads each relative reference from the on-disk package itself; a non-filesystem backend asks Omnia, which resolves it (a host file-read, or a **fresh guest instance** for *computed* refs) and memoizes the result in KV.
+6. The model returns its answer to Omnia, which validates it against the operation's **report type** and hands the target guest a **typed result** that *steers* its next deterministic step.
+7. The guest loops: validate, sequence, perhaps another `infer` or `load-reference`.
+8. The guest returns a typed `build-report`, and Omnia owns the lifecycle transition.
 
-The shape to notice: control flows *down* into wasm; effects flow *up* into the interpreter; judgment runs where the agent already lives; and every arrow carries a typed value or a handle — never a corpus. The same skeleton describes `extract`, `merge`, and (optionally, one day) the workflow phases themselves.
+The shape to notice: control flows *into* guests through exports; effects flow *up* into Omnia's host services; judgment runs on a swappable `+backend`; and references load lazily — read from the adapter's on-disk tree by an agent backend, or resolved by Omnia (a fresh instance per *computed* ref) for a backend that cannot. Every arrow carries a typed value or a handle — never a corpus. The same skeleton describes `extract` (its source-adapter dual is shown under *how the model reads a brief*), `merge`, and the workflow phases themselves.
 
 ## The four laws
 
-These hold at **every** layer and **every** stage. A proposed change that violates one is wrong — this is the test that was missing.
+These hold at **every** layer. A proposed change that violates one is wrong.
 
-1. **One typed contract is the currency of every boundary.** WIT records for data (RFC-51 stratum 1); WIT interfaces for effects. Nothing crosses a boundary untyped. This is the foundation, already in flight under RFC-51.
-2. **The host knows effects, not adapters and not brains.** The host stays adapter-agnostic (RFC-50) and gains a fixed, small effect vocabulary. The "brain" becomes a *pluggable `infer` implementation*, not an assumption baked into prose — which *strengthens* RFC-50's agnosticism rather than weakening it.
-3. **Determinism by default; judgment by exception — and judgment returns typed decisions that steer the deterministic skeleton.** The state machine (loops, gates, sequencing) is code. When a branch needs judgment, the code calls `infer` and gets back a *typed* value (`retry | abort | escalate`, a `build-report`, a reconciliation) that drives the next deterministic step. Control flow is never encoded in prose; the LLM never guesses at control flow.
-4. **Laziness is law: handles cross boundaries, never corpora.** Every effect carries references; the executor pulls bodies on demand. This is RFC-51 §D/§G discipline promoted to a universal rule — it is what keeps the agent's context budget intact.
+1. **One typed contract is the currency of every boundary.** WIT records for data; WIT interfaces for effects. Nothing crosses a boundary untyped, and nothing crosses as a corpus.
+2. **The runtime knows effects — not adapters, not the workflow, not brains.** Omnia holds zero domain knowledge and a fixed, small effect vocabulary. The workflow is a guest like any other; the brain is a pluggable `infer` backend. Agnosticism is structural, not a property defended by lint.
+3. **Determinism by default; judgment by exception — and judgment returns typed decisions that steer the deterministic skeleton.** The state machine (loops, gates, sequencing) is code in a guest. When a branch needs judgment, the code calls `infer` and gets back a *typed* value (`retry | abort | escalate`, a `build-report`, a reconciliation) that drives the next deterministic step. Control flow is never encoded in prose; the model never guesses at control flow.
+4. **Laziness is law: handles cross boundaries, never corpora.** Every effect carries references; bodies load on demand. A `brief-path` lets a filesystem-capable model read the brief and follow its references itself, pulling only what the judgment touches; a backend that cannot read disk falls back to `load-reference`, with computed refs memoized in KV. Either way depth of orchestration never blows the context budget — and because each `infer` is self-contained, context comes from concrete artifacts, never an accumulated conversation.
 
 ## What falls out for free
 
-The harness becomes a thin **effect interpreter**: it instantiates orchestration components and satisfies a small, fixed set of imports.
+Omnia is a thin **effect interpreter**: it instantiates guests and satisfies a small, fixed set of host services.
 
 | Effect (WIT import) | What it does | Who satisfies it |
 | --- | --- | --- |
-| `infer(brief-ref, request) -> output` | Run prose with the LLM, in context | Pluggable: Cursor session / headless API / **CI replay stub** |
-| `read-artifact` / `get-asset` | Narrow, pull-based host/project data | Host (RFC-51 `host-data`) |
-| `load-reference(id)` | Lazy adapter-bundle prose, on demand | Host, reading the adapter bundle |
-| `journal` / `transition` | Lifecycle events + legal transitions | The CLI's existing lifecycle owner |
+| `infer(brief-path, request) -> output` | Run a brief (handed by path) on a model, get a typed answer | The **model service** — pluggable: frontier LLM / SLM / **replay stub** |
+| `load-reference(id) -> bytes` | **Fallback** ref resolver for non-filesystem backends | Omnia (host file-read; a fresh guest instance for *computed* refs), memoized in KV |
+| `read-artifact` / `get-asset` | Narrow, pull-based host/project data | Omnia data host service |
+| `kv get/set` | Memoize expensive-to-compute resources | Omnia KV host service (filesystem · Redis · NATS) |
+| `journal` / `transition` | Lifecycle events + legal transitions | Omnia lifecycle host service |
 
-Because the brain is just the `infer` handler, **three deployment modes fall out of one architecture for free**:
+Because the brain is just the `infer` handler, **deployment modes fall out of one architecture**:
 
-- **Interactive** — Cursor satisfies `infer` with the live session.
-- **Headless** — a CLI/API `infer` backend, no editor in the loop.
-- **CI** — a record/replay `infer` stub, so an entire workflow run is deterministic and gradable.
+- **Interactive** — the operator triggers a phase from the editor (`/spec:plan` shells out to the runtime); `infer` is satisfied by a *spawned*, context-free agent session. Losing the editor conversation is the point — the call runs on concrete artifacts, not the transcript.
+- **Headless** — `infer` is a hosted API or a local SLM, no editor in the loop; the same operation at fleet scale.
+- **CI** — `infer` is a record/replay stub, so an entire run is deterministic and gradable.
 
-Three properties come with them. **Agnosticism becomes a type, not a grep test** — "agent-runtime-agnostic" stops being a fragile property defended by lint and becomes the `infer` interface itself. **The system becomes replayable** — mock `infer` and the whole run is deterministic end-to-end, which is what turns evals from sampling into regression testing. **Context stays cheap** — laziness is structural, so depth of orchestration does not blow the budget. Skills thin to entry points; the orchestration that matters is typed.
+Three properties come with them. **Agnosticism becomes a type, not a grep test** — "runtime-agnostic" *is* the `infer` interface. **The system becomes replayable** — mock `infer` and the whole run is deterministic end-to-end, which is what turns evals from sampling into regression testing. **Context stays cheap** — laziness is structural, so depth of orchestration does not blow the budget.
 
-## Where the structure / judgment line sits — per layer
+## The model fleet: LLM, SLM, deterministic
 
-The single most important guard against over-engineering: the deterministic-vs-judgment line sits in a **different place per layer**, and collapsing every layer into wasm is the main way this vision goes wrong.
+![The model fleet and deployment topologies](../docs/assets/diagrams/effect-architecture/model-fleet.svg)
 
-- **Adapters lean toward orchestration components.** Their build / extract / merge flows are deep, repeatable, and benefit most from typed multi-step control flow + lazy refs + replay. This is where the `infer`-as-effect model earns its cost, and where it should be proven first.
-- **The workflow leans toward an agent-driver over deterministic CLI guardrails.** The lifecycle skeleton is *already* deterministic in the CLI (lock, gates, `plan next`). Workflow-level recovery and operator intent are exactly where the LLM's adaptability is a feature, not a bug. The workflow therefore adopts the *effect interfaces* (typed `infer`, typed data, record/replay) but need not collapse into a monolithic orchestration component.
+Because each `infer` call is **self-contained** — it carries its brief handle and typed request, pulls references lazily, and memoizes the expensive deterministic parts — no call depends on a long-lived shared conversation. That context-independence is the enabling property: it makes the `model` service a **router over a fleet**, choosing a backend per call by difficulty and cost.
 
-Both layers speak the same effects; they simply draw the structure / judgment line differently. Honouring that difference is the difference between a clean architecture and an over-built one.
+This sits comfortably with Omnia's one-backend-per-host rule rather than straining it. The model service *is* that **single `infer` materialization**, and the fleet lives *inside* it: one service fans out to different models, deciding per call — so a second model is a new branch in the router, never a second host binding. The choice stays behind the interface, too — a guest hands over a brief and a typed request, never a model, and the service routes it to a fleet member. (How it keys that decision — on the `brief-ref`, or on an abstract difficulty hint, never a vendor model id — is a signature-level detail left to [RFC-52](rfc-52-effect-interfaces.md).)
 
-## From today to the north star
+- **Frontier LLM** — hard synthesis and review. Hosted; reached either through an inference API or by spawning a headless agent CLI / SDK session.
+- **SLM** — narrow, cheap, high-volume transforms. A local model (e.g. a Qwen variant served by Ollama or vLLM over an OpenAI-compatible endpoint), called directly by the runtime, with **constrained decoding** to keep its typed reports schema-valid.
+- **Deterministic / replay** — the recorded stub. The zero-config, fully-deterministic path that backs CI and evals.
 
-![Today to north star](../docs/assets/diagrams/effect-architecture/evolution.svg)
+The fleet is not static; it is a **ratchet**. Because every `infer` is self-contained and typed, each call is independently substitutable: where a transform proves reliably verifiable, it migrates down the fleet — frontier LLM → SLM → deterministic code — without touching the guest that calls it. Reducing LLM dependence is therefore an ongoing program, not a rewrite; the seam stays put, only the backend behind a given call changes.
 
-The transformation is narrow because the bones are already in place. Today an agent runs `/spec:*` skill prose and drives the loop; it shells out to the LLM-free CLI host, which dispatches adapters and hands agent work back up through prepare/finalize; boundaries are argv + JSON, largely untyped. The north star keeps every one of those pieces and changes only two things: the boundaries become **typed**, and the agent handoff becomes a typed **`infer` effect** the program calls into. Nothing is rewritten; the seam is named and typed.
+Three **deployment topologies** decide whether `infer` can reach a given backend:
+
+- **Headless / CI** — Omnia is the top-level process; the backend is an API, a local SLM, or the replay stub. Works anywhere.
+- **Spawned agent** — Omnia spawns a fresh agent CLI/SDK session as the backend. This is the **interactive** path too: an editor command shells out to the runtime, which spawns the session — a *separate* conversation, not the operator's editor transcript, which is exactly what context-independence wants.
+- **Embedded** — Omnia runs *inside* an agent host that exposes its live session as the `infer` backend, so `infer` would run in the operator's actual editor conversation. The architecture deliberately **does not require** this: re-coupling to the live transcript is the dependency context-independence is built to shed. It stays possible if an editor ever exposes its session, but it is an option, not a gap.
 
 ## The incremental path
 
-![Staged path to the effect-oriented harness](../docs/assets/diagrams/effect-architecture/roadmap.svg)
+![Staged path to the architecture](../docs/assets/diagrams/effect-architecture/roadmap.svg)
 
-The architecture lands in stages, each independently mergeable, independently valuable, and forward-compatible on the same typed contract. None requires the next.
+The end-state above is reached in stages, each independently mergeable, independently valuable, and forward-compatible on the same typed contract.
 
-- **S0–S1 · Typed contract** (RFC-51) — stratum-1 records kill the schema-drift surface; `tool` ops become callable through generated bindings. Near-pure wins on the contract already being built.
-- **S2 · Name the effects** (RFC-52) — `infer` / data / refs / lifecycle become typed WIT imports, *initially backed by today's handoff + CLI*. The pivot: it makes the implicit boundary explicit and unlocks record/replay without changing behavior.
-- **S3 · Orchestration components** (RFC-53) — adapters orchestrate their own multi-step operations and the `infer` effect calls the brief. This is where the vision first becomes visible, and the first stage that demands the async-ABI judgment call.
-- **S4 · Workflow as effects** (RFC-54) — the workflow phases themselves run as effect-driven orchestration. A genuine bet that can be deferred for years.
+- **S0–S1 · Typed contract** — records kill the schema-drift surface; deterministic `tool` ops become callable through generated bindings.
+- **S2 · Name the effects** — `infer` / data / refs / kv / lifecycle become typed WIT imports, initially backed by today's handoff. The pivot: it makes the implicit boundary explicit and unlocks record/replay without changing behaviour.
+- **S3 · Guests orchestrate** — adapters run their own multi-step operations on the runtime and the `infer` effect calls the brief. The vision first becomes visible here.
+- **S4 · Workflow as a guest** — the workflow runs on Omnia like everything else and the bespoke `specify` host retires. The reconception commits to that *runtime* move; *how much* of each phase compiles into the guest versus stays agent-driven behind `infer` is the per-phase call [RFC-54](rfc-54-workflow-as-effects.md) was written to gate — and either way the workflow's adaptability now lives **behind the `infer` effect**, not in prose. This supersedes the prior north star's coherent stop after S3.
 
-There is a **coherent stopping point after S3**: adapters orchestrate over typed effects, the workflow stays agent-driven over deterministic guardrails, and nothing is half-built. The stage-by-stage detail lives in the change RFCs and [roadmap.md](roadmap.md); this document only fixes their direction.
+The stage-by-stage detail lives in [roadmap.md](roadmap.md); this document fixes the direction.
 
 ## The bets
 
-Commit with eyes open. The architecture rests on three calls that should be made deliberately, not by drift:
+Commit with eyes open. The architecture rests on a few calls that should be made deliberately, not by drift:
 
-- **The async / effect ABI.** Streaming, concurrency, and cancellation for `infer` want the Component Model async path, whose ergonomics on the pinned wasmtime are unconfirmed. S0–S2 do not need it; S3+ increasingly do. *De-risk by confirming it before S3, not before S0.*
-- **The LLM-required host.** The effect model means a host must satisfy `infer` to run a judgment step — "zero-LLM-config execution" is given up. The mitigation is that the replay stub *is* the zero-config path, and it is strictly better (deterministic). This trade is the price of the whole vision; accept it explicitly.
-- **How far to push S4.** A real fork, decided with data from S3 — not now.
+- **Omnia as the runtime — committed.** The bespoke `specify` host is retired in favour of a generic Omnia binary plus Specify guests. The payoff is that the effect vocabulary is *just* Omnia host services and the deployment modes are *just* backend swaps; the cost is a hard dependency on the runtime's host-service surface, which the WIT contract keeps swappable.
+- **Context-independence over conversational convenience — committed.** Every `infer` runs on concrete artifacts, not the accumulated chat. The cost is that the editor's running context does not flow into the work; the payoff is that the same operation is reproducible, auditable, and substitutable backend-by-backend — the precondition for pushing work onto SLMs and deterministic code.
+- **The async / effect ABI — narrowed.** Instance-per-call removes the re-entrancy that would have forced async on the reference loop, and a long-lived `infer` is a non-issue in a single-tenant CLI. The `brief-path` simplification narrows it again — the inbound reference leg is now a fallback for non-filesystem backends, so the common path makes no callback at all. The Component-Model async path is now needed only for **streaming** `infer` output and **concurrent** slices — confirm it before those, not before S3.
+- **The model-required host — committed.** Running a judgment step requires a host that satisfies `infer`; "zero-model-config execution" is given up, with the replay stub as the strictly-better zero-config path. The **embedded** topology (`infer` in the operator's live editor session) is explicitly *not* a goal: it would re-couple judgment to the editor transcript, the dependency context-independence is built to shed. Interactive use is the *spawned* session — triggered from the editor, run context-free.
+- **How much of the workflow compiles — gated.** Committing the workflow to a *guest* does not commit every phase to *compiled* orchestration. The workflow is exactly where model adaptability is a feature, so judgment-heavy phases stay agent-driven behind `infer`; the per-phase compile-vs-delegate split, and its operator-UX cost, stays an evidence-driven call ([RFC-54](rfc-54-workflow-as-effects.md)).
+- **Vendor coupling stays behind the interface.** Any one brain (a hosted agent, a specific SLM) is one `infer` backend, never the interface. This is what protects the LLM/SLM/deterministic fleet.
 
 ## The decision rule
 
 Stop evaluating each change as an isolated point decision. Evaluate every future change against one sentence:
 
-> **Push structure to code, judgment to the `infer` effect, and never let a corpus cross a boundary.**
+> **Run everything as a guest on a runtime that knows only effects; push structure to guest code, judgment to the `infer` effect, and never let a corpus cross a boundary.**
 
-When a design question arises — prose or code? a callable export or a handoff? what does this function take as an argument? — that rule answers it, and the four laws tell you whether you have drifted. This is what converts "iterative movement" into "deliberate convergence."
+When a design question arises — prose or code? a callable export or a handoff? what does this function take? which backend runs it? — that rule answers it, and the four laws tell you whether you have drifted.
 
-## Relationship to prior work
+## How this builds on what exists
 
-- **RFC-50 (adapter-agnostic core)** — preserved and strengthened: the host still holds zero adapter names/taxonomy, and now its LLM coupling is an explicit, swappable interface rather than an implicit assumption.
-- **RFC-47 / RFC-48 (identity / packaging)** — unchanged: adapters remain composite extensions (wasm + prose) published to the registry; this architecture only changes what the wasm half *does* and how the prose half is *invoked*.
-- **RFC-51 (typed contract)** — the foundation (Stages 0–1), kept and reframed, not disposed. Its `host-data` accessors (§D) are the seed of the first **data effect**, generalized by RFC-52; its brief-typing and lazy-discovery ideas (§F/§G) change owner once a brief is the *body of the `infer` effect*, and are re-evaluated under RFC-53. Lazy discovery (§G) is promoted to the fourth law.
+The architecture preserves the foundations Specify already rests on and makes each one more explicit:
+
+- **Adapter-agnostic core** — preserved and strengthened: the runtime holds zero adapter names or taxonomy, and now holds zero *workflow* knowledge too. Its model coupling is an explicit, swappable interface.
+- **Identity and packaging** — adapters remain composite extensions (wasm + prose) published to the registry; the reconceived shape only changes what the wasm half *is* (a guest that orchestrates), how the prose half is reached (read by path on disk, host-resolved only as a fallback), and where both run (on Omnia).
+- **The typed contract** — the foundation, kept and reframed. Its host-data accessors are the seed of the data effect; brief-typing and lazy discovery become the body and the fourth law once a brief is the body of `infer`.

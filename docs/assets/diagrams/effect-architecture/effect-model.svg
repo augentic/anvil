@@ -1,59 +1,76 @@
-<svg viewBox="0 0 940 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The effect model: an orchestration component requests typed effects from the harness interpreter, which satisfies infer, data, references, and lifecycle">
+<svg viewBox="0 0 960 484" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The effect model: a guest requests typed effects from Omnia, the interpreter, which performs data, references, key-value memoization, and lifecycle effects through its host services and dispatches infer to a pluggable backend of a frontier LLM, a local SLM, or a replay stub; a filesystem-capable agent backend reads the brief and its references by path, while a non-filesystem backend falls back to load-reference, which Omnia resolves &#8212; serving a computed reference from a fresh guest instance">
   <title>The effect model</title>
   <defs>
-    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+    <marker id="em-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+    <marker id="em-arrO" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#c08040"/>
     </marker>
   </defs>
 
-  <text x="40" y="32" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE EFFECT MODEL</text>
+  <text x="40" y="30" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE EFFECT MODEL</text>
 
-  <!-- orchestration program -->
-  <rect x="36" y="168" width="250" height="120" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
-  <text x="52" y="200" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Orchestration program</text>
-  <text x="52" y="218" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">(wasm)</text>
-  <text x="52" y="244" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">deterministic control flow</text>
-  <text x="52" y="262" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">calls effects, gets typed</text>
-  <text x="52" y="278" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">results back</text>
+  <!-- guest -->
+  <rect x="36" y="140" width="252" height="104" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="52" y="170" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Guest program (wasm)</text>
+  <text x="52" y="196" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">deterministic control flow</text>
+  <text x="52" y="214" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">calls effects, gets typed</text>
+  <text x="52" y="232" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">results back</text>
+
+  <!-- fresh instance (inbound load-reference target) -->
+  <rect x="36" y="300" width="252" height="70" rx="10" fill="#f3ecfa" stroke="#a489d8" stroke-width="1.3" stroke-dasharray="5 4"/>
+  <text x="52" y="326" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">Fresh guest instance</text>
+  <text x="52" y="346" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">load-reference fallback: a computed ref</text>
+  <text x="52" y="361" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">(instance per call &#8212; never re-entrant)</text>
 
   <!-- boundary -->
-  <line x1="362" y1="150" x2="362" y2="392" stroke="#bbb" stroke-width="1.4" stroke-dasharray="5 4"/>
-  <text x="362" y="142" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">typed WIT boundary &#183; handles, not corpora</text>
+  <line x1="322" y1="110" x2="322" y2="392" stroke="#bbb" stroke-width="1.4" stroke-dasharray="5 4"/>
+  <text x="322" y="102" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">typed WIT boundary &#183; handles, not corpora</text>
 
-  <!-- request / result arrows -->
-  <path d="M286 196 L436 196" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#arr)"/>
-  <text x="300" y="188" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">effect request (typed)</text>
-  <path d="M436 262 L286 262" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#arr)"/>
-  <text x="298" y="280" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">typed result &#8594; steers control flow</text>
+  <!-- request / result -->
+  <path d="M288 168 L398 168" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#em-arr)"/>
+  <text x="298" y="160" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">effect request (typed)</text>
+  <path d="M398 224 L288 224" stroke="#555" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#em-arr)"/>
+  <text x="300" y="240" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">typed result &#8594; steers control flow</text>
 
-  <!-- interpreter container -->
-  <rect x="436" y="60" width="468" height="330" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
-  <text x="452" y="84" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#1c1c1c">Effect interpreter (harness) &#183; specify CLI (Rust + Wasmtime)</text>
+  <!-- inbound load-reference into a fresh instance -->
+  <path d="M398 268 C 340 268, 330 332, 292 332" stroke="#c08040" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#em-arrO)"/>
+  <text x="300" y="292" font-family="ui-monospace, monospace" font-size="9.5" fill="#a05a3c">load-reference (fallback)</text>
 
-  <!-- infer row -->
-  <rect x="452" y="96" width="436" height="40" rx="8" fill="#f0e0d6" stroke="#d8a06e"/>
-  <text x="466" y="121" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">infer(brief-ref, request) &#8594; output  &#183;  inherits agent context</text>
-  <rect x="452" y="142" width="132" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
-  <text x="518" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">Cursor session</text>
-  <rect x="590" y="142" width="120" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
-  <text x="650" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">headless API</text>
-  <rect x="716" y="142" width="172" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
-  <text x="802" y="160" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">CI replay (record/replay)</text>
-  <text x="452" y="186" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">pluggable LLM backends &#8212; the brain is one swappable interface</text>
+  <!-- interpreter -->
+  <rect x="380" y="70" width="544" height="346" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
+  <text x="396" y="94" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#1c1c1c">Effect interpreter &#183; Omnia (Wasmtime runtime)</text>
 
-  <!-- data row -->
-  <rect x="452" y="198" width="436" height="40" rx="8" fill="#dceede" stroke="#7bbf8f"/>
-  <text x="466" y="223" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">read-artifact / get-asset &#8594; host data (narrow)</text>
+  <!-- infer block -->
+  <rect x="396" y="104" width="512" height="72" rx="8" fill="#f0e0d6" stroke="#d8a06e"/>
+  <text x="410" y="126" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">infer(brief-path, request) &#8594; output  &#183;  guest-initiated (outbound)</text>
+  <rect x="410" y="138" width="156" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
+  <text x="488" y="156" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">frontier LLM</text>
+  <rect x="574" y="138" width="156" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
+  <text x="652" y="156" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">local SLM</text>
+  <rect x="738" y="138" width="160" height="28" rx="6" fill="#fff" stroke="#d8a06e"/>
+  <text x="818" y="156" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#555">replay (CI)</text>
 
-  <!-- refs row -->
-  <rect x="452" y="246" width="436" height="40" rx="8" fill="#dceede" stroke="#7bbf8f"/>
-  <text x="466" y="271" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">load-reference(id) &#8594; adapter bundle (lazy)</text>
+  <!-- data -->
+  <rect x="396" y="188" width="512" height="34" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="410" y="210" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">read-artifact / get-asset &#8594; host data (narrow)</text>
 
-  <!-- lifecycle row -->
-  <rect x="452" y="294" width="436" height="40" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
-  <text x="466" y="319" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">journal / transition &#8594; lifecycle (CLI-owned)</text>
+  <!-- refs -->
+  <rect x="396" y="228" width="512" height="34" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="410" y="250" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">load-reference(id) &#8594; bytes  &#183;  fallback for non-fs backends (inbound)</text>
 
-  <text x="452" y="360" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">Host knows effects, not adapters and not brains.</text>
+  <!-- kv -->
+  <rect x="396" y="268" width="512" height="34" rx="8" fill="#dceede" stroke="#7bbf8f"/>
+  <text x="410" y="290" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">kv get/set &#8594; memoize expensive resources  &#183;  fs &#183; Redis &#183; NATS</text>
 
-  <text x="40" y="430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" fill="#3c7a52">Deterministic modulo the infer oracle: mock infer &#8658; the whole run replays.</text>
+  <!-- lifecycle -->
+  <rect x="396" y="308" width="512" height="34" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="410" y="330" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">journal / transition &#8594; lifecycle (host-owned)</text>
+
+  <text x="396" y="364" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">Omnia performs data / refs / kv / lifecycle; it dispatches infer to a pluggable backend.</text>
+  <text x="396" y="382" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">It knows effects, not adapters and not brains.</text>
+
+  <text x="40" y="446" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" fill="#3c7a52">Deterministic modulo the infer oracle: mock infer &#8658; the whole run replays.</text>
+  <text x="40" y="466" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#888">infer is the outbound path; load-reference is the inbound fallback for a backend that cannot read the brief by path.</text>
 </svg>

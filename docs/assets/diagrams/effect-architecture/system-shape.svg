@@ -1,54 +1,77 @@
-<svg viewBox="0 0 960 450" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The shape of the system: workflow and adapter programs sit on top, request typed effects across one typed WIT contract, and are satisfied by the host (the specify CLI, a Rust binary embedding Wasmtime) acting as an effect interpreter">
+<svg viewBox="0 0 960 484" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The shape of the system: workflow, development, and adapter guests run on Omnia, a generic wasm runtime invoked as omnia guest.wasm with forwarded arguments; Omnia instantiates a fresh guest per call, satisfies a fixed effect vocabulary, and dispatches the infer effect down to a pluggable model fleet of a frontier LLM, a local SLM, or a deterministic replay stub">
   <title>The shape of the system</title>
   <defs>
     <marker id="ss-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+      <path d="M0,0 L0,6 L8,3 z" fill="#888"/>
+    </marker>
+    <marker id="ss-arrO" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#c08040"/>
     </marker>
   </defs>
 
-  <text x="40" y="30" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE SHAPE OF THE SYSTEM</text>
+  <text x="40" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE SHAPE OF THE SYSTEM</text>
+  <text x="40" y="50" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#888">Two roles over one contract &#8212; a generic runtime, and the guests that run on it. Handles cross, never corpora.</text>
 
-  <!-- programs caption -->
-  <text x="48" y="70" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#888">PROGRAMS &#8212; deterministic control flow; request a typed effect for judgment, data, or prose &#183; each a wasm component</text>
+  <!-- guests -->
+  <text x="40" y="74" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888" letter-spacing="0.04em">GUESTS &#8212; the workflow, development, and every adapter; peers on the runtime</text>
 
-  <!-- workflow program -->
-  <rect x="48" y="80" width="420" height="104" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
-  <text x="66" y="108" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Workflow program</text>
-  <text x="66" y="130" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">/spec:plan &#183; /spec:execute &#183; the slice loop</text>
-  <text x="66" y="148" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">agent-driver over deterministic CLI guardrails</text>
-  <text x="66" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#7c6aa0">judgment-leaning</text>
+  <rect x="40" y="82" width="200" height="72" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="140" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">workflow</text>
+  <text x="140" y="126" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#7c6aa0">wasm guest</text>
+  <text x="140" y="144" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">plan &#183; execute &#183; slice loop</text>
 
-  <!-- adapter program -->
-  <rect x="492" y="80" width="420" height="104" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
-  <text x="510" y="108" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Adapter orchestration components (wasm)</text>
-  <text x="510" y="130" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">survey &#183; extract &#183; shape &#183; build &#183; merge</text>
-  <text x="510" y="148" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">typed multi-step control flow + lazy refs</text>
-  <text x="510" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#7c6aa0">structure-leaning</text>
+  <rect x="266" y="82" width="200" height="72" rx="10" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="366" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">development</text>
+  <text x="366" y="126" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#7c6aa0">wasm guest</text>
+  <text x="366" y="144" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">authoring &#183; standards &#183; lint</text>
 
-  <!-- typed contract boundary -->
-  <line x1="48" y1="224" x2="912" y2="224" stroke="#bbb" stroke-width="1.4" stroke-dasharray="5 4"/>
-  <text x="48" y="216" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">one typed WIT contract &#183; handles, not corpora</text>
+  <rect x="492" y="82" width="200" height="72" rx="10" fill="#ede9d0" stroke="#c9b766" stroke-width="1.5"/>
+  <text x="592" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">typescript</text>
+  <text x="592" y="126" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#9a8a3a">source guest</text>
+  <text x="592" y="144" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">survey &#183; extract</text>
 
-  <!-- effect down / result up -->
-  <path d="M300 186 L300 262" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
-  <text x="312" y="214" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">typed effect &#8595;</text>
-  <path d="M660 262 L660 186" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
-  <text x="672" y="214" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">&#8593; typed result</text>
+  <rect x="718" y="82" width="200" height="72" rx="10" fill="#ede9d0" stroke="#c9b766" stroke-width="1.5"/>
+  <text x="818" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">omnia</text>
+  <text x="818" y="126" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#9a8a3a">target guest</text>
+  <text x="818" y="144" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">shape &#183; build &#183; merge</text>
 
-  <!-- interpreter -->
-  <rect x="48" y="264" width="864" height="158" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
-  <text x="66" y="290" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#1c1c1c">Host = effect interpreter  &#183;  specify CLI (Rust + Wasmtime)</text>
-  <text x="66" y="308" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">knows effects, not adapters and not brains  &#183;  Wasmtime: Component Model &#183; WASI p2 &#183; Cranelift</text>
+  <!-- runtime -> guest arrows -->
+  <path d="M140 204 L140 158" stroke="#888" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
+  <path d="M366 204 L366 158" stroke="#888" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
+  <path d="M592 204 L592 158" stroke="#888" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
+  <path d="M818 204 L818 158" stroke="#888" stroke-width="1.3" fill="none" marker-end="url(#ss-arr)"/>
+  <text x="479" y="198" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" font-style="italic" fill="#7a7a7a">Omnia instantiates guests &amp; calls their exports &#8593;   &#183;   guests call effects &#8595;</text>
 
-  <rect x="66" y="320" width="300" height="42" rx="8" fill="#f0e0d6" stroke="#d8a06e"/>
-  <text x="80" y="346" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">infer(brief-ref, request) &#8594; output</text>
-  <rect x="380" y="320" width="200" height="42" rx="8" fill="#dceede" stroke="#7bbf8f"/>
-  <text x="480" y="346" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">read-artifact / get-asset</text>
-  <rect x="594" y="320" width="150" height="42" rx="8" fill="#dceede" stroke="#7bbf8f"/>
-  <text x="669" y="346" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">load-reference(id)</text>
-  <rect x="758" y="320" width="130" height="42" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
-  <text x="823" y="346" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#1c1c1c">journal / transition</text>
+  <!-- runtime -->
+  <rect x="40" y="206" width="878" height="92" rx="12" fill="#eef4f9" stroke="#6ea8d8" stroke-width="1.5"/>
+  <text x="58" y="240" font-family="ui-sans-serif, system-ui, sans-serif" font-size="17" font-weight="700" fill="#1c1c1c">Omnia<tspan font-size="12" font-weight="400" fill="#3f6f93">  &#183;  wasm runtime &#183; the foundation</tspan></text>
+  <text x="58" y="263" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#555">generic Wasmtime-based runtime &#183; knows effects, not adapters / workflow / brains</text>
+  <text x="58" y="285" font-family="ui-monospace, monospace" font-size="10.5" fill="#555">omnia &lt;guest&gt;.wasm &lt;args&#8230;&gt;   &#183;   fresh instance per call   &#183;   satisfies a fixed effect vocabulary</text>
 
-  <text x="66" y="386" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888">infer is pluggable &#8212; Cursor session &#183; headless API &#183; CI replay stub</text>
-  <text x="66" y="410" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Deterministic modulo the infer oracle &#8594; mock infer and the whole run replays.</text>
+  <!-- runtime -> fleet arrows (infer) -->
+  <path d="M175 300 L175 354" stroke="#c08040" stroke-width="1.4" fill="none" marker-end="url(#ss-arrO)"/>
+  <path d="M479 300 L479 354" stroke="#c08040" stroke-width="1.4" fill="none" marker-end="url(#ss-arrO)"/>
+  <path d="M783 300 L783 354" stroke="#c08040" stroke-width="1.4" fill="none" marker-end="url(#ss-arrO)"/>
+  <text x="495" y="324" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">infer &#8595; &#183; dispatched to a pluggable backend</text>
+
+  <!-- model fleet -->
+  <text x="40" y="350" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888" letter-spacing="0.04em">MODEL FLEET &#8212; the infer backend, routed per call by difficulty &amp; cost</text>
+
+  <rect x="40" y="356" width="270" height="68" rx="10" fill="#dceede" stroke="#7bbf8f" stroke-width="1.5"/>
+  <text x="175" y="382" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">LLM</text>
+  <text x="175" y="400" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#3c7a52">frontier &#183; hosted</text>
+  <text x="175" y="416" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">hard synthesis &amp; review</text>
+
+  <rect x="344" y="356" width="270" height="68" rx="10" fill="#dceede" stroke="#7bbf8f" stroke-width="1.5"/>
+  <text x="479" y="382" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">SLM</text>
+  <text x="479" y="400" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#3c7a52">local &#183; OpenAI-compatible</text>
+  <text x="479" y="416" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">cheap high-volume transforms</text>
+
+  <rect x="648" y="356" width="270" height="68" rx="10" fill="#dceede" stroke="#7bbf8f" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="783" y="382" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">deterministic</text>
+  <text x="783" y="400" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-style="italic" fill="#3c7a52">record / replay stub</text>
+  <text x="783" y="416" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" fill="#555">CI &amp; evals</text>
+
+  <text x="40" y="450" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Deterministic modulo infer &#8594; mock the backend and the whole run replays.</text>
+  <text x="40" y="468" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" font-style="italic" fill="#999">the omnia target guest emits code for the Omnia runtime &#8212; same name, different layers.</text>
 </svg>

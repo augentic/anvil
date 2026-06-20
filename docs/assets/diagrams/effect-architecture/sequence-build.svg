@@ -1,0 +1,90 @@
+<svg viewBox="0 0 1080 568" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logical sequence for a build: the operator invokes the workflow (omnia +wasm), which invokes a target adapter (omnia +wasm) with a build request; the target adapter requests infer with a brief path from the model (omnia +backend); the model reads the brief from the adapter's on-disk prose tree and, in a loop over the references the judgment needs, reads each one directly &#8212; no guest callback; the model returns validated output to the target adapter, which returns a typed build-report to the workflow; the workflow validates and transitions, then returns done to the operator. A non-filesystem backend falls back to a host-resolved load-reference. Every box is an Omnia invocation and every +wasm box is a fresh instance.">
+  <title>Logical sequence: build</title>
+  <defs>
+    <marker id="sb-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+    <marker id="sb-arrO" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#c08040"/>
+    </marker>
+  </defs>
+
+  <text x="20" y="20" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.05em">LOGICAL SEQUENCE &#183; BUILD (a target adapter)</text>
+
+  <!-- participant headers -->
+  <rect x="15" y="30" width="150" height="50" rx="9" fill="#f2f1ec" stroke="#c9c6bc" stroke-width="1.5"/>
+  <text x="90" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">operator</text>
+  <text x="90" y="68" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" font-style="italic" fill="#7a7a7a">cli &#183; waits</text>
+
+  <rect x="245" y="30" width="150" height="50" rx="9" fill="#e6d9f0" stroke="#a489d8" stroke-width="1.5"/>
+  <text x="320" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">workflow</text>
+  <text x="320" y="68" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-style="italic" fill="#7c6aa0">omnia +wasm</text>
+
+  <rect x="465" y="30" width="150" height="50" rx="9" fill="#ede9d0" stroke="#c9b766" stroke-width="1.5"/>
+  <text x="540" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">target adapter</text>
+  <text x="540" y="68" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-style="italic" fill="#9a8a3a">omnia +wasm</text>
+
+  <rect x="685" y="30" width="150" height="50" rx="9" fill="#f0e0d6" stroke="#d8a06e" stroke-width="1.5"/>
+  <text x="760" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">model</text>
+  <text x="760" y="68" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-style="italic" fill="#a05a3c">omnia +backend</text>
+
+  <!-- lifelines -->
+  <line x1="90" y1="80" x2="90" y2="506" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <line x1="320" y1="80" x2="320" y2="506" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <line x1="540" y1="80" x2="540" y2="506" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <line x1="760" y1="80" x2="760" y2="506" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+
+  <!-- activation bars -->
+  <rect x="85" y="96" width="10" height="392" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+  <rect x="315" y="106" width="10" height="378" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+  <rect x="535" y="146" width="10" height="272" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+  <rect x="755" y="186" width="10" height="204" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+
+  <!-- m1 operator -> workflow -->
+  <text x="205" y="99" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">execute</text>
+  <path d="M95 106 L313 106" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#sb-arr)"/>
+
+  <!-- m2 workflow -> target adapter -->
+  <text x="430" y="139" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">build(build-request)</text>
+  <path d="M325 146 L533 146" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#sb-arr)"/>
+
+  <!-- m3 target adapter -> model (infer) -->
+  <text x="650" y="179" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">infer(brief-path, request)</text>
+  <path d="M545 186 L753 186" stroke="#c08040" stroke-width="1.4" fill="none" marker-end="url(#sb-arrO)"/>
+
+  <!-- m4 model self-reads the brief from the on-disk package -->
+  <path d="M765 214 H812 V228 H767" stroke="#c08040" stroke-width="1.3" fill="none" marker-end="url(#sb-arrO)"/>
+  <text x="818" y="219" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">read brief (from path)</text>
+
+  <!-- loop fragment: lazy references, read by the agent itself -->
+  <rect x="688" y="246" width="372" height="104" rx="4" fill="none" stroke="#b0b0b0" stroke-width="1.2"/>
+  <path d="M688 246 h184 v12 l-10 8 h-174 z" fill="#ededed" stroke="#b0b0b0" stroke-width="1"/>
+  <text x="697" y="260" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="600" fill="#666">loop [refs the judgment needs]</text>
+
+  <!-- m5 model self-reads each reference -->
+  <path d="M765 296 H812 V310 H767" stroke="#c08040" stroke-width="1.3" fill="none" marker-end="url(#sb-arrO)"/>
+  <text x="818" y="301" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">read(ref) &#8594; bytes (lazy)</text>
+
+  <text x="700" y="328" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#888">only the refs the judgment touches &#8212; read from the</text>
+  <text x="700" y="342" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#888">adapter&#8217;s on-disk prose tree (no guest callback)</text>
+
+  <!-- m7 model -> target adapter (output) -->
+  <text x="650" y="377" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">output (validated)</text>
+  <path d="M753 384 L547 384" stroke="#c08040" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#sb-arrO)"/>
+
+  <!-- m8 target adapter -> workflow (build-report) -->
+  <text x="430" y="407" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">build-report (typed)</text>
+  <path d="M533 414 L327 414" stroke="#555" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#sb-arr)"/>
+
+  <!-- workflow self-step: validate / transition -->
+  <path d="M325 436 L357 436 L357 450 L327 450" stroke="#555" stroke-width="1.1" fill="none" marker-end="url(#sb-arr)"/>
+  <text x="363" y="447" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-style="italic" fill="#7a7a7a">validate &#183; transition (host-owned)</text>
+
+  <!-- m9 workflow -> operator (done) -->
+  <text x="205" y="475" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">done</text>
+  <path d="M315 482 L97 482" stroke="#555" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#sb-arr)"/>
+
+  <!-- footnotes -->
+  <text x="20" y="540" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Same shape as extract: only the adapter role changes. Every box is an omnia invocation &#8212; +wasm runs a guest, +backend runs a model. Lifecycle transitions stay host-owned.</text>
+  <text x="20" y="560" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#888">A filesystem-capable agent backend reads the brief + refs by path. A non-filesystem backend falls back to a host-resolved load-reference (a fresh instance per computed ref).</text>
+</svg>
