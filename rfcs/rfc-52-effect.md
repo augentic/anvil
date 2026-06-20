@@ -22,7 +22,7 @@ Today the LLM step is an out-of-band convention: the CLI prints a handoff envelo
 
 - **No orchestration components yet.** S2 names the effects; S3 (RFC-53) makes components *call* them. The two-phase handoff stays the execution model through S2.
 - **No async ABI commitment.** `judge` is specified synchronously here (`-> result<output, error>`); streaming/cancellation is deferred to RFC-53 where the async-ABI bet is made.
-- **No brief-frontmatter expansion.** The `implements` / `consumes` / `produces` machinery RFC-51 handed to [RFC-53](rfc-53-orchestration-components.md) is *not* extended here; this RFC may subsume part of it (see Decisions).
+- **No brief-frontmatter expansion.** The `implements` / `consumes` / `produces` machinery RFC-51 handed to [RFC-53](rfc-53-orchestration.md) is *not* extended here; this RFC may subsume part of it (see Decisions).
 
 ## The model (sketch)
 
@@ -87,9 +87,9 @@ The host satisfies `judge` with today's handoff in S2 (print envelope, run brief
 
 - **The `judge` signature.** `brief-path` (the brief's on-disk path handle) + JSON `request` + (later) a context-injection policy knob (same-thread vs subagent). Confirm `request` is a JSON projection of the stratum-1 record, not a new shape.
 - **Model-service routing key → [RFC-56](rfc-56-judge-fleet.md).** The router that keys backend selection on the `brief-path` / an abstract difficulty hint (never a vendor model id) is the fleet's concern; this RFC fixes only the `judge` *signature* it routes over.
-- **`kv` exposure.** Whether guests call `kv` directly to memoize their own deterministic sub-results, or it stays the host's backing for `resolve` memoization. Either way the backend set (filesystem · Redis · NATS) is the runtime's concern ([RFC-55](rfc-55-omnia-runtime-move.md)).
+- **`kv` exposure.** Whether guests call `kv` directly to memoize their own deterministic sub-results, or it stays the host's backing for `resolve` memoization. Either way the backend set (filesystem · Redis · NATS) is the runtime's concern ([RFC-55](rfc-55-runtime-move.md)).
 - **Lifecycle as effect vs CLI-only.** Whether `journal` / `transition` become component-callable effects now, or stay CLI-owned and are reached only through the driver. (Leaning: stay CLI-owned through S2; expose later only if S4 needs it.)
-- **Fate of the relocated brief-frontmatter contract.** How much of `implements` / `consumes` / `produces` / `capabilities` (now carried by [RFC-53](rfc-53-orchestration-components.md)) is subsumed by the typed `judge` boundary, and how much survives as authoring-time lint.
+- **Fate of the relocated brief-frontmatter contract.** How much of `implements` / `consumes` / `produces` / `capabilities` (now carried by [RFC-53](rfc-53-orchestration.md)) is subsumed by the typed `judge` boundary, and how much survives as authoring-time lint.
 - **Replay backend shape.** The on-disk format of recorded `(brief-path, request) -> output` pairs and how a run selects record vs replay.
 - **Sync vs async deferral.** Confirm the synchronous `judge` here is forward-compatible with the async ABI RFC-53 may adopt (no signature churn).
 

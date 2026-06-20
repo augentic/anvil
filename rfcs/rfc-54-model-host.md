@@ -1,10 +1,10 @@
 # RFC-54: The Omnia Model Host (the `judge` Host Service and Backend Contract)
 
-> Status: Draft (skeleton) · Repo: implemented in [augentic/omnia](https://github.com/augentic/omnia); authored here as the cross-repo companion to [RFC-55](rfc-55-omnia-runtime-move.md) · Provides: the model-host slot + backend plug-in contract [RFC-55](rfc-55-omnia-runtime-move.md) depends on and [RFC-56](rfc-56-judge-fleet.md) plugs into · Hosts: the Specify-owned `judge` interface ([RFC-52](rfc-52-effect-interfaces.md))
+> Status: Draft (skeleton) · Repo: implemented in [augentic/omnia](https://github.com/augentic/omnia); authored here as the cross-repo companion to [RFC-55](rfc-55-runtime-move.md) · Provides: the model-host slot + backend plug-in contract [RFC-55](rfc-55-runtime-move.md) depends on and [RFC-56](rfc-56-judge-fleet.md) plugs into · Hosts: the Specify-owned `judge` interface ([RFC-52](rfc-52-effects.md))
 
 ## Abstract
 
-This is the **cross-repo companion** to [RFC-55](rfc-55-omnia-runtime-move.md). The runtime move stands Specify's guests on the generic Omnia runtime, but it assumes one capability Specify cannot supply from its own side: a first-class, pluggable **model host** — the host service that satisfies the `judge` effect — and the **backend plug-in contract** that real model backends register into. This RFC specifies that Omnia-side capability: `judge` as "one more host service in Omnia's mould" ([architecture](architecture.md) — *"`judge` (the model service) as the marquee addition"*), the generic `ModelBackend` trait plus the inbound `resolve` callback, per-deployment backend binding (the same mechanism that swaps an in-memory KV for Redis), and the dispatch primitive that routes a guest's `judge` call to the bound backend. Omnia provides the **slot**; Specify owns the **interface** (RFC-52) and provides the **backends** (RFC-56). The slot carries zero vendor knowledge, so [law 2](architecture.md#the-four-laws) holds at the runtime floor.
+This is the **cross-repo companion** to [RFC-55](rfc-55-runtime-move.md). The runtime move stands Specify's guests on the generic Omnia runtime, but it assumes one capability Specify cannot supply from its own side: a first-class, pluggable **model host** — the host service that satisfies the `judge` effect — and the **backend plug-in contract** that real model backends register into. This RFC specifies that Omnia-side capability: `judge` as "one more host service in Omnia's mould" ([architecture](architecture.md) — *"`judge` (the model service) as the marquee addition"*), the generic `ModelBackend` trait plus the inbound `resolve` callback, per-deployment backend binding (the same mechanism that swaps an in-memory KV for Redis), and the dispatch primitive that routes a guest's `judge` call to the bound backend. Omnia provides the **slot**; Specify owns the **interface** (RFC-52) and provides the **backends** (RFC-56). The slot carries zero vendor knowledge, so [law 2](architecture.md#the-four-laws) holds at the runtime floor.
 
 ## Motivation
 
@@ -18,7 +18,7 @@ RFC-55 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 
 **In scope (Omnia side):**
 
-- Registering `judge` as a pluggable host service in Omnia's host-service framework, bound to the Specify-owned WIT interface ([RFC-52](rfc-52-effect-interfaces.md)).
+- Registering `judge` as a pluggable host service in Omnia's host-service framework, bound to the Specify-owned WIT interface ([RFC-52](rfc-52-effects.md)).
 - The generic **`ModelBackend` trait** — the plug-in contract every concrete backend implements.
 - The **`ReferenceResolver` callback** the host exposes to a backend — the host side of `resolve`, including the fresh-instance path for *computed* references and KV memoization.
 - **Per-deployment backend binding/selection** (one backend per host), reusing Omnia's existing host-service backend-selection mechanism.
@@ -28,24 +28,24 @@ RFC-55 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 
 ### Non-goals
 
-- **The `judge` interface itself.** Specify owns and versions the WIT interface ([RFC-52](rfc-52-effect-interfaces.md)); this RFC *hosts* it, it does not define it.
+- **The `judge` interface itself.** Specify owns and versions the WIT interface ([RFC-52](rfc-52-effects.md)); this RFC *hosts* it, it does not define it.
 - **The concrete backends and the fleet router.** The frontier-API and spawned-agent backends and the difficulty/cost router are [RFC-56](rfc-56-judge-fleet.md); the replay backend is RFC-52; the SLM backend is [RFC-18](future/rfc-18-slm.md). Omnia provides the slot, never the fleet.
-- **The deterministic effect host services.** Data, `kv`, and lifecycle ride the same generic framework but are [RFC-55](rfc-55-omnia-runtime-move.md)'s subject, not this RFC's.
+- **The deterministic effect host services.** Data, `kv`, and lifecycle ride the same generic framework but are [RFC-55](rfc-55-runtime-move.md)'s subject, not this RFC's.
 - **The generic host-service framework at large.** This RFC is scoped to the *model* host (the marquee addition); the interpreter and the conventional host plumbing are assumed Omnia machinery.
 - **No vendor coupling in Omnia core.** No provider SDKs, no model ids, no router policy in the runtime — all of that lives in Specify-provided backends.
 
 ## The cross-repo boundary (who owns what)
 
-| Concern | Owner |
-| --- | --- |
-| The model-host **slot** in the host-service framework; registration + dispatch | **Omnia** (this RFC) |
-| The `ModelBackend` trait + `ReferenceResolver` callback | **Omnia** (this RFC) |
-| Per-deployment backend binding; generic host capabilities (spawn / egress / fs) | **Omnia** (this RFC) |
-| The `judge` **WIT interface** the host satisfies | **Specify** — [RFC-52](rfc-52-effect-interfaces.md) |
-| The **replay backend** (zero-config member that proves the slot) | **Specify** — [RFC-52](rfc-52-effect-interfaces.md) |
-| The **model-service backend**: fleet router + frontier-API + spawned-agent | **Specify** — [RFC-56](rfc-56-judge-fleet.md) |
-| The **SLM backend** | **Specify** — [RFC-18](future/rfc-18-slm.md) |
-| Binding `judge` during the runtime move (Specify-side adoption) | **Specify** — [RFC-55](rfc-55-omnia-runtime-move.md) |
+| Concern                                                                         | Owner                                          |
+| ------------------------------------------------------------------------------- | ---------------------------------------------- |
+| The model-host **slot** in the host-service framework; registration + dispatch  | **Omnia** (this RFC)                           |
+| The `ModelBackend` trait + `ReferenceResolver` callback                         | **Omnia** (this RFC)                           |
+| Per-deployment backend binding; generic host capabilities (spawn / egress / fs) | **Omnia** (this RFC)                           |
+| The `judge` **WIT interface** the host satisfies                                | **Specify** — [RFC-52](rfc-52-effects.md)      |
+| The **replay backend** (zero-config member that proves the slot)                | **Specify** — [RFC-52](rfc-52-effects.md)      |
+| The **model-service backend**: fleet router + frontier-API + spawned-agent      | **Specify** — [RFC-56](rfc-56-judge-fleet.md)  |
+| The **SLM backend**                                                             | **Specify** — [RFC-18](future/rfc-18-slm.md)   |
+| Binding `judge` during the runtime move (Specify-side adoption)                 | **Specify** — [RFC-55](rfc-55-runtime-move.md) |
 
 The shared seam is the `ModelBackend` trait (Omnia-owned) plus the `judge` WIT (Specify-owned); the two are versioned across the repo boundary, never released in lockstep.
 
@@ -106,7 +106,7 @@ Omnia binds exactly one `Box<dyn ModelBackend>` per deployment, selected by conf
 3. A non-filesystem backend resolves references through the host `ReferenceResolver`, with computed refs served by a **fresh** guest instance and memoized in KV.
 4. Backend selection is per-deployment config; swapping replay ↔ a real backend needs no guest, interface, or Omnia-core change.
 5. The fleet (RFC-56) plugs in as **exactly one** backend; Omnia binds one backend per host — no second `judge` binding.
-6. [RFC-55](rfc-55-omnia-runtime-move.md) can bind `judge` to this host, closing its cross-repo dependency; the `augentic/omnia` workspace gate stays green, and this RFC's prose passes `make lint` here.
+6. [RFC-55](rfc-55-runtime-move.md) can bind `judge` to this host, closing its cross-repo dependency; the `augentic/omnia` workspace gate stays green, and this RFC's prose passes `make lint` here.
 
 ## Risks and invariants
 

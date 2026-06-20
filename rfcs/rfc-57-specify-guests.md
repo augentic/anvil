@@ -1,10 +1,10 @@
 # RFC-57: Workflow and Development as Guests (Stage 4 — The Thin Interpreter)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — guests) · Depends: [RFC-55](rfc-55-omnia-runtime-move.md) (the Omnia runtime move), RFC-53 (orchestration components proven on the adapter axis) · Per-phase compile-vs-delegate: **gated on RFC-53 data**
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — guests) · Depends: [RFC-55](rfc-55-runtime-move.md) (the Omnia runtime move), RFC-53 (orchestration components proven on the adapter axis) · Per-phase compile-vs-delegate: **gated on RFC-53 data**
 
 ## Abstract
 
-Once [RFC-55](rfc-55-omnia-runtime-move.md) has put the generic runtime under everything, two first-party concerns still run *beside* it rather than *on* it: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the framework's own **development tooling** (authoring and standards checks). This RFC moves both onto the runtime as guests, so the architecture's "everything is a guest" claim becomes literally true and the runtime is the thin interpreter the stage title names. The workflow move is where the one genuinely contested decision lives — *how much* of each phase compiles into the guest versus stays agent-driven behind `judge` — and that per-phase compile-vs-delegate call is what this RFC exists to gate with data from RFC-53. The development-guest move is the mechanical tail.
+Once [RFC-55](rfc-55-runtime-move.md) has put the generic runtime under everything, two first-party concerns still run *beside* it rather than *on* it: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the framework's own **development tooling** (authoring and standards checks). This RFC moves both onto the runtime as guests, so the architecture's "everything is a guest" claim becomes literally true and the runtime is the thin interpreter the stage title names. The workflow move is where the one genuinely contested decision lives — *how much* of each phase compiles into the guest versus stays agent-driven behind `judge` — and that per-phase compile-vs-delegate call is what this RFC exists to gate with data from RFC-53. The development-guest move is the mechanical tail.
 
 ## Motivation (and the case against)
 
@@ -20,7 +20,7 @@ Once [RFC-55](rfc-55-omnia-runtime-move.md) has put the generic runtime under ev
 
 - **No lifecycle authority moves into the guest.** `transition` / `journal` / lock ownership stay in the runtime's deterministic lifecycle host service (roadmap principle: "Keep the CLI authoritative" — the authority stays on the deterministic floor, not in a model-driven guest); the workflow guest *requests* transitions as effects, it does not own them.
 - **No removal of operator adaptability.** Phases that are primarily judgment / recovery stay agent-driven behind `judge`.
-- **No runtime engineering.** The generic binary, the effect backends, instance-per-call — all of that is [RFC-55](rfc-55-omnia-runtime-move.md); this RFC consumes it.
+- **No runtime engineering.** The generic binary, the effect backends, instance-per-call — all of that is [RFC-55](rfc-55-runtime-move.md); this RFC consumes it.
 
 ## The model (sketch)
 
