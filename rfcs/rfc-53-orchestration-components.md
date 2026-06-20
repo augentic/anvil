@@ -1,10 +1,10 @@
 # RFC-53: Orchestration Components (Stage 3 — Adapters Orchestrate)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 3) · Depends: RFC-52 (effect interfaces) · Async ABI: not required for this stage — only for streaming `infer` / concurrent slices (see Risks)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 3) · Depends: RFC-52 (effect interfaces) · Async ABI: not required for this stage — only for streaming `judge` / concurrent slices (see Risks)
 
 ## Abstract
 
-This stage is where the [effect-oriented architecture](architecture.md) first becomes visible. An adapter operation stops being a single prepare/finalize handoff and becomes a **typed multi-step orchestration**: the adapter's wasm component owns the control flow of its own `build` / `extract` / `merge`, and reaches the model through the `infer` effect (RFC-52) rather than by handing the whole operation back to the agent. It lands in two steps — **Realization B** (a serializable step-reducer driven over the existing handoff) first, then **Realization A** (the component calls `infer` directly through an imported effect) where operation depth justifies the cost.
+This stage is where the [effect-oriented architecture](architecture.md) first becomes visible. An adapter operation stops being a single prepare/finalize handoff and becomes a **typed multi-step orchestration**: the adapter's wasm component owns the control flow of its own `build` / `extract` / `merge`, and reaches the model through the `judge` effect (RFC-52) rather than by handing the whole operation back to the agent. It lands in two steps — **Realization B** (a serializable step-reducer driven over the existing handoff) first, then **Realization A** (the component calls `judge` directly through an imported effect) where operation depth justifies the cost.
 
 ## Motivation
 
@@ -12,7 +12,7 @@ The prepare/finalize handoff is already a degenerate two-step orchestration (`pr
 
 ## Scope
 
-**In scope:** the orchestration model for adapter operations on both axes; Realization B (step-reducer + serializable continuation); the migration path to Realization A (the `infer` import called from inside an export); and the brief-typing contract relocated here from RFC-51 (§E).
+**In scope:** the orchestration model for adapter operations on both axes; Realization B (step-reducer + serializable continuation); the migration path to Realization A (the `judge` import called from inside an export); and the brief-typing contract relocated here from RFC-51 (§E).
 
 ### Non-goals
 
@@ -27,12 +27,12 @@ The prepare/finalize handoff is already a degenerate two-step orchestration (`pr
 interface types {
   type op-state = list<u8>;                 // component-owned, serialized into the resume token
   variant directive {
-    infer(infer-request),                   // run a brief (whole prose) with a typed request
+    judge(judge-request),                   // run a brief (whole prose) with a typed request
     load-reference(string),                 // FALLBACK ref fetch by id (non-filesystem backends)
     done(build-report),                     // validated terminal report
     fail(adapter-error),
   }
-  record infer-request { brief-path: string, request: string }
+  record judge-request { brief-path: string, request: string }
   record step-result { state: op-state, directive: directive }
 }
 
@@ -42,15 +42,15 @@ interface target {
 }
 ```
 
-The agent driver loop runs each `infer` directive in its own context, exactly as today's single handoff does — so context inheritance is preserved with no async ABI and no store snapshots.
+The agent driver loop runs each `judge` directive in its own context, exactly as today's single handoff does — so context inheritance is preserved with no async ABI and no store snapshots.
 
-**Realization A — the `infer` import (migration target).** Where depth justifies it, collapse the external loop into a straight-line export that calls the RFC-52 `infer` effect directly:
+**Realization A — the `judge` import (migration target).** Where depth justifies it, collapse the external loop into a straight-line export that calls the RFC-52 `judge` effect directly:
 
 ```wit
 world target-adapter {
   import host-config;
   import host-data;
-  import infer;            // RFC-52 — the upward model channel
+  import judge;            // RFC-52 — the upward model channel
   export target;           // build/merge/shape always callable
 }
 ```
@@ -59,9 +59,9 @@ The data contract, the `brief-path` discipline, and the validation points are id
 
 ## Brief-typing and lazy discovery (relocated from RFC-51 §E)
 
-RFC-51 originally proposed binding each agent brief to the WIT signature it fulfils, plus a lazy reference-discovery model. With orchestration components the signature is already named at the `infer` call-site (Realization A) or by the step `directive` (Realization B), so most of that binding is **subsumed** — but the authoring-time *checks* it enabled are still worth keeping as `specify lint framework` rules. The candidate seams and their status here:
+RFC-51 originally proposed binding each agent brief to the WIT signature it fulfils, plus a lazy reference-discovery model. With orchestration components the signature is already named at the `judge` call-site (Realization A) or by the step `directive` (Realization B), so most of that binding is **subsumed** — but the authoring-time *checks* it enabled are still worth keeping as `specify lint framework` rules. The candidate seams and their status here:
 
-- **Signature binding.** A brief declares which operation it implements; a set-coverage check guarantees every agent operation has exactly one binding brief and every brief binds a real operation. *Survives as lint* — the binding may move from frontmatter to the `infer` call-site.
+- **Signature binding.** A brief declares which operation it implements; a set-coverage check guarantees every agent operation has exactly one binding brief and every brief binds a real operation. *Survives as lint* — the binding may move from frontmatter to the `judge` call-site.
 - **Typed input environment.** A brief's placeholders (`$SLICE_NAME`, `inputs.artifacts.*`, `<lead>`) are checked against the request record's fields, so a brief can only reference real, typed inputs. *Survives as lint.*
 - **Output example validation.** A brief's embedded fenced examples validate against the WIT-derived report schema at authoring time; the agent's actual output validates at the step's terminal `done(report)`. *Survives* — the runtime check is already the validation point in both realizations.
 - **Capability binding.** A brief's declared capabilities mirror the world's host-data imports. *Folded into [RFC-52](rfc-52-effect-interfaces.md)* — the effect imports are the capability surface; the brief declaration becomes advisory lint.
@@ -70,11 +70,11 @@ RFC-51 originally proposed binding each agent brief to the WIT signature it fulf
 
 ## Decisions to record (open until reviewed)
 
-- **B→A migration trigger.** What operation depth / shape justifies moving an operation from the step-reducer to the direct `infer` import (or whether some operations stay on B indefinitely).
-- **Async ABI.** Whether A adopts the Component Model async path (streaming `infer`, cancellation, concurrency) and the wasmtime version that makes it safe.
-- **Reentrancy discipline.** Depth limits and store-isolation rules when an `infer` call's LLM triggers another component operation.
-- **Fate of the relocated brief-frontmatter contract.** This RFC likely **supersedes** the heavy `implements` / `consumes` / `produces` / `capabilities` frontmatter: once the component owns orchestration and the `infer` call-site declares the signature, the brief is an effect body, not a contract-bearing artifact. Decide what survives as authoring-time lint.
-- **Determinism boundary.** Confirm "deterministic modulo the `infer` oracle" gives whole-operation replay goldens (the conformance test RFC-51 Phase 7 sketched).
+- **B→A migration trigger.** What operation depth / shape justifies moving an operation from the step-reducer to the direct `judge` import (or whether some operations stay on B indefinitely).
+- **Async ABI.** Whether A adopts the Component Model async path (streaming `judge`, cancellation, concurrency) and the wasmtime version that makes it safe.
+- **Reentrancy discipline.** Depth limits and store-isolation rules when an `judge` call's LLM triggers another component operation.
+- **Fate of the relocated brief-frontmatter contract.** This RFC likely **supersedes** the heavy `implements` / `consumes` / `produces` / `capabilities` frontmatter: once the component owns orchestration and the `judge` call-site declares the signature, the brief is an effect body, not a contract-bearing artifact. Decide what survives as authoring-time lint.
+- **Determinism boundary.** Confirm "deterministic modulo the `judge` oracle" gives whole-operation replay goldens (the conformance test RFC-51 Phase 7 sketched).
 
 ## Phased plan
 
@@ -86,14 +86,14 @@ RFC-51 originally proposed binding each agent brief to the WIT signature it fulf
 ## Acceptance criteria
 
 1. At least one adapter operation runs as a typed multi-step orchestration owned by the component.
-2. The operation replays deterministically end-to-end under a mocked `infer` effect.
+2. The operation replays deterministically end-to-end under a mocked `judge` effect.
 3. Lazy reference loading is preserved — steps carry `brief-path` + handles; no corpus crosses the boundary (architecture invariant 4).
 4. The B and A forms share one data contract; migrating B→A requires no record/report shape change.
 5. `make lint` and `cargo make ci` stay green at each increment.
 
 ## Risks and invariants
 
-- **Async maturity.** Instance-per-call and the `brief-path` simplification close the reference loop on the *synchronous* ABI, so neither Realization B nor a synchronous Realization A needs async. The Component-Model async path is required only for **streaming** `infer` output and **concurrent** slices — confirm it before those, not before this stage.
+- **Async maturity.** Instance-per-call and the `brief-path` simplification close the reference loop on the *synchronous* ABI, so neither Realization B nor a synchronous Realization A needs async. The Component-Model async path is required only for **streaming** `judge` output and **concurrent** slices — confirm it before those, not before this stage.
 - **Scope creep into the workflow.** Keep this adapter-local; the workflow is [RFC-55](rfc-55-workflow-and-development-guests.md).
-- **Prose holism.** `infer` passes *whole* briefs, not chopped micro-prompts — the component sequences and types; it does not fragment the prompt.
+- **Prose holism.** `judge` passes *whole* briefs, not chopped micro-prompts — the component sequences and types; it does not fragment the prompt.
 - **RFC-50 preserved.** Orchestration components carry adapter logic; the host still holds zero adapter names and reaches them only through generic effects.

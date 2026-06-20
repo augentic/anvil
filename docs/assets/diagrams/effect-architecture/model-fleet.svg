@@ -1,4 +1,4 @@
-<svg viewBox="0 0 960 452" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The model fleet and deployment topologies: the infer effect reaches a single model service &#8212; one infer backend that fans out &#8212; routing each self-contained call by difficulty and cost to a frontier LLM, a local SLM, or a deterministic replay stub; three deployment topologies decide whether infer can reach a backend &#8212; headless or CI works anywhere, a spawned agent session is the interactive path and runs context-free, and the embedded live-editor session is deliberately not required because it would re-couple judgment to the editor transcript">
+<svg viewBox="0 0 960 452" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The model fleet and deployment topologies: the judge effect reaches a single model service &#8212; one judge backend that fans out &#8212; routing each self-contained call by difficulty and cost to a frontier LLM, a local SLM, or a deterministic replay stub; three deployment topologies decide whether judge can reach a backend &#8212; headless or CI works anywhere, a spawned agent session is the interactive path and runs context-free, and the embedded live-editor session is deliberately not required because it would re-couple judgment to the editor transcript">
   <title>The model fleet and deployment topologies</title>
   <defs>
     <marker id="mf-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
@@ -11,16 +11,16 @@
 
   <text x="40" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.06em">THE MODEL FLEET &amp; DEPLOYMENT TOPOLOGIES</text>
 
-  <!-- infer pill -->
+  <!-- judge pill -->
   <rect x="40" y="110" width="110" height="44" rx="8" fill="#f0e0d6" stroke="#d8a06e" stroke-width="1.5"/>
-  <text x="95" y="132" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#1c1c1c">infer</text>
+  <text x="95" y="132" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12" fill="#1c1c1c">judge</text>
   <text x="95" y="147" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="8.5" fill="#a05a3c">(the effect)</text>
   <path d="M150 132 L196 132" stroke="#c08040" stroke-width="1.4" fill="none" marker-end="url(#mf-arrO)"/>
 
   <!-- router -->
   <rect x="200" y="96" width="232" height="72" rx="10" fill="#d9e7f1" stroke="#6ea8d8" stroke-width="1.5"/>
   <text x="216" y="122" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">model service</text>
-  <text x="216" y="140" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">one infer backend &#183; fans out to a fleet</text>
+  <text x="216" y="140" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">one judge backend &#183; fans out to a fleet</text>
   <text x="216" y="156" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">routes per call &#183; no shared conversation</text>
 
   <!-- router -> backends -->
@@ -31,7 +31,7 @@
   <!-- backends -->
   <rect x="520" y="76" width="400" height="40" rx="8" fill="#dceede" stroke="#7bbf8f" stroke-width="1.5"/>
   <text x="534" y="93" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#1c1c1c">LLM &#183; frontier, hosted</text>
-  <text x="534" y="108" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">inference API or spawned agent session &#183; hard synthesis &amp; review</text>
+  <text x="534" y="108" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#555">judgeence API or spawned agent session &#183; hard synthesis &amp; review</text>
 
   <rect x="520" y="126" width="400" height="40" rx="8" fill="#dceede" stroke="#7bbf8f" stroke-width="1.5"/>
   <text x="534" y="143" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#1c1c1c">SLM &#183; local</text>
@@ -43,7 +43,7 @@
 
   <!-- divider -->
   <line x1="40" y1="240" x2="920" y2="240" stroke="#e2e2e2" stroke-width="1.2"/>
-  <text x="40" y="262" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888" letter-spacing="0.04em">DEPLOYMENT TOPOLOGIES &#8212; can infer reach a backend?</text>
+  <text x="40" y="262" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#888" letter-spacing="0.04em">DEPLOYMENT TOPOLOGIES &#8212; can judge reach a backend?</text>
 
   <!-- headless -->
   <rect x="40" y="274" width="280" height="124" rx="10" fill="#dceede" stroke="#7bbf8f" stroke-width="1.5"/>
@@ -64,9 +64,9 @@
   <rect x="640" y="274" width="280" height="124" rx="10" fill="#f2f1ec" stroke="#c9c6bc" stroke-width="1.5" stroke-dasharray="6 4"/>
   <text x="656" y="300" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="700" fill="#1c1c1c">Embedded</text>
   <text x="656" y="322" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">Omnia runs inside an agent host</text>
-  <text x="656" y="340" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">live editor session = infer backend</text>
+  <text x="656" y="340" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">live editor session = judge backend</text>
   <text x="656" y="358" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#555">would re-couple to the editor transcript</text>
   <text x="656" y="386" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11.5" font-weight="600" fill="#7a7a7a">&#9675; optional &#8212; not required by design</text>
 
-  <text x="40" y="428" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Each infer call is self-contained &#8212; so the model is a per-call choice inside one backend, and replay makes the whole run deterministic.</text>
+  <text x="40" y="428" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Each judge call is self-contained &#8212; so the model is a per-call choice inside one backend, and replay makes the whole run deterministic.</text>
 </svg>

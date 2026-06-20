@@ -7,7 +7,7 @@
 This RFC is the **foundation** (Stages 0–1) of the [effect-oriented architecture](architecture.md): the typed WIT contract (the stratum-1 transfer records) and typed tool dispatch that every later stage rides on. It is deliberately scoped to that foundation — two concerns earlier drafts folded in here now live in the stage that owns them:
 
 - **Capabilities / resources** (the narrow host-data accessors) move to [RFC-52](rfc-52-effect-interfaces.md), which generalizes them from a capability grant into the runtime's first named **data effect**.
-- **The typed brief contract and lazy discovery** move to [RFC-53](rfc-53-orchestration-components.md): once a brief becomes the *body of the `infer` effect*, "the brief binds a WIT signature" becomes "the `infer` call-site declares the signature," so the heavier `implements` / `consumes` / `produces` / `capabilities` machinery is re-evaluated there rather than built out here. Lazy discovery is a standing invariant in the architecture north star.
+- **The typed brief contract and lazy discovery** move to [RFC-53](rfc-53-orchestration-components.md): once a brief becomes the *body of the `judge` effect*, "the brief binds a WIT signature" becomes "the `judge` call-site declares the signature," so the heavier `implements` / `consumes` / `produces` / `capabilities` machinery is re-evaluated there rather than built out here. Lazy discovery is a standing invariant in the architecture north star.
 
 What remains in RFC-51 is durable and unaffected: the transfer records (stratum 1), typed tool dispatch, and the typed agent envelopes that reuse the same records.
 
@@ -119,7 +119,7 @@ The package is semver-versioned and ties into RFC-47 adapter identity and the `r
 
 ### E. Brief-typing and lazy discovery → RFC-53
 
-Earlier drafts continued here with a full **typed brief contract** — binding each agent brief to its operation signature via `implements` / `consumes` / `produces` / `capabilities` frontmatter and four authoring-time checks — plus a **lazy reference-discovery** model. That material is **relocated to [RFC-53](rfc-53-orchestration-components.md)**: once a brief becomes the body of the `infer` effect, the signature is declared at the call-site rather than re-stated in frontmatter, so RFC-53 is the right place to decide how much of that contract is worth building as authoring-time lint. RFC-51 keeps only the shared records those briefs exchange (§A) and the agent handoff that carries them (§C); lazy discovery is a standing invariant of the [architecture north star](architecture.md).
+Earlier drafts continued here with a full **typed brief contract** — binding each agent brief to its operation signature via `implements` / `consumes` / `produces` / `capabilities` frontmatter and four authoring-time checks — plus a **lazy reference-discovery** model. That material is **relocated to [RFC-53](rfc-53-orchestration-components.md)**: once a brief becomes the body of the `judge` effect, the signature is declared at the call-site rather than re-stated in frontmatter, so RFC-53 is the right place to decide how much of that contract is worth building as authoring-time lint. RFC-51 keeps only the shared records those briefs exchange (§A) and the agent handoff that carries them (§C); lazy discovery is a standing invariant of the [architecture north star](architecture.md).
 
 ## The hard boundary (non-goal)
 
@@ -164,7 +164,7 @@ Two follow-on tracks build on the records and bindings this RFC lands, each in t
 - `**shape` semantics** — whether `shape` is a world export, a host-read manifest-declared file, or an envelope.
 - **Operation set vs declared tools** — whether the manifest's declared-tool set (`contract`, `vectis`) and the operation set unify under one world.
 - **Capability model** — deferred to [RFC-52](rfc-52-effect-interfaces.md): named host-data effects vs. the current preopen grant, and which host functions the world exposes.
-- **Brief-typing surface** — deferred to [RFC-53](rfc-53-orchestration-components.md): how much of the `implements` / `consumes` / `produces` / `capabilities` brief contract, its coverage check, and the reference catalog survives once a brief is the body of the `infer` effect.
+- **Brief-typing surface** — deferred to [RFC-53](rfc-53-orchestration-components.md): how much of the `implements` / `consumes` / `produces` / `capabilities` brief contract, its coverage check, and the reference catalog survives once a brief is the body of the `judge` effect.
 
 ## Risks and invariants
 
