@@ -6,7 +6,7 @@
 
 Specify has reconceived itself around a single sentence:
 
-> **Specify is a family of wasm guests on a generic runtime. The workflow is a guest; every adapter is a guest. Judgment is an effect — `infer` — that the runtime satisfies from a pluggable fleet of models. [Omnia](https://github.com/augentic/omnia) is the runtime; "Specify" is what Omnia becomes when it runs the Specify guests.**
+> **Specify is a family of wasm guests on a generic runtime. The workflow is a guest; every adapter is a guest. Judgment is an effect — `infer` — that the runtime satisfies from a pluggable fleet of models. [Omnia](https://github.com/augentic/omnia) is the runtime; "Specify" is the binary resulting from Omnia compiled with Specify-specific backends.**
 
 Everything below — the shape of the system, the four laws, the way one operation flows, the deployment modes that fall out for free — is a consequence of taking that sentence seriously. The runtime owns no domain knowledge: it knows how to run wasm and how to satisfy a small, fixed vocabulary of effects. *All* Specify behaviour — orchestrating the workflow, surveying and extracting from sources, shaping and building and merging for targets, and the framework's own development tooling — lives in guests that run on it.
 
@@ -137,7 +137,7 @@ Three properties come with them. **Agnosticism becomes a type, not a grep test**
 
 Because each `infer` call is **self-contained** — it carries its brief handle and typed request, pulls references lazily, and memoizes the expensive deterministic parts — no call depends on a long-lived shared conversation. That context-independence is the enabling property: it makes the `model` service a **router over a fleet**, choosing a backend per call by difficulty and cost.
 
-This sits comfortably with Omnia's one-backend-per-host rule rather than straining it. The model service *is* that **single `infer` materialization**, and the fleet lives *inside* it: one service fans out to different models, deciding per call — so a second model is a new branch in the router, never a second host binding. The choice stays behind the interface, too — a guest hands over a brief and a typed request, never a model, and the service routes it to a fleet member. (How it keys that decision — on the `brief-ref`, or on an abstract difficulty hint, never a vendor model id — is a signature-level detail left to [RFC-52](rfc-52-effect-interfaces.md).)
+This sits comfortably with Omnia's one-backend-per-host rule rather than straining it. The model service *is* that **single `infer` materialization**, and the fleet lives *inside* it: one service fans out to different models, deciding per call — so a second model is a new branch in the router, never a second host binding. The choice stays behind the interface, too — a guest hands over a brief and a typed request, never a model, and the service routes it to a fleet member. (How it keys that decision — on the `brief-path`, or on an abstract difficulty hint, never a vendor model id — is a signature-level detail left to [RFC-52](rfc-52-effect-interfaces.md).)
 
 - **Frontier LLM** — hard synthesis and review. Hosted; reached either through an inference API or by spawning a headless agent CLI / SDK session.
 - **SLM** — narrow, cheap, high-volume transforms. A local model (e.g. a Qwen variant served by Ollama or vLLM over an OpenAI-compatible endpoint), called directly by the runtime, with **constrained decoding** to keep its typed reports schema-valid.

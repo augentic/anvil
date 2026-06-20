@@ -28,6 +28,17 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Keep enforcement surfaces distinct.** Framework-repo **authoring standards** (`specify lint framework`) and consumer-project **engineering standards** (`specify lint project`) share rule ids and the neutral `Diagnostic` shape, but never gate authority: `validate` gates lifecycle transitions and is non-silenceable, while `lint` is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 - **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move *any grouping judgment* off the agent: the agent owns "are these two leads the same work?" and expresses it in `slices[]`; the CLI computes no groupings. What core owns is the typed schema those judgments are recorded in, the coverage guarantee over the result, and the audit trail around that judgment. The lead-side fields are agent-authored typed facts a deterministic layer *checks and surfaces*, never a deterministic replacement for the agent's grouping. See [From sources to slices](../docs/explanation/reconciliation.md) and [engine/DECISIONS.md](../engine/DECISIONS.md).
 
+## Effect-oriented architecture stages (S0–S4)
+
+The runtime architecture — Specify as a family of wasm guests on the generic Omnia runtime, with judgment behind the `infer` effect — is fixed in [architecture.md](architecture.md); this section sequences it. Each stage is independently mergeable, independently valuable, and forward-compatible on the same typed contract.
+
+- **S0–S1 · Typed contract** ([RFC-51](rfc-51-adapter-wit.md)) — WIT records kill the schema-drift surface; deterministic `tool` operations become callable through generated bindings.
+- **S2 · Name the effects** ([RFC-52](rfc-52-effect-interfaces.md)) — `infer` (handed a `brief-path`), host-data, the `references` fallback, and the `journal` / `transition` lifecycle hooks become typed WIT imports, initially backed by today's handoff. Behavior-neutral; the payoff is record/replay.
+- **S3 · Guests orchestrate** ([RFC-53](rfc-53-orchestration-components.md)) — adapters run their own multi-step operations and reach the model through `infer` rather than handing the whole operation back. The architecture first becomes visible here, and it is the last unconditional stage.
+- **S4 · Workflow as a guest** ([RFC-54](rfc-54-workflow-as-effects.md)) — the workflow runs on Omnia like every adapter and the bespoke `specify` host retires (the runtime move is **committed**); *how much* of each phase compiles into the guest versus stays agent-driven behind `infer` is the per-phase, evidence-gated call RFC-54 owns.
+
+[architecture.md](architecture.md) fixes the direction; the per-stage detail and open decisions live in the linked RFCs.
+
 ## Sequenced Roadmap
 
 Items are identified as `RM-NN`. Earlier items unblock later ones unless noted otherwise. Command examples are target surfaces unless the item explicitly says the command is already implemented.

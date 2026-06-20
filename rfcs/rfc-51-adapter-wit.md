@@ -1,12 +1,12 @@
 # RFC-51: Adapter WIT
 
-> Status: Draft - Depends: RFC-47 (adapter identity), RFC-48 (adapter packaging/registry), RFC-49 (adapter extraction to `specify-adapters`), RFC-50 (adapter-agnostic core) - Framed by: [the effect-oriented harness architecture](architecture.md) as Stages 0–1 - Hands off: capabilities → [RFC-52](rfc-52-effect-interfaces.md), brief-typing → [RFC-53](rfc-53-orchestration-components.md)
+> Status: Draft - Depends: RFC-47 (adapter identity), RFC-48 (adapter packaging/registry), RFC-49 (adapter extraction to `specify-adapters`), RFC-50 (adapter-agnostic core) - Framed by: [the effect-oriented architecture](architecture.md) as Stages 0–1 - Hands off: capabilities → [RFC-52](rfc-52-effect-interfaces.md), brief-typing → [RFC-53](rfc-53-orchestration-components.md)
 
 ## Position in the architecture
 
-This RFC is the **foundation** (Stages 0–1) of the [effect-oriented harness](architecture.md): the typed WIT contract (the stratum-1 transfer records) and typed tool dispatch that every later stage rides on. It is deliberately scoped to that foundation — two concerns earlier drafts folded in here now live in the stage that owns them:
+This RFC is the **foundation** (Stages 0–1) of the [effect-oriented architecture](architecture.md): the typed WIT contract (the stratum-1 transfer records) and typed tool dispatch that every later stage rides on. It is deliberately scoped to that foundation — two concerns earlier drafts folded in here now live in the stage that owns them:
 
-- **Capabilities / resources** (the narrow host-data accessors) move to [RFC-52](rfc-52-effect-interfaces.md), which generalizes them from a capability grant into the harness's first named **data effect**.
+- **Capabilities / resources** (the narrow host-data accessors) move to [RFC-52](rfc-52-effect-interfaces.md), which generalizes them from a capability grant into the runtime's first named **data effect**.
 - **The typed brief contract and lazy discovery** move to [RFC-53](rfc-53-orchestration-components.md): once a brief becomes the *body of the `infer` effect*, "the brief binds a WIT signature" becomes "the `infer` call-site declares the signature," so the heavier `implements` / `consumes` / `produces` / `capabilities` machinery is re-evaluated there rather than built out here. Lazy discovery is a standing invariant in the architecture north star.
 
 What remains in RFC-51 is durable and unaffected: the transfer records (stratum 1), typed tool dispatch, and the typed agent envelopes that reuse the same records.
