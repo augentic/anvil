@@ -8,7 +8,7 @@ The new Specify architecture boils down to one core concept:
 
 > Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is treated as an effect — `judge` — that the runtime delegates to a pluggable fleet of models. The "Specify" CLI is Omnia compiled with Specify-specific backends.
 
-Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to run Wasm and how to handle a fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within the guests.
+Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to host Wasm guests and how to handle a fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within these guests.
 
 Context comes from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This is a deliberate choice to avoid the overloaded context windows that often cause failures. 
 
