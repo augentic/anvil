@@ -10,7 +10,7 @@ The new Specify architecture boils down to one core concept:
 
 Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to run Wasm and how to handle a small, fixed set of effects. Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within the guests.
 
-Context must come from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This is a deliberate choice to avoid the bloated, overloaded context windows that often cause failures. 
+Context comes from artifacts, not from conversational history. Every `judge` call is self-contained. It points to a brief and makes a typed request against concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This is a deliberate choice to avoid the bloated, overloaded context windows that often cause failures. 
 
 This approach provides two major benefits:
 1. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a massive CI pipeline.
@@ -25,7 +25,7 @@ The system is split into two roles communicating over a single contract: a gener
 - **Omnia is the foundation.** It's a command-line executable. Its main job is to run a guest (e.g., `omnia workflow.wasm plan …`) and pass along any arguments. It instantiates the guest and handles a small vocabulary of effects, but it doesn't know anything about adapters, workflows, or AI models.
 - **Everything else is a guest.** The workflow (`plan`, `execute`) and the development tools are first-party guests. The adapters are guests too, whether they are source guests (like `typescript` or `documentation`) or target guests (like `omnia` or `vectis`). They all run as peers on the runtime.
 - **The model fleet sits below.** When a guest needs to make a judgment call, it requests the `judge` effect. Omnia then dispatches this request to a pluggable backend — which could be a frontier LLM, a small local model, or even a deterministic replay stub for testing. The "brain" is a swappable implementation detail.
-- **The boundary is strictly typed.** Every piece of data and every effect crosses the boundary with a strict type. Raw, untyped text corpora are not passed across this line — only typed data and handles.
+- **The boundary is typed.** Every piece of data and every effect crosses the boundary with a defined type. Raw, untyped text corpora are not passed across this line — only typed data and handles.
 
 The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build` or `extract`). In turn, the guest calls back into Omnia's host services (like `judge`, `load-reference`, or `journal`) whenever it needs to do something impure. 
 
@@ -100,14 +100,14 @@ The key takeaway here is the flow: control moves *into* guests via exports, effe
 
 When evaluating future design decisions — whether something should be prose or code, what a function should take, or where it should run — keep this guiding principle in mind:
 
-> Run everything as a guest on a runtime that only understands effects. Keep the structure in deterministic guest code, delegate judgment to the `judge` effect, and always pass handles instead of raw text across boundaries.
+> Run everything as a guest on a runtime that only understands effects. Keep the structure in deterministic guest code, delegate judgment to the `judge` effect, and pass handles instead of raw text across boundaries.
 
-These specific principles apply across the entire architecture. If a proposed change conflicts with them, the approach should be reconsidered.
+These specific principles apply across the entire architecture. If a proposed change conflicts with them, it's worth reconsidering the approach.
 
-1. **Strictly typed boundaries.** WIT records are used for data and WIT interfaces for effects. Raw, untyped text corpora are not passed across boundaries.
+1. **Typed boundaries.** WIT records are used for data and WIT interfaces for effects. Raw, untyped text corpora are not passed across boundaries.
 2. **The runtime only knows about effects.** Omnia doesn't know about workflows, adapters, or AI models. It knows how to handle effects. 
 3. **Determinism by default, judgment by exception.** The core state machine (loops, logic, sequencing) lives in deterministic guest code. When judgment is needed, `judge` is called and returns a typed decision that steers the next deterministic step. Models are not asked to guess control flow.
-4. **Laziness is essential.** Handles (like file paths) are passed across boundaries, not massive text bodies. This ensures context windows stay manageable and operations remain scalable.
+4. **Laziness is key.** Handles (like file paths) are passed across boundaries, not massive text bodies. This ensures context windows stay manageable and operations remain scalable.
 
 ## The model fleet and deployment modes
 
