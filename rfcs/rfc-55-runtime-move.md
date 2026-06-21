@@ -51,7 +51,7 @@ Each call is a new instance (component instances are not re-entrant), so the `re
 ## Decisions to record (open until reviewed)
 
 - **Operator CLI surface.** Whether operators keep typing `specify <verb>` against a thin shim that forwards to `omnia <guest> <args…>`, or the raw runtime surface is exposed. Pre-1.0 posture favours a hard cut over a long-lived compatibility shim.
-- **Effect-WIT ownership & versioning.** Confirm Specify owns the effect interfaces (above) and how their version relates to the `specify:adapter` package (RFC-51) and the host floor (RFC-47).
+- **Effect-WIT ownership & versioning.** Confirm Specify owns the effect interfaces (above) and how their version relates to the `augentic:specify` package (RFC-51) and the host floor (RFC-47).
 - **KV backend selection.** How a deployment picks filesystem vs Redis vs NATS, and the key-namespace discipline that keeps memoization correct across guests and versions.
 - **Diagnostics / lint / validate placement.** How `specify-diagnostics`, `validate` (lifecycle-gating), and `lint` ride the move without changing their authority.
 - **Migration shape.** The sequence by which the bespoke host's adapter dispatch is retired (a hard cut at the extension chokepoint, consistent with RFC-51's ABI cut).

@@ -97,7 +97,7 @@ The host satisfies `judge` with today's handoff in S2 (print envelope, run brief
 
 ## Phased plan
 
-1. Define the effect interfaces in `wit/adapter.wit` (or a sibling `wit/effects.wit`); wire host bindings; assert no behavior change.
+1. Define the effect interfaces in `wit/specify.wit` (or a sibling `wit/effects.wit`); wire host bindings; assert no behavior change.
 2. Implement the host handlers over existing machinery (handoff for `judge`, CLI for lifecycle).
 3. Add the `judge` record/replay backend; prove a single operation replays deterministically in CI.
 4. Project the RFC-51 records into the live survey/extract/shape/build/merge handoff envelopes and retire (or regenerate) the `*_JSON_SCHEMA` constants + parity test against the package, so the records are the single source of truth.
