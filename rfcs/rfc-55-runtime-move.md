@@ -12,9 +12,9 @@ After RFC-52 the effects are typed and mockable but still satisfied by the old h
 
 - **Agnosticism is not yet structural (law 2).** While a bespoke `specify` binary owns dispatch, "the runtime knows only effects" is a posture, not a fact. Standing the guests on a generic runtime makes it a fact.
 - **Statelessness is not yet load-bearing.** Instance-per-call execution and host-held KV state are what make the runtime horizontally trivial; today's host does not enforce them.
-- **Deployment modes are not yet "just backend swaps."** They become swaps only once the host-service surface — including `judge` — is the single seam every backend plugs into.
+- **Deployment modes are not yet "just backend swaps."** They become swaps only once the host-service surface — including `eval` — is the single seam every backend plugs into.
 
-This RFC is the engineering behind the architecture's "Omnia as the runtime — committed" bet. It is deliberately *not* the model fleet (that is [RFC-56](rfc-56-judge-fleet.md)) and *not* the workflow-as-guest move (that is [RFC-57](rfc-57-specify-guests.md)); it is the floor both of those stand on.
+This RFC is the engineering behind the architecture's "Omnia as the runtime — committed" bet. It is deliberately *not* the model fleet (that is [RFC-56](rfc-56-eval-fleet.md)) and *not* the workflow-as-guest move (that is [RFC-57](rfc-57-specify-guests.md)); it is the floor both of those stand on.
 
 ## Scope
 
@@ -22,7 +22,7 @@ This RFC is the engineering behind the architecture's "Omnia as the runtime — 
 
 ### Non-goals
 
-- **The model fleet is out of scope.** Real `judge` backends, the router, and the deployment topologies are [RFC-56](rfc-56-judge-fleet.md); this RFC only requires that `judge` is *a* host like the others (satisfied at minimum by the RFC-52 replay backend).
+- **The model fleet is out of scope.** Real `eval` backends, the router, and the deployment topologies are [RFC-56](rfc-56-eval-fleet.md); this RFC only requires that `eval` is *a* host like the others (satisfied at minimum by the RFC-52 replay backend).
 - **The workflow guest is out of scope.** Moving `/spec:plan` / `/spec:execute` onto the runtime is [RFC-57](rfc-57-specify-guests.md); through this RFC the workflow may keep running on the legacy driver behind a shim.
 - **No adapter-orchestration redesign.** RFC-53's component orchestration is consumed unchanged; this RFC swaps the *host*, not the guests.
 - **No effect-vocabulary change.** The interfaces are RFC-52's; this RFC supplies their real backends.
@@ -31,7 +31,7 @@ This RFC is the engineering behind the architecture's "Omnia as the runtime — 
 
 The runtime is a separate project, so this RFC is genuinely two coordinated halves:
 
-- **Omnia (the repo) provides the generic floor** — the Wasmtime-based interpreter, the pluggable host-service framework (the same mechanism that swaps an in-memory KV for Redis), and the extension point an `judge` backend plugs into — the **model host**, specified in [RFC-54](rfc-54-model-host.md). It carries zero Specify domain knowledge.
+- **Omnia (the repo) provides the generic floor** — the Wasmtime-based interpreter, the pluggable host-service framework (the same mechanism that swaps an in-memory KV for Redis), and the extension point an `eval` backend plugs into — the **model host**, specified in [RFC-54](rfc-54-model-host.md). It carries zero Specify domain knowledge.
 - **Specify provides the backends** — the concrete host-service implementations for its effect vocabulary, the guest packaging, and the operator CLI surface. "Specify" *is* Omnia compiled with these.
 
 **Who owns the effect WIT.** The effect interfaces are Specify's host services, not Omnia's, so Specify owns and versions them; Omnia owns only the generic framework that hosts them. This keeps the runtime brain- and domain-agnostic by construction. The Omnia-side model-host capability is specified in its companion [RFC-54](rfc-54-model-host.md); this RFC owns the Specify-side adoption.
@@ -42,11 +42,11 @@ The runtime is a separate project, so this RFC is genuinely two coordinated halv
 
 - **Data / lifecycle** — backed by real host services over the project tree and the lifecycle store, replacing the handoff/CLI scaffolding RFC-52 stood up.
 - **`kv`** — backed by filesystem locally, Redis / NATS when a fleet shares state; this is where `resolve` memoizes computed references and where any deterministic sub-result is cached.
-- **`judge`** — bound to whatever backend the deployment selects; the replay stub suffices until [RFC-56](rfc-56-judge-fleet.md).
+- **`eval`** — bound to whatever backend the deployment selects; the replay stub suffices until [RFC-56](rfc-56-eval-fleet.md).
 
 Each call is a new instance (component instances are not re-entrant), so the `resolve` fallback that re-enters guest code for a *computed* reference lands in a fresh instance — the synchronous ABI closes the loop with no async machinery.
 
-**Every adapter is a component now (relocated from RFC-51).** Standing the guests on the generic `omnia <guest>` surface is the point at which shipping a WASM component stops being optional: the runtime instantiates a component per call, so an adapter with no component cannot be a guest. Both axes therefore ship the composite's wasm half — including the agent-only source adapters (`intent`, `documentation`, `typescript`, `screenshots`, `captures`), whose component may still export nothing callable while their `survey` / `extract` run as `judge` handoffs. RFC-51 authored the axis world; this stage is where *implementing* it becomes mandatory, because the toolchain cost only buys something once the generic runtime is the thing instantiating the component.
+**Every adapter is a component now (relocated from RFC-51).** Standing the guests on the generic `omnia <guest>` surface is the point at which shipping a WASM component stops being optional: the runtime instantiates a component per call, so an adapter with no component cannot be a guest. Both axes therefore ship the composite's wasm half — including the agent-only source adapters (`intent`, `documentation`, `typescript`, `screenshots`, `captures`), whose component may still export nothing callable while their `survey` / `extract` run as `eval` handoffs. RFC-51 authored the axis world; this stage is where *implementing* it becomes mandatory, because the toolchain cost only buys something once the generic runtime is the thing instantiating the component.
 
 ## Decisions to record (open until reviewed)
 
