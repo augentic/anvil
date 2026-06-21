@@ -1,0 +1,8 @@
+name: demo
+version: "1.0.0"
+axis: target
+description: Minimal adapter for adapter-build workspace-member regression
+briefs:
+  build: briefs/build.md
+extension:
+  name: demo

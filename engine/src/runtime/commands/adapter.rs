@@ -182,7 +182,7 @@ fn ensure_extension_wasm(path: &Path, extension_declared: bool, refresh: bool) -
 fn compile_extension(crate_dir: &Path, committed: &Path) -> Result<()> {
     let status = Command::new("cargo")
         .current_dir(crate_dir)
-        .args(["build", "--release", "--target", WASM_TARGET])
+        .args(["build", "--release", "--target", WASM_TARGET, "--target-dir", "target", "--bins"])
         .status()
         .map_err(|err| Error::Diag {
             code: "adapter-build-failed",
