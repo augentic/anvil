@@ -146,11 +146,11 @@ This setup enables progressive optimisation. As a specific transformation become
 
 Guests are stateless and instance-per-call, so anything that must outlive a single call lives in a host service, not in guest memory. These are the *deterministic* effects — the counterpart to the judgment backend above — and each is satisfied by a swappable backend the guest never sees:
 
-- **Data** (`read`): Narrow, typed access to the project tree and assets through one accessor returning bytes, replacing a broad filesystem grant.
+- **Filesystem** (`wasi:filesystem/preopens`): Access to the project tree and assets through standard WASI filesystem preopens, restricted by the host.
 - **`state`**: Host-held scratch and memoization (e.g., caching a computed reference). uses KeyValue interface backed locally by filesystem, or Redis/NATS for fleet-shared state.
 - **`journal`**: The durable lifecycle log and its legal moves. Uses `JsonStore` backed by a filesystem backend.
 
-Because guests only interact with typed interfaces (like `KeyValue` or `read`), the deployment topology is dictated entirely by the host backends. A local CLI binary wires these interfaces to the local filesystem. A cloud deployment wires the exact same interfaces to cloud-native infrastructure (like S3 for `read` and Redis for `state`). The Specify Wasm components do not change.
+Because guests only interact with typed interfaces (like `KeyValue` or `wasi:filesystem`), the deployment topology is dictated entirely by the host backends. A local CLI binary wires these interfaces to the local filesystem. A cloud deployment wires the exact same interfaces to cloud-native infrastructure (like S3 for `wasi:filesystem` and Redis for `state`). The Specify Wasm components do not change.
 
 ### Journalling progress
 
@@ -174,7 +174,7 @@ This combination provides a small binary that can still bootstrap offline, while
 The architecture is being approached in stages. Each stage is valuable on its own and forward-compatible:
 
 - **S0–S1 (Typed contract)**: Authoring the typed-records WIT package as the single source of truth (callable `tool` dispatch and the schema-drift retirement follow in S3 / S2).
-- **S2 (Name the effects)**: Formalising `eval`, data, and lifecycle events as typed WIT imports. This unlocks record/replay testing and retires the schema-drift surface.
+- **S2 (Name the effects)**: Formalising `eval`, `wasi:filesystem`, and lifecycle events as typed WIT imports. This unlocks record/replay testing and retires the schema-drift surface.
 - **S3 (Guests orchestrate)**: Deterministic tools become callable through the typed bindings, and adapters start running their own multi-step operations on the runtime.
 - **S4 (Runtime move)**: Replacing the bespoke `specify` host with the generic Omnia binary, running the workflow as a guest.
 - **Parallel (The model fleet)**: Building routing and backends for the `eval` effect.

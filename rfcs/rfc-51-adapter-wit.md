@@ -70,8 +70,6 @@ Migrate `schemas/evidence.schema.json` and the Rust engine (the `Evidence` / cla
   - A new `claim.synopsis` field has been introduced as a required field on all claims. This replaces the scattered `statement` and `excerpt` fields across the various claim details, providing a unified, reconciliation-grade headline for the synthesis engine to use when semantically merging claims across sources.
   - The `authority` enum has been renamed to `trust-level` (with variants `directive`, `specification`, `observation`) to clarify its role in conflict resolution. These changes will require downstream updates to `schemas/evidence.schema.json` and the Rust engine.
 - **Versioning & ownership:** `specify` publishes, `specify-adapters` consumes.
-- **`shape` semantics (resolved):** `shape` is a deterministic export on `interface target`, and `shape-report` aliases `build-report`. It is neither a manifest-declared file nor a standalone envelope.
-- **Operation set vs declared tools (resolved):** The two stay distinct layers. The `target` / `source` interfaces declare the closed operation *superset*; each component's world exports only the deterministic subset it implements (`target-adapter` exports `target`; `source-adapter` exports nothing today). The manifest's declared-tool set is that per-component subset, not a separate union world.
 - **Capability model:** Deferred to [RFC-52](rfc-52-effect.md).
 - **Brief-typing surface:** Deferred to [RFC-53](rfc-53-orchestration.md).
 

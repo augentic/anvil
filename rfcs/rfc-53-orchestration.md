@@ -48,8 +48,7 @@ The agent driver loop runs each `eval` directive in its own context, exactly as 
 
 ```wit
 world target-adapter {
-  import host-config;
-  import host-data;
+  import wasi:filesystem/preopens@0.2.0;
   import eval;            // RFC-52 — the upward model channel
   export target;           // build/merge/shape always callable
 }
@@ -66,7 +65,7 @@ RFC-51 originally proposed binding each agent brief to the WIT signature it fulf
 - **Signature binding.** A brief declares which operation it implements; a set-coverage check guarantees every agent operation has exactly one binding brief and every brief binds a real operation. *Survives as lint* — the binding may move from frontmatter to the `eval` call-site.
 - **Typed input environment.** A brief's placeholders (`$SLICE_NAME`, `inputs.artifacts.*`, `<lead>`) are checked against the request record's fields, so a brief can only reference real, typed inputs. *Survives as lint.*
 - **Output example validation.** A brief's embedded fenced examples validate against the WIT-derived report schema at authoring time; the agent's actual output validates at the step's terminal `done(report)`. *Survives* — the runtime check is already the validation point in both realizations.
-- **Capability binding.** A brief's declared capabilities mirror the world's host-data imports. *Folded into [RFC-52](rfc-52-effect.md)* — the effect imports are the capability surface; the brief declaration becomes advisory lint.
+- **Capability binding.** A brief's declared capabilities mirror the world's `wasi:filesystem` imports. *Folded into [RFC-52](rfc-52-effect.md)* — the effect imports are the capability surface; the brief declaration becomes advisory lint.
 
 **Lazy discovery is preserved by construction.** The contract governs the boundary (request in, report out, effects imported), not the interior navigation of the prose. Phase sub-briefs and the reference shelf load on demand — through the brief's own relative links (a filesystem-capable backend follows them directly) or, as a fallback, the RFC-52 `references` effect (a backend that cannot read disk) — and architecture invariant 4 forbids any step from pushing a corpus across the boundary. Only the parent brief binds the operation signature; sub-briefs are internal decomposition. Lint proves the discovery graph resolves without loading it.
 
