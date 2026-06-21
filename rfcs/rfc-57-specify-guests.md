@@ -36,6 +36,7 @@ The framework's own authoring and standards tooling — `specify lint framework`
 - **Skill fate.** Whether skills dissolve into typed orchestration + `judge` bodies, or remain the operator entry surface with orchestration underneath.
 - **Operator UX.** Whether moving orchestration prose into compiled control flow regresses the "tweak the skill" malleability operators rely on.
 - **Lifecycle authority boundary.** Exactly which transitions remain runtime-only versus reachable as effects.
+- **Guest-to-guest interaction.** How the workflow guest calls adapter guests. The current preference is **Static Component Composition** (linking the workflow and adapters into a single `composed.wasm` before execution), rather than host-mediated orchestration. See `architecture.md` for details.
 - **Per-phase activation trigger.** What evidence from RFC-53 (adapter orchestration in production, replay paying off, async ABI stable) justifies graduating a given phase to compiled orchestration.
 - **Development-guest scope.** Whether the development tooling becomes a guest at all, and which of its operations are worth moving off the CLI.
 

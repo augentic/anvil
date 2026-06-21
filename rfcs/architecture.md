@@ -80,6 +80,26 @@ Therefore, the adapters remain a hybrid of Wasm and prose. The Wasm handles the 
 
 If a backend is used that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `resolve` fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance. Most of the time, the agent reads the files it needs directly.
 
+## Guest-to-guest interaction
+
+When the workflow guest needs to call an adapter guest (for instance, when `/spec:execute` needs to call a target adapter's `build` export), there are two primary mechanisms supported by the WebAssembly Component Model and Wasmtime. Host-mediated dynamic linking is the preferred approach as it aligns with Omnia's dynamic resolution capabilities.
+
+### 1. Host-Mediated Dynamic Linking (Preferred)
+
+Because Omnia resolves guests dynamically at runtime (e.g., from an OCI store), static linking is often not feasible. Instead, Wasmtime's host-mediated dynamic linking provides a strictly typed boundary between guests without requiring ahead-of-time composition.
+
+- **How it works**: The `workflow` world imports the target adapter's interface. The Omnia host intercepts this call using Wasmtime's `wasmtime::component::Linker` and Dynamic API (`wasmtime::component::Val`).
+- **The Host's role**: The host dynamically instantiates a fresh, stateless instance of the target adapter, marshals the typed WIT records natively from the caller's memory to the callee's memory, invokes the exported function, and returns the typed result.
+- **Why it fits**: This perfectly satisfies Omnia's requirements. It maintains strict WIT typing without manual byte serialization, supports dynamic adapter resolution, and enforces the "instance-per-call" principle, completely avoiding Wasmtime re-entrancy issues.
+
+### 2. Static Component Composition
+
+In this approach, guest-to-guest calls are resolved inside the Wasm sandbox without trapping to the host runtime.
+
+- **How it works**: The `workflow` world *imports* `augentic:specify/target` and `augentic:specify/source`. The target and source adapters *export* these exact interfaces.
+- **The Host's role**: Before Omnia executes the workflow, the WebAssembly Component Model allows statically composing the `workflow.wasm` and the relevant adapter `.wasm` files into a single, merged `composed.wasm` using tools like `wac` (WebAssembly Composition) or `wasm-tools compose`.
+- **Why it fits**: Omnia instantiates this single `composed.wasm`. When the workflow calls `build()`, it is a direct function call to the adapter within the same sandbox. However, this requires resolving and linking all adapters ahead of time, which conflicts with Omnia's dynamic, config-driven resolution.
+
 ## Lifecycle of an operation
 
 ![Logical sequence: build](../docs/assets/diagrams/effect-architecture/sequence-build.svg)

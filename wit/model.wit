@@ -1,0 +1,41 @@
+package omnia:model@0.1.0;
+
+interface types {
+  /// Errors that can occur during model operations.
+  variant error {
+    invalid-request(string),
+    io(string),
+    internal(string)
+  }
+}
+
+/// The marquee effect for executing a brief.
+interface evaluator {
+  use types.{error};
+
+  /// The request to evaluate a prompt.
+  variant eval-request {
+    /// The prompt to evaluate.
+    prompt(string),
+    /// A pointer to the root file (skill or brief) of a large multi-file
+    /// collection of prose on the filesystem.
+    path(string),
+  }
+
+  /// Evaluate a prompt using the model.
+  eval: func(request: eval-request) -> result<string, error>;
+}
+
+// /// Fallback resolver for the model to call when it cannot read the filesystem directly.
+// interface content-reader {
+//   use types.{error};
+
+//   read: func(path: string) -> result<list<u8>, error>;
+// }
+
+
+world model {
+  import types;
+  import evaluator;
+  // export content-reader;
+}

@@ -2,7 +2,7 @@ package augentic:specify@0.1.0;
 
 interface types {
   /// The error returned by operations.
-  variant adapter-error {
+  variant error {
     invalid-request(string),
     io(string),
     internal(string)
@@ -21,7 +21,7 @@ interface types {
   /// The lead returned by the survey operation.
   record lead {
     /// The lead's unique identifier.
-    lead: string,
+    id: string,
     /// The source that surfaced the lead.
     source: string,
     /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
@@ -54,21 +54,21 @@ interface types {
     observation
   }
 
-  /// The source of the claim's evidence.
-  variant source {
+  /// The backing data of the claim's evidence.
+  variant claim-data {
     /// A small, verbatim piece of data passed directly.
     payload(string),
     /// A pointer to a large block of data in the filesystem.
     path(string),
   }
 
-  /// A claim extracted from the source.
+  /// A claim extracted from the source adapter.
   record claim {
     /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
     /// Used by the synthesis engine to merge related claims across sources.
     synopsis: string,
-    /// The source of the claim's evidence (either a path or a raw payload).
-    source: option<source>,
+    /// The backing data of the claim's evidence (either a path or a raw payload).
+    data: option<claim-data>,
   }
 
   /// The evidence returned by the extract operation.
@@ -185,31 +185,65 @@ interface target {
     shape-request, shape-report,
     build-request, build-report,
     merge-request, merge-report,
-    adapter-error
+    error
   };
 
-  shape: func(req: shape-request) -> result<shape-report, adapter-error>;
-  build: func(req: build-request) -> result<build-report, adapter-error>;
-  merge: func(req: merge-request) -> result<merge-report, adapter-error>;
+  shape: func(req: shape-request) -> result<shape-report, error>;
+  build: func(req: build-request) -> result<build-report, error>;
+  merge: func(req: merge-request) -> result<merge-report, error>;
 }
 
 interface source {
-  use types.{ survey-request, lead, extract-request, evidence, adapter-error };
+  use types.{ survey-request, lead, extract-request, evidence, error };
 
-  survey: func(req: survey-request) -> result<list<lead>, adapter-error>;
-  extract: func(req: extract-request) -> result<evidence, adapter-error>;
+  survey: func(req: survey-request) -> result<list<lead>, error>;
+  extract: func(req: extract-request) -> result<evidence, error>;
 }
 
-// Agent-only today: both source operations are brief-bound, so this world
-// exports nothing callable yet. The source adapter still ships a component
-// (the composite's wasm half); it gains exports only when a deterministic
-// source tool is written.
-world source-adapter {}
+
+/// The project configuration access.
+interface host-config {
+  use types.{error};
+
+  /// The project configuration.
+  record configuration {
+    project-name: string,
+    target-ref: string,
+    platforms: list<string>,
+    workspace: bool,
+  }
+
+  /// Get the configuration.
+  open: async func() -> result<configuration, error>;
+}
+
+interface host-data {
+  use types.{error};
+
+  /// Read slice data.
+  read: func(id: string) -> result<list<u8>, error>;
+}
+
+world source-adapter {
+  import host-config;
+  import host-data;
+}
 
 world target-adapter {
-  // Host-capability imports are deferred to RFC-52 (named host-data
-  // effects); until then `tool` operations use the existing
-  // preopen / $CAPABILITY_DIR grant.
-  export target;   // only the operations this component implements
+  import host-config;
+  import host-data;
+  export target;
+}
+
+world workflow {
+  import target;
+  import source;
+
+
+  export host-config;
+  export host-data;
+
+  // Note: the specific execution interface (e.g. `execute`)
+  // can be defined and exported here as needed by the workflow design.
 }
 
