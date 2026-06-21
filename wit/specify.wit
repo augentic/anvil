@@ -1,7 +1,7 @@
-package augentic:specify@1.0.0;
+package augentic:specify@0.1.0;
 
 interface types {
-  // The error returned by operations.
+  /// The error returned by operations.
   variant adapter-error {
     invalid-request(string),
     io(string),
@@ -12,21 +12,21 @@ interface types {
   // Source survey
   // ------------------------------------------------------
 
-  // Request to survey a source.
+  /// Request to survey a source.
   record survey-request {
-    // The source being surveyed.
+    /// The source being surveyed.
     source: string,
   }
 
-  // The lead returned by the survey operation.
+  /// The lead returned by the survey operation.
   record lead {
-    // The lead's unique identifier.
+    /// The lead's unique identifier.
     lead: string,
-    // The source that surfaced the lead.
+    /// The source that surfaced the lead.
     source: string,
-    // A reconciliation-grade per-source headline of the lead as this source surfaced it.
+    /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
     synopsis: string,
-    // Optional agent-authored per-lead topic slugs (kebab-case).
+    /// Optional agent-authored per-lead topic slugs (kebab-case).
     topics: list<string>,
   }
 
@@ -34,62 +34,50 @@ interface types {
   // Source extract
   // ------------------------------------------------------
 
-  // Request to extract evidence from a source.
+  /// Request to extract evidence from a source.
   record extract-request {
-    // The slice being extracted (path identity for the Evidence).
+    /// The slice being extracted (path identity for the Evidence).
     slice-name: string,
-    // The source that surfaced the leads.
+    /// The source that surfaced the leads.
     source: string,
-    // The leads bound to this slice.
+    /// The leads bound to this slice.
     leads: list<string>,
   }
 
-  // The evidence's "authority", i.e. how seriously to take the evidence.
-  enum authority { intent, documentation, behaviour }
-
-  // The data for an example claim.
-  record example-data {
-    input: option<string>,
-    output: option<string>,
+  /// The level of trust to place in this evidence during conflict resolution.
+  enum trust-level {
+    /// Operator directives. Highest trust.
+    directive,
+    /// Written specifications. Medium trust.
+    specification,
+    /// Empirical observations. Lowest trust.
+    observation
   }
 
-  // The specific detail for the kind of claim being extracted.
-  variant claim-detail {
-    intent(option<string>),
-    requirement(option<string>),
-    criterion(option<string>),
-    decision(option<string>),
-    section(option<string>),
-    diagram(option<string>),
-    contract(option<string>),
-    example(example-data),
-    excerpt(option<string>),
-    %type(option<string>),
-    call(option<string>),
-    region(option<string>),
-    container(option<string>),
-    leaf(option<string>),
+  /// The source of the claim's evidence.
+  variant source {
+    /// A small, verbatim piece of data passed directly.
+    payload(string),
+    /// A pointer to a large block of data in the filesystem.
+    path(string),
   }
 
-  // A claim extracted from the source.
+  /// A claim extracted from the source.
   record claim {
-    // The claim's unique identifier.
-    id: option<string>,
-    // The claim's path in the source.
-    path: option<string>,
-    // The claim's replay digest.
-    replay-digest: option<string>,
-    // The detail specific to the claim's kind.
-    detail: claim-detail,
+    /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
+    /// Used by the synthesis engine to merge related claims across sources.
+    synopsis: string,
+    /// The source of the claim's evidence (either a path or a raw payload).
+    source: option<source>,
   }
 
-  // The evidence returned by the extract operation.
+  /// The evidence returned by the extract operation.
   record evidence {
-    // The evidence's "authority", i.e. how seriously to take the evidence.
-    authority: authority,
-    // The lead that the evidence is bound to.
+    /// The evidence's trust level.
+    trust-level: trust-level,
+    /// The lead that the evidence is bound to.
     lead: string,
-    // The claims extracted from the source.
+    /// The claims extracted from the source.
     claims: list<claim>,
   }
 
@@ -97,13 +85,13 @@ interface types {
   // Target shape
   // ------------------------------------------------------
 
-  // Request to shape a slice.
+  /// Request to shape a slice.
   record shape-request {
-    // The slice being shaped.
+    /// The slice being shaped.
     slice-name: string,
   }
 
-  // The severity of a finding.
+  /// The severity of a finding.
   enum severity {
     critical,
     important,
@@ -111,66 +99,76 @@ interface types {
     optional
   }
 
-  // A finding from the operation.
+  /// A finding from the operation.
   record finding {
-    // The finding's rule identifier.
+    /// The finding's rule identifier.
     rule-id: string,
-    // The severity of the finding.
+    /// The severity of the finding.
     severity: severity,
-    // The detail of the finding.
+    /// The detail of the finding.
     detail: string,
   }
 
-  // The status of the operation.
+  /// The status of the operation.
   enum build-status {
     success,
     failure,
   }
 
+  /// An output generated by the build.
   record build-output {
-    // The platform being built.
+    /// The platform being built.
     platform: string,
-    // The path to the built output.
+    /// The path to the built output.
     path: string,
   }
 
+  /// The report returned by the build operation.
   record build-report {
-    // The slice being built.
+    /// The slice being built.
     slice-name: string,
-    // The status of the operation.
+    /// The status of the operation.
     status: build-status,
-    // The findings from the operation.
+    /// The findings from the operation.
     findings: list<finding>,
-    // The outputs from the operation.
+    /// The outputs from the operation.
     outputs: list<build-output>,
   }
 
-  // The report returned by the shape operation.
+  /// The report returned by the shape operation.
   type shape-report = build-report;
 
   // ------------------------------------------------------
   // Target build
   // ------------------------------------------------------
 
-  // Request to build a slice.
+  /// A named input to a build operation.
+  record build-input {
+    /// The input key.
+    key: string,
+    /// The input value.
+    value: string,
+  }
+
+  /// Request to build a slice.
   record build-request {
-    // The slice being built.
+    /// The slice being built.
     slice-name: string,
-    // The inputs to the build.
-    inputs: list<tuple<string, string>>,
+    /// The inputs to the build.
+    inputs: list<build-input>,
   }
 
   // ------------------------------------------------------
   // Target merge
   // ------------------------------------------------------
 
-  // Request to merge a built slice into the project's codebase.
+  /// Request to merge a built slice into the project's codebase.
   record merge-request {
-    // The slice being merged.
+    /// The slice being merged.
     slice-name: string,
   }
 
-  // The report returned by the merge operation.
+  /// The report returned by the merge operation.
   type merge-report = build-report;
 }
 
