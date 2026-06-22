@@ -194,14 +194,14 @@ fn map_prepare_exit_code(captured: &CapturedOutput) -> Result<()> {
             return Err(Error::validation_failed(
                 "plan-bootstrap-app-icon-missing",
                 "vectis prepare build bootstrap app-icon gate passes before the build brief handoff",
-                prepare_failure_detail(&value, captured.exit_code, &stderr, &stdout),
+                prepare_failure_detail(&value, captured.exit_code, stderr.as_ref(), stdout.as_ref()),
             ));
         }
         if prepare_has_materialize_errors(&value) {
             return Err(Error::validation_failed(
                 "target-build-materialize-failed",
                 "vectis prepare build materialize completes successfully before the build brief handoff",
-                prepare_failure_detail(&value, captured.exit_code, &stderr, &stdout),
+                prepare_failure_detail(&value, captured.exit_code, stderr.as_ref(), stdout.as_ref()),
             ));
         }
     }

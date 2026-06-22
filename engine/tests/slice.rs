@@ -177,7 +177,7 @@ mod build {
     //! rejection and the `execution: tool` unsupported seam.
 
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     use serde_json::Value;
     use specify_workflow::adapter::ADAPTER_WASM_FILENAME;
@@ -370,7 +370,7 @@ screens:
         adapter_wasm.is_file().then_some(adapter_wasm)
     }
 
-    fn vectis_wasm_supports_prepare(wasm: &PathBuf) -> bool {
+    fn vectis_wasm_supports_prepare(wasm: &Path) -> bool {
         let tmp = tempdir().expect("tempdir");
         let project = tmp.path();
         let adapter = project.join("adapters/targets/vectis");
@@ -403,7 +403,7 @@ screens:
     }
 
     /// Minimal vectis project with the real adapter wasm staged for extension dispatch.
-    fn vectis_prepare_project(wasm: &PathBuf) -> tempfile::TempDir {
+    fn vectis_prepare_project(wasm: &Path) -> tempfile::TempDir {
         let tmp = tempdir().expect("tempdir");
         let project = tmp.path();
         let adapter = project.join("adapters/targets/vectis");
