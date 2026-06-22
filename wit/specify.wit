@@ -111,11 +111,8 @@ interface source {
   record evidence {
     /// The evidence's trust level.
     trust: trust-basis,
-    /// The lead this evidence was extracted for: the lead id of the
-    /// `(source, lead)` pair (a `## Lead inventory` block in `discovery.md`),
-    /// unique within its source. The evidence is self-describing about its
-    /// binding rather than relying on the `extract` call context.
-    lead: string,
+    // /// The lead that the evidence is bound to.
+    // lead: string,
     /// The claims extracted from the source.
     claims: list<claim>,
   }

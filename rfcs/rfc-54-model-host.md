@@ -30,7 +30,7 @@ RFC-56 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 
 - **The `eval` interface itself.** Specify owns and versions the WIT interface ([RFC-52](rfc-52-effect.md)); this RFC *hosts* it, it does not define it.
 - **The concrete backends and the fleet router.** The frontier-API and spawned-agent backends and the difficulty/cost router are [RFC-57](rfc-57-eval-fleet.md); the replay backend is RFC-52; the SLM backend is [RFC-18](future/rfc-18-slm.md). Omnia provides the slot, never the fleet.
-- **The deterministic effect host services.** Data, `kv`, and lifecycle ride the same generic framework; their backends are [RFC-56](rfc-56-runtime-move.md)'s subject (with working-tree materialization — this RFC's deterministic-effects mirror — carved out to [RFC-55](rfc-55-working-tree.md)), not this RFC's.
+- **The deterministic effect host services.** Data, `kv`, and lifecycle are **custom backends behind Omnia's *existing* general-purpose hosts** — they add no new host ([RFC-56](rfc-56-runtime-move.md)); the working tree in particular rides `wasi:filesystem` via a custom git-aware backend ([RFC-55](rfc-55-working-tree.md)), keeping git native. The model host specified here is the **one *new* generic host** Specify adds; that asymmetry is deliberate, and the working-tree backend is not its mirror.
 - **The generic host-service framework at large.** This RFC is scoped to the *model* host (the marquee addition); the interpreter and the conventional host plumbing are assumed Omnia machinery.
 - **No vendor coupling in Omnia core.** No provider SDKs, no model ids, no router policy in the runtime — all of that lives in Specify-provided backends.
 
