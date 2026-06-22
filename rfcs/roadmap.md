@@ -41,6 +41,16 @@ The runtime architecture — Specify as a family of wasm guests on the generic O
 
 [architecture.md](architecture.md) fixes the direction; the per-stage detail and open decisions live in the linked RFCs.
 
+### Cross-repo coordination
+
+Realising the architecture spans three repositories, coordinated only through versioned WIT seams — never a shared build or a lockstep release:
+
+- **`augentic/specify`** (this repo) — owns the typed contracts (the `augentic:specify` adapter package and the `augentic:model` `eval` interface), the Specify-side effect backends (working-tree materialization [RFC-55](rfc-55-working-tree.md), the replay `eval` backend [RFC-52](rfc-52-effect.md), and the model fleet [RFC-57](rfc-57-eval-fleet.md)), and the operator CLI.
+- **`augentic/omnia`** — owns the generic runtime floor (the Wasmtime interpreter and the pluggable host-service framework) plus the model-host slot and the `ModelBackend` trait ([RFC-54](rfc-54-model-host.md)); it carries zero Specify domain knowledge (law 2).
+- **`augentic/specify-adapters`** — consumes the `augentic:specify` package as a pinned dependency and, under the [RFC-56](rfc-56-runtime-move.md) component mandate, ships a WASM component implementing its axis world for every adapter.
+
+Three seams are versioned independently: `augentic:specify` (this repo → adapters), the `augentic:model` `eval` interface (this repo → the Omnia model host), and the Omnia-owned `ModelBackend` trait (Omnia → this repo's backends). Land them in a deliberate order — the Omnia floor and model-host slot ([RFC-54](rfc-54-model-host.md)) before the Specify backends that bind into it ([RFC-56](rfc-56-runtime-move.md)), and a published `augentic:specify` pin before the adapter components that consume it — and treat each seam as a contract so neither repo blocks the other. Cross-repo version skew is the headline risk every Stage-4 RFC ([RFC-54](rfc-54-model-host.md) / [RFC-55](rfc-55-working-tree.md) / [RFC-56](rfc-56-runtime-move.md)) calls out.
+
 ## Sequenced Roadmap
 
 Items are identified as `RM-NN`. Earlier items unblock later ones unless noted otherwise. Command examples are target surfaces unless the item explicitly says the command is already implemented.

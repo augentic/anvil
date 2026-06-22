@@ -21,7 +21,7 @@ Authoring a WIT package provides a single generated source of truth to resolve t
 ## The Model
 
 ### 1. One shared WIT package
-`augentic:specify@<semver>` defines an `interface types` carrying the cross-cutting data and capability types shared across both axes (`error`, `artifact`, `revision`, `edit`, `change-set`, `working-tree`). The per-operation I/O and judgment records live in the axis interfaces: `input`, `finding`, `severity`, `status`, `report` in `interface target`; `lead`, `trust-basis`, `claim-data`, `claim`, `evidence` in `interface source`.
+`augentic:specify@<semver>` defines an `interface types` carrying the cross-cutting data and capability types shared across both axes (`error`, `artifact`, `revision`, `edit`, `change-set`, `working-tree`). The per-operation I/O and judgment records live in the axis interfaces: `input`, `finding`, `severity`, `status`, `report` in `interface target`; `lead`, `trust-basis`, `backing`, `claim`, `evidence` in `interface source`.
 
 ### 2. Interface declarations
 
@@ -64,7 +64,7 @@ Migrate `schemas/evidence.schema.json` and the Rust engine (the `Evidence` / cla
 - **WIT package as schema source of truth:** Records are authored here and become the source of truth; the `*_JSON_SCHEMA` constants are retired against them in [RFC-52](rfc-52-effect.md).
 - **Data Model Refinements:**
   - The `claim` record has been radically simplified. The `claim-kind` enum (and its 14 variants) has been completely removed from the extraction contract. Extraction adapters are no longer responsible for categorizing claims or making downstream routing decisions; they simply extract facts, providing a `synopsis` and a `source`. The burden of semantic categorization and routing is shifted entirely to the synthesis engine.
-  - The `claim.path` and `claim.payload` fields have been consolidated into a single optional `claim-data` variant (`payload(string)` | `path(string)`), carried as `data: option<claim-data>`; an absent `data` is the third state (no pointer and no inline data). This enforces a strict "pointer vs. data" tradeoff at the type level, preventing adapters from bloating the YAML with raw data when a file path would suffice, while still allowing in-memory or synthesized data to be passed directly.
+  - The `claim.path` and `claim.payload` fields have been consolidated into a single optional `backing` variant (`payload(string)` | `path(string)`), carried as `backing: option<backing>`; an absent `backing` is the third state (no pointer and no inline data). This enforces a strict "pointer vs. data" tradeoff at the type level, preventing adapters from bloating the YAML with raw data when a file path would suffice, while still allowing in-memory or synthesized data to be passed directly.
   - The `example` claim kind concept has been renamed to `wiretap` in documentation, though it no longer exists as a distinct type in the WIT.
   - The `claim.id` field has been completely removed. Cross-source reconciliation is fundamentally a semantic operation performed by the synthesis engine, and forcing independent extraction adapters to generate deterministic join strings is an anti-pattern that leads to silent merge failures.
   - A new `claim.synopsis` field has been introduced as a required field on all claims. This replaces the scattered `statement` and `excerpt` fields across the various claim details, providing a unified, reconciliation-grade headline for the synthesis engine to use when semantically merging claims across sources.

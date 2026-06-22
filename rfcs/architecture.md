@@ -117,13 +117,13 @@ Let's look at how a `build` operation flows in practice. (Note that in this logi
 
 In short: control moves *into* guests via exports, effects flow *up* to Omnia, judgment is handled by a swappable backend, and references are loaded lazily. 
 
-## Core principles
+## The four laws
 
 When evaluating future design decisions — whether something should be prose or code, what a function should take, or where it should run — keep this guiding principle in mind:
 
 > Run everything as a guest on a runtime that only understands effects. Keep the structure in deterministic guest code, delegate judgment to the `eval` effect, and pass handles instead of raw text across boundaries.
 
-These specific principles apply across the entire architecture. If a proposed change conflicts with them, it's worth reconsidering the approach.
+These four laws apply across the entire architecture; if a proposed change conflicts with one of them, it's worth reconsidering the approach. The RFCs refer to them by number — most often *law 2*, the runtime's effect-only agnosticism.
 
 1. **Typed boundaries**: WIT records are used for data and WIT interfaces for effects. Untyped text is not passed across boundaries.
 2. **The runtime only knows about effects**: Omnia doesn't know about workflows, adapters, or AI models — it only knows how to handle effects. 
@@ -187,10 +187,10 @@ The architecture is being approached in stages. Each stage is valuable on its ow
 - **S0–S1 (Typed contract)**: Authoring the typed-records WIT package as the single source of truth (callable `tool` dispatch and the schema-drift retirement follow in S3 / S2).
 - **S2 (Name the effects)**: Formalising `eval`, `wasi:filesystem`, and lifecycle events as typed WIT imports. This unlocks record/replay testing and retires the schema-drift surface.
 - **S3 (Guests orchestrate)**: Deterministic tools become callable through the typed bindings, and adapters start running their own multi-step operations on the runtime.
-- **S4 (Runtime move)**: Replacing the bespoke `specify` host with the generic Omnia binary, running the workflow as a guest.
+- **S4 (Runtime move)**: Replacing the bespoke `specify` host with the generic Omnia binary and running every guest — adapters and the workflow — on it. The runtime move itself is committed; *how much* of each workflow phase compiles into deterministic guest control flow, versus stays agent-driven behind `eval`, is a separate per-phase call.
 - **Parallel (The model fleet)**: Building routing and backends for the `eval` effect.
 
-For more details on the staging, see [roadmap.md](roadmap.md).
+Stages S0–S3 are unconditional and the S4 runtime move is a committed bet; graduating any individual workflow phase into compiled guest control flow is opt-in and evidence-gated, not part of the committed path. For more details on the staging, see [roadmap.md](roadmap.md).
 
 ## Key trade-offs
 

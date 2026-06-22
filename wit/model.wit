@@ -1,4 +1,4 @@
-package omnia:model@0.1.0;
+package augentic:model@0.1.0;
 
 interface types {
   /// Errors that can occur during model operations.
@@ -27,16 +27,11 @@ interface evaluator {
   eval: func(request: instruction) -> result<string, error>;
 }
 
-// /// Fallback resolver for the model to call when it cannot read the filesystem directly.
-// interface content-reader {
-//   use types.{error};
-
-//   read: func(path: string) -> result<list<u8>, error>;
-// }
-
+// The references fallback — for a model backend that cannot read the
+// filesystem directly — is served by `wasi:filesystem/preopens`, not a
+// standalone interface here. See RFC-52.
 
 world model {
   import types;
   import evaluator;
-  // export content-reader;
 }

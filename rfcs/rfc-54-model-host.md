@@ -47,7 +47,7 @@ RFC-56 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 | The **SLM backend**                                                             | **Specify** — [RFC-18](future/rfc-18-slm.md)   |
 | Binding `eval` during the runtime move (Specify-side adoption)                 | **Specify** — [RFC-56](rfc-56-runtime-move.md) |
 
-The shared seam is the `ModelBackend` trait (Omnia-owned) plus the `eval` WIT (Specify-owned, authored in [`wit/model.wit`](../wit/model.wit) under the `omnia:model` package); the two are versioned across the repo boundary, never released in lockstep.
+The shared seam is the `ModelBackend` trait (Omnia-owned) plus the `eval` WIT (Specify-owned, authored in [`wit/model.wit`](../wit/model.wit) under the `augentic:model` package — `augentic:`-namespaced to match the Specify-ownership claim, with Omnia merely hosting it); the two are versioned across the repo boundary, never released in lockstep.
 
 ## The model (sketch)
 
