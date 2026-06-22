@@ -57,13 +57,13 @@ interface source {
     synopsis: string,
   }
 
-  /// The level of trust to place in this evidence during conflict resolution.
-  enum trust-level {
-    /// Operator directives. Highest trust.
+  /// The weight to assign this evidence during conflict resolution.
+  enum weight {
+    /// Operator directives. Highest weight.
     directive,
-    /// Written specifications. Medium trust.
+    /// Written specifications. Medium weight.
     specification,
-    /// Empirical observations. Lowest trust.
+    /// Empirical observations. Lowest weight.
     observation
   }
 
@@ -86,8 +86,8 @@ interface source {
 
   /// The evidence returned by the extract operation.
   record evidence {
-    /// The evidence's trust level.
-    trust: trust-level,
+    /// The evidence's weight.
+    weight: weight,
     /// The claims extracted from the source.
     claims: list<claim>,
   }
