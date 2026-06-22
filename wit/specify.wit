@@ -38,17 +38,19 @@ interface types {
   }
 }
 
-/// A reference resolver for use by an agent's tool loop.
+/// The reference shelf: a stateless resolver the native tool-use loop
+/// calls to follow a brief's internal references.
 interface references {
   use types.{ error };
 
   /// A reference id: the brief-relative link target a brief points at
-  /// (e.g. "../references/business-logic.md"). Same id space as RFC-59's
-  /// `handle`; the host normalizes it before calling.
+  /// (e.g. "../references/business-logic.md"). Same id space as `handle`;
+  /// the host normalizes it before calling.
   type reference = string;
 
-  /// Resolve one references reference to its bytes. Pure and stateless —
-  /// instance-per-call, no session.
+  /// Resolve one reference to its bytes. Pure and stateless —
+  /// instance-per-call, no session. The facade's `tools.resolve`
+  /// is the session-scoped front end to this shelf.
   resolve: func(id: reference) -> result<list<u8>, error>;
 }
 
@@ -166,7 +168,7 @@ interface target {
 
   /// Build a slice within a host-materialized working tree. `root` is a
   /// borrowed `wasi:filesystem` directory handle the host opens over the tree
-  /// it materialized from `base` (via the custom git-aware backend, RFC-55);
+  /// it materialized from `base` (via the custom git-aware backend);
   /// the operation reads existing code through it and writes its changes in
   /// place. The report carries only judgment; the caller's native orchestration
   /// layer extracts the resulting delta as a `changeset` against `base`, so
@@ -176,10 +178,11 @@ interface target {
   /// Merge a built slice into the project's codebase. `delta` is the build's
   /// portable delta (theirs); `root` is a borrowed `wasi:filesystem` handle
   /// over the baseline tree (ours, materialized from `base`) folded into in
-  /// place — a 3-way merge against `delta.base`. The agent resolves conflicts
-  /// through the node-local path the host provisions for the `eval` backend
-  /// (no longer a typed method) and validators re-run through `root`; the report
-  /// carries the merge judgment. The caller commits the merged baseline.
+  /// place — a 3-way merge against `delta.base`. A filesystem-capable spawned
+  /// agent resolves conflicts through the node-local path the native loop
+  /// provisions (no typed method); an API model resolves them through the
+  /// tool surface. Validators re-run through `root`; the report carries
+  /// the merge judgment. The caller commits the merged baseline.
   merge: func(slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
 }
 

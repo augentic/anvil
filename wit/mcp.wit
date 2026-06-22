@@ -54,7 +54,7 @@ interface tools {
 
     // --- verify (native, sandboxed seam; absent on a toolchain-less host) ---
     /// Run a vetted profile over the pending changeset; returns the same
-    /// severity-tiered `report` as build / merge (see RFC-59 Verification).
+    /// severity-tiered `report` as build / merge.
     verify: func(s: session, c: check) -> result<report, error>;
 }
 

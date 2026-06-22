@@ -1,12 +1,12 @@
 # RFC-55: Working-Tree Materialization (the `wasi:filesystem` backend and the value↔tree boundary)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — deterministic effects) · Depends: [RFC-51](rfc-51-adapter-wit.md) (the `working-tree` / `change-set` / `revision` records), [RFC-52](rfc-52-effect.md) (the `working-tree` capability surface) · Companion to: [RFC-56](rfc-56-runtime-move.md) (which binds this backend behind `wasi:filesystem`) · Contrast: [RFC-54](rfc-54-model-host.md) — the model host is a sanctioned *new* generic host; the working tree adds no new host, riding Omnia's existing `wasi:filesystem` via a custom backend
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — deterministic effects) · Depends: [RFC-51](rfc-51-adapter-wit.md) (the `working-tree` / `change-set` / `revision` records), [RFC-52](rfc-52-effect.md) (the `working-tree` capability surface) · Companion to: [RFC-56](rfc-56-runtime-move.md) (which binds this backend behind `wasi:filesystem`) · Note: like judgment ([RFC-53](rfc-53-tool-server.md)), the working tree adds **no new host** — it rides Omnia's existing `wasi:filesystem` via a custom backend
 
 ## Abstract
 
 [RFC-51](rfc-51-adapter-wit.md) authored the `working-tree` / `change-set` / `revision` records and [RFC-52](rfc-52-effect.md) named the `working-tree` capability, but both leave it *"backed by existing machinery."* Today that machinery is a **persistent, local, single checkout** in which `refine → build → merge` run synchronously, slice by slice — the working tree's identity *is* its on-disk path, and each slice's edits accumulate physically in one directory. 
 
-This RFC specifies the real backend that retires that assumption: a **custom git-aware backend behind Omnia's existing `wasi:filesystem` host** that *materializes* a `working-tree` from a content-addressed `revision` (plus any not-yet-merged dependency `change-set`s) onto whichever node runs an operation, and the inverse extraction the capability's `changes()` performs. Its shape differs deliberately from the model host ([RFC-54](rfc-54-model-host.md)): RFC-54 is a sanctioned *new* generic host for `eval`, whereas the working tree needs **no new host** — it rides `wasi:filesystem` as a custom backend, which keeps git **native** (the backend is host code; there is no in-guest VCS). `slice → revision` resolution, `change-set` extraction, and forge push live in the binary's **native orchestration layer** alongside the backend. The runtime move ([RFC-56](rfc-56-runtime-move.md)) **binds** this backend rather than burying it.
+This RFC specifies the real backend that retires that assumption: a **custom git-aware backend behind Omnia's existing `wasi:filesystem` host** that *materializes* a `working-tree` from a content-addressed `revision` (plus any not-yet-merged dependency `change-set`s) onto whichever node runs an operation, and the inverse extraction the capability's `changes()` performs. It needs **no new host** — it rides `wasi:filesystem` as a custom backend, which keeps git **native** (the backend is host code; there is no in-guest VCS). This is the same restraint judgment shows: judgment is native code rather than a hosted effect ([RFC-53](rfc-53-tool-server.md)), and the working tree is a custom backend rather than a new host — so Omnia core gains nothing domain-specific from either. `slice → revision` resolution, `change-set` extraction, and forge push live in the binary's **native orchestration layer** alongside the backend (the same layer that runs the judgment loop). The runtime move ([RFC-56](rfc-56-runtime-move.md)) **binds** this backend rather than burying it.
 
 ## Motivation
 
@@ -14,7 +14,7 @@ The architecture's portability bet ([architecture.md](architecture.md#the-workin
 
 - **Identity is a path.** When the working tree's identity is a local directory, nothing connecting two operations can cross a process — let alone a node — boundary. Instance-per-call ([architecture.md](architecture.md) — stateless guests, host-held state) means the handle dies at every call edge, so the connective tissue *must* be a value, and a value needs a backend that can project it back into a tree.
 - **Sequence is physical.** Slice N building "on top of" slices 1..N-1 works today only because they share one accreting directory. Remove the shared directory and that prior state has to be carried by the `revision` you materialize from (and, for un-merged dependencies, by layering producer `change-set`s) — not by physical accumulation.
-- **The backend is unspecified.** *"The host materializes the tree"* is a single line in [RFC-56](rfc-56-runtime-move.md). It has real surface — `slice → revision` resolution, object-store acquisition, checkout, out-of-sequence dependency-layering, scratch lifecycle, cache / GC — that earns an explicit contract even though, unlike the model host, it needs no new runtime interface to deliver it.
+- **The backend is unspecified.** *"The host materializes the tree"* is a single line in [RFC-56](rfc-56-runtime-move.md). It has real surface — `slice → revision` resolution, object-store acquisition, checkout, out-of-sequence dependency-layering, scratch lifecycle, cache / GC — that earns an explicit contract even though it needs no new runtime interface to deliver it.
 
 ## Scope
 
@@ -24,13 +24,13 @@ The architecture's portability bet ([architecture.md](architecture.md#the-workin
 - `**slice → revision` resolution** from durable plan / journal state (where a slice's base is recorded, and the verb that resolves it).
 - **Out-of-sequence dependency-layering**: composing a base `revision` with not-yet-merged producer `change-set`s before lending the tree — the multi-node replacement for a shared, accreting checkout.
 - **Materialized-tree lifecycle**: per-call scratch, teardown, and optional caching / GC of materialized trees in `kv` / `state` (and its relationship to `specify archive prune`).
-- `**local-path` provisioning** for filesystem-capable `eval` backends, and the `none` path on a backend with no real local tree (the RFC-52 capability signal that gates agent-driven operations).
+- `**local-path` provisioning** for the filesystem-capable spawned-agent strategy ([RFC-58](rfc-58-eval-fleet.md)), and the `none` path on a node with no real local tree (the RFC-52 capability signal that gates agent-driven operations).
 - **Backend variants behind one `revision` abstraction**, each a swappable `wasi:filesystem` backend: git (the first backend), object-store snapshot (S3 / `wasi:blobstore`), copy-on-write / overlay.
 
 ### Non-goals
 
 - **The records and the capability surface.** The `working-tree` / `change-set` / `revision` records are [RFC-51](rfc-51-adapter-wit.md); the `descriptor` / `local-path` / `changes` interface and its boundary invariants are [RFC-52](rfc-52-effect.md). This RFC is the backend that *satisfies* them.
-- `**eval` and the model fleet.** The judgment backend is [RFC-54](rfc-54-model-host.md) / [RFC-57](rfc-57-eval-fleet.md); this RFC is the deterministic, *no-new-host* counterpart — a custom backend behind an existing host, not a new host slot.
+- **Judgment and the model fleet.** Judgment is the native loop ([RFC-53](rfc-53-tool-server.md)) and its strategies ([RFC-58](rfc-58-eval-fleet.md)); this RFC is the deterministic counterpart — a custom `wasi:filesystem` backend, not a hosted effect and not a new host slot.
 - **The runtime move itself.** Instance-per-call, the component-on-both-axes mandate, and retiring the bespoke host are [RFC-56](rfc-56-runtime-move.md); this RFC supplies one of the backends that move binds.
 - **The merge algorithm and conflict UX.** The adapter's `merge` brief owns conflict resolution; this RFC only provides the baseline tree it resolves *within* and anchors the 3-way apply via `change-set.base`.
 - **Forge transport.** Branch push, PR / MR creation, and finalize are operator-owned (roadmap RM-17), downstream of a materialized result.
@@ -47,7 +47,7 @@ The architecture's portability bet ([architecture.md](architecture.md#the-workin
 | Binding the backend behind `wasi:filesystem` during the runtime move                                             | **Specify** — [RFC-56](rfc-56-runtime-move.md) |
 
 
-Unlike [RFC-54](rfc-54-model-host.md) (which adds an Omnia-side *new* host), this is **mostly Specify-side and adds no new host**: Omnia owns the generic `wasi:filesystem` host (and `wasi:blobstore`), while Specify provides the custom git-aware *backend* behind it plus the native orchestration (slice / revision / change-set) riding on top. Because git lives in a native backend, there is no in-guest VCS to reimplement. The seam between Omnia's host trait and Specify's backend is versioned, not released in lockstep.
+This is **mostly Specify-side and adds no new host**: Omnia owns the generic `wasi:filesystem` host (and `wasi:blobstore`), while Specify provides the custom git-aware *backend* behind it plus the native orchestration (slice / revision / change-set, and the judgment loop) riding on top. Because git lives in a native backend, there is no in-guest VCS to reimplement. The seam between Omnia's host trait and Specify's backend is versioned, not released in lockstep.
 
 ## The model (sketch)
 

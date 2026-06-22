@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: the SLM member of the [RFC-57](../rfc-57-eval-fleet.md) `eval` fleet — enabled by the fleet, gating nothing (a ratchet rung, not a stage)
+> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: the SLM member of the [RFC-58](../rfc-58-eval-fleet.md) model fleet — enabled by the fleet, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 

@@ -1,10 +1,10 @@
 # Specify WIT package
 
-[`specify.wit`](specify.wit) is the `augentic:specify` WebAssembly Component Model package: the typed adapter contract (the shared `types` interface, the per-axis `target` / `source` interfaces, and their worlds). See [RFC-51](../rfcs/rfc-51-adapter-wit.md).
+[`specify.wit`](specify.wit) is the `augentic:specify` WebAssembly Component Model package: the typed adapter contract — the shared `types` interface, the per-axis `target` / `source` interfaces, the `references` shelf each adapter exports, and their worlds. See [RFC-51](../rfcs/rfc-51-adapter-wit.md) and [RFC-52](../rfcs/rfc-52-effect.md).
 
-[`model.wit`](model.wit) is the `augentic:model` package: the Specify-owned `eval` effect interface (see [RFC-52](../rfcs/rfc-52-effect.md)) that the Omnia model host satisfies (see [RFC-54](../rfcs/rfc-54-model-host.md)). Omnia provides the host slot; Specify owns and versions the interface — so it carries an `augentic:` namespace, not `omnia:`.
+Judgment is **not** a WIT effect. It is the binary's native tool-use loop ([RFC-53](../rfcs/rfc-53-tool-server.md)) behind a native `ModelClient` boundary, so there is no `augentic:model` / `eval` package — the former `model.wit` is retired. The model-facing `augentic:tools` surface is specified inline in [RFC-53](../rfcs/rfc-53-tool-server.md); it becomes a published WIT package only when the optional Mode-B MCP / HTTP guest is built — the default Mode-A facade is native code and needs no WIT.
 
-This repo owns and publishes both packages; [`specify-adapters`](https://github.com/augentic/specify-adapters) consumes `augentic:specify` as a pinned dependency, and the Omnia model host consumes `augentic:model`.
+This repo owns and publishes `augentic:specify`; [`specify-adapters`](https://github.com/augentic/specify-adapters) consumes it as a pinned dependency.
 
 ## Prerequisites
 
