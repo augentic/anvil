@@ -14,7 +14,7 @@ interface evaluator {
   use types.{error};
 
   /// The request to evaluate a prompt.
-  variant eval-request {
+  variant instruction {
     /// The prompt to evaluate.
     prompt(string),
     /// A pointer to the root file (skill or brief) of a large multi-file
@@ -23,7 +23,7 @@ interface evaluator {
   }
 
   /// Evaluate a prompt using the model.
-  eval: func(request: eval-request) -> result<string, error>;
+  eval: func(request: instruction) -> result<string, error>;
 }
 
 // /// Fallback resolver for the model to call when it cannot read the filesystem directly.
