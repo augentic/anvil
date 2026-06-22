@@ -2,11 +2,8 @@
 //!
 //! The packing path is local and byte-deterministic, so these tests drive it
 //! against throw-away adapter trees under `tempfile::TempDir`. The OCI
-//! `publish` flow (network) and the cargo `wasm32-wasip2` extension compile
-//! (subprocess + toolchain) are out of scope; the extension branches covered
-//! here are the ones reachable without invoking cargo — no extension declared,
-//! a committed `adapter.wasm` already present, and a declared extension whose
-//! crate is missing.
+//! `publish` flow (network) is out of scope. Extension compile coverage
+//! includes a workspace-member fixture under `tests/fixtures/adapter-build-workspace/`.
 
 use std::fs;
 use std::path::Path;
@@ -124,4 +121,42 @@ fn build_extension_without_crate_fails() {
         parse_stderr(&assert.get_output().stderr, tmp.path())["error"],
         "adapter-build-failed",
     );
+}
+
+#[test]
+fn build_refresh_in_workspace() {
+    let fixture = common::repo_root().join("tests/fixtures/adapter-build-workspace");
+    let adapter = fixture.join("adapters/demo");
+    let wasm = adapter.join("adapter.wasm");
+
+    if wasm.exists() {
+        fs::remove_file(&wasm).expect("remove stale adapter.wasm");
+    }
+
+    let assert = specify_cmd()
+        .current_dir(&fixture)
+        .args([
+            "--format",
+            "json",
+            "adapter",
+            "build",
+            "--path",
+            "adapters/demo",
+            "--refresh-extension",
+        ])
+        .assert()
+        .success();
+
+    let body = parse_json(&assert.get_output().stdout);
+    assert_eq!(body["name"], "demo");
+    assert_eq!(body["extension_declared"], true);
+    assert_eq!(body["wasm_built"], true);
+    assert!(
+        wasm.is_file() && fs::metadata(&wasm).is_ok_and(|meta| meta.len() > 0),
+        "adapter.wasm must be written beside adapter.yaml"
+    );
+
+    if wasm.exists() {
+        fs::remove_file(&wasm).expect("remove generated adapter.wasm");
+    }
 }
