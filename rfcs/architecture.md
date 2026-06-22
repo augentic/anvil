@@ -106,14 +106,14 @@ In this approach, guest-to-guest calls are resolved inside the Wasm sandbox with
 
 Let's look at how a `build` operation flows in practice. (Note that in this logical view, every step is an Omnia invocation running either Wasm or a model backend).
 
-1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(build-request)`).
+1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(build-request, working-tree)`). The host materializes the slice's [working tree](#the-working-tree) from a base revision and lends it to the operation; the `build-request` itself stays pure, node-independent data.
 2. The target guest runs its deterministic setup code.
 3. When it needs to make a judgment call, it requests `eval(brief-path, request)`.
 4. Omnia routes this to the configured model backend.
-5. The model reads the brief and lazily pulls in any supporting references it needs.
+5. The model reads the brief and lazily pulls in any supporting references it needs. For a `build`, a filesystem-capable backend also reads existing code and writes its changes through the working tree's node-local path.
 6. The model returns its answer. Omnia validates that it matches the expected type and hands it back to the target guest.
 7. The guest uses this typed result to decide what to do next (loop, validate, or make another `eval` call).
-8. Finally, the guest returns a typed `build-report`, and Omnia handles the lifecycle transition.
+8. Finally, the guest captures the working tree's mutations as a content-addressed `change-set`, returns a typed report carrying it, and Omnia handles the lifecycle transition.
 
 In short: control moves *into* guests via exports, effects flow *up* to Omnia, judgment is handled by a swappable backend, and references are loaded lazily. 
 
@@ -146,11 +146,22 @@ This setup enables progressive optimisation. As a specific transformation become
 
 Guests are stateless and instance-per-call, so anything that must outlive a single call lives in a host service, not in guest memory. These are the *deterministic* effects — the counterpart to the judgment backend above — and each is satisfied by a swappable backend the guest never sees:
 
-- **Filesystem** (`wasi:filesystem/preopens`): Access to the project tree and assets through standard WASI filesystem preopens, restricted by the host.
+- **Filesystem** (`wasi:filesystem`): Access to inputs, assets, and the project tree through standard WASI filesystem capabilities, restricted by the host. For an operation that mutates a pre-existing tree — notably `build` — the project tree is handed over as a [working tree](#the-working-tree) capability rather than a bare path.
 - **`state`**: Host-held scratch and memoization (e.g., caching a computed reference). uses KeyValue interface backed locally by filesystem, or Redis/NATS for fleet-shared state.
 - **`journal`**: The durable lifecycle log and its legal moves. Uses `JsonStore` backed by a filesystem backend.
 
 Because guests only interact with typed interfaces (like `KeyValue` or `wasi:filesystem`), the deployment topology is dictated entirely by the host backends. A local CLI binary wires these interfaces to the local filesystem. A cloud deployment wires the exact same interfaces to cloud-native infrastructure (like S3 for `wasi:filesystem` and Redis for `state`). The Specify Wasm components do not change.
+
+### The working tree
+
+A `build` does not generate into a green field — it generates a slice *into a pre-existing project*, reading existing code and conventions and writing changes back in place. The original contract leaked this as a `project-path` string: a single local path that the guest, the model backend, and core all assumed they shared. That assumption is the one thing that pins an operation to a single machine, so the contract models the tree as a host-materialized **working tree** capability instead of a path.
+
+The host materializes the tree from a content-addressed **base revision** (a git commit, in the git backend) onto whichever node runs the operation — a local clone on a desktop, a fresh checkout or snapshot on a cluster node. The capability exposes two deliberately different faces:
+
+- **A `wasi:filesystem` descriptor**, for deterministic guest (Wasm) code that reads or validates the tree through capability-scoped handles.
+- **An optional node-local path** (`local-path`), for the one consumer that cannot hold a descriptor: the filesystem-capable `eval` backend (the agent), which reads existing code and writes its changes through real OS paths. An absent path means no real local tree exists on this node, so an agent-driven build is unavailable there — a clean capability signal rather than a deep failure.
+
+This is the honest seam. The agent's read-modify-write loop is irreducibly node-local and path-based, so it is not abstracted away — it is *quarantined* between two portable boundaries: a host-materialized tree on the way in, and a content-addressed **change-set** (a delta of adds, modifies, and deletes against the base revision) on the way out. The messy local mutation is confined to one node's scratch space, while what crosses the contract — to a `merge` that may run on a different node — is the change-set, never a shared mount. This is what lets `build` and `merge` be dispatched to different nodes in a cluster. Git already provides exactly this content-addressing (commit ids, cheap diffs, a merge model), so it is the natural first backend without the contract ever naming a VCS.
 
 ### Journalling progress
 

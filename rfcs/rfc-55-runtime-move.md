@@ -40,7 +40,7 @@ The runtime is a separate project, so this RFC is genuinely two coordinated halv
 
 `omnia <guest>.wasm <args…>` instantiates a fresh guest instance, forwards the remaining arguments for the guest to interpret, and satisfies the guest's effect imports from the backends bound for this deployment:
 
-- **Data / lifecycle** — backed by real host services over the project tree and the lifecycle store, replacing the handoff/CLI scaffolding RFC-52 stood up.
+- **Data / lifecycle** — backed by real host services over the project tree and the lifecycle store, replacing the handoff/CLI scaffolding RFC-52 stood up. The data backend is what materializes the `working-tree` an operation edits — a local clone on a desktop, a fresh checkout or snapshot on a cluster node — so the content-addressed `change-set` an operation returns (RFC-52) is what distributes between `build` and `merge`, not a shared mount.
 - **`kv`** — backed by filesystem locally, Redis / NATS when a fleet shares state; this is where `resolve` memoizes computed references and where any deterministic sub-result is cached.
 - **`eval`** — bound to whatever backend the deployment selects; the replay stub suffices until [RFC-56](rfc-56-eval-fleet.md).
 

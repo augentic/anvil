@@ -1,6 +1,8 @@
 package augentic:specify@0.1.0;
 
 interface types {
+  use wasi:filesystem/types@0.2.0.{ descriptor };
+
   /// The error returned by operations.
   variant error {
     invalid-request(string),
@@ -8,13 +10,61 @@ interface types {
     internal(string)
   }
 
-  // /// The project configuration.
-  // record configuration {
-  //   project-name: string,
-  //   target-ref: string,
-  //   platforms: list<string>,
-  //   workspace: bool,
-  // }
+  /// A node-independent, content-addressed reference. The guest cannot
+  /// dereference it directly; reads/writes go through host imports.
+  resource artifact {
+    /// Stable identity for caching, dedup, and replay across nodes.
+    digest: func() -> string;   // e.g. "sha256: …"
+  }
+
+  /// A content-addressed snapshot identity (a git commit oid in the git
+  /// backend). Portable: it names a build's starting point independently of
+  /// which node the working tree was materialized on.
+  record revision {
+    /// The snapshot's stable identity (e.g. "sha256: …" or a git oid).
+    digest: string,
+  }
+
+  /// One path-scoped edit, relative to a working tree's root. A present
+  /// `content` is an add or a modify; an absent `content` is a delete.
+  record edit {
+    /// The edited file's path, relative to the working tree root.
+    path: string,
+    /// The new content as a content-addressed handle, or absent for a deletion.
+    content: option<artifact>,
+  }
+
+  /// How a build changed a working tree, relative to `base`. This is the
+  /// portable unit that crosses nodes to `merge` — never a shared mount.
+  record change-set {
+    /// The revision the edits apply against.
+    base: revision,
+    /// The per-path edits the build produced.
+    edits: list<edit>,
+  }
+
+  /// A host-materialized, mutable project tree that an operation works
+  /// *within*. It replaces the bare project path: the host materializes the
+  /// tree from a base `revision` onto whichever node runs the operation, so the
+  /// contract no longer assumes one globally shared disk. It exposes two
+  /// deliberately different faces — a capability-scoped `descriptor` for guest
+  /// (wasm) code, and an optional node-local `local-path` for a
+  /// filesystem-capable `eval` backend (the agent), the one consumer that
+  /// cannot hold a `descriptor` and must read and write through real OS paths.
+  resource working-tree {
+    /// The revision the tree was materialized from.
+    base: func() -> revision;
+    /// A capability-scoped directory handle for guest reads/writes via
+    /// wasi:filesystem.
+    root: func() -> descriptor;
+    /// The node-local filesystem path of the materialized tree, for handing to
+    /// a filesystem-capable `eval` backend (the agent). `none` means no real
+    /// local tree exists on this node, so agent-driven operations are
+    /// unavailable here.
+    local-path: func() -> option<string>;
+    /// Capture the in-place mutations as a portable delta against `base`.
+    changes: func() -> result<change-set, error>;
+  }
 }
 
 interface source {
@@ -77,24 +127,30 @@ interface source {
 
 /// The target adapter contract.
 interface target {
-  use types.{ error };
+  use types.{ artifact, change-set, error, working-tree };
 
-  enum input {
-    proposal,
-    design,
-    tasks,
-    specs,
-    other,
+  /// The types of inputs to use when building a slice.
+  variant input {
+    /// The proposal document for the slice.
+    proposal(artifact),
+    /// The design document for the slice.
+    design(artifact),
+    /// The tasks document for the slice.
+    tasks(artifact),
+    /// The spec document for the slice.
+    spec(artifact),
+    /// Other input.
+    other(artifact),
   }
 
-  /// Request to build a slice.
+  /// Request to build a slice. The mutable project tree is not named here: it
+  /// is handed to `build` separately as a `working-tree` capability, leaving
+  /// this request as pure, node-independent data.
   record build-request {
     /// The slice being built.
     slice: string,
-    /// The project directory for the slice.
-    project-dir: string,
-    /// The inputs for the slice.
-    inputs: list<tuple<input, string>>,
+    /// The read-only inputs (Specify artifacts) to build the slice from.
+    inputs: list<input>,
   }
 
   /// The severity of a finding.
@@ -121,26 +177,32 @@ interface target {
   }
 
   /// The report returned by the build operation.
-  record build-report {
+  record report {
     /// The status of the operation.
     status: status,
     /// The findings from the operation.
     findings: list<finding>,
+    /// The build's result as a portable delta (add / modify / delete) against
+    /// the working tree's base revision.
+    changes: change-set,
   }
 
   /// Request to merge a built slice into the project's codebase.
   record merge-request {
     /// The slice being merged.
     slice: string,
+    /// The change-set to apply, against `change-set.base`.
+    changes: change-set,
   }
 
-  /// Request to target adapter to get guidance on providing the build artifacts expected by
-  /// the adapter. The returned guidance is prose describing the build artifacts expected by the
-  /// adapter.
+  /// Request to target adapter to get guidance on the expected build artifacts for a slice.
+  /// The returned guidance is prose describing the build artifacts expected for the slice.
   guidance: func() -> result<string, error>;
 
-  /// Build a slice.
-  build: func(req: build-request) -> result<build-report, error>;
+  /// Build a slice within a host-materialized working tree. The tree is lent
+  /// (borrowed) for the call; the operation reads existing code through it and
+  /// returns its mutations as the report's `change-set`.
+  build: func(req: build-request, tree: borrow<working-tree>) -> result<report, error>;
 
   /// Merge a built slice into the project's codebase.
   merge: func(req: merge-request) -> result<_, error>;
@@ -152,10 +214,14 @@ world source-adapter {
 }
 
 world target-adapter {
+  // The working-tree capability exposes a wasi:filesystem descriptor; the guest
+  // needs the import to call its methods.
+  import wasi:filesystem/types@0.2.0;
   export target;
 }
 
 world workflow {
+  import wasi:filesystem/types@0.2.0;
   import target;
   import source;
 
