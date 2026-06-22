@@ -23,7 +23,7 @@ RFC-56 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 - The **`ReferenceResolver` callback** the host exposes to a backend — the host side of `resolve`, including the fresh-instance path for *computed* references and KV memoization.
 - **Per-deployment backend binding/selection** (one backend per host), reusing Omnia's existing host-service backend-selection mechanism.
 - The **dispatch primitive**: guest `eval` call → bound backend → typed result handed back for the guest to validate.
-- The generic **host capabilities** a backend may need under deployment policy (subprocess spawn, network egress, filesystem read) — granted brain-agnostically.
+- The generic **host capabilities** a backend may need under deployment policy (subprocess spawn, network egress, filesystem read — including the active operation's working-tree root, provisioned to a filesystem-capable backend per [RFC-55](rfc-55-working-tree.md)) — granted brain-agnostically.
 - Forward-compatible (but not required) **async/streaming** host plumbing.
 
 ### Non-goals
@@ -64,10 +64,20 @@ pub trait ModelBackend: Send + Sync {
     /// a non-filesystem backend resolves references through `refs`. Returns
     /// the report's JSON projection; the host hands it back to the guest,
     /// which validates it against the operation's report type.
+    ///
+    /// `tree_root` carries the active operation's working tree over the same
+    /// native-path channel as `brief_path`: the node-local path the host
+    /// already holds for the `descriptor` it lent `build` / `merge` (RFC-55).
+    /// A filesystem-capable backend (the agent) reads and writes the tree
+    /// through it; `None` means no disk-backed tree on this node, so
+    /// agent-driven operations are unavailable here (the RFC-52 `local-path`
+    /// gate). The `descriptor` never reaches the backend — the host, the one
+    /// party holding both faces, resolves the path on the agent's behalf.
     fn eval(
         &self,
         brief_path: &Utf8Path,
         request: &str,
+        tree_root: Option<&Utf8Path>,
         refs: &dyn ReferenceResolver,
     ) -> Result<String, ModelError>;
 }
@@ -80,14 +90,14 @@ pub trait ReferenceResolver {
 }
 ```
 
-Omnia binds exactly one `Box<dyn ModelBackend>` per deployment, selected by config — the Specify **model service** for real work, or the **replay stub** for CI — the same selection mechanism that already swaps an in-memory KV for Redis. When a guest calls the imported `eval` interface, the host adapter forwards to the bound backend, passing a `ReferenceResolver` wired to Omnia's data/KV host services and the fresh-instance path for computed refs. **The fleet lives inside the Specify backend** ([RFC-57](rfc-57-eval-fleet.md)): Omnia sees one backend and honours one-backend-per-host; the router fans out *within* it.
+Omnia binds exactly one `Box<dyn ModelBackend>` per deployment, selected by config — the Specify **model service** for real work, or the **replay stub** for CI — the same selection mechanism that already swaps an in-memory KV for Redis. When a guest calls the imported `eval` interface, the host adapter forwards to the bound backend, passing the active operation's working-tree root (`tree_root`, when the bound backend is filesystem-capable) and a `ReferenceResolver` wired to Omnia's data/KV host services and the fresh-instance path for computed refs. **The fleet lives inside the Specify backend** ([RFC-57](rfc-57-eval-fleet.md)): Omnia sees one backend and honours one-backend-per-host; the router fans out *within* it.
 
 ## Decisions to record (open until reviewed)
 
 - **Trait shape & async.** Whether `ModelBackend::eval` is sync (baseline) with an async variant gated behind streaming/concurrency (mirrors the architecture's narrowed-async bet), and whether the contract is a native Rust trait in Omnia or itself a WIT-component boundary.
 - **`ReferenceResolver` surface.** Exactly what it exposes (load-by-id; brief-path resolution?), and how a *computed*-ref re-entry is scheduled onto a fresh guest instance.
 - **Backend registration mechanism.** How a Specify backend is selected/registered at deployment (config key, plugin discovery, or compiled-in), reusing Omnia's host-service selection.
-- **Capability exposure.** Which generic host capabilities (subprocess spawn for the agent backend, network egress for the API backend, filesystem read) the model host grants, and the per-deployment policy that governs them.
+- **Capability exposure.** Which generic host capabilities (subprocess spawn for the agent backend, network egress for the API backend, filesystem read) the model host grants, and the per-deployment policy that governs them. Filesystem read in particular carries the active operation's **working-tree root** to a filesystem-capable backend over the same native-path channel as `brief_path` (`tree_root`): the host — the one party holding both the lent `descriptor` and the node-local path behind it — resolves the path on the agent's behalf, since a `wasi:filesystem` `descriptor` is opaque (no descriptor→path operation) and a subprocess agent cannot hold one. A `none` root is the [RFC-52](rfc-52-effect.md) `local-path` gate: no disk-backed tree on this node, so agent-driven operations are unavailable here.
 - **Recording seam.** Whether Omnia provides a generic record/replay *wrapper* around any backend (so any backend is recordable, consumed by RFC-52's replay backend) or recording is each backend's concern. Leaning: host-level wrapper.
 - **Error taxonomy.** The `ModelError` shape and how it maps onto the WIT `error` Specify guests see.
 - **Cross-repo versioning.** How the Omnia-owned trait and the Specify-owned `eval` WIT are versioned so neither repo blocks the other.

@@ -1,8 +1,6 @@
-package augentic:specify@0.1.0;
+package augentic:specify@0.2.0;
 
 interface types {
-  use wasi:filesystem/types@0.2.0.{ descriptor };
-
   /// The error returned by operations.
   variant error {
     invalid-request(string),
@@ -43,28 +41,11 @@ interface types {
     edits: list<edit>,
   }
 
-  /// A host-materialized, mutable project tree that an operation works
-  /// *within*. It replaces the bare project path: the host materializes the
-  /// tree from a base `revision` onto whichever node runs the operation, so the
-  /// contract no longer assumes one globally shared disk. It exposes two
-  /// deliberately different faces — a capability-scoped `descriptor` for guest
-  /// (wasm) code, and an optional node-local `local-path` for a
-  /// filesystem-capable `eval` backend (the agent), the one consumer that
-  /// cannot hold a `descriptor` and must read and write through real OS paths.
-  resource working-tree {
-    /// The revision the tree was materialized from.
-    base: func() -> revision;
-    /// A capability-scoped directory handle for guest reads/writes via
-    /// wasi:filesystem.
-    root: func() -> descriptor;
-    /// The node-local filesystem path of the materialized tree, for handing to
-    /// a filesystem-capable `eval` backend (the agent). `none` means no real
-    /// local tree exists on this node, so agent-driven operations are
-    /// unavailable here.
-    local-path: func() -> option<string>;
-    /// Capture the in-place mutations as a portable delta against `base`.
-    changes: func() -> result<change-set, error>;
-  }
+  // The working tree is no longer a typed resource. The host materializes it
+  // via a custom git-aware `wasi:filesystem` backend and lends `build`/`merge`
+  // a borrowed `descriptor` (`root`) plus the `base: revision` value; the
+  // caller's native orchestration layer extracts the `change-set` and
+  // provisions the agent's node-local path out of band. See RFC-51 / RFC-55.
 }
 
 interface source {
@@ -128,7 +109,8 @@ interface source {
 
 /// The target adapter contract.
 interface target {
-  use types.{ change-set, error, working-tree };
+  use types.{ change-set, error, revision };
+  use wasi:filesystem/types@0.2.0.{ descriptor };
 
   /// Types of inputs used to build a slice.
   variant input {
@@ -137,6 +119,11 @@ interface target {
     tasks(string),
     spec(string),
     other(string),
+  }
+
+  record working-tree {
+    base: revision,
+    root: descriptor,
   }
 
   /// The severity of a finding.
@@ -177,20 +164,23 @@ interface target {
   /// artifacts expected for the slice.
   guidance: func() -> result<string, error>;
 
-  /// Build a slice within a host-materialized working tree. The tree is lent
-  /// (borrowed) for the call; the operation reads existing code through it and
-  /// writes its changes in place. The report carries only judgment; the caller
-  /// extracts the resulting delta from the tree via `working-tree.changes()`.
-  build: func(slice: string, inputs: list<input>, tree: borrow<working-tree>) -> result<report, error>;
+  /// Build a slice within a host-materialized working tree. `root` is a
+  /// borrowed `wasi:filesystem` directory handle the host opens over the tree
+  /// it materialized from `base` (via the custom git-aware backend, RFC-55);
+  /// the operation reads existing code through it and writes its changes in
+  /// place. The report carries only judgment; the caller's native orchestration
+  /// layer extracts the resulting delta as a `change-set` against `base`, so
+  /// neither the delta nor a tree resource crosses this boundary.
+  build: func(slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
   /// Merge a built slice into the project's codebase. `delta` is the build's
-  /// portable delta (theirs); `tree` is the baseline working tree (ours) it is
-  /// folded into in place — a 3-way merge against `delta.base`. The agent
-  /// resolves conflicts through the tree's `local-path` and validators re-run
-  /// through its `descriptor`; the report carries the merge judgment. The
-  /// merged baseline is the tree's new state, committed by the caller.
-  merge: func(slice: string, delta: change-set, tree: borrow<working-tree>) -> result<report, error>;
-
+  /// portable delta (theirs); `root` is a borrowed `wasi:filesystem` handle
+  /// over the baseline tree (ours, materialized from `base`) folded into in
+  /// place — a 3-way merge against `delta.base`. The agent resolves conflicts
+  /// through the node-local path the host provisions for the `eval` backend
+  /// (no longer a typed method) and validators re-run through `root`; the report
+  /// carries the merge judgment. The caller commits the merged baseline.
+  merge: func(slice: string, delta: change-set, tree: working-tree) -> result<report, error>;
 }
 
 world source-adapter {
