@@ -20,8 +20,6 @@ mod decisions;
 mod design_system_parts;
 #[path = "goldens.rs"]
 mod goldens;
-#[path = "materialize_scope.rs"]
-mod materialize_scope;
 #[path = "merge_composition.rs"]
 mod merge_composition;
 #[path = "merge_slice.rs"]
