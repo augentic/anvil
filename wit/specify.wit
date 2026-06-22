@@ -36,12 +36,20 @@ interface types {
     /// The per-path edits the build produced.
     edits: list<edit>,
   }
+}
 
-  // The working tree is no longer a typed resource. The host materializes it
-  // via a custom git-aware `wasi:filesystem` backend and lends `build`/`merge`
-  // a borrowed `descriptor` (`root`) plus the `base: revision` value; the
-  // caller's native orchestration layer extracts the `changeset` and
-  // provisions the agent's node-local path out of band. See RFC-51 / RFC-55.
+/// A reference resolver for use by an agent's tool loop.
+interface references {
+  use types.{ error };
+
+  /// A reference id: the brief-relative link target a brief points at
+  /// (e.g. "../references/business-logic.md"). Same id space as RFC-59's
+  /// `handle`; the host normalizes it before calling.
+  type reference = string;
+
+  /// Resolve one references reference to its bytes. Pure and stateless —
+  /// instance-per-call, no session.
+  resolve: func(id: reference) -> result<list<u8>, error>;
 }
 
 interface source {
@@ -177,14 +185,17 @@ interface target {
 
 world source-adapter {
   export source;
+  export references;
 }
 
 world target-adapter {
   export target;
+  export references;
 }
 
 world workflow {
   import target;
   import source;
+  import references;
 }
 
