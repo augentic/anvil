@@ -1,6 +1,6 @@
-# RFC-56: The eval Fleet — Dispatch, Router, and Frontier Backends
+# RFC-57: The eval Fleet — Dispatch, Router, and Frontier Backends
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (the model fleet) · Depends: RFC-52 (the `eval` interface + replay backend) · Parallel to: RFC-53 / RFC-55 (needs only the seam, not the runtime move) · Plugs into: [RFC-54](rfc-54-model-host.md) (the Omnia model-host backend contract) · Enables: [RFC-18](future/rfc-18-slm.md) (the SLM fleet member)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (the model fleet) · Depends: RFC-52 (the `eval` interface + replay backend) · Parallel to: RFC-53 / RFC-56 (needs only the seam, not the runtime move) · Plugs into: [RFC-54](rfc-54-model-host.md) (the Omnia model-host backend contract) · Enables: [RFC-18](future/rfc-18-slm.md) (the SLM fleet member)
 
 ## Abstract
 

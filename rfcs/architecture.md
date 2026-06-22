@@ -106,14 +106,14 @@ In this approach, guest-to-guest calls are resolved inside the Wasm sandbox with
 
 Let's look at how a `build` operation flows in practice. (Note that in this logical view, every step is an Omnia invocation running either Wasm or a model backend).
 
-1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(build-request, working-tree)`). The host materializes the slice's [working tree](#the-working-tree) from a base revision and lends it to the operation; the `build-request` itself stays pure, node-independent data.
+1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(slice, inputs, working-tree)`). The host materializes the slice's [working tree](#the-working-tree) from a base revision and lends it to the operation; the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
 2. The target guest runs its deterministic setup code.
 3. When it needs to make a judgment call, it requests `eval(brief-path, request)`.
 4. Omnia routes this to the configured model backend.
 5. The model reads the brief and lazily pulls in any supporting references it needs. For a `build`, a filesystem-capable backend also reads existing code and writes its changes through the working tree's node-local path.
 6. The model returns its answer. Omnia validates that it matches the expected type and hands it back to the target guest.
 7. The guest uses this typed result to decide what to do next (loop, validate, or make another `eval` call).
-8. Finally, the guest captures the working tree's mutations as a content-addressed `change-set`, returns a typed report carrying it, and Omnia handles the lifecycle transition.
+8. Finally, the guest returns a typed report carrying only its judgment (status and findings); the caller extracts the resulting mutations from the working tree as a content-addressed `change-set` (via `working-tree.changes()`), and Omnia handles the lifecycle transition.
 
 In short: control moves *into* guests via exports, effects flow *up* to Omnia, judgment is handled by a swappable backend, and references are loaded lazily. 
 
@@ -161,7 +161,7 @@ The host materializes the tree from a content-addressed **base revision** (a git
 - **A `wasi:filesystem` descriptor**, for deterministic guest (Wasm) code that reads or validates the tree through capability-scoped handles.
 - **An optional node-local path** (`local-path`), for the one consumer that cannot hold a descriptor: the filesystem-capable `eval` backend (the agent), which reads existing code and writes its changes through real OS paths. An absent path means no real local tree exists on this node, so an agent-driven build is unavailable there — a clean capability signal rather than a deep failure.
 
-This is the honest seam. The agent's read-modify-write loop is irreducibly node-local and path-based, so it is not abstracted away — it is *quarantined* between two portable boundaries: a host-materialized tree on the way in, and a content-addressed **change-set** (a delta of adds, modifies, and deletes against the base revision) on the way out. The messy local mutation is confined to one node's scratch space, while what crosses the contract — to a `merge` that may run on a different node — is the change-set, never a shared mount. This is what lets `build` and `merge` be dispatched to different nodes in a cluster. Git already provides exactly this content-addressing (commit ids, cheap diffs, a merge model), so it is the natural first backend without the contract ever naming a VCS.
+This is the honest seam. The agent's read-modify-write loop is irreducibly node-local and path-based, so it is not abstracted away — it is *quarantined* between two portable boundaries: a host-materialized tree on the way in, and a content-addressed **change-set** (a delta of adds, modifies, and deletes against the base revision) on the way out. Neither operation *returns* that delta: the report carries only judgment (status and findings), and the caller extracts the change-set from the tree via `working-tree.changes()`. The two target operations then use the capability symmetrically — `build` is lent the slice's tree and the caller extracts its delta, while `merge` is lent the *baseline* tree and folds a change-set (the build's output, the only representation portable enough to have crossed from another node) into it in place. The messy local mutation is confined to one node's scratch space, while what crosses the contract is the change-set, never a shared mount — which is what lets `build` and `merge` be dispatched to different nodes in a cluster. Git already provides exactly this content-addressing (commit ids, cheap diffs, a merge model), so it is the natural first backend without the contract ever naming a VCS. The materialization mechanism itself — `slice → revision` resolution, object-store checkout, and out-of-sequence dependency-layering — is specified in [RFC-55](rfc-55-working-tree.md).
 
 ### Journalling progress
 

@@ -129,28 +129,13 @@ interface source {
 interface target {
   use types.{ artifact, change-set, error, working-tree };
 
-  /// The types of inputs to use when building a slice.
+  /// Types of inputs used to build a slice.
   variant input {
-    /// The proposal document for the slice.
     proposal(artifact),
-    /// The design document for the slice.
     design(artifact),
-    /// The tasks document for the slice.
     tasks(artifact),
-    /// The spec document for the slice.
     spec(artifact),
-    /// Other input.
     other(artifact),
-  }
-
-  /// Request to build a slice. The mutable project tree is not named here: it
-  /// is handed to `build` separately as a `working-tree` capability, leaving
-  /// this request as pure, node-independent data.
-  record build-request {
-    /// The slice being built.
-    slice: string,
-    /// The read-only inputs (Specify artifacts) to build the slice from.
-    inputs: list<input>,
   }
 
   /// The severity of a finding.
@@ -176,23 +161,14 @@ interface target {
     failure,
   }
 
-  /// The report returned by the build operation.
+  /// Judgment returned by the `build` and `merge` operations. The resulting
+  /// state — a build's delta, or the merged baseline — lives in the working
+  /// tree, not in this report.
   record report {
     /// The status of the operation.
     status: status,
     /// The findings from the operation.
     findings: list<finding>,
-    /// The build's result as a portable delta (add / modify / delete) against
-    /// the working tree's base revision.
-    changes: change-set,
-  }
-
-  /// Request to merge a built slice into the project's codebase.
-  record merge-request {
-    /// The slice being merged.
-    slice: string,
-    /// The change-set to apply, against `change-set.base`.
-    changes: change-set,
   }
 
   /// Request to target adapter to get guidance on the expected build artifacts for a slice.
@@ -201,11 +177,17 @@ interface target {
 
   /// Build a slice within a host-materialized working tree. The tree is lent
   /// (borrowed) for the call; the operation reads existing code through it and
-  /// returns its mutations as the report's `change-set`.
-  build: func(req: build-request, tree: borrow<working-tree>) -> result<report, error>;
+  /// writes its changes in place. The report carries only judgment; the caller
+  /// extracts the resulting delta from the tree via `working-tree.changes()`.
+  build: func(slice: string, inputs: list<input>, tree: borrow<working-tree>) -> result<report, error>;
 
-  /// Merge a built slice into the project's codebase.
-  merge: func(req: merge-request) -> result<_, error>;
+  /// Merge a built slice into the project's codebase. `changes` is the build's
+  /// portable delta (theirs); `tree` is the baseline working tree (ours) it is
+  /// folded into in place — a 3-way merge against `changes.base`. The agent
+  /// resolves conflicts through the tree's `local-path` and validators re-run
+  /// through its `descriptor`; the report carries the merge judgment. The
+  /// merged baseline is the tree's new state, committed by the caller.
+  merge: func(slice: string, delta: change-set, tree: borrow<working-tree>) -> result<report, error>;
 
 }
 

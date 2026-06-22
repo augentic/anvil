@@ -1,10 +1,10 @@
-# RFC-57: Workflow and Development as Guests (Stage 4 — The Thin Interpreter)
+# RFC-58: Workflow and Development as Guests (Stage 4 — The Thin Interpreter)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — guests) · Depends: [RFC-55](rfc-55-runtime-move.md) (the Omnia runtime move), RFC-53 (orchestration components proven on the adapter axis) · Per-phase compile-vs-delegate: **gated on RFC-53 data**
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — guests) · Depends: [RFC-56](rfc-56-runtime-move.md) (the Omnia runtime move), RFC-53 (orchestration components proven on the adapter axis) · Per-phase compile-vs-delegate: **gated on RFC-53 data**
 
 ## Abstract
 
-Once [RFC-55](rfc-55-runtime-move.md) has put the generic runtime under everything, two first-party concerns still run *beside* it rather than *on* it: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the framework's own **development tooling** (authoring and standards checks). This RFC moves both onto the runtime as guests, so the architecture's "everything is a guest" claim becomes literally true and the runtime is the thin interpreter the stage title names. The workflow move is where the one genuinely contested decision lives — *how much* of each phase compiles into the guest versus stays agent-driven behind `eval` — and that per-phase compile-vs-delegate call is what this RFC exists to gate with data from RFC-53. The development-guest move is the mechanical tail.
+Once [RFC-56](rfc-56-runtime-move.md) has put the generic runtime under everything, two first-party concerns still run *beside* it rather than *on* it: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the framework's own **development tooling** (authoring and standards checks). This RFC moves both onto the runtime as guests, so the architecture's "everything is a guest" claim becomes literally true and the runtime is the thin interpreter the stage title names. The workflow move is where the one genuinely contested decision lives — *how much* of each phase compiles into the guest versus stays agent-driven behind `eval` — and that per-phase compile-vs-delegate call is what this RFC exists to gate with data from RFC-53. The development-guest move is the mechanical tail.
 
 ## Motivation (and the case against)
 
@@ -14,13 +14,13 @@ Once [RFC-55](rfc-55-runtime-move.md) has put the generic runtime under everythi
 
 ## Scope
 
-**In scope:** running the workflow as a guest on the RFC-55 runtime; per-phase expression of one or more workflow phases as effect-driven orchestration; the boundary between runtime-owned deterministic transitions and guest-owned sequencing; what becomes of skill markdown; and moving the framework's development / standards tooling onto the runtime as a guest.
+**In scope:** running the workflow as a guest on the RFC-56 runtime; per-phase expression of one or more workflow phases as effect-driven orchestration; the boundary between runtime-owned deterministic transitions and guest-owned sequencing; what becomes of skill markdown; and moving the framework's development / standards tooling onto the runtime as a guest.
 
 ### Non-goals
 
 - **No lifecycle authority moves into the guest.** `transition` / `journal` / lock ownership stay in the runtime's deterministic lifecycle host service (roadmap principle: "Keep the CLI authoritative" — the authority stays on the deterministic floor, not in a model-driven guest); the workflow guest *requests* transitions as effects, it does not own them.
 - **No removal of operator adaptability.** Phases that are primarily judgment / recovery stay agent-driven behind `eval`.
-- **No runtime engineering.** The generic binary, the effect backends, instance-per-call — all of that is [RFC-55](rfc-55-runtime-move.md); this RFC consumes it.
+- **No runtime engineering.** The generic binary, the effect backends, instance-per-call — all of that is [RFC-56](rfc-56-runtime-move.md); this RFC consumes it.
 
 ## The model (sketch)
 
@@ -42,14 +42,14 @@ The framework's own authoring and standards tooling — `specify lint framework`
 
 ## Phased plan (per-phase, gated)
 
-1. Run the workflow as a guest on the RFC-55 runtime with **every** phase still agent-driven behind `eval` — the no-compile baseline that proves the move without ossifying anything.
+1. Run the workflow as a guest on the RFC-56 runtime with **every** phase still agent-driven behind `eval` — the no-compile baseline that proves the move without ossifying anything.
 2. Pick one phase whose value is dominated by deterministic sequencing; express it as orchestration over effects with the runtime still owning transitions.
 3. Add whole-phase record/replay; compare operator ergonomics against the prose skill it replaces.
 4. Decide — with that evidence — whether to generalize, stop, or revert; move the development tooling onto the runtime if and when it earns the change.
 
 ## Acceptance criteria
 
-1. The workflow runs as a guest on the RFC-55 runtime; the bespoke driver is gone.
+1. The workflow runs as a guest on the RFC-56 runtime; the bespoke driver is gone.
 2. The no-compile baseline holds: every phase is reachable behind `eval`, with lifecycle authority still in the runtime.
 3. Any graduated phase runs as effect-driven orchestration with whole-phase record/replay, and the runtime retains sole lifecycle authority.
 4. The per-layer line is respected — adaptive phases remain agent-driven; only deterministic-sequencing phases graduate.
@@ -60,4 +60,4 @@ The framework's own authoring and standards tooling — `specify lint framework`
 
 - **Ossifying the fluid.** The chief risk is encoding adaptive, recovery-heavy orchestration as rigid control flow. The "against" case is the guard; if a phase needs the model's judgment to sequence, it does not belong here.
 - **Lifecycle authority.** Authority must not migrate into guests, services, or skills (roadmap Non-Goal); it stays in the runtime's lifecycle host service.
-- **Per-phase deferral is the default.** The runtime move (RFC-55) is committed, but absent a clear trigger and owner *no individual phase compiles* — each stays agent-driven behind `eval` until its case is made. RFC-53 is the last unconditional stage; graduating a workflow phase past it is opt-in and evidence-gated, not the architecture's stopping point.
+- **Per-phase deferral is the default.** The runtime move (RFC-56) is committed, but absent a clear trigger and owner *no individual phase compiles* — each stays agent-driven behind `eval` until its case is made. RFC-53 is the last unconditional stage; graduating a workflow phase past it is opt-in and evidence-gated, not the architecture's stopping point.

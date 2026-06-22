@@ -1,6 +1,6 @@
-# RFC-55: The Omnia Runtime Move (Stage 4 — Retire the Bespoke Host)
+# RFC-56: The Omnia Runtime Move (Stage 4 — Retire the Bespoke Host)
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Absorbs from RFC-51: the component-on-both-axes mandate · Cross-repo: pairs with the Omnia model host ([RFC-54](rfc-54-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Gates: [RFC-57](rfc-57-specify-guests.md) (workflow and development as guests)
+> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — runtime) · Depends: RFC-52 (effect interfaces), sequenced after RFC-53 (orchestration proven on the adapter axis) · Absorbs from RFC-51: the component-on-both-axes mandate · Cross-repo: pairs with the Omnia model host ([RFC-54](rfc-54-model-host.md)) in [augentic/omnia](https://github.com/augentic/omnia) · Binds: the working-tree data backend ([RFC-55](rfc-55-working-tree.md)) · Gates: [RFC-58](rfc-58-specify-guests.md) (workflow and development as guests)
 
 ## Abstract
 
@@ -14,16 +14,16 @@ After RFC-52 the effects are typed and mockable but still satisfied by the old h
 - **Statelessness is not yet load-bearing.** Instance-per-call execution and host-held KV state are what make the runtime horizontally trivial; today's host does not enforce them.
 - **Deployment modes are not yet "just backend swaps."** They become swaps only once the host-service surface — including `eval` — is the single seam every backend plugs into.
 
-This RFC is the engineering behind the architecture's "Omnia as the runtime — committed" bet. It is deliberately *not* the model fleet (that is [RFC-56](rfc-56-eval-fleet.md)) and *not* the workflow-as-guest move (that is [RFC-57](rfc-57-specify-guests.md)); it is the floor both of those stand on.
+This RFC is the engineering behind the architecture's "Omnia as the runtime — committed" bet. It is deliberately *not* the model fleet (that is [RFC-57](rfc-57-eval-fleet.md)) and *not* the workflow-as-guest move (that is [RFC-58](rfc-58-specify-guests.md)); it is the floor both of those stand on.
 
 ## Scope
 
-**In scope:** the generic `omnia <guest>.wasm <args…>` invocation surface and guest selection; instance-per-call execution; the real host-service backends for the deterministic effects (data, `kv`, lifecycle); the `kv` backend set (filesystem · Redis · NATS) that holds what stateless guests cannot; binding one backend per host per deployment; retiring the bespoke `specify` wasm-host dispatch on the adapter axis; and the **component-on-both-axes mandate** (relocated from RFC-51) — every source and target adapter ships a WASM component implementing its axis world, co-packaged with its prose as one composite extension, ending the prose-only adapter now that guests are instantiated generically.
+**In scope:** the generic `omnia <guest>.wasm <args…>` invocation surface and guest selection; instance-per-call execution; the real host-service backends for the deterministic effects (data, `kv`, lifecycle) — with working-tree materialization, the data backend's substantial sub-contract, carved out to [RFC-55](rfc-55-working-tree.md); the `kv` backend set (filesystem · Redis · NATS) that holds what stateless guests cannot; binding one backend per host per deployment; retiring the bespoke `specify` wasm-host dispatch on the adapter axis; and the **component-on-both-axes mandate** (relocated from RFC-51) — every source and target adapter ships a WASM component implementing its axis world, co-packaged with its prose as one composite extension, ending the prose-only adapter now that guests are instantiated generically.
 
 ### Non-goals
 
-- **The model fleet is out of scope.** Real `eval` backends, the router, and the deployment topologies are [RFC-56](rfc-56-eval-fleet.md); this RFC only requires that `eval` is *a* host like the others (satisfied at minimum by the RFC-52 replay backend).
-- **The workflow guest is out of scope.** Moving `/spec:plan` / `/spec:execute` onto the runtime is [RFC-57](rfc-57-specify-guests.md); through this RFC the workflow may keep running on the legacy driver behind a shim.
+- **The model fleet is out of scope.** Real `eval` backends, the router, and the deployment topologies are [RFC-57](rfc-57-eval-fleet.md); this RFC only requires that `eval` is *a* host like the others (satisfied at minimum by the RFC-52 replay backend).
+- **The workflow guest is out of scope.** Moving `/spec:plan` / `/spec:execute` onto the runtime is [RFC-58](rfc-58-specify-guests.md); through this RFC the workflow may keep running on the legacy driver behind a shim.
 - **No adapter-orchestration redesign.** RFC-53's component orchestration is consumed unchanged; this RFC swaps the *host*, not the guests.
 - **No effect-vocabulary change.** The interfaces are RFC-52's; this RFC supplies their real backends.
 
@@ -40,9 +40,9 @@ The runtime is a separate project, so this RFC is genuinely two coordinated halv
 
 `omnia <guest>.wasm <args…>` instantiates a fresh guest instance, forwards the remaining arguments for the guest to interpret, and satisfies the guest's effect imports from the backends bound for this deployment:
 
-- **Data / lifecycle** — backed by real host services over the project tree and the lifecycle store, replacing the handoff/CLI scaffolding RFC-52 stood up. The data backend is what materializes the `working-tree` an operation edits — a local clone on a desktop, a fresh checkout or snapshot on a cluster node — so the content-addressed `change-set` an operation returns (RFC-52) is what distributes between `build` and `merge`, not a shared mount.
+- **Data / lifecycle** — backed by real host services over the project tree and the lifecycle store, replacing the handoff/CLI scaffolding RFC-52 stood up. The data backend (its contract is [RFC-55](rfc-55-working-tree.md)) is what materializes the `working-tree` an operation edits — a local clone on a desktop, a fresh checkout or snapshot on a cluster node — so the content-addressed `change-set` the caller extracts from it (RFC-52) is what distributes between `build` and `merge`, not a shared mount.
 - **`kv`** — backed by filesystem locally, Redis / NATS when a fleet shares state; this is where `resolve` memoizes computed references and where any deterministic sub-result is cached.
-- **`eval`** — bound to whatever backend the deployment selects; the replay stub suffices until [RFC-56](rfc-56-eval-fleet.md).
+- **`eval`** — bound to whatever backend the deployment selects; the replay stub suffices until [RFC-57](rfc-57-eval-fleet.md).
 
 Each call is a new instance (component instances are not re-entrant), so the `resolve` fallback that re-enters guest code for a *computed* reference lands in a fresh instance — the synchronous ABI closes the loop with no async machinery.
 
@@ -61,7 +61,7 @@ Each call is a new instance (component instances are not re-entrant), so the `re
 1. Stand up the generic `omnia <guest>.wasm` binary running one target-adapter guest, with real data + lifecycle backends replacing the RFC-52 handoff scaffolding (no behaviour change versus RFC-53).
 2. Add the `kv` host service + its backend set; route `resolve` memoization through it.
 3. Retire the bespoke `specify` wasm-host dispatch on the adapter axis; both axes now run via `omnia <guest>`.
-4. Leave the workflow on the legacy driver/shim until [RFC-57](rfc-57-specify-guests.md).
+4. Leave the workflow on the legacy driver/shim until [RFC-58](rfc-58-specify-guests.md).
 
 ## Acceptance criteria
 
