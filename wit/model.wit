@@ -2,11 +2,7 @@ package augentic:model@0.1.0;
 
 interface types {
   /// Errors that can occur during model operations.
-  variant error {
-    invalid-request(string),
-    io(string),
-    internal(string)
-  }
+  type error = string;
 }
 
 /// The marquee effect for executing a brief.

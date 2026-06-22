@@ -10,18 +10,14 @@ interface types {
 
   /// A node-independent, content-addressed reference. The guest cannot
   /// dereference it directly; reads/writes go through host imports.
-  record artifact {
-    /// Stable identity for caching, dedup, and replay across nodes, e.g. "sha256: …".
-    digest: string,
-  }
+  /// Stable identity for caching, dedup, and replay across nodes, e.g. "sha256: …".
+  type artifact = string;
 
   /// A content-addressed snapshot identity (a git commit oid in the git
   /// backend). Portable: it names a build's starting point independently of
   /// which node the working tree was materialized on.
-  record revision {
-    /// The snapshot's stable identity (e.g. "sha256: …" or a git oid).
-    digest: string,
-  }
+  /// The snapshot's stable identity (e.g. "sha256: …" or a git oid).
+  type revision = string;
 
   /// One path-scoped edit, relative to a working tree's root. A present
   /// `content` is an add or a modify; an absent `content` is a delete.
@@ -34,7 +30,7 @@ interface types {
 
   /// How a build changed a working tree, relative to `base`. This is the
   /// portable unit that crosses nodes to `merge` — never a shared mount.
-  record change-set {
+  record changeset {
     /// The revision the edits apply against.
     base: revision,
     /// The per-path edits the build produced.
@@ -44,7 +40,7 @@ interface types {
   // The working tree is no longer a typed resource. The host materializes it
   // via a custom git-aware `wasi:filesystem` backend and lends `build`/`merge`
   // a borrowed `descriptor` (`root`) plus the `base: revision` value; the
-  // caller's native orchestration layer extracts the `change-set` and
+  // caller's native orchestration layer extracts the `changeset` and
   // provisions the agent's node-local path out of band. See RFC-51 / RFC-55.
 }
 
@@ -62,7 +58,7 @@ interface source {
   }
 
   /// The level of trust to place in this evidence during conflict resolution.
-  enum trust-basis {
+  enum trust-level {
     /// Operator directives. Highest trust.
     directive,
     /// Written specifications. Medium trust.
@@ -91,25 +87,21 @@ interface source {
   /// The evidence returned by the extract operation.
   record evidence {
     /// The evidence's trust level.
-    trust: trust-basis,
-    // /// The lead that the evidence is bound to.
-    // lead: string,
+    trust: trust-level,
     /// The claims extracted from the source.
     claims: list<claim>,
   }
 
-  /// Decompose the source into leads. That is, *lightly* survey the source in order to create
-  /// a map of its contents.
+  /// Lightly survey the source to create a map of its contents (decompose into leads).
   survey: func() -> result<list<lead>, error>;
 
-  /// Extract evidence from a source for a given lead. That is, *thoroughly* extract the evidence
-  /// from the source for the given lead.
+  /// Thoroughly extract evidence from a source for a given lead.
   extract: func(lead: lead) -> result<evidence, error>;
 }
 
 /// The target adapter contract.
 interface target {
-  use types.{ change-set, error, revision };
+  use types.{ changeset, error, revision };
   use wasi:filesystem/types@0.2.0.{ descriptor };
 
   /// Types of inputs used to build a slice.
@@ -143,8 +135,8 @@ interface target {
     detail: string,
   }
 
-  /// The status of the operation.
-  enum status {
+  /// The outcome of the operation.
+  enum outcome {
     success,
     failure,
   }
@@ -153,8 +145,8 @@ interface target {
   /// state — a build's delta, or the merged baseline — lives in the working
   /// tree, not in this report.
   record report {
-    /// The status of the operation.
-    status: status,
+    /// The outcome of the operation.
+    outcome: outcome,
     /// The findings from the operation.
     findings: list<finding>,
   }
@@ -169,7 +161,7 @@ interface target {
   /// it materialized from `base` (via the custom git-aware backend, RFC-55);
   /// the operation reads existing code through it and writes its changes in
   /// place. The report carries only judgment; the caller's native orchestration
-  /// layer extracts the resulting delta as a `change-set` against `base`, so
+  /// layer extracts the resulting delta as a `changeset` against `base`, so
   /// neither the delta nor a tree resource crosses this boundary.
   build: func(slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
@@ -180,7 +172,7 @@ interface target {
   /// through the node-local path the host provisions for the `eval` backend
   /// (no longer a typed method) and validators re-run through `root`; the report
   /// carries the merge judgment. The caller commits the merged baseline.
-  merge: func(slice: string, delta: change-set, tree: working-tree) -> result<report, error>;
+  merge: func(slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
 }
 
 world source-adapter {
