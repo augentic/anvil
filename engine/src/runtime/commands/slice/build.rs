@@ -183,7 +183,7 @@ fn prepare_vectis_assets(ctx: &Ctx, slice_dir: &Path) -> Result<()> {
     if let Some(effective) = resolve_effective_assets(slice_dir, project_dir) {
         let scope = resolve_materialize_scope(slice_dir, project_dir, &ui_platforms, &effective);
         if scope_needs_materialize(&scope, &effective, &ui_platforms) {
-            run_materialize_assets(ctx, project_dir, &effective.path, &ui_platforms)?;
+            run_materialize_assets(ctx, &effective.path, &ui_platforms)?;
         }
     }
 
@@ -206,13 +206,10 @@ fn ui_platforms(project_dir: &Path) -> Vec<Platform> {
 }
 
 fn run_materialize_assets(
-    ctx: &Ctx, project_dir: &Path, assets_path: &Path, shell_platforms: &[Platform],
+    ctx: &Ctx, assets_path: &Path, shell_platforms: &[Platform],
 ) -> Result<()> {
-    let rel = assets_path.strip_prefix(project_dir).map_or_else(
-        |_| assets_path.to_string_lossy().into_owned(),
-        |p| p.to_string_lossy().into_owned(),
-    );
-    let mut args = vec!["materialize".into(), "assets".into(), rel];
+    let path_arg = assets_path.to_string_lossy().into_owned();
+    let mut args = vec!["materialize".into(), "assets".into(), path_arg];
     if !shell_platforms.is_empty() {
         args.push("--platform".into());
         args.push(materialize_platform_csv(shell_platforms));
