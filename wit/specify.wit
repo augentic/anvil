@@ -91,7 +91,7 @@ interface source {
   }
 
   /// The backing data of the claim's evidence.
-  variant claim-data {
+  variant backing {
     /// A small, verbatim piece of data passed directly.
     payload(string),
     /// A pointer to a block of data in the filesystem.
@@ -104,7 +104,7 @@ interface source {
     /// Used by the synthesis engine to merge related claims across sources.
     synopsis: string,
     /// The backing data of the claim's evidence (either a path or a raw payload).
-    data: option<claim-data>,
+    backing: option<backing>,
   }
 
   /// The evidence returned by the extract operation.
