@@ -118,6 +118,7 @@ pub const WIRE_CODES: &[&str] = &[
     "plan-archive-target-exists",
     "plan-authority-override-unknown-slice",
     "plan-binding-not-found",
+    "plan-bootstrap-app-icon-missing",
     "plan-create-validation-failed",
     "plan-entry-duplicate-name",
     "plan-entry-not-found",

@@ -39,20 +39,16 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
+use serde_json::Value;
 use specify_diagnostics::Diagnostic;
 use specify_error::{Error, Result};
-use specify_workflow::Platform;
+use specify_registry::host::CapturedOutput;
 use specify_workflow::adapter::{
     BuildInputDeclaration, Execution, ResolvedTargetAdapter, TargetAdapter, TargetOperation,
 };
-use specify_workflow::config::ProjectConfig;
 use specify_workflow::init::adapter_ref_from_value;
 use specify_workflow::journal::{self, EventKind};
 use specify_workflow::schema::{validate_build_report_json, validate_build_request_json};
-use specify_workflow::slice::build::materialize_scope::{
-    materialize_platform_csv, resolve_effective_assets, resolve_materialize_scope,
-    scope_needs_materialize,
-};
 use specify_workflow::slice::{
     BuildReport, BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata,
     actions as slice_actions, build_request, enforce_report_no_blocking_on_success,
@@ -115,8 +111,8 @@ struct BuildResult {
 ///   `target-build-output-missing` /
 ///   `target-build-report-slice-mismatch` / `target-build-failed` and
 ///   the `lifecycle` gate error from the agent `finalize` phase.
-/// - `target-build-materialize-failed` from the Vectis prepare materialize
-///   hook.
+/// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing`
+///   from the Vectis prepare dispatch.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
 pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
     let slice_dir = ctx.slices_dir().join(name);
@@ -145,7 +141,7 @@ fn prepare(
     let request_path = assemble_and_write_request(ctx, name, slice_dir, &manifest.inputs)?;
 
     if manifest.name == VECTIS_TARGET {
-        prepare_vectis_assets(ctx, slice_dir)?;
+        prepare_vectis(ctx, slice_dir)?;
     }
 
     journal::emit_best_effort(
@@ -173,64 +169,102 @@ fn prepare(
     ctx.write(&handoff, write_handoff_text)
 }
 
-/// RFC §2.1 prepare hook: auto-materialize missing in-scope exports.
-/// Takes `project.yaml.platforms` as the sole authority for platform
-/// intent — the host never scans the shell trees itself.
-fn prepare_vectis_assets(ctx: &Ctx, slice_dir: &Path) -> Result<()> {
-    let project_dir = &ctx.project_dir;
-    let ui_platforms = ui_platforms(project_dir);
+/// RFC §2.1 prepare hook: dispatch `vectis prepare build` so asset-domain
+/// policy (scope, materialize, bootstrap gate) stays in the adapter.
+fn prepare_vectis(ctx: &Ctx, slice_dir: &Path) -> Result<()> {
+    let rel = slice_dir.strip_prefix(&ctx.project_dir).map_or_else(
+        |_| slice_dir.to_string_lossy().into_owned(),
+        |p| p.to_string_lossy().into_owned(),
+    );
+    let captured =
+        extension::run_captured(ctx, VECTIS_TOOL, vec!["prepare".into(), "build".into(), rel])?;
+    map_prepare_exit_code(&captured)
+}
 
-    if let Some(effective) = resolve_effective_assets(slice_dir, project_dir) {
-        let scope = resolve_materialize_scope(slice_dir, project_dir, &ui_platforms, &effective);
-        if scope_needs_materialize(&scope, &effective, &ui_platforms) {
-            run_materialize_assets(ctx, &effective.path, &ui_platforms)?;
+/// Map a non-zero `vectis prepare build` guest outcome to host abort codes.
+fn map_prepare_exit_code(captured: &CapturedOutput) -> Result<()> {
+    if captured.exit_code == 0 {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&captured.stderr);
+    let stdout = String::from_utf8_lossy(&captured.stdout);
+    if let Ok(value) = serde_json::from_slice::<Value>(&captured.stdout) {
+        if prepare_has_bootstrap_missing(&value) {
+            return Err(Error::validation_failed(
+                "plan-bootstrap-app-icon-missing",
+                "vectis prepare build bootstrap app-icon gate passes before the build brief handoff",
+                prepare_failure_detail(&value, captured.exit_code, &stderr, &stdout),
+            ));
+        }
+        if prepare_has_materialize_errors(&value) {
+            return Err(Error::validation_failed(
+                "target-build-materialize-failed",
+                "vectis prepare build materialize completes successfully before the build brief handoff",
+                prepare_failure_detail(&value, captured.exit_code, &stderr, &stdout),
+            ));
         }
     }
 
-    Ok(())
-}
-
-/// Declared UI shell platforms (`ios` / `android`) from
-/// `project.yaml.platforms`. Falls back to both when the config is
-/// unreadable, matching the materialize scope's conservative default.
-fn ui_platforms(project_dir: &Path) -> Vec<Platform> {
-    let Ok(config) = ProjectConfig::load(project_dir) else {
-        return vec![Platform::Ios, Platform::Android];
+    let detail = if stderr.trim().is_empty() {
+        stdout.trim().to_string()
+    } else {
+        stderr.trim().to_string()
     };
-    config
-        .platforms
-        .iter()
-        .copied()
-        .filter(|p| matches!(p, Platform::Ios | Platform::Android))
-        .collect()
+    Err(Error::validation_failed(
+        "target-build-materialize-failed",
+        "vectis prepare build completes successfully before the build brief handoff",
+        format!("vectis prepare build exited with code {}: {detail}", captured.exit_code),
+    ))
 }
 
-fn run_materialize_assets(
-    ctx: &Ctx, assets_path: &Path, shell_platforms: &[Platform],
-) -> Result<()> {
-    let path_arg = assets_path.to_string_lossy().into_owned();
-    let mut args = vec!["materialize".into(), "assets".into(), path_arg];
-    if !shell_platforms.is_empty() {
-        args.push("--platform".into());
-        args.push(materialize_platform_csv(shell_platforms));
-    }
+fn prepare_has_bootstrap_missing(value: &Value) -> bool {
+    value
+        .get("bootstrap_app_icon")
+        .and_then(|b| b.get("findings"))
+        .and_then(Value::as_array)
+        .is_some_and(|findings| {
+            findings.iter().any(|f| {
+                f.get("id").and_then(Value::as_str) == Some("plan-bootstrap-app-icon-missing")
+            })
+        })
+}
 
-    let captured = extension::run_captured(ctx, VECTIS_TOOL, args)?;
-    if captured.exit_code != 0 {
-        let stderr = String::from_utf8_lossy(&captured.stderr);
-        let stdout = String::from_utf8_lossy(&captured.stdout);
-        let detail = if stderr.trim().is_empty() {
-            stdout.trim().to_string()
-        } else {
-            stderr.trim().to_string()
-        };
-        return Err(Error::validation_failed(
-            "target-build-materialize-failed",
-            "vectis materialize assets completes successfully before the build brief handoff",
-            format!("vectis materialize assets exited with code {}: {detail}", captured.exit_code),
-        ));
+fn prepare_has_materialize_errors(value: &Value) -> bool {
+    value
+        .get("materialized")
+        .and_then(|m| m.get("errors"))
+        .and_then(Value::as_array)
+        .is_some_and(|errors| !errors.is_empty())
+}
+
+fn prepare_failure_detail(value: &Value, exit_code: i32, stderr: &str, stdout: &str) -> String {
+    if let Some(findings) = value.get("bootstrap_app_icon").and_then(|b| b.get("findings"))
+        && let Some(messages) = finding_messages(findings)
+    {
+        return format!("vectis prepare build exited with code {exit_code}: {messages}");
     }
-    Ok(())
+    if let Some(errors) = value.get("materialized").and_then(|m| m.get("errors"))
+        && let Some(messages) = error_messages(errors)
+    {
+        return format!("vectis prepare build exited with code {exit_code}: {messages}");
+    }
+    let fallback = if stderr.trim().is_empty() { stdout.trim() } else { stderr.trim() };
+    format!("vectis prepare build exited with code {exit_code}: {fallback}")
+}
+
+fn finding_messages(findings: &Value) -> Option<String> {
+    let arr = findings.as_array()?;
+    let messages: Vec<_> =
+        arr.iter().filter_map(|f| f.get("message").and_then(Value::as_str)).collect();
+    (!messages.is_empty()).then(|| messages.join("; "))
+}
+
+fn error_messages(errors: &Value) -> Option<String> {
+    let arr = errors.as_array()?;
+    let messages: Vec<_> =
+        arr.iter().filter_map(|e| e.get("message").and_then(Value::as_str)).collect();
+    (!messages.is_empty()).then(|| messages.join("; "))
 }
 
 /// Agent `finalize` phase: validate the agent-produced report, gate the
