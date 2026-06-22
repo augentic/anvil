@@ -106,7 +106,7 @@ In this approach, guest-to-guest calls are resolved inside the Wasm sandbox with
 
 Let's look at how a `build` operation flows in practice. (Note that in this logical view, every step is an Omnia invocation running either Wasm or a model backend).
 
-1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(slice, inputs, root, base)`). The host materializes the slice's [working tree](#the-working-tree) from a base revision and lends it to the operation; the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
+1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(slice, inputs, tree)`). The host materializes the slice's [working tree](#the-working-tree) from a base revision and lends it to the operation; the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
 2. The target guest runs its deterministic setup code.
 3. When it needs to make a judgment call, it requests `eval(instruction)` — passing an inline prompt or a brief path.
 4. Omnia routes this to the configured model backend.
