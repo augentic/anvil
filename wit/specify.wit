@@ -7,14 +7,14 @@ interface types {
   variant error {
     invalid-request(string),
     io(string),
-    internal(string)
+    internal(string),
   }
 
   /// A node-independent, content-addressed reference. The guest cannot
   /// dereference it directly; reads/writes go through host imports.
-  resource artifact {
-    /// Stable identity for caching, dedup, and replay across nodes.
-    digest: func() -> string;   // e.g. "sha256: …"
+  record artifact {
+    /// Stable identity for caching, dedup, and replay across nodes, e.g. "sha256: …".
+    digest: string,
   }
 
   /// A content-addressed snapshot identity (a git commit oid in the git
@@ -69,6 +69,7 @@ interface types {
 
 interface source {
   use types.{ error };
+  use wasi:filesystem/types@0.2.0.{ descriptor };
 
   /// The lead returned by the survey operation.
   record lead {
@@ -80,7 +81,7 @@ interface source {
   }
 
   /// The level of trust to place in this evidence during conflict resolution.
-  enum trust-level {
+  enum trust-basis {
     /// Operator directives. Highest trust.
     directive,
     /// Written specifications. Medium trust.
@@ -93,7 +94,7 @@ interface source {
   variant claim-data {
     /// A small, verbatim piece of data passed directly.
     payload(string),
-    /// A pointer to a large block of data in the filesystem.
+    /// A pointer to a block of data in the filesystem.
     path(string),
   }
 
@@ -109,9 +110,9 @@ interface source {
   /// The evidence returned by the extract operation.
   record evidence {
     /// The evidence's trust level.
-    trust-level: trust-level,
-    /// The lead that the evidence is bound to.
-    lead: string,
+    trust: trust-basis,
+    // /// The lead that the evidence is bound to.
+    // lead: string,
     /// The claims extracted from the source.
     claims: list<claim>,
   }
@@ -127,15 +128,15 @@ interface source {
 
 /// The target adapter contract.
 interface target {
-  use types.{ artifact, change-set, error, working-tree };
+  use types.{ change-set, error, working-tree };
 
   /// Types of inputs used to build a slice.
   variant input {
-    proposal(artifact),
-    design(artifact),
-    tasks(artifact),
-    spec(artifact),
-    other(artifact),
+    proposal(string),
+    design(string),
+    tasks(string),
+    spec(string),
+    other(string),
   }
 
   /// The severity of a finding.
@@ -171,8 +172,9 @@ interface target {
     findings: list<finding>,
   }
 
-  /// Request to target adapter to get guidance on the expected build artifacts for a slice.
-  /// The returned guidance is prose describing the build artifacts expected for the slice.
+  /// Request to target adapter to get guidance on the expected build artifacts
+  /// for the adapter. The returned guidance is prose describing the build
+  /// artifacts expected for the slice.
   guidance: func() -> result<string, error>;
 
   /// Build a slice within a host-materialized working tree. The tree is lent
@@ -181,9 +183,9 @@ interface target {
   /// extracts the resulting delta from the tree via `working-tree.changes()`.
   build: func(slice: string, inputs: list<input>, tree: borrow<working-tree>) -> result<report, error>;
 
-  /// Merge a built slice into the project's codebase. `changes` is the build's
+  /// Merge a built slice into the project's codebase. `delta` is the build's
   /// portable delta (theirs); `tree` is the baseline working tree (ours) it is
-  /// folded into in place — a 3-way merge against `changes.base`. The agent
+  /// folded into in place — a 3-way merge against `delta.base`. The agent
   /// resolves conflicts through the tree's `local-path` and validators re-run
   /// through its `descriptor`; the report carries the merge judgment. The
   /// merged baseline is the tree's new state, committed by the caller.
@@ -196,19 +198,11 @@ world source-adapter {
 }
 
 world target-adapter {
-  // The working-tree capability exposes a wasi:filesystem descriptor; the guest
-  // needs the import to call its methods.
-  import wasi:filesystem/types@0.2.0;
   export target;
 }
 
 world workflow {
-  import wasi:filesystem/types@0.2.0;
   import target;
   import source;
-
-
-  // Note: the specific execution interface (e.g. `execute`)
-  // can be defined and exported here as needed by the workflow design.
 }
 
