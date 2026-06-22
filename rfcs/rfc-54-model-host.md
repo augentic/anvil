@@ -47,7 +47,7 @@ RFC-56 lists "a host-service capability in `augentic/omnia`" as a hard dependenc
 | The **SLM backend**                                                             | **Specify** — [RFC-18](future/rfc-18-slm.md)   |
 | Binding `eval` during the runtime move (Specify-side adoption)                 | **Specify** — [RFC-56](rfc-56-runtime-move.md) |
 
-The shared seam is the `ModelBackend` trait (Omnia-owned) plus the `eval` WIT (Specify-owned); the two are versioned across the repo boundary, never released in lockstep.
+The shared seam is the `ModelBackend` trait (Omnia-owned) plus the `eval` WIT (Specify-owned, authored in [`wit/model.wit`](../wit/model.wit) under the `omnia:model` package); the two are versioned across the repo boundary, never released in lockstep.
 
 ## The model (sketch)
 
@@ -89,7 +89,7 @@ Omnia binds exactly one `Box<dyn ModelBackend>` per deployment, selected by conf
 - **Backend registration mechanism.** How a Specify backend is selected/registered at deployment (config key, plugin discovery, or compiled-in), reusing Omnia's host-service selection.
 - **Capability exposure.** Which generic host capabilities (subprocess spawn for the agent backend, network egress for the API backend, filesystem read) the model host grants, and the per-deployment policy that governs them.
 - **Recording seam.** Whether Omnia provides a generic record/replay *wrapper* around any backend (so any backend is recordable, consumed by RFC-52's replay backend) or recording is each backend's concern. Leaning: host-level wrapper.
-- **Error taxonomy.** The `ModelError` shape and how it maps onto the WIT `adapter-error` Specify guests see.
+- **Error taxonomy.** The `ModelError` shape and how it maps onto the WIT `error` Specify guests see.
 - **Cross-repo versioning.** How the Omnia-owned trait and the Specify-owned `eval` WIT are versioned so neither repo blocks the other.
 
 ## Phased plan

@@ -23,18 +23,18 @@ The replay backend proves the seam is mockable; it does no real work. Every payo
 
 ## The model (sketch)
 
-The **model service** is the single materialization of the `eval` host; the fleet lives *inside* it. A call carries a `brief-path` handle and a typed `request`; the service routes it to a fleet member and returns a typed report — the guest never names a model. The service registers into Omnia's model-host slot as one `ModelBackend` ([RFC-54](rfc-54-model-host.md)) — Omnia sees a single backend; the fleet fans out within it.
+The **model service** is the single materialization of the `eval` host; the fleet lives *inside* it. A call carries an `instruction` (an inline prompt or a brief `path`); the service routes it to a fleet member and returns a validated string answer — the guest never names a model. The service registers into Omnia's model-host slot as one `ModelBackend` ([RFC-54](rfc-54-model-host.md)) — Omnia sees a single backend; the fleet fans out within it.
 
 - **Frontier LLM** — hard synthesis and review, reached either through a hosted inference API or by spawning a headless agent CLI / SDK session.
-- **Spawned agent (topology).** Omnia spawns a *fresh, context-free* agent session as the backend, hands it the `brief-path` + `request`, and parses the typed report back. This is also the **interactive** path: an editor command shells out to the runtime, which spawns the session — a separate conversation, never the operator's transcript.
+- **Spawned agent (topology).** Omnia spawns a *fresh, context-free* agent session as the backend, hands it the `instruction`, and parses the validated answer back. This is also the **interactive** path: an editor command shells out to the runtime, which spawns the session — a separate conversation, never the operator's transcript.
 - **Headless.** The same call with the backend bound to a hosted API (or, via RFC-18, a local SLM) — no editor in the loop, the same operation at fleet scale.
-- **Router.** Chooses a member per call; the decision keys on the `brief-path` or an abstract difficulty hint, **never a vendor model id**, so the choice stays behind the interface.
+- **Router.** Chooses a member per call; the decision keys on the `instruction` (its brief `path`) or an abstract difficulty hint, **never a vendor model id**, so the choice stays behind the interface.
 
 ## Decisions to record (open until reviewed)
 
-- **Routing key.** Confirm the router keys on `brief-path` / abstract difficulty, never a vendor id (the signature-level detail the architecture deferred from RFC-52 to the fleet). What carries the difficulty hint, and who sets it.
-- **Spawned-agent protocol.** How a fresh session is spawned, handed the `brief-path` + `request`, sandboxed for filesystem reads, and made to return a schema-valid report; how failures map to a typed `adapter-error`.
-- **Record / replay capture point.** Where the fleet records `(brief-path, request) -> output` so any backend's run is replayable (the RFC-52 backend is the consumer of these recordings).
+- **Routing key.** Confirm the router keys on the `instruction` / abstract difficulty, never a vendor id (the signature-level detail the architecture deferred from RFC-52 to the fleet). What carries the difficulty hint, and who sets it.
+- **Spawned-agent protocol.** How a fresh session is spawned, handed the `instruction`, sandboxed for filesystem reads, and made to return a schema-valid answer; how failures map to a typed `error`.
+- **Record / replay capture point.** Where the fleet records `(instruction) -> output` so any backend's run is replayable (the RFC-52 backend is the consumer of these recordings).
 - **Constrained-decoding hook.** The forward-compatible seam a non-agent completion backend (RFC-18's SLM) uses to keep typed reports schema-valid.
 - **Ratchet bookkeeping.** How a call is marked eligible to migrate down the fleet once it proves reliably verifiable.
 
@@ -48,7 +48,7 @@ The **model service** is the single materialization of the `eval` host; the flee
 
 1. At least two real `eval` backends (e.g. inference API + spawned agent) sit behind the *one* RFC-52 interface, selected by deployment config — no second `eval` host.
 2. The interactive and headless deployment modes both run a real operation; CI / replay still works unchanged.
-3. The router keys on `brief-path` / difficulty, never a vendor model id; no vendor name appears in the contract (law 2).
+3. The router keys on the `instruction` / difficulty, never a vendor model id; no vendor name appears in the contract (law 2).
 4. Every backend's run is recordable and replays deterministically through the RFC-52 backend.
 5. `make lint` and `cargo make ci` stay green.
 

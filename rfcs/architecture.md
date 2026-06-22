@@ -28,7 +28,7 @@ The system is split into two roles communicating over a single contract: a gener
 - **The model fleet sits below**: When a guest needs judgment, it requests the `eval` effect. Omnia dispatches this to a pluggable backend (a frontier LLM, local model, or replay stub). The "brain" is swappable.
 - **The boundary is typed**: Every piece of data and effect crosses the boundary with a defined type. Untyped text is never passed across this line — only typed data and handles.
 
-The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build` or `extract`). In turn, the guest calls back into Omnia's host services (like `eval`, `resolve`, or `journal`) whenever it needs to do something impure. 
+The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build` or `extract`). In turn, the guest calls back into Omnia's host services (like `eval`, `wasi:filesystem`, or `journal`) whenever it needs to do something impure. 
 
 > **A quick note on naming:** In this document, "Omnia" refers to two things: the runtime itself, and the `omnia` target guest (the adapter that generates code for the Omnia runtime). This document will be explicit when the context isn't obvious.
 
@@ -52,7 +52,7 @@ Here is the vocabulary used:
 
 - **Effect**: A typed request from a guest for something it can't do itself (like running a brief, reading a file, or logging). It declares *what* is needed, not *how* to do it.
 - **Interpreter**: Omnia. It handles the *how* for every effect. Guests remain deterministic, while Omnia deals with the impurity of the outside world.
-- **`eval`**: The primary effect for judgment. It takes a brief and a typed request, and returns a typed answer (usually via an AI model).
+- **`eval`**: The primary effect for judgment. It takes an `instruction` — an inline prompt, or a handle (path) to a brief — and returns a validated string answer (usually via an AI model).
 - **Oracle**: How the guest views the model — as an opaque source of typed answers. The guest trusts the shape of the response, not the generator.
 - **Handle**: A reference (like a file path or ID) that points to data without carrying it, keeping context windows lazy and small.
 
@@ -66,7 +66,7 @@ For context, here is how these concepts map to the tech stack:
 | Typed boundary        | WIT records and interfaces                                                                  |
 | Handle                | A brief path, artifact path, or reference ID                                                |
 | `eval` backend       | The model service (LLM, local model, or replay stub)                                        |
-| `resolve`             | Omnia's fallback for resolving references when the model can't read the filesystem directly |
+| references fallback   | `wasi:filesystem/preopens` (not a standalone effect) — for a backend that can't read the brief path directly |
 
 ## How the model reads a brief
 
@@ -78,7 +78,7 @@ Therefore, the adapters remain a hybrid of Wasm and prose. The Wasm handles the 
 
 ![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
 
-If a backend is used that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `resolve` fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance. Most of the time, the agent reads the files it needs directly.
+If a backend is used that can't read the filesystem (like a raw API endpoint), Omnia steps in to help. It resolves the brief and uses the `wasi:filesystem/preopens` references fallback to inject the necessary context. This is safe because any computed references are handled by a fresh guest instance. Most of the time, the agent reads the files it needs directly.
 
 ## Guest-to-guest interaction
 
@@ -108,7 +108,7 @@ Let's look at how a `build` operation flows in practice. (Note that in this logi
 
 1. The workflow guest starts the loop and invokes the target adapter (e.g., `build(slice, inputs, working-tree)`). The host materializes the slice's [working tree](#the-working-tree) from a base revision and lends it to the operation; the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
 2. The target guest runs its deterministic setup code.
-3. When it needs to make a judgment call, it requests `eval(brief-path, request)`.
+3. When it needs to make a judgment call, it requests `eval(instruction)` — passing an inline prompt or a brief path.
 4. Omnia routes this to the configured model backend.
 5. The model reads the brief and lazily pulls in any supporting references it needs. For a `build`, a filesystem-capable backend also reads existing code and writes its changes through the working tree's node-local path.
 6. The model returns its answer. Omnia validates that it matches the expected type and hands it back to the target guest.

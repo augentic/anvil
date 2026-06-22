@@ -27,18 +27,18 @@ The prepare/finalize handoff is already a degenerate two-step orchestration (`pr
 interface types {
   type op-state = list<u8>;                 // component-owned, serialized into the resume token
   variant directive {
-    eval(eval-request),                   // run a brief (whole prose) with a typed request
+    eval(instruction),                    // run a brief or prompt; `instruction` is model.wit's variant
     resolve(string),                        // FALLBACK ref fetch by id (non-filesystem backends)
     done(build-report),                     // validated terminal report
-    fail(adapter-error),
+    fail(error),
   }
-  record eval-request { brief-path: string, request: string }
+  // `instruction` (model.wit): prompt | path. A separate typed `request` payload is a forward delta, not in today's WIT.
   record step-result { state: op-state, directive: directive }
 }
 
 interface target {
-  build-begin: func(req: build-request) -> result<step-result, adapter-error>;
-  build-step:  func(state: op-state, fulfillment: string) -> result<step-result, adapter-error>;
+  build-begin: func(req: build-request) -> result<step-result, error>;
+  build-step:  func(state: op-state, fulfillment: string) -> result<step-result, error>;
 }
 ```
 
@@ -50,13 +50,13 @@ The agent driver loop runs each `eval` directive in its own context, exactly as 
 world target-adapter {
   import wasi:filesystem/preopens@0.2.0;
   import eval;            // RFC-52 — the upward model channel
-  export target;           // build/merge/shape always callable
+  export target;           // build/merge/guidance always callable
 }
 ```
 
 The data contract, the `brief-path` discipline, and the validation points are identical across B and A; A is an ABI/topology change, not a redesign.
 
-**Typed tool dispatch comes first (relocated from RFC-51 §B).** Before any multi-step orchestration, the deterministic `tool` operations that exist today — the `contract` and `vectis` validators — are re-pointed from `wasi:cli/run` to their RFC-51 world export, and the `execution: tool` path is routed through the generated bindings (`instance.call_build(&mut store, &req)`). This is the lowest-risk realization of the RFC-51 contract: real callable exports, a typed `result<_, adapter-error>` in place of exit-code + stdout-JSON, and the argv contract retired on that path. Orchestration (B and A above) then builds on the same exports rather than inventing a second invocation surface.
+**Typed tool dispatch comes first (relocated from RFC-51 §B).** Before any multi-step orchestration, the deterministic `tool` operations that exist today — the `contract` and `vectis` validators — are re-pointed from `wasi:cli/run` to their RFC-51 world export, and the `execution: tool` path is routed through the generated bindings (`instance.call_build(&mut store, &req)`). This is the lowest-risk realization of the RFC-51 contract: real callable exports, a typed `result<_, error>` in place of exit-code + stdout-JSON, and the argv contract retired on that path. Orchestration (B and A above) then builds on the same exports rather than inventing a second invocation surface.
 
 ## Brief-typing and lazy discovery (relocated from RFC-51 §E)
 
