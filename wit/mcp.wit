@@ -1,0 +1,71 @@
+package augentic:mcp@0.1.0;
+
+/// The brief-I/O surface a model uses to execute one brief: navigate the
+/// brief's reference shelf, scan and mutate a working tree, and verify. The
+/// `tools` shape is shared by both facades — a native trait for the in-process
+/// path (Mode A), a guest export for the MCP / HTTP path (Mode B).
+interface tools {
+    use augentic:specify/types.{ revision, changeset };
+    use augentic:specify/target.{ report };   // reuse build/merge judgment: severity-tiered findings + outcome
+
+    /// Opaque session handle. Binds a base revision and owns the accumulating
+    /// changeset; host-held and keyed in `kv` (guests are instance-per-call).
+    type session = string;
+
+    /// A reference handle: a brief-relative path, or a content-addressed id.
+    type handle = string;
+
+    variant error {
+        not-found(string),
+        invalid-request(string),
+        io(string),
+        internal(string),
+    }
+
+    /// A vetted verification profile. The model names a check; the host owns the
+    /// exact argv (mirrors the `cargo make ci` task set). NOT free-form argv — an
+    /// LLM choosing a command line is an RCE + non-determinism surface.
+    enum check {
+        fmt,
+        build,
+        clippy,
+        test,
+        doc,
+        vet,
+        deny,
+    }
+
+    // --- session lifecycle ---
+    /// Open a session bound to a base revision.
+    open: func(base: revision) -> result<session, error>;
+    /// Commit the session, returning the portable changeset (edits vs base).
+    commit: func(s: session) -> result<changeset, error>;
+
+    // --- reads (reference shelf + working tree; see base ⊕ pending edits) ---
+    /// Resolve one of the brief's internal references by handle (the shelf).
+    resolve: func(s: session, ref: handle) -> result<list<u8>, error>;
+    /// Read a working-tree file.
+    read: func(s: session, path: string) -> result<list<u8>, error>;
+    /// List working-tree entries under a prefix.
+    %list: func(s: session, prefix: string) -> result<list<string>, error>;
+
+    // --- writes (one edit; absent content deletes) ---
+    write: func(s: session, path: string, content: option<list<u8>>) -> result<_, error>;
+
+    // --- verify (native, sandboxed seam; absent on a toolchain-less host) ---
+    /// Run a vetted profile over the pending changeset; returns the same
+    /// severity-tiered `report` as build / merge.
+    verify: func(s: session, c: check) -> result<report, error>;
+}
+
+/// Mode B (optional): MCP over HTTP. A thin guest does JSON-RPC framing and
+/// forwards each `tools/call` to the host services below. Mode A needs no
+/// world — its facade is native code mirroring `tools` (see "Where the tool
+/// server lives"). Served by any wasi:http host (Wasmtime serve, Spin, jco).
+world mcp-server {
+    export wasi:http/incoming-handler@0.2.0;
+    import wasi:blobstore/blobstore@0.2.0;   // reference shelf + write payloads (content-addressed)
+    import wasi:filesystem/types@0.2.0;      // working tree / local shelf
+    import wasi:keyvalue/store@0.2.0;        // session: base + accumulating edits
+    import augentic:verify/toolchain;        // native seam (and changes() if commit diffs a tree)
+}
