@@ -106,6 +106,8 @@ A single operation spans several guests: the workflow guest plus the source and 
 
 Because the interfaces (`target` / `source` / `references`) are statically known and only the adapter *instances* are dynamic, the host shims the imports with **typed bindgen closures** rather than the fully-dynamic `component::Val` API; `Val` remains available if an interface is ever unknown at host-compile time.
 
+The seam is a contract, not a wire protocol: in-process linking is the default, but the host can carry the same typed `selection` call to a remote callee over a `wasi:messaging` request-reply backend (NATS) — the guest still exchanges only WIT records, so the transport stays a deployment-time backend choice rather than a guest concern.
+
 ### Many guests, selected by identity
 
 The binary holds every guest on **one runtime** and picks among them in native code:
