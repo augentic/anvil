@@ -205,12 +205,11 @@ mod end_to_end {
     use std::path::{Path, PathBuf};
 
     use serde_json::Value;
-    use specify_workflow::design_system::{ComponentStatus, ComponentsCatalog};
     use tempfile::{TempDir, tempdir};
 
     use crate::common::{
         Project, copy_dir, hold_plan_lock, init_workspace, omnia_schema_dir, parse_json,
-        parse_stderr, parse_stdout, repo_root, sha256_hex, specify_cmd,
+        parse_stderr, parse_stdout, repo_root, specify_cmd,
     };
 
     // ---------------------------------------------------------------------------
@@ -1011,51 +1010,11 @@ slices:
     }
 
     // ---------------------------------------------------------------------------
-    // Composition + component-inference acceptance capstone
+    // Composition accumulation + safety nets (host-only)
     // ---------------------------------------------------------------------------
     //
-    // The integration capstone exercises the full composition-accumulation +
-    // component-inference loop end-to-end and locks the headline behaviours:
-    //
-    //   1. Composition accumulates monotonically across screen-introducing
-    //      slices (Part A): a whole-document first slice establishes the
-    //      baseline, then `delta.added` slices grow it without loss.
-    //   2. `specify catalog infer` clusters the repeated `group` structure
-    //      across the accumulated baseline (Part B): after the second screen
-    //      lands, the report surfaces exactly one cluster at `occurrences: 2`,
-    //      and `bind` records the *skill-supplied* slug at `status: confirmed`.
-    //      Because naming is a skill judgement the CLI cannot perform, the
-    //      test stands in for the agent: it takes the reported fingerprint and
-    //      writes a fixed `{ <fingerprint>: shared-nav }` bindings map.
-    //   3. Retroactive cross-slice factoring: the build that discovers
-    //      the component emits directive-only `delta.modified` entries that
-    //      attach the `component:` directive to prior-slice screens, and the
-    //      simulated writer brief drops the shared component module into the
-    //      shell tree.
-    //   4. A documentation-only slice surfaces the
-    //      `composition-unexpected-for-non-ui-slice` warning at finalize and
-    //      is stopped by the `composition-baseline-overwrite-blocked` gate
-    //      at merge — the motivating data-loss scenario, now closed twice
-    //      over.
-    //
-    // Per the plan, code-generation assertions stay focused on the
-    // composition / catalog artifacts and the *presence* of the shared
-    // component module path, not full compilable shells (those live in the
-    // manual `acceptance/` packs). Crucially, the test asserts the
-    // *mechanism* — clustering, the report shape, and the binding guards —
-    // and never that a specific English name like `tab-bar` emerges; the slug
-    // is the test's own stand-in for the skill's choice.
-    //
-    // The whole scenario dispatches the real `vectis infer` tool, so it is
-    // skipped when the WASM artifact is absent (build it with
-    // `cargo make vectis-wasm`).
-
-    /// Prebuilt `vectis` WASI artifact the `catalog infer` report phase
-    /// dispatches. Built by `cargo make vectis-wasm`; absent on a bare
-    /// `cargo nextest` without that dependency.
-    fn vectis_wasm() -> PathBuf {
-        repo_root().join("target/vectis-wasi-tools/release/vectis.wasm")
-    }
+    // Exercises monotonic composition merge, retroactive cross-slice factoring,
+    // and the A3/A4 safety nets without catalog infer or WASM dispatch.
 
     /// The shared bottom-navigation `footer` group repeated across every UI
     /// screen in the capstone. Structurally identical instances cluster to
@@ -1077,33 +1036,6 @@ slices:
             - icon-button: { bind: home, event: Navigate(Home) }
             - icon-button: { bind: search, event: Navigate(Search) }
 ";
-
-    /// Declare the `vectis` WASI tool as a project-scoped tool in
-    /// `.specify/project.yaml` (read access to `.specify`), so
-    /// `specify catalog infer --phase report` resolves and dispatches it
-    /// regardless of where the bound target adapter resolves from. Tools are
-    /// a top-level `project.yaml` key, so the block is appended verbatim.
-    fn declare_vectis_tool(root: &Path, wasm: &Path) {
-        let source = format!("file://{}", wasm.display());
-        let sha256 = sha256_hex(wasm);
-        let project_yaml = root.join(".specify/project.yaml");
-        let mut config = fs::read_to_string(&project_yaml).expect("read project.yaml");
-        let block = [
-            "tools:",
-            "  - name: vectis",
-            "    version: 0.4.0",
-            &format!("    source: \"{source}\""),
-            &format!("    sha256: \"{sha256}\""),
-            "    permissions:",
-            "      read:",
-            "        - \"$PROJECT_DIR/.specify\"",
-            "      write: []",
-            "",
-        ]
-        .join("\n");
-        config.push_str(&block);
-        fs::write(&project_yaml, config).expect("write project.yaml with vectis tool");
-    }
 
     /// A minimal, schema-valid build report carrying the A4 `ui-surface`
     /// signal. `target` is the bound omnia adapter; `screens` is the
@@ -1167,41 +1099,14 @@ slices:
             .map(str::to_string)
     }
 
-    /// Run `specify catalog infer --phase report` with the vectis tool cache
-    /// pointed at `cache`, returning the parsed name-free cluster report.
-    fn infer_report(root: &Path, cache: &Path) -> Value {
-        let out = specify_cmd()
-            .current_dir(root)
-            .env("SPECIFY_EXTENSIONS_CACHE", cache)
-            .args(["--format", "json", "catalog", "infer", "--phase", "report"])
-            .assert()
-            .success();
-        parse_json(&out.get_output().stdout)
-    }
-
-    /// The end-to-end composition acceptance proof: composition accumulation,
-    /// agent-simulated component inference + binding, retroactive cross-slice
-    /// factoring, and the non-UI-slice safety nets, all in one loop.
+    /// Host-only composition acceptance: monotonic accumulation, retroactive
+    /// cross-slice factoring, and the non-UI-slice safety nets.
     #[test]
-    fn composition_inference_capstone() {
-        let wasm = vectis_wasm();
-        if !wasm.is_file() {
-            eprintln!(
-                "skipping composition_inference_capstone: vectis WASM not found at {}; run \
-             `cargo make vectis-wasm`",
-                wasm.display()
-            );
-            return;
-        }
-
+    fn composition_accumulation_and_safety_nets() {
         let project = Project::init().with_schemas();
         let root = project.root();
-        declare_vectis_tool(root, &wasm);
-        let cache = root.join(".tools-cache");
-        fs::create_dir_all(&cache).expect("mkdir tools cache");
 
         accumulate_two_screens(root);
-        infer_and_bind_shared_nav(root, &cache);
         factor_third_slice(root);
         assert_doc_only_safety_nets(root);
     }
@@ -1231,46 +1136,6 @@ slices:
         let screens = composition_screens(root);
         assert_eq!(screens.len(), 2, "baseline accumulates to home + search");
         assert!(screens.contains_key("home") && screens.contains_key("search"));
-    }
-
-    /// Inference (B2/B3): the report clusters the two identical footer groups
-    /// into one name-free cluster at `occurrences: 2`; the test stands in for
-    /// the skill, binding the reported fingerprint to a fixed slug. Asserts
-    /// the catalog records it `confirmed` and a re-run echoes the bound slug
-    /// (run-to-run stability).
-    fn infer_and_bind_shared_nav(root: &Path, cache: &Path) {
-        let report = infer_report(root, cache);
-        let clusters = report["clusters"].as_array().expect("clusters array");
-        assert_eq!(clusters.len(), 1, "exactly one above-threshold cluster: {report}");
-        assert_eq!(clusters[0]["occurrences"], 2);
-        assert_eq!(clusters[0]["bound-slug"], Value::Null, "the CLI proposes no name");
-        let fingerprint =
-            clusters[0]["fingerprint"].as_str().expect("cluster fingerprint").to_string();
-
-        let bindings_path = root.join(".specify/bindings.yaml");
-        fs::write(&bindings_path, format!("bindings:\n  {fingerprint}: shared-nav\n"))
-            .expect("write bindings");
-        specify_cmd()
-            .current_dir(root)
-            .env("SPECIFY_EXTENSIONS_CACHE", cache)
-            .args(["catalog", "infer", "--phase", "bind"])
-            .arg("--bindings")
-            .arg(&bindings_path)
-            .assert()
-            .success();
-        let catalog =
-            ComponentsCatalog::load(root).expect("catalog loads").expect("catalog written");
-        assert_eq!(
-            catalog.status_of("shared-nav"),
-            Some(ComponentStatus::Confirmed),
-            "bind records the skill-supplied slug as confirmed"
-        );
-
-        let echoed = infer_report(root, cache);
-        assert_eq!(
-            echoed["clusters"][0]["bound-slug"], "shared-nav",
-            "report echoes the bound slug"
-        );
     }
 
     /// Slice 3 (`profile`): the discovering build introduces a new screen

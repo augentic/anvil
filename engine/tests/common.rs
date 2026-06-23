@@ -46,6 +46,23 @@ pub fn omnia_schema_dir() -> PathBuf {
     repo_root().join("tests").join("fixtures").join("adapters").join("targets").join("omnia")
 }
 
+/// In-repo `dispatch-fixture` target adapter with a committed `adapter.wasm`
+/// for adapter-agnostic host-dispatch integration tests.
+pub fn dispatch_fixture_adapter_dir() -> PathBuf {
+    repo_root()
+        .join("tests")
+        .join("fixtures")
+        .join("adapters")
+        .join("targets")
+        .join("dispatch-fixture")
+}
+
+/// Mirror the `dispatch-fixture` adapter tree (including `adapter.wasm`) into
+/// `<project>/adapters/targets/dispatch-fixture/`.
+pub fn stage_dispatch_fixture(project: &Path) {
+    copy_dir(&dispatch_fixture_adapter_dir(), &project.join("adapters/targets/dispatch-fixture"));
+}
+
 /// Build a fresh `assert_cmd::Command` for the locally-built `specify`
 /// binary. Scrubs the ambient `SPECIFY_*` env overrides so an
 /// operator shell mid-workspace-run (exported `SPECIFY_PLAN_DIR`)
