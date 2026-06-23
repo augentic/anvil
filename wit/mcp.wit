@@ -1,84 +1,90 @@
 package augentic:mcp@0.1.0;
 
 interface shelf {
-  use augentic:specify/types.{ error };
-
-  type reference = string;
-
-  /// Forwards to augentic:specify references.resolve(adapter-id, reference);
-  /// adapter-id is bound by the host at instantiation, so it isn't an argument.
-  resolve: func(reference: reference) -> result<list<u8>, error>;
-}
-
-
-/// The brief-I/O surface a model uses to execute one brief: navigate the
-/// brief's reference shelf, scan and mutate a working tree, and verify. The
-/// `tools` shape is shared by both facades — a native trait for the in-process
-/// path (Mode A), a guest export for the MCP / HTTP path (Mode B).
-interface tools {
-    use augentic:specify/types.{ revision, changeset };
-    use augentic:specify/target.{ report };   // reuse build/merge judgment: severity-tiered findings + outcome
+    use augentic:specify/types.{ error };
 
     /// Opaque session handle. Binds a base revision and owns the accumulating
     /// changeset; host-held and keyed in `kv` (guests are instance-per-call).
     type session = string;
 
-    /// A reference handle: a brief-relative path, or a content-addressed id.
-    type handle = string;
-
-    variant error {
-        not-found(string),
-        invalid-request(string),
-        io(string),
-        internal(string),
-    }
-
-    /// A vetted verification profile. The model names a check; the host owns the
-    /// exact argv (mirrors the `cargo make ci` task set). NOT free-form argv — an
-    /// LLM choosing a command line is an RCE + non-determinism surface.
-    enum check {
-        fmt,
-        build,
-        clippy,
-        test,
-        doc,
-        vet,
-        deny,
-    }
-
-    // --- session lifecycle ---
-    /// Open a session bound to a base revision.
-    open: func(base: revision) -> result<session, error>;
-
-    /// Commit the session, returning the portable changeset (edits vs base).
-    commit: func(s: session) -> result<changeset, error>;
-
-    // --- reads (reference shelf + working tree; see base ⊕ pending edits) ---
-    /// Resolve one of the brief's internal references by handle (the shelf).
-    resolve: func(s: session, ref: handle) -> result<list<u8>, error>;
-
-    /// Read a working-tree file.
-    read: func(s: session, path: string) -> result<list<u8>, error>;
+    type reference = string;
 
     /// List working-tree entries under a prefix.
     %list: func(s: session, prefix: string) -> result<list<string>, error>;
 
-    // --- writes (one edit; absent content deletes) ---
-    write: func(s: session, path: string, content: option<list<u8>>) -> result<_, error>;
-
-    // --- verify (native, sandboxed seam; absent on a toolchain-less host) ---
-    /// Run a vetted profile over the pending changeset; returns the same
-    /// severity-tiered `report` as build / merge.
-    verify: func(s: session, c: check) -> result<report, error>;
+    /// Forwards to augentic:specify references.resolve(adapter-id, reference);
+    /// adapter-id is bound by the host at instantiation, so it isn't an argument.
+    resolve: func(reference: reference) -> result<list<u8>, error>;
 }
+
+// /// The brief-I/O surface a model uses to execute one brief: navigate the
+// /// brief's reference shelf, scan and mutate a working tree, and verify. The
+// /// `tools` shape is shared by both facades — a native trait for the in-process
+// /// path (Mode A), a guest export for the MCP / HTTP path (Mode B).
+// interface tools {
+//     use augentic:specify/types.{ revision, changeset };
+//     use augentic:specify/target.{ report };   // reuse build/merge judgment: severity-tiered findings + outcome
+
+//     /// Opaque session handle. Binds a base revision and owns the accumulating
+//     /// changeset; host-held and keyed in `kv` (guests are instance-per-call).
+//     type session = string;
+
+//     /// A reference handle: a brief-relative path, or a content-addressed id.
+//     type handle = string;
+
+//     variant error {
+//         not-found(string),
+//         invalid-request(string),
+//         io(string),
+//         internal(string),
+//     }
+
+//     /// A vetted verification profile. The model names a check; the host owns the
+//     /// exact argv (mirrors the `cargo make ci` task set). NOT free-form argv — an
+//     /// LLM choosing a command line is an RCE + non-determinism surface.
+//     enum check {
+//         fmt,
+//         build,
+//         clippy,
+//         test,
+//         doc,
+//         vet,
+//         deny,
+//     }
+
+//     // --- session lifecycle ---
+//     /// Open a session bound to a base revision.
+//     open: func(base: revision) -> result<session, error>;
+
+//     /// Commit the session, returning the portable changeset (edits vs base).
+//     commit: func(s: session) -> result<changeset, error>;
+
+//     // --- reads (reference shelf + working tree; see base ⊕ pending edits) ---
+//     /// Resolve one of the brief's internal references by handle (the shelf).
+//     resolve: func(s: session, ref: handle) -> result<list<u8>, error>;
+
+//     /// Read a working-tree file.
+//     read: func(s: session, path: string) -> result<list<u8>, error>;
+
+//     /// List working-tree entries under a prefix.
+//     %list: func(s: session, prefix: string) -> result<list<string>, error>;
+
+//     // --- writes (one edit; absent content deletes) ---
+//     write: func(s: session, path: string, content: option<list<u8>>) -> result<_, error>;
+
+//     // --- verify (native, sandboxed seam; absent on a toolchain-less host) ---
+//     /// Run a vetted profile over the pending changeset; returns the same
+//     /// severity-tiered `report` as build / merge.
+//     verify: func(s: session, c: check) -> result<report, error>;
+// }
 
 /// MCP over HTTP: a thin guest frames JSON-RPC and forwards tools/call -> shelf.resolve.
-world mcp-simple {
+world mcp {
     export shelf;
-  
+
 }
 
-/// MCP over HTTP. A thin guest does JSON-RPC framing
-world mcp-full {
-    export tools;
-}
+// /// MCP over HTTP. A thin guest does JSON-RPC framing
+// world mcp-full {
+//     export tools;
+// }
