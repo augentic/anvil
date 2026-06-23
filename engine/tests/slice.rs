@@ -177,15 +177,13 @@ mod build {
     //! rejection and the `execution: tool` unsupported seam.
 
     use std::fs;
-    use std::path::{Path, PathBuf};
 
     use serde_json::Value;
-    use specify_workflow::adapter::ADAPTER_WASM_FILENAME;
     use tempfile::tempdir;
 
     use crate::common::{
-        Project, expected_cache_dir, parse_json, parse_stderr, read_journal_normalized, repo_root,
-        specify_cmd,
+        Project, expected_cache_dir, parse_json, parse_stderr, read_journal_normalized,
+        specify_cmd, stage_dispatch_fixture,
     };
 
     /// Create `my-slice`, seed a `specs/<domain>/spec.md` so the assembled
@@ -361,101 +359,27 @@ screens:
         );
     }
 
-    fn vectis_wasm() -> Option<PathBuf> {
-        let built = repo_root().join("target/vectis-wasi-tools/release/vectis.wasm");
-        if built.is_file() {
-            return Some(built);
-        }
-        let adapter_wasm = repo_root().join("../../specify-adapters/targets/vectis/adapter.wasm");
-        adapter_wasm.is_file().then_some(adapter_wasm)
-    }
-
-    fn vectis_wasm_supports_prepare(wasm: &Path) -> bool {
+    /// Minimal project with `dispatch-fixture` staged for prepare-hook dispatch.
+    fn dispatch_fixture_prepare_project() -> tempfile::TempDir {
         let tmp = tempdir().expect("tempdir");
         let project = tmp.path();
-        let adapter = project.join("adapters/targets/vectis");
-        fs::create_dir_all(project.join(".specify")).expect("create .specify");
-        fs::create_dir_all(adapter.join("briefs")).expect("create briefs");
-        fs::write(
-            project.join(".specify/project.yaml"),
-            "name: probe\nadapter: vectis\nplatforms: [core]\nrules: {}\n",
-        )
-        .expect("write project.yaml");
-        fs::write(
-            adapter.join("adapter.yaml"),
-            "name: vectis\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nextension:\n  name: vectis\n  permissions:\n    read: [$PROJECT_DIR]\n    write: [$PROJECT_DIR]\ndescription: probe\n",
-        )
-        .expect("write adapter.yaml");
-        for op in ["shape", "build", "merge"] {
-            fs::write(adapter.join("briefs").join(format!("{op}.md")), "# probe\n")
-                .expect("write brief");
-        }
-        fs::copy(wasm, adapter.join(ADAPTER_WASM_FILENAME)).expect("stage adapter.wasm");
-
-        let output = specify_cmd()
-            .current_dir(project)
-            .env("SPECIFY_EXTENSIONS_CACHE", expected_cache_dir(project))
-            .args(["extension", "run", "vectis", "--", "--help"])
-            .assert()
-            .success();
-        let help = &output.get_output().stdout;
-        help.windows(b"prepare".len()).any(|window| window.eq_ignore_ascii_case(b"prepare"))
-    }
-
-    /// Minimal vectis project with the real adapter wasm staged for extension dispatch.
-    fn vectis_prepare_project(wasm: &Path) -> tempfile::TempDir {
-        let tmp = tempdir().expect("tempdir");
-        let project = tmp.path();
-        let adapter = project.join("adapters/targets/vectis");
-        let briefs = adapter.join("briefs");
+        stage_dispatch_fixture(project);
         fs::create_dir_all(project.join(".specify/specs")).expect("create .specify");
-        fs::create_dir_all(&briefs).expect("create briefs");
         fs::write(
             project.join(".specify/project.yaml"),
-            "name: slice-build-test\nadapter: vectis\nplatforms: [core, ios]\nrules: {}\n",
+            "name: slice-build-test\nadapter: dispatch-fixture\nrules: {}\n",
         )
         .expect("write project.yaml");
-        fs::write(
-            adapter.join("adapter.yaml"),
-            "name: vectis\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nprepare:\n  argv: [prepare, build]\nextension:\n  name: vectis\n  permissions:\n    read:\n      - $PROJECT_DIR\n      - $CAPABILITY_DIR\n    write:\n      - $PROJECT_DIR\ndescription: Test vectis adapter\n",
-        )
-        .expect("write adapter.yaml");
-        for op in ["shape", "build", "merge"] {
-            fs::write(
-                briefs.join(format!("{op}.md")),
-                format!("---\nid: {op}\ndescription: {op} brief\n---\n"),
-            )
-            .expect("write brief");
-        }
-        fs::copy(wasm, adapter.join(ADAPTER_WASM_FILENAME)).expect("stage adapter.wasm");
         tmp
     }
 
     #[test]
-    fn prepare_hook_bootstrap_gate() {
-        let Some(wasm) = vectis_wasm() else {
-            eprintln!(
-                "skipping prepare_hook_bootstrap_gate: vectis WASM not found; run \
-                 `cargo make vectis-wasm` or build specify-adapters `adapter.wasm`"
-            );
-            return;
-        };
-
-        if !vectis_wasm_supports_prepare(&wasm) {
-            eprintln!(
-                "skipping prepare_hook_bootstrap_gate: vectis WASM at {} lacks `prepare build` \
-                 (rebuild with `specify adapter build --path targets/vectis --refresh-extension` \
-                 in specify-adapters)",
-                wasm.display()
-            );
-            return;
-        }
-
-        let tmp = vectis_prepare_project(&wasm);
+    fn prepare_hook_maps_bootstrap_findings() {
+        let tmp = dispatch_fixture_prepare_project();
         let root = tmp.path();
         specify_cmd()
             .current_dir(root)
-            .args(["slice", "create", "my-slice", "--target", "vectis"])
+            .args(["slice", "create", "my-slice", "--target", "dispatch-fixture"])
             .assert()
             .success();
         let spec_dir = root.join(".specify/slices/my-slice/specs/identity");

@@ -90,4 +90,4 @@ Test function names are identifiers, not sentences — the same brevity rules as
 ## Test-side gotchas
 
 - Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or `stamp_slice_outcome` in `tests/common/mod.rs` when a test needs a stamped phase outcome. The tests in `tests/slice.rs` are the canonical patterns.
-- WASI fixture components used by the extension tests (`tests/extension/run.rs`, `tests/extension/schema.rs`) are rebuilt via `scripts/regen-wasm-fixtures.sh`. The outputs are checked in; only re-run when a fixture source changes.
+- WASI fixture components used by the extension and host-dispatch tests (`tests/extension/run.rs`, `tests/extension/schema.rs`, `tests/catalog_infer.rs`, `tests/slice.rs`) are rebuilt via `scripts/regen-wasm-fixtures.sh`. The outputs (`tools-test-project/wasm/`, `tools-test-adp/`, and `adapters/targets/dispatch-fixture/adapter.wasm`) are checked in; only re-run when a fixture source changes.

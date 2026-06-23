@@ -30,3 +30,12 @@ done
 wasm-tools parse \
     tests/fixtures/tools-test-adp/src-wat/exit-seven.component.wat \
     -o tests/fixtures/tools-test-adp/wasm/exit-seven.wasm
+
+CARGO_TARGET_DIR=target/dispatch-fixture-fixtures cargo build \
+    --manifest-path tests/fixtures/adapters/targets/dispatch-fixture/extension/Cargo.toml \
+    --target wasm32-wasip2 \
+    --release \
+    --bin dispatch-fixture
+
+cp target/dispatch-fixture-fixtures/wasm32-wasip2/release/dispatch-fixture.wasm \
+    tests/fixtures/adapters/targets/dispatch-fixture/adapter.wasm

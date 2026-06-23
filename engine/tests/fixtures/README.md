@@ -1,6 +1,8 @@
 ## WASI Tool Fixtures
 
 `tools-test-project/` and `tools-test-adp/` hold deterministic declared-tool contract acceptance fixtures.
+`adapters/targets/dispatch-fixture/` holds the adapter-agnostic host-dispatch fixture (`adapter.wasm`
+beside `adapter.yaml`) used by `catalog infer`, `slice build` prepare, and `extension schema` tests.
 The `.wasm` files are checked in so developer machines and CI do not need to rebuild
 WASI components before running `cargo test --workspace`.
 
@@ -9,7 +11,7 @@ To rebuild the blobs, install the target plus `wasm-tools`, then run:
 ```bash
 rustup target add wasm32-wasip2
 cargo install wasm-tools
-make tools-test-fixtures
+scripts/regen-wasm-fixtures.sh
 ```
 
 The Rust source crate lives at `tools-test-project/src-rust/`. `exit-seven.wasm`

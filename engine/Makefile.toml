@@ -76,9 +76,9 @@ install_crate = "cargo-outdated"
 # `RUSTFLAGS=-Dwarnings` override already differs from the default
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
-# Adapter-tool wasm (contract / vectis) is built in
-# `augentic/specify-adapters`; the integration cases that exercise it
-# self-skip in this repo.
+# Adapter extension wasm for host-dispatch fixture tests is checked in under
+# `tests/fixtures/adapters/targets/dispatch-fixture/adapter.wasm`; rebuild
+# via `scripts/regen-wasm-fixtures.sh` when the fixture source changes.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--all", "--all-features", "--no-tests=pass"]
