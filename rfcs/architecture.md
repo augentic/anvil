@@ -1,205 +1,206 @@
 # Specify on Omnia — The Effect-Oriented Architecture
 
-> Status: This is the standing architecture — the agreed-upon direction being worked toward. It helps sequence work rather than landing as a single massive change, and it lives alongside [roadmap.md](roadmap.md).
+> Status: This is the standing architecture — the agreed direction being worked toward. It sequences the work into independently valuable stages and lives alongside [roadmap.md](roadmap.md).
 
 ## The core idea
 
-The refreshed Specify architecture boils down to a single concept:
+The architecture boils down to a single concept:
 
-> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow and every adapter are guests. Judgment is a **native tool-use loop** in the binary's own orchestration layer: it drives a model API directly and lets the model navigate, read, write, and verify through a typed tool surface. The "Specify" CLI is Omnia compiled with Specify-specific backends and that native loop.
+> Specify is a family of Wasm components running on the [Omnia](https://github.com/augentic/omnia) runtime. The workflow, every adapter, and the framework's own development tooling are guests. Omnia exposes every capability a guest needs — filesystem, key-value, lifecycle, and **model evaluation** — as a typed host interface backed by a swappable backend. The "Specify" CLI is Omnia compiled with Specify-specific backends.
 
-Everything that follows — the system's shape, core principles, how operations flow, and deployment modes — is a consequence of this idea. The runtime doesn't need to understand the domain: it knows how to host Wasm guests and handle a fixed set of *deterministic* effects (filesystem, key-value, lifecycle). Specify's behaviour — orchestrating workflows, extracting from sources, building for targets, and development tooling — lives within the guests and the native orchestration layer that drives them; the runtime floor stays model-agnostic.
+Everything that follows is a consequence of this idea. The runtime hosts Wasm guests and satisfies a fixed vocabulary of typed effects; it holds no domain, workflow, or model knowledge. Specify's behaviour — orchestrating the workflow, extracting from sources, building for targets, and development tooling — lives in the guests and in the backends bound behind Omnia's host interfaces.
 
-Context comes from artifacts, not conversational history. Every judgment run is self-contained: the native loop hands the model one **whole brief** and a typed tool surface scoped to concrete artifacts (like `spec.md` or a build request), rather than relying on an accumulated chat transcript. This avoids the overloaded context windows that often cause failures. 
+Context comes from artifacts, not conversational history. Each model evaluation is self-contained: a guest hands the model one **whole brief** and a typed tool surface scoped to concrete artifacts (like `spec.md` or a build request), never an accumulated chat transcript. This avoids the overloaded context windows that cause failures.
 
 This approach provides three major benefits:
-1. **Cloud-native portability**: Specify scales seamlessly from a desktop CLI to a cloud-hosted service. Because the execution environment is entirely abstracted behind Omnia's effects, moving to the cloud requires zero changes to Specify's core logic—it only requires swapping Omnia's backends.
-2. **Scalability and auditability**: An operation runs exactly the same way whether triggered from an editor or run in a CI pipeline.
-3. **Cost efficiency**: Because judgment is a typed call over specific inputs, selected tasks can be routed to deterministic code or to small local models, reserving expensive frontier LLMs only for the hardest problems.
+
+1. **Cloud-native portability**: Specify scales from a desktop CLI to a cloud service. Because the execution environment is abstracted behind Omnia's host interfaces, moving to the cloud swaps backends, not guest code.
+2. **Scalability and auditability**: An operation runs identically whether triggered from an editor or a CI pipeline.
+3. **Cost efficiency**: Because model evaluation is a typed call over specific inputs, a task can be routed to a frontier LLM, a small local model, or deterministic replay by swapping the model backend.
 
 ## The shape of the system
 
 ![The shape of the system](../docs/assets/diagrams/effect-architecture/system-shape.svg)
 
-The system is split into two roles communicating over a single contract: a generic runtime and the guests that run on it.
+The system is two roles communicating over one contract: a generic runtime and the guests that run on it.
 
-- **Omnia is the foundation**: It's a command-line executable that runs a guest (e.g., `omnia workflow.wasm plan …`) and passes along arguments. It instantiates the guest and handles a small vocabulary of deterministic effects, but knows nothing about adapters, workflows, or AI models.
-- **Everything else is a guest**: Workflows (`plan`, `execute`), development tools, and adapters (source or target) are all guests that run as peers on the runtime.
-- **Judgment is native, beside the runtime**: When an operation needs judgment, the binary's **native orchestration layer** runs a tool-use loop — it calls a model API directly (behind a swappable `ModelClient` boundary) and dispatches the model's tool calls to a typed facade. The "brain" is swappable, but as native configuration, not a runtime effect, so Omnia core never learns a model id (law 2).
-- **The boundary is typed**: Every piece of data and effect crosses the boundary with a defined type. Untyped text is never passed across this line — only typed data and handles.
+- **Omnia is the foundation**: a command-line executable that instantiates a guest and satisfies its typed effect imports from the backends bound for this deployment. It knows nothing about adapters, workflows, or models.
+- **Everything else is a guest**: the workflow (`plan`, `execute`), the adapters (source and target), and the development tooling all run as peers on the runtime.
+- **Capabilities are host interfaces**: a guest reaches the outside world only by importing a host interface (`wasi:filesystem`, `wasi:keyvalue`, `wasi-model`, …) and calling it. Each interface is satisfied by a swappable backend.
+- **The boundary is typed**: only typed records and handles cross it — never untyped text.
 
-The runtime and guests interact in both directions. Omnia instantiates a guest and calls its exported functions (like `build`, `extract`, or `resolve`). In turn, the guest calls back into Omnia's host services (like `wasi:filesystem` or `journal`) whenever it needs to do something impure. Judgment is the exception: it is not an effect a guest requests upward but a loop the native layer runs *around* the guests, driving the model and the guest's typed I/O surface. 
+### Guest instantiation
 
-> **A quick note on naming:** In this document, "Omnia" refers to two things: the runtime itself, and the `omnia` target guest (the adapter that generates code for the Omnia runtime). This document will be explicit when the context isn't obvious.
+A guest instance is created to serve exactly one trigger, then discarded. There are four triggers:
+
+- an **HTTP request**,
+- a **message on a topic** (NATS, Kafka),
+- a **WebSocket call**, or
+- a **CLI command** (`omnia <guest>.wasm <args…>`).
+
+Wasm component instances are not re-entrant, so every trigger — and every host→guest callback — gets a **fresh instance**. Instance-per-call is what keeps the runtime free of a whole class of async and aliasing complexity.
+
+### Calls in both directions
+
+The runtime and guests interact both ways:
+
+- **Guest → host**: the guest imports a host interface and calls it whenever it needs something impure — read a file (`wasi:filesystem`), cache a value (`wasi:keyvalue`), record a lifecycle event (`journal`), or evaluate a prompt (`wasi-model`).
+- **Host → guest**: while servicing a guest call, a host may need content only a guest can produce. It instantiates a fresh guest and calls one of its exported functions. The `wasi-model` host does exactly this when it resolves a brief's references (below).
+
+> **A quick note on naming:** "Omnia" refers to two things — the runtime itself, and the `omnia` target guest (the adapter that generates code for the Omnia runtime). This document is explicit when the context isn't obvious.
 
 ## The runtime: Omnia
 
-Omnia is built on Wasmtime. Its design centers around providing pluggable host services (like HTTP, key-value storage, or observability) behind typed interfaces, so implementations can be swapped without changing the guest code. Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's existing general-purpose hosts** (for example, a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree)) — it adds **no new runtime host**. Crucially, judgment is *not* a new host: the model client lives in the binary's own **native orchestration layer** — the code around guest instantiation that owns the judgment tool-loop (model client, tool dispatch, `verify`), `slice → revision` resolution, `change-set` extraction, and forge push. Keeping the model client there rather than behind a runtime interface is what lets Omnia core stay model-agnostic (law 2) while the *same binary* runs unchanged from desktop to cloud.
+Omnia is built on Wasmtime. Its design centers on pluggable host services behind typed interfaces, so a backend can be swapped without changing guest code. Three properties make this architecture possible:
 
-Three key properties of the runtime make this architecture possible:
+- **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` runs, and the guest decides what to do. There is no bespoke `specify` host.
+- **Instance-per-call execution**: a fresh instance spins up every time a guest is called. Component instances aren't re-entrant, so this avoids a class of async complexity by construction.
+- **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Specify move from a desktop tool to a horizontally scalable service unchanged.
 
-- **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` is run, and the guest decides what to do. There is no longer a bespoke `specify` host.
-- **Instance-per-call execution**: A fresh instance spins up every time a guest is called. Wasm component instances aren't re-entrant, avoiding a whole class of async complexity.
-- **Stateless guests, host-held state**: Guests cannot hold state in memory between calls. Persistent data lives in a host service. In a local CLI context, this might be a filesystem-backed store; in a cloud context, it can be swapped for Redis or S3. This decoupling is what allows Specify to instantly transition from a desktop tool to a horizontally scalable cloud service.
+Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime floor.
 
-## The mental model: programs, effects, and interpreters
+## Judgment: the `wasi-model` host
 
-![The effect model](../docs/assets/diagrams/effect-architecture/effect-model.svg)
+Model evaluation is a host capability like any other. Omnia exposes a `wasi-model` host whose `eval` export a guest calls to have a prompt evaluated:
 
-This design borrows heavily from the concept of algebraic effects for everything *deterministic*. The guest program handles pure control flow, and whenever it needs to interact with the non-deterministic outside world, it requests a typed effect. A separate interpreter (Omnia) decides how to perform that effect. Judgment is the one thing held *outside* this effect system — it is a native loop the orchestration layer runs around the guests, not an effect a guest requests.
+```wit
+// wasi-model host — judgment as a typed effect a guest imports
+eval: func(prompt: prompt) -> result<answer, error>;
+```
 
-Here is the vocabulary used:
+Behind the host sits a **swappable model backend**. The backend runs an LLM tool-use loop: it drives a model through its API, advertises a typed tool surface, dispatches the model's tool calls, runs the verify-repair cycle, and returns a validated, typed answer to the calling guest. The guest treats `eval` exactly like `wasi:keyvalue.get` — a typed call whose backend it never sees.
 
-- **Effect**: A typed request from a guest for something it can't do itself (reading a file, logging, key-value state). It declares *what* is needed, not *how* to do it. Effects are deterministic; judgment is not one.
-- **Interpreter**: Omnia. It handles the *how* for every effect. Guests remain deterministic, while Omnia deals with the impurity of the outside world.
-- **Native tool-use loop**: The judgment mechanism. The orchestration layer hands a model one whole brief plus a typed tool surface, dispatches the model's tool calls, runs the verify-repair cycle, and returns a validated, typed answer. It lives in native code, not behind an effect.
-- **`ModelClient`**: How the orchestration layer views the model — a swappable boundary over a model API (frontier, hosted SLM, spawned agent, or replay). The caller trusts the shape of the response, not the generator, and the boundary is where record/replay and the vendor model id live.
-- **Tool surface**: The typed callbacks the model pulls on within a brief — resolve the reference shelf, read/list/write the working tree, `verify` — so the model never holds a descriptor or an OS path ([RFC-53](rfc-53-tool-server.md)).
-- **Handle**: A reference (like a file path or ID) that points to data without carrying it, keeping context windows lazy and small.
+### Resolving references — the host calls back into a guest
 
-For context, here is how these concepts map to the tech stack:
+A brief points at internal references (e.g. `../references/business-logic.md`). The model emits a `resolve` tool call for each; the backend follows it by selecting the relevant **adapter guest**, instantiating it, and calling its exported reference shelf:
 
-| Concept               | Technology                                                                                  |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| Program / Guest       | A Wasm component (`wasm32-wasip2`)                                                          |
-| Runtime / Interpreter | Omnia (a Wasmtime-based CLI binary)                                                         |
-| Effect                | A WIT interface import (deterministic only)                                                 |
-| Typed boundary        | WIT records and interfaces                                                                  |
-| Handle                | A brief path, artifact path, or reference ID                                                |
-| Native tool-use loop  | Native orchestration in the binary (model client + tool dispatch + `verify`)               |
-| `ModelClient`         | A native trait over [`genai`](https://github.com/jeremychone/rust-genai) (frontier / hosted SLM / spawned agent / replay) |
-| Tool surface          | `augentic:tools` ([RFC-53](rfc-53-tool-server.md)) — `resolve` / `read` / `list` / `write` / `verify` |
-| Reference shelf       | The adapter-exported `references` interface (`resolve(id) → bytes`)                          |
+```wit
+// adapter reference shelf — the model backend calls this back into the guest
+resolve: func(reference: reference) -> result<list<u8>, error>;
+```
 
-## How the model reads a brief
-
-The native loop hands the model one **whole brief** and a typed tool surface; how the model then pulls in supporting context depends on which `ModelClient` strategy is bound:
-
-- **A filesystem-capable spawned agent** (like a headless Cursor or Claude Code session) is given the brief path and reads the prose directly, following relative links to supporting docs and pulling in only what it needs. This is the same lean-context behavior as before, now expressed as one model strategy rather than a runtime effect.
-- **An API model** (a raw frontier or hosted-SLM endpoint with no filesystem) cannot follow a link or hold a path. So the loop advertises a tool surface ([RFC-53](rfc-53-tool-server.md)): the model emits a `resolve(id)` tool call for each of the brief's internal references, which the loop forwards to the adapter's exported **`references` shelf** (`resolve(id) → bytes`); it reads and mutates the working tree through `read` / `list` / `write`. The model never holds a descriptor or an OS path.
-
-Either way the adapters remain a hybrid of Wasm and prose. The Wasm handles deterministic exports and the reference shelf, while the prose (the briefs and references) lives on disk, linked together naturally; the native loop is what binds the two to a model.
+Because instances are not re-entrant, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime floor stays free of any reference-injection machinery.
 
 ![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
 
-The reference shelf is the adapter's, not the runtime's: `resolve` is a stateless, instance-per-call guest export, so a *computed* reference is served by a fresh instance and the runtime floor stays free of any reference-injection machinery.
+The model reads and mutates a working tree through the same tool surface — `read` / `list` to scan existing code, `write` to accumulate an edit, `verify` to check itself — so it never holds a descriptor or an OS path. A filesystem-capable spawned-agent backend instead reads and writes the working tree directly through the `local-path` it is lent.
 
-## Guest-to-guest interaction
+### The model backend is swappable
 
-When the workflow guest needs to call an adapter guest (for instance, when `/spec:execute` needs to call a target adapter's `build` export), there are two primary mechanisms supported by the WebAssembly Component Model and Wasmtime. Host-mediated dynamic linking is the preferred approach as it aligns with Omnia's dynamic resolution capabilities.
+Swapping the model backend is how deployment modes are chosen; Omnia core never learns which model is bound:
 
-### 1. Host-Mediated Dynamic Linking (Preferred)
+- **Frontier / hosted** — a hosted inference API (via [`genai`](https://github.com/jeremychone/rust-genai)) for hard synthesis and review.
+- **Spawned agent** — a fresh, context-free agent session for the filesystem-capable path.
+- **Small local model** — a local SLM for narrow, high-volume transformations, with constrained decoding for valid typed reports.
+- **Replay** — serves recorded `(prompt + tool transcript) → answer` fixtures, turning model evaluations into deterministic regression tests in CI.
 
-Because Omnia resolves guests dynamically at runtime (e.g., from an OCI store), static linking is often not feasible. Instead, Wasmtime's host-mediated dynamic linking provides a strictly typed boundary between guests without requiring ahead-of-time composition.
+Record/replay is a property of the backend boundary: a recording backend logs request→response around the live model; the replay backend serves them.
 
-- **How it works**: The `workflow` world imports the target adapter's interface. The Omnia host intercepts this call using Wasmtime's `wasmtime::component::Linker` and Dynamic API (`wasmtime::component::Val`).
-- **The Host's role**: The host dynamically instantiates a fresh, stateless instance of the target adapter, marshals the typed WIT records natively from the caller's memory to the callee's memory, invokes the exported function, and returns the typed result.
-- **Why it fits**: This perfectly satisfies Omnia's requirements. It maintains strict WIT typing without manual byte serialization, supports dynamic adapter resolution, and enforces the "instance-per-call" principle, completely avoiding Wasmtime re-entrancy issues.
+## Guest-to-guest interaction: host-mediated dynamic linking
 
-### 2. Static Component Composition
+A single operation spans several guests: the workflow guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
 
-In this approach, guest-to-guest calls are resolved inside the Wasm sandbox without trapping to the host runtime.
+- **How it works**: the caller's world *imports* the adapter's typed interface (`augentic:specify/target`, `augentic:specify/source`, `references`). The Omnia host intercepts the import through the Wasmtime `Linker`.
+- **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, marshals the typed WIT records natively from the caller to the callee, invokes the exported function, and returns the typed result.
+- **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so it cannot hit Wasmtime re-entrancy. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
 
-- **How it works**: The `workflow` world *imports* `augentic:specify/target` and `augentic:specify/source`. The target and source adapters *export* these exact interfaces.
-- **The Host's role**: Before Omnia executes the workflow, the WebAssembly Component Model allows statically composing the `workflow.wasm` and the relevant adapter `.wasm` files into a single, merged `composed.wasm` using tools like `wac` (WebAssembly Composition) or `wasm-tools compose`.
-- **Why it fits**: Omnia instantiates this single `composed.wasm`. When the workflow calls `build()`, it is a direct function call to the adapter within the same sandbox. However, this requires resolving and linking all adapters ahead of time, which conflicts with Omnia's dynamic, config-driven resolution.
+Because the interfaces (`target` / `source` / `references`) are statically known and only the adapter *instances* are dynamic, the host shims the imports with **typed bindgen closures** rather than the fully-dynamic `component::Val` API; `Val` remains available if an interface is ever unknown at host-compile time.
+
+### Many guests, selected by identity
+
+The binary holds every guest on **one runtime** and picks among them in native code:
+
+```text
+GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
+  "workflow"             -> InstancePre     (embedded in the binary via include_bytes!)
+  "source:typescript"    -> InstancePre   ┐  resolved by digest from an OCI store into a
+  "source:documentation" -> InstancePre   │  local cache — only the identities a plan
+  "target:omnia"         -> InstancePre   ┘  binds are instantiated
+```
+
+Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology.** Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
+
+- the `wasi-model` callback resolves against the adapter whose brief is being evaluated — its identity is fixed for the duration of that `eval`;
+- a workflow→target call (`build`, `merge`, `guidance`) targets the slice's bound target; a workflow→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.
 
 ## Lifecycle of an operation
 
 ![Logical sequence: build](../docs/assets/diagrams/effect-architecture/sequence-build.svg)
 
-Let's look at how a `build` operation flows in practice.
+A `build` flows like this:
 
-1. The native orchestration layer resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
-2. It opens a tool session bound to that base revision and runs any deterministic setup (a `tool` adapter export, called directly through its typed binding).
-3. For the judgment leg it runs the **native tool-use loop**: it hands the model the `build` brief plus the tool surface (`resolve` / `read` / `list` / `write` / `verify`), through the bound `ModelClient`.
-4. The model emits tool calls. `resolve` follows the brief's reference shelf (the adapter's `references` export); `read` / `list` scan existing code; `write` accumulates an edit. (A filesystem-capable spawned-agent strategy does the same reads and writes directly against the materialized tree.)
-5. When the brief calls for it the model emits `verify(<check>)`; the loop runs that vetted, sandboxed profile and feeds the severity-tiered `report` back, and the model repairs and re-verifies ([RFC-53](rfc-53-tool-server.md)).
-6. The model returns its final answer; the loop validates it against the operation's typed `report` and commits the session.
-7. The report carries only judgment (status and findings); the native orchestration layer extracts the resulting mutations as a content-addressed `change-set` (a `git diff` against the base revision) and requests the lifecycle `transition` effect.
+1. The workflow guest resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
+2. It runs any deterministic setup (a `tool` adapter export, reached by host-mediated dynamic linking).
+3. For the judgment leg it calls `wasi-model.eval` with the `build` brief.
+4. The model backend drives the model. `resolve` follows the brief's reference shelf (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
+5. When the brief calls for it the model emits `verify(<check>)`; the backend runs that vetted, sandboxed profile and feeds the severity-tiered `report` back; the model repairs and re-verifies.
+6. `eval` returns the validated, typed answer to the guest.
+7. The report carries only judgment (status and findings); the host extracts the resulting mutations as a content-addressed `change-set` (a `git diff` against the base revision), and the guest requests the lifecycle `transition` effect.
 
-In short: deterministic control lives in guest exports and the native layer, the model is driven directly through a typed tool surface, references are loaded lazily through the shelf, and what crosses out is a typed report plus a content-addressed change-set. 
+In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the shelf, and what crosses out is a typed report plus a content-addressed change-set.
 
-## The four laws
+## The working tree
 
-When evaluating future design decisions — whether something should be prose or code, what a function should take, or where it should run — keep this guiding principle in mind:
+A `build` generates a slice *into a pre-existing project*, reading existing code and conventions and writing changes back in place. Modeling that tree as a bare `project-path` string is the one thing that pins an operation to a single machine, so the contract models it as a host-materialized **working tree** capability instead.
 
-> Run every adapter and workflow as a guest on a runtime that only understands deterministic effects. Keep the structure in deterministic code, drive judgment through a native tool-use loop behind a swappable model boundary, and pass handles instead of raw text across boundaries.
+The host materializes the tree from a content-addressed **base revision** (a git commit, in the git backend) onto whichever node runs the operation — a local clone on a desktop, a fresh checkout on a cluster node. The capability exposes two faces:
 
-These four laws apply across the entire architecture; if a proposed change conflicts with one of them, it's worth reconsidering the approach. The RFCs refer to them by number — most often *law 2*, the runtime floor's agnosticism.
+- a **`wasi:filesystem` descriptor**, for deterministic guest code that reads or validates the tree through capability-scoped handles;
+- a host-reported node-local **`local-path`**, for the one consumer that cannot hold a descriptor: the filesystem-capable **spawned-agent** model backend, which reads and writes through real OS paths. An absent path means no real local tree exists on this node — a clean capability signal that an agent-driven build is unavailable there.
 
-1. **Typed boundaries**: WIT records are used for data and WIT interfaces for effects. Untyped text is not passed across boundaries.
-2. **The runtime floor only knows about effects**: Omnia core doesn't know about workflows, adapters, or AI models — it only knows how to handle deterministic effects. Model knowledge (vendor SDKs, model ids, routing policy) is confined to the binary's native orchestration layer, behind the `ModelClient` boundary, and never reaches Omnia core.
-3. **Determinism by default, judgment by exception**: Control flow lives in deterministic code. The native tool-use loop returns a typed, validated decision to steer the next deterministic step. Models do not guess control flow.
-4. **Laziness is key**: Handles (like file paths) are passed across boundaries instead of massive text bodies, keeping context windows manageable and operations scalable.
-
-## The model fleet and deployment modes
-
-![The model fleet and deployment topologies](../docs/assets/diagrams/effect-architecture/model-fleet.svg)
-
-Because every judgment run is self-contained (one whole brief, no long-lived conversation), the native loop can route each run to the right **`ModelClient` strategy** by difficulty and cost. The strategy is native configuration behind the `ModelClient` boundary — Omnia core never sees it. Several deployment modes fall out:
-
-- **Interactive (Frontier LLMs)**: When triggered from an editor, the bound strategy is a frontier API (via `genai`) or a spawned headless agent session, run against concrete artifacts (not chat history) for complex synthesis and review.
-- **Headless (Small Local Models)**: For fleet-scale operations and narrow transformations, the strategy is a hosted API or a local SLM with no editor in the loop. Constrained decoding ensures valid typed reports.
-- **CI / Testing (Deterministic Replay)**: In CI, the bound strategy is the `Replay` `ModelClient` impl, turning AI evaluations into reliable regression tests by serving recorded `(brief + tool transcript) → answer` fixtures.
-
-This setup enables progressive optimisation. As a specific transformation becomes well-understood, it can be migrated from an expensive frontier model down to a cheaper local SLM, or even to deterministic code, by changing the bound strategy — no guest rewrite. Across `genai` (frontier ↔ hosted ↔ SLM) this is a config change *inside* the `ModelClient`; only swapping to the spawned-agent shape is a distinct native strategy. Runtime-agnosticism is structural: the model id lives behind the `ModelClient` boundary, never in Omnia core. The fleet's full shape — router, frontier, spawned agent, SLM — is [RFC-58](rfc-58-eval-fleet.md).
+The agent's read-modify-write loop is irreducibly node-local, so it is not abstracted away — it is *quarantined* between two portable boundaries: a host-materialized tree on the way in, and a content-addressed **change-set** (adds, modifies, deletes against the base revision) on the way out. Neither `build` nor `merge` returns the delta; the report carries only judgment, and the host extracts the change-set from the tree. `build` is lent the slice's tree and the caller extracts its delta; `merge` is lent the *baseline* tree and folds a change-set into it in place. What crosses the contract is the change-set, never a shared mount — which is what lets `build` and `merge` run on different nodes. Git provides exactly this content-addressing, so it is the natural first backend, carried as a **custom git-aware `wasi:filesystem` backend** (native code, so git stays native and there is no in-guest VCS). The mechanism is specified in [RFC-55](rfc-55-working-tree.md).
 
 ## Host services and state
 
-Guests are stateless and instance-per-call, so anything that must outlive a single call lives in a host service, not in guest memory. These are the *deterministic* effects — the counterpart to the native judgment loop above — and each is satisfied by a swappable backend the guest never sees:
+Guests are stateless and instance-per-call, so anything that must outlive a call lives in a host service behind a swappable backend:
 
-- **Filesystem** (`wasi:filesystem`): Access to inputs, assets, and the project tree through standard WASI filesystem capabilities, restricted by the host. For an operation that mutates a pre-existing tree — notably `build` — the project tree is handed over as a [working tree](#the-working-tree) capability rather than a bare path, served by a **custom git-aware `wasi:filesystem` backend** (native, so git stays native) rather than a new bespoke host.
-- **`state`**: Host-held scratch and memoization (e.g., caching a computed reference). uses KeyValue interface backed locally by filesystem, or Redis/NATS for fleet-shared state.
-- **`journal`**: The durable lifecycle log and its legal moves. Uses `JsonStore` backed by a filesystem backend.
+- **`wasi:filesystem`** — inputs, assets, and the project tree; the working tree is a custom git-aware backend.
+- **`wasi:keyvalue`** (`state`) — host-held scratch and memoization (a computed reference, a model session's accumulating edits); filesystem locally, Redis / NATS for fleet-shared state.
+- **`journal`** — the durable lifecycle log and its legal transitions; a JSON store over a filesystem backend.
+- **`wasi-model`** — model evaluation, backed by a frontier API, a spawned agent, a local SLM, or replay.
 
-Because guests only interact with typed interfaces (like `KeyValue` or `wasi:filesystem`), the deployment topology is dictated entirely by the host backends. A local CLI binary wires these interfaces to the local filesystem. A cloud deployment wires the exact same interfaces to cloud-native infrastructure (like S3 for `wasi:filesystem` and Redis for `state`). The Specify Wasm components do not change.
+Because guests interact only with typed interfaces, the deployment topology is dictated entirely by the bound backends. A local CLI wires these to the local filesystem and a model API; a cloud deployment wires the same interfaces to S3, Redis, and a fleet model backend. The guests do not change.
 
-### The working tree
+## The four laws
 
-A `build` does not generate into a green field — it generates a slice *into a pre-existing project*, reading existing code and conventions and writing changes back in place. The original contract leaked this as a `project-path` string: a single local path that the guest, the model, and core all assumed they shared. That assumption is the one thing that pins an operation to a single machine, so the contract models the tree as a host-materialized **working tree** capability instead of a path.
+When evaluating a design decision — prose or code, what a function takes, where it runs — keep this principle in mind:
 
-The host materializes the tree from a content-addressed **base revision** (a git commit, in the git backend) onto whichever node runs the operation — a local clone on a desktop, a fresh checkout or snapshot on a cluster node. The capability exposes two deliberately different faces:
+> Run every adapter and workflow as a guest on a runtime that understands only typed effects. Keep structure in deterministic guest code, reach the model through the `wasi-model` host behind a swappable backend, and pass handles instead of raw text across boundaries.
 
-- **A `wasi:filesystem` descriptor**, for deterministic guest (Wasm) code that reads or validates the tree through capability-scoped handles.
-- **A host-reported node-local path** (`local-path`), for the one consumer that cannot hold a descriptor: the filesystem-capable **spawned-agent** model strategy ([RFC-58](rfc-58-eval-fleet.md)), which reads existing code and writes its changes through real OS paths. The native loop — the one party holding both the descriptor and the path behind it — resolves and provisions this path; the opaque descriptor yields none on its own. An absent path means no real local tree exists on this node, so an agent-driven build is unavailable there — a clean capability signal rather than a deep failure. (An API model never needs this path: it reads and writes through the [RFC-53](rfc-53-tool-server.md) tool surface instead.)
+1. **Typed boundaries**: WIT records for data, WIT interfaces for effects. Untyped text is not passed across boundaries.
+2. **The runtime floor only knows effects**: Omnia core doesn't know about workflows, adapters, or models — only how to host guests and satisfy typed effects. Which backend satisfies an interface — including which model backs `wasi-model` — is deployment configuration the floor never sees.
+3. **Determinism by default, judgment by exception**: control flow lives in deterministic guest code. `wasi-model.eval` returns a typed, validated decision that steers the next deterministic step. Models do not guess control flow.
+4. **Laziness is key**: handles (file paths, reference ids) cross boundaries instead of corpora, keeping context windows small and operations scalable.
 
-Provisioning that path is not a new mechanism: it is the same **host-as-path-broker** that already grants WASI extension tools their filesystem capabilities. The host substitutes a logical root (`$PROJECT_DIR`, `$CAPABILITY_DIR`, or the working tree), resolves it within the allowed roots (rejecting `..` and symlink escapes), then hands it across the boundary in whatever form the consumer can use — a capability-scoped `descriptor` for a sandboxed guest, or a literal path (process env or cwd) for an out-of-process consumer that cannot hold one. The tool-side rules are documented in [tool declarations](../docs/explanation/tool-declarations.md); the working tree's `local-path` is that broker applied to the agent, and graduates into that explanation when the runtime move ships.
+## Deployment modes
 
-This is the honest seam. The agent's read-modify-write loop is irreducibly node-local and path-based, so it is not abstracted away — it is *quarantined* between two portable boundaries: a host-materialized tree on the way in, and a content-addressed **change-set** (a delta of adds, modifies, and deletes against the base revision) on the way out. Neither operation *returns* that delta: the report carries only judgment (status and findings), and the caller's native orchestration layer extracts the change-set from the tree (a `git diff` against the base revision). The two target operations then use the capability symmetrically — `build` is lent the slice's tree and the caller extracts its delta, while `merge` is lent the *baseline* tree and folds a change-set (the build's output, the only representation portable enough to have crossed from another node) into it in place. The messy local mutation is confined to one node's scratch space, while what crosses the contract is the change-set, never a shared mount — which is what lets `build` and `merge` be dispatched to different nodes in a cluster. Git already provides exactly this content-addressing (commit ids, cheap diffs, a merge model), so it is the natural first backend without the contract ever naming a VCS. That backend rides Omnia's existing `wasi:filesystem` host as a **custom git-aware backend** — native code, so git stays native and there is no in-guest VCS — while `slice → revision` resolution, `change-set` extraction, and forge push live in the binary's native orchestration layer. The mechanism — custom-backend materialization, object acquisition (a `wasi:blobstore`-backed object cache on fleet nodes), and out-of-sequence dependency-layering — is specified in [RFC-55](rfc-55-working-tree.md).
+Because each evaluation is self-contained, the bound model backend is chosen per deployment (or per call, by a routing backend):
 
-### Journalling progress
+- **Interactive**: a frontier API or a spawned headless agent, run against concrete artifacts.
+- **Headless**: a hosted API or a local SLM at fleet scale, no editor in the loop.
+- **CI / testing**: the replay backend serves recorded fixtures, turning evaluations into reliable regression tests.
 
-Because guests hold nothing, progress and restart state live in the durable `journal`. A guest records forward progress by emitting typed, closed-taxonomy events (`slice.build.started`, `slice.build.succeeded`, …).
-
-Omnia's [`wasi-jsondb`](https://github.com/augentic/omnia/tree/main/crates/wasi-jsondb) host service is a natural fit for this functionality. Each event is a JSON document and it can readily be backed by a new filesystem backend.
+This enables progressive optimisation: as a transformation becomes well-understood, move it from a frontier model to a local SLM, or to deterministic code, by changing the bound backend — no guest rewrite.
 
 ## CLI bootstrapping
 
-Because "Specify is Omnia compiled with Specify-specific backends", there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The runtime acquires its guests through a composed approach:
+Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The runtime acquires its guests two ways:
 
-- **Embedded core seed**: Core first-party guests (like the workflow) compile directly into the binary using `include_bytes!`, ensuring offline initialization and zero version skew.
-- **Config-driven resolution**: Adapters and third-party guests resolve dynamically via digest-pinned references from an OCI store into a local cache.
-
-This combination provides a small binary that can still bootstrap offline, while decoupling the release cadence of most adapters from the core runtime.
+- **Embedded core**: first-party guests (the workflow) compile into the binary via `include_bytes!`, ensuring offline startup and zero version skew.
+- **Config-driven resolution**: adapters and third-party guests resolve dynamically via digest-pinned references from an OCI store into a local cache.
 
 ## The incremental path
 
-![Staged path to the architecture](../docs/assets/diagrams/effect-architecture/roadmap.svg)
+The architecture is approached in stages. Each is independently valuable and forward-compatible on the same typed contract:
 
-The architecture is being approached in stages. Each stage is valuable on its own and forward-compatible:
-
-- **S0–S1 (Typed contract)**: Authoring the typed-records WIT package as the single source of truth (callable `tool` dispatch and the schema-drift retirement follow in S3 / S2).
-- **S2 (Name the effects)**: Formalising the *deterministic* effects — `wasi:filesystem`, `kv`, and lifecycle events — as typed WIT imports, and standing up the native `ModelClient` boundary for judgment. This unlocks record/replay testing (captured at the `ModelClient` boundary) and retires the schema-drift surface.
-- **S3 (Guests orchestrate)**: Deterministic tools become callable through the typed bindings; the native tool-use loop drives multi-step judgment operations, and adapters expose their reference shelf alongside their deterministic exports.
-- **S4 (Runtime move)**: Replacing the bespoke `specify` host with the generic Omnia binary and running every guest — adapters and the workflow — on it. The runtime move itself is committed; *how much* of each workflow phase compiles into deterministic guest control flow, versus stays model-driven through the native loop, is a separate per-phase call.
-- **Parallel (The model fleet)**: Building the native router and `ModelClient` strategies (frontier, hosted SLM, spawned agent, replay).
-
-Stages S0–S3 are unconditional and the S4 runtime move is a committed bet; graduating any individual workflow phase into compiled guest control flow is opt-in and evidence-gated, not part of the committed path. For more details on the staging, see [roadmap.md](roadmap.md).
+- **S1 · Typed contract** ([RFC-51](rfc-51-adapter-wit.md)) — the versioned `augentic:specify` WIT package: records, per-axis `source` / `target` interfaces, the `references` shelf, and the worlds, with host bindings.
+- **S2 · Name the effects** ([RFC-52](rfc-52-effect.md)) — the typed effects (`wasi:filesystem`, `wasi:keyvalue`, lifecycle, and the `wasi-model` `eval` host) become WIT imports, with the `references` shelf as a guest export.
+- **S3 · Guests orchestrate** ([RFC-54](rfc-54-orchestration.md)) — deterministic `tool` operations become callable through the bindings, and judgment operations run through `wasi-model.eval` and the tool loop ([RFC-53](rfc-53-wasi-model.md)) over the adapter's brief and reference shelf.
+- **S4 · Runtime move** ([RFC-56](rfc-56-runtime-move.md)) — the generic Omnia binary plus Specify backends, instance-per-call, the multi-guest registry, the CLI trigger, and the mandatory component on both axes; the working-tree backend ([RFC-55](rfc-55-working-tree.md)) lands with it.
+- **S4 · Workflow (and development) as guests** ([RFC-57](rfc-57-specify-guests.md)) — the workflow and the development tooling run on the runtime like every adapter.
+- **Parallel · Model backends** ([RFC-58](rfc-58-model-backends.md)) — the frontier, spawned-agent, SLM, and replay backends behind `wasi-model`, plus the routing backend.
 
 ## Key trade-offs
 
-A few deliberate bets are being made with this architecture:
-
-- **Omnia is the sole runtime**: Provides flexible deployment modes — the *same* binary and the *same* guests run from desktop to cloud, with only the deterministic backends swapping (filesystem → S3, kv → Redis) — but creates a hard dependency on Omnia's host-service surface.
-- **Judgment is a native dependency, not a runtime effect**: The judgment loop lives in the binary's native orchestration layer and reaches a model over its API (or spawns an agent), so the binary carries a model-client dependency and needs model egress (or a local model) at judgment time. It is deliberately not embedded inside a live editor session. The trade for moving judgment off a runtime effect: it runs wherever the native binary runs (desktop and cloud workers alike), but a *pure-wasi host with no native binary* (a browser, or wasi-serverless) needs the optional Mode-B tool-server guest ([RFC-53](rfc-53-tool-server.md)) to reach the same surface.
+- **Omnia is the sole runtime**: the *same* binary and guests run from desktop to cloud with only backends swapping (filesystem → S3, kv → Redis, model → fleet) — at the cost of a hard dependency on Omnia's host surface.
+- **Model evaluation needs egress (or a local model) at `eval` time**: the binary carries a model-backend dependency; the replay backend covers CI, and a local SLM backend covers air-gapped runs.

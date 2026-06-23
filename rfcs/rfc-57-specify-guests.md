@@ -1,63 +1,42 @@
-# RFC-57: Workflow and Development as Guests (Stage 4 — The Thin Interpreter)
+# RFC-57: Workflow and Development as Guests
 
-> Status: Draft (skeleton) · Implements: the effect-oriented architecture (Stage 4 — guests) · Depends: [RFC-56](rfc-56-runtime-move.md) (the Omnia runtime move), RFC-54 (orchestration components proven on the adapter axis) · Per-phase compile-vs-delegate: **gated on RFC-54 data**
+> Status: Draft · Order 7 of 8 · Stage S4 · Depends: [RFC-54](rfc-54-orchestration.md), [RFC-56](rfc-56-runtime-move.md) · Owns: the workflow and development guests
 
 ## Abstract
 
-Once [RFC-56](rfc-56-runtime-move.md) has put the generic runtime under everything, two first-party concerns still run *beside* it rather than *on* it: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the framework's own **development tooling** (authoring and standards checks). This RFC moves both onto the runtime as guests, so the architecture's "everything is a guest" claim becomes literally true and the runtime is the thin interpreter the stage title names. The workflow move is where the one genuinely contested decision lives — *how much* of each phase compiles into the guest versus stays model-driven through the native tool-use loop ([RFC-53](rfc-53-tool-server.md)) — and that per-phase compile-vs-delegate call is what this RFC exists to gate with data from RFC-54. The development-guest move is the mechanical tail.
+With the runtime under everything ([RFC-56](rfc-56-runtime-move.md)), the two remaining first-party concerns move onto it as guests: the **workflow** (`/spec:plan`, `/spec:execute`, the slice loop) and the framework's own **development tooling** (authoring and standards checks). The workflow guest sequences deterministic steps in Wasm, reaches adapters by host-mediated dynamic linking, and calls `eval` for judgment — so "everything is a guest" becomes literally true.
 
-## Motivation (and the case against)
+## The model
 
-**For:** the workflow lifecycle is a state machine (plan → approved → execute loop → finalize) whose deterministic skeleton already lives in the CLI; formalizing the remaining glue as orchestration over effects would give whole-workflow record/replay, typed control flow, and one uniform model across adapters and workflow alike.
+- **The workflow as a guest.** `/spec:plan` sequences the runtime's deterministic operations (`plan add`, validation, Gate 1) and calls `eval` for the judgment legs — a survey pass per bound source, then a reconcile-leads pass. `/spec:execute` is the drained-loop reducer over plan entries. The guest *requests* lifecycle transitions; it does not own them.
+- **Reaching adapters.** When the workflow needs an adapter operation (`survey` / `extract` / `build` / `merge`), it imports the axis interface and the host routes it to the plan-bound adapter instance ([RFC-56](rfc-56-runtime-move.md)). When it needs judgment, it calls `eval`.
+- **Development tooling as a guest.** `specify lint framework`, `rules export`, and the `CORE-*` checkers are Specify behaviour, so they ride the same runtime as a guest. They are deterministic, carry no judgment leg, and are sequenced last.
 
-**Against (load-bearing):** the workflow is exactly where the model's adaptability — handling unexpected project states, operator intent, recovery — is a *feature*, and where the existing guardrails (`plan.lock`, Gate 1, `specify plan next` refusing illegal transitions) already bound any agent fumbling. Prose is also more malleable for operator-facing UX evolution. **This RFC must clear the "against" case before any phase graduates to compiled orchestration**, per the architecture's per-layer line: the workflow leans toward an agent-driver over deterministic guardrails, not toward a monolithic component.
+## Lifecycle authority stays in the runtime
+
+`transition` / `journal` / lock ownership stay in the runtime's deterministic lifecycle host service ([RFC-52](rfc-52-effect.md)). The workflow guest requests transitions as effects; it never writes them. Adaptive, recovery-heavy phases stay model-driven through `eval` rather than compiled into rigid control flow — deterministic sequencing graduates to guest code; judgment does not.
 
 ## Scope
 
-**In scope:** running the workflow as a guest on the RFC-56 runtime; per-phase expression of one or more workflow phases as effect-driven orchestration; the boundary between runtime-owned deterministic transitions and guest-owned sequencing; what becomes of skill markdown; and moving the framework's development / standards tooling onto the runtime as a guest.
+- Running the workflow as a guest on the runtime, with the slice loop expressed over deterministic effects and `eval`.
+- The boundary between runtime-owned transitions and guest-owned sequencing.
+- Moving the development / standards tooling onto the runtime as a guest.
 
-### Non-goals
+## Open questions
 
-- **No lifecycle authority moves into the guest.** `transition` / `journal` / lock ownership stay in the runtime's deterministic lifecycle host service (roadmap principle: "Keep the CLI authoritative" — the authority stays on the deterministic floor, not in a model-driven guest); the workflow guest *requests* transitions as effects, it does not own them.
-- **No removal of operator adaptability.** Phases that are primarily judgment / recovery stay model-driven through the native loop.
-- **No runtime engineering.** The generic binary, the effect backends, instance-per-call — all of that is [RFC-56](rfc-56-runtime-move.md); this RFC consumes it.
-
-## The model (sketch)
-
-`/spec:plan` becomes an orchestration guest that sequences the runtime's deterministic operations (`plan add`, validation, Gate 1) as **non-yielding** steps surfaced through the lifecycle effect, and *requests* judgment runs — a native tool-loop pass over the survey brief per bound source, then over the reconcile-leads brief — which the native layer fulfills and feeds back as typed results. (The request is a typed directive the native driver interprets, not an `eval` import — there is no `eval`; this is the one place the step-reducer shape survives, because a wasm guest cannot call the native loop directly.) `/spec:execute` becomes the drained-loop reducer it already morally is. Skills thin from orchestrators to launchers.
-
-## Development tooling as a guest
-
-The framework's own authoring and standards tooling — `specify lint framework`, `rules export`, the `CORE-*` checkers — is itself Specify behaviour, so by the architecture's own rule it belongs in a guest too. It is the lowest-urgency move (the tooling works as the CLI today and gates nothing) and mechanically simpler than the workflow: it carries no contested compile-vs-delegate question because the standards checks are already deterministic. It rides the same contract and runtime, is sequenced last, and may be deferred indefinitely without blocking the rest of the architecture.
-
-## Decisions to record (open — and gating)
-
-- **Which phases, if any, graduate.** Per-phase judgment: does this phase's value come from deterministic sequencing (graduate) or from adaptive judgment (stay agent-driven)?
-- **Skill fate.** Whether skills dissolve into typed orchestration + native judgment passes, or remain the operator entry surface with orchestration underneath.
-- **Operator UX.** Whether moving orchestration prose into compiled control flow regresses the "tweak the skill" malleability operators rely on.
-- **Lifecycle authority boundary.** Exactly which transitions remain runtime-only versus reachable as effects.
-- **Guest-to-guest interaction.** How the workflow guest calls adapter guests. The current preference is **Static Component Composition** (linking the workflow and adapters into a single `composed.wasm` before execution), rather than host-mediated orchestration. See `architecture.md` for details.
-- **Per-phase activation trigger.** What evidence from RFC-54 (adapter orchestration in production, replay paying off, async ABI stable) justifies graduating a given phase to compiled orchestration.
-- **Development-guest scope.** Whether the development tooling becomes a guest at all, and which of its operations are worth moving off the CLI.
-
-## Phased plan (per-phase, gated)
-
-1. Run the workflow as a guest on the RFC-56 runtime with **every** phase still model-driven through the native loop — the no-compile baseline that proves the move without ossifying anything.
-2. Pick one phase whose value is dominated by deterministic sequencing; express it as orchestration over effects with the runtime still owning transitions.
-3. Add whole-phase record/replay; compare operator ergonomics against the prose skill it replaces.
-4. Decide — with that evidence — whether to generalize, stop, or revert; move the development tooling onto the runtime if and when it earns the change.
+- Which phases express as deterministic guest sequencing vs stay model-driven through `eval` (decided per-phase, by where the value lies).
+- What survives of the skill markdown once the workflow guest owns orchestration.
+- Which development-tooling operations are worth moving off the CLI.
 
 ## Acceptance criteria
 
-1. The workflow runs as a guest on the RFC-56 runtime; the bespoke driver is gone.
-2. The no-compile baseline holds: every phase is reachable through the native loop, with lifecycle authority still in the runtime.
-3. Any graduated phase runs as effect-driven orchestration with whole-phase record/replay, and the runtime retains sole lifecycle authority.
-4. The per-layer line is respected — adaptive phases remain agent-driven; only deterministic-sequencing phases graduate.
-5. Operator ergonomics are demonstrably not worse than the prose skill replaced.
-6. `make lint` and `cargo make ci` stay green.
+1. The workflow runs as a guest on the runtime; the bespoke driver is gone.
+2. Every phase is reachable, with lifecycle authority still in the runtime's host service.
+3. The workflow reaches adapters by host-mediated dynamic linking and judgment by `eval`.
+4. Adaptive phases stay model-driven; only deterministic-sequencing phases are compiled into the guest.
+5. `make lint` and `cargo make ci` stay green.
 
 ## Risks and invariants
 
-- **Ossifying the fluid.** The chief risk is encoding adaptive, recovery-heavy orchestration as rigid control flow. The "against" case is the guard; if a phase needs the model's judgment to sequence, it does not belong here.
-- **Lifecycle authority.** Authority must not migrate into guests, services, or skills (roadmap Non-Goal); it stays in the runtime's lifecycle host service.
-- **Per-phase deferral is the default.** The runtime move (RFC-56) is committed, but absent a clear trigger and owner *no individual phase compiles* — each stays model-driven through the native loop until its case is made. RFC-54 is the last unconditional stage; graduating a workflow phase past it is opt-in and evidence-gated, not the architecture's stopping point.
+- **Don't ossify the fluid.** Encoding adaptive, recovery-heavy orchestration as rigid control flow is the chief risk; a phase that needs the model's judgment to sequence stays on `eval`.
+- **Lifecycle authority.** Authority stays in the runtime's lifecycle host service, never in a guest or skill.
