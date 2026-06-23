@@ -38,7 +38,7 @@ A guest instance is created to serve exactly one trigger, then discarded. There 
 - a **WebSocket call**, or
 - a **CLI command** (`omnia <guest>.wasm <args…>`).
 
-Wasm component instances are not re-entrant, so every trigger — and every host→guest callback — gets a **fresh instance**. Instance-per-call is what keeps the runtime free of a whole class of async and aliasing complexity.
+Guests hold no state between calls, so every trigger gets a **fresh instance**; the same holds for every host→guest callback, which prevents it from recursively re-entering an instance already on the stack (the one kind of re-entrancy the component model still traps). Instance-per-call is what makes the runtime horizontally scalable and free of a whole class of async and aliasing complexity.
 
 ### Calls in both directions
 
@@ -54,7 +54,7 @@ The runtime and guests interact both ways:
 Omnia is built on Wasmtime. Its design centers on pluggable host services behind typed interfaces, so a backend can be swapped without changing guest code. Three properties make this architecture possible:
 
 - **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` runs, and the guest decides what to do. There is no bespoke `specify` host.
-- **Instance-per-call execution**: a fresh instance spins up every time a guest is called. Component instances aren't re-entrant, so this avoids a class of async complexity by construction.
+- **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never recursively re-enter an instance already on the stack — the one kind of re-entrancy the component model still traps — avoiding a class of async and aliasing complexity by construction.
 - **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Specify move from a desktop tool to a horizontally scalable service unchanged.
 
 Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime floor.
@@ -79,7 +79,7 @@ A brief points at internal references (e.g. `../references/business-logic.md`). 
 resolve: func(reference: reference) -> result<list<u8>, error>;
 ```
 
-Because instances are not re-entrant, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime floor stays free of any reference-injection machinery.
+Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime floor stays free of any reference-injection machinery.
 
 ![Logical sequence: extract](../docs/assets/diagrams/effect-architecture/sequence-extract.svg)
 
@@ -102,11 +102,11 @@ A single operation spans several guests: the workflow guest plus the source and 
 
 - **How it works**: the caller imports the host `selection` interface and names a plan-bound `adapter-id` per call (`build(id, …)`, `survey(id)`, …). The Omnia host intercepts the call through the Wasmtime `Linker` and routes it to the named adapter's typed export (`augentic:specify/target` / `source`).
 - **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, marshals the typed WIT records natively from the caller to the callee, invokes the exported function, and returns the typed result.
-- **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so it cannot hit Wasmtime re-entrancy. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
+- **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so a dispatched call cannot recursively re-enter its caller. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
 
 Because the interfaces (`target` / `source` / `references`) are statically known and only the adapter *instances* are dynamic, the host shims the imports with **typed bindgen closures** rather than the fully-dynamic `component::Val` API; `Val` remains available if an interface is ever unknown at host-compile time.
 
-The seam is a contract, not a wire protocol: in-process linking is the default, but the host can carry the same typed `selection` call to a remote callee over a `wasi:messaging` request-reply backend (NATS) — the guest still exchanges only WIT records, so the transport stays a deployment-time backend choice rather than a guest concern.
+The seam is a contract, not a wire protocol: in-process linking is the default, but the host can carry the same typed `selection` call to a remote callee over [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend (over NATS, QUIC, …) that encodes the typed records and their async `stream` / `future` values natively. Plain records (`revision`, `changeset`, `input`, `report`, `lead`, `evidence`) cross by value; a live resource such as the [working tree](#the-working-tree)'s `descriptor` cannot, so for a remote callee the host instead ships the content-addressed `revision` / `changeset` and the callee re-materializes its own tree ([RFC-55](rfc-55-working-tree.md)). wRPC stays behind the backend boundary — pinned and swappable, never in the `augentic:specify` contract — so the guest's view stays purely typed and the transport remains a deployment-time choice rather than a guest concern.
 
 ### Many guests, selected by identity
 

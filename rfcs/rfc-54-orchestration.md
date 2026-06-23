@@ -10,7 +10,7 @@ An adapter operation splits along its grain. The **deterministic** part — the 
 
 - **Typed tool dispatch.** Deterministic `tool` operations are reached through their world export (`instance.call_build(&mut store, &req)`), retiring `wasi:cli/run` on that path — a typed `result<_, error>` in place of exit codes and stdout JSON.
 - **Judgment through `eval`.** A judgment operation calls `eval` with the brief `path`; the model pulls the brief's references through `resolve`, scans code through `read` / `list`, mutates through `write`, and checks through `verify`. What stays in the guest is the deterministic exports and the `references` shelf; judgment runs in the model backend.
-- **Reentrancy.** Every adapter export the orchestrator (or the `eval` loop) invokes lands in a fresh instance on a new store — component instances are not reentrant, so a guest export invoked mid-operation never shares a store with an open session.
+- **Reentrancy.** Every adapter export the orchestrator (or the `eval` loop) invokes lands in a fresh instance on a new store, so a guest export invoked mid-operation never shares a store with an open session — and never recursively reenters one, the one kind of reentrance the component model still traps.
 
 ## Brief-typing (authoring-time lint)
 
