@@ -102,7 +102,7 @@ Vectis-bound projects commit per-platform exports under `design-system/assets/ex
 | Concern | Where |
 | ------- | ----- |
 | Materialize CLI + export conventions | `specify extension run vectis -- materialize assets` — codified in [`specify-adapters` `targets/vectis/extension/DECISIONS.md` §K](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/DECISIONS.md#k--materialization-and-render-by-kind) |
-| Prepare auto-materialize | `specify slice build --phase prepare` — sole automatic in-loop caller; scope in DECISIONS §K (prepare hook) |
+| Prepare auto-materialize | `specify slice build --phase prepare` — sole automatic in-loop caller when the bound target declares `prepare.argv` in `adapter.yaml`; scope in DECISIONS §K |
 | Render-by-`kind` review rule | [`adapters/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md`](adapters/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md) |
 | Writer / integration contracts | [`adapters/targets/vectis/references/ios/design-system-integration.md`](adapters/targets/vectis/references/ios/design-system-integration.md), [`android/design-system-integration.md`](adapters/targets/vectis/references/android/design-system-integration.md), [`briefs/build/ios/write.md`](adapters/targets/vectis/briefs/build/ios/write.md), [`briefs/build/android/write.md`](adapters/targets/vectis/briefs/build/android/write.md) |
 

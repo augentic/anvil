@@ -417,7 +417,7 @@ screens:
         .expect("write project.yaml");
         fs::write(
             adapter.join("adapter.yaml"),
-            "name: vectis\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nextension:\n  name: vectis\n  permissions:\n    read:\n      - $PROJECT_DIR\n      - $CAPABILITY_DIR\n    write:\n      - $PROJECT_DIR\ndescription: Test vectis adapter\n",
+            "name: vectis\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nprepare:\n  argv: [prepare, build]\nextension:\n  name: vectis\n  permissions:\n    read:\n      - $PROJECT_DIR\n      - $CAPABILITY_DIR\n    write:\n      - $PROJECT_DIR\ndescription: Test vectis adapter\n",
         )
         .expect("write adapter.yaml");
         for op in ["shape", "build", "merge"] {
@@ -432,10 +432,10 @@ screens:
     }
 
     #[test]
-    fn prepare_vectis_bootstrap_gate() {
+    fn prepare_hook_bootstrap_gate() {
         let Some(wasm) = vectis_wasm() else {
             eprintln!(
-                "skipping prepare_vectis_bootstrap_gate: vectis WASM not found; run \
+                "skipping prepare_hook_bootstrap_gate: vectis WASM not found; run \
                  `cargo make vectis-wasm` or build specify-adapters `adapter.wasm`"
             );
             return;
@@ -443,7 +443,7 @@ screens:
 
         if !vectis_wasm_supports_prepare(&wasm) {
             eprintln!(
-                "skipping prepare_vectis_bootstrap_gate: vectis WASM at {} lacks `prepare build` \
+                "skipping prepare_hook_bootstrap_gate: vectis WASM at {} lacks `prepare build` \
                  (rebuild with `specify adapter build --path targets/vectis --refresh-extension` \
                  in specify-adapters)",
                 wasm.display()

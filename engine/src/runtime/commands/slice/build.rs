@@ -45,6 +45,7 @@ use specify_error::{Error, Result};
 use specify_registry::host::CapturedOutput;
 use specify_workflow::adapter::{
     BuildInputDeclaration, Execution, ResolvedTargetAdapter, TargetAdapter, TargetOperation,
+    extension_run_name,
 };
 use specify_workflow::init::adapter_ref_from_value;
 use specify_workflow::journal::{self, EventKind};
@@ -58,9 +59,6 @@ use specify_workflow::slice::{
 use crate::runtime::commands::extension;
 use crate::runtime::commands::source::cli::Phase;
 use crate::runtime::context::Ctx;
-
-const VECTIS_TARGET: &str = "vectis";
-const VECTIS_TOOL: &str = "vectis";
 
 /// Handoff envelope printed by the agent `prepare` phase. The agent
 /// runs the `build` brief against `request`, then writes `report`
@@ -112,7 +110,7 @@ struct BuildResult {
 ///   `target-build-report-slice-mismatch` / `target-build-failed` and
 ///   the `lifecycle` gate error from the agent `finalize` phase.
 /// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing`
-///   from the Vectis prepare dispatch.
+///   from the manifest-driven prepare hook dispatch.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
 pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
     let slice_dir = ctx.slices_dir().join(name);
@@ -140,9 +138,7 @@ fn prepare(
     let manifest = &resolved.manifest;
     let request_path = assemble_and_write_request(ctx, name, slice_dir, &manifest.inputs)?;
 
-    if manifest.name == VECTIS_TARGET {
-        prepare_vectis(ctx, slice_dir)?;
-    }
+    dispatch_prepare_hook(ctx, manifest, slice_dir)?;
 
     journal::emit_best_effort(
         ctx.layout(),
@@ -169,20 +165,30 @@ fn prepare(
     ctx.write(&handoff, write_handoff_text)
 }
 
-/// RFC §2.1 prepare hook: dispatch `vectis prepare build` so asset-domain
-/// policy (scope, materialize, bootstrap gate) stays in the adapter.
-fn prepare_vectis(ctx: &Ctx, slice_dir: &Path) -> Result<()> {
+/// Manifest-driven prepare hook: dispatch `extension run <tool> <argv…> <slice>`.
+fn dispatch_prepare_hook(ctx: &Ctx, manifest: &TargetAdapter, slice_dir: &Path) -> Result<()> {
+    let Some(prepare) = &manifest.prepare else {
+        return Ok(());
+    };
+    let tool_name = extension_run_name(manifest).ok_or_else(|| {
+        Error::validation_failed(
+            "adapter-prepare-without-extension",
+            "a target manifest with `prepare` must also declare `extension`",
+            format!("target adapter `{}` declares `prepare` but omits `extension`", manifest.name),
+        )
+    })?;
     let rel = slice_dir.strip_prefix(&ctx.project_dir).map_or_else(
         |_| slice_dir.to_string_lossy().into_owned(),
         |p| p.to_string_lossy().into_owned(),
     );
-    let captured =
-        extension::run_captured(ctx, VECTIS_TOOL, vec!["prepare".into(), "build".into(), rel])?;
-    map_prepare_exit_code(&captured)
+    let mut args = prepare.argv.clone();
+    args.push(rel);
+    let captured = extension::run_captured(ctx, &tool_name, args)?;
+    map_prepare_exit_code(&captured, &tool_name)
 }
 
-/// Map a non-zero `vectis prepare build` guest outcome to host abort codes.
-fn map_prepare_exit_code(captured: &CapturedOutput) -> Result<()> {
+/// Map a non-zero prepare-hook guest outcome to host abort codes.
+fn map_prepare_exit_code(captured: &CapturedOutput, tool_name: &str) -> Result<()> {
     if captured.exit_code == 0 {
         return Ok(());
     }
@@ -193,9 +199,10 @@ fn map_prepare_exit_code(captured: &CapturedOutput) -> Result<()> {
         if prepare_has_bootstrap_missing(&value) {
             return Err(Error::validation_failed(
                 "plan-bootstrap-app-icon-missing",
-                "vectis prepare build bootstrap app-icon gate passes before the build brief handoff",
+                "prepare hook bootstrap app-icon gate passes before the build brief handoff",
                 prepare_failure_detail(
                     &value,
+                    tool_name,
                     captured.exit_code,
                     stderr.as_ref(),
                     stdout.as_ref(),
@@ -205,9 +212,10 @@ fn map_prepare_exit_code(captured: &CapturedOutput) -> Result<()> {
         if prepare_has_materialize_errors(&value) {
             return Err(Error::validation_failed(
                 "target-build-materialize-failed",
-                "vectis prepare build materialize completes successfully before the build brief handoff",
+                "prepare hook materialize completes successfully before the build brief handoff",
                 prepare_failure_detail(
                     &value,
+                    tool_name,
                     captured.exit_code,
                     stderr.as_ref(),
                     stdout.as_ref(),
@@ -223,8 +231,8 @@ fn map_prepare_exit_code(captured: &CapturedOutput) -> Result<()> {
     };
     Err(Error::validation_failed(
         "target-build-materialize-failed",
-        "vectis prepare build completes successfully before the build brief handoff",
-        format!("vectis prepare build exited with code {}: {detail}", captured.exit_code),
+        "prepare hook completes successfully before the build brief handoff",
+        format!("{tool_name} prepare hook exited with code {}: {detail}", captured.exit_code),
     ))
 }
 
@@ -248,19 +256,21 @@ fn prepare_has_materialize_errors(value: &Value) -> bool {
         .is_some_and(|errors| !errors.is_empty())
 }
 
-fn prepare_failure_detail(value: &Value, exit_code: i32, stderr: &str, stdout: &str) -> String {
+fn prepare_failure_detail(
+    value: &Value, tool_name: &str, exit_code: i32, stderr: &str, stdout: &str,
+) -> String {
     if let Some(findings) = value.get("bootstrap_app_icon").and_then(|b| b.get("findings"))
         && let Some(messages) = finding_messages(findings)
     {
-        return format!("vectis prepare build exited with code {exit_code}: {messages}");
+        return format!("{tool_name} prepare hook exited with code {exit_code}: {messages}");
     }
     if let Some(errors) = value.get("materialized").and_then(|m| m.get("errors"))
         && let Some(messages) = error_messages(errors)
     {
-        return format!("vectis prepare build exited with code {exit_code}: {messages}");
+        return format!("{tool_name} prepare hook exited with code {exit_code}: {messages}");
     }
     let fallback = if stderr.trim().is_empty() { stdout.trim() } else { stderr.trim() };
-    format!("vectis prepare build exited with code {exit_code}: {fallback}")
+    format!("{tool_name} prepare hook exited with code {exit_code}: {fallback}")
 }
 
 fn finding_messages(findings: &Value) -> Option<String> {

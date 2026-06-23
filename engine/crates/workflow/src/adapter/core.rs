@@ -134,6 +134,27 @@ pub struct AdapterExtensionDeclaration {
     pub permissions: ExtensionPermissions,
 }
 
+/// Optional prepare hook declared on a target adapter manifest.
+///
+/// When present, `specify slice build --phase prepare` dispatches
+/// `extension run <name> <argv...> <slice-dir>` before the build brief
+/// handoff. Requires a declared `extension` (enforced by schema and the
+/// loader post-schema gate).
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct PrepareHookDeclaration {
+    /// Extension subcommand prefix; the host appends the slice directory.
+    pub argv: Vec<String>,
+}
+
+/// Optional catalog capabilities declared on a target adapter manifest.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+pub struct CatalogCapability {
+    /// When true, `specify catalog infer` may dispatch the extension's
+    /// `infer` subcommand.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub infer: bool,
+}
+
 /// One adapter-declared build input inside a target manifest.
 ///
 /// Each entry names a path the target's `build` operation consumes,
@@ -502,6 +523,12 @@ pub struct TargetAdapter {
     /// greenfield scaffolding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub platforms: Option<PlatformsCapability>,
+    /// Optional prepare hook for `specify slice build --phase prepare`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prepare: Option<PrepareHookDeclaration>,
+    /// Optional catalog capabilities (`specify catalog infer`, …).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub catalog: Option<CatalogCapability>,
 }
 
 /// A parsed [`SourceAdapter`] paired with the [`AdapterLocation`] it
@@ -552,6 +579,35 @@ impl TargetAdapter {
     pub fn operations(&self) -> impl Iterator<Item = &TargetOperation> {
         self.briefs.keys()
     }
+}
+
+/// Resolve the WASI extension run handle for a target adapter.
+///
+/// Returns `None` when the manifest declares no `extension`. When the
+/// declaration omits `extension.name`, the adapter `name` is the
+/// default run handle — mirroring [`AdapterExtensionDeclaration`]'s
+/// contract in the extension inventory assembler.
+#[must_use]
+pub fn extension_run_name(adapter: &TargetAdapter) -> Option<String> {
+    adapter.extension.as_ref().map(|ext| ext.name.clone().unwrap_or_else(|| adapter.name.clone()))
+}
+
+/// Post-load gate: `prepare` requires a declared `extension`.
+///
+/// The target-axis JSON Schema also enforces this via `if/then`; this
+/// typed gate is belt-and-suspenders for manifests that bypass schema
+/// validation.
+pub(super) fn check_prepare_requires_extension(
+    manifest: &TargetAdapter, manifest_path: &Path,
+) -> Result<(), Error> {
+    if manifest.prepare.is_some() && manifest.extension.is_none() {
+        return Err(Error::validation_failed(
+            "adapter-prepare-without-extension",
+            "a target manifest with `prepare` must also declare `extension`",
+            format!("{} declares `prepare` but omits `extension`", manifest_path.display()),
+        ));
+    }
+    Ok(())
 }
 
 /// Post-load axis/name coherence gate, run by [`super::resolve`] after

@@ -48,6 +48,14 @@
       "type": "object",
       "description": "Optional declarative platforms capability. Target-only: the per-axis `target.schema.json` refines the shape with `$defs/platformsCapability`; `source.schema.json` rejects the key. The shared shape carries the property so the closed key set (from `additionalProperties: false`) admits it."
     },
+    "prepare": {
+      "type": "object",
+      "description": "Optional prepare hook for `specify slice build --phase prepare`. Target-only: `target.schema.json` refines the shape with `$defs/prepareHook`; `source.schema.json` rejects the key."
+    },
+    "catalog": {
+      "type": "object",
+      "description": "Optional catalog capabilities. Target-only: `target.schema.json` refines the shape with `$defs/catalogCapability`; `source.schema.json` rejects the key."
+    },
     "execution": {
       "type": "string",
       "enum": ["agent", "tool"],
