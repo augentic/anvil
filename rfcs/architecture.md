@@ -100,7 +100,7 @@ Record/replay is a property of the backend boundary: a recording backend logs re
 
 A single operation spans several guests: the workflow guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
 
-- **How it works**: the caller's world *imports* the adapter's typed interface (`augentic:specify/target`, `augentic:specify/source`, `references`). The Omnia host intercepts the import through the Wasmtime `Linker`.
+- **How it works**: the caller imports the host `selection` interface and names a plan-bound `adapter-id` per call (`build(id, …)`, `survey(id)`, …). The Omnia host intercepts the call through the Wasmtime `Linker` and routes it to the named adapter's typed export (`augentic:specify/target` / `source`).
 - **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, marshals the typed WIT records natively from the caller to the callee, invokes the exported function, and returns the typed result.
 - **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so it cannot hit Wasmtime re-entrancy. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
 
@@ -118,7 +118,7 @@ GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
   "target:omnia"         -> InstancePre   ┘  binds are instantiated
 ```
 
-Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology.** Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
+Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument (the host `selection` interface), so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
 
 - the `wasi-model` callback resolves against the adapter whose brief is being evaluated — its identity is fixed for the duration of that `eval`;
 - a workflow→target call (`build`, `merge`, `guidance`) targets the slice's bound target; a workflow→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.

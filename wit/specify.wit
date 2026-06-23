@@ -188,6 +188,36 @@ interface target {
   merge: func(slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
 }
 
+/// Adapter selection by identity — the workflow side of host-mediated dynamic
+/// linking. The workflow holds plan-bound adapter identities as data and names
+/// one per call; the host looks the identity up in its guest registry,
+/// instantiates a fresh, stateless adapter instance, dispatches to that
+/// adapter's `source` / `target` export, and returns the typed result. Because
+/// the identity is a call argument, one workflow instance can fan out across
+/// many bound adapters in a loop (e.g. `survey` over every bound source) — the
+/// deterministic for-each stays in guest code. These operations mirror
+/// `source` / `target`; the host bridges each to a freshly selected adapter.
+interface selection {
+  use types.{ changeset, error };
+  use source.{ lead, evidence };
+  use target.{ input, working-tree, report };
+
+  /// A plan-bound adapter identity, e.g. "source:typescript" or "target:omnia".
+  type adapter-id = string;
+
+  /// Survey a bound source (dispatched to its `source` export).
+  survey: func(id: adapter-id) -> result<list<lead>, error>;
+  /// Extract evidence for a lead from a bound source.
+  extract: func(id: adapter-id, lead: lead) -> result<evidence, error>;
+
+  /// Get build guidance from a bound target (dispatched to its `target` export).
+  guidance: func(id: adapter-id) -> result<string, error>;
+  /// Build a slice with a bound target.
+  build: func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
+  /// Merge a built slice with a bound target.
+  merge: func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
+}
+
 world source-adapter {
   export source;
   export references;
@@ -199,8 +229,10 @@ world target-adapter {
 }
 
 world workflow {
-  import target;
-  import source;
-  import references;
+  // The workflow selects and drives bound adapters by identity through the host
+  // `selection` interface (host-mediated dynamic linking). It also imports
+  // Omnia's hosts upstream — `wasi-model` (`eval`), `wasi:filesystem`,
+  // `wasi:keyvalue`, and the lifecycle hooks — which are not part of this package.
+  import selection;
 }
 

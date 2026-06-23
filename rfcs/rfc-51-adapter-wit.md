@@ -14,7 +14,8 @@ Authored in [`../wit/specify.wit`](../wit/specify.wit):
 - `interface source` — `survey` / `extract`, with `lead`, `weight`, `backing`, `claim`, `evidence`.
 - `interface target` — `guidance` / `build` / `merge`, with `input`, `working-tree`, `finding`, `severity`, `outcome`, `report`.
 - `interface references` — the reference shelf: `resolve(id) -> bytes`, a stateless adapter export the model backend ([RFC-53](rfc-53-wasi-model.md)) calls to follow a brief's internal references. Served from prose embedded in the module at build time, so `resolve` is an in-module lookup.
-- worlds — `source-adapter` exports `source` + `references`; `target-adapter` exports `target` + `references`; `workflow` imports `source` / `target` / `references`, satisfied at runtime by host-mediated dynamic linking ([RFC-56](rfc-56-runtime-move.md)).
+- `interface selection` — the workflow's adapter-dispatch surface: `survey` / `extract` / `guidance` / `build` / `merge`, each taking an `adapter-id`. A host interface the workflow imports to reach a bound adapter by identity at the call site ([RFC-56](rfc-56-runtime-move.md)).
+- worlds — `source-adapter` exports `source` + `references`; `target-adapter` exports `target` + `references`; `workflow` imports `selection` and names a plan-bound `adapter-id` per call, resolved at runtime by host-mediated dynamic linking ([RFC-56](rfc-56-runtime-move.md)).
 
 Judgment is Omnia's `wasi-model` host (`eval`), imported by guests as an upstream host interface ([RFC-52](rfc-52-effect.md) / [RFC-53](rfc-53-wasi-model.md)); it is not part of this package. `resolve` is the only adapter export the model backend calls back into.
 

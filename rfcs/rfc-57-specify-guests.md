@@ -9,7 +9,7 @@ With the runtime under everything ([RFC-56](rfc-56-runtime-move.md)), the two re
 ## The model
 
 - **The workflow as a guest.** `/spec:plan` sequences the runtime's deterministic operations (`plan add`, validation, Gate 1) and calls `eval` for the judgment legs — a survey pass per bound source, then a reconcile-leads pass. `/spec:execute` is the drained-loop reducer over plan entries. The guest *requests* lifecycle transitions; it does not own them.
-- **Reaching adapters.** When the workflow needs an adapter operation (`survey` / `extract` / `build` / `merge`), it imports the axis interface and the host routes it to the plan-bound adapter instance ([RFC-56](rfc-56-runtime-move.md)). When it needs judgment, it calls `eval`.
+- **Reaching adapters.** When the workflow needs an adapter operation (`survey` / `extract` / `build` / `merge`), it calls the host `selection` interface with the plan-bound `adapter-id`, and the host routes it to a fresh adapter instance ([RFC-56](rfc-56-runtime-move.md)). Because identity is a call argument, the workflow guest **owns its own fan-out** — it loops `survey(id)` over every bound source in guest code (Law 3: control flow lives in deterministic guest code), rather than being re-instantiated per source by native orchestration. When it needs judgment, it calls `eval`.
 - **Development tooling as a guest.** `specify lint framework`, `rules export`, and the `CORE-*` checkers are Specify behaviour, so they ride the same runtime as a guest. They are deterministic, carry no judgment leg, and are sequenced last.
 
 ## Lifecycle authority stays in the runtime

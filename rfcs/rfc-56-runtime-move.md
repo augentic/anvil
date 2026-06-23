@@ -11,7 +11,7 @@ This is the keystone: the move that makes "Specify is Omnia compiled with Specif
 - **Four instantiation triggers.** A guest instance serves one trigger then is discarded: an HTTP request, a topic message (NATS / Kafka), a WebSocket call, or a **CLI command** (`omnia <guest>.wasm <args…>`).
 - **Instance-per-call.** Component instances are not reentrant; every trigger and every host->guest callback gets a fresh instance on a new `Store`.
 - **The multi-guest registry.** One `wasmtime::Engine` and one `Linker` provide every host interface once. A registry maps guest identity -> a pre-instantiated component (`InstancePre`): `workflow`, `source:<id>`, `target:<id>`. Each call selects an `InstancePre` by identity, instantiates fresh, calls the typed export, and discards it.
-- **Host-mediated dynamic linking.** A caller imports an adapter's typed interface; the host intercepts it through the `Linker`, selects the adapter by identity, instantiates a fresh instance, marshals the typed records caller->callee with bindgen closures, invokes the export, and returns the typed result. Identity is data — from the plan binding (a slice's bound source / target) or, for the `eval` `resolve` callback, the adapter whose brief is being evaluated. There is no ahead-of-time composition; two same-world adapters are distinct registry entries, so they cannot collide.
+- **Host-mediated dynamic linking.** A caller reaches an adapter through the host `selection` interface, naming a plan-bound `adapter-id` per call (`build(id, …)`, `survey(id)`, …); the host looks the identity up in the registry, instantiates a fresh instance, marshals the typed records with bindgen closures, invokes the adapter's `source` / `target` export, and returns the typed result. **Identity is data at the call site** — a plan binding the caller carries (a slice's bound source / target), or, for the `eval` `resolve` callback, the adapter whose brief is being evaluated (fixed for that `eval`). Because the id is a call argument, one caller instance fans out across many same-axis adapters in a loop (e.g. `survey` over every bound source) without re-instantiation — the deterministic for-each stays in guest code. There is no ahead-of-time composition; two same-world adapters are distinct registry entries, so they cannot collide.
 - **Guest acquisition.** Core guests (the workflow) embed in the binary (`include_bytes!`) for offline, zero-skew startup; adapters resolve lazily by digest from an OCI store into a local cache — only the identities a plan binds are instantiated.
 
 ## The component mandate
@@ -27,7 +27,7 @@ Standing the guests on the generic runtime is the point at which shipping a WASM
 
 - The generic `omnia <guest>.wasm <args…>` surface and the CLI trigger.
 - Instance-per-call execution and the multi-guest `InstancePre` registry keyed by identity.
-- Host-mediated dynamic linking of adapter interfaces, with selection from plan / session context.
+- Host-mediated dynamic linking through the `selection` interface — per-call `adapter-id` (from plan / session context) resolved against the registry.
 - Binding real backends for the deterministic effects and the `wasi-model` host.
 - The component-on-both-axes mandate; retiring the bespoke `specify` host.
 
