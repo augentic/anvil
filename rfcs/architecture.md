@@ -38,7 +38,7 @@ A guest instance is created to serve exactly one trigger, then discarded. There 
 - a **WebSocket call**, or
 - a **CLI command** (`omnia <guest>.wasm <args…>`).
 
-Guests hold no state between calls, so every trigger gets a **fresh instance**; the same holds for every host→guest callback, which prevents it from recursively re-entering an instance already on the stack (the one kind of re-entrancy the component model still traps). Instance-per-call is what makes the runtime horizontally scalable and free of a whole class of aliasing complexity.
+Guests hold no state between calls, so every trigger gets a **fresh instance**; the same holds for every host→guest callback. This is first a statelessness and isolation choice — it is what makes the runtime horizontally scalable and free of a whole class of aliasing complexity. It also sidesteps the one kind of reentrance the component model still traps: *recursive* reentrance, re-entering an instance already on the stack. (*Sibling* reentrance — a fresh task into a component whose other tasks are suspended — is business-as-usual under the component model's async ABI.)
 
 ### Calls in both directions
 
@@ -54,7 +54,7 @@ The runtime and guests interact both ways:
 Omnia is built on Wasmtime. Its design centers on pluggable host services behind typed interfaces, so a backend can be swapped without changing guest code. Three properties make this architecture possible:
 
 - **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` runs, and the guest decides what to do. There is no bespoke `specify` host.
-- **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never recursively re-enter an instance already on the stack — the one kind of re-entrancy the component model still traps — avoiding a class of aliasing complexity by construction.
+- **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never *recursively* re-enter an instance already on the stack — the one kind of reentrance the component model still traps (*sibling* reentrance, into a component whose other tasks are suspended, is allowed under the async ABI) — avoiding a class of aliasing complexity by construction.
 - **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Specify move from a desktop tool to a horizontally scalable service unchanged.
 
 Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime floor.
@@ -76,7 +76,7 @@ A brief points at internal references (e.g. `../references/business-logic.md`). 
 
 ```wit
 // adapter reference shelf — the model backend calls this back into the guest
-resolve: func(reference: reference) -> result<list<u8>, error>;
+resolve: func(id: adapter-id, reference: reference) -> result<list<u8>, error>;
 ```
 
 Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime floor stays free of any reference-injection machinery.
@@ -100,7 +100,7 @@ Record/replay is a property of the backend boundary: a recording backend logs re
 
 A single operation spans several guests: the workflow guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
 
-- **How it works**: the caller imports the host `selection` interface and names a plan-bound `adapter-id` per call (`build(id, …)`, `survey(id)`, …). The Omnia host intercepts the `selection` import through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's typed export (`augentic:specify/target` / `source`) over the bound transport.
+- **How it works**: the caller imports the per-axis host interfaces (`source` / `target`) and names a plan-bound `adapter-id` as the first argument of each call (`build(id, …)`, `survey(id)`, …) — the very interfaces the adapters export, so there is no separate dispatch facade to keep in sync. The Omnia host intercepts these imports through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's matching export (`augentic:specify/source` / `target`) over the bound transport.
 - **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, carries the typed WIT records to it over wRPC, invokes the exported function, and returns the typed result.
 - **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so a dispatched call cannot recursively re-enter its caller. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
 
@@ -120,7 +120,7 @@ GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
   "target:omnia"         -> InstancePre   ┘  binds are instantiated
 ```
 
-Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument (the host `selection` interface), so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
+Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
 
 - the `wasi-model` callback resolves against the adapter whose brief is being evaluated — its identity is fixed for the duration of that `eval`;
 - a workflow→target call (`build`, `merge`, `guidance`) targets the slice's bound target; a workflow→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.
