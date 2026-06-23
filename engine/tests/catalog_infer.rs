@@ -86,7 +86,7 @@ fn report_project(baseline: &str) -> (TempDir, PathBuf) {
     .expect("write project.yaml");
     fs::write(
         adapter.join("adapter.yaml"),
-        "name: vectis\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nextension:\n  name: vectis\n  permissions:\n    read:\n      - $PROJECT_DIR/.specify\n    write: []\ndescription: Test vectis adapter\n",
+        "name: vectis\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nprepare:\n  argv: [prepare, build]\ncatalog:\n  infer: true\nextension:\n  name: vectis\n  permissions:\n    read:\n      - $PROJECT_DIR/.specify\n    write: []\ndescription: Test vectis adapter\n",
     )
     .expect("write adapter.yaml");
     for op in ["shape", "build", "merge"] {
@@ -731,4 +731,45 @@ fn bind_is_idempotent_for_a_fixed_map() {
     run();
     let second = load_catalog(tmp.path()).expect("catalog present");
     assert_eq!(first, second, "re-running bind with the same map is a no-op");
+}
+
+#[test]
+fn report_rejects_missing_catalog_infer() {
+    let tmp = tempdir().expect("tempdir");
+    let project = tmp.path();
+    let adapter = project.join("adapters/targets/omnia");
+    let briefs = adapter.join("briefs");
+    fs::create_dir_all(project.join(".specify/specs")).expect("create specs");
+    fs::create_dir_all(&briefs).expect("create briefs");
+    fs::write(
+        project.join(".specify/project.yaml"),
+        "name: catalog-test\nadapter: omnia\nrules: {}\n",
+    )
+    .expect("write project.yaml");
+    fs::write(
+        adapter.join("adapter.yaml"),
+        "name: omnia\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nextension:\n  name: omnia\n  permissions:\n    read:\n      - $PROJECT_DIR/.specify\n    write: []\ndescription: Test omnia adapter\n",
+    )
+    .expect("write adapter.yaml");
+    for op in ["shape", "build", "merge"] {
+        fs::write(
+            briefs.join(format!("{op}.md")),
+            format!("---\nid: {op}\ndescription: {op} brief\n---\n"),
+        )
+        .expect("write brief");
+    }
+    fs::write(project.join(".specify/specs/composition.yaml"), SINGLE_FOOTER_BASELINE)
+        .expect("write composition.yaml");
+
+    let assert = specify_cmd()
+        .current_dir(project)
+        .args(["--format", "json", "catalog", "infer", "--phase", "report"])
+        .assert()
+        .failure();
+
+    let stderr = parse_stderr(&assert.get_output().stderr, project);
+    assert_eq!(
+        stderr["error"], "catalog-infer-unsupported",
+        "catalog infer must refuse adapters that omit catalog.infer: {stderr}"
+    );
 }

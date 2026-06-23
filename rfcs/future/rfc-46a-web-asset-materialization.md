@@ -133,7 +133,7 @@ This RFC is a single initiative once a web shell target exists:
 1. **Schema + policy (specify-adapters)** — add optional `sources.web` to `vectorEntry` / `rasterEntry` in `assets.schema.json`; extend `check_platform_coverage`; add DECISIONS §K web column notes.
 2. **Materialize web (specify-adapters)** — extend `materialize/paths::Platform` with `Web`; implement passthrough + favicon/manifest raster derivation; enable `--platform web`; commit `exports/web/` in eval fixtures when web scaffold lands.
 3. **Adapters prepare hook** — extend `prepare build` scope resolution and export probes (`exports.rs` / `export_layout`) for `web`; ensure scoped materialize passes `web` in `--platform` when `web ∈ project.yaml.platforms`.
-4. **Bootstrap gate (specify-adapters + host)** — extend `verify/app_icon.rs`; keep prepare dispatch unchanged (already generic).
+4. **Bootstrap gate (specify-adapters + host)** — extend `verify/app_icon.rs`; prepare dispatch is manifest-driven (`prepare.argv` on the target adapter) and delegates web work to the adapter's `prepare build` subcommand.
 5. **Web shell consumption (blocked)** — web writer reads `sources.web` / `source` and copies materialized icon tree; requires web scaffold RFC + `briefs/build/web/` sub-brief.
 
 ## Non-goals

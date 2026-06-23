@@ -59,12 +59,24 @@
     "platforms": {
       "$ref": "#/$defs/platformsCapability"
     },
+    "prepare": {
+      "$ref": "#/$defs/prepareHook"
+    },
+    "catalog": {
+      "$ref": "#/$defs/catalogCapability"
+    },
     "execution": {
       "type": "string",
       "enum": ["agent", "tool"],
       "description": "Closed adapter execution mode (`agent` | `tool`)."
     }
   },
+  "allOf": [
+    {
+      "if": { "required": ["prepare"] },
+      "then": { "required": ["extension"] }
+    }
+  ],
   "$defs": {
     "platform": {
       "type": "string",
@@ -134,6 +146,29 @@
         "write": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "prepareHook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv"],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Extension subcommand prefix the host dispatches before appending the slice directory argument during `specify slice build --phase prepare`."
+        }
+      }
+    },
+    "catalogCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "infer": {
+          "type": "boolean",
+          "description": "When true, `specify catalog infer` may dispatch the bound adapter extension's `infer` subcommand."
         }
       }
     }

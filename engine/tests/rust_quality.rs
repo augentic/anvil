@@ -34,6 +34,11 @@ mod checks {
     pub const RULE_ALLOW_NO_REASON: &str = "rust.allow-without-reason";
     /// Rule id for wall-clock reads in specify-workflow library code.
     pub const RULE_WORKFLOW_CLOCK: &str = "rust.workflow-clock-read";
+    /// Rule id for first-party adapter name literals in runtime dispatch code.
+    pub const RULE_ADAPTER_NAME_LITERAL: &str = "rust.adapter-name-literal-in-runtime";
+
+    const BANNED_ADAPTER_NAMES: &[&str] = &["vectis", "omnia", "contracts"];
+    const RUNTIME_SCAN_PREFIXES: &[&str] = &["src/", "crates/workflow/src/"];
 
     /// Forward-slash prefix marking `specify-workflow` library sources. Time
     /// injection (architecture §Time injection) forbids `Timestamp::now()`
@@ -232,6 +237,52 @@ mod checks {
                 ),
             });
             }
+
+            check_adapter_name_literals(&rel, line, line_no, findings);
+        }
+    }
+
+    fn is_runtime_dispatch_scope(rel: &str) -> bool {
+        RUNTIME_SCAN_PREFIXES.iter().any(|prefix| rel.starts_with(prefix))
+            && !rel.contains("init/adapter_uri")
+    }
+
+    fn is_artifact_class_contracts_reference(line: &str) -> bool {
+        line.contains("class_name")
+            || line.contains("staged_dir")
+            || line.contains("baseline_dir")
+            || line.contains("ArtifactClass")
+            || line.contains("artefact")
+            || line.contains("artifact")
+            || line.contains("rel:")
+            || line.contains("dest_contracts")
+            || (line.contains("name:") && line.contains("\"contracts\""))
+            || line.contains("join(\"contracts\")")
+    }
+
+    fn check_adapter_name_literals(
+        rel: &str, line: &str, line_no: usize, findings: &mut Vec<Finding>,
+    ) {
+        if !is_runtime_dispatch_scope(rel) {
+            return;
+        }
+        let trimmed = line.trim();
+        if trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+            return;
+        }
+        for name in BANNED_ADAPTER_NAMES {
+            if *name == "contracts" && is_artifact_class_contracts_reference(line) {
+                continue;
+            }
+            let literal = format!("\"{name}\"");
+            if line.contains(&literal) {
+                findings.push(Finding {
+                    rule: RULE_ADAPTER_NAME_LITERAL,
+                    message: format!(
+                        "adapter name literal `{name}` at {rel}:{line_no} — runtime dispatch must be manifest-driven; init shorthand belongs only in `init/adapter_uri/`"
+                    ),
+                });
+            }
         }
     }
 
@@ -282,10 +333,12 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use checks::{RULE_ALLOW_NO_REASON, RULE_TEST_FN_NAME, RULE_WORKFLOW_CLOCK};
+use checks::{
+    RULE_ADAPTER_NAME_LITERAL, RULE_ALLOW_NO_REASON, RULE_TEST_FN_NAME, RULE_WORKFLOW_CLOCK,
+};
 
 /// The gated rules and the standards-doc pointer rendered when one fires.
-const GATED_RULES: [(&str, &str); 3] = [
+const GATED_RULES: [(&str, &str); 4] = [
     (RULE_TEST_FN_NAME, "test fn names must be <= 40 chars (see docs/standards/testing.md)"),
     (
         // Time injection (architecture §Time injection): `specify-workflow`
@@ -300,6 +353,10 @@ const GATED_RULES: [(&str, &str); 3] = [
         // smallest scope, or a contract-locked module `#![allow]`.
         RULE_ALLOW_NO_REASON,
         "`#[allow]` must carry a reason or be an `#[expect]` (see docs/standards/style.md)",
+    ),
+    (
+        RULE_ADAPTER_NAME_LITERAL,
+        "runtime dispatch must not hardcode first-party adapter names (see rfcs/rfc-51-typed-adapter-abi.md)",
     ),
 ];
 

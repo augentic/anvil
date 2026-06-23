@@ -1,11 +1,11 @@
-//! `specify catalog infer` handler — the host orchestration around the
-//! deterministic `vectis infer` tool.
+//! `specify catalog infer` handler — the host orchestration around a
+//! target adapter extension's deterministic `infer` subcommand.
 //!
 //! Two phases, mirroring the `specify slice build --phase prepare|finalize`
 //! idiom:
 //!
-//! - `report` (read-only) dispatches `vectis infer` against the
-//!   composition baseline and prints its **name-free** cluster report.
+//! - `report` (read-only) dispatches the bound adapter extension's
+//!   `infer` subcommand against the composition baseline and prints its **name-free** cluster report.
 //!   It writes nothing.
 //! - `bind` consumes a skill-authored `{ fingerprint → slug }` bindings
 //!   file, reconciles it against the existing catalog under the
@@ -48,7 +48,9 @@ use std::path::Path;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use specify_error::{Error, Result};
+use specify_workflow::adapter::{TargetAdapter, extension_run_name};
 use specify_workflow::design_system::{ComponentsCatalog, Parts};
+use specify_workflow::init::adapter_ref_from_value;
 
 use super::cli::InferPhase;
 use crate::runtime::commands::extension;
@@ -59,9 +61,6 @@ use crate::runtime::context::Ctx;
 /// … suffixed `slug-<fp-prefix>`"). Eight hex characters keep the
 /// suffix readable while collisions stay astronomically unlikely.
 const FP_PREFIX_LEN: usize = 8;
-
-/// Extension name the composition inference subcommand lives under.
-const VECTIS_TOOL: &str = "vectis";
 
 /// Composition baseline path relative to the project root.
 const COMPOSITION_REL: &str = ".specify/specs/composition.yaml";
@@ -81,8 +80,8 @@ pub fn run(
     }
 }
 
-/// `--phase report`: dispatch `vectis infer` and print the name-free
-/// cluster report. An absent baseline emits an empty report and runs no
+/// `--phase report`: dispatch the adapter `infer` subcommand and print
+/// the name-free cluster report. An absent baseline emits an empty
 /// tool ("absent catalog = no factoring") — but still lists every
 /// operator part as `part-unmatched`, since nothing can match without a
 /// baseline yet.
@@ -96,7 +95,7 @@ fn report(ctx: &Ctx, min_occurrences: Option<u32>) -> Result<()> {
     }
 }
 
-/// Dispatch the deterministic `vectis infer` tool against the
+/// Dispatch the adapter extension's `infer` subcommand against the
 /// composition baseline, folding in the candidate cache and operator
 /// `parts.yaml` when each is present. Returns `Ok(None)` when no
 /// baseline exists (the tool requires one, and an absent baseline means
@@ -107,6 +106,8 @@ fn dispatch_infer(ctx: &Ctx, min_occurrences: Option<u32>) -> Result<Option<Valu
     if !composition.is_file() {
         return Ok(None);
     }
+
+    let tool_name = resolve_infer_tool(ctx)?;
 
     let mut args =
         vec!["infer".to_string(), "--composition".to_string(), composition.display().to_string()];
@@ -128,14 +129,14 @@ fn dispatch_infer(ctx: &Ctx, min_occurrences: Option<u32>) -> Result<Option<Valu
         args.push(n.to_string());
     }
 
-    let captured = extension::run_captured(ctx, VECTIS_TOOL, args)?;
+    let captured = extension::run_captured(ctx, &tool_name, args)?;
     if captured.exit_code != 0 {
         let stderr = String::from_utf8_lossy(&captured.stderr);
         let stdout = String::from_utf8_lossy(&captured.stdout);
         return Err(Error::Diag {
             code: "catalog-infer-tool-failed",
             detail: format!(
-                "vectis infer exited with code {}: {}",
+                "{tool_name} infer exited with code {}: {}",
                 captured.exit_code,
                 if stderr.trim().is_empty() { stdout.trim() } else { stderr.trim() }
             ),
@@ -144,9 +145,40 @@ fn dispatch_infer(ctx: &Ctx, min_occurrences: Option<u32>) -> Result<Option<Valu
 
     let report: Value = serde_json::from_slice(&captured.stdout).map_err(|err| Error::Diag {
         code: "catalog-infer-report-malformed",
-        detail: format!("vectis infer report is not valid JSON: {err}"),
+        detail: format!("{tool_name} infer report is not valid JSON: {err}"),
     })?;
     Ok(Some(report))
+}
+
+/// Resolve the extension run handle for catalog inference.
+fn resolve_infer_tool(ctx: &Ctx) -> Result<String> {
+    let Some(value) = ctx.config.adapter.as_deref() else {
+        return Err(Error::validation_failed(
+            "catalog-infer-unsupported",
+            "the bound target adapter declares catalog inference support",
+            "project has no bound target adapter",
+        ));
+    };
+    let adapter_ref = adapter_ref_from_value(value);
+    let resolved = TargetAdapter::resolve(&adapter_ref, &ctx.project_dir)?;
+    let manifest = &resolved.manifest;
+    if !manifest.catalog.as_ref().is_some_and(|catalog| catalog.infer) {
+        return Err(Error::validation_failed(
+            "catalog-infer-unsupported",
+            "the bound target adapter declares catalog inference support",
+            format!("target adapter `{}` does not declare `catalog.infer: true`", manifest.name),
+        ));
+    }
+    extension_run_name(manifest).ok_or_else(|| {
+        Error::validation_failed(
+            "catalog-infer-unsupported",
+            "the bound target adapter declares catalog inference support",
+            format!(
+                "target adapter `{}` declares `catalog.infer` but omits `extension`",
+                manifest.name
+            ),
+        )
+    })
 }
 
 /// Every operator part slug, in sorted order — the `part-unmatched` set
