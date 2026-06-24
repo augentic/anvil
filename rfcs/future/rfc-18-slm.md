@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`specify-cli` `DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md))
+> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: the SLM model backend behind the [RFC-58](../rfc-58-model-backends.md) `wasi-model` boundary — enabled by the backend set, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 
@@ -66,7 +66,7 @@ Initial corpus targets:
 
 ### Scoring Gate
 
-Add `score-crate <dir>` in `specify-cli` as the objective gate for training, evaluation, and production dispatch. It should emit JSON for:
+Add `score-crate <dir>` in the CLI as the objective gate for training, evaluation, and production dispatch. It should emit JSON for:
 
 - build status;
 - clippy status;
@@ -124,7 +124,7 @@ The assistant output starts with the implementation plan because the existing Om
 
 ### Workflow Integration
 
-`/spec:build` continues to drive the Omnia `build/crate.md` brief. The only new behavior is dispatch: the brief chooses either the frontier model or the SLM backend. The existing repair loop remains unchanged:
+`/spec:build` continues to drive the Omnia `build/crate.md` brief. The only new behavior is dispatch: the [RFC-58](../rfc-58-model-backends.md) router selects either the frontier or the SLM backend behind the `wasi-model` host. The existing repair loop remains unchanged:
 
 ```text
 generate -> score -> repair -> score -> fallback if still failing
@@ -177,7 +177,7 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- RFC-28 — [`DECISIONS.md` §Diagnostic substrate](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
-- RFC-32 — [`DECISIONS.md` §Standards layer split](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
+- RFC-28 — [DECISIONS.md §Diagnostic substrate](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- RFC-32 — [DECISIONS.md §Standards layer split](../../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
 - RFC-10 / RFC-13
 - [`adapters/targets/omnia/briefs/build/crate.md`](../../adapters/targets/omnia/briefs/build/crate.md)

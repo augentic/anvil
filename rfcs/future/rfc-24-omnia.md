@@ -148,7 +148,7 @@ Five new findings, all gated on the slice's resolved target adapter being Omnia:
 
 `message-sub` deliberately has no uniqueness finding — multiple subscribers per topic across crates within one service is a legal and common Omnia pattern.
 
-All findings live within `EXIT_VALIDATION_FAILED=2` per [the CLI exit-code contract](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#exit-codes). Findings carry the standard structured shape (`code`, `severity`, `slice`, `project`, `evidence`).
+All findings live within `EXIT_VALIDATION_FAILED=2` per [the CLI exit-code contract](../../engine/AGENTS.md#exit-codes). Findings carry the standard structured shape (`code`, `severity`, `slice`, `project`, `evidence`).
 
 ### `specify plan compose` — derived composition view
 
@@ -282,11 +282,11 @@ There is **no breaking change** to: existing `plan.yaml` files (both new fields 
 
 ## References
 
-- [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md) and [From sources to slices](../../plugins/spec/references/reconciliation.md) — the survey/lead and extract/evidence flow the surface digest sources from.
+- [`engine/docs/standards/workflow.md`](../../engine/docs/standards/workflow.md) and [From sources to slices](../../plugins/spec/references/reconciliation.md) — the survey/lead and extract/evidence flow the surface digest sources from.
 - [RFC-21: Source Catalogue and Source-Clone Cache](rfc-21-catalogue.md) — `sources.yaml` and the source-clone cache.
 - [RFC-22: Migration Ledger and Slice Mapping](rfc-22-ledger.md) — the audit-only-field precedent (`mapping`) and the ledger this RFC's `plan compose` overlays for previously-migrated crates.
 - [`adapters/targets/omnia/briefs/build.md`](../../adapters/targets/omnia/briefs/build.md) — the build brief whose `$CRATE_NAME` contract this RFC formalises into a schema field, and which owns the Omnia service workspace into which handlers land.
-- [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `crate` and `surfaces`.
-- [`schemas/target.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/target.schema.json) — target adapter manifest format the validator consults for the Omnia gate.
-- [`crates/workflow/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/registry/catalog.rs) — registry project metadata source the target adapter resolution reads.
-- [`specify-cli/AGENTS.md#exit-codes`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#exit-codes) — the exit-code contract the new findings respect.
+- [`schemas/plan/plan.schema.json`](../../schemas/plan/plan.schema.json) — the schema this RFC additively extends with `crate` and `surfaces`.
+- [`schemas/target.schema.json`](../../schemas/target.schema.json) — target adapter manifest format the validator consults for the Omnia gate.
+- [`engine/crates/workflow/src/registry/catalog.rs`](../../engine/crates/workflow/src/registry/catalog.rs) — registry project metadata source the target adapter resolution reads.
+- [`engine/AGENTS.md#exit-codes`](../../engine/AGENTS.md#exit-codes) — the exit-code contract the new findings respect.

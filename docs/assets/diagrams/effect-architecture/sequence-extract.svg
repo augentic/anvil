@@ -1,0 +1,90 @@
+<svg viewBox="0 0 1080 544" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logical sequence for an extract: the operator invokes the extract, which the binary's native orchestration runs. The native loop opens a session bound to the source tree, then hands the model the extract brief plus a typed tool surface behind the ModelClient boundary. In a loop over the model's tool calls the model emits resolve, which the loop forwards to the source adapter's references shelf for lazy bytes, and read and list, which the loop applies read-only against the source tree; the model writes nothing. The model returns typed evidence; the loop validates it against the evidence schema, persists it, and returns done. A later reconcile pass, also native judgment, folds evidence across sources. Handles cross, never corpora.">
+  <title>Logical sequence: extract</title>
+  <defs>
+    <marker id="sx-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+    <marker id="sx-arrO" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#c08040"/>
+    </marker>
+  </defs>
+
+  <text x="20" y="20" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" fill="#888" letter-spacing="0.05em">LOGICAL SEQUENCE &#183; EXTRACT (a source adapter)</text>
+
+  <!-- participant headers -->
+  <rect x="15" y="30" width="150" height="52" rx="9" fill="#f2f1ec" stroke="#c9c6bc" stroke-width="1.5"/>
+  <text x="90" y="54" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">operator</text>
+  <text x="90" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" font-style="italic" fill="#7a7a7a">cli &#183; waits</text>
+
+  <rect x="240" y="30" width="200" height="52" rx="9" fill="#f0e0d6" stroke="#d8a06e" stroke-width="1.5"/>
+  <text x="340" y="54" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">native orchestration</text>
+  <text x="340" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" font-style="italic" fill="#a05a3c">the tool-use loop &#183; the binary</text>
+
+  <rect x="540" y="30" width="160" height="52" rx="9" fill="#d9e7f1" stroke="#6ea8d8" stroke-width="1.5"/>
+  <text x="620" y="54" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">model</text>
+  <text x="620" y="70" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-style="italic" fill="#3f7bab">via ModelClient</text>
+
+  <rect x="790" y="30" width="180" height="52" rx="9" fill="#ede9d0" stroke="#c9b766" stroke-width="1.5"/>
+  <text x="880" y="54" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" font-weight="600" fill="#1c1c1c">source adapter</text>
+  <text x="880" y="70" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9.5" font-style="italic" fill="#9a8a3a">guest &#183; references shelf</text>
+
+  <!-- lifelines -->
+  <line x1="90" y1="82" x2="90" y2="480" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <line x1="340" y1="82" x2="340" y2="480" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <line x1="620" y1="82" x2="620" y2="480" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <line x1="880" y1="82" x2="880" y2="480" stroke="#d6d6d6" stroke-width="1.2" stroke-dasharray="3 4"/>
+
+  <!-- activation bars -->
+  <rect x="85" y="98" width="10" height="366" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+  <rect x="335" y="108" width="10" height="350" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+  <rect x="615" y="170" width="10" height="226" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+  <rect x="875" y="250" width="10" height="28" fill="#ffffff" stroke="#b0b0b0" stroke-width="1"/>
+
+  <!-- m1 operator -> native orch -->
+  <text x="214" y="102" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">extract (refine)</text>
+  <path d="M95 108 L333 108" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#sx-arr)"/>
+
+  <!-- m2 native orch self: open session -->
+  <path d="M345 130 H392 V146 H347" stroke="#555" stroke-width="1.1" fill="none" marker-end="url(#sx-arr)"/>
+  <text x="398" y="142" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-style="italic" fill="#7a7a7a">open session &#183; bind the source tree (read-only)</text>
+
+  <!-- m3 native orch -> model -->
+  <text x="479" y="170" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">extract brief + tool surface</text>
+  <path d="M345 176 L613 176" stroke="#c08040" stroke-width="1.4" fill="none" marker-end="url(#sx-arrO)"/>
+
+  <!-- loop fragment -->
+  <rect x="304" y="196" width="666" height="166" rx="4" fill="none" stroke="#b0b0b0" stroke-width="1.2"/>
+  <path d="M304 196 h232 v12 l-10 8 h-222 z" fill="#ededed" stroke="#b0b0b0" stroke-width="1"/>
+  <text x="313" y="210" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" font-weight="600" fill="#666">loop [the model&#8217;s tool calls &#8212; until the evidence is ready]</text>
+
+  <!-- m4 model -> loop resolve -->
+  <text x="480" y="236" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">resolve(id)</text>
+  <path d="M613 242 L347 242" stroke="#c08040" stroke-width="1.3" fill="none" marker-end="url(#sx-arrO)"/>
+  <!-- m5 loop -> adapter resolve -->
+  <text x="609" y="264" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">resolve &#183; references shelf</text>
+  <path d="M345 270 L873 270" stroke="#555" stroke-width="1.3" fill="none" marker-end="url(#sx-arr)"/>
+  <!-- m6 adapter -> loop bytes -->
+  <text x="640" y="298" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">bytes (lazy)</text>
+  <path d="M873 286 L347 286" stroke="#555" stroke-width="1.1" fill="none" stroke-dasharray="4 3" marker-end="url(#sx-arr)"/>
+
+  <!-- m7 model -> loop read/list -->
+  <text x="478" y="322" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">read / list</text>
+  <path d="M613 328 L347 328" stroke="#c08040" stroke-width="1.3" fill="none" marker-end="url(#sx-arrO)"/>
+  <text x="634" y="328" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-style="italic" fill="#7a7a7a">&#8594; the source tree (read-only &#183; no write)</text>
+
+  <!-- m8 model -> loop evidence -->
+  <text x="480" y="386" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#a05a3c">evidence (typed)</text>
+  <path d="M613 392 L347 392" stroke="#c08040" stroke-width="1.3" fill="none" stroke-dasharray="4 3" marker-end="url(#sx-arrO)"/>
+
+  <!-- m9 native orch self: validate / persist -->
+  <path d="M345 408 H372 V424 H347" stroke="#555" stroke-width="1.1" fill="none" marker-end="url(#sx-arr)"/>
+  <text x="380" y="420" font-family="ui-sans-serif, system-ui, sans-serif" font-size="9" font-style="italic" fill="#7a7a7a">validate vs evidence schema &#183; persist evidence</text>
+
+  <!-- m10 native orch -> operator done -->
+  <text x="214" y="462" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#1c1c1c">done</text>
+  <path d="M335 468 L97 468" stroke="#555" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#sx-arr)"/>
+
+  <!-- footnotes -->
+  <text x="20" y="506" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#3c7a52">Same shape as build, read-only: the native loop drives the model over the source&#8217;s brief + references shelf; the model reads the source tree but writes nothing.</text>
+  <text x="20" y="526" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#888">The answer is typed evidence (claims), persisted by the loop. A later reconcile pass &#8212; also native judgment &#8212; folds evidence across sources. Handles cross, never corpora.</text>
+</svg>

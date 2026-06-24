@@ -1,0 +1,190 @@
+package augentic:specify@0.2.0;
+
+interface types {
+  /// The error returned by operations.
+  variant error {
+    invalid-request(string),
+    io(string),
+    internal(string),
+  }
+
+  /// A plan-bound adapter identity, e.g. "source:typescript" or "target:omnia".
+  type adapter-id = string;
+
+  /// A node-independent, content-addressed reference. The guest cannot
+  /// dereference it directly; reads/writes go through host imports.
+  /// Stable identity for caching, dedup, and replay across nodes, e.g. "sha256: …".
+  type artifact = string;
+
+  /// A content-addressed snapshot identity (a git commit oid in the git
+  /// backend). Portable: it names a build's starting point independently of
+  /// which node the working tree was materialized on.
+  /// The snapshot's stable identity (e.g. "sha256: …" or a git oid).
+  type revision = string;
+
+  /// One path-scoped edit, relative to a working tree's root. A present
+  /// `content` is an add or a modify; an absent `content` is a delete.
+  record edit {
+    /// The edited file's path, relative to the working tree root.
+    path: string,
+    /// The new content as a content-addressed handle, or absent for a deletion.
+    content: option<artifact>,
+  }
+
+  /// How a build changed a working tree, relative to `base`. This is the
+  /// portable unit that crosses nodes to `merge` — never a shared mount.
+  record changeset {
+    /// The revision the edits apply against.
+    base: revision,
+    /// The per-path edits the build produced.
+    edits: list<edit>,
+  }
+}
+
+interface source {
+  use types.{ adapter-id, error };
+  use wasi:filesystem/types@0.2.0.{ descriptor };
+
+  /// The lead returned by the survey operation.
+  record lead {
+    /// The path to the section in the source that the lead corresponds to.
+    /// Uses the file#line syntax to identify the section.
+    path: string,
+    /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
+    synopsis: string,
+  }
+
+  /// The weight to assign this evidence during conflict resolution.
+  enum weight {
+    /// Operator directives. Highest weight.
+    directive,
+    /// Written specifications. Medium weight.
+    specification,
+    /// Empirical observations. Lowest weight.
+    observation
+  }
+
+  /// The backing data of the claim's evidence.
+  variant backing {
+    /// A small, verbatim piece of data passed directly.
+    payload(string),
+    /// A pointer to a block of data in the filesystem.
+    path(string),
+  }
+
+  /// A claim extracted from the source adapter.
+  record claim {
+    /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
+    /// Used by the synthesis engine to merge related claims across sources.
+    synopsis: string,
+    /// The backing data of the claim's evidence (either a path or a raw payload).
+    backing: option<backing>,
+  }
+
+  /// The evidence returned by the extract operation.
+  record evidence {
+    /// The evidence's weight.
+    weight: weight,
+    /// The claims extracted from the source.
+    claims: list<claim>,
+  }
+
+  /// Lightly survey the source to create a map of its contents (decompose into leads).
+  survey: func(id: adapter-id) -> result<list<lead>, error>;
+
+  /// Thoroughly extract evidence from a source for a given lead.
+  extract: func(id: adapter-id, lead: lead) -> result<evidence, error>;
+}
+
+/// The target adapter contract.
+interface target {
+  use types.{ adapter-id, changeset, error, revision };
+  use wasi:filesystem/types@0.2.0.{ descriptor };
+
+  /// Types of inputs used to build a slice.
+  variant input {
+    proposal(string),
+    design(string),
+    tasks(string),
+    spec(string),
+    other(string),
+  }
+
+  record working-tree {
+    base: revision,
+    root: descriptor,
+  }
+
+  /// The severity of a finding.
+  enum severity {
+    critical,
+    important,
+    suggestion
+  }
+
+  /// A finding from the operation.
+  record finding {
+    /// The finding's rule identifier.
+    rule-id: string,
+    /// The severity of the finding.
+    severity: severity,
+    /// The detail of the finding.
+    detail: string,
+  }
+
+  /// The outcome of the operation.
+  enum outcome {
+    success,
+    failure,
+  }
+
+  /// Judgment returned by the `build` and `merge` operations. The resulting
+  /// state — a build's delta, or the merged baseline — lives in the working
+  /// tree, not in this report.
+  record report {
+    /// The outcome of the operation.
+    outcome: outcome,
+    /// The findings from the operation.
+    findings: list<finding>,
+  }
+
+  /// Request to target adapter to get guidance on the expected build artifacts
+  /// for the adapter. The returned guidance is prose describing the build
+  /// artifacts expected for the slice.
+  guidance: func(id: adapter-id) -> result<string, error>;
+
+  /// Build a slice within a host-materialized working tree. `root` is a
+  /// borrowed `wasi:filesystem` directory handle the host opens over the tree
+  /// it materialized from `base` (via the custom git-aware backend);
+  /// the operation reads existing code through it and writes its changes in
+  /// place. The report carries only judgment; the caller's native orchestration
+  /// layer extracts the resulting delta as a `changeset` against `base`, so
+  /// neither the delta nor a tree resource crosses this boundary.
+  build: func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
+
+  /// Merge a built slice into the project's codebase. `delta` is the build's
+  /// portable delta (theirs); `root` is a borrowed `wasi:filesystem` handle
+  /// over the baseline tree (ours, materialized from `base`) folded into in
+  /// place — a 3-way merge against `delta.base`. A filesystem-capable spawned
+  /// agent resolves conflicts through the node-local path the model backend
+  /// provisions (no typed method); an API model resolves them through the
+  /// tool surface. Validators re-run through `root`; the report carries
+  /// the merge judgment. The caller commits the merged baseline.
+  merge: func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
+}
+
+world source-adapter {
+  export source;
+  export references;
+}
+
+world target-adapter {
+  export target;
+  export references;
+}
+
+world workflow {
+  import source;
+  import target;
+}
+

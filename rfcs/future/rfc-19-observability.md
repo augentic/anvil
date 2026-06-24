@@ -1,6 +1,6 @@
 # RFC-19: CLI Observability
 
-> Status: Draft · Complements the shipped journal (`crates/workflow/src/journal.rs`); durable CLI behaviour in [`docs/standards/workflow.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/workflow.md)
+> Status: Draft · Complements the shipped journal (`engine/crates/workflow/src/journal.rs`); durable CLI behaviour in [`engine/docs/standards/workflow.md`](../../engine/docs/standards/workflow.md)
 
 ## Abstract
 
@@ -206,6 +206,6 @@ Specify is a short-lived CLI; the first observability layer expresses metrics as
 
 ## References
 
-- [`docs/standards/architecture.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/architecture.md) and [`docs/standards/handler-shape.md`](https://github.com/augentic/specify-cli/blob/main/docs/standards/handler-shape.md) — the `Ctx` / `Render` / `emit` and exit-code shape this RFC must not disturb.
-- [`src/runtime/output.rs`](https://github.com/augentic/specify-cli/blob/main/src/runtime/output.rs) — the `Exit::from(&Error)` mapping and stdout contract.
-- [`crates/workflow/src/journal.rs`](https://github.com/augentic/specify-cli/blob/main/crates/workflow/src/journal.rs) — the durable event log this RFC complements.
+- [`engine/docs/standards/architecture.md`](../../engine/docs/standards/architecture.md) and [`engine/docs/standards/handler-shape.md`](../../engine/docs/standards/handler-shape.md) — the `Ctx` / `Render` / `emit` and exit-code shape this RFC must not disturb.
+- [`engine/src/runtime/output.rs`](../../engine/src/runtime/output.rs) — the `Exit::from(&Error)` mapping and stdout contract.
+- [`engine/crates/workflow/src/journal.rs`](../../engine/crates/workflow/src/journal.rs) — the durable event log this RFC complements.

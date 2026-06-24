@@ -1,0 +1,29 @@
+package augentic:model@0.1.0;
+
+interface types {
+  /// Errors that can occur during model operations.
+  type error = string;
+}
+
+/// The marquee effect for executing a brief.
+interface evaluator {
+  use types.{error};
+
+  /// An instruction to the model: an inline prompt, or a handle (path) to a
+  /// brief or skill.
+  variant instruction {
+    /// The prompt to evaluate.
+    prompt(string),
+    /// A pointer to the root file (skill or brief) of a large multi-file
+    /// collection of prose on the filesystem.
+    path(string),
+  }
+
+  /// Evaluate an instruction with the model.
+  eval: func(request: instruction, model: option<string>) -> result<string, error>;
+}
+
+world model {
+  import types;
+  import evaluator;
+}
