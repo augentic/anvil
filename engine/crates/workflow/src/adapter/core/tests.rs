@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use super::*;
 use crate::Platform;
 
@@ -145,6 +147,27 @@ extension: {}
     )
     .expect("parse");
     assert!(omitted.extension.as_ref().expect("extension").name.is_none());
+
+    // Target-only prepare hook and catalog capability round-trip.
+    let manifest: TargetAdapter = serde_saphyr::from_str(
+        r"name: demo-target
+version: 1.0.0
+axis: target
+execution: agent
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+extension: {}
+prepare:
+  argv: [prepare, build]
+catalog:
+  infer: true
+",
+    )
+    .expect("parse prepare + catalog");
+    assert_eq!(manifest.prepare.as_ref().expect("prepare").argv, ["prepare", "build"]);
+    assert!(manifest.catalog.as_ref().expect("catalog").infer);
 
     // The retired plural `tools[]` array and per-extension version/source/sha256 are denied.
     serde_saphyr::from_str::<TargetAdapter>(
@@ -327,6 +350,34 @@ fn typed_gates() {
     assert_eq!(code, "adapter-execution-mode-required");
     check_execution(Some(Execution::Agent), Path::new("adapter.yaml")).expect("agent passes");
     check_execution(Some(Execution::Tool), Path::new("adapter.yaml")).expect("tool passes");
+
+    let manifest = TargetAdapter {
+        name: "demo-target".into(),
+        version: semver::Version::new(1, 0, 0),
+        requires_specify: None,
+        axis: Axis::Target,
+        execution: Some(Execution::Agent),
+        briefs: BTreeMap::from([
+            (TargetOperation::Shape, "briefs/shape.md".into()),
+            (TargetOperation::Build, "briefs/build.md".into()),
+            (TargetOperation::Merge, "briefs/merge.md".into()),
+        ]),
+        extension: None,
+        inputs: Vec::new(),
+        description: None,
+        platforms: None,
+        prepare: Some(PrepareHookDeclaration {
+            argv: vec!["prepare".into(), "build".into()],
+        }),
+        catalog: None,
+    };
+    let Error::Validation { code, .. } =
+        check_prepare_requires_extension(&manifest, Path::new("adapter.yaml"))
+            .expect_err("prepare without extension must be rejected")
+    else {
+        panic!("expected Error::Validation");
+    };
+    assert_eq!(code, "adapter-prepare-without-extension");
 
     // The belt-and-suspenders version gate: a non-semver version is `adapter-version-malformed`.
     let Error::Validation { code, .. } =

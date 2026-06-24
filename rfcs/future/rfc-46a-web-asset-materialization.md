@@ -34,7 +34,7 @@ This RFC reuses the iOS/Android contracts unchanged and only adds the web seam t
 | `specify extension run vectis -- materialize assets` (§2) | [`extension/src/materialize/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/extension/src/materialize) | Web outputs per `role` |
 | `assets.yaml` schema (§3) | [`extension/schemas/assets.schema.json`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/schemas/assets.schema.json) | Optional `sources.web` field |
 | App icon per platform (§4) | `materialize/` app-icon module, `exports/web/` | Web favicon / manifest artifacts |
-| Build-time bootstrap `app-icon` gate (§5) | [`extension/src/verify/app_icon.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/verify/app_icon.rs), host [`materialize_scope.rs`](../../engine/crates/workflow/src/slice/build/materialize_scope.rs) | Extend gate to `web` |
+| Build-time bootstrap `app-icon` gate (§5) | [`extension/src/verify/app_icon.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/verify/app_icon.rs) | Extend gate to `web` |
 
 ## Ownership (two-repo split)
 
@@ -43,7 +43,7 @@ This RFC reuses the iOS/Android contracts unchanged and only adds the web seam t
 | `sources.web` schema | specify-adapters | `extension/schemas/assets.schema.json`, `validate/engine/assets.rs` |
 | Web materialize outputs | specify-adapters | `extension/src/materialize/` (new web paths in `paths.rs`, app-icon favicon/manifest module) |
 | `--platform web` filter | specify-adapters | `materialize.rs` (`resolve_platform_filter` currently rejects `web`) |
-| Prepare scope + auto-materialize | specify/engine | `crates/workflow/src/slice/build/materialize_scope.rs`, `src/runtime/commands/slice/build.rs` (`ui_platforms()` today filters to `Ios | Android` only) |
+| Prepare scope + auto-materialize | specify-adapters | [`extension/src/prepare.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/prepare.rs); host dispatches `vectis prepare build` from [`src/runtime/commands/slice/build.rs`](../../engine/src/runtime/commands/slice/build.rs) |
 | Bootstrap `app-icon` gate for `web` | specify-adapters | `extension/src/verify/app_icon.rs` (`UI_PLATFORMS` = `ios`, `android` today) |
 | Render-by-`kind` web writer contract | specify-adapters | future `references/web/design-system-integration.md`, VECTIS-006 web column, `briefs/build/web/` sub-brief (blocked on web scaffold) |
 
@@ -132,8 +132,8 @@ This RFC is a single initiative once a web shell target exists:
 
 1. **Schema + policy (specify-adapters)** — add optional `sources.web` to `vectorEntry` / `rasterEntry` in `assets.schema.json`; extend `check_platform_coverage`; add DECISIONS §K web column notes.
 2. **Materialize web (specify-adapters)** — extend `materialize/paths::Platform` with `Web`; implement passthrough + favicon/manifest raster derivation; enable `--platform web`; commit `exports/web/` in eval fixtures when web scaffold lands.
-3. **Host prepare hook (specify/engine)** — extend `ui_platforms()` and `materialize_scope` export probes (`conventional_export_exists`, `app_icon_export_exists`) for `web`; ensure prepare passes `web` in `--platform` CSV to the extension.
-4. **Bootstrap gate (specify-adapters + host)** — extend `verify/app_icon.rs`; keep prepare dispatch unchanged (already generic).
+3. **Adapters prepare hook** — extend `prepare build` scope resolution and export probes (`exports.rs` / `export_layout`) for `web`; ensure scoped materialize passes `web` in `--platform` when `web ∈ project.yaml.platforms`.
+4. **Bootstrap gate (specify-adapters + host)** — extend `verify/app_icon.rs`; prepare dispatch is manifest-driven (`prepare.argv` on the target adapter) and delegates web work to the adapter's `prepare build` subcommand.
 5. **Web shell consumption (blocked)** — web writer reads `sources.web` / `source` and copies materialized icon tree; requires web scaffold RFC + `briefs/build/web/` sub-brief.
 
 ## Non-goals
@@ -155,7 +155,7 @@ This RFC is a single initiative once a web shell target exists:
 - [`specify-adapters/.../src/materialize/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/extension/src/materialize)
 - [`specify-adapters/.../src/validate/engine/assets.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/validate/engine/assets.rs)
 - [`specify-adapters/.../src/verify/app_icon.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/verify/app_icon.rs)
-- [`specify/engine/.../materialize_scope.rs`](../../engine/crates/workflow/src/slice/build/materialize_scope.rs)
+- [`specify-adapters/.../prepare.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/prepare.rs)
 - [`specify/engine/.../slice/build.rs`](../../engine/src/runtime/commands/slice/build.rs) (prepare hook)
 - [`specify/engine/.../platform.rs`](../../engine/crates/workflow/src/platform.rs)
 - [VECTIS-006](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md) (future web column)

@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../../../schemas/adapter.schema.json
+name: dispatch-fixture
+version: "1.0.0"
+axis: target
+execution: agent
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+description: Adapter-agnostic host-dispatch fixture for engine integration tests
+catalog:
+  infer: true
+prepare:
+  argv: [prepare, build]
+extension:
+  name: dispatch-fixture
+  permissions:
+    read:
+      - $PROJECT_DIR
+      - $CAPABILITY_DIR
+    write:
+      - $PROJECT_DIR

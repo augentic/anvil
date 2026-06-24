@@ -11,5 +11,4 @@
 //! [`crate::schema`], beside the other workflow-aware validators.
 
 pub mod assemble;
-pub mod materialize_scope;
 pub mod wire;

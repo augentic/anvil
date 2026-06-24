@@ -179,9 +179,11 @@ mod build {
     use std::fs;
 
     use serde_json::Value;
+    use tempfile::tempdir;
 
     use crate::common::{
-        Project, expected_cache_dir, parse_json, read_journal_normalized, specify_cmd,
+        Project, expected_cache_dir, parse_json, parse_stderr, read_journal_normalized,
+        specify_cmd, stage_dispatch_fixture,
     };
 
     /// Create `my-slice`, seed a `specs/<domain>/spec.md` so the assembled
@@ -354,6 +356,52 @@ screens:
             metadata(&project).contains("status: refined"),
             "prepare must leave the slice at refined; got:\n{}",
             metadata(&project)
+        );
+    }
+
+    /// Minimal project with `dispatch-fixture` staged for prepare-hook dispatch.
+    fn dispatch_fixture_prepare_project() -> tempfile::TempDir {
+        let tmp = tempdir().expect("tempdir");
+        let project = tmp.path();
+        stage_dispatch_fixture(project);
+        fs::create_dir_all(project.join(".specify/specs")).expect("create .specify");
+        fs::write(
+            project.join(".specify/project.yaml"),
+            "name: slice-build-test\nadapter: dispatch-fixture\nrules: {}\n",
+        )
+        .expect("write project.yaml");
+        tmp
+    }
+
+    #[test]
+    fn prepare_hook_maps_bootstrap_findings() {
+        let tmp = dispatch_fixture_prepare_project();
+        let root = tmp.path();
+        specify_cmd()
+            .current_dir(root)
+            .args(["slice", "create", "my-slice", "--target", "dispatch-fixture"])
+            .assert()
+            .success();
+        let spec_dir = root.join(".specify/slices/my-slice/specs/identity");
+        fs::create_dir_all(&spec_dir).expect("mkdir specs/identity");
+        fs::write(spec_dir.join("spec.md"), "# Identity spec\n").expect("write spec.md");
+        specify_cmd()
+            .current_dir(root)
+            .args(["slice", "transition", "my-slice", "refined"])
+            .assert()
+            .success();
+
+        let assert = specify_cmd()
+            .current_dir(root)
+            .env("SPECIFY_EXTENSIONS_CACHE", expected_cache_dir(root))
+            .args(["--format", "json", "slice", "build", "my-slice"])
+            .assert()
+            .failure();
+
+        let stderr = parse_stderr(&assert.get_output().stderr, root);
+        assert_eq!(
+            stderr["error"], "plan-bootstrap-app-icon-missing",
+            "prepare must map bootstrap gate findings to plan-bootstrap-app-icon-missing: {stderr}"
         );
     }
 
