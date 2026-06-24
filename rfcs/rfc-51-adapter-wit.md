@@ -8,7 +8,7 @@ One versioned WebAssembly Component Model package, `augentic:specify@<semver>`, 
 
 ## The package
 
-Authored in [`../wit/specify.wit`](../wit/specify.wit):
+Authored in `[../wit/specify.wit](../wit/specify.wit)`:
 
 - `interface types` — the cross-cutting records: `error`, `adapter-id`, `artifact`, `revision`, `edit`, `changeset`.
 - `interface source` — `survey` / `extract`, each taking an `adapter-id`, with `lead`, `weight`, `backing`, `claim`, `evidence`.
@@ -44,3 +44,4 @@ Judgment is Omnia's `wasi-model` host (`eval`), imported by guests as an upstrea
 
 - The contract stays adapter- and model-agnostic; the records are the single source of truth, and JSON-schema constants are generated from or retired against them downstream ([RFC-52](rfc-52-effect.md)).
 - `resolve` is the sole guest-export reentry point for judgment; everything else a guest needs is an import.
+
