@@ -1,6 +1,6 @@
 # RFC-51: Adapter WIT — the typed contract package
 
-> Status: Draft · Order 1 of 8 · Stage S1 · Enables: [RFC-52](rfc-52-effect.md), [RFC-54](rfc-54-orchestration.md), [RFC-56](rfc-56-runtime-move.md) · Owns: the `augentic:specify` package
+> Status: Draft · Order 1 of 10 · Stage S1 · Enables: [RFC-52](rfc-52-effect.md), [RFC-54](rfc-54-orchestration.md), [RFC-56](rfc-56-runtime-move.md), [RFC-59](rfc-59-model-tool-loop.md) · Owns: the `augentic:specify` package
 
 ## Abstract
 
@@ -13,10 +13,10 @@ Authored in `[../wit/specify.wit](../wit/specify.wit)`:
 - `interface types` — the cross-cutting records: `error`, `adapter-id`, `artifact`, `revision`, `edit`, `changeset`.
 - `interface source` — `survey` / `extract`, each taking an `adapter-id`, with `lead`, `weight`, `backing`, `claim`, `evidence`.
 - `interface target` — `guidance` / `build` / `merge`, each taking an `adapter-id`, with `input`, `working-tree`, `finding`, `severity`, `outcome`, `report`.
-- `interface references` — the reference shelf: `resolve(adapter-id, reference) -> bytes`, a stateless adapter export the model backend ([RFC-53](rfc-53-wasi-model.md)) calls to follow a brief's internal references. Served from prose embedded in the module at build time, so `resolve` is an in-module lookup.
+- `interface references` — the reference shelf: `resolve(adapter-id, reference) -> bytes`, a stateless adapter export the model tool loop ([RFC-59](rfc-59-model-tool-loop.md)) calls to follow a brief's internal references. Served from prose embedded in the module at build time, so `resolve` is an in-module lookup.
 - worlds — `source-adapter` exports `source` + `references`; `target-adapter` exports `target` + `references`; `workflow` imports `source` + `target`. The per-axis interfaces double as the adapter's export and the workflow's host-satisfied import: naming a plan-bound `adapter-id` as each call's first argument is what the host routes on, so there is no separate dispatch interface — host-mediated dynamic linking ([RFC-56](rfc-56-runtime-move.md)).
 
-Judgment is Omnia's `wasi-model` host (`eval`), imported by guests as an upstream host interface ([RFC-52](rfc-52-effect.md) / [RFC-53](rfc-53-wasi-model.md)); it is not part of this package. `resolve` is the only adapter export the model backend calls back into.
+Judgment is Omnia's `wasi-model` host (`eval`), imported by guests as an upstream host interface ([RFC-52](rfc-52-effect.md) / [RFC-53](rfc-53-wasi-model.md)); it is not part of this package. `resolve` is the only adapter export the model tool loop calls back into.
 
 ## Data model
 

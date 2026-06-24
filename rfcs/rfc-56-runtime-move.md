@@ -1,10 +1,10 @@
 # RFC-56: The Runtime Move — the generic Omnia binary and the multi-guest registry
 
-> Status: Draft · Order 6 of 8 · Stage S4 · Depends: [RFC-52](rfc-52-effect.md), [RFC-54](rfc-54-orchestration.md) · Binds: [RFC-55](rfc-55-working-tree.md) · Enables: [RFC-57](rfc-57-specify-guests.md) · Owns: the runtime and guest selection
+> Status: Draft · Order 8 of 10 · Stage S4 · Depends: [RFC-52](rfc-52-effect.md), [RFC-54](rfc-54-orchestration.md) · Binds: [RFC-55](rfc-55-working-tree.md) · Enables: [RFC-57](rfc-57-specify-guests.md) · Owns: the runtime and guest selection
 
 ## Abstract
 
-This is the keystone: the move that makes "Specify is Omnia compiled with Specify-specific backends" literally true. The generic `omnia <guest>.wasm <args…>` binary replaces the bespoke `specify` host. It instantiates guests per call, satisfies their typed effects ([RFC-52](rfc-52-effect.md)) from bound backends — `wasi:filesystem` (the working-tree backend, [RFC-55](rfc-55-working-tree.md)), `wasi:keyvalue`, lifecycle, and the `wasi-model` model backend ([RFC-53](rfc-53-wasi-model.md)) — and holds **many guests at once** in a registry, selecting among them by identity through host-mediated dynamic linking.
+This is the keystone: the move that makes "Specify is Omnia compiled with Specify-specific backends" literally true. The generic `omnia <guest>.wasm <args…>` binary replaces the bespoke `specify` host. It instantiates guests per call, satisfies their typed effects ([RFC-52](rfc-52-effect.md)) from bound backends — `wasi:filesystem` (the working-tree backend, [RFC-55](rfc-55-working-tree.md)), `wasi:keyvalue`, lifecycle, and the `wasi-model` host ([RFC-53](rfc-53-wasi-model.md)) with configured model backends ([RFC-58](rfc-58-model-backends.md)) — and holds **many guests at once** in a registry, selecting among them by identity through host-mediated dynamic linking.
 
 ## The model
 

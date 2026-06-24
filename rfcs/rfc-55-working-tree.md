@@ -1,6 +1,6 @@
 # RFC-55: Working-Tree Materialization — the git-aware `wasi:filesystem` backend
 
-> Status: Draft · Order 5 of 8 · Stage S4 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-52](rfc-52-effect.md) · Companion to: [RFC-56](rfc-56-runtime-move.md) (which binds this backend) · Owns: the value↔tree boundary
+> Status: Draft · Order 6 of 10 · Stage S4 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-52](rfc-52-effect.md) · Companion to: [RFC-56](rfc-56-runtime-move.md) (which binds this backend) · Owns: the value↔tree boundary
 
 ## Abstract
 

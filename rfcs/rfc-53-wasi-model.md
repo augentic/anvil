@@ -1,6 +1,6 @@
-# RFC-53: The `wasi-model` Host — `eval`, the tool loop, and the model backend
+# RFC-53: The `wasi-model` Host Core
 
-> Status: Draft · Order 3 of 8 · Stage S2–S3 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-52](rfc-52-effect.md) · Enables: [RFC-54](rfc-54-orchestration.md), [RFC-58](rfc-58-model-backends.md) · Owns: judgment as a host effect
+> Status: Draft · Order 3 of 10 · Stage S2 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-52](rfc-52-effect.md) · Enables: [RFC-59](rfc-59-model-tool-loop.md), [RFC-58](rfc-58-model-backends.md) · Owns: judgment as a host effect
 
 ## Abstract
 
@@ -10,45 +10,49 @@ Judgment is a host effect. Omnia exposes a `wasi-model` host whose `eval` export
 eval: func(prompt: prompt) -> result<answer, error>;
 ```
 
-Behind the host sits a swappable **model backend** ([RFC-58](rfc-58-model-backends.md)). The backend runs an LLM tool-use loop: it drives a model through its API, advertises a typed tool surface, dispatches the model's tool calls, runs the verify-repair cycle, and returns a validated, typed answer to the calling guest — which treats `eval` like any other host call and never sees a model id.
+This RFC owns the boundary only: prompt / answer records, the backend trait behind `eval`, schema validation, error mapping, and the minimal replay-capable backend needed for deterministic tests. The model tool loop is [RFC-59](rfc-59-model-tool-loop.md). Closed verify profiles are [RFC-60](rfc-60-verify-profiles.md). Backend variety and routing are [RFC-58](rfc-58-model-backends.md).
 
-## The tool surface
+## The boundary
 
-Within one `eval`, the backend services the model's tool calls:
+A guest treats `eval` like any other typed host effect. It supplies a complete prompt request, including the brief identity, operation type, expected answer shape, and any handles the backend is allowed to expose as tools. The host returns either a validated typed answer or a typed error. No vendor model id, SDK type, transcript, or free-form tool contract crosses the boundary.
 
-- **`resolve(reference)`** — follow a brief's internal reference. The backend selects the adapter whose brief is being evaluated, instantiates a fresh instance, and calls its exported `references` shelf ([RFC-51](rfc-51-adapter-wit.md)) — host-mediated dynamic linking ([RFC-56](rfc-56-runtime-move.md)). Instance-per-call, so the resolution is isolated from the calling guest.
-- **`read` / `list` / `write`** — scan and mutate the working tree ([RFC-52](rfc-52-effect.md)); `write` accumulates an `edit`. The model never holds a descriptor or an OS path. (A filesystem-capable spawned-agent backend instead reads and writes the tree directly through its `local-path`.)
-- **`verify(check)`** — run a vetted, sandboxed check profile and feed the severity-tiered `report` back; the model repairs and re-verifies.
+Behind `eval` sits a backend trait. The trait is responsible for evaluating the prompt, producing an answer candidate, and returning enough transcript metadata for record/replay. The host wrapper validates the answer against the operation's expected schema before returning it to the guest.
 
-A session binds a base `revision` and its accumulating `edit`s, held in `wasi:keyvalue` (instance-per-call). On completion the backend validates the model's answer against the operation's report type, and the caller extracts the `changeset`.
+## Minimal replay
 
-## `verify` — the one native seam
+Replay belongs at the `wasi-model` boundary because it is the test substitute for judgment itself. The core RFC therefore includes a minimal recording / replay backend:
 
-`verify` compiles and checks generated code, which a `wasm32-wasip2` guest cannot do, so it is native. The model names a closed `check` profile (`fmt` / `build` / `clippy` / `test` / `doc` / `vet` / `deny` / `ci`) — never free-form argv (an LLM choosing a command line is an RCE surface). The host owns the argv (mirroring `cargo make ci` plus the `wasm32-wasip2` deploy build), runs each profile sandboxed (ephemeral isolation, egress-deny, resource limits), parses `--message-format=json` into the shared `report` (`finding.rule-id` = compiler / lint / advisory id; `finding.severity` tiers must-fix vs optional), and caches `target/` per session. Absent on a toolchain-less node — build / merge briefs degrade there, a clean capability signal.
+- The recording backend logs `(prompt request + tool transcript) -> validated answer`.
+- The replay backend serves the recorded answer for an equivalent prompt request.
+- Replay fixtures are deterministic enough to test one vertical operation without a live model.
 
-## The model backend boundary
-
-The backend is the single seam carrying the model API conversation, the vendor model id, and record/replay. The default backend drives [`genai`](https://github.com/jeremychone/rust-genai) (one API over OpenAI / Anthropic / Gemini / Ollama / …). A recording backend logs `(prompt + tool transcript) -> answer`; the replay backend serves them, making any operation a deterministic CI fixture. The full backend set and the router are [RFC-58](rfc-58-model-backends.md).
+[RFC-58](rfc-58-model-backends.md) expands this into the full backend catalogue and router, but it does not invent the replay seam.
 
 ## Scope
 
-- The `wasi-model` host interface (`eval`) and the model-backend trait it dispatches to.
-- The tool loop: model API conversation, tool-call dispatch (`resolve` / `read` / `list` / `write` / `verify`), session state in `wasi:keyvalue`, answer validation.
-- The `verify` seam: closed `check` profiles, sandboxed execution, `report` mapping.
-- The record/replay capture point at the backend boundary.
+- The `wasi-model` host interface (`eval`).
+- Prompt, answer, and error records.
+- The backend trait used by the host.
+- Answer validation before returning to the guest.
+- Minimal record/replay at the backend boundary.
+
+## Out of scope
+
+- Tool-call dispatch (`resolve`, `read`, `list`, `write`) and repair-loop semantics; see [RFC-59](rfc-59-model-tool-loop.md).
+- Closed verification profiles, sandboxing, and severity mapping; see [RFC-60](rfc-60-verify-profiles.md).
+- Frontier, spawned-agent, SLM, and router backends; see [RFC-58](rfc-58-model-backends.md).
 
 ## Acceptance criteria
 
-1. A guest evaluates a brief by calling `eval`; the backend drives the model through the tool surface and returns a validated, typed answer.
-2. `resolve` reaches the adapter's `references` shelf by host-mediated dynamic linking, instance-per-call; `read` / `list` / `write` operate over the working tree; the model holds no descriptor or OS path.
-3. `verify` runs closed, sandboxed profiles and returns the shared `report`; the verify-repair loop converges.
-4. The vendor model id lives only in the backend; one operation replays deterministically via the replay backend.
+1. A guest can call `eval` and receive either a validated typed answer or a typed error.
+2. The backend trait carries no vendor-specific type above the backend boundary.
+3. The host validates answers before returning them to guests.
+4. One recorded prompt replays deterministically without a live model.
 5. `make lint` and `cargo make ci` stay green.
 
 ## Risks and invariants
 
 - **Law 2 at the floor.** The model id and vendor SDK live in the `wasi-model` backend, never in Omnia core or the typed contract.
-- **`verify` executes untrusted code.** Every profile runs sandboxed; `test` is gated; `cargo deny` rejects forbidden crates before they compile.
-- **Closed profiles.** The model names a `check`; it never supplies argv.
-- **Instance-per-call.** Session state lives in `wasi:keyvalue`; a leaked in-memory session is a regression.
-- **Optional MCP transport.** Off-the-shelf MCP agents or a pure-wasi host can reach the same tool surface through a thin `wasi:http` guest; this is a deferred transport, not the default path.
+- **Validated answers only.** A model response that does not validate is not an answer; it is a backend failure or a repair-loop input.
+- **Replay is boundary-level.** Recording and replay happen around the typed prompt / answer boundary, so CI does not depend on any one backend implementation.
+- **No transcript leakage.** The operator's live editor conversation is never reused as a model session.
