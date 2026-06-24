@@ -1,22 +1,5 @@
 package augentic:mcp@0.1.0;
 
-interface shelf {
-    use augentic:specify/types.{ error };
-
-    /// Opaque session handle. Binds a base revision and owns the accumulating
-    /// changeset; host-held and keyed in `kv` (guests are instance-per-call).
-    type session = string;
-
-    type reference = string;
-
-    /// List working-tree entries under a prefix.
-    %list: func(s: session, prefix: string) -> result<list<string>, error>;
-
-    /// Forwards to augentic:specify references.resolve(adapter-id, reference);
-    /// adapter-id is bound by the host at instantiation, so it isn't an argument.
-    resolve: func(reference: reference) -> result<list<u8>, error>;
-}
-
 // /// The brief-I/O surface a model uses to execute one brief: navigate the
 // /// brief's reference shelf, scan and mutate a working tree, and verify. The
 // /// `tools` shape is shared by both facades — a native trait for the in-process
@@ -79,12 +62,12 @@ interface shelf {
 // }
 
 /// MCP over HTTP: a thin guest frames JSON-RPC and forwards tools/call -> shelf.resolve.
-world mcp {
-    export shelf;
+world mcp-brief {
+    export references;
 
 }
 
 // /// MCP over HTTP. A thin guest does JSON-RPC framing
-// world mcp-full {
+// world mcp-build {
 //     export tools;
 // }

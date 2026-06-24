@@ -20,7 +20,7 @@ interface evaluator {
   }
 
   /// Evaluate an instruction with the model.
-  eval: func(request: instruction) -> result<string, error>;
+  eval: func(request: instruction, model: option<string>) -> result<string, error>;
 }
 
 world model {
