@@ -42,7 +42,26 @@ specify extension run vectis -- scaffold android <app-name> [--caps <csv>] [--an
 
 `vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/adapter.yaml) (its `extension` block); it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/merge.md) briefs.
 
+On an existing tree, `scaffold ios` refuses to overwrite agent-immutable files. Use `sync ios-scaffold` (below) to repair drift instead.
+
 Version pins come from embedded defaults unless `--version-file <path>` names a complete TOML override. The tool does not read user config, implicitly discover project-local version files, accept JSON on stdin, or expose per-pin flags in v1.
+
+### vectis sync
+
+Repair agent-immutable iOS scaffold files from the embedded templates without prepare side effects (no materialize, bootstrap app-icon gate, or Android setup):
+
+```bash
+specify extension run vectis -- sync ios-scaffold [path]
+```
+
+When `[path]` is omitted, the command resolves the project root from `PROJECT_DIR` or a CWD walk-up to `.specify/`. It re-renders `iOS/Makefile` and `iOS/project.yml` when on-disk bytes diverge from the template (for example, a named simulator destination like `name=iPhone 16` replaced the required `generic/platform=iOS Simulator` on `sim-build`).
+
+`specify slice build --phase prepare` also syncs these files at build start via `vectis prepare build`. The Vectis iOS build brief runs `sync ios-scaffold` again at verify time so agents can repair drift mid-loop without re-running full prepare.
+
+Exit semantics:
+
+- **Success** -- exit zero; JSON reports `scaffold_sync.ios.synced` and `scaffold_sync.ios.unchanged` paths.
+- **Project / write failure** -- exit non-zero with `invalid-project`.
 
 ## See also
 
