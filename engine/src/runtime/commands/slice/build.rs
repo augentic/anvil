@@ -53,7 +53,7 @@ use specify_workflow::schema::{validate_build_report_json, validate_build_reques
 use specify_workflow::slice::{
     BuildReport, BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata,
     actions as slice_actions, build_request, enforce_report_no_blocking_on_success,
-    enforce_report_outputs_exist, evaluate_ui_surface_coherence,
+    enforce_report_outputs_exist, evaluate_ui_surface_coherence, run_native_build_hook,
 };
 
 use crate::runtime::commands::extension;
@@ -110,7 +110,8 @@ struct BuildResult {
 ///   `target-build-report-slice-mismatch` / `target-build-failed` and
 ///   the `lifecycle` gate error from the agent `finalize` phase.
 /// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing`
-///   from the manifest-driven prepare hook dispatch.
+///   / `target-build-host-prereq-missing` from the manifest-driven prepare hook dispatch.
+/// - `target-build-verify-gate-failed` from a manifest-declared `finalize_verify` hook.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
 pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
     let slice_dir = ctx.slices_dir().join(name);
@@ -122,7 +123,7 @@ pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
         Some(Execution::Tool) => run_tool(ctx, name, &slice_dir, &resolved.manifest),
         _ => match phase {
             Phase::Prepare => prepare(ctx, name, &slice_dir, &resolved),
-            Phase::Finalize => finalize(ctx, name, &slice_dir),
+            Phase::Finalize => finalize(ctx, name, &slice_dir, &resolved),
         },
     }
 }
@@ -137,6 +138,8 @@ fn prepare(
 ) -> Result<()> {
     let manifest = &resolved.manifest;
     let request_path = assemble_and_write_request(ctx, name, slice_dir, &manifest.inputs)?;
+
+    dispatch_host_prereq_hook(resolved, &ctx.project_dir, slice_dir)?;
 
     dispatch_prepare_hook(ctx, manifest, slice_dir)?;
 
@@ -163,6 +166,23 @@ fn prepare(
         execution: "agent",
     };
     ctx.write(&handoff, write_handoff_text)
+}
+
+/// Manifest-declared `host_prereq` script at prepare.
+fn dispatch_host_prereq_hook(
+    resolved: &ResolvedTargetAdapter, project_dir: &Path, slice_dir: &Path,
+) -> Result<()> {
+    let Some(hook) = &resolved.manifest.host_prereq else {
+        return Ok(());
+    };
+    run_native_build_hook(
+        resolved.location.path(),
+        hook,
+        project_dir,
+        slice_dir,
+        "target-build-host-prereq-missing",
+        "host toolchain prerequisites are satisfied for declared platforms",
+    )
 }
 
 /// Manifest-driven prepare hook: dispatch `extension run <tool> <argv…> <slice>`.
@@ -255,7 +275,6 @@ fn prepare_has_materialize_errors(value: &Value) -> bool {
         .and_then(Value::as_array)
         .is_some_and(|errors| !errors.is_empty())
 }
-
 fn prepare_failure_detail(
     value: &Value, tool_name: &str, exit_code: i32, stderr: &str, stdout: &str,
 ) -> String {
@@ -291,7 +310,9 @@ fn error_messages(errors: &Value) -> Option<String> {
 /// `built` transition, and bracket the outcome with
 /// `slice.build.succeeded` / `slice.build.failed`. Mirrors the
 /// `slice merge run` lifecycle-pair idiom.
-fn finalize(ctx: &Ctx, name: &str, slice_dir: &Path) -> Result<()> {
+fn finalize(
+    ctx: &Ctx, name: &str, slice_dir: &Path, resolved: &ResolvedTargetAdapter,
+) -> Result<()> {
     let body = super::bracket(
         ctx,
         "slice.build",
@@ -305,7 +326,7 @@ fn finalize(ctx: &Ctx, name: &str, slice_dir: &Path) -> Result<()> {
             slice_name: name.into(),
             reason,
         },
-        || finalize_report(ctx, name, slice_dir),
+        || finalize_report(ctx, name, slice_dir, resolved),
     )?;
     ctx.write(&body, write_result_text)
 }
@@ -314,7 +335,9 @@ fn finalize(ctx: &Ctx, name: &str, slice_dir: &Path) -> Result<()> {
 /// output-existence gate, reject a failed report, and gate the
 /// `Refined → Built` transition. Wrapped by [`finalize`] so the
 /// `slice.build.*` pair brackets it.
-fn finalize_report(ctx: &Ctx, name: &str, slice_dir: &Path) -> Result<BuildResult> {
+fn finalize_report(
+    ctx: &Ctx, name: &str, slice_dir: &Path, resolved: &ResolvedTargetAdapter,
+) -> Result<BuildResult> {
     let project_dir: &Path = &ctx.project_dir;
     let raw = read_report(&report_path(slice_dir))?;
     validate_build_report_json(&raw)?;
@@ -341,6 +364,8 @@ fn finalize_report(ctx: &Ctx, name: &str, slice_dir: &Path) -> Result<BuildResul
         });
     }
 
+    dispatch_finalize_verify_hook(resolved, &ctx.project_dir, slice_dir)?;
+
     slice_actions::transition(slice_dir, LifecycleStatus::Built, ctx.now())?;
 
     // A4 self-consistency: compare the brief-authored `ui_surface`
@@ -357,6 +382,23 @@ fn finalize_report(ctx: &Ctx, name: &str, slice_dir: &Path) -> Result<BuildResul
         findings: report.findings.len(),
         warnings,
     })
+}
+
+/// Manifest-declared `finalize_verify` script before the `built` transition.
+fn dispatch_finalize_verify_hook(
+    resolved: &ResolvedTargetAdapter, project_dir: &Path, slice_dir: &Path,
+) -> Result<()> {
+    let Some(hook) = &resolved.manifest.finalize_verify else {
+        return Ok(());
+    };
+    run_native_build_hook(
+        resolved.location.path(),
+        hook,
+        project_dir,
+        slice_dir,
+        "target-build-verify-gate-failed",
+        "finalize host verify hook completes successfully",
+    )
 }
 
 /// Single-phase `tool` execution: assemble + schema-validate the request

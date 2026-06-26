@@ -62,6 +62,12 @@
     "prepare": {
       "$ref": "#/$defs/prepareHook"
     },
+    "host_prereq": {
+      "$ref": "#/$defs/nativeBuildHook"
+    },
+    "finalize_verify": {
+      "$ref": "#/$defs/nativeBuildHook"
+    },
     "catalog": {
       "$ref": "#/$defs/catalogCapability"
     },
@@ -159,6 +165,19 @@
           "items": { "type": "string", "minLength": 1 },
           "minItems": 1,
           "description": "Extension subcommand prefix the host dispatches before appending the slice directory argument during `specify slice build --phase prepare`."
+        }
+      }
+    },
+    "nativeBuildHook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["script"],
+      "properties": {
+        "script": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$",
+          "description": "Path relative to the adapter root; the host executes the script during `specify slice build` (`host_prereq` at prepare, `finalize_verify` at finalize) with `SPECIFY_PROJECT_DIR` and `SPECIFY_SLICE_DIR` set."
         }
       }
     },

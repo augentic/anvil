@@ -24,6 +24,8 @@ mod goldens;
 mod merge_composition;
 #[path = "merge_slice.rs"]
 mod merge_slice;
+#[path = "native_hook.rs"]
+mod native_hook;
 #[path = "plan_schema.rs"]
 mod plan_schema;
 #[path = "propose_topology.rs"]

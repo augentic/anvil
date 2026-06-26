@@ -30,6 +30,24 @@ Exit semantics:
 
 Skills consume the report rather than reimplementing the checks. Layout inferers run `specify extension run vectis -- validate layout <output-path>.tmp` and, when sibling token or asset manifests exist, `specify extension run vectis -- validate composition <output-path>.tmp` before atomically renaming staged output into place.
 
+### vectis verify
+
+Declared-vs-present platform shell verification and host toolchain gates:
+
+```bash
+specify extension run vectis -- verify --mode <mode> [path]
+```
+
+| Mode | Purpose |
+|------|---------|
+| `verify` | Build/lint gate: shell trees, Android toolchain artifacts, iOS scaffold drift, compile verify stamps (`iOS/.vectis/verify.ok`, `Android/.vectis/verify.ok`). |
+| `bootstrap-app-icon` | Prepare-time launcher `app-icon` gate for declared UI platforms. |
+| `host-prereq` | Prepare-time host toolchain probe (`ANDROID_HOME`, Rust Android targets, `xcodebuild` on macOS). |
+
+`specify slice build --phase prepare` runs the manifest-declared `host_prereq` script when the bound target declares one (Vectis: `scripts/build-host-prereq.sh`) and aborts with `target-build-host-prereq-missing` when it exits non-zero. Operators may also probe prerequisites with `specify extension run vectis -- verify --mode host-prereq`. `specify slice build --phase finalize` runs the manifest-declared `finalize_verify` script when present (Vectis: `scripts/build-finalize-verify.sh`) before stamping `built` (`target-build-verify-gate-failed` on failure).
+
+Successful `make sim-build` / `make verify` write `.vectis/verify.ok` stamps consumed by `verify --mode verify`.
+
 ### vectis scaffold
 
 Render Vectis project scaffolds from embedded templates and explicit inputs:
