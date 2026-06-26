@@ -54,9 +54,9 @@ Repair agent-immutable iOS scaffold files from the embedded templates without pr
 specify extension run vectis -- sync ios-scaffold [path]
 ```
 
-When `[path]` is omitted, the command resolves the project root from `PROJECT_DIR` or a CWD walk-up to `.specify/`. It re-renders `iOS/Makefile` and `iOS/project.yml` when on-disk bytes diverge from the template (for example, a named simulator destination like `name=iPhone 16` replaced the required `generic/platform=iOS Simulator` on `sim-build`).
+When `[path]` is omitted, the command resolves the project root from `PROJECT_DIR` or a CWD walk-up to `.specify/`. It re-renders `iOS/Makefile`, `iOS/project.yml`, and `iOS/.vectis/sim-build.sh` when on-disk bytes diverge from the template (for example, a named simulator destination like `name=iPhone 16` patched into the CLI-owned sim-build script).
 
-`specify slice build --phase prepare` also syncs these files at build start via `vectis prepare build`. The Vectis iOS build brief runs `sync ios-scaffold` again at verify time so agents can repair drift mid-loop without re-running full prepare.
+`specify slice build --phase prepare` also syncs these files at build start via `vectis prepare build`. The Vectis iOS build brief has the **orchestrator** run `sync ios-scaffold` at the start of each verify iteration; `make sim-build` delegates to the immutable script, which always uses `generic/platform=iOS Simulator`.
 
 Exit semantics:
 
