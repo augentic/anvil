@@ -17,6 +17,10 @@ use crate::adapter::NativeBuildHookDeclaration;
 ///
 /// Returns [`Error::Validation`] with `abort_code` when the script is
 /// missing, escapes the adapter root, fails to spawn, or exits non-zero.
+///
+/// The manifest-relative `script` path is passed to `sh` (with `--`) while
+/// `script_path` is used only for existence checks so dash-prefixed names are
+/// not parsed as `sh` options.
 pub fn run_native_build_hook(
     adapter_root: &Path, hook: &NativeBuildHookDeclaration, project_dir: &Path, slice_dir: &Path,
     abort_code: &'static str, abort_expectation: &'static str,
@@ -32,7 +36,7 @@ pub fn run_native_build_hook(
 
     let output = Command::new("sh")
         .arg("--")
-        .arg(&script_path)
+        .arg(&hook.script)
         .current_dir(adapter_root)
         .env("SPECIFY_PROJECT_DIR", project_dir)
         .env("SPECIFY_SLICE_DIR", slice_dir)
