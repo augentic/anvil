@@ -190,6 +190,19 @@ briefs:
   build: briefs/build.md
 ";
 
+const TARGET_INVALID_HOOK_SCRIPT_PARENT_DIR: &str = r"
+name: demo-target
+version: 1.0.0
+axis: target
+execution: agent
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+host_prereq:
+  script: scripts/../escape.sh
+";
+
 #[test]
 fn target_accepts_canonical_shape() {
     let v = load(TARGET_JSON_SCHEMA);
@@ -209,6 +222,11 @@ fn target_rejects_axis_and_brief_violations() {
         "target/briefs-include-extract",
     );
     assert_invalid(&v, &yaml(TARGET_INVALID_MISSING_MERGE_BRIEF), "target/missing-merge-brief");
+    assert_invalid(
+        &v,
+        &yaml(TARGET_INVALID_HOOK_SCRIPT_PARENT_DIR),
+        "target/hook-script-parent-dir",
+    );
 }
 
 // --- evidence.schema.json ------------------------------------------

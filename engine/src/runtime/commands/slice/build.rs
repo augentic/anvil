@@ -109,8 +109,8 @@ struct BuildResult {
 ///   `target-build-output-missing` /
 ///   `target-build-report-slice-mismatch` / `target-build-failed` and
 ///   the `lifecycle` gate error from the agent `finalize` phase.
-/// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing`
-///   / `target-build-host-prereq-missing` from the manifest-driven prepare hook dispatch.
+/// - `target-build-host-prereq-missing` from a manifest-declared `host_prereq` hook at prepare.
+/// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing` from the manifest `prepare` extension hook dispatch.
 /// - `target-build-verify-gate-failed` from a manifest-declared `finalize_verify` hook.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
 pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
