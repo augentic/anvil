@@ -7,7 +7,7 @@ rule_hints:
   - kind: path-pattern
     value: adapters/targets/vectis/briefs/**/*.md
   - kind: regex
-    value: platform=iOS Simulator,name=|-destination[^\\n]*name=iPhone
+    value: "platform=iOS Simulator,name=|-destination[^\\n]*name=iPhone"
     description: Vectis build briefs must not instruct agents to substitute named simulator destinations in scaffold files.
 ---
 

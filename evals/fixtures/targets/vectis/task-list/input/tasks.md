@@ -14,7 +14,7 @@ Tasks are organised by build phase, not by feature: core first, shells second. E
 
 ## iOS shell
 
-- [ ] Scaffold the iOS shell (`specify extension run vectis -- scaffold ios TodoApp --caps http,kv`); commit Inject SPM wiring, `Core.swift`, `ContentView.swift`, and starter `Views/`. Scaffold emits CLI-owned `iOS/project.yml`, `Makefile`, and `.vectis/sim-build.sh` — do not hand-edit or commit agent-modified copies of those files.
+- [ ] Scaffold the iOS shell (`specify extension run vectis -- scaffold ios TodoApp --caps http,kv`); commit Inject SPM wiring, `Core.swift`, `ContentView.swift`, and starter `Views/`. Scaffold emits CLI-owned `iOS/project.yml`, `iOS/Makefile`, and `iOS/.vectis/sim-build.sh` — do not hand-edit or commit agent-modified copies of those files.
 - [ ] Implement the per-screen SwiftUI views for the `TaskList`, `AddTask`, and `Settings` ViewModel variants; render every `bind` from the regenerated `composition.yaml` and dispatch every `event` through `Core.update(...)`.
 - [ ] Implement swipe-to-delete (REQ-008) on each task row, routing through `RequestDelete(id)` and the existing confirmation dialog.
 - [ ] Regenerate shell-local `iOS/TodoApp/Theme/` from `tokens.yaml` (HIG fallback when `tokens.yaml` is absent) and `iOS/TodoApp/Resources/Assets.xcassets/` from `assets.yaml`.
