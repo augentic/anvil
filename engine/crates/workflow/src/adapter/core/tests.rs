@@ -161,12 +161,24 @@ briefs:
 extension: {}
 prepare:
   argv: [prepare, build]
+host_prereq:
+  script: scripts/build-host-prereq.sh
+finalize_verify:
+  script: scripts/build-finalize-verify.sh
 catalog:
   infer: true
 ",
     )
     .expect("parse prepare + catalog");
     assert_eq!(manifest.prepare.as_ref().expect("prepare").argv, ["prepare", "build"]);
+    assert_eq!(
+        manifest.host_prereq.as_ref().expect("host_prereq").script,
+        "scripts/build-host-prereq.sh"
+    );
+    assert_eq!(
+        manifest.finalize_verify.as_ref().expect("finalize_verify").script,
+        "scripts/build-finalize-verify.sh"
+    );
     assert!(manifest.catalog.as_ref().expect("catalog").infer);
 
     // The retired plural `tools[]` array and per-extension version/source/sha256 are denied.
@@ -369,6 +381,8 @@ fn typed_gates() {
         prepare: Some(PrepareHookDeclaration {
             argv: vec!["prepare".into(), "build".into()],
         }),
+        host_prereq: None,
+        finalize_verify: None,
         catalog: None,
     };
     let Error::Validation { code, .. } =
