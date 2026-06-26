@@ -176,7 +176,7 @@
         "script": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$",
+          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
           "description": "Path relative to the adapter root; the host executes the script during `specify slice build` (`host_prereq` at prepare, `finalize_verify` at finalize) with `SPECIFY_PROJECT_DIR` and `SPECIFY_SLICE_DIR` set."
         }
       }

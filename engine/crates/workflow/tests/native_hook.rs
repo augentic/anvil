@@ -51,3 +51,26 @@ fn rejects_parent_dir_escape() {
     };
     assert_eq!(code, "adapter-manifest-invalid");
 }
+
+#[test]
+fn runs_script_with_leading_dash_in_name() {
+    let adapter = tempdir().expect("tempdir");
+    let script = adapter.path().join("-hook.sh");
+    fs::write(&script, "#!/bin/sh\nexit 0\n").expect("write script");
+
+    let project = tempdir().expect("project");
+    let slice = project.path().join(".specify/slices/demo");
+    fs::create_dir_all(&slice).expect("mkdir slice");
+
+    run_native_build_hook(
+        adapter.path(),
+        &NativeBuildHookDeclaration {
+            script: "-hook.sh".into(),
+        },
+        project.path(),
+        &slice,
+        "target-build-host-prereq-missing",
+        "host prereq hook passes",
+    )
+    .expect("dash-prefixed script name must not be parsed as sh option");
+}

@@ -31,6 +31,7 @@ pub fn run_native_build_hook(
     }
 
     let output = Command::new("sh")
+        .arg("--")
         .arg(&script_path)
         .current_dir(adapter_root)
         .env("SPECIFY_PROJECT_DIR", project_dir)
