@@ -346,13 +346,7 @@ fn build_wasi_ctx(
         );
     }
 
-    for key in [
-        "ANDROID_HOME",
-        "ANDROID_SDK_ROOT",
-        "RUSTUP_HOME",
-        "HOME",
-        "DEVELOPER_DIR",
-    ] {
+    for key in ["ANDROID_HOME", "ANDROID_SDK_ROOT", "RUSTUP_HOME", "HOME", "DEVELOPER_DIR"] {
         if let Ok(value) = env::var(key)
             && !value.is_empty()
         {

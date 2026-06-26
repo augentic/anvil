@@ -310,7 +310,9 @@ fn error_messages(errors: &Value) -> Option<String> {
 /// `built` transition, and bracket the outcome with
 /// `slice.build.succeeded` / `slice.build.failed`. Mirrors the
 /// `slice merge run` lifecycle-pair idiom.
-fn finalize(ctx: &Ctx, name: &str, slice_dir: &Path, resolved: &ResolvedTargetAdapter) -> Result<()> {
+fn finalize(
+    ctx: &Ctx, name: &str, slice_dir: &Path, resolved: &ResolvedTargetAdapter,
+) -> Result<()> {
     let body = super::bracket(
         ctx,
         "slice.build",

@@ -18,12 +18,8 @@ use crate::adapter::NativeBuildHookDeclaration;
 /// Returns [`Error::Validation`] with `abort_code` when the script is
 /// missing, escapes the adapter root, fails to spawn, or exits non-zero.
 pub fn run_native_build_hook(
-    adapter_root: &Path,
-    hook: &NativeBuildHookDeclaration,
-    project_dir: &Path,
-    slice_dir: &Path,
-    abort_code: &'static str,
-    abort_expectation: &'static str,
+    adapter_root: &Path, hook: &NativeBuildHookDeclaration, project_dir: &Path, slice_dir: &Path,
+    abort_code: &'static str, abort_expectation: &'static str,
 ) -> Result<()> {
     let script_path = resolve_hook_script(adapter_root, &hook.script)?;
     if !script_path.is_file() {
@@ -84,9 +80,12 @@ fn resolve_hook_script(adapter_root: &Path, script_rel: &str) -> Result<PathBuf>
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
+    use specify_error::Error;
     use tempfile::tempdir;
+
+    use super::*;
 
     #[test]
     fn runs_successful_hook_script() {
@@ -127,9 +126,9 @@ mod tests {
             "host prereq hook passes",
         )
         .expect_err("must reject escape");
-    let specify_error::Error::Validation { code, .. } = err else {
-        panic!("expected validation error");
-    };
-    assert_eq!(code, "adapter-manifest-invalid");
+        let Error::Validation { code, .. } = err else {
+            panic!("expected validation error");
+        };
+        assert_eq!(code, "adapter-manifest-invalid");
     }
 }

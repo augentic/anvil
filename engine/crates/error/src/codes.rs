@@ -26,6 +26,7 @@ pub const WIRE_CODES: &[&str] = &[
     "adapter-git-spawn-failed",
     "adapter-github-uri-malformed",
     "adapter-github-uri-unsupported",
+    "adapter-manifest-invalid",
     "adapter-manifest-malformed",
     "adapter-manifest-missing",
     "adapter-manifest-read-failed",
