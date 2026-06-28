@@ -52,6 +52,14 @@
       "type": "object",
       "description": "Optional prepare hook for `specify slice build --phase prepare`. Target-only: `target.schema.json` refines the shape with `$defs/prepareHook`; `source.schema.json` rejects the key."
     },
+    "host_prereq": {
+      "type": "object",
+      "description": "Optional native build hook for `specify slice build --phase prepare`. Target-only: `target.schema.json` refines the shape with `$defs/nativeBuildHook`; `source.schema.json` rejects the key."
+    },
+    "finalize_verify": {
+      "type": "object",
+      "description": "Optional native build hook for `specify slice build --phase finalize`. Target-only: `target.schema.json` refines the shape with `$defs/nativeBuildHook`; `source.schema.json` rejects the key."
+    },
     "catalog": {
       "type": "object",
       "description": "Optional catalog capabilities. Target-only: `target.schema.json` refines the shape with `$defs/catalogCapability`; `source.schema.json` rejects the key."
