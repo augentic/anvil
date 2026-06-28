@@ -61,6 +61,35 @@ briefs:
 description: Omnia Rust WASM target adapter.
 ";
 
+const PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS: &str = r"
+name: demo-target
+version: 1.0.0
+axis: target
+execution: agent
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+description: Generic target adapter exercising the full target-only optional surface.
+platforms:
+  required: false
+  allowed: [core]
+  default: [core]
+prepare:
+  argv: [prepare, build]
+host_prereq:
+  script: scripts/host-prereq.sh
+finalize_verify:
+  script: scripts/finalize-verify.sh
+catalog:
+  infer: true
+extension:
+  name: demo-extension
+inputs:
+  - path: tokens.yaml
+    required: true
+";
+
 const PLUGIN_INVALID_NO_AXIS: &str = r"
 name: typescript
 version: 1.0.0
@@ -101,6 +130,11 @@ fn plugin_accepts_source_and_target_shapes() {
     let v = load(ADAPTER_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_SOURCE), "plugin/source");
     assert_valid(&v, &yaml(PLUGIN_VALID_TARGET), "plugin/target");
+    assert_valid(
+        &v,
+        &yaml(PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS),
+        "plugin/target-with-native-hooks",
+    );
 }
 
 #[test]
@@ -141,6 +175,19 @@ briefs:
   survey: briefs/survey.md
 ";
 
+const SOURCE_INVALID_NATIVE_BUILD_HOOK: &str = r"
+name: typescript
+version: 1.0.0
+axis: source
+execution: agent
+briefs:
+  survey: briefs/survey.md
+  extract: briefs/extract.md
+description: Source adapter carrying a target-only native build hook.
+host_prereq:
+  script: scripts/host-prereq.sh
+";
+
 #[test]
 fn source_accepts_canonical_shape() {
     let v = load(SOURCE_JSON_SCHEMA);
@@ -156,6 +203,12 @@ fn source_rejects_axis_and_brief_violations() {
     assert_invalid(&v, &yaml(SOURCE_INVALID_AXIS_TARGET), "source/axis-target");
     assert_invalid(&v, &yaml(SOURCE_INVALID_EXTRA_BRIEF), "source/extra-brief");
     assert_invalid(&v, &yaml(SOURCE_INVALID_MISSING_BRIEF), "source/missing-brief");
+}
+
+#[test]
+fn source_rejects_native_build_hooks() {
+    let v = load(SOURCE_JSON_SCHEMA);
+    assert_invalid(&v, &yaml(SOURCE_INVALID_NATIVE_BUILD_HOOK), "source/native-build-hook");
 }
 
 // --- target.schema.json --------------------------------------------
@@ -207,6 +260,12 @@ host_prereq:
 fn target_accepts_canonical_shape() {
     let v = load(TARGET_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_TARGET), "target/valid");
+}
+
+#[test]
+fn target_accepts_native_build_hooks() {
+    let v = load(TARGET_JSON_SCHEMA);
+    assert_valid(&v, &yaml(PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS), "target/native-build-hooks");
 }
 
 #[test]
