@@ -40,11 +40,13 @@ use specify_workflow::change::{Entry, Plan, resolve_topology};
 use specify_workflow::config::ProjectConfig;
 use specify_workflow::init::adapter_ref_from_value;
 use specify_workflow::journal::{self, EventKind};
+use specify_workflow::merge::MergeStrategy;
 use specify_workflow::registry::Surface;
 use specify_workflow::schema::validate_synthesis_json;
 use specify_workflow::slice::{
-    ProjectionHeader, SliceMetadata, SliceModel, SynthesisInputs, SynthesisResponse,
-    SynthesisSourceInput, build_synthesis_inputs, project, render_spec_files,
+    BaselineDomainDetail, BaselineIndex, ProjectionHeader, SliceMetadata, SliceModel,
+    SynthesisInputs, SynthesisResponse, SynthesisSourceInput, actions as slice_actions,
+    build_synthesis_inputs, project, render_spec_files,
 };
 
 use crate::runtime::context::Ctx;
@@ -80,8 +82,11 @@ fn dry_run_inputs(ctx: &Ctx, name: &str) -> Result<()> {
     let entry = load_entry(ctx, name)?;
     let sources = read_source_inputs(&slice_dir, &entry)?;
     let shape_brief = resolve_shape_brief(ctx, &slice_dir)?;
+    let baseline_specs_dir = resolve_baseline_specs_dir(ctx, &slice_dir);
+    let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
     let baseline = baseline_surface(ctx, &entry)?;
-    let inputs = build_synthesis_inputs(name, &sources, &shape_brief, &baseline);
+    let baseline_detail: Vec<BaselineDomainDetail> = (&baseline_index).into();
+    let inputs = build_synthesis_inputs(name, &sources, &shape_brief, &baseline, &baseline_detail);
 
     // Synthesis is always agent-dispatched — record the handoff.
     emit(
@@ -157,12 +162,15 @@ fn synthesize_from(ctx: &Ctx, name: &str, response_path: &Path) -> Result<Vec<St
     // override, then project the kernel-owned fields.
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
+    let baseline_specs_dir = resolve_baseline_specs_dir(ctx, &slice_dir);
+    let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
     let header = ProjectionHeader {
         version: 1,
         slice: name.to_string(),
         project: entry.project,
     };
-    let projected = project(response.model, header, &authority, &overrides, &evidence_claims)?;
+    let projected =
+        project(response.model, header, &authority, &overrides, &evidence_claims, &baseline_index)?;
 
     // Step 3 — re-validate the projected model against the schema (the
     // kernel already enforced orphans/cross-refs/grammar; the broader
@@ -172,7 +180,7 @@ fn synthesize_from(ctx: &Ctx, name: &str, response_path: &Path) -> Result<Vec<St
     SliceModel::parse_yaml(&model_yaml)?;
 
     // Step 4 — render provenance lines into `spec.md` (in memory).
-    let specs = render_spec_files(&projected);
+    let specs = render_spec_files(&projected, &baseline_index);
 
     // Stage every artifact before the first write so a failure above
     // leaves the prior artifacts intact.
@@ -193,6 +201,20 @@ fn synthesize_from(ctx: &Ctx, name: &str, response_path: &Path) -> Result<Vec<St
         specify_model::atomic::bytes_write(&file.abs, &file.bytes)?;
         written.push(file.rel.clone());
     }
+
+    // Step 6 — classify touched specs against the baseline and persist
+    // on metadata so merge overlap checks work without a manual scan.
+    let classes = super::artifact_classes(&ctx.project_dir, &slice_dir);
+    let scan_baseline = classes
+        .iter()
+        .find(|class| matches!(class.strategy, MergeStrategy::ThreeWayMerge))
+        .map_or_else(
+            || ctx.layout().specify_dir().join("specs"),
+            |class| class.baseline_dir.clone(),
+        );
+    let touched = slice_actions::scan_touched(&slice_dir, &scan_baseline)?;
+    slice_actions::write_touched(&slice_dir, touched)?;
+
     Ok(written)
 }
 
@@ -246,6 +268,16 @@ fn load_entry(ctx: &Ctx, name: &str) -> Result<Entry> {
             format!("plan.yaml has no entry named `{name}`"),
         )
     })
+}
+
+/// Resolve the `ThreeWayMerge` baseline `specs/` directory — the same path
+/// merge and `slice touched-specs --scan` use.
+fn resolve_baseline_specs_dir(ctx: &Ctx, slice_dir: &Path) -> PathBuf {
+    let classes = super::artifact_classes(&ctx.project_dir, slice_dir);
+    classes.iter().find(|class| matches!(class.strategy, MergeStrategy::ThreeWayMerge)).map_or_else(
+        || ctx.layout().specify_dir().join("specs"),
+        |class| class.baseline_dir.clone(),
+    )
 }
 
 /// RFC-46 D5 — project the slice's bound-project baseline surface for

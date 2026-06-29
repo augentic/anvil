@@ -86,6 +86,12 @@ pub struct ModelRequirement {
     /// Agent-authored owning domain (kebab-case spec group).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
+    /// Agent-authored baseline `REQ` id when modifying an existing
+    /// requirement in a domain that already has a merged baseline.
+    /// The kernel takes the projected id from here; omitted for additive
+    /// requirements in modified domains.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline_id: Option<String>,
     /// Kernel-projected rendered source list (highest authority first).
     #[serde(default)]
     pub sources: Vec<String>,

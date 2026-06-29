@@ -29,11 +29,14 @@ use specify_model::spec::SCENARIO_HEADING;
 use specify_model::spec::provenance::RequirementStatus;
 
 use crate::slice::model::{ModelRequirement, SliceModel};
+use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
 
 /// Domain key used to group requirements that carry no `domain` field.
 const DEFAULT_DOMAIN: &str = "default";
 
 const HEADING_PREFIX: &str = "### Requirement:";
+const ADDED_SECTION: &str = "## ADDED Requirements";
+const MODIFIED_SECTION: &str = "## MODIFIED Requirements";
 
 /// One rendered `specs/<domain>/spec.md`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,25 +77,66 @@ pub struct ExpectedRequirement {
 /// requirement becomes one `### Requirement:` block carrying the
 /// injected provenance lines followed by its behavioral body.
 #[must_use]
-pub fn render_spec_files(model: &SliceModel) -> Vec<RenderedSpec> {
+pub fn render_spec_files(model: &SliceModel, baseline_index: &BaselineIndex) -> Vec<RenderedSpec> {
     let mut order: Vec<String> = Vec::new();
-    let mut blocks: HashMap<String, Vec<String>> = HashMap::new();
+    let mut by_domain: HashMap<String, Vec<&ModelRequirement>> = HashMap::new();
     for req in &model.requirements {
         let domain = domain_of(req);
-        if !blocks.contains_key(&domain) {
+        if !by_domain.contains_key(&domain) {
             order.push(domain.clone());
         }
-        blocks.entry(domain).or_default().push(render_block(req));
+        by_domain.entry(domain).or_default().push(req);
     }
     order
         .into_iter()
         .map(|domain| {
-            let domain_blocks = blocks.remove(&domain).unwrap_or_default();
-            let mut content = domain_blocks.join("\n\n");
-            content.push('\n');
+            let reqs = by_domain.remove(&domain).unwrap_or_default();
+            let content = if baseline_index.domain_kind(&domain) == DomainKind::Modified {
+                render_modified_domain(&domain, &reqs, baseline_index)
+            } else {
+                render_flat_domain(&reqs)
+            };
             RenderedSpec { domain, content }
         })
         .collect()
+}
+
+fn render_flat_domain(reqs: &[&ModelRequirement]) -> String {
+    let mut content = reqs.iter().map(|req| render_block(req)).collect::<Vec<_>>().join("\n\n");
+    content.push('\n');
+    content
+}
+
+fn render_modified_domain(
+    domain: &str, reqs: &[&ModelRequirement], baseline_index: &BaselineIndex,
+) -> String {
+    let mut added: Vec<String> = Vec::new();
+    let mut modified: Vec<String> = Vec::new();
+    for req in reqs {
+        let id = req.id.as_deref().unwrap_or_default();
+        if baseline_index.is_baseline_req(domain, id) {
+            modified.push(render_block(req));
+        } else {
+            added.push(render_block(req));
+        }
+    }
+
+    let mut sections: Vec<String> = Vec::new();
+    if !added.is_empty() {
+        let mut section = String::from(ADDED_SECTION);
+        section.push_str("\n\n");
+        section.push_str(&added.join("\n\n"));
+        sections.push(section);
+    }
+    if !modified.is_empty() {
+        let mut section = String::from(MODIFIED_SECTION);
+        section.push_str("\n\n");
+        section.push_str(&modified.join("\n\n"));
+        sections.push(section);
+    }
+    let mut content = sections.join("\n\n");
+    content.push('\n');
+    content
 }
 
 /// The canonical provenance triplet per requirement, in declaration

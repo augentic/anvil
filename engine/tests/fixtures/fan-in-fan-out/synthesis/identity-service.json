@@ -7,6 +7,7 @@
       {
         "title": "Identity API contract",
         "domain": "identity",
+        "baseline-id": "REQ-001",
         "claims": [
           { "source": "docs", "id": "identity-api.contract", "kind": "requirement" }
         ],

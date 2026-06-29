@@ -66,7 +66,7 @@ Key rules:
 
 ### Delta spec format (modified domain)
 
-When modifying an existing domain, specs use operation headers to describe what changed:
+When modifying an existing domain, the synthesis kernel emits operation headers (`## ADDED Requirements`, `## MODIFIED Requirements`) so merge can apply changes. Agents set `baseline-id` in the synthesis response when refining an existing requirement; net-new behaviour in a modified domain is additive and receives the next id after the baseline max. Hand-authored flat requirement blocks against a non-empty baseline are rejected at merge (`merge-delta-headers-required`).
 
 ````markdown
 # <Domain Name> Specification

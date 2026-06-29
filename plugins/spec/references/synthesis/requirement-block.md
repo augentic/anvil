@@ -23,7 +23,7 @@ The `#### Scenario:` heading is optional per requirement block — include it wh
 
 Invariants the kernel guarantees and the parser re-checks:
 
-- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix, no holes after a single synthesis run; each id is unique across the whole slice (the kernel assigns ids in declaration order across all domains — it never restarts at `REQ-001` per domain).
+- **`ID:`** matches `^REQ-\d{3}$`. Zero-padded three-digit suffix; each id is unique across the whole slice. **New domains** (no baseline `specs/<domain>/spec.md`) receive slice-global `REQ-001..N` in declaration order. **Modified domains** (baseline exists) assign additive requirements from `max(baseline REQ)+1` per domain; set `baseline-id` in the synthesis response when refining an existing baseline requirement — the kernel preserves that id and renders the block under `## MODIFIED Requirements`.
 - **`Sources:`** is a YAML-flow list of kebab-case source keys, every key resolving against the slice's `plan.yaml.slices[].sources[]` bindings, highest-authority key first. `[]` appears only when `Status: unknown`.
 - **`Status:`** is one of the closed enum `agreed | unknown | conflict | divergence`.
 - **Tag coherence:** the headline tag (`[unknown]` / `[conflict]` / `[divergence]`) matches `Status:` per [`tags.md`](tags.md). `Status: agreed` carries no tag; the other three Status values carry their matching tag verbatim.
@@ -102,6 +102,15 @@ Status: unknown
 
 No contributing source supplied a claim for this requirement. Operator review required.
 ```
+
+## Modified domains and merge-ready deltas
+
+When the bound project already owns `specs/<domain>/spec.md`, the kernel renders merge-ready deltas — not flat requirement blocks:
+
+- Net-new behaviour in the slice → `## ADDED Requirements` with ids continuing from the baseline max (`REQ-004` after `REQ-001..003`, etc.).
+- Refining an existing baseline requirement → set `baseline-id: REQ-NNN` on that requirement in the synthesis response; the kernel keeps the id and renders the block under `## MODIFIED Requirements`.
+
+Greenfield domains (no baseline file) still render flat `### Requirement:` blocks. `specify slice merge` rejects flat deltas against a non-empty baseline (`merge-delta-headers-required`) so requirement changes cannot be silently dropped.
 
 ## Body conventions
 

@@ -34,6 +34,8 @@ mod propose_topology;
 mod registry;
 #[path = "runner.rs"]
 mod runner;
+#[path = "synthesis_baseline.rs"]
+mod synthesis_baseline;
 #[path = "upgrade.rs"]
 mod upgrade;
 #[path = "workspace.rs"]

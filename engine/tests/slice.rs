@@ -2467,6 +2467,120 @@ mod synthesize {
         );
     }
 
+    const TASK_BASELINE_SPEC: &str = r"### Requirement: List tasks
+
+ID: REQ-001
+Sources: [legacy-monolith]
+Status: agreed
+
+The user can view their tasks.
+
+#### Scenario: View list
+
+- **WHEN** the user opens the app
+- **THEN** tasks are listed
+
+### Requirement: Create task
+
+ID: REQ-002
+Sources: [legacy-monolith]
+Status: agreed
+
+The user can add a task.
+
+#### Scenario: Add task
+
+- **WHEN** the user submits a title
+- **THEN** a task is created
+
+### Requirement: Complete task
+
+ID: REQ-003
+Sources: [legacy-monolith]
+Status: agreed
+
+The user can mark a task done.
+
+#### Scenario: Complete
+
+- **WHEN** the user taps complete
+- **THEN** the task is marked done
+";
+
+    const TASK_ADDITIVE_RESPONSE_JSON: &str = r##"{
+  "version": 1,
+  "kind": "response",
+  "slice": "my-slice",
+  "model": {
+    "requirements": [
+      {
+        "title": "Filter tasks",
+        "domain": "task",
+        "claims": [
+          { "source": "legacy-monolith", "id": "password-reset.request", "kind": "requirement" }
+        ],
+        "statement": "The user can filter the task list.",
+        "scenarios": ["Filter by status"]
+      }
+    ],
+    "tasks": [
+      { "id": "TASK-001", "text": "Implement task filtering.", "satisfies": ["REQ-004"] }
+    ]
+  },
+  "artifacts": {
+    "proposal": "# Task list\nWhy this slice exists.\n",
+    "design": "# Design\nTask list.\n",
+    "tasks": "# Tasks\n- [ ] TASK-001\n",
+    "specs": [
+      { "domain": "task", "content": "Agent prose body.\n" }
+    ]
+  }
+}
+"##;
+
+    /// Greenfield baseline + additive slice: synthesis emits merge-ready
+    /// `## ADDED` deltas and merge preview reports the new requirement.
+    #[test]
+    fn additive_domain_merge_preview() {
+        let project = stage_synthesizable_slice();
+        let task_baseline = project.specs_dir().join("task");
+        fs::create_dir_all(&task_baseline).expect("mkdir task baseline");
+        fs::write(task_baseline.join("spec.md"), TASK_BASELINE_SPEC).expect("baseline spec");
+
+        let output = run_synthesize_from(&project, TASK_ADDITIVE_RESPONSE_JSON);
+        assert_eq!(output.status.code(), Some(0), "synthesize must succeed: {output:?}");
+
+        let slice_dir = project.slices_dir().join("my-slice");
+        let spec =
+            fs::read_to_string(slice_dir.join("specs/task/spec.md")).expect("slice task spec");
+        assert!(spec.contains("## ADDED Requirements"), "expected ADDED section:\n{spec}");
+        assert!(spec.contains("ID: REQ-004"), "expected baseline-aware id:\n{spec}");
+
+        let metadata = specify_workflow::slice::SliceMetadata::load(&slice_dir).expect("metadata");
+        assert_eq!(metadata.touched_specs.len(), 1);
+        assert_eq!(metadata.touched_specs[0].name, "task");
+        assert_eq!(metadata.touched_specs[0].kind, specify_workflow::slice::SpecKind::Modified);
+
+        specify_cmd()
+            .current_dir(project.root())
+            .args(["slice", "transition", "my-slice", "refined"])
+            .assert()
+            .success();
+
+        let assert = specify_cmd()
+            .current_dir(project.root())
+            .args(["--format", "json", "slice", "merge", "preview", "my-slice"])
+            .assert()
+            .success();
+        let value = parse_json(&assert.get_output().stdout);
+        let specs = value["specs"].as_array().expect("specs array");
+        let task = specs.iter().find(|s| s["name"] == "task").expect("task preview entry");
+        let ops = task["operations"].as_array().expect("operations");
+        assert_eq!(ops.len(), 1);
+        assert_eq!(ops[0]["kind"], "added");
+        assert_eq!(ops[0]["id"], "REQ-004");
+    }
+
     #[test]
     fn synthesize_requires_a_mode() {
         let project = stage_synthesizable_slice();
