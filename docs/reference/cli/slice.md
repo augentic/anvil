@@ -49,7 +49,7 @@ specify slice synthesize <name> --from <response.json> [--format json]
 ```
 
 - `--dry-run` assembles the **inputs** envelope — each bound source's inline `lead` + `claims` (read from `evidence/<source>.yaml`) plus the resolved target `shape` brief body. Authority is **not** included (the kernel resolves it after the response). Read-only: writes nothing and emits a `slice.synthesize.agent` journal event.
-- `--from <response.json>` is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (assign `REQ` ids in declaration order, derive `status` and per-claim `winner` markers, render highest-authority-first `Sources:` lists, write inline provenance, stamp the `version` / `slice` / `project` header), renders the `ID:` / `Sources:` / `Status:` lines into each `specs/<domain>/spec.md`, runs the drift validators, then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
+- `--from <response.json>` is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (baseline-aware `REQ` id assignment — slice-global for new domains, continuing from baseline max for additive requirements in modified domains; honour `baseline-id` for modifications; derive `status` and per-claim `winner` markers; render highest-authority-first `Sources:` lists; write inline provenance; stamp the `version` / `slice` / `project` header), renders `## ADDED` / `## MODIFIED` delta sections (modified domains) or flat blocks (new domains) with `ID:` / `Sources:` / `Status:` lines into each `specs/<domain>/spec.md`, auto-scans `metadata.touched_specs`, runs the drift validators, then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
 
 The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is always agent-dispatched — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
 
@@ -118,6 +118,8 @@ specify slice touched-specs <name> --scan
 specify slice touched-specs <name> --set <spec-path>...
 ```
 
+`specify slice synthesize --from` auto-scans and persists `metadata.touched_specs` after a successful write; use `--scan` only when reclassifying without re-synthesising.
+
 ### specify slice overlap
 
 Check for spec overlap between active slices.
@@ -166,7 +168,7 @@ Preview what a merge would do without writing anything.
 specify slice merge preview <name> [--format json]
 ```
 
-Shows which baseline specs would be created, modified, or removed. For Vectis slices, also previews composition delta operations (screen-level `added`/`modified`/`removed`). Used by `/spec:merge` before committing.
+Shows which baseline specs would be created, modified, or removed. For Vectis slices, also previews composition delta operations (screen-level `added`/`modified`/`removed`). Rejects flat requirement-block deltas against a non-empty baseline with `merge-delta-headers-required` (prose-only no-op deltas with zero requirement headings remain valid). Used by `/spec:merge` before committing.
 
 #### specify slice merge conflict-check
 

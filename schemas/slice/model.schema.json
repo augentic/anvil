@@ -119,6 +119,10 @@
         "domain": {
           "$ref": "#/$defs/kebabName"
         },
+        "baseline-id": {
+          "$ref": "#/$defs/reqId",
+          "description": "When set, the kernel treats this requirement as a modification of the existing baseline REQ; the projected id is taken from here, not re-numbered. Omit for net-new behaviour in a modified domain."
+        },
         "claims": {
           "type": "array",
           "items": {

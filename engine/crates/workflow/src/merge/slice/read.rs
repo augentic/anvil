@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use jiff::Timestamp;
 use specify_error::Error;
+use specify_model::spec::{REQ_HEADING, has_delta_headers};
 
 use super::parse::system_time_to_utc;
 use super::{BaselineConflict, MergePreviewEntry, OpaqueAction, OpaquePreviewEntry};
@@ -150,6 +151,21 @@ fn merge_delta_spec(
         Err(other) => return Err(other),
     };
 
+    if baseline_text.as_ref().is_some_and(|text| !text.trim().is_empty())
+        && count_requirement_headings(&delta_text) > 0
+        && !has_delta_headers(&delta_text)
+        && result.operations.is_empty()
+    {
+        return Err(Error::Diag {
+            code: "merge-delta-headers-required",
+            detail: format!(
+                "{}: delta spec has requirement blocks but no ## ADDED/MODIFIED/REMOVED/RENAMED \
+                 sections — merge would silently drop changes",
+                spec.spec_name
+            ),
+        });
+    }
+
     let issues: Vec<String> = validate_baseline(&result.output)
         .into_iter()
         .map(|diagnostic| format!("{}: {}", spec.spec_name, diagnostic.impact))
@@ -268,6 +284,10 @@ fn read_optional_file(path: &Path) -> Result<Option<String>, Error> {
     } else {
         Ok(None)
     }
+}
+
+fn count_requirement_headings(text: &str) -> usize {
+    text.lines().filter(|line| line.trim_start().starts_with(REQ_HEADING)).count()
 }
 
 /// Walk every [`MergeStrategy::OpaqueReplace`] class's `staged_dir`
