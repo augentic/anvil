@@ -81,11 +81,8 @@ fn rejects_bash_only_syntax_under_sh() {
     let scripts = adapter.path().join("scripts");
     fs::create_dir_all(&scripts).expect("mkdir scripts");
     let script = scripts.join("bash-only.sh");
-    fs::write(
-        &script,
-        "#!/usr/bin/env bash\nwhile read -r x; do :; done < <(echo x)\n",
-    )
-    .expect("write script");
+    fs::write(&script, "#!/usr/bin/env bash\nwhile read -r x; do :; done < <(echo x)\n")
+        .expect("write script");
 
     let project = tempdir().expect("project");
     let slice = project.path().join(".specify/slices/demo");
