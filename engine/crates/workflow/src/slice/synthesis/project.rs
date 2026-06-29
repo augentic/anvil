@@ -101,23 +101,11 @@ pub fn project(
     check_claim_anchors(&model, evidence_claims)?;
 
     // Steps 2–3 — re-derive ids, status, winners, and rendered sources.
-    let mut next_new_id = 1_u32;
-    let mut next_additive: BTreeMap<String, u32> = BTreeMap::new();
-    for (domain, baseline) in baseline_index.domains() {
-        if baseline.kind == DomainKind::Modified {
-            next_additive.insert(domain.to_string(), baseline.max_req_num.saturating_add(1));
-        }
-    }
+    let mut allocator = IdAllocator::new(baseline_index);
 
     for requirement in &mut model.requirements {
         let domain = requirement_domain(requirement);
-        let assigned = assign_requirement_id(
-            requirement,
-            &domain,
-            baseline_index,
-            &mut next_new_id,
-            &mut next_additive,
-        )?;
+        let assigned = assign_requirement_id(requirement, &domain, baseline_index, &mut allocator)?;
         requirement.id = Some(assigned);
         requirement.baseline_id = None;
 
@@ -157,17 +145,63 @@ fn requirement_domain(requirement: &ModelRequirement) -> String {
     requirement.domain.clone().unwrap_or_else(|| DEFAULT_DOMAIN.to_string())
 }
 
+/// Slice-global id allocation seeded from every baseline `REQ-NNN`.
+struct IdAllocator {
+    used: BTreeSet<u32>,
+    next_additive: BTreeMap<String, u32>,
+}
+
+impl IdAllocator {
+    fn new(baseline_index: &BaselineIndex) -> Self {
+        let mut used = BTreeSet::new();
+        for (_, baseline) in baseline_index.domains() {
+            for id in baseline.ids.keys() {
+                if let Some(num) = req_num(id) {
+                    used.insert(num);
+                }
+            }
+        }
+        let mut next_additive = BTreeMap::new();
+        for (domain, baseline) in baseline_index.domains() {
+            if baseline.kind == DomainKind::Modified {
+                next_additive.insert(domain.to_string(), baseline.max_req_num.saturating_add(1));
+            }
+        }
+        Self { used, next_additive }
+    }
+
+    fn allocate(&mut self, floor: u32) -> String {
+        let mut candidate = floor.max(1);
+        while self.used.contains(&candidate) {
+            candidate += 1;
+        }
+        self.used.insert(candidate);
+        format!("REQ-{candidate:03}")
+    }
+}
+
+fn req_num(id: &str) -> Option<u32> {
+    id.strip_prefix("REQ-")?.parse().ok()
+}
+
 fn assign_requirement_id(
     requirement: &ModelRequirement, domain: &str, baseline_index: &BaselineIndex,
-    next_new_id: &mut u32, next_additive: &mut BTreeMap<String, u32>,
+    allocator: &mut IdAllocator,
 ) -> Result<String> {
     if let Some(baseline_id) = requirement.baseline_id.as_deref() {
         if !matches_grammar(baseline_id, "REQ-") {
             return Err(id_grammar_error("baseline_id", baseline_id));
         }
-        if baseline_index.domain_kind(domain) == DomainKind::Modified
-            && !baseline_index.is_baseline_req(domain, baseline_id)
-        {
+        if baseline_index.domain_kind(domain) != DomainKind::Modified {
+            return Err(Error::validation_failed(
+                "slice-model-baseline-id-orphan",
+                "baseline-id is only valid in a domain with an existing baseline spec",
+                format!(
+                    "baseline-id '{baseline_id}' requires a modified domain baseline for '{domain}'"
+                ),
+            ));
+        }
+        if !baseline_index.is_baseline_req(domain, baseline_id) {
             return Err(Error::validation_failed(
                 "slice-model-baseline-id-orphan",
                 "baseline_id names an existing baseline requirement in a modified domain",
@@ -178,20 +212,20 @@ fn assign_requirement_id(
     }
 
     if baseline_index.domain_kind(domain) == DomainKind::Modified {
-        let counter = next_additive.entry(domain.to_string()).or_insert_with(|| {
+        let floor = *allocator.next_additive.entry(domain.to_string()).or_insert_with(|| {
             baseline_index
                 .domains()
                 .find(|(name, _)| *name == domain)
                 .map_or(1, |(_, baseline)| baseline.max_req_num.saturating_add(1))
         });
-        let id = format!("REQ-{counter:03}");
-        *counter = counter.saturating_add(1);
+        let id = allocator.allocate(floor);
+        if let Some(num) = req_num(&id) {
+            allocator.next_additive.insert(domain.to_string(), num.saturating_add(1));
+        }
         return Ok(id);
     }
 
-    let id = format!("REQ-{next_new_id:03}");
-    *next_new_id = next_new_id.saturating_add(1);
-    Ok(id)
+    Ok(allocator.allocate(1))
 }
 
 fn check_unique_ids(model: &SliceModel) -> Result<()> {

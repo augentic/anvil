@@ -224,3 +224,48 @@ fn additive_merge_into_baseline() {
     assert!(merged.output.contains("ID: REQ-004"));
     assert!(merged.output.contains("ID: REQ-001"));
 }
+
+#[test]
+fn mixed_domain_ids_no_collision() {
+    let tmp = TempDir::new().expect("tempdir");
+    let baseline_index = baseline_index(&tmp);
+    let model = SliceModel {
+        version: None,
+        slice: None,
+        project: None,
+        requirements: vec![
+            requirement("Greenfield one", "auth", "First new domain requirement."),
+            requirement("Filter tasks", "task", "Additive in modified domain."),
+            requirement("Greenfield two", "auth", "Second new domain requirement."),
+        ],
+        tasks: Vec::new(),
+    };
+    let projected = project_model(model, &baseline_index);
+    let ids: Vec<String> = projected.requirements.iter().map(|r| r.id.clone().unwrap()).collect();
+    // Baseline task domain occupies REQ-001..REQ-003; slice-global allocator skips them.
+    assert_eq!(ids, vec!["REQ-004", "REQ-005", "REQ-006"]);
+}
+
+#[test]
+fn baseline_id_rejected_on_new_domain() {
+    let model = SliceModel {
+        version: None,
+        slice: None,
+        project: None,
+        requirements: vec![ModelRequirement {
+            baseline_id: Some("REQ-001".into()),
+            ..requirement("Only requirement", "auth", "No baseline for this domain.")
+        }],
+        tasks: Vec::new(),
+    };
+    let err = project(
+        model,
+        empty_header(),
+        &BTreeMap::from([("intent".into(), AuthorityClass::Intent)]),
+        &BTreeMap::new(),
+        &BTreeMap::from([(("intent".into(), "add-task-list".into()), ClaimKind::Requirement)]),
+        &BaselineIndex::default(),
+    )
+    .expect_err("baseline-id requires a modified domain");
+    assert!(err.to_string().contains("slice-model-baseline-id-orphan"), "unexpected error: {err}");
+}

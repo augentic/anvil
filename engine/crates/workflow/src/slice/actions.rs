@@ -21,5 +21,5 @@ pub use io::move_atomic;
 pub use outcome::stamp_outcome;
 pub use overlap::{Overlap, overlap};
 pub use prune::{ArchivedSlice, Retention};
-pub use scan::{scan_touched, write_touched};
+pub use scan::{scan_touched, touched_from_rendered, write_touched};
 pub use transition::transition;

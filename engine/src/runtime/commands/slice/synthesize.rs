@@ -194,26 +194,18 @@ fn synthesize_from(ctx: &Ctx, name: &str, response_path: &Path) -> Result<Vec<St
     staged.push(staged_file(&slice_dir, "tasks.md", response.artifacts.tasks.into_bytes()));
     staged.push(staged_file(&slice_dir, "model.yaml", model_yaml.into_bytes()));
 
-    // Step 5 — persist. Write order is irrelevant now that validation
-    // has passed; the journal records the paths in this order.
+    let touched = slice_actions::touched_from_rendered(&specs, &baseline_index);
+    let mut metadata = SliceMetadata::load(&slice_dir)?;
+    metadata.touched_specs = touched;
+    let metadata_yaml = specify_model::atomic::serialise_yaml(&metadata)?;
+    staged.push(staged_file(&slice_dir, "metadata.yaml", metadata_yaml.into_bytes()));
+
+    // Step 5 — persist every staged artifact in one batch.
     let mut written = Vec::with_capacity(staged.len());
     for file in &staged {
         specify_model::atomic::bytes_write(&file.abs, &file.bytes)?;
         written.push(file.rel.clone());
     }
-
-    // Step 6 — classify touched specs against the baseline and persist
-    // on metadata so merge overlap checks work without a manual scan.
-    let classes = super::artifact_classes(&ctx.project_dir, &slice_dir);
-    let scan_baseline = classes
-        .iter()
-        .find(|class| matches!(class.strategy, MergeStrategy::ThreeWayMerge))
-        .map_or_else(
-            || ctx.layout().specify_dir().join("specs"),
-            |class| class.baseline_dir.clone(),
-        );
-    let touched = slice_actions::scan_touched(&slice_dir, &scan_baseline)?;
-    slice_actions::write_touched(&slice_dir, touched)?;
 
     Ok(written)
 }
