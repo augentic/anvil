@@ -177,7 +177,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
-          "description": "Path relative to the adapter root. The host runs the script via `sh` from the adapter root (the shebang is not consulted); scripts must be POSIX `sh`-compatible. Executed during `specify slice build` (`host_prereq` at prepare, `finalize_verify` at finalize) with `SPECIFY_PROJECT_DIR` and `SPECIFY_SLICE_DIR` set."
+          "description": "Path relative to the adapter root. The host runs the script via `sh` from the adapter root (the shebang is not consulted); scripts must be POSIX `sh`-compatible and are syntax-checked with `sh -n` in the adapter's CI. Executed during `specify slice build` (`host_prereq` at prepare, `finalize_verify` at finalize) with `SPECIFY_PROJECT_DIR` and `SPECIFY_SLICE_DIR` set."
         }
       }
     },
