@@ -25,6 +25,11 @@ pairs=$(awk -F'|' '
   }
 ' "$README")
 
+if [ -z "$pairs" ]; then
+  echo "check-adapters-spec-runtime-parity: no bundle/canonical pairs parsed from $README" >&2
+  exit 1
+fi
+
 fail=0
 printf '%s\n' "$pairs" | while IFS="$(printf '\t')" read -r bundle canonical; do
   [ -n "$bundle" ] || continue

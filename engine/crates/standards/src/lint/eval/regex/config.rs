@@ -9,6 +9,7 @@ use crate::rules::{HintKind, ResolvedRule, RuleHint};
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RegexHintConfig {
     pub negative_match: bool,
+    pub file_must_contain: bool,
     pub capture_group: Option<u32>,
     pub capture_op: Option<CaptureOp>,
     pub capture_value: Option<i64>,
@@ -50,6 +51,18 @@ impl RegexHintConfig {
                 reason: "capture-group, capture-op, and capture-value must be set together",
             });
         }
+        let file_must_contain = parsed.file_must_contain.unwrap_or(false);
+        if file_must_contain
+            && (parsed.negative_match == Some(true)
+                || parsed.slash_skill_positional == Some(true)
+                || any_capture)
+        {
+            return Err(HintError::Unsupported {
+                rule_id: rule.rule_id.clone(),
+                kind: HintKind::Regex,
+                reason: "`file-must-contain` cannot combine with negative-match, slash-skill-positional, or capture thresholds",
+            });
+        }
         let capture_op = match parsed.capture_op.as_deref() {
             None => None,
             Some("lt") => Some(CaptureOp::Lt),
@@ -67,6 +80,7 @@ impl RegexHintConfig {
         };
         Ok(Self {
             negative_match: parsed.negative_match.unwrap_or(false),
+            file_must_contain,
             capture_group: parsed.capture_group,
             capture_op,
             capture_value: parsed.capture_value,
@@ -97,6 +111,8 @@ impl RegexHintConfig {
 struct RegexHintConfigWire {
     #[serde(default, rename = "negative-match")]
     negative_match: Option<bool>,
+    #[serde(default, rename = "file-must-contain")]
+    file_must_contain: Option<bool>,
     #[serde(default, rename = "capture-group")]
     capture_group: Option<u32>,
     #[serde(default, rename = "capture-op")]

@@ -87,6 +87,23 @@ pub(crate) fn evaluate(
         }
 
         let pattern = pattern.as_ref().expect("slash-skill branch continues above");
+        if cfg.file_must_contain {
+            let any_match = text.lines().any(|line| pattern.is_match(line));
+            if !any_match {
+                push_finding(
+                    rule,
+                    hint,
+                    &mut out,
+                    next_id,
+                    &candidate_str,
+                    1,
+                    1,
+                    &format!("no line matches required pattern `{}`", hint.value),
+                );
+            }
+            continue;
+        }
+
         for (line_idx, line) in text.lines().enumerate() {
             if cfg.negative_match {
                 if !pattern.is_match(line) {
@@ -316,6 +333,62 @@ mod tests {
             }
             other => panic!("expected snippet evidence, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn file_must_contain_flags_absent_pattern() {
+        let hint = RuleHint {
+            kind: HintKind::Regex,
+            value: r"^## Required section$".to_string(),
+            description: None,
+            config: Some(serde_json::json!({ "file-must-contain": true })),
+        };
+        let mut model = WorkspaceModel::default();
+        model.files.push(File {
+            path: "doc.md".into(),
+            kind: FileKind::Text,
+            language: None,
+            sha256: None,
+        });
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("doc.md"), "# Title\n\nBody without the section.\n")
+            .expect("write");
+
+        let rel = PathBuf::from("doc.md");
+        let mut next_id = 1_u64;
+        let findings =
+            evaluate(&rule(), &hint, &[rel], dir.path(), &model, &mut next_id).expect("eval");
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].location.as_ref().expect("location").line, Some(1));
+    }
+
+    #[test]
+    fn file_must_contain_passes_when_pattern_present() {
+        let hint = RuleHint {
+            kind: HintKind::Regex,
+            value: r"^## Required section$".to_string(),
+            description: None,
+            config: Some(serde_json::json!({ "file-must-contain": true })),
+        };
+        let mut model = WorkspaceModel::default();
+        model.files.push(File {
+            path: "doc.md".into(),
+            kind: FileKind::Text,
+            language: None,
+            sha256: None,
+        });
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join("doc.md"),
+            "# Title\n\n## Required section\n\nBody.\n",
+        )
+        .expect("write");
+
+        let rel = PathBuf::from("doc.md");
+        let mut next_id = 1_u64;
+        let findings =
+            evaluate(&rule(), &hint, &[rel], dir.path(), &model, &mut next_id).expect("eval");
+        assert!(findings.is_empty());
     }
 
     #[test]
