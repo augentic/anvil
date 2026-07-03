@@ -5,17 +5,28 @@ use serde::Deserialize;
 use crate::lint::eval::HintError;
 use crate::rules::{HintKind, ResolvedRule, RuleHint};
 
+/// How a `kind: regex` hint scans candidate files.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum RegexEvalMode {
+    /// Flag each line where the pattern matches.
+    #[default]
+    LinePositive,
+    /// Flag each line where the pattern does not match.
+    LineNegative,
+    /// Flag each candidate file where no line matches the pattern.
+    FileMustContain,
+    /// Apply CORE-023 slash-skill positional semantics instead of regex.
+    SlashSkillPositional { join_backslash_continuations: bool },
+}
+
 /// Parsed `regex` hint configuration.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RegexHintConfig {
-    pub negative_match: bool,
-    pub file_must_contain: bool,
+    pub eval_mode: RegexEvalMode,
     pub capture_group: Option<u32>,
     pub capture_op: Option<CaptureOp>,
     pub capture_value: Option<i64>,
     pub suffix_must_not_start_with: Option<String>,
-    pub slash_skill_positional: bool,
-    pub join_backslash_continuations: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,17 +63,37 @@ impl RegexHintConfig {
             });
         }
         let file_must_contain = parsed.file_must_contain.unwrap_or(false);
-        if file_must_contain
-            && (parsed.negative_match == Some(true)
-                || parsed.slash_skill_positional == Some(true)
-                || any_capture)
-        {
+        let negative_match = parsed.negative_match.unwrap_or(false);
+        let slash_skill_positional = parsed.slash_skill_positional.unwrap_or(false);
+        let join_backslash_continuations = parsed.join_backslash_continuations.unwrap_or(false);
+        let mode_flags = i32::from(file_must_contain)
+            + i32::from(negative_match)
+            + i32::from(slash_skill_positional);
+        if mode_flags > 1 {
             return Err(HintError::Unsupported {
                 rule_id: rule.rule_id.clone(),
                 kind: HintKind::Regex,
-                reason: "`file-must-contain` cannot combine with negative-match, slash-skill-positional, or capture thresholds",
+                reason: "only one of negative-match, file-must-contain, or slash-skill-positional may be set",
             });
         }
+        if file_must_contain && any_capture {
+            return Err(HintError::Unsupported {
+                rule_id: rule.rule_id.clone(),
+                kind: HintKind::Regex,
+                reason: "`file-must-contain` cannot combine with capture thresholds",
+            });
+        }
+        let eval_mode = if slash_skill_positional {
+            RegexEvalMode::SlashSkillPositional {
+                join_backslash_continuations,
+            }
+        } else if file_must_contain {
+            RegexEvalMode::FileMustContain
+        } else if negative_match {
+            RegexEvalMode::LineNegative
+        } else {
+            RegexEvalMode::LinePositive
+        };
         let capture_op = match parsed.capture_op.as_deref() {
             None => None,
             Some("lt") => Some(CaptureOp::Lt),
@@ -79,14 +110,11 @@ impl RegexHintConfig {
             }
         };
         Ok(Self {
-            negative_match: parsed.negative_match.unwrap_or(false),
-            file_must_contain,
+            eval_mode,
             capture_group: parsed.capture_group,
             capture_op,
             capture_value: parsed.capture_value,
             suffix_must_not_start_with: parsed.suffix_must_not_start_with,
-            slash_skill_positional: parsed.slash_skill_positional.unwrap_or(false),
-            join_backslash_continuations: parsed.join_backslash_continuations.unwrap_or(false),
         })
     }
 
