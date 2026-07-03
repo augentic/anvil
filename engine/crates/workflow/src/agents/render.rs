@@ -176,7 +176,7 @@ fn boundaries_bullets(input: &Input) -> Vec<String> {
     let mut bullets = vec![
         "During execute/build/merge, agents consume Specify and adapters — they do not maintain them."
             .to_string(),
-        "On scaffold, verify, finalize, or toolchain failure: stop and surface CLI stop output; never patch specify, specify-adapters, templates, `adapter.wasm`, or `~/.cache/specify/**` in-band."
+        "On scaffold, verify, finalize, or toolchain failure: stop, print CLI `stop:` / `hint:` / `resume:` output, and exit; never patch `specify`, `specify-adapters`, templates, `adapter.wasm`, or `~/.cache/specify/**` in-band."
             .to_string(),
         "`metadata.yaml` files are framework-managed; update them through `specify slice` commands."
             .to_string(),
@@ -305,6 +305,12 @@ mod tests {
                 "During execute/build/merge, agents consume Specify and adapters — they do not maintain them."
             ),
             "consumer tooling boundary must render in Boundaries:\n{rendered}"
+        );
+        assert!(
+            rendered.contains(
+                "stop, print CLI `stop:` / `hint:` / `resume:` output, and exit; never patch `specify`, `specify-adapters`"
+            ),
+            "consumer tooling stop bullet must render in Boundaries:\n{rendered}"
         );
 
         // A workspace omits the per-language detection sections.
