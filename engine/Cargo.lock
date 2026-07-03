@@ -4638,7 +4638,7 @@ dependencies = [
 
 [[package]]
 name = "specify"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -4665,7 +4665,7 @@ dependencies = [
 
 [[package]]
 name = "specify-diagnostics"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "jsonschema",
  "proptest",
@@ -4678,7 +4678,7 @@ dependencies = [
 
 [[package]]
 name = "specify-error"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "jiff",
  "serde",
@@ -4690,7 +4690,7 @@ dependencies = [
 
 [[package]]
 name = "specify-extension"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "jsonschema",
  "semver",
@@ -4704,7 +4704,7 @@ dependencies = [
 
 [[package]]
 name = "specify-model"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "glob",
  "regex",
@@ -4719,7 +4719,7 @@ dependencies = [
 
 [[package]]
 name = "specify-registry"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "futures-util",
  "jiff",
@@ -4745,7 +4745,7 @@ dependencies = [
 
 [[package]]
 name = "specify-schema"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "base16ct",
  "jsonschema",
@@ -4759,7 +4759,7 @@ dependencies = [
 
 [[package]]
 name = "specify-standards"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "glob",
  "globset",
@@ -4780,7 +4780,7 @@ dependencies = [
 
 [[package]]
 name = "specify-workflow"
-version = "0.27.0"
+version = "0.27.1"
 dependencies = [
  "glob",
  "jiff",

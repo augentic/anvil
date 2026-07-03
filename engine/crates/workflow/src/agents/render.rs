@@ -174,6 +174,10 @@ fn conventions_bullets(input: &Input) -> Vec<String> {
 
 fn boundaries_bullets(input: &Input) -> Vec<String> {
     let mut bullets = vec![
+        "During execute/build/merge, agents consume Specify and adapters — they do not maintain them."
+            .to_string(),
+        "On scaffold, verify, finalize, or toolchain failure: stop and surface CLI stop output; never patch specify, specify-adapters, templates, `adapter.wasm`, or `~/.cache/specify/**` in-band."
+            .to_string(),
         "`metadata.yaml` files are framework-managed; update them through `specify slice` commands."
             .to_string(),
         "`.specify/archive/` is framework-managed history.".to_string(),
@@ -296,6 +300,12 @@ mod tests {
         assert!(rendered.contains("## Runtime\n- not detected\n"));
         assert!(rendered.contains("## Tests\n- not detected\n"));
         assert!(rendered.contains("## Linting\n- not detected\n"));
+        assert!(
+            rendered.contains(
+                "During execute/build/merge, agents consume Specify and adapters — they do not maintain them."
+            ),
+            "consumer tooling boundary must render in Boundaries:\n{rendered}"
+        );
 
         // A workspace omits the per-language detection sections.
         let mut input = regular_input();

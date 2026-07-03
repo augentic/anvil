@@ -55,8 +55,10 @@ Render the hint as the final visible output of the run. Do not call `specify sli
 - **Never write `plan.yaml` from this body.** Per-entry transitions are owned by `specify plan next` (writes `in-progress`) and `specify slice merge` (writes `done`). `/spec:build` writes no lifecycle state by hand — the slice's `metadata.yaml` is stamped by `specify slice build --phase finalize`.
 - **Lifecycle single-writer:** [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never invoke standalone writer or reviewer skills directly.** The target build brief carries those bodies inline; calling them out-of-band bypasses brief orchestration and breaks shape-injection guarantees.
+- On prepare/finalize abort, exhausted verify-repair, or a `deferred` outcome: emit the stop hint and **exit**; never patch adapters, templates, or cache — [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary).
 
 ## References
 
 - [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `metadata.yaml`, `plan.yaml`, archive paths.
+- [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary) — stop on scaffold/verify/finalize/toolchain failure; never patch upstream tooling in-band.
 - `adapters/targets/<target>/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts); it also writes the `build/report.yaml` that `--phase finalize` validates.
