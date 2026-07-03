@@ -2,7 +2,7 @@
   "name": "spec",
   "displayName": "Specify Workflow",
   "description": "Specify workflow orchestration: init, plan, execute, refine, build, merge, finalize, drop.",
-  "version": "0.27.1",
+  "version": "0.27.2",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

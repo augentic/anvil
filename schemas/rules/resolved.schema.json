@@ -130,6 +130,11 @@
           "default": false,
           "description": "When true, emit one finding per line where the pattern does not match."
         },
+        "file-must-contain": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, emit one finding per candidate file where no line matches the pattern (file-level `rg -q` semantics)."
+        },
         "capture-group": {
           "type": "integer",
           "minimum": 1,
