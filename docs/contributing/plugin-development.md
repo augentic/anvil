@@ -106,6 +106,8 @@ Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (publ
 
 Adapter briefs link to `references/spec-runtime/` inside each adapter (see [`adapters/shared/references/runtime/README.md`](../../adapters/shared/references/runtime/README.md)). Each adapter's `references/spec-runtime` is a single directory symlink to the shared bundle at `adapters/shared/references/runtime/`, which is itself a tree of symlinks to the plugin canonical files — so there is nothing to materialise or keep in sync. Edit the canonical file under `plugins/spec/references/`; `specify init` dereferences the symlinks into the cached adapter copy.
 
+When you also maintain the forked copy in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) (`shared/references/runtime/`), run `make check-adapters-parity` from a sibling checkout after changing `plugins/spec/references/` and sync any drift before merging.
+
 | Book-only (not agent runtime) | Purpose |
 |------|---------|
 | [`docs/reference/artifact-format.md`](../reference/artifact-format.md) | Full artifact format reference |

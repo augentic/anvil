@@ -52,9 +52,11 @@ Lifecycle invariants: `pre-merge-gate` and `baseline-conflict` leave the slice a
 - **Lifecycle single-writer:** [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never auto-revert on a `post-merge-validator` failure.** The merge already landed; surface the failure and let the operator queue a repair slice. Reverting an archived slice is operator-only.
 - **Never treat `specify slice merge conflict-check` success as a green light to skip the target merge brief's pre-merge gate.** `conflict-check` probes baseline drift; the brief gate covers target-specific build, lint, and validation.
+- On pre-merge gate failure classified as template/pin/toolchain drift: emit stop hint and **exit**; never patch adapters, templates, or cache — [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary).
 - **Run the AskQuestion confirmation when invoked interactively** (i.e. `SPECIFY_PLAN_LOCK_HELD` unset). When invoked from `/spec:execute` the loop is its own confirmation seam; skip the prompt.
 
 ## References
 
 - [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `metadata.yaml`, `plan.yaml`, archive paths.
+- [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary) — stop on template/pin/toolchain drift; never patch upstream tooling in-band.
 - `adapters/targets/<target>/briefs/merge.md` — pre-merge gate and post-merge hook this skill drives (omnia, vectis, contracts).
