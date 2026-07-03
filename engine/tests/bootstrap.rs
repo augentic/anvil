@@ -37,7 +37,7 @@ mod plugins {
             r#"{{
   "name": "{name}",
   "owner": {{ "name": "augentic", "email": "info@augentic.io" }},
-  "metadata": {{ "description": "d", "version": "0.27.0", "pluginRoot": "plugins" }},
+  "metadata": {{ "description": "d", "version": "0.27.1", "pluginRoot": "plugins" }},
   "plugins": [ {} ]
 }}"#,
             entries.join(", ")

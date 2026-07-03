@@ -15,7 +15,8 @@ feature-depth = 1
 
 [advisories]
 unmaintained = 'workspace'
-ignore = []
+# wasmtime-wasi 45.0.2 via specify-registry; upgrade lands with the WASM runtime refactor (next week).
+ignore = ["RUSTSEC-2026-0188"]
 
 [licenses]
 allow = [
