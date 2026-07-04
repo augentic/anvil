@@ -4,7 +4,7 @@
 
 ## Abstract
 
-This RFC proves the architecture with one real adapter operation before the whole workflow moves. The proof has two legs: one deterministic `tool` operation invoked through generated bindings, and one judgment operation invoked through `wasi-model.eval` with lazy reference loading. It validates the contract, runtime floor, model boundary, and adapter reference shelf against real Specify behavior while the blast radius is still small.
+This RFC proves the architecture with one real adapter operation before the whole workflow moves. The proof has two legs: one deterministic `tool` operation invoked through generated bindings, and one judgment operation invoked through `wasi-model.eval` with lazy reference loading. It validates the contract, runtime core, model boundary, and adapter reference shelf against real Specify behavior while the blast radius is still small.
 
 ## The proof
 
@@ -12,7 +12,7 @@ This RFC proves the architecture with one real adapter operation before the whol
 - **Judgment leg.** A selected judgment operation calls `wasi-model.eval` ([RFC-53](rfc-53-wasi-model.md)). The model tool loop ([RFC-59](rfc-59-model-tool-loop.md)) resolves the adapter's `references` shelf, reads only through bounded tools, and returns a validated typed answer.
 - **Replay leg.** The judgment operation records and replays through the [RFC-53](rfc-53-wasi-model.md) replay boundary, so CI can exercise the operation without a live model.
 
-The chosen operation may be an Omnia target operation if that is the best proving workload, but the Omnia target adapter is not a prerequisite to the generic runtime floor.
+The chosen operation may be an Omnia target operation if that is the best proving workload, but the Omnia target adapter is not a prerequisite to the generic runtime core.
 
 ## Brief-typing
 
@@ -45,4 +45,4 @@ The operation signature is named at the call site, so a brief is a prompt body, 
 - **Prove, then widen.** This RFC validates the execution model with one adapter operation; it is not the workflow migration.
 - **Prose holism.** The orchestrator hands the model whole briefs. It sequences and types; it does not fragment the prompt.
 - **Adapter-local.** Adapter logic lives in exports and the shelf. Workflow-level fan-out belongs in [RFC-57](rfc-57-specify-guests.md).
-- **Law 2 preserved.** The model id stays in the `wasi-model` backend, never in the contract or runtime floor.
+- **Law 2 preserved.** The model id stays in the `wasi-model` backend, never in the contract or runtime core.

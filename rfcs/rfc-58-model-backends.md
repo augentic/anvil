@@ -54,7 +54,7 @@ The backend is the single seam the model is reached through. The fleet lives ins
 
 ## Risks and invariants
 
-- **Vendor coupling stays behind the boundary.** Any one model is one backend detail, never part of the contract or runtime floor.
+- **Vendor coupling stays behind the boundary.** Any one model is one backend detail, never part of the contract or runtime core.
 - **Router stays abstract.** Its key is difficulty, deployment mode, or operation identity, not a vendor id.
 - **Spawned process management.** Sessions stay robust and context-free; a leaked transcript reintroduces the dependency the architecture sheds.
 - **The embedded topology is a non-goal.** Judgment never runs inside the operator's live editor session.

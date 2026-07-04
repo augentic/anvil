@@ -8,7 +8,7 @@
 
 2. **Land the effect map** — Land [RFC-52](rfc-52-effect.md): name the effect imports and exports, assign each effect to its owning implementation RFC, and include any WIT wiring needed for the next steps.
 
-3. **Build the minimal Omnia floor** — Land the domain-free runtime capabilities from [RFC-56](rfc-56-runtime-move.md): component instantiation, instance-per-call execution, host-service binding, `wasi:filesystem`, `wasi:keyvalue`, lifecycle / journal effects, and a basic multi-guest registry. Keep this layer free of adapter names, workflow policy, and model identity.
+3. **Build the minimal Omnia runtime core** — Land the domain-free runtime capabilities from [RFC-56](rfc-56-runtime-move.md): component instantiation, instance-per-call execution, host-service binding, `wasi:filesystem`, `wasi:keyvalue`, lifecycle / journal effects, and a basic multi-guest registry. Keep this layer free of adapter names, workflow policy, and model identity.
 
 4. **Add `wasi-model` core** — Land the core part of [RFC-53](rfc-53-wasi-model.md): `eval`, prompt / answer types, backend trait, answer validation, and a fake or replay-capable backend. Do not wait for every real backend. Replay gives deterministic CI and lets Specify migration proceed without binding every test to a live model or editor agent.
 
@@ -30,13 +30,13 @@
 
 The riskiest abstraction is not the WIT contract; it is the claim that a generic runtime plus typed effects can host real Specify work without hidden state, transcript dependence, or local-path coupling. The fastest way to retire that risk is a thin vertical path through a real adapter operation, not a complete rewrite of either repository.
 
-This sequence keeps the runtime floor generic while forcing it to serve real Specify behavior early. It also keeps judgment behind `wasi-model` from the start, but separates the model seam from backend variety and from the security-sensitive verify path. Workflow migration waits until the lower-level execution model has enough evidence to be trusted.
+This sequence keeps the runtime core generic while forcing it to serve real Specify behavior early. It also keeps judgment behind `wasi-model` from the start, but separates the model seam from backend variety and from the security-sensitive verify path. Workflow migration waits until the lower-level execution model has enough evidence to be trusted.
 
 ## Guardrails
 
-- Keep Omnia core domain-free: no adapter names, workflow rules, model ids, or Specify-specific taxonomy in the runtime floor.
+- Keep Omnia core domain-free: no adapter names, workflow rules, model ids, or Specify-specific taxonomy in the runtime core.
 - Keep Specify-specific behavior in guests, backends, and native orchestration bound behind typed effects.
 - Prefer deterministic replay before live model breadth; every early judgment path should be recordable and replayable.
 - Treat `verify` as a security boundary, not as a convenience helper inside the model loop.
 - Do not move the whole workflow first. Start with one adapter operation, then widen.
-- Treat the Omnia target adapter as a possible proving workload, not as a prerequisite to the generic runtime floor.
+- Treat the Omnia target adapter as a possible proving workload, not as a prerequisite to the generic runtime core.

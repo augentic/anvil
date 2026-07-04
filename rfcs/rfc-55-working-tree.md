@@ -49,4 +49,4 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 - **Round-trip fidelity.** `revision -> tree -> changeset` must round-trip faithfully — whole-operation replay depends on it.
 - **Deterministic layering.** Dependency-layering never silently reorders or drops edits; it is anchored by `changeset.base`.
 - **Git unprivileged.** Git is the first `wasi:filesystem` backend, behind the neutral `revision` / `changeset` abstraction, so an object-store or CoW backend is a drop-in.
-- **Law 2 at the floor.** The generic `wasi:filesystem` / `wasi:blobstore` host stays domain-agnostic in Omnia; slice / revision logic lives in the Specify backend and native orchestration.
+- **Law 2 in the runtime core.** The generic `wasi:filesystem` / `wasi:blobstore` host stays domain-agnostic in Omnia; slice / revision logic lives in the Specify backend and native orchestration.

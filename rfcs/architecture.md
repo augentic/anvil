@@ -1,6 +1,8 @@
 # Specify on Omnia — The Effect-Oriented Architecture
 
 > Status: This is the standing architecture — the agreed direction being worked toward. It sequences the work into independently valuable stages and lives alongside [roadmap.md](roadmap.md).
+>
+> Terminology (**runtime core**, Law 2, host-injected tools): [Omnia glossary](../../omnia/docs/glossary.md).
 
 ## The core idea
 
@@ -59,7 +61,7 @@ Omnia is built on Wasmtime. Its design centers on pluggable host services behind
 - **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never *recursively* re-enter an instance already on the stack — the one kind of reentrance the component model still traps (*sibling* reentrance, into a component whose other tasks are suspended, is allowed under the async ABI) — avoiding a class of aliasing complexity by construction.
 - **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Specify move from a desktop tool to a horizontally scalable service unchanged.
 
-Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime floor.
+Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core.
 
 ## Judgment: the `wasi-model` host
 
@@ -81,7 +83,7 @@ A brief points at internal references (e.g. `../references/business-logic.md`). 
 resolve: func(id: adapter-id, reference: reference) -> result<list<u8>, error>;
 ```
 
-Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime floor stays free of any reference-injection machinery.
+Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime core stays free of any reference-injection machinery.
 
 Logical sequence: extract
 
@@ -177,7 +179,7 @@ When evaluating a design decision — prose or code, what a function takes, wher
 > Run every adapter and workflow as a guest on a runtime that understands only typed effects. Keep structure in deterministic guest code, reach the model through the `wasi-model` host behind a swappable backend, and pass handles instead of raw text across boundaries.
 
 1. **Typed boundaries**: WIT records for data, WIT interfaces for effects. Untyped text is not passed across boundaries.
-2. **The runtime floor only knows effects**: Omnia core doesn't know about workflows, adapters, or models — only how to host guests and satisfy typed effects. Which backend satisfies an interface — including which model backs `wasi-model` — is deployment configuration the floor never sees.
+2. **The runtime core only knows effects**: Omnia core doesn't know about workflows, adapters, or models — only how to host guests and satisfy typed effects. Which backend satisfies an interface — including which model backs `wasi-model` — is deployment configuration the runtime core never sees.
 3. **Determinism by default, judgment by exception**: control flow lives in deterministic guest code. `wasi-model.eval` returns a typed, validated decision that steers the next deterministic step. Models do not guess control flow.
 4. **Laziness is key**: handles (file paths, reference ids) cross boundaries instead of corpora, keeping context windows small and operations scalable.
 

@@ -52,7 +52,7 @@ Replay belongs at the `wasi-model` boundary because it is the test substitute fo
 
 ## Risks and invariants
 
-- **Law 2 at the floor.** The model id and vendor SDK live in the `wasi-model` backend, never in Omnia core or the typed contract.
+- **Law 2 in the runtime core.** The model id and vendor SDK live in the `wasi-model` backend, never in Omnia core or the typed contract.
 - **Validated answers only.** A model response that does not validate is not an answer; it is a backend failure or a repair-loop input.
 - **Replay is boundary-level.** Recording and replay happen around the typed prompt / answer boundary, so CI does not depend on any one backend implementation.
 - **No transcript leakage.** The operator's live editor conversation is never reused as a model session.

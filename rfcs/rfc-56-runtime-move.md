@@ -23,7 +23,7 @@ Standing the guests on the generic runtime is the point at which shipping a WASM
 
 ## The cross-repo boundary
 
-- **Omnia** provides the generic floor: the Wasmtime interpreter, the pluggable host-service framework, and the general-purpose host interfaces — `wasi:filesystem`, `wasi:keyvalue`, `wasi:blobstore`, `wasi-model` (`eval`). It carries zero Specify domain and zero model knowledge.
+- **Omnia** provides the generic runtime core: the Wasmtime interpreter, the pluggable host-service framework, and the general-purpose host interfaces — `wasi:filesystem`, `wasi:keyvalue`, `wasi:blobstore`, `wasi-model` (`eval`). It carries zero Specify domain and zero model knowledge.
 - **Specify** provides the backends (working tree [RFC-55](rfc-55-working-tree.md), model [RFC-58](rfc-58-model-backends.md), kv / lifecycle, the wRPC guest-to-guest transport), the guests, the registry, and the operator CLI.
 
 ## Scope
@@ -39,7 +39,7 @@ Standing the guests on the generic runtime is the point at which shipping a WASM
 1. Workflow and adapter guests run via `omnia <guest>.wasm <args…>`; the bespoke `specify` host is gone.
 2. Multiple guests are co-resident on one Engine + Linker, selected by identity; two same-world adapters resolve without collision and without composition.
 3. The deterministic effects and `wasi-model` are satisfied by real backends; execution is instance-per-call with no durable in-guest state.
-4. The runtime floor holds zero adapter names, zero workflow knowledge, and zero model knowledge.
+4. The runtime core holds zero adapter names, zero workflow knowledge, and zero model knowledge.
 5. Every source and target adapter ships a WASM component implementing its world; there are no prose-only adapters.
 6. `make lint` and `cargo make ci` stay green.
 
@@ -48,7 +48,7 @@ Standing the guests on the generic runtime is the point at which shipping a WASM
 - **Cross-repo sequencing.** The Omnia framework capability and the Specify backends land in order; the WIT seams version independently.
 - **Statelessness is load-bearing.** Instance-per-call concurrency requires the kv and data backends to be correct; what persists lives in host services.
 - **Instance-per-call must stay cheap.** Per-call instantiation is only affordable because the heavy work is amortized: `InstancePre` resolves imports and type-checks ahead of time, and the Wasmtime pooling allocator (with copy-on-write image reuse) pre-allocates instance memories. Without them, fresh-instance-per-call would dominate latency.
-- **Law 2 preserved.** Everything Specify-specific lives in backends, guests, and native orchestration — never in the generic floor.
+- **Law 2 preserved.** Everything Specify-specific lives in backends, guests, and native orchestration — never in the generic runtime core.
 - **wRPC is a pre-1.0 dependency on the hot path.** All guest-to-guest dispatch rides wRPC, which is pre-1.0; because it is the universal carrier (not just the cross-node leg), its churn is confined behind the host-dispatch seam (the `source` / `target` imports) so it never reaches the `augentic:specify` contract or the guests, and the seam keeps a native in-process fast-path in reserve. The decision and its constraints (resources do not cross; ship `revision` / `changeset` and re-materialize on the serving node) are recorded in the engine workspace's `DECISIONS.md`.
 - **Toolchain cost.** Components + `wit-bindgen` add a build step for every adapter author, including the agent-only source adapters; this is the principal adoption cost, borne here because the generic runtime is what makes a component mandatory.
 
