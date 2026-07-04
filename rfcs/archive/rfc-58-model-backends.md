@@ -1,6 +1,6 @@
 # RFC-58: Model Backends — frontier, spawned agent, SLM, and routing
 
-> Status: Draft · Order 9 of 10 · Parallel after [RFC-53](rfc-53-wasi-model.md) · Depends: [RFC-53](rfc-53-wasi-model.md), [RFC-59](rfc-59-model-tool-loop.md), [RFC-55](rfc-55-working-tree.md) · Enables: [RFC-18](future/rfc-18-slm.md) · Owns: backend variety and routing behind `wasi-model`
+> **Status: Archived — largely implemented.** The backend catalogue landed in [`augentic/backends`](https://github.com/augentic/backends): `omnia-cursor` (the spawned-agent backend), `omnia-genai` (frontier / hosted), and Omnia's in-tree `ModelDefault` (replay), all behind the one `WasiModelCtx` trait with compile-time per-deployment binding. The router and SLM backends were not pursued; the SLM remains parked in [RFC-18](../future/rfc-18-slm.md). Original: Order 9 of 10 · Owns: backend variety and routing behind `wasi-model`
 
 ## Abstract
 
@@ -11,9 +11,9 @@ The `wasi-model` host ([RFC-53](rfc-53-wasi-model.md)) dispatches `eval` to a ba
 The backend is the single seam the model is reached through. The fleet lives inside it, and the model id never crosses `eval`.
 
 - **Frontier / hosted** — hard synthesis and review through a hosted API via [`genai`](https://github.com/jeremychone/rust-genai), one API over OpenAI / Anthropic / Gemini / Ollama / other providers. Switching frontier, hosted, and local providers is backend configuration.
-- **Spawned agent** — the native layer spawns a fresh, context-free agent session, hands it the brief, and parses the validated answer. It may own its own tool loop and read / write the working tree through the `local-path` it is lent ([RFC-55](rfc-55-working-tree.md)). It still returns through the [RFC-53](rfc-53-wasi-model.md) typed boundary and must remain recordable.
+- **Spawned agent** — the native layer spawns a fresh, context-free agent session, hands it the brief, and parses the validated answer. It may own its own tool loop and read / write the working tree through the `local-path` it is lent ([RFC-55](../future/rfc-55-working-tree.md)). It still returns through the [RFC-53](rfc-53-wasi-model.md) typed boundary and must remain recordable.
 - **Replay expansion** — [RFC-53](rfc-53-wasi-model.md) defines the minimal replay seam. This RFC expands replay into a production backend with fixture management, matching policy, and diagnostics across backend families.
-- **Local SLM** — narrow, high-volume transformations via a local model and constrained decoding, carried by [RFC-18](future/rfc-18-slm.md).
+- **Local SLM** — narrow, high-volume transformations via a local model and constrained decoding, carried by [RFC-18](../future/rfc-18-slm.md).
 - **Router** — selects a backend per call by brief path, difficulty, deployment mode, or an abstract cost / quality hint. It never routes on a vendor model id supplied by a guest.
 
 ## Deployment modes
@@ -28,20 +28,20 @@ The backend is the single seam the model is reached through. The fleet lives ins
 - Spawned-agent backend protocol and process management.
 - Replay fixture management beyond the minimal [RFC-53](rfc-53-wasi-model.md) seam.
 - Router decision keys and deployment-mode selection.
-- Local SLM integration via [RFC-18](future/rfc-18-slm.md).
+- Local SLM integration via [RFC-18](../future/rfc-18-slm.md).
 
 ## Out of scope
 
 - The `eval` host boundary and backend trait; see [RFC-53](rfc-53-wasi-model.md).
 - The standard model tool loop; see [RFC-59](rfc-59-model-tool-loop.md).
-- Verify profile definitions; see [RFC-60](rfc-60-verify-profiles.md).
+- Verify profile definitions; see [RFC-60](../future/rfc-60-verify-profiles.md).
 
 ## Open questions
 
 - The routing key: brief path, difficulty, deployment mode, or a combination.
 - The spawned-agent protocol: how a session is spawned, handed the brief, returns a schema-valid answer, and consumes the prose shelf.
 - The record/replay capture point for spawned-agent runs that own their own loop.
-- The constrained-decoding hook a non-agent SLM backend uses to keep typed reports schema-valid ([RFC-18](future/rfc-18-slm.md)).
+- The constrained-decoding hook a non-agent SLM backend uses to keep typed reports schema-valid ([RFC-18](../future/rfc-18-slm.md)).
 
 ## Acceptance criteria
 

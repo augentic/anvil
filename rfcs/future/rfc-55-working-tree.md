@@ -1,10 +1,10 @@
 # RFC-55: Working-Tree Materialization — the git-aware `wasi:filesystem` backend
 
-> Status: Draft · Order 6 of 10 · Stage S4 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-52](rfc-52-effect.md) · Companion to: [RFC-56](rfc-56-runtime-move.md) (which binds this backend) · Owns: the value↔tree boundary
+> **Status: Deferred.** The in-place migration ([RFC-61](../rfc-61-omnia-migration.md)) runs every guest against the shared `[[mount]]` preopens of the operator's live project tree, so materialized working trees are not needed until a multi-node deployment exists. The `revision` / `changeset` types stay in `augentic:specify` as this RFC's forward hook. Original: Order 6 of 10 · Stage S4 · Depends: [RFC-51](../archive/rfc-51-adapter-wit.md), [RFC-52](../archive/rfc-52-effect.md) · Owns: the value↔tree boundary
 
 ## Abstract
 
-The `working-tree` capability ([RFC-52](rfc-52-effect.md)) needs a backend. This RFC specifies it: a **custom git-aware backend behind Omnia's `wasi:filesystem` host** that *materializes* a `working-tree` from a content-addressed `revision` (plus any not-yet-merged dependency `changeset`s) onto whichever node runs an operation, and extracts the inverse `changeset` afterward. It adds **no new host** — it rides `wasi:filesystem` as a backend, keeping git native (host code; no in-guest VCS). `slice -> revision` resolution, `changeset` extraction, and forge push live in the binary's native orchestration layer.
+The `working-tree` capability ([RFC-52](../archive/rfc-52-effect.md)) needs a backend. This RFC specifies it: a **custom git-aware backend behind Omnia's `wasi:filesystem` host** that *materializes* a `working-tree` from a content-addressed `revision` (plus any not-yet-merged dependency `changeset`s) onto whichever node runs an operation, and extracts the inverse `changeset` afterward. It adds **no new host** — it rides `wasi:filesystem` as a backend, keeping git native (host code; no in-guest VCS). `slice -> revision` resolution, `changeset` extraction, and forge push live in the binary's native orchestration layer.
 
 ## Why a backend
 
@@ -25,7 +25,7 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 - `slice -> revision` resolution from durable plan / journal state.
 - Out-of-sequence dependency-layering of producer `changeset`s.
 - Materialized-tree lifecycle: scratch, teardown, optional cache / GC (and its relation to `specify archive prune`).
-- `local-path` provisioning for the spawned-agent backend ([RFC-58](rfc-58-model-backends.md)), and the `none` signal on a node with no local tree.
+- `local-path` provisioning for the spawned-agent backend ([RFC-58](../archive/rfc-58-model-backends.md)), and the `none` signal on a node with no local tree.
 - Backend variants behind one `revision` abstraction: git first, then object-store snapshot (`wasi:blobstore`) and copy-on-write / overlay.
 
 ## Open questions
@@ -41,7 +41,7 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 2. A build's tree re-materializes on a different node from values alone (revision + object store), with no shared mount.
 3. A dependent slice builds against a base `revision` layered with an un-merged producer `changeset`.
 4. `local-path` is present on nodes with a real checkout and `none` elsewhere, gating agent-driven operations.
-5. [RFC-56](rfc-56-runtime-move.md) binds this backend behind `wasi:filesystem`; `make lint` and `cargo make ci` stay green.
+5. [RFC-56](../archive/rfc-56-runtime-move.md) binds this backend behind `wasi:filesystem`; `make lint` and `cargo make ci` stay green.
 
 ## Risks and invariants
 

@@ -1,6 +1,6 @@
 # RFC-57: Workflow and Development as Guests
 
-> Status: Draft · Order 10 of 10 · Stage S4 · Depends: [RFC-54](rfc-54-orchestration.md), [RFC-56](rfc-56-runtime-move.md) · Owns: the workflow and development guests
+> **Status: Archived — superseded.** The workflow-as-guest move is Step 4 of [RFC-61](../rfc-61-omnia-migration.md), grounded in the implemented Omnia runtime (`create` instead of `eval`, in-guest lifecycle validation over `.specify/` state instead of a runtime lifecycle host service). Original: Order 10 of 10 · Stage S4 · Owns: the workflow and development guests
 
 ## Abstract
 

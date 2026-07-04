@@ -1,6 +1,6 @@
 # RFC-59: Model Tool Loop
 
-> Status: Draft · Order 4 of 10 · Stage S3 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-53](rfc-53-wasi-model.md) · Coordinates with: [RFC-56](rfc-56-runtime-move.md) · Enables: [RFC-54](rfc-54-orchestration.md), [RFC-60](rfc-60-verify-profiles.md) · Owns: tool-call dispatch inside one `eval`
+> **Status: Archived — implemented in a changed shape.** Omnia's `wasi-model` host ships the tool surface as `ToolHost` (`resolve` via host→guest dispatch on `grants.references`, `read` / `list` / `write` over the resolved workspace, `verify` stubbed), and the cursor backend owns its own agent-side tool loop with a bounded repair retry. Host-held session state is unnecessary under session-less spawns. Remaining reference-shelf policy lives in [RFC-61](../rfc-61-omnia-migration.md). Original: Order 4 of 10 · Stage S3 · Owns: tool-call dispatch inside one `eval`
 
 ## Abstract
 
@@ -13,9 +13,9 @@ Within one `eval`, the backend may expose these tools to the model:
 - **`resolve(reference)`** — follow a brief's internal reference. The backend selects the adapter whose brief is being evaluated, instantiates a fresh guest, and calls its exported `references` shelf ([RFC-51](rfc-51-adapter-wit.md)) through host-mediated dynamic linking ([RFC-56](rfc-56-runtime-move.md)).
 - **`read` / `list`** — inspect the working tree through the capability the host made available for this session. The model sees bounded tool results, not an OS path or descriptor.
 - **`write`** — accumulate an edit against the session's base tree. The backend stores pending edits in host-held state, not in guest memory.
-- **`verify(check)`** — request a closed verification profile. The profile definitions, sandboxing, and report mapping are owned by [RFC-60](rfc-60-verify-profiles.md).
+- **`verify(check)`** — request a closed verification profile. The profile definitions, sandboxing, and report mapping are owned by [RFC-60](../future/rfc-60-verify-profiles.md).
 
-A filesystem-capable spawned-agent backend ([RFC-58](rfc-58-model-backends.md)) may own its own tool loop and read / write through the `local-path` lent by the working-tree backend ([RFC-55](rfc-55-working-tree.md)). It must still return a validated typed answer through the same [RFC-53](rfc-53-wasi-model.md) boundary and remain recordable.
+A filesystem-capable spawned-agent backend ([RFC-58](rfc-58-model-backends.md)) may own its own tool loop and read / write through the `local-path` lent by the working-tree backend ([RFC-55](../future/rfc-55-working-tree.md)). It must still return a validated typed answer through the same [RFC-53](rfc-53-wasi-model.md) boundary and remain recordable.
 
 ## Session state
 
@@ -52,7 +52,7 @@ Invalid answer candidates are repair-loop inputs, not guest-visible answers.
 ## Out of scope
 
 - The `eval` host boundary and backend trait; see [RFC-53](rfc-53-wasi-model.md).
-- Verify profile definitions and sandboxing; see [RFC-60](rfc-60-verify-profiles.md).
+- Verify profile definitions and sandboxing; see [RFC-60](../future/rfc-60-verify-profiles.md).
 - Backend catalogue and routing; see [RFC-58](rfc-58-model-backends.md).
 
 ## Acceptance criteria

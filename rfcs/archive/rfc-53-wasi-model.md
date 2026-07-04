@@ -1,6 +1,6 @@
 # RFC-53: The `wasi-model` Host Core
 
-> Status: Draft · Order 3 of 10 · Stage S2 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-52](rfc-52-effect.md) · Enables: [RFC-59](rfc-59-model-tool-loop.md), [RFC-58](rfc-58-model-backends.md) · Owns: judgment as a host effect
+> **Status: Archived — implemented in a changed shape.** Omnia ships the `wasi-model` host as `omnia:model@0.1.0` with async `create(request) -> result<reply, error>` (not `eval`), a `WasiModelCtx` backend trait, gate-side answer validation (`format: schema(...)`), and the replay `ModelDefault` backend. See [RFC-61](../rfc-61-omnia-migration.md) for how Specify consumes it. Original: Order 3 of 10 · Stage S2 · Owns: judgment as a host effect
 
 ## Abstract
 
@@ -10,7 +10,7 @@ Judgment is a host effect. Omnia exposes a `wasi-model` host whose `eval` export
 eval: func(prompt: prompt) -> result<answer, error>;
 ```
 
-This RFC owns the boundary only: prompt / answer records, the backend trait behind `eval`, schema validation, error mapping, and the minimal replay-capable backend needed for deterministic tests. The model tool loop is [RFC-59](rfc-59-model-tool-loop.md). Closed verify profiles are [RFC-60](rfc-60-verify-profiles.md). Backend variety and routing are [RFC-58](rfc-58-model-backends.md).
+This RFC owns the boundary only: prompt / answer records, the backend trait behind `eval`, schema validation, error mapping, and the minimal replay-capable backend needed for deterministic tests. The model tool loop is [RFC-59](rfc-59-model-tool-loop.md). Closed verify profiles are [RFC-60](../future/rfc-60-verify-profiles.md). Backend variety and routing are [RFC-58](rfc-58-model-backends.md).
 
 ## The boundary
 
@@ -39,7 +39,7 @@ Replay belongs at the `wasi-model` boundary because it is the test substitute fo
 ## Out of scope
 
 - Tool-call dispatch (`resolve`, `read`, `list`, `write`) and repair-loop semantics; see [RFC-59](rfc-59-model-tool-loop.md).
-- Closed verification profiles, sandboxing, and severity mapping; see [RFC-60](rfc-60-verify-profiles.md).
+- Closed verification profiles, sandboxing, and severity mapping; see [RFC-60](../future/rfc-60-verify-profiles.md).
 - Frontier, spawned-agent, SLM, and router backends; see [RFC-58](rfc-58-model-backends.md).
 
 ## Acceptance criteria

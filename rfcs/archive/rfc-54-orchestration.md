@@ -1,6 +1,6 @@
 # RFC-54: Vertical Adapter Operation Proof
 
-> Status: Draft · Order 5 of 10 · Stage S3 · Depends: [RFC-51](rfc-51-adapter-wit.md), [RFC-53](rfc-53-wasi-model.md), [RFC-59](rfc-59-model-tool-loop.md) · Enables: [RFC-56](rfc-56-runtime-move.md), [RFC-57](rfc-57-specify-guests.md) · Owns: the first end-to-end adapter operation on typed effects
+> **Status: Archived — superseded.** The vertical proof is Step 2 of [RFC-61](../rfc-61-omnia-migration.md): the contracts adapter guest, end to end, on the implemented Omnia runtime. Original: Order 5 of 10 · Stage S3 · Owns: the first end-to-end adapter operation on typed effects
 
 ## Abstract
 
@@ -30,7 +30,7 @@ The operation signature is named at the call site, so a brief is a prompt body, 
 
 - Broad workflow sequencing; see [RFC-57](rfc-57-specify-guests.md).
 - The complete model backend catalogue; see [RFC-58](rfc-58-model-backends.md).
-- Broad target `build` / `merge` migration before verify profiles are locked down; see [RFC-60](rfc-60-verify-profiles.md).
+- Broad target `build` / `merge` migration before verify profiles are locked down; see [RFC-60](../future/rfc-60-verify-profiles.md).
 
 ## Acceptance criteria
 

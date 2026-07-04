@@ -1,6 +1,6 @@
 # Implementation Sequence Plan
 
-> Status: Planning note · Scope: RFCs 51-60 and [architecture.md](architecture.md)
+> **Status: Archived — superseded.** This staging note predates the Omnia refactoring; the migration sequence is now owned by [RFC-61](../rfc-61-omnia-migration.md). Original scope: RFCs 51-60 and [architecture.md](../architecture.md)
 
 ## Sequence
 
@@ -16,9 +16,9 @@
 
 6. **Prove one Specify vertical slice** — Land [RFC-54](rfc-54-orchestration.md): one deterministic tool operation through generated bindings and one judgment operation through `wasi-model.eval`, including the adapter `references` shelf. This validates the contract, runtime, model boundary, and prose-resolution model against real Specify behavior before the architecture spreads.
 
-7. **Materialize working trees** — Land [RFC-55](rfc-55-working-tree.md) before serious target `build` / `merge` migration or spawned-agent work. The `revision -> working-tree -> changeset` loop is the portability hinge and should be proven while the vertical slice is still small.
+7. **Materialize working trees** — Land [RFC-55](../future/rfc-55-working-tree.md) before serious target `build` / `merge` migration or spawned-agent work. The `revision -> working-tree -> changeset` loop is the portability hinge and should be proven while the vertical slice is still small.
 
-8. **Lock down verify profiles** — Land [RFC-60](rfc-60-verify-profiles.md) before broad target migration. The model may name only closed check profiles; the host owns argv, sandboxing, severity mapping, and report normalization. This is the security gate before generated code starts running at scale.
+8. **Lock down verify profiles** — Land [RFC-60](../future/rfc-60-verify-profiles.md) before broad target migration. The model may name only closed check profiles; the host owns argv, sandboxing, severity mapping, and report normalization. This is the security gate before generated code starts running at scale.
 
 9. **Complete the runtime move** — Finish [RFC-56](rfc-56-runtime-move.md): host-mediated dynamic linking, registry selection by identity, component-on-both-axes, CLI trigger behavior, and real backend bindings. At this point the architecture becomes operational rather than aspirational.
 
