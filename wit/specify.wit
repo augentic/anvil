@@ -165,11 +165,14 @@ interface source {
     claims: list<claim>,
   }
 
-  /// Lightly survey the source to create a map of its contents (decompose into leads).
-  survey: func(id: adapter-id) -> result<list<lead>, error>;
+  /// Lightly survey the source to create a map of its contents (decompose
+  /// into leads). An `async func` like every judgment operation: the guest
+  /// awaits the async `omnia:model/completion.create` import mid-call, and
+  /// a sync-lifted export cannot block on a pending host future.
+  survey: async func(id: adapter-id) -> result<list<lead>, error>;
 
   /// Thoroughly extract evidence from a source for a given lead.
-  extract: func(id: adapter-id, lead: lead) -> result<evidence, error>;
+  extract: async func(id: adapter-id, lead: lead) -> result<evidence, error>;
 }
 
 /// The target adapter contract. `build` and `merge` are judgment legs
@@ -281,8 +284,10 @@ interface target {
 
   /// Guidance on the expected build artifacts for this target, read by core
   /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary
-  /// called this operation `shape`; `guidance` is canonical.)
-  guidance: func(id: adapter-id) -> result<string, error>;
+  /// called this operation `shape`; `guidance` is canonical.) Deterministic
+  /// today, but an `async func` like the rest of the interface so an
+  /// adapter may consult its model without a contract change.
+  guidance: async func(id: adapter-id) -> result<string, error>;
 
   /// Build a slice against the shared project mount. The adapter opens its
   /// own `"."` preopen, reads existing code through it, and writes its
@@ -290,7 +295,7 @@ interface target {
   /// `create` call, with references served from its MCP export. The report
   /// carries only judgment — the resulting delta lives in the tree, and the
   /// caller extracts it as a `changeset` against `base` where one is needed.
-  build: func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
+  build: async func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
   /// Merge a built slice into the project's baseline. `delta` is the build's
   /// portable delta (theirs) against `delta.base`; the baseline (ours) is
@@ -299,7 +304,7 @@ interface target {
   /// `create`; validators re-run in guest code after the answer lands. The
   /// report carries the merge judgment; the caller commits the merged
   /// baseline.
-  merge: func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
+  merge: async func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
 }
 
 /// A source adapter component: one axis interface plus the MCP reference

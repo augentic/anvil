@@ -25,6 +25,9 @@ mod bindings {
     wit_bindgen::generate!({
         world: "workflow",
         path: "../../../wit",
+        // The seam operations are `async func`s (judgment legs await the
+        // async `omnia:model` import mid-call), so the imports async-lower.
+        async: true,
     });
 }
 
@@ -37,7 +40,7 @@ wasip3::cli::command::export!(CliGuest);
 
 impl wasip3::exports::cli::run::Guest for CliGuest {
     async fn run() -> Result<(), ()> {
-        let leads = match bindings::augentic::specify::source::survey(ECHO_ADAPTER_ID) {
+        let leads = match bindings::augentic::specify::source::survey(ECHO_ADAPTER_ID.to_string()).await {
             Ok(leads) => leads,
             Err(error) => {
                 eprintln!("survey failed: {error:?}");

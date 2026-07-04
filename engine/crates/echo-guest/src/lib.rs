@@ -25,6 +25,9 @@ mod bindings {
     wit_bindgen::generate!({
         world: "source-adapter",
         path: "../../../wit",
+        // The seam operations are `async func`s (judgment legs await the
+        // async `omnia:model` import mid-call), so the exports async-lift.
+        async: true,
     });
 
     export!(EchoAdapter);
@@ -42,7 +45,7 @@ use wasip3::http::types as http;
 struct EchoAdapter;
 
 impl Guest for EchoAdapter {
-    fn survey(id: AdapterId) -> Result<Vec<Lead>, Error> {
+    async fn survey(id: AdapterId) -> Result<Vec<Lead>, Error> {
         Ok(vec![Lead {
             lead: "echo".to_string(),
             synopsis: format!("echo lead from {id}"),
@@ -50,7 +53,7 @@ impl Guest for EchoAdapter {
         }])
     }
 
-    fn extract(_id: AdapterId, lead: Lead) -> Result<Evidence, Error> {
+    async fn extract(_id: AdapterId, lead: Lead) -> Result<Evidence, Error> {
         Ok(Evidence {
             authority: Authority::Documentation,
             claims: vec![Claim {
