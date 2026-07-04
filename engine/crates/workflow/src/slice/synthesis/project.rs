@@ -34,8 +34,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use specify_error::{Error, Result};
 use specify_model::evidence::{AuthorityClass, ClaimKind};
 
-use crate::slice::model::{ModelClaim, SliceModel};
+use crate::slice::model::{ModelClaim, ModelRequirement, SliceModel};
 use crate::slice::synthesis::authority::{ClaimRef, resolve};
+use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
+
+/// Domain key used when a requirement carries no `domain` field.
+const DEFAULT_DOMAIN: &str = "default";
 
 /// The header fields the kernel stamps onto the persisted `model.yaml`.
 ///
@@ -90,15 +94,20 @@ pub struct ProjectionHeader {
 pub fn project(
     mut model: SliceModel, header: ProjectionHeader, authority: &BTreeMap<String, AuthorityClass>,
     overrides: &BTreeMap<ClaimKind, String>,
-    evidence_claims: &BTreeMap<(String, String), ClaimKind>,
+    evidence_claims: &BTreeMap<(String, String), ClaimKind>, baseline_index: &BaselineIndex,
 ) -> Result<SliceModel> {
     // Step 1 — claim anchoring runs before projection: the kernel
     // cannot project an unanchored claim.
     check_claim_anchors(&model, evidence_claims)?;
 
     // Steps 2–3 — re-derive ids, status, winners, and rendered sources.
-    for (index, requirement) in model.requirements.iter_mut().enumerate() {
-        requirement.id = Some(format!("REQ-{:03}", index + 1));
+    let mut allocator = IdAllocator::new(baseline_index);
+
+    for requirement in &mut model.requirements {
+        let domain = requirement_domain(requirement);
+        let assigned = assign_requirement_id(requirement, &domain, baseline_index, &mut allocator)?;
+        requirement.id = Some(assigned);
+        requirement.baseline_id = None;
 
         let claim_refs: Vec<ClaimRef> = requirement
             .claims
@@ -126,9 +135,112 @@ pub fn project(
 
     // Step 5 — cross-ref then grammar over the now-projected ids.
     check_cross_refs(&model)?;
+    check_unique_ids(&model)?;
     check_id_grammar(&model)?;
 
     Ok(model)
+}
+
+fn requirement_domain(requirement: &ModelRequirement) -> String {
+    requirement.domain.clone().unwrap_or_else(|| DEFAULT_DOMAIN.to_string())
+}
+
+/// Slice-global id allocation seeded from every baseline `REQ-NNN`.
+struct IdAllocator {
+    used: BTreeSet<u32>,
+    next_additive: BTreeMap<String, u32>,
+}
+
+impl IdAllocator {
+    fn new(baseline_index: &BaselineIndex) -> Self {
+        let mut used = BTreeSet::new();
+        for (_, baseline) in baseline_index.domains() {
+            for id in baseline.ids.keys() {
+                if let Some(num) = req_num(id) {
+                    used.insert(num);
+                }
+            }
+        }
+        let mut next_additive = BTreeMap::new();
+        for (domain, baseline) in baseline_index.domains() {
+            if baseline.kind == DomainKind::Modified {
+                next_additive.insert(domain.to_string(), baseline.max_req_num.saturating_add(1));
+            }
+        }
+        Self { used, next_additive }
+    }
+
+    fn allocate(&mut self, floor: u32) -> String {
+        let mut candidate = floor.max(1);
+        while self.used.contains(&candidate) {
+            candidate += 1;
+        }
+        self.used.insert(candidate);
+        format!("REQ-{candidate:03}")
+    }
+}
+
+fn req_num(id: &str) -> Option<u32> {
+    id.strip_prefix("REQ-")?.parse().ok()
+}
+
+fn assign_requirement_id(
+    requirement: &ModelRequirement, domain: &str, baseline_index: &BaselineIndex,
+    allocator: &mut IdAllocator,
+) -> Result<String> {
+    if let Some(baseline_id) = requirement.baseline_id.as_deref() {
+        if !matches_grammar(baseline_id, "REQ-") {
+            return Err(id_grammar_error("baseline_id", baseline_id));
+        }
+        if baseline_index.domain_kind(domain) != DomainKind::Modified {
+            return Err(Error::validation_failed(
+                "slice-model-baseline-id-orphan",
+                "baseline-id is only valid in a domain with an existing baseline spec",
+                format!(
+                    "baseline-id '{baseline_id}' requires a modified domain baseline for '{domain}'"
+                ),
+            ));
+        }
+        if !baseline_index.is_baseline_req(domain, baseline_id) {
+            return Err(Error::validation_failed(
+                "slice-model-baseline-id-orphan",
+                "baseline_id names an existing baseline requirement in a modified domain",
+                format!("baseline_id '{baseline_id}' is not in the baseline for domain '{domain}'"),
+            ));
+        }
+        return Ok(baseline_id.to_string());
+    }
+
+    if baseline_index.domain_kind(domain) == DomainKind::Modified {
+        let floor = *allocator.next_additive.entry(domain.to_string()).or_insert_with(|| {
+            baseline_index
+                .domains()
+                .find(|(name, _)| *name == domain)
+                .map_or(1, |(_, baseline)| baseline.max_req_num.saturating_add(1))
+        });
+        let id = allocator.allocate(floor);
+        if let Some(num) = req_num(&id) {
+            allocator.next_additive.insert(domain.to_string(), num.saturating_add(1));
+        }
+        return Ok(id);
+    }
+
+    Ok(allocator.allocate(1))
+}
+
+fn check_unique_ids(model: &SliceModel) -> Result<()> {
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    for requirement in &model.requirements {
+        let id = requirement.id.as_deref().unwrap_or_default();
+        if !seen.insert(id) {
+            return Err(Error::validation_failed(
+                "slice-model-id-duplicate",
+                "projected requirement ids are unique across the slice",
+                format!("duplicate projected requirement id '{id}'"),
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Reject any claim that does not anchor an on-disk Evidence claim

@@ -327,6 +327,45 @@ description: >-
 }
 
 #[test]
+fn resolves_target_with_native_build_hooks() {
+    // A target manifest may declare `host_prereq` and `finalize_verify`
+    // native build hooks. Both must round-trip through the two-stage
+    // schema gates and `TargetAdapter::resolve`.
+    let (_tmp, project) = local_project();
+    let manifest_dir = project.join("adapters").join("targets").join("with-native-hooks");
+    fs::create_dir_all(&manifest_dir).expect("create target adapter dir");
+    fs::write(
+        manifest_dir.join("adapter.yaml"),
+        r"name: with-native-hooks
+version: 1.0.0
+axis: target
+execution: agent
+briefs:
+  shape: briefs/shape.md
+  build: briefs/build.md
+  merge: briefs/merge.md
+host_prereq:
+  script: scripts/host-prereq.sh
+finalize_verify:
+  script: scripts/finalize-verify.sh
+description: Target adapter declaring native build hooks.
+",
+    )
+    .expect("write manifest with native build hooks");
+
+    let resolved = TargetAdapter::resolve(&AdapterRef::bare("with-native-hooks"), &project)
+        .expect("target adapter declaring native build hooks resolves");
+    assert_eq!(
+        resolved.manifest.host_prereq.as_ref().expect("host_prereq").script,
+        "scripts/host-prereq.sh"
+    );
+    assert_eq!(
+        resolved.manifest.finalize_verify.as_ref().expect("finalize_verify").script,
+        "scripts/finalize-verify.sh"
+    );
+}
+
+#[test]
 fn resolves_target_adapter_with_inputs() {
     // A target manifest declares the extra `build` inputs
     // its operation consumes (paths relative to `inputs.root`, each

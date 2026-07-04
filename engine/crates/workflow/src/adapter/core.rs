@@ -146,6 +146,19 @@ pub struct PrepareHookDeclaration {
     pub argv: Vec<String>,
 }
 
+/// Optional native build hook declared on a target adapter manifest.
+///
+/// When present, `specify slice build` executes the script on the host
+/// with `SPECIFY_PROJECT_DIR` and `SPECIFY_SLICE_DIR` set. `host_prereq`
+/// runs at prepare (before the manifest `prepare` extension hook);
+/// `finalize_verify` runs at finalize on a clean `status: success` report
+/// before the `built` transition.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct NativeBuildHookDeclaration {
+    /// Path relative to the adapter root.
+    pub script: String,
+}
+
 /// Optional catalog capabilities declared on a target adapter manifest.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CatalogCapability {
@@ -526,6 +539,12 @@ pub struct TargetAdapter {
     /// Optional prepare hook for `specify slice build --phase prepare`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prepare: Option<PrepareHookDeclaration>,
+    /// Optional host toolchain gate at `specify slice build --phase prepare`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_prereq: Option<NativeBuildHookDeclaration>,
+    /// Optional host verify backstop at `specify slice build --phase finalize`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finalize_verify: Option<NativeBuildHookDeclaration>,
     /// Optional catalog capabilities (`specify catalog infer`, …).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub catalog: Option<CatalogCapability>,

@@ -44,6 +44,6 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 | [specify extension](extension.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
-| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specify extension run` | Adapter-owned validation + render-only scaffolding |
+| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`, `sync`) run through `specify extension run` | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |
 
 Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specify slice`](slice.md).

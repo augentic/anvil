@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use ::regex::Regex;
 use specify_diagnostics::{Diagnostic, FindingEvidence, FindingLocation};
 
-use self::config::RegexHintConfig;
+use self::config::{RegexEvalMode, RegexHintConfig};
 use super::{HintError, make_finding};
 use crate::lint::{FileKind, WorkspaceModel};
 use crate::rules::{ResolvedRule, RuleHint};
@@ -24,7 +24,7 @@ pub(crate) fn evaluate(
     model: &WorkspaceModel, next_id: &mut u64,
 ) -> Result<Vec<Diagnostic>, HintError> {
     let cfg = RegexHintConfig::parse(rule, hint)?;
-    let pattern = if cfg.slash_skill_positional {
+    let pattern = if matches!(cfg.eval_mode, RegexEvalMode::SlashSkillPositional { .. }) {
         None
     } else {
         Some(Regex::new(&hint.value).map_err(|err| HintError::RegexCompile {
@@ -53,8 +53,11 @@ pub(crate) fn evaluate(
             }
         };
         let text = String::from_utf8_lossy(&bytes);
-        if cfg.slash_skill_positional {
-            let line_iter: Vec<(usize, String)> = if cfg.join_backslash_continuations {
+        if let RegexEvalMode::SlashSkillPositional {
+            join_backslash_continuations,
+        } = cfg.eval_mode
+        {
+            let line_iter: Vec<(usize, String)> = if join_backslash_continuations {
                 logical_lines::logical_lines_with_starts(&text)
             } else {
                 text.lines().enumerate().map(|(idx, line)| (idx + 1, line.to_string())).collect()
@@ -63,7 +66,7 @@ pub(crate) fn evaluate(
                 if !logical_lines::violates_slash_skill_positional(&logical) {
                     continue;
                 }
-                let end_line = if cfg.join_backslash_continuations && logical.contains('\n') {
+                let end_line = if join_backslash_continuations && logical.contains('\n') {
                     start_line + logical.lines().count().saturating_sub(1)
                 } else {
                     start_line
@@ -87,8 +90,26 @@ pub(crate) fn evaluate(
         }
 
         let pattern = pattern.as_ref().expect("slash-skill branch continues above");
+        if matches!(cfg.eval_mode, RegexEvalMode::FileMustContain) {
+            let any_match = text.lines().any(|line| pattern.is_match(line));
+            if !any_match {
+                push_finding(
+                    rule,
+                    hint,
+                    &mut out,
+                    next_id,
+                    &candidate_str,
+                    1,
+                    1,
+                    &format!("no line matches required pattern `{}`", hint.value),
+                );
+            }
+            continue;
+        }
+
+        let line_negative = matches!(cfg.eval_mode, RegexEvalMode::LineNegative);
         for (line_idx, line) in text.lines().enumerate() {
-            if cfg.negative_match {
+            if line_negative {
                 if !pattern.is_match(line) {
                     push_finding(
                         rule,

@@ -33,6 +33,7 @@ use specify_error::{Error, Result};
 
 use crate::registry::topology::Surface;
 use crate::slice::model::SliceModel;
+use crate::slice::synthesis::baseline::BaselineIndex;
 
 /// Wire version pinned by `schemas/slice/synthesis.schema.json`
 /// (`version` `const: 1`) and echoed onto the input envelope.
@@ -145,6 +146,42 @@ pub struct SynthesisInputs {
     /// `model.yaml` change.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub baseline: Vec<Surface>,
+    /// Per-domain baseline `REQ` ids and the highest assigned suffix,
+    /// advisory context for id assignment in modified domains. Empty
+    /// stays off the wire (greenfield).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub baseline_detail: Vec<BaselineDomainDetail>,
+}
+
+/// Advisory per-domain baseline id facts for the synthesis inputs envelope.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct BaselineDomainDetail {
+    /// Domain directory slug under `.specify/specs/`.
+    pub domain: String,
+    /// Existing baseline `REQ-NNN` ids in id order.
+    pub req_ids: Vec<String>,
+    /// Highest numeric suffix among `req_ids` (0 when the domain is empty).
+    pub max_req_num: u32,
+}
+
+impl From<&BaselineIndex> for Vec<BaselineDomainDetail> {
+    fn from(index: &BaselineIndex) -> Self {
+        let mut details: Self = index
+            .domains()
+            .map(|(domain, baseline)| {
+                let mut req_ids: Vec<String> = baseline.ids.keys().cloned().collect();
+                req_ids.sort();
+                BaselineDomainDetail {
+                    domain: domain.to_string(),
+                    req_ids,
+                    max_req_num: baseline.max_req_num,
+                }
+            })
+            .collect();
+        details.sort_by(|left, right| left.domain.cmp(&right.domain));
+        details
+    }
 }
 
 /// One bound source's contribution to the synthesis inputs.
@@ -214,6 +251,7 @@ impl SynthesisSourceInput {
 #[must_use]
 pub fn build_synthesis_inputs(
     slice: &str, sources: &[SynthesisSourceInput], shape_brief: &str, baseline: &[Surface],
+    baseline_detail: &[BaselineDomainDetail],
 ) -> SynthesisInputs {
     SynthesisInputs {
         version: SYNTHESIS_VERSION,
@@ -222,5 +260,6 @@ pub fn build_synthesis_inputs(
         sources: sources.to_vec(),
         shape_brief: shape_brief.to_string(),
         baseline: baseline.to_vec(),
+        baseline_detail: baseline_detail.to_vec(),
     }
 }

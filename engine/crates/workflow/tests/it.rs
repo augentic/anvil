@@ -24,6 +24,8 @@ mod goldens;
 mod merge_composition;
 #[path = "merge_slice.rs"]
 mod merge_slice;
+#[path = "native_hook.rs"]
+mod native_hook;
 #[path = "plan_schema.rs"]
 mod plan_schema;
 #[path = "propose_topology.rs"]
@@ -32,6 +34,8 @@ mod propose_topology;
 mod registry;
 #[path = "runner.rs"]
 mod runner;
+#[path = "synthesis_baseline.rs"]
+mod synthesis_baseline;
 #[path = "upgrade.rs"]
 mod upgrade;
 #[path = "workspace.rs"]

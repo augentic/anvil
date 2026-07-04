@@ -20,3 +20,12 @@ Contract authoring skills (OpenAPI, AsyncAPI, JSON Schema) write only inside the
 - **Do not modify any file outside `$SLICE_DIR/contracts/`** (or `$SLICE_DIR/contracts/schemas/` for the JSON Schema skill).
 - **Never modify baseline files in root `contracts/`.** All authored output lands in the slice-local `contracts/` directory; merging into the baseline is `specify slice merge run`'s job.
 - **Never silently delete or narrow a baseline schema's fields.** If the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id`.
+
+## Consumer tooling boundary
+
+During slice **execute / build / merge**, agents are **consumers** of Specify and adapters — not maintainers.
+
+- **Do not** edit `specify`, `specify-adapters`, adapter templates, `adapter.wasm`, or `~/.cache/specify/**` to unblock a failing build.
+- **Do not** run `specify adapter build`, `sync *-scaffold`, or rebuild/copy WASM to work around verify drift during consumer execute (sync/scaffold remain orchestrator-owned per the Vectis build brief; this rule blocks *agent-initiated* upstream patching).
+- On scaffold, verify, finalize, or toolchain failure: **stop**, print CLI `stop:` / `hint:` / `resume:` output, and exit. Tooling fixes belong in specify / specify-adapters in a separate maintainer session.
+- Canonical "stop, don't patch" example: Vectis [Template / version-pin drift handling](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/build.md#template--version-pin-drift-handling) (`adapters/targets/vectis/briefs/build.md` in consumer projects).

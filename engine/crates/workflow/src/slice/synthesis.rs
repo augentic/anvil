@@ -10,6 +10,7 @@
 //! performs I/O of its own.
 
 pub mod authority;
+pub mod baseline;
 pub mod project;
 pub mod render;
 pub mod wire;
