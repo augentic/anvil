@@ -9,6 +9,14 @@
 /// `format: schema(...)` so the host gate validates the answer before the
 /// guest deserializes it into the records below.
 ///
+/// The answer schemas are not hand-written: they derive from the embedded
+/// canonical schemas (`schemas/discovery/lead.schema.json`,
+/// `schemas/evidence.schema.json`, `schemas/target/build-report.schema.json`)
+/// as the generated documents under `schemas/answers/`, and the records below
+/// mirror what those schemas carry minus call-scoped envelope fields (the
+/// surveyed source, the extracted lead, the built slice and target) that the
+/// caller already knows.
+///
 /// No resource types cross the guest-to-guest seam: Omnia's host-mediated
 /// dispatch carries plain values only, routed by each call's `adapter-id`
 /// first argument. Every guest in a deployment shares the same `[[mount]]`
@@ -71,23 +79,53 @@ interface types {
 interface source {
   use types.{ adapter-id, error };
 
-  /// The lead returned by the survey operation.
+  /// The lead returned by the survey operation. Mirrors
+  /// `schemas/discovery/lead.schema.json` minus the envelope `source` key:
+  /// the workflow guest attributes every lead a survey produces to the
+  /// surveyed source itself.
   record lead {
-    /// The path to the section in the source that the lead corresponds to.
-    /// Uses the file#line syntax to identify the section.
-    path: string,
+    /// Stable kebab-case lead identifier, unique only within its source;
+    /// identity is the `(source, lead)` pair. Named `lead` to match the
+    /// schema key, so answers deserialize without a rename.
+    lead: string,
     /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
     synopsis: string,
+    /// Agent-authored per-lead topic slugs (kebab-case). Empty means
+    /// unclassified (an answer may omit the key); never blocks
+    /// reconciliation.
+    topics: list<string>,
   }
 
-  /// The weight to assign this evidence during conflict resolution.
-  enum weight {
-    /// Operator directives. Highest weight.
-    directive,
-    /// Written specifications. Medium weight.
-    specification,
-    /// Empirical observations. Lowest weight.
-    observation
+  /// Document-level authority class for an Evidence document, per the
+  /// workflow's closed authority hierarchy (`intent` > `documentation` >
+  /// `behaviour`). Controls who wins a cross-source disagreement.
+  enum authority {
+    /// Operator directives. Highest authority.
+    intent,
+    /// Written specifications and documentation.
+    documentation,
+    /// Empirically observed behaviour. Lowest authority.
+    behaviour
+  }
+
+  /// The closed claim-kind taxonomy from `schemas/evidence.schema.json`.
+  /// New kinds require updating the workflow contract and schemas together.
+  enum claim-kind {
+    intent,
+    requirement,
+    criterion,
+    decision,
+    section,
+    diagram,
+    contract,
+    /// Runtime capture claims emitted by the `captures` source adapter.
+    example,
+    excerpt,
+    %type,
+    call,
+    region,
+    container,
+    leaf
   }
 
   /// The backing data of the claim's evidence.
@@ -100,17 +138,29 @@ interface source {
 
   /// A claim extracted from the source adapter.
   record claim {
+    /// The claim's kind from the closed taxonomy.
+    kind: claim-kind,
+    /// Stable claim identifier (dotted kebab slug, e.g.
+    /// `password-reset.expiry`). Required when `kind` is `requirement`,
+    /// `criterion`, or `example`; optional on other kinds.
+    id: option<string>,
+    /// Per-claim source anchor: `<path>`, `<path>#L<n>`, or
+    /// `<path>#L<start>-L<end>`.
+    path: option<string>,
     /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
     /// Used by the synthesis engine to merge related claims across sources.
-    synopsis: string,
+    /// An open per-kind body field in the schema, so answers may omit it.
+    synopsis: option<string>,
     /// The backing data of the claim's evidence (either a path or a raw payload).
     backing: option<backing>,
   }
 
-  /// The evidence returned by the extract operation.
+  /// The evidence returned by the extract operation. Mirrors
+  /// `schemas/evidence.schema.json` minus the envelope `lead` key: the
+  /// extract call names the lead, so the answer never repeats it.
   record evidence {
-    /// The evidence's weight.
-    weight: weight,
+    /// The document-level authority class of this evidence.
+    authority: authority,
     /// The claims extracted from the source.
     claims: list<claim>,
   }
@@ -150,37 +200,83 @@ interface target {
     subpath: option<string>,
   }
 
-  /// The severity of a finding.
+  /// The severity of a finding. The closed review severity enum from
+  /// `schemas/diagnostics/diagnostic.schema.json`, ordered for sort
+  /// stability (`critical` < `important` < `suggestion` < `optional`).
   enum severity {
     critical,
     important,
-    suggestion
+    suggestion,
+    optional
   }
 
-  /// A finding from the operation.
+  /// A finding from the operation: the compact projection of one
+  /// diagnostic from the schema-gated answer (whose `findings[]` carry
+  /// the full `schemas/diagnostics/diagnostic.schema.json` shape). The
+  /// guest maps `rule-id` and `severity` through and folds the
+  /// diagnostic's `title` / `impact` / `remediation` prose into
+  /// `detail`; the full diagnostic stays in the answer, not on the seam.
   record finding {
-    /// The finding's rule identifier.
-    rule-id: string,
+    /// The finding's rule identifier. Optional in the diagnostic shape —
+    /// absent for findings that do not cite codex policy.
+    rule-id: option<string>,
     /// The severity of the finding.
     severity: severity,
     /// The detail of the finding.
     detail: string,
   }
 
-  /// The outcome of the operation.
-  enum outcome {
+  /// The status of the operation.
+  enum status {
     success,
     failure,
   }
 
-  /// Judgment returned by the `build` and `merge` operations. The resulting
-  /// state — a build's delta, or the merged baseline — lives in the working
-  /// tree, not in this report.
+  /// The closed target platform taxonomy from
+  /// `schemas/target/build-report.schema.json`.
+  enum platform {
+    core,
+    ios,
+    android,
+    web,
+    desktop
+  }
+
+  /// One per-platform build output: a relative path (from the project
+  /// root) to a produced artifact. The caller verifies each declared
+  /// path exists and is non-empty.
+  record build-output {
+    /// Platform this output was produced for.
+    platform: platform,
+    /// Relative path (from the project root) to the produced artifact.
+    path: string,
+  }
+
+  /// Per-slice UI-surface signal authored from the build's own screen
+  /// identification judgement. `screens: 0` means no UI surface.
+  record ui-surface {
+    /// Count of screen-bearing requirements this slice introduces or modifies.
+    screens: u32,
+  }
+
+  /// Judgment returned by the `build` and `merge` operations. Mirrors
+  /// `schemas/target/build-report.schema.json` minus the envelope keys
+  /// (`version`, `slice`, `target`) the caller already knows. The
+  /// resulting state — a build's delta, or the merged baseline — lives
+  /// in the working tree, not in this report.
   record report {
-    /// The outcome of the operation.
-    outcome: outcome,
-    /// The findings from the operation.
+    /// The status of the operation. Named `status` to match the schema
+    /// key, so answers deserialize without a rename.
+    status: status,
+    /// The findings from the operation. On success, only non-blocking
+    /// findings (or none); partial success is `success` with
+    /// non-blocking findings.
     findings: list<finding>,
+    /// Per-platform build outputs produced by the operation. Empty when
+    /// the answer omits the key.
+    outputs: list<build-output>,
+    /// Optional per-slice UI-surface signal; absent reports stay valid.
+    ui-surface: option<ui-surface>,
   }
 
   /// Guidance on the expected build artifacts for this target, read by core

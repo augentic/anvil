@@ -164,6 +164,25 @@ pub const BUILD_REPORT_JSON_SCHEMA: &str =
 pub const CONTRACT_DUMP_JSON_SCHEMA: &str =
     include_str!("../../../../schemas/contract/dump.schema.json");
 
+/// Generated judgment-answer schema for a source adapter's `survey`
+/// operation (`{ leads: [...] }`). Derived from `LEAD_JSON_SCHEMA` by
+/// [`crate::answers::leads`]; regenerate via the `answers` parity test.
+pub const LEADS_ANSWER_JSON_SCHEMA: &str =
+    include_str!("../../../../schemas/answers/leads.schema.json");
+
+/// Generated judgment-answer schema for a source adapter's `extract`
+/// operation (Evidence minus the envelope `lead`). Derived from
+/// `EVIDENCE_JSON_SCHEMA` by [`crate::answers::evidence`].
+pub const EVIDENCE_ANSWER_JSON_SCHEMA: &str =
+    include_str!("../../../../schemas/answers/evidence.schema.json");
+
+/// Generated judgment-answer schema for `build` / `merge`.
+///
+/// The report minus the envelope keys, diagnostic inlined. Derived from
+/// `BUILD_REPORT_JSON_SCHEMA` by [`crate::answers::report`].
+pub const REPORT_ANSWER_JSON_SCHEMA: &str =
+    include_str!("../../../../schemas/answers/report.schema.json");
+
 /// Every embedded schema as `(constant-name, schemas/-relative path,
 /// body)`, in declaration order.
 ///
@@ -236,4 +255,11 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         BUILD_REPORT_JSON_SCHEMA,
     ),
     ("CONTRACT_DUMP_JSON_SCHEMA", "schemas/contract/dump.schema.json", CONTRACT_DUMP_JSON_SCHEMA),
+    ("LEADS_ANSWER_JSON_SCHEMA", "schemas/answers/leads.schema.json", LEADS_ANSWER_JSON_SCHEMA),
+    (
+        "EVIDENCE_ANSWER_JSON_SCHEMA",
+        "schemas/answers/evidence.schema.json",
+        EVIDENCE_ANSWER_JSON_SCHEMA,
+    ),
+    ("REPORT_ANSWER_JSON_SCHEMA", "schemas/answers/report.schema.json", REPORT_ANSWER_JSON_SCHEMA),
 ];

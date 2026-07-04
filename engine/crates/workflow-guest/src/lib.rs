@@ -45,7 +45,7 @@ impl wasip3::exports::cli::run::Guest for CliGuest {
             }
         };
         for lead in leads {
-            println!("lead: {} — {}", lead.path, lead.synopsis);
+            println!("lead: {} — {}", lead.lead, lead.synopsis);
         }
 
         // The mount-preopen seam: the host resolves the manifest's `[[mount]]`

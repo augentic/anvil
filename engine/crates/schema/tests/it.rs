@@ -4,6 +4,8 @@
 //! `#[path]` submodule so the crate-under-test links exactly once. See
 //! [docs/standards/testing.md](../../../docs/standards/testing.md).
 
+#[path = "answers.rs"]
+mod answers;
 #[path = "schemas.rs"]
 mod schemas;
 #[path = "wire_fixtures.rs"]

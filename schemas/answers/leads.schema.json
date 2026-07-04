@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "kebabName": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/schemas/answers/leads.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — derived from schemas/discovery/lead.schema.json by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the canonical lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source).",
+  "properties": {
+    "leads": {
+      "description": "Every lead the survey surfaced, in source order.",
+      "items": {
+        "additionalProperties": false,
+        "description": "Validates a single raw, unmerged `Lead` block under `## Lead inventory` in `discovery.md` per workflow §Discovery handshake. Each block is one lead as surfaced by one source: a `source` naming the binding that produced it, a kebab-case `lead` (unique only within that `source`), and a content-bearing per-source `synopsis`. Identity is the `(source, lead)` pair; the same `lead` MAY appear under different source keys, and cross-source unification is deferred to `/spec:plan`'s plan-time `propose` sub-step. `slices[].sources[].lead` resolves against the canonical `lead` id within the binding's `source`.",
+        "properties": {
+          "lead": {
+            "$ref": "#/$defs/kebabName",
+            "description": "Stable kebab-case lead identifier, unique only within its `source`. Re-survey of that source replaces the block by `(source, lead)`."
+          },
+          "source": false,
+          "synopsis": {
+            "description": "Reconciliation-grade per-source headline of the lead as this source surfaced it. SHOULD name the operation/surface and its salient constraint distinctly enough that a same-slug lead from another source can be matched or distinguished on content, not just the slug. MAY span more than one line when one is too thin. Plan-time headline material only — never a back-door for slice-time `Evidence`, which remains the job of `extract`.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "topics": {
+            "description": "Optional agent-authored per-lead topic slugs (kebab-case). Survey populates them as additional context; absent means unclassified. The CLI computes no grouping from `topics` — it is agent context plus the join key for the propose-time decision-contradiction warning. A missing `topics` never blocks reconciliation.",
+            "items": {
+              "$ref": "#/$defs/kebabName"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "lead",
+          "synopsis"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "leads"
+  ],
+  "title": "Specify survey answer",
+  "type": "object"
+}

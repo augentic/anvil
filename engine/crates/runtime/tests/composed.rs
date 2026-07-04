@@ -79,7 +79,7 @@ fn binary_stdout() -> Result<()> {
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
-        stdout.contains("lead: echo.md#L1 — echo lead from source:echo"),
+        stdout.contains("lead: echo — echo lead from source:echo"),
         "stdout did not carry the echoed lead:\n{stdout}"
     );
     assert!(

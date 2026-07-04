@@ -31,7 +31,7 @@ mod bindings {
 }
 
 use bindings::exports::augentic::specify::source::{
-    AdapterId, Claim, Error, Evidence, Guest, Lead, Weight,
+    AdapterId, Authority, Claim, ClaimKind, Error, Evidence, Guest, Lead,
 };
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
@@ -44,16 +44,20 @@ struct EchoAdapter;
 impl Guest for EchoAdapter {
     fn survey(id: AdapterId) -> Result<Vec<Lead>, Error> {
         Ok(vec![Lead {
-            path: "echo.md#L1".to_string(),
+            lead: "echo".to_string(),
             synopsis: format!("echo lead from {id}"),
+            topics: Vec::new(),
         }])
     }
 
     fn extract(_id: AdapterId, lead: Lead) -> Result<Evidence, Error> {
         Ok(Evidence {
-            weight: Weight::Specification,
+            authority: Authority::Documentation,
             claims: vec![Claim {
-                synopsis: lead.synopsis,
+                kind: ClaimKind::Excerpt,
+                id: None,
+                path: None,
+                synopsis: Some(lead.synopsis),
                 backing: None,
             }],
         })
