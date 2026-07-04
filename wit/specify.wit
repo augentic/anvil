@@ -1,4 +1,4 @@
-package augentic:specify@0.2.0;
+package augentic:specify@0.1.0;
 
 interface types {
   /// The error returned by operations.
@@ -175,12 +175,10 @@ interface target {
 
 world source-adapter {
   export source;
-  export references;
 }
 
 world target-adapter {
   export target;
-  export references;
 }
 
 world workflow {

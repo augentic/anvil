@@ -198,8 +198,8 @@ tokio = { version = "1", features = ["fs", "io-util", "rt"] }
 ureq = { version = "3", features = ["json"] }
 wasm-pkg-client = "0.15"
 zstd = "0.13"
-wasmtime = { version = "45.0.0", default-features = false, features = ["cache", "component-model", "cranelift", "runtime"] }
-wasmtime-wasi = { version = "45.0.0", default-features = false, features = ["p2"] }
+wasmtime = { version = "45.0.3", default-features = false, features = ["cache", "component-model", "cranelift", "runtime"] }
+wasmtime-wasi = { version = "45.0.3", default-features = false, features = ["p2"] }
 
 [profile.release]
 lto = true
