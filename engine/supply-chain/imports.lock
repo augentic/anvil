@@ -78,6 +78,13 @@ user-id = 6741
 user-login = "Darksonn"
 user-name = "Alice Ryhl"
 
+[[publisher.cexpr]]
+version = "0.6.0"
+when = "2021-10-11"
+user-id = 3788
+user-login = "emilio"
+user-name = "Emilio Cobos Álvarez"
+
 [[publisher.clap]]
 version = "4.6.1"
 when = "2026-04-15"
@@ -131,8 +138,18 @@ version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-assembler-x64]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-assembler-x64-meta]]
 version = "0.132.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.cranelift-assembler-x64-meta]]
+version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -141,8 +158,18 @@ version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-bforest]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-bitset]]
 version = "0.132.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.cranelift-bitset]]
+version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -151,8 +178,18 @@ version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-codegen]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-codegen-meta]]
 version = "0.132.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.cranelift-codegen-meta]]
+version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -161,8 +198,18 @@ version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-codegen-shared]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-control]]
 version = "0.132.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.cranelift-control]]
+version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -171,8 +218,18 @@ version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-entity]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-frontend]]
 version = "0.132.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.cranelift-frontend]]
+version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -181,13 +238,28 @@ version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-isle]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-native]]
 version = "0.132.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.cranelift-native]]
+version = "0.133.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.cranelift-srcgen]]
 version = "0.132.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.cranelift-srcgen]]
+version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -345,8 +417,18 @@ version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.pulley-interpreter]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.pulley-macros]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.pulley-macros]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -433,9 +515,23 @@ user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
+[[publisher.serde_bytes]]
+version = "0.11.19"
+when = "2025-09-15"
+user-id = 3618
+user-login = "dtolnay"
+user-name = "David Tolnay"
+
 [[publisher.serde_json]]
 version = "1.0.150"
 when = "2026-05-21"
+user-id = 3618
+user-login = "dtolnay"
+user-name = "David Tolnay"
+
+[[publisher.serde_path_to_error]]
+version = "0.1.20"
+when = "2025-09-15"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -587,8 +683,22 @@ user-id = 4484
 user-login = "hsivonen"
 user-name = "Henri Sivonen"
 
+[[publisher.wasi]]
+version = "0.14.7+wasi-0.2.4"
+when = "2025-09-15"
+user-id = 1
+user-login = "alexcrichton"
+user-name = "Alex Crichton"
+
 [[publisher.wasip2]]
 version = "1.0.4+wasi-0.2.12"
+when = "2026-06-12"
+user-id = 1
+user-login = "alexcrichton"
+user-name = "Alex Crichton"
+
+[[publisher.wasip3]]
+version = "0.7.0+wasi-0.3.0"
 when = "2026-06-12"
 user-id = 1
 user-login = "alexcrichton"
@@ -612,6 +722,11 @@ when = "2026-04-28"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
 
 [[publisher.wasm-encoder]]
+version = "0.251.0"
+when = "2026-05-28"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
+
+[[publisher.wasm-encoder]]
 version = "0.252.0"
 when = "2026-06-12"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
@@ -621,6 +736,11 @@ version = "0.236.0"
 when = "2025-07-28"
 user-id = 73222
 user-login = "wasmtime-publish"
+
+[[publisher.wasm-metadata]]
+version = "0.251.0"
+when = "2026-05-28"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
 
 [[publisher.wasmparser]]
 version = "0.121.2"
@@ -640,6 +760,11 @@ when = "2026-04-28"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
 
 [[publisher.wasmparser]]
+version = "0.251.0"
+when = "2026-05-28"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
+
+[[publisher.wasmparser]]
 version = "0.252.0"
 when = "2026-06-12"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
@@ -656,13 +781,28 @@ version = "0.248.0"
 when = "2026-04-28"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
 
+[[publisher.wasmprinter]]
+version = "0.251.0"
+when = "2026-05-28"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
+
 [[publisher.wasmtime]]
 version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-environ]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-environ]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -676,8 +816,18 @@ version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-internal-component-macro]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-internal-component-util]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-internal-component-util]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -686,8 +836,18 @@ version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-internal-core]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-internal-cranelift]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-internal-cranelift]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -696,8 +856,18 @@ version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-internal-fiber]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-internal-jit-debug]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-internal-jit-debug]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -706,13 +876,28 @@ version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-internal-jit-icache-coherence]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-internal-unwinder]]
 version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-internal-unwinder]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-internal-versioned-export-macros]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-internal-versioned-export-macros]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -726,13 +911,38 @@ version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-internal-wit-bindgen]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-wasi]]
 version = "45.0.3"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.wasmtime-wasi]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-wasi-config]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-wasi-http]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
 [[publisher.wasmtime-wasi-io]]
 version = "45.0.3"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wasmtime-wasi-io]]
+version = "46.0.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
@@ -745,6 +955,21 @@ trusted-publisher = "github:bytecodealliance/wasm-tools"
 version = "1.252.0"
 when = "2026-06-12"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
+
+[[publisher.wiggle]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wiggle-generate]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+
+[[publisher.wiggle-macro]]
+version = "46.0.1"
+when = "2026-06-24"
+trusted-publisher = "github:bytecodealliance/wasmtime"
 
 [[publisher.winapi-util]]
 version = "0.1.11"
@@ -1036,9 +1261,34 @@ version = "0.57.1"
 when = "2026-04-17"
 trusted-publisher = "github:bytecodealliance/wit-bindgen"
 
+[[publisher.wit-bindgen]]
+version = "0.58.0"
+when = "2026-06-08"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+
+[[publisher.wit-bindgen-core]]
+version = "0.58.0"
+when = "2026-06-08"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+
+[[publisher.wit-bindgen-rust]]
+version = "0.58.0"
+when = "2026-06-08"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+
+[[publisher.wit-bindgen-rust-macro]]
+version = "0.58.0"
+when = "2026-06-08"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+
 [[publisher.wit-component]]
 version = "0.244.0"
 when = "2026-01-06"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
+
+[[publisher.wit-component]]
+version = "0.251.0"
+when = "2026-05-28"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
 
 [[publisher.wit-parser]]
@@ -1049,6 +1299,11 @@ trusted-publisher = "github:bytecodealliance/wasm-tools"
 [[publisher.wit-parser]]
 version = "0.248.0"
 when = "2026-04-28"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
+
+[[publisher.wit-parser]]
+version = "0.251.0"
+when = "2026-05-28"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
 
 [[audits.bytecode-alliance.wildcard-audits.arbitrary]]
@@ -1194,11 +1449,31 @@ start = "2021-12-03"
 end = "2026-08-21"
 notes = "We (Bytecode Alliance) are the primary authors of regalloc2 and co-develop it with Cranelift/Wasmtime, with the same code-review, testing/fuzzing, and security standards."
 
+[[audits.bytecode-alliance.wildcard-audits.wasi]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+user-id = 1 # Alex Crichton (alexcrichton)
+start = "2025-08-10"
+end = "2026-08-21"
+notes = """
+This is a Bytecode Alliance authored crate.
+"""
+
 [[audits.bytecode-alliance.wildcard-audits.wasip2]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
 user-id = 1 # Alex Crichton (alexcrichton)
 start = "2025-08-10"
+end = "2026-08-21"
+notes = """
+This is a Bytecode Alliance authored crate.
+"""
+
+[[audits.bytecode-alliance.wildcard-audits.wasip3]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+user-id = 1 # Alex Crichton (alexcrichton)
+start = "2025-09-10"
 end = "2026-08-21"
 notes = """
 This is a Bytecode Alliance authored crate.
@@ -1236,6 +1511,14 @@ The Bytecode Alliance uses the `wasmtime-publish` crates.io account to automate
 publication of this crate from CI. This repository requires all PRs are reviewed
 by a Bytecode Alliance maintainer and it owned by the Bytecode Alliance itself.
 """
+
+[[audits.bytecode-alliance.wildcard-audits.wasm-metadata]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wasm-tools"
+start = "2026-02-10"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
 
 [[audits.bytecode-alliance.wildcard-audits.wasmparser]]
 who = "Alex Crichton <alex@alexcrichton.com>"
@@ -1399,6 +1682,22 @@ start = "2026-01-07"
 end = "2027-01-08"
 notes = "The Bytecode Alliance is the author of this crate"
 
+[[audits.bytecode-alliance.wildcard-audits.wasmtime-wasi-config]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+start = "2026-01-07"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
+[[audits.bytecode-alliance.wildcard-audits.wasmtime-wasi-http]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+start = "2026-01-07"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
 [[audits.bytecode-alliance.wildcard-audits.wasmtime-wasi-io]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
@@ -1423,6 +1722,30 @@ start = "2025-08-14"
 end = "2027-01-08"
 notes = "The Bytecode Alliance is the author of this crate"
 
+[[audits.bytecode-alliance.wildcard-audits.wiggle]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+start = "2026-01-07"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
+[[audits.bytecode-alliance.wildcard-audits.wiggle-generate]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+start = "2026-01-07"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
+[[audits.bytecode-alliance.wildcard-audits.wiggle-macro]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wasmtime"
+start = "2026-01-07"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
 [[audits.bytecode-alliance.wildcard-audits.winch-codegen]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
@@ -1432,6 +1755,30 @@ end = "2027-01-08"
 notes = "The Bytecode Alliance is the author of this crate"
 
 [[audits.bytecode-alliance.wildcard-audits.wit-bindgen]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+start = "2025-08-13"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
+[[audits.bytecode-alliance.wildcard-audits.wit-bindgen-core]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+start = "2025-08-13"
+end = "2027-01-08"
+notes = "The Bytecode Alliance is the author of this crate"
+
+[[audits.bytecode-alliance.wildcard-audits.wit-bindgen-rust]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+trusted-publisher = "github:bytecodealliance/wit-bindgen"
+start = "2025-08-13"
+end = "2027-01-12"
+notes = "The Bytecode Alliance is the author of this crate"
+
+[[audits.bytecode-alliance.wildcard-audits.wit-bindgen-rust-macro]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
 trusted-publisher = "github:bytecodealliance/wit-bindgen"
@@ -1684,6 +2031,17 @@ criteria = "safe-to-deploy"
 delta = "0.2.8 -> 0.2.14"
 notes = "Minor updates, nothing awry. Mostly portability updates."
 
+[[audits.bytecode-alliance.audits.crossbeam-channel]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.5.4 -> 0.5.8"
+notes = """
+This diff does what it says on the tin for this version range, notably fixing a
+race condition, improving handling of durations, and additionally swapping out a
+spin lock with a lock from the standard library. Minor bits of `unsafe` code
+are modified but that's expected given the nature of this crate.
+"""
+
 [[audits.bytecode-alliance.audits.crossbeam-epoch]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
@@ -1735,6 +2093,16 @@ notes = "Just a dependency version bump and a bug fix for redox"
 who = "Dan Gohman <dev@sunfishcode.online>"
 criteria = "safe-to-deploy"
 delta = "0.3.9 -> 0.3.10"
+
+[[audits.bytecode-alliance.audits.fallible-iterator]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.2.0 -> 0.3.0"
+notes = """
+This major version update has a few minor breaking changes but everything
+this crate has to do with iterators and `Result` and such. No `unsafe` or
+anything like that, all looks good.
+"""
 
 [[audits.bytecode-alliance.audits.fixedbitset]]
 who = "Nick Fitzgerald <fitzgen@gmail.com>"
@@ -1898,6 +2266,24 @@ criteria = "safe-to-deploy"
 delta = "0.8.5 -> 0.8.9"
 notes = "No new unsafe code, just refactorings."
 
+[[audits.bytecode-alliance.audits.nu-ansi-term]]
+who = "Pat Hickey <phickey@fastly.com>"
+criteria = "safe-to-deploy"
+version = "0.46.0"
+notes = "one use of unsafe to call windows specific api to get console handle."
+
+[[audits.bytecode-alliance.audits.nu-ansi-term]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.46.0 -> 0.50.1"
+notes = "Lots of stylistic/rust-related changes, plus new features, but nothing out of the ordrinary."
+
+[[audits.bytecode-alliance.audits.nu-ansi-term]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.50.1 -> 0.50.3"
+notes = "CI changes, Rust changes, nothing out of the ordinary."
+
 [[audits.bytecode-alliance.audits.num-traits]]
 who = "Andrew Brown <andrew.brown@intel.com>"
 criteria = "safe-to-deploy"
@@ -1970,6 +2356,12 @@ criteria = "safe-to-deploy"
 version = "0.1.4"
 notes = "I always really enjoy reading eliza's code, she left perfect comments at every use of unsafe."
 
+[[audits.bytecode-alliance.audits.shlex]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+version = "1.1.0"
+notes = "Only minor `unsafe` code blocks which look valid and otherwise does what it says on the tin."
+
 [[audits.bytecode-alliance.audits.static_assertions]]
 who = "Andrew Brown <andrew.brown@intel.com>"
 criteria = "safe-to-deploy"
@@ -2018,6 +2410,21 @@ No major changes, mostly CI changes in this update. A new `Default` impl
 and a new test.
 """
 
+[[audits.bytecode-alliance.audits.tracing-log]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+version = "0.1.3"
+notes = """
+This is a standard adapter between the `log` ecosystem and the `tracing`
+ecosystem. There's one `unsafe` block in this crate and it's well-scoped.
+"""
+
+[[audits.bytecode-alliance.audits.tracing-log]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.1.3 -> 0.2.0"
+notes = "Nothing out of the ordinary, a typical major version update and nothing awry."
+
 [[audits.bytecode-alliance.audits.try-lock]]
 who = "Pat Hickey <phickey@fastly.com>"
 criteria = "safe-to-deploy"
@@ -2032,6 +2439,12 @@ notes = """
 Crate is sound, albeit leaky, and not actively malicious. Probably not the best
 crate to use in practice but it's suitable for testing dependencies.
 """
+
+[[audits.bytecode-alliance.audits.vcpkg]]
+who = "Pat Hickey <phickey@fastly.com>"
+criteria = "safe-to-deploy"
+version = "0.2.15"
+notes = "no build.rs, no macros, no unsafe. It reads the filesystem and makes copies of DLLs into OUT_DIR."
 
 [[audits.bytecode-alliance.audits.want]]
 who = "Pat Hickey <phickey@fastly.com>"
@@ -2086,6 +2499,12 @@ criteria = "safe-to-deploy"
 delta = "0.243.0 -> 0.244.0"
 notes = "The Bytecode Alliance is the author of this crate"
 
+[[audits.bytecode-alliance.audits.wast]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+version = "35.0.2"
+notes = "The Bytecode Alliance is the author of this crate."
+
 [[audits.bytecode-alliance.audits.xattr]]
 who = "Andrew Brown <andrew.brown@intel.com>"
 criteria = "safe-to-deploy"
@@ -2134,11 +2553,23 @@ criteria = "safe-to-deploy"
 version = "0.8.12"
 notes = "No unsafe usage (forbidden) or ambient capabilities"
 
+[[audits.embark-studios.audits.tap]]
+who = "Johan Andersson <opensource@embark-studios.com>"
+criteria = "safe-to-deploy"
+version = "1.0.1"
+notes = "No unsafe usage or ambient capabilities"
+
 [[audits.embark-studios.audits.utf8parse]]
 who = "Johan Andersson <opensource@embark-studios.com>"
 criteria = "safe-to-deploy"
 version = "0.2.1"
 notes = "Single unsafe usage that looks sound, no ambient capabilities"
+
+[[audits.embark-studios.audits.valuable]]
+who = "Johan Andersson <opensource@embark-studios.com>"
+criteria = "safe-to-deploy"
+version = "0.1.0"
+notes = "No unsafe usage or ambient capabilities, sane build script"
 
 [[audits.google.audits.aes]]
 who = "Joshua Liebow-Feeser <joshlf@google.com>"
@@ -2297,6 +2728,12 @@ https://source.chromium.org/chromium/chromium/src/+/28841c33c77833cc30b286f9ae24
 """
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
+[[audits.google.audits.httpdate]]
+who = "George Burgess IV <gbiv@google.com>"
+criteria = "safe-to-deploy"
+version = "1.0.3"
+aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
+
 [[audits.google.audits.lazy_static]]
 who = "Lukasz Anforowicz <lukasza@chromium.org>"
 criteria = "safe-to-deploy"
@@ -2369,12 +2806,6 @@ aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust
 who = "Max Lee <endlesspring@google.com>"
 criteria = "safe-to-run"
 version = "1.0.9"
-aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
-
-[[audits.google.audits.quick-error]]
-who = "George Burgess IV <gbiv@google.com>"
-criteria = "safe-to-run"
-version = "1.2.3"
 aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
 
 [[audits.google.audits.rand]]
@@ -2760,12 +3191,6 @@ criteria = "safe-to-run"
 version = "0.4.1"
 aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
 
-[[audits.google.audits.wait-timeout]]
-who = "George Burgess IV <gbiv@google.com>"
-criteria = "safe-to-run"
-version = "0.2.0"
-aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
-
 [[audits.isrg.audits.base64]]
 who = "Tim Geoghegan <timg@letsencrypt.org>"
 criteria = "safe-to-deploy"
@@ -2983,6 +3408,15 @@ who = "David Cook <dcook@divviup.org>"
 criteria = "safe-to-deploy"
 delta = "2.5.0 -> 2.6.1"
 
+[[audits.mozilla.wildcard-audits.cexpr]]
+who = "Emilio Cobos Álvarez <emilio@crisal.io>"
+criteria = "safe-to-deploy"
+user-id = 3788 # Emilio Cobos Álvarez (emilio)
+start = "2021-06-21"
+end = "2024-04-21"
+notes = "No unsafe code, rather straight-forward parser."
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
 [[audits.mozilla.wildcard-audits.core-foundation]]
 who = "Bobby Holley <bobbyholley@gmail.com>"
 criteria = "safe-to-deploy"
@@ -3071,6 +3505,55 @@ criteria = "safe-to-deploy"
 version = "0.5.1"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.bindgen]]
+who = "Emilio Cobos Álvarez <emilio@crisal.io>"
+criteria = "safe-to-deploy"
+version = "0.59.2"
+notes = "I'm the primary author and maintainer of the crate."
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Emilio Cobos Álvarez <emilio@crisal.io>"
+criteria = "safe-to-deploy"
+delta = "0.59.2 -> 0.63.0"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.63.0 -> 0.64.0"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.64.0 -> 0.66.1"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.66.1 -> 0.68.1"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Andreas Pehrson <apehrson@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.68.1 -> 0.69.1"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.69.1 -> 0.69.2"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.bindgen]]
+who = "Emilio Cobos Álvarez <emilio@crisal.io>"
+criteria = "safe-to-deploy"
+delta = "0.69.2 -> 0.69.4"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.bit-set]]
 who = "Aria Beingessner <a.beingessner@gmail.com>"
 criteria = "safe-to-deploy"
@@ -3142,6 +3625,38 @@ delta = "0.2.7 -> 0.2.8"
 notes = "This release contains a single fix for an issue that affected Firefox"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.crossbeam-channel]]
+who = "Jan-Erik Rediger <jrediger@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.5.8 -> 0.5.11"
+aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.crossbeam-channel]]
+who = "Jan-Erik Rediger <jrediger@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.5.11 -> 0.5.12"
+notes = "Minimal change fixing a memory leak."
+aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.crossbeam-channel]]
+who = "Glenn Watson <git@intuitionlibrary.com>"
+criteria = "safe-to-deploy"
+delta = "0.5.12 -> 0.5.13"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.crossbeam-channel]]
+who = "Jan-Erik Rediger <jrediger@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.5.13 -> 0.5.14"
+aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.crossbeam-channel]]
+who = "Jan-Erik Rediger <jrediger@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.5.14 -> 0.5.15"
+notes = "Fixes a regression from an earlier version which could lead to a double free"
+aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.crossbeam-epoch]]
 who = "Mike Hommey <mh+mozilla@glandium.org>"
 criteria = "safe-to-deploy"
@@ -3195,6 +3710,54 @@ aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-ch
 who = "Erich Gubler <erichdongubler@gmail.com>"
 criteria = "safe-to-deploy"
 version = "0.2.3"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.13.4 -> 0.14.2"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.14.2 -> 0.14.3"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.14.3 -> 0.20.1"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling]]
+who = "Ben Dean-Kawamura <bdk@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.20.1 -> 0.20.10"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling_core]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.13.4 -> 0.14.2"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling_core]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.14.2 -> 0.14.3"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling_core]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "0.14.3 -> 0.20.1"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.darling_core]]
+who = "Ben Dean-Kawamura <bdk@mozilla.com>"
+criteria = "safe-to-deploy"
+delta = "0.20.1 -> 0.20.10"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.darling_macro]]
@@ -3286,6 +3849,18 @@ who = "Mike Hommey <mh+mozilla@glandium.org>"
 criteria = "safe-to-deploy"
 delta = "0.3.1 -> 0.3.3"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.fallible-iterator]]
+who = "Jan-Erik Rediger <jrediger@mozilla.com>"
+criteria = "safe-to-deploy"
+version = "0.2.0"
+aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.fallible-streaming-iterator]]
+who = "Jan-Erik Rediger <jrediger@mozilla.com>"
+criteria = "safe-to-deploy"
+version = "0.1.9"
+aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.fnv]]
 who = "Bobby Holley <bobbyholley@gmail.com>"
@@ -3529,20 +4104,6 @@ criteria = "safe-to-run"
 delta = "1.0.9 -> 1.0.13"
 aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
 
-[[audits.mozilla.audits.proc-macro-error-attr2]]
-who = "Kagami Sascha Rosylight <saschanaz@outlook.com>"
-criteria = "safe-to-deploy"
-version = "2.0.0"
-notes = "No unsafe block."
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.proc-macro-error2]]
-who = "Kagami Sascha Rosylight <saschanaz@outlook.com>"
-criteria = "safe-to-deploy"
-version = "2.0.1"
-notes = "No unsafe block with a lovely `#![forbid(unsafe_code)]`."
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
 [[audits.mozilla.audits.prost-derive]]
 who = "Jan-Erik Rediger <jrediger@mozilla.com>"
 criteria = "safe-to-deploy"
@@ -3633,6 +4194,13 @@ criteria = "safe-to-deploy"
 delta = "0.8.0 -> 0.8.1"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.rustc-hash]]
+who = "Bobby Holley <bobbyholley@gmail.com>"
+criteria = "safe-to-deploy"
+version = "1.1.0"
+notes = "Straightforward crate with no unsafe code, does what it says on the tin."
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.rustc_version]]
 who = "Nika Layzell <nika@thelayzells.com>"
 criteria = "safe-to-deploy"
@@ -3707,6 +4275,12 @@ aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-ch
 who = "Mark Hammond <mhammond@skippinet.com.au>"
 criteria = "safe-to-deploy"
 delta = "0.1.4 -> 0.1.7"
+aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.shlex]]
+who = "Max Inden <mail@max-inden.de>"
+criteria = "safe-to-deploy"
+delta = "1.1.0 -> 1.3.0"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.smallvec]]
@@ -3821,12 +4395,6 @@ criteria = "safe-to-deploy"
 delta = "0.2.1 -> 0.2.2"
 aggregated-from = "https://raw.githubusercontent.com/mozilla/cargo-vet/main/supply-chain/audits.toml"
 
-[[audits.mozilla.audits.wait-timeout]]
-who = "Jan-Erik Rediger <jrediger@mozilla.com>"
-criteria = "safe-to-run"
-delta = "0.2.0 -> 0.2.1"
-aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
-
 [[audits.mozilla.audits.windows-link]]
 who = "Mark Hammond <mhammond@skippinet.com.au>"
 criteria = "safe-to-deploy"
@@ -3858,6 +4426,16 @@ criteria = "safe-to-deploy"
 delta = "0.21.5 -> 0.21.7"
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
+[[audits.zcash.audits.bindgen]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.69.4 -> 0.69.5"
+notes = """
+Change to `unsafe` block is to switch from `clang_getSpellingLocation` to
+`clang_getFileLocation`; I confirmed these have the same arguments.
+"""
+aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
+
 [[audits.zcash.audits.block-buffer]]
 who = "Jack Grigg <jack@electriccoin.co>"
 criteria = "safe-to-deploy"
@@ -3888,12 +4466,32 @@ was being selected by the target OS instead of the host OS.
 """
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
+[[audits.zcash.audits.darling]]
+who = "Schell Carl Scivally <efsubenovex@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.20.10 -> 0.21.3"
+notes = "Mostly added tests and documentation. The bulk of the changes were made to `darling_core`."
+aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
+
+[[audits.zcash.audits.darling_core]]
+who = "Schell Carl Scivally <efsubenovex@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.20.10 -> 0.21.3"
+notes = "No unsafe, just helpers for proc-macros."
+aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
+
 [[audits.zcash.audits.darling_macro]]
 who = "Schell Carl Scivally <efsubenovex@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.20.10 -> 0.20.11"
 notes = "Only includes changes to cargo packaging, the library source itself is unchanged."
 aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
+
+[[audits.zcash.audits.darling_macro]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.20.11 -> 0.21.3"
+aggregated-from = "https://raw.githubusercontent.com/zcash/wallet/main/supply-chain/audits.toml"
 
 [[audits.zcash.audits.document-features]]
 who = "Jack Grigg <jack@electriccoin.co>"
@@ -4152,6 +4750,23 @@ delta = "0.2.4 -> 0.2.5"
 notes = "Bumps MSRV to remove unsafe code block."
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
+[[audits.zcash.audits.valuable]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.1.0 -> 0.1.1"
+notes = "Build script changes are for linting."
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.wait-timeout]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "0.2.0 -> 0.2.1"
+notes = """
+- Changes to `unsafe` code blocks are just formatting.
+- Changes to `extern fn`s are to declare them explicitly as `extern "C" fn`s.
+"""
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
 [[audits.zcash.audits.want]]
 who = "Jack Grigg <jack@electriccoin.co>"
 criteria = "safe-to-deploy"
@@ -4174,3 +4789,10 @@ criteria = "safe-to-deploy"
 delta = "0.2.0 -> 0.2.1"
 notes = "No code changes at all."
 aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
+
+[[audits.zcash.audits.wyz]]
+who = "Jack Grigg <jack@z.cash>"
+criteria = "safe-to-deploy"
+delta = "0.5.0 -> 0.5.1"
+notes = "Only change to unsafe code is to extract a drop impl into a method. I note however that most of the changes in the published 0.5.1 are not present in the v0.5.1 tag on the GitHub repository."
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"

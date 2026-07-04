@@ -1,0 +1,28 @@
+# Walking-skeleton deployment manifest (RFC-61 Step 1). Paths resolve
+# relative to this file. Build the guests first:
+#   cargo build -p specify-echo-guest -p specify-workflow-guest --target wasm32-wasip2
+# then run from this directory:
+#   cargo run -p specify-runtime -- run --config omnia.toml
+
+[[guest]]
+id = "workflow"
+source.path = "target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
+# Link names must match the component's import names exactly (omnia's
+# polyfill is an exact string match), so they carry the WIT package version.
+link = ["augentic:specify/source@0.1.0", "augentic:specify/target@0.1.0"]
+
+[[guest]]
+id = "source:echo"
+source.path = "target/wasm32-wasip2/debug/specify_echo_guest.wasm"
+
+[[mount]]
+name = "."
+path = "crates/runtime/workspace"
+writable = true
+
+[[route.http]]
+prefix = "/mcp/echo"
+guest = "source:echo"
+
+[transport]
+default = "in-process"

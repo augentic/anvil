@@ -70,6 +70,15 @@ cargo outdated --workspace --depth 1
 '''
 install_crate = "cargo-outdated"
 
+# Build guests
+#
+# wasm32-wasip2 skeleton guest components (RFC-61 Step 1) loaded by the
+# composed runtime integration tests in crates/runtime/tests/. The target
+# comes from rust-toolchain.toml.
+[tasks.build-guests]
+command = "cargo"
+args = ["build", "-p", "specify-echo-guest", "-p", "specify-workflow-guest", "--target", "wasm32-wasip2"]
+
 # Test
 #
 # `clean` is deliberately not in the dependency list: the
@@ -77,12 +86,16 @@ install_crate = "cargo-outdated"
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
 # Adapter extension wasm for host-dispatch fixture tests is checked in under
-# `tests/fixtures/adapters/targets/dispatch-fixture/adapter.wasm`; rebuild
-# via `scripts/regen-wasm-fixtures.sh` when the fixture source changes.
+# `tests/fixtures/adapters/targets/dispatch-fixture/adapter.wasm` (rebuild
+# via `scripts/regen-wasm-fixtures.sh` when the fixture source changes);
+# the RFC-61 skeleton guests are NOT checked in — `build-guests` builds
+# them fresh here, and the runtime crate's tests also self-build them so
+# a bare `cargo nextest run` works.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--all", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
+dependencies = ["build-guests"]
 
 # Test Doc
 [tasks.test-docs]

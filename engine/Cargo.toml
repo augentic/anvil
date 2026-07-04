@@ -61,6 +61,9 @@ members = [
     "crates/registry",
     "crates/extension",
     "crates/workflow",
+    "crates/echo-guest",
+    "crates/workflow-guest",
+    "crates/runtime",
 ]
 
 [workspace.package]
@@ -160,8 +163,10 @@ verbose_file_reads = "warn"
 #   `pub(crate)` / `pub(super)` on struct fields throughout.
 
 [workspace.dependencies]
+anyhow = "1"
 assert_cmd = "2"
 base16ct = { version = "0.2", features = ["alloc"] }
+cfg-if = "1"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 futures-util = "0.3"
@@ -172,6 +177,11 @@ jiff = { version = "0.2", default-features = false, features = ["serde", "std"] 
 jsonschema = { version = "0.46", default-features = false }
 libc = "0.2"
 oci-client = { version = "0.16", default-features = false, features = ["rustls-tls"] }
+omnia = "0.35.0"
+omnia-guest = "0.35.0"
+# Test-only scaffolding; unpublished, supplied by [patch.crates-io] below.
+omnia-testkit = "0.35.0"
+omnia-wasi-http = "0.35.0"
 petgraph = "0.8"
 proptest = "1.11.0"
 rayon = "1"
@@ -196,10 +206,31 @@ thiserror = "2"
 toml = "1"
 tokio = { version = "1", features = ["fs", "io-util", "rt"] }
 ureq = { version = "3", features = ["json"] }
+wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wasm-pkg-client = "0.15"
+wit-bindgen = { version = "0.58.0", features = ["async-spawn"] }
 zstd = "0.13"
 wasmtime = { version = "45.0.3", default-features = false, features = ["cache", "component-model", "cranelift", "runtime"] }
 wasmtime-wasi = { version = "45.0.3", default-features = false, features = ["p2"] }
+
+[patch.crates-io]
+# The omnia 0.35.0 crates (and the internal omnia-* crates they pull in) are
+# unpublished pre-publish pins, supplied from the pushed `testing-fixes` head
+# until the first crates.io release.
+omnia = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+omnia-guest = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+omnia-guest-macros = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+omnia-host-macros = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+omnia-wasi-config = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+omnia-wasi-http = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+
+# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io; omnia's own
+# [patch.crates-io] supplies it, but patches do not propagate to dependents,
+# so this workspace carries the same patch pinned to the rev omnia's
+# Cargo.lock records.
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc", rev = "b347c61db52dea9fe515a349ac9a91ba11cfe4f9" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc", rev = "b347c61db52dea9fe515a349ac9a91ba11cfe4f9" }
 
 [profile.release]
 lto = true

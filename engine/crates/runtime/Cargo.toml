@@ -1,0 +1,37 @@
+[package]
+name = "specify-runtime"
+description = "Omnia runtime! host binary for Specify WASI components"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+# Integration tests compile to the single `it` binary (one binary per crate);
+# the per-area hubs are pulled in via tests/it.rs `#[path]` includes.
+autotests = false
+
+# The target guard in main.rs needs cfg-if on every target; a stray
+# wasm32 build of the whole workspace then compiles to an empty main.
+[dependencies]
+cfg-if.workspace = true
+
+# Host-only: the runtime binary never compiles for the guest wasm32 targets,
+# so its dependencies live under the same target gate omnia itself uses.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anyhow.workspace = true
+omnia.workspace = true
+omnia-wasi-http.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+assert_cmd.workspace = true
+omnia-testkit.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+[[test]]
+name = "it"
+path = "tests/it.rs"
