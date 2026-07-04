@@ -210,14 +210,12 @@ interface target {
 /// shelf served over `wasi:http`.
 world source-adapter {
   export source;
-  export wasi:http/incoming-handler@0.2.0;
 }
 
 /// A target adapter component: one axis interface plus the MCP reference
 /// shelf served over `wasi:http`.
 world target-adapter {
   export target;
-  export wasi:http/incoming-handler@0.2.0;
 }
 
 /// The workflow guest: the deployment's only `wasi:cli/run` exporter. Its

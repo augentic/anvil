@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: the SLM model backend behind the [RFC-58](../archive/rfc-58-model-backends.md) `wasi-model` boundary — enabled by the backend set, gating nothing (a ratchet rung, not a stage)
+> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: an SLM model backend behind the `wasi-model` boundary ([RFC-61](../rfc-61-omnia-migration.md)) — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 
@@ -124,7 +124,7 @@ The assistant output starts with the implementation plan because the existing Om
 
 ### Workflow Integration
 
-`/spec:build` continues to drive the Omnia `build/crate.md` brief. The only new behavior is dispatch: the [RFC-58](../archive/rfc-58-model-backends.md) router selects either the frontier or the SLM backend behind the `wasi-model` host. The existing repair loop remains unchanged:
+The Omnia adapter guest continues to drive the `build/crate.md` brief through `create` ([RFC-61](../rfc-61-omnia-migration.md)). The only new behavior is backend selection behind the `wasi-model` host — and RFC-61's compile-time-binding constraint rules out a per-call router, so the SLM slots in either as a dedicated deployment binding or as routing internal to one backend; decide which at activation time. The existing repair loop remains unchanged:
 
 ```text
 generate -> score -> repair -> score -> fallback if still failing
