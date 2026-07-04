@@ -1,3 +1,20 @@
+/// The `augentic:specify` adapter contract, revised per RFC-61.
+///
+/// Adapter guests export exactly one axis interface (`source` xor `target`)
+/// plus `wasi:http/incoming-handler`, which serves the adapter's compiled-in
+/// reference shelf over MCP; there is no typed `references` interface — the
+/// spawned agent fetches documents lazily through the HTTP export. Judgment
+/// is an Omnia host effect, not part of this package: each judgment operation
+/// issues `omnia:model/completion.create` from inside the adapter guest, with
+/// `format: schema(...)` so the host gate validates the answer before the
+/// guest deserializes it into the records below.
+///
+/// No resource types cross the guest-to-guest seam: Omnia's host-mediated
+/// dispatch carries plain values only, routed by each call's `adapter-id`
+/// first argument. Every guest in a deployment shares the same `[[mount]]`
+/// preopens, so operations name trees by `revision` (plus an optional
+/// subpath) and open their own `"."` preopen rather than receiving a
+/// directory handle.
 package augentic:specify@0.1.0;
 
 interface types {
@@ -9,17 +26,21 @@ interface types {
   }
 
   /// A plan-bound adapter identity, e.g. "source:typescript" or "target:omnia".
+  /// Host-mediated dispatch routes each call to the exporting guest by this
+  /// first argument.
   type adapter-id = string;
 
-  /// A node-independent, content-addressed reference. The guest cannot
-  /// dereference it directly; reads/writes go through host imports.
-  /// Stable identity for caching, dedup, and replay across nodes, e.g. "sha256: …".
+  /// A node-independent, content-addressed reference, e.g. "sha256: …".
+  /// Stable identity for caching, dedup, and replay. Forward hook for
+  /// distributed working trees (RFC-55, deferred): with today's shared
+  /// mounts, content is reachable directly through the `"."` preopen.
   type artifact = string;
 
   /// A content-addressed snapshot identity (a git commit oid in the git
   /// backend). Portable: it names a build's starting point independently of
-  /// which node the working tree was materialized on.
-  /// The snapshot's stable identity (e.g. "sha256: …" or a git oid).
+  /// which node the working tree lives on. With today's shared mounts it
+  /// names the state of the one live project tree; it is the forward hook
+  /// for distributed working trees (RFC-55, deferred).
   type revision = string;
 
   /// One path-scoped edit, relative to a working tree's root. A present
@@ -31,8 +52,10 @@ interface types {
     content: option<artifact>,
   }
 
-  /// How a build changed a working tree, relative to `base`. This is the
-  /// portable unit that crosses nodes to `merge` — never a shared mount.
+  /// How a build changed a working tree, relative to `base`. With today's
+  /// shared mounts the edits also land in place in the live tree; the
+  /// changeset is the portable record of them, and the forward hook for
+  /// crossing nodes (RFC-55, deferred).
   record changeset {
     /// The revision the edits apply against.
     base: revision,
@@ -41,9 +64,12 @@ interface types {
   }
 }
 
+/// The source adapter contract. Both operations are judgment legs: the guest
+/// assembles a prompt from its compiled-in brief, issues `create` with an MCP
+/// grant naming its own reference route and a workspace lend of its `"."`
+/// preopen, and deserializes the schema-gated answer into the records below.
 interface source {
   use types.{ adapter-id, error };
-  use wasi:filesystem/types@0.2.0.{ descriptor };
 
   /// The lead returned by the survey operation.
   record lead {
@@ -96,10 +122,12 @@ interface source {
   extract: func(id: adapter-id, lead: lead) -> result<evidence, error>;
 }
 
-/// The target adapter contract.
+/// The target adapter contract. `build` and `merge` are judgment legs
+/// bracketed by deterministic guest code: prompt assembly and the `create`
+/// call in the middle, validate-before-visible checks compiled in after the
+/// answer lands.
 interface target {
   use types.{ adapter-id, changeset, error, revision };
-  use wasi:filesystem/types@0.2.0.{ descriptor };
 
   /// Types of inputs used to build a slice.
   variant input {
@@ -110,9 +138,16 @@ interface target {
     other(string),
   }
 
+  /// Names the tree a build or merge operates on. Every guest in the
+  /// deployment shares the same `[[mount]]` preopens, so no directory handle
+  /// crosses this boundary: the adapter opens its own `"."` preopen and
+  /// resolves `subpath` beneath it. `base` names the snapshot the operation
+  /// applies against.
   record working-tree {
+    /// The snapshot the operation applies against.
     base: revision,
-    root: descriptor,
+    /// Optional path beneath the shared mount root scoping the operation.
+    subpath: option<string>,
   }
 
   /// The severity of a finding.
@@ -148,41 +183,46 @@ interface target {
     findings: list<finding>,
   }
 
-  /// Request to target adapter to get guidance on the expected build artifacts
-  /// for the adapter. The returned guidance is prose describing the build
-  /// artifacts expected for the slice.
+  /// Guidance on the expected build artifacts for this target, read by core
+  /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary
+  /// called this operation `shape`; `guidance` is canonical.)
   guidance: func(id: adapter-id) -> result<string, error>;
 
-  /// Build a slice within a host-materialized working tree. `root` is a
-  /// borrowed `wasi:filesystem` directory handle the host opens over the tree
-  /// it materialized from `base` (via the custom git-aware backend);
-  /// the operation reads existing code through it and writes its changes in
-  /// place. The report carries only judgment; the caller's native orchestration
-  /// layer extracts the resulting delta as a `changeset` against `base`, so
-  /// neither the delta nor a tree resource crosses this boundary.
+  /// Build a slice against the shared project mount. The adapter opens its
+  /// own `"."` preopen, reads existing code through it, and writes its
+  /// changes in place; the judgment leg runs behind the adapter's own
+  /// `create` call, with references served from its MCP export. The report
+  /// carries only judgment — the resulting delta lives in the tree, and the
+  /// caller extracts it as a `changeset` against `base` where one is needed.
   build: func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
-  /// Merge a built slice into the project's codebase. `delta` is the build's
-  /// portable delta (theirs); `root` is a borrowed `wasi:filesystem` handle
-  /// over the baseline tree (ours, materialized from `base`) folded into in
-  /// place — a 3-way merge against `delta.base`. A filesystem-capable spawned
-  /// agent resolves conflicts through the node-local path the model backend
-  /// provisions (no typed method); an API model resolves them through the
-  /// tool surface. Validators re-run through `root`; the report carries
-  /// the merge judgment. The caller commits the merged baseline.
+  /// Merge a built slice into the project's baseline. `delta` is the build's
+  /// portable delta (theirs) against `delta.base`; the baseline (ours) is
+  /// reached through the shared mount named by `tree` and folded into in
+  /// place — a 3-way merge. Conflict resolution is a judgment leg behind
+  /// `create`; validators re-run in guest code after the answer lands. The
+  /// report carries the merge judgment; the caller commits the merged
+  /// baseline.
   merge: func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
 }
 
+/// A source adapter component: one axis interface plus the MCP reference
+/// shelf served over `wasi:http`.
 world source-adapter {
   export source;
 }
 
+/// A target adapter component: one axis interface plus the MCP reference
+/// shelf served over `wasi:http`.
 world target-adapter {
   export target;
 }
 
+/// The workflow guest: the deployment's only `wasi:cli/run` exporter. Its
+/// `source` / `target` imports are satisfied by Omnia's host-mediated
+/// dispatch, routed to the exporting adapter guest by each call's
+/// `adapter-id` first argument.
 world workflow {
   import source;
   import target;
 }
-

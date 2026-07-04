@@ -1,6 +1,6 @@
 # RFC-60: Verify Profiles
 
-> **Status: Deferred.** Omnia's `wasi-model` host accepts the `verify` grant but its execution is stubbed; under the in-place migration ([RFC-61](../rfc-61-omnia-migration.md)) generated-code verification keeps running through the adapters' existing native check flows. Revisit when verification moves into the model loop. Original: Order 7 of 10 · Stage S4 · Depends: [RFC-53](../archive/rfc-53-wasi-model.md), [RFC-55](rfc-55-working-tree.md), [RFC-59](../archive/rfc-59-model-tool-loop.md) · Owns: closed verification profiles and sandboxing
+> **Status: Deferred.** Omnia's `wasi-model` host accepts the `verify` grant but its execution is stubbed; under the in-place migration ([RFC-61](../rfc-61-omnia-migration.md)) generated-code verification keeps running through the adapters' existing native check flows. Revisit when verification moves into the model loop. Original: Order 7 of 10 · Stage S4 · Depends: RFC-53, RFC-59 (superseded by RFC-61 and the implemented `wasi-model` host; removed from the tree, recoverable from git history), [RFC-55](rfc-55-working-tree.md) · Owns: closed verification profiles and sandboxing
 
 ## Abstract
 
@@ -44,7 +44,7 @@ The host normalizes command output into the shared report shape:
 - locations are normalized to artifact-relative paths;
 - raw command output is retained only as bounded diagnostic context.
 
-The model receives the report, repairs if budget remains, and may request another verification pass through [RFC-59](../archive/rfc-59-model-tool-loop.md).
+The model receives the report, repairs if budget remains, and may request another verification pass through the model loop.
 
 ## Capability signal
 
@@ -60,8 +60,8 @@ Not every node can verify. A node without the required toolchain or sandbox supp
 
 ## Out of scope
 
-- Model tool-call dispatch; see [RFC-59](../archive/rfc-59-model-tool-loop.md).
-- Model backend selection; see [RFC-58](../archive/rfc-58-model-backends.md).
+- Model tool-call dispatch; owned by the implemented `wasi-model` host and its backends ([RFC-61](../rfc-61-omnia-migration.md)).
+- Model backend selection; owned by the runtime binary's compile-time binding ([RFC-61](../rfc-61-omnia-migration.md)).
 - Working-tree materialization; see [RFC-55](rfc-55-working-tree.md).
 
 ## Acceptance criteria

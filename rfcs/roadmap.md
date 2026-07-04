@@ -30,7 +30,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 
 ## Effect-oriented architecture: the in-place migration
 
-The runtime architecture — Specify as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring and is archived under [archive/](archive/README.md); the current plan is [RFC-61](rfc-61-omnia-migration.md), the in-place migration of the framework and its adapters onto the implemented runtime. Two relatives are deferred, not archived: [RFC-55](future/rfc-55-working-tree.md) (distributed working trees — not needed while every guest shares the deployment's `[[mount]]` preopens) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles — the `verify` grant is accepted but stubbed).
+The runtime architecture — Specify as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring and has been removed from the tree (recoverable from git history); the current plan is [RFC-61](rfc-61-omnia-migration.md), the in-place migration of the framework and its adapters onto the implemented runtime. Two relatives are deferred, not archived: [RFC-55](future/rfc-55-working-tree.md) (distributed working trees — not needed while every guest shares the deployment's `[[mount]]` preopens) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles — the `verify` grant is accepted but stubbed).
 
 ### Cross-repo coordination
 
@@ -116,6 +116,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
+**Substrate (post-[RFC-61](rfc-61-omnia-migration.md)):** the deployment already serves MCP — every adapter guest exports `wasi:http/incoming-handler` over `omnia_guest::mcp`, and the runtime binary routes MCP prefixes. This item becomes another route on the existing deployment (plausibly an export of the workflow guest), not a standalone server.
 **Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
@@ -138,7 +139,8 @@ specify plan finalize --forge github
 #### RM-18: Cloud-hosted execute loop
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
-**Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
+**Shape (post-[RFC-61](rfc-61-omnia-migration.md)):** hosted execution means hosting the Omnia deployment durably. Model calls are session-less by design (fresh spawn per `create`, state carried in the working tree and `.specify/`), so resumability comes from the journal and `.specify/` state — there are no agent sessions to resume.
+**Requires:** sandboxed workspace clones, durable lock ownership, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/spec:execute`.
 **Target surface:**
 
 ```bash
@@ -157,8 +159,9 @@ specify execute resume <run-id>
 
 #### RM-21: Adapter ecosystem operating model
 
-**Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages, building on the adapter semver identity, host-CLI compatibility floor, and OCI packaging/transport now in place.
-**Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a semver-*range* host-CLI floor policy, a cross-version compatibility matrix, migration guidance, and quality gates, examples, and ownership (rules, artifact templates, adapter extensions) beyond the first-party Omnia/Vectis/contracts set.
+**Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
+**Reframed by [RFC-61](rfc-61-omnia-migration.md):** an adapter is a wasm component implementing one axis of the versioned `augentic:specify` WIT contract, so compatibility becomes WIT-package versioning rather than the `adapter.yaml` brief-path machinery (vestigial after the migration). Guests currently ship by path as committed `adapter.wasm` — Omnia parses but rejects OCI guest sources at load, so OCI distribution is a runtime capability to unlock, not something already in place.
+**Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, reference shelves) beyond the first-party Omnia/Vectis/contracts set.
 
 #### RM-22: Hosted observability dashboards
 
@@ -170,14 +173,13 @@ specify execute resume <run-id>
 
 Each is one paragraph of intent. An idea graduates to active roadmap work only when it gains an owner and a trigger condition.
 
-- **Type-safe skill expression.** As the skill count grows, graduate skill authoring from prose-with-frontmatter to structured YAML manifests or a Rust DSL that separates the typed skeleton from the prose body, building on the `CORE-*` framework checks (frontmatter schema enforcement, reference resolution, variable consistency, cross-skill directive validation).
-- **Specialized SLM code generation.** Train a specialized Small Language Model to generate Omnia Rust crates from Specify artifacts (Vectis following once proven), making the model behind the Omnia `build/crate.md` brief cheaper, faster, and more reproducible — without replacing the workflow.
-- **CLI observability.** First-class `tracing`-based ephemeral diagnostics for command execution, lifecycle transitions, plan orchestration, workspace operations, and tool runs, complementing the durable journal without changing the existing stdout contract.
+- **Specialized SLM code generation.** Train a specialized Small Language Model to generate Omnia Rust crates from Specify artifacts (Vectis following once proven), making the model behind the Omnia `build/crate.md` brief cheaper, faster, and more reproducible — without replacing the workflow. Post-[RFC-61](rfc-61-omnia-migration.md) this slots cleanly behind the swappable `wasi-model` backend.
+- **CLI observability.** [RFC-61](rfc-61-omnia-migration.md)'s runtime binary binds `WasiOtel`, so `tracing`-based diagnostics for guest execution largely arrive with the migration. What remains parked is the residue wasi:otel does not cover — host-side deployment diagnostics and any stdout-contract-preserving ephemeral views over them.
 - **Source catalogue and source-clone cache.** A durable platform-level catalogue of legacy source repositories (`sources.yaml`), a shared source-clone cache, and a `--source @<key>` selector so a platform repo declares dozens of legacy sources once and reuses them across changes.
 - **Migration ledger and slice mapping.** Cumulative cross-change state answering "is this source migrated yet?" and "what's the source-to-target pattern of this slice?" for migrations spanning many changes.
 - **Omnia plan composition.** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
 - **Standards baseline.** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Specify-native codebases.
-- **Orchestration trace replay for eval scenarios.** Deterministic structural grading lives in the [assertion taxonomy](../evals/shared/assertions.md) (per-assertion `Probe` vs `Judgment flag`), so structure is self-graded and only prose is human-judged. What remains deferred is recorded-transcript **orchestration replay** — capture a `cursor-agent` run via `@cursor/sdk` and replay it against the real CLI — parked in [`docs/contributing/evals.md` §"Synthesis byte-replay (deferred)"](../docs/contributing/evals.md). Activation needs *both* a stable `@cursor/sdk` capture surface *and* a reversal of the `transcript-replay-added` / `automated-runner-added` negative-expectations every scenario encodes — a deliberate operator-driven posture.
+- **Orchestration trace replay for eval scenarios.** Deterministic structural grading lives in the [assertion taxonomy](../evals/shared/assertions.md) (per-assertion `Probe` vs `Judgment flag`), so structure is self-graded and only prose is human-judged. [RFC-61](rfc-61-omnia-migration.md) supplies a cleaner seam for the same goal: `ModelDefault` replays recorded *answers* at the `wasi-model` boundary, giving deterministic replay without capturing editor transcripts at all. The recorded-transcript approach — capture a `cursor-agent` run via `@cursor/sdk` and replay it against the real CLI, parked in [`docs/contributing/evals.md` §"Synthesis byte-replay (deferred)"](../docs/contributing/evals.md) — is largely absorbed by the model-seam replay; anything left of it stays parked behind the `transcript-replay-added` / `automated-runner-added` negative-expectations every scenario encodes.
 
 ## Non-Goals
 
