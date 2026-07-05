@@ -39,6 +39,7 @@ serde-saphyr.workspace = true
 serde_json.workspace = true
 specify-diagnostics.workspace = true
 specify-error.workspace = true
+specify-guest-model.workspace = true
 specify-model.workspace = true
 specify-schema.workspace = true
 specify-extension.workspace = true
@@ -52,6 +53,7 @@ proptest = { workspace = true }
 regex.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [[test]]
 name = "it"

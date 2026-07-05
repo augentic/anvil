@@ -20,6 +20,8 @@ mod decisions;
 mod design_system_parts;
 #[path = "goldens.rs"]
 mod goldens;
+#[path = "judgment.rs"]
+mod judgment;
 #[path = "merge_composition.rs"]
 mod merge_composition;
 #[path = "merge_slice.rs"]

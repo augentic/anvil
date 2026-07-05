@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 
 use crate::constants::{
     BUILD_REPORT_JSON_SCHEMA, DIAGNOSTIC_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, LEAD_JSON_SCHEMA,
+    PROPOSAL_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA,
 };
 
 const ANSWERS_ID_BASE: &str = "https://github.com/augentic/specify/schemas/answers";
@@ -133,6 +134,128 @@ pub fn report() -> Value {
     }
     set_pointer(&mut report, "/properties/findings/items", json!({ "$ref": "#/$defs/diagnostic" }));
     report
+}
+
+/// The `plan propose` reconciliation answer.
+///
+/// The canonical proposal envelope narrowed to its `kind: response`
+/// arm, with the request-only `$defs` trimmed away so the document
+/// riding the model call carries only the response vocabulary.
+///
+/// The `version` / `kind` envelope consts are deliberately kept (not
+/// stripped like the survey/extract envelope keys): the deterministic
+/// tail validates the raw answer against the full canonical envelope
+/// (`validate_proposal_json`), so an answer carrying the consts flows
+/// through unchanged.
+///
+/// # Panics
+///
+/// Panics when the embedded canonical schema drops a shape this
+/// derivation depends on — a compile-adjacent invariant, not a runtime
+/// input condition.
+#[must_use]
+pub fn proposal() -> Value {
+    let mut envelope = parse(PROPOSAL_JSON_SCHEMA);
+    let mut defs = take(&mut envelope, "$defs");
+    let mut response = take(&mut defs, "response");
+    // The request arm and its exclusive vocabulary never ride the call.
+    for request_only in [
+        "request",
+        "leadCatalogEntry",
+        "projectRef",
+        "surfaceDomain",
+        "decision",
+        "platform",
+        "targetRef",
+    ] {
+        take(&mut defs, request_only);
+    }
+    // A def added to the canonical schema must be classified here —
+    // response-reachable stays, request-only joins the trim list.
+    let residual: Vec<&String> = defs.as_object().expect("$defs is an object").keys().collect();
+    assert_eq!(
+        residual,
+        ["disagreement", "kebabName", "responseMember", "responseSlice"],
+        "unclassified canonical $defs entry; extend the request-only trim list or accept it \
+         into the answer vocabulary"
+    );
+
+    let body = response.as_object_mut().expect("response def is an object");
+    body.insert("$schema".to_string(), json!("https://json-schema.org/draft/2020-12/schema"));
+    body.insert("$id".to_string(), json!(format!("{ANSWERS_ID_BASE}/proposal.schema.json")));
+    body.insert("title".to_string(), json!("Specify plan propose answer"));
+    body.insert(
+        "description".to_string(),
+        json!(
+            "Generated judgment-answer schema — derived from \
+             schemas/discovery/proposal.schema.json by specify-schema's answer \
+             derivation; do not edit. Validates the schema-gated answer to the \
+             plan-time lead-reconciliation judgment: the canonical `kind: \
+             response` envelope arm (the agent grouping `specify plan propose \
+             --from` consumes), with the request-only definitions trimmed."
+        ),
+    );
+    body.insert("$defs".to_string(), defs);
+    response
+}
+
+/// The slice synthesis answer.
+///
+/// The canonical synthesis-response envelope with the cross-file
+/// `model.schema.json` `$ref` inlined so one self-contained document
+/// rides the model call.
+///
+/// As with [`proposal`], the envelope fields (`version` / `kind` /
+/// `slice`) are kept: the deterministic tail validates the raw answer
+/// against the full canonical envelope (`validate_synthesis_json`).
+///
+/// # Panics
+///
+/// Panics when the embedded canonical schemas drop a shape this
+/// derivation depends on — a compile-adjacent invariant, not a runtime
+/// input condition.
+#[must_use]
+pub fn synthesis() -> Value {
+    let mut synthesis = parse(SYNTHESIS_JSON_SCHEMA);
+    set(&mut synthesis, "$id", json!(format!("{ANSWERS_ID_BASE}/synthesis.schema.json")));
+    set(&mut synthesis, "title", json!("Specify slice synthesis answer"));
+    set(
+        &mut synthesis,
+        "description",
+        json!(
+            "Generated judgment-answer schema — derived from \
+             schemas/slice/synthesis.schema.json (with \
+             schemas/slice/model.schema.json inlined) by specify-schema's \
+             answer derivation; do not edit. Validates the schema-gated \
+             answer to the slice-synthesis judgment: the canonical `kind: \
+             response` envelope the synthesis kernel projects and persists."
+        ),
+    );
+
+    // The `model` property `$ref`s the sibling model.schema.json; a
+    // self-contained payload inlines it: the model schema's own `$defs`
+    // hoist to the root under a `model-` prefix, its internal refs are
+    // rewritten to match, and the body lands at `#/$defs/model`.
+    let mut model = parse(SLICE_MODEL_JSON_SCHEMA);
+    for key in ["$schema", "$id"] {
+        take(&mut model, key);
+    }
+    let mut hoisted = take(&mut model, "$defs");
+    rewrite_local_refs(&mut model, "model-");
+    rewrite_local_refs(&mut hoisted, "model-");
+
+    let defs = synthesis
+        .get_mut("$defs")
+        .and_then(Value::as_object_mut)
+        .expect("synthesis schema carries $defs");
+    defs.insert("model".to_string(), model);
+    if let Value::Object(entries) = hoisted {
+        for (name, def) in entries {
+            defs.insert(format!("model-{name}"), def);
+        }
+    }
+    set_pointer(&mut synthesis, "/properties/model", json!({ "$ref": "#/$defs/model" }));
+    synthesis
 }
 
 /// Render an answer schema the way the generated `schemas/answers/`

@@ -1,0 +1,295 @@
+{
+  "$defs": {
+    "artifacts": {
+      "additionalProperties": false,
+      "properties": {
+        "design": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "proposal": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "specs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "domain": {
+                "$ref": "#/$defs/kebabName"
+              }
+            },
+            "required": [
+              "domain",
+              "content"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "tasks": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposal",
+        "design",
+        "tasks",
+        "specs"
+      ],
+      "type": "object"
+    },
+    "kebabName": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "model": {
+      "additionalProperties": false,
+      "description": "Validates a slice's single typed machine-readable model. This one schema validates both the agent's synthesis-response `model` and the persisted `model.yaml`: kernel-owned fields (`requirements[].id`, `.status`, `requirements[].sources`, `claims[].winner`) and the header fields (`version`, `slice`, `project`) are optional so the agent may omit them and the kernel re-derives/stamps them on projection (normalize, never reject — there is no separate draft schema). Provenance is carried inline (`requirements[].claims[]` with `winner` markers); there is no separate `provenance.yaml` file — `specify slice provenance` projects the audit view (including `resolution` / `resolution-trace`) from this model plus on-disk Evidence on demand. The model carries only the earned core today — `requirements[]` (load-bearing provenance) and `tasks[]` (requirement→task tracing); the non-requirements sections (`domain` / `apis` / `configuration` / `technical-logic` / `observability`) and their id grammars are deferred until an `execution: tool` target or a contract gate names a sub-tree it consumes. The top-level shape stays closed so a sub-tree can be re-added cleanly when a consumer lands. Operators edit behavioral prose in `spec.md` / `design.md` / `tasks.md`; `model.yaml` is the machine view target builders consume. `target` is not persisted — it is resolved on demand from the slice's bound `project` (the plan stores only `project`); `slice-model-target-drift` checks `model.yaml.project` against `plan.yaml`. Kernel-rendered provenance lines in `spec.md` must match projected ids/status/source lists or `slice-spec-provenance-stale` fires. Closed top-level shape — unknown fields are rejected.",
+      "properties": {
+        "project": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requirements": {
+          "items": {
+            "$ref": "#/$defs/model-modelRequirement"
+          },
+          "type": "array"
+        },
+        "slice": {
+          "$ref": "#/$defs/model-kebabName"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/model-modelTask"
+          },
+          "type": "array"
+        },
+        "version": {
+          "maximum": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "requirements",
+        "tasks"
+      ],
+      "title": "Specify slice model.yaml",
+      "type": "object"
+    },
+    "model-agreementVerdict": {
+      "description": "Agent-authored agreement verdict over the contributing claims. Required when more than one claim contributes; omitted for 0 or 1 claim. The kernel applies authority to it to derive `status` and winner markers but never re-decides whether two claim values mean the same thing.",
+      "enum": [
+        "agreed",
+        "disagreed"
+      ],
+      "type": "string"
+    },
+    "model-claimId": {
+      "description": "Dotted Evidence claim id (e.g. `password-reset.expiry`); mirrors the id grammar in `evidence.schema.json`.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+      "type": "string"
+    },
+    "model-claimKind": {
+      "description": "Closed claim-kind enum mirrored byte-identically from `evidence.schema.json#/$defs/claimKind`. Carried on each `model.yaml` claim (D13) so the kernel resolves per-kind authority (§Authority over mixed-kind claims) without re-reading Evidence.",
+      "enum": [
+        "intent",
+        "requirement",
+        "criterion",
+        "decision",
+        "section",
+        "diagram",
+        "contract",
+        "example",
+        "excerpt",
+        "type",
+        "call",
+        "region",
+        "container",
+        "leaf"
+      ],
+      "type": "string"
+    },
+    "model-kebabName": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "model-modelClaim": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/model-claimId"
+        },
+        "kind": {
+          "$ref": "#/$defs/model-claimKind",
+          "description": "Agent-authored: the kind of the cited Evidence claim (D13). The kernel uses it to apply per-kind authority (§Authority over mixed-kind claims) without re-reading Evidence. `slice-model-claim-kind-mismatch` rejects a value that disagrees with the kind recorded for that `(source, id)` in Evidence."
+        },
+        "source": {
+          "$ref": "#/$defs/model-kebabName"
+        },
+        "winner": {
+          "description": "Kernel-projected. Present (`true` on the authority-resolved winner, `false` on every dropped loser) only for a `divergence` requirement; absent for `agreed` and `conflict` requirements.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source",
+        "id",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "model-modelRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "agreement": {
+          "$ref": "#/$defs/model-agreementVerdict"
+        },
+        "baseline-id": {
+          "$ref": "#/$defs/model-reqId",
+          "description": "When set, the kernel treats this requirement as a modification of the existing baseline REQ; the projected id is taken from here, not re-numbered. Omit for net-new behaviour in a modified domain."
+        },
+        "claims": {
+          "description": "Agent-authored claim-level provenance, carried inline (this replaces the former separate `provenance.yaml` `contributing-claims[]`): every `(source, id, kind)` claim that fed this requirement, winners and losers alike. Empty for an `unknown` requirement. `kind` (D13) lets the kernel resolve per-kind authority; the `winner` marker on each entry is kernel-projected. The claim `value` / `path` payload is read from on-disk Evidence by the provenance projection rather than copied here.",
+          "items": {
+            "$ref": "#/$defs/model-modelClaim"
+          },
+          "type": "array"
+        },
+        "domain": {
+          "$ref": "#/$defs/model-kebabName"
+        },
+        "id": {
+          "$ref": "#/$defs/model-reqId",
+          "description": "Kernel-projected in declaration order. The agent omits it in the synthesis response; if present it is ignored and re-derived (normalize, never reject)."
+        },
+        "notes": {
+          "type": "string"
+        },
+        "scenarios": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sources": {
+          "description": "Kernel-projected rendered source list (highest authority first), mirroring the `Sources:` line rendered into `spec.md`. The agent omits it.",
+          "items": {
+            "$ref": "#/$defs/model-kebabName"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "statement": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/model-requirementStatus",
+          "description": "Kernel-projected from the claim count, the agent's `agreement` verdict, and resolved authority. The agent omits it; if present it is ignored and re-derived."
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "statement",
+        "claims"
+      ],
+      "type": "object"
+    },
+    "model-modelTask": {
+      "additionalProperties": false,
+      "properties": {
+        "depends-on": {
+          "items": {
+            "$ref": "#/$defs/model-taskId"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "id": {
+          "$ref": "#/$defs/model-taskId"
+        },
+        "satisfies": {
+          "items": {
+            "$ref": "#/$defs/model-reqId"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "text": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "type": "object"
+    },
+    "model-reqId": {
+      "pattern": "^REQ-[0-9]{3}$",
+      "type": "string"
+    },
+    "model-requirementStatus": {
+      "enum": [
+        "agreed",
+        "unknown",
+        "conflict",
+        "divergence"
+      ],
+      "type": "string"
+    },
+    "model-taskId": {
+      "pattern": "^TASK-[0-9]{3}$",
+      "type": "string"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/schemas/answers/synthesis.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — derived from schemas/slice/synthesis.schema.json (with schemas/slice/model.schema.json inlined) by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to the slice-synthesis judgment: the canonical `kind: response` envelope the synthesis kernel projects and persists.",
+  "properties": {
+    "artifacts": {
+      "$ref": "#/$defs/artifacts"
+    },
+    "kind": {
+      "const": "response"
+    },
+    "model": {
+      "$ref": "#/$defs/model"
+    },
+    "slice": {
+      "$ref": "#/$defs/kebabName"
+    },
+    "version": {
+      "maximum": 1,
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "kind",
+    "slice",
+    "model",
+    "artifacts"
+  ],
+  "title": "Specify slice synthesis answer",
+  "type": "object"
+}

@@ -13,6 +13,7 @@ pub mod decisions;
 pub mod design_system;
 pub mod init;
 pub mod journal;
+pub mod judgment;
 pub mod merge;
 pub mod name;
 pub mod plan_lock;

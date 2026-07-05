@@ -5891,6 +5891,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "specify-guest-model"
+version = "0.27.2"
+dependencies = [
+ "omnia-wasi-model",
+ "thiserror 2.0.18",
+ "wasip3",
+]
+
+[[package]]
 name = "specify-model"
 version = "0.27.2"
 dependencies = [
@@ -5997,11 +6006,13 @@ dependencies = [
  "specify-diagnostics",
  "specify-error",
  "specify-extension",
+ "specify-guest-model",
  "specify-model",
  "specify-schema",
  "strum 0.28.0",
  "tempfile",
  "thiserror 2.0.18",
+ "tokio",
  "ureq",
 ]
 

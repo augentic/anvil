@@ -48,6 +48,8 @@ fn generated_files_match_derivation() {
     assert_generated("leads.schema.json", &answers::leads());
     assert_generated("evidence.schema.json", &answers::evidence());
     assert_generated("report.schema.json", &answers::report());
+    assert_generated("proposal.schema.json", &answers::proposal());
+    assert_generated("synthesis.schema.json", &answers::synthesis());
 }
 
 /// Every derived answer schema compiles standalone — the derivation
@@ -58,6 +60,8 @@ fn derived_schemas_compile_standalone() {
         ("leads", answers::leads()),
         ("evidence", answers::evidence()),
         ("report", answers::report()),
+        ("proposal", answers::proposal()),
+        ("synthesis", answers::synthesis()),
     ] {
         compile_schema(&answers::render(&derived))
             .unwrap_or_else(|err| panic!("{name} answer schema compiles standalone: {err}"));
@@ -96,6 +100,13 @@ fn answer_enums_match_wit_contract() {
             "leaf"
         ],
         "evidence claim kinds mirror wit source.claim-kind"
+    );
+
+    let synthesis = answers::synthesis();
+    assert_eq!(
+        enum_values(&synthesis, "/$defs/model-claimKind/enum"),
+        enum_values(&answers::evidence(), "/$defs/claimKind/enum"),
+        "synthesis model claim kinds mirror the evidence claim-kind set"
     );
 
     let report = answers::report();
@@ -202,6 +213,95 @@ fn evidence_answer_strips_lead() {
         &schema,
         &json!({ "authority": "documentation", "claims": [{ "kind": "requirement" }] }),
         "answers/evidence-requirement-missing-id",
+    );
+}
+
+/// The proposal answer accepts a `kind: response` grouping, rejects a
+/// `kind: request` document (the request arm is trimmed), and rejects a
+/// slice with no sources.
+#[test]
+fn proposal_answer_is_response_only() {
+    let schema = answers::proposal();
+    assert_accepts(
+        &schema,
+        &json!({
+            "version": 1,
+            "kind": "response",
+            "slices": [{
+                "name": "user-registration",
+                "sources": [{ "source": "legacy", "lead": "user-registration" }],
+                "divergence": "likely",
+                "disagreements": [{
+                    "field": "password-min-length",
+                    "values": [
+                        { "source": "legacy", "value": "8" },
+                        { "source": "docs", "value": "12" }
+                    ]
+                }]
+            }]
+        }),
+        "answers/proposal",
+    );
+    assert_rejects(
+        &schema,
+        &json!({ "version": 1, "kind": "request", "projects": [], "leads": [] }),
+        "answers/proposal-request-arm",
+    );
+    assert_rejects(
+        &schema,
+        &json!({ "version": 1, "kind": "response", "slices": [{ "name": "x", "sources": [] }] }),
+        "answers/proposal-empty-sources",
+    );
+}
+
+/// The synthesis answer accepts a response with the inlined model shape
+/// and rejects a model claim with a malformed kind — proving the
+/// cross-file inline preserved the canonical constraints.
+#[test]
+fn synthesis_answer_inlines_model() {
+    let schema = answers::synthesis();
+    assert_accepts(
+        &schema,
+        &json!({
+            "version": 1,
+            "kind": "response",
+            "slice": "user-registration",
+            "model": {
+                "requirements": [{
+                    "title": "Register with email",
+                    "statement": "The system accepts registrations with RFC 5322 emails.",
+                    "domain": "identity",
+                    "claims": [{ "source": "legacy", "id": "users.register", "kind": "requirement" }]
+                }],
+                "tasks": [{ "id": "TASK-001", "text": "Implement registration" }]
+            },
+            "artifacts": {
+                "proposal": "## Proposal",
+                "design": "## Design",
+                "tasks": "## Tasks",
+                "specs": [{ "domain": "identity", "content": "## Identity" }]
+            }
+        }),
+        "answers/synthesis",
+    );
+    assert_rejects(
+        &schema,
+        &json!({
+            "version": 1,
+            "kind": "response",
+            "slice": "user-registration",
+            "model": {
+                "requirements": [{
+                    "title": "x",
+                    "statement": "y",
+                    "domain": "identity",
+                    "claims": [{ "source": "legacy", "id": "users.register", "kind": "hunch" }]
+                }],
+                "tasks": []
+            },
+            "artifacts": { "proposal": "p", "design": "d", "tasks": "t", "specs": [] }
+        }),
+        "answers/synthesis-bad-claim-kind",
     );
 }
 

@@ -103,6 +103,8 @@ pub const WIRE_CODES: &[&str] = &[
     "journal-emit-unknown-event",
     "journal-event-serialise-failed",
     "json-serialize-failed",
+    "judgment-model-failed",
+    "judgment-request-serialise",
     "lead-coverage-orphan",
     "lifecycle",
     "marketplace-flag-missing",
