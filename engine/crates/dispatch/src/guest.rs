@@ -99,6 +99,9 @@ pub enum Verb {
         /// Authorise a whole-document composition overwrite.
         allow_composition_replace: bool,
     },
+    /// `specify plan execute` → `orchestrate::execute` (guest-only:
+    /// the drained execute loop; the native binary refuses the verb).
+    Execute,
 }
 
 /// Parse guest argv through the shared grammar.
@@ -165,6 +168,10 @@ pub fn route(cli: Cli) -> Route {
             // processes racing the plan, and the guest collapses every
             // breakout in-process (RFC-61 orchestrate posture).
             PlanAction::Lock { .. } => Route::Handled(unsupported(format, "plan lock")),
+            // The drained execute loop is the guest's flagship
+            // orchestration (Milestone E); native refuses it in the
+            // shared table.
+            PlanAction::Execute => orchestrate(Verb::Execute),
             action => {
                 Route::Handled(scoped(format, plan_dir, |ctx| commands::plan::run(ctx, action)))
             }

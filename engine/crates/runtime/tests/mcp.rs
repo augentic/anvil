@@ -12,6 +12,7 @@ use anyhow::{Context as _, Result};
 use omnia::{Backends as _, DeploymentBuilder, MountRegistry, Runtime, StoreCtx};
 use omnia_testkit::http;
 use omnia_wasi_http::WasiHttp;
+use omnia_wasi_model::WasiModel;
 use serde_json::{Value, json};
 
 use crate::common::{self, Bundle};
@@ -26,6 +27,7 @@ async fn runtime() -> Result<Runtime<Bundle>> {
         .await
         .context("building deployment")?;
     deployment.host::<WasiHttp, Bundle>().context("linking http host")?;
+    deployment.host::<WasiModel, Bundle>().context("linking model host")?;
     let registry = deployment.into_registry().context("assembling registry")?;
 
     Ok(Runtime::from_parts(

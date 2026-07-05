@@ -354,6 +354,20 @@ pub struct SourceArg {
     pub(crate) value: Option<String>,
 }
 
+impl SourceArg {
+    /// The desugared `plan create --intent <string>` binding —
+    /// byte-identical to parsing `intent=intent:value:<string>`.
+    #[must_use]
+    pub(crate) fn intent(value: String) -> Self {
+        Self {
+            key: "intent".to_string(),
+            adapter: "intent".to_string(),
+            path: None,
+            value: Some(value),
+        }
+    }
+}
+
 impl FromStr for SourceArg {
     type Err = String;
 

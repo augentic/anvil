@@ -27,14 +27,11 @@
 //! and validated in memory before the first write, so prior artifacts
 //! stay intact on failure.
 
-use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use serde_json::Value as JsonValue;
 use specify_error::{Error, Result};
-use specify_model::evidence::{AuthorityClass, ClaimKind};
 use specify_workflow::adapter::{TargetAdapter, TargetOperation};
 use specify_workflow::change::{Entry, Plan, resolve_topology};
 use specify_workflow::config::ProjectConfig;
@@ -44,9 +41,9 @@ use specify_workflow::merge::MergeStrategy;
 use specify_workflow::registry::Surface;
 use specify_workflow::schema::validate_synthesis_json;
 use specify_workflow::slice::{
-    BaselineDomainDetail, BaselineIndex, ProjectionHeader, SliceMetadata, SliceModel,
-    SynthesisInputs, SynthesisResponse, SynthesisSourceInput, actions as slice_actions,
-    build_synthesis_inputs, project, render_spec_files,
+    BaselineDomainDetail, BaselineIndex, ProjectionHeader, SliceMetadata, SynthesisInputs,
+    SynthesisResponse, build_synthesis_inputs, persist_synthesized, project, read_evidence_index,
+    read_source_inputs, synthesize_failure_reason,
 };
 
 use crate::context::Ctx;
@@ -130,7 +127,7 @@ fn from_response(ctx: &Ctx, name: &str, response_path: &Path) -> Result<()> {
                 ctx,
                 EventKind::SliceSynthesizeFailed {
                     slice_name: name.into(),
-                    reason: failure_reason(&err),
+                    reason: synthesize_failure_reason(&err),
                 },
             );
             Err(err)
@@ -172,52 +169,10 @@ fn synthesize_from(ctx: &Ctx, name: &str, response_path: &Path) -> Result<Vec<St
     let projected =
         project(response.model, header, &authority, &overrides, &evidence_claims, &baseline_index)?;
 
-    // Step 3 — re-validate the projected model against the schema (the
-    // kernel already enforced orphans/cross-refs/grammar; the broader
-    // drift suite is `slice validate`'s job). `parse_yaml` validates the
-    // serialised document and re-parses it.
-    let model_yaml = specify_model::atomic::serialise_yaml(&projected)?;
-    SliceModel::parse_yaml(&model_yaml)?;
-
-    // Step 4 — render provenance lines into `spec.md` (in memory).
-    let specs = render_spec_files(&projected, &baseline_index);
-
-    // Stage every artifact before the first write so a failure above
-    // leaves the prior artifacts intact.
-    let mut staged: Vec<StagedFile> = Vec::new();
-    staged.push(staged_file(&slice_dir, "proposal.md", response.artifacts.proposal.into_bytes()));
-    for spec in &specs {
-        let rel = format!("specs/{}/spec.md", spec.domain);
-        staged.push(staged_file(&slice_dir, &rel, spec.content.clone().into_bytes()));
-    }
-    staged.push(staged_file(&slice_dir, "design.md", response.artifacts.design.into_bytes()));
-    staged.push(staged_file(&slice_dir, "tasks.md", response.artifacts.tasks.into_bytes()));
-    staged.push(staged_file(&slice_dir, "model.yaml", model_yaml.into_bytes()));
-
-    let touched = slice_actions::touched_from_rendered(&specs, &baseline_index);
-    let mut metadata = SliceMetadata::load(&slice_dir)?;
-    metadata.touched_specs = touched;
-    let metadata_yaml = specify_model::atomic::serialise_yaml(&metadata)?;
-    staged.push(staged_file(&slice_dir, "metadata.yaml", metadata_yaml.into_bytes()));
-
-    // Step 5 — persist every staged artifact in one batch.
-    let mut written = Vec::with_capacity(staged.len());
-    for file in &staged {
-        specify_model::atomic::bytes_write(&file.abs, &file.bytes)?;
-        written.push(file.rel.clone());
-    }
-
-    Ok(written)
-}
-
-/// One artifact staged in memory before the persist loop.
-struct StagedFile {
-    /// Slice-relative path recorded on the `completed` journal event.
-    rel: String,
-    /// Absolute path the bytes are written to.
-    abs: PathBuf,
-    /// File contents.
-    bytes: Vec<u8>,
+    // Steps 3–5 — re-validate, render, stage, and atomically persist
+    // through the shared tail (also driven by the guest refine
+    // orchestrator).
+    persist_synthesized(&slice_dir, response.artifacts, &projected, &baseline_index)
 }
 
 /// `--from` success summary. `--format json` emits this verbatim.
@@ -226,15 +181,6 @@ struct StagedFile {
 struct SynthesizeSummary {
     slice: String,
     artifacts: Vec<String>,
-}
-
-/// Build a [`StagedFile`] under `slice_dir` from a slice-relative path.
-fn staged_file(slice_dir: &Path, rel: &str, bytes: Vec<u8>) -> StagedFile {
-    StagedFile {
-        rel: rel.to_string(),
-        abs: slice_dir.join(rel),
-        bytes,
-    }
 }
 
 /// Load the named slice's plan entry — the binding that carries the
@@ -293,70 +239,6 @@ fn baseline_surface(ctx: &Ctx, entry: &Entry) -> Result<Vec<Surface>> {
     Ok(bound.map(|p| p.surface.clone()).unwrap_or_default())
 }
 
-/// Read each bound source's `evidence/<source>.yaml` into a
-/// [`SynthesisSourceInput`] for the agent inputs envelope.
-fn read_source_inputs(slice_dir: &Path, entry: &Entry) -> Result<Vec<SynthesisSourceInput>> {
-    entry
-        .sources
-        .iter()
-        .map(|binding| {
-            let source = binding.source();
-            let path = evidence_path(slice_dir, source);
-            SynthesisSourceInput::from_evidence_file(source, &path)
-        })
-        .collect()
-}
-
-/// The two kernel projection inputs distilled from on-disk Evidence:
-/// the per-source document-level `authority` map and the
-/// `(source, id) → kind` claim anchor index.
-type KernelEvidence = (BTreeMap<String, AuthorityClass>, BTreeMap<(String, String), ClaimKind>);
-
-/// Distil the per-source document-level `authority` map and the
-/// `(source, id) → kind` anchor index the kernel projects against, from
-/// each bound source's on-disk Evidence.
-fn read_evidence_index(slice_dir: &Path, entry: &Entry) -> Result<KernelEvidence> {
-    let mut authority: BTreeMap<String, AuthorityClass> = BTreeMap::new();
-    let mut claims: BTreeMap<(String, String), ClaimKind> = BTreeMap::new();
-    for binding in &entry.sources {
-        let source = binding.source().to_string();
-        let path = evidence_path(slice_dir, &source);
-        let raw = std::fs::read_to_string(&path).map_err(|err| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source: err,
-        })?;
-        let doc: JsonValue = serde_saphyr::from_str(&raw)?;
-        if let Some(class) = doc.get("authority").and_then(JsonValue::as_str).and_then(parse_enum) {
-            authority.insert(source.clone(), class);
-        }
-        let Some(doc_claims) = doc.get("claims").and_then(JsonValue::as_array) else {
-            continue;
-        };
-        for claim in doc_claims {
-            let (Some(id), Some(kind)) = (
-                claim.get("id").and_then(JsonValue::as_str),
-                claim.get("kind").and_then(JsonValue::as_str).and_then(parse_enum),
-            ) else {
-                continue;
-            };
-            claims.insert((source.clone(), id.to_string()), kind);
-        }
-    }
-    Ok((authority, claims))
-}
-
-/// `<slice_dir>/evidence/<source>.yaml`.
-fn evidence_path(slice_dir: &Path, source: &str) -> PathBuf {
-    slice_dir.join("evidence").join(format!("{source}.yaml"))
-}
-
-/// Parse one kebab-case enum value out of a JSON string, mirroring the
-/// `EvidenceIndex::read` pattern in `slice/model.rs`.
-fn parse_enum<T: serde::de::DeserializeOwned>(value: &str) -> Option<T> {
-    serde_json::from_value(JsonValue::String(value.to_string())).ok()
-}
-
 /// Resolve the bound target's `shape` brief body — `TargetAdapter::resolve`
 /// keeps target resolution a CLI responsibility.
 fn resolve_shape_brief(ctx: &Ctx, slice_dir: &Path) -> Result<String> {
@@ -392,16 +274,6 @@ fn read_response_file(path: &Path) -> Result<String> {
             Error::Io(err)
         }
     })
-}
-
-/// Short failure reason / finding code for the `slice.synthesize.failed`
-/// journal event.
-fn failure_reason(err: &Error) -> String {
-    match err {
-        Error::Validation { code, .. } => code.to_string(),
-        Error::Diag { code, .. } => (*code).to_string(),
-        other => other.to_string(),
-    }
 }
 
 /// Best-effort emit of a single `slice.synthesize.*` journal event.

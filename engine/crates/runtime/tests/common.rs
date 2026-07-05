@@ -14,6 +14,7 @@ use omnia::wasmtime_wasi::ResourceTable;
 use omnia::{Backend as _, Deployment, HasHttp, Runtime, StoreCtx, Wiring};
 use omnia_testkit::{TempManifest, temp_manifest};
 use omnia_wasi_http::{HttpDefault, WasiHttp, WasiHttpCtxView};
+use omnia_wasi_model::{HasModel, ModelDefault, WasiModel, WasiModelCtx};
 
 /// Built artifact name of the echo source-adapter guest.
 pub const ECHO_WASM: &str = "specify_echo_guest.wasm";
@@ -119,17 +120,19 @@ pub fn skeleton_manifest(echo_id: &str) -> Result<TempManifest> {
     ))
 }
 
-/// The `wasi:http` backend bundle the host binary's `runtime!` macro
-/// generates for `hosts: { WasiHttp: HttpDefault }`.
+/// The backend bundle the host binary's `runtime!` macro generates for
+/// `hosts: { WasiHttp: HttpDefault, WasiModel: ModelDefault }`.
 #[derive(Clone)]
 pub struct Bundle {
     http: HttpDefault,
+    model: ModelDefault,
 }
 
 impl omnia::Backends for Bundle {
     async fn connect() -> Result<Self> {
         Ok(Self {
             http: HttpDefault::connect().await?,
+            model: ModelDefault::connect().await?,
         })
     }
 }
@@ -140,13 +143,22 @@ impl HasHttp for Bundle {
     }
 }
 
-/// Test wiring: link the `wasi:http` host (the echo guest imports its types)
-/// but serve no trigger servers — the tests never bind a TCP socket.
+impl HasModel for Bundle {
+    fn model_ctx(&mut self) -> &mut dyn WasiModelCtx {
+        &mut self.model
+    }
+}
+
+/// Test wiring: link the `wasi:http` host (the echo guest imports its
+/// types) and the `wasi-model` replay host (the workflow guest imports
+/// `omnia:model/completion` for its judgment legs), but serve no trigger
+/// servers — the tests never bind a TCP socket.
 pub struct Quiet;
 
 impl Wiring<Bundle> for Quiet {
     fn link(deployment: &mut Deployment<StoreCtx<Bundle>>) -> Result<()> {
         deployment.host::<WasiHttp, Bundle>()?;
+        deployment.host::<WasiModel, Bundle>()?;
         Ok(())
     }
 

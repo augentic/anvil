@@ -9,7 +9,7 @@ mod engine;
 pub mod slice;
 mod validate;
 
-pub use artifact_class::{ArtifactClass, MergeStrategy};
+pub use artifact_class::{ArtifactClass, MergeStrategy, artifact_classes};
 pub use engine::{MergeOperation, MergeResult, merge};
 pub use slice::{
     BaselineConflict, MergeCommit, MergePreviewEntry, OpaqueAction, OpaquePreviewEntry,

@@ -2,7 +2,9 @@
 //! supply an ordered `&[ArtifactClass]`; the engine dispatches on
 //! [`MergeStrategy`] and never matches on [`ArtifactClass::name`].
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use crate::config::Layout;
 
 /// One mutable artefact class that participates in a slice's merge.
 ///
@@ -48,4 +50,28 @@ pub enum MergeStrategy {
     /// under `<baseline_dir>`, overwriting any existing baseline file.
     /// Today's `omnia` "contracts" behaviour.
     OpaqueReplace,
+}
+
+/// Default omnia [`ArtifactClass`] set: `specs` (3-way merge) and
+/// `contracts` (opaque replace).
+///
+/// Single source of truth shared by the native merge verbs, the
+/// synthesize baseline resolution, and the guest orchestrators; future
+/// adapter manifests should drive this through `specify-adapter`.
+#[must_use]
+pub fn artifact_classes(project_root: &Path, slice_dir: &Path) -> Vec<ArtifactClass> {
+    vec![
+        ArtifactClass {
+            name: "specs".to_string(),
+            staged_dir: slice_dir.join("specs"),
+            baseline_dir: Layout::new(project_root).specify_dir().join("specs"),
+            strategy: MergeStrategy::ThreeWayMerge,
+        },
+        ArtifactClass {
+            name: "contracts".to_string(),
+            staged_dir: slice_dir.join("contracts"),
+            baseline_dir: project_root.join("contracts"),
+            strategy: MergeStrategy::OpaqueReplace,
+        },
+    ]
 }

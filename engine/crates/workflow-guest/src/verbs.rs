@@ -24,7 +24,9 @@ use specify_dispatch::context::Ctx;
 use specify_dispatch::guest::{Orchestration, Verb};
 use specify_dispatch::output::{Exit, Format, report};
 use specify_error::Error;
+use specify_workflow::change::LoopStep;
 use specify_workflow::orchestrate;
+use specify_workflow::orchestrate::ExecuteOutcome;
 use specify_workflow::seam::WorkingTree;
 use specify_workflow::slice::BuildStatus;
 
@@ -129,7 +131,81 @@ async fn run(format: Format, plan_dir: Option<PathBuf>, verb: Verb) -> Result<()
                 writeln!(w, "archived: {}", body.archive_path.display())
             })
         }
+        Verb::Execute => {
+            let manifest_inputs = ctx.resolve_target_adapter()?.manifest.inputs;
+            let tree = WorkingTree {
+                base: "live".to_string(),
+                subpath: None,
+            };
+            let outcome = orchestrate::execute(
+                &Provider,
+                &Provider,
+                &Provider,
+                ctx.layout(),
+                now,
+                &manifest_inputs,
+                &tree,
+            )
+            .await?;
+            match outcome {
+                ExecuteOutcome::Drained { phases } => {
+                    let body = ExecuteBody {
+                        status: "drained",
+                        phases: phases
+                            .into_iter()
+                            .map(|run| ExecutePhase {
+                                slice: run.slice,
+                                step: run.step,
+                            })
+                            .collect(),
+                    };
+                    ctx.write(&body, |w, body| {
+                        for phase in &body.phases {
+                            writeln!(w, "{} {}", phase.step, phase.slice)?;
+                        }
+                        writeln!(w, "drained")
+                    })
+                }
+                // A stop is the loop's typed halt — surface it on the
+                // native error envelope (exit 2) so a driver can tell a
+                // parked loop from a drained one without parsing prose.
+                ExecuteOutcome::Stopped {
+                    reason,
+                    detail,
+                    hint,
+                    slice,
+                    ..
+                } => Err(Error::validation_failed(
+                    "plan-execute-stopped",
+                    "the execute loop drains the plan",
+                    match (slice, detail) {
+                        (Some(slice), Some(detail)) => {
+                            format!("stop {reason} ({slice}): {detail} — {hint}")
+                        }
+                        (Some(slice), None) => format!("stop {reason} ({slice}) — {hint}"),
+                        (None, Some(detail)) => format!("stop {reason}: {detail} — {hint}"),
+                        (None, None) => format!("stop {reason} — {hint}"),
+                    },
+                )),
+            }
+        }
     }
+}
+
+/// Success envelope for the guest `plan execute` drained exit.
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct ExecuteBody {
+    status: &'static str,
+    phases: Vec<ExecutePhase>,
+}
+
+/// One completed phase in the drained run, in run order.
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct ExecutePhase {
+    slice: String,
+    step: LoopStep,
 }
 
 /// Success envelope for the collapsed `source survey`.

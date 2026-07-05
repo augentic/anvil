@@ -32,9 +32,10 @@ pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
         PlanAction::Create {
             name,
             sources,
+            intent,
             auto_approve,
             authority_override,
-        } => create::create(ctx, name, sources, auto_approve, &authority_override),
+        } => create::create(ctx, name, sources, intent, auto_approve, &authority_override),
         PlanAction::Validate => lifecycle::validate(ctx),
         PlanAction::Next => lifecycle::next(ctx),
         PlanAction::Status => lifecycle::status(ctx),
@@ -57,6 +58,17 @@ pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
         PlanAction::Lock { .. } => Err(Error::Argument {
             flag: "<command>",
             detail: "`specify plan lock` dispatches outside the shared verb table".to_string(),
+        }),
+        // Guest-only: the guest router peels `plan execute` off into an
+        // orchestration before this table, so reaching this arm means
+        // the native binary parsed it — refuse with the mirror image of
+        // the guest's native-only refusals (wire code `argument`,
+        // exit 2). Natively the loop is skill-owned until Step 5.
+        PlanAction::Execute => Err(Error::Argument {
+            flag: "<command>",
+            detail: "`specify plan execute` runs only in the workflow guest; natively the \
+                     execute loop is driven by the /spec:execute skill"
+                .to_string(),
         }),
     }
 }

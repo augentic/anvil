@@ -2,12 +2,12 @@
 //! the omnia `artifact_classes` synthesiser shared by `slice merge` and
 //! `slice touched-specs`.
 
-use std::path::Path;
-
 use specify_error::{Error, Result};
-use specify_workflow::config::Layout;
 use specify_workflow::journal::{self, EventKind};
-use specify_workflow::merge::{ArtifactClass, MergeStrategy};
+/// Re-exported so existing dispatch and guest callers keep one import
+/// path while the synthesiser itself lives in `specify-workflow`
+/// (the guest refine/execute orchestrators resolve classes in-crate).
+pub use specify_workflow::merge::artifact_classes;
 use specify_workflow::slice::LifecycleStatus;
 
 pub mod cli;
@@ -23,30 +23,6 @@ mod validate;
 use cli::{SliceAction, SliceMergeAction, SliceModelAction, SliceTaskAction};
 
 use crate::context::Ctx;
-
-/// Default omnia [`ArtifactClass`] set: `specs` (3-way merge) and
-/// `contracts` (opaque replace).
-///
-/// Single source of truth shared by the native merge verbs and the
-/// guest merge orchestrator (hence `pub`); future adapter manifests
-/// should drive this through `specify-adapter`.
-#[must_use]
-pub fn artifact_classes(project_root: &Path, slice_dir: &Path) -> Vec<ArtifactClass> {
-    vec![
-        ArtifactClass {
-            name: "specs".to_string(),
-            staged_dir: slice_dir.join("specs"),
-            baseline_dir: Layout::new(project_root).specify_dir().join("specs"),
-            strategy: MergeStrategy::ThreeWayMerge,
-        },
-        ArtifactClass {
-            name: "contracts".to_string(),
-            staged_dir: slice_dir.join("contracts"),
-            baseline_dir: project_root.join("contracts"),
-            strategy: MergeStrategy::OpaqueReplace,
-        },
-    ]
-}
 
 /// Best-effort lifecycle bracket shared by `slice merge run` and
 /// `slice build --phase finalize` (the latter lives in the binary

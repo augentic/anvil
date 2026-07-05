@@ -23,6 +23,15 @@ pub enum PlanAction {
         /// `{ adapter, path?, value? }` shape per workflow §Source.
         #[arg(long = "source")]
         sources: Vec<SourceArg>,
+        /// Operator intent as a literal string — pure sugar for
+        /// `--source intent=intent:value:<string>` (the N=1 entry
+        /// point without hand-writing the binding grammar).
+        /// Combining it with an explicit `--source intent=...`
+        /// binding fails on the duplicate-key gate
+        /// (`plan-source-duplicate-key`), the same refusal two
+        /// conflicting `--source intent=...` occurrences get.
+        #[arg(long = "intent", value_name = "STRING")]
+        intent: Option<String>,
         /// Stamp `lifecycle: approved` atomically with create
         /// (auto-approve Gate-1 contract). Typing this flag *is* the operator's
         /// Gate-1 consent — the CLI runs the same validation it
@@ -168,6 +177,19 @@ pub enum PlanAction {
         #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
         actor: String,
     },
+    /// Run the drained execute loop in the workflow guest: claim →
+    /// refine → build → merge per entry until the plan projects
+    /// `drained` or a stop condition halts it (exit 2,
+    /// `plan-execute-stopped`).
+    ///
+    /// Guest-only. The native binary refuses this verb — natively the
+    /// loop is driven by the `/spec:execute` skill, which composes the
+    /// same phases through the per-verb surface under the plan lock.
+    /// In-guest the loop holds the create-exclusive
+    /// `.specify/guest.lock` marker instead (guest-vs-guest refusal
+    /// only; no cross-stack interlock with the native flock —
+    /// non-concurrent stack use is the coexistence rule).
+    Execute,
     /// Archive the current plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`
     Archive {
         /// Archive even when the plan has pending or in-progress entries.

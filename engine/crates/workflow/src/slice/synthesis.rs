@@ -11,6 +11,8 @@
 
 pub mod authority;
 pub mod baseline;
+pub mod evidence;
+pub mod persist;
 pub mod project;
 pub mod render;
 pub mod wire;

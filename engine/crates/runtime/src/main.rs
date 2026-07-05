@@ -8,8 +8,19 @@
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
         use omnia_wasi_http::{HttpDefault, WasiHttp};
+        use omnia_wasi_model::{ModelDefault, WasiModel};
 
-        omnia::runtime!({ mode: command, hosts: { WasiHttp: HttpDefault } });
+        // `WasiModel: ModelDefault` binds the replay backend so the
+        // workflow guest's `omnia:model/completion` import links; the
+        // operational cursor backend (RFC-61 §Step 2) swaps in when the
+        // deployment goes live.
+        omnia::runtime!({
+            mode: command,
+            hosts: {
+                WasiHttp: HttpDefault,
+                WasiModel: ModelDefault,
+            }
+        });
     } else {
         fn main() {}
     }

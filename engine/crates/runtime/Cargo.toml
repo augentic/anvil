@@ -22,6 +22,7 @@ cfg-if.workspace = true
 anyhow.workspace = true
 omnia.workspace = true
 omnia-wasi-http.workspace = true
+omnia-wasi-model.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

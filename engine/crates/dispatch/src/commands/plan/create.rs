@@ -32,8 +32,8 @@ use crate::context::Ctx;
 /// key) refuse the create with or without the flag and leave the
 /// journal untouched.
 pub(super) fn create(
-    ctx: &Ctx, name: String, sources: Vec<SourceArg>, auto_approve: bool,
-    authority_override: &[String],
+    ctx: &Ctx, name: String, mut sources: Vec<SourceArg>, intent: Option<String>,
+    auto_approve: bool, authority_override: &[String],
 ) -> Result<()> {
     if !is_kebab(&name) {
         return Err(Error::Diag {
@@ -43,6 +43,14 @@ pub(super) fn create(
                  (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens)"
             ),
         });
+    }
+    // `--intent <string>` is pure sugar for the value-bound intent
+    // binding; appending it before `build_source_map` means an
+    // explicit `--source intent=...` in the same invocation trips the
+    // existing duplicate-key gate rather than needing a bespoke
+    // conflict rule.
+    if let Some(value) = intent {
+        sources.push(SourceArg::intent(value));
     }
     let source_map = build_source_map(sources)?;
     let plan_path = ctx.layout().plan_path();

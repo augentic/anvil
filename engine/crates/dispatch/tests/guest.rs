@@ -95,6 +95,18 @@ fn merge_run_routes_to_orchestrator() {
 }
 
 #[test]
+fn plan_execute_routes_to_orchestrator() {
+    // The drained execute loop is guest-only argv: in-guest it routes
+    // to the shim's orchestrator dispatch (natively the shared verb
+    // table refuses it — covered by the binary suite).
+    let cli = parse_ok(&["specify", "plan", "execute"]);
+    let Route::Orchestrate(Orchestration { verb, .. }) = route(cli) else {
+        panic!("plan execute must route to the shim's orchestrator dispatch");
+    };
+    assert_eq!(verb, Verb::Execute);
+}
+
+#[test]
 fn global_flags_thread_to_orchestration() {
     let cli = parse_ok(&[
         "specify",

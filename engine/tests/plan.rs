@@ -3149,6 +3149,90 @@ slices:
         );
     }
 
+    // -- plan create --intent (elicitation-to-argv sugar, RFC-61 Milestone E) ----------------
+
+    #[test]
+    fn create_intent_desugars_to_source_binding() {
+        // `--intent <string>` is pure sugar for
+        // `--source intent=intent:value:<string>`: the two invocations
+        // must persist byte-identical plan.yaml files.
+        let sugared = Project::init();
+        specify_cmd()
+            .current_dir(sugared.root())
+            .args(["plan", "create", "demo", "--intent", "Fix the greeting typo."])
+            .assert()
+            .success();
+
+        let explicit = Project::init();
+        specify_cmd()
+            .current_dir(explicit.root())
+            .args([
+                "plan",
+                "create",
+                "demo",
+                "--source",
+                "intent=intent:value:Fix the greeting typo.",
+            ])
+            .assert()
+            .success();
+
+        let sugared_yaml = fs::read_to_string(sugared.plan_path()).expect("sugared plan.yaml");
+        let explicit_yaml = fs::read_to_string(explicit.plan_path()).expect("explicit plan.yaml");
+        assert_eq!(
+            sugared_yaml, explicit_yaml,
+            "--intent must desugar byte-identically to the explicit intent source binding"
+        );
+        assert!(sugared_yaml.contains("adapter: intent"), "{sugared_yaml}");
+        assert!(sugared_yaml.contains("Fix the greeting typo."), "{sugared_yaml}");
+    }
+
+    #[test]
+    fn create_intent_conflicts_with_source() {
+        // Combining `--intent` with an explicit `--source intent=...`
+        // binding trips the existing duplicate-key gate — no bespoke
+        // conflict rule.
+        let project = Project::init();
+        let assert = specify_cmd()
+            .current_dir(project.root())
+            .args([
+                "--format",
+                "json",
+                "plan",
+                "create",
+                "demo",
+                "--intent",
+                "One brief.",
+                "--source",
+                "intent=intent:value:Another brief.",
+            ])
+            .assert()
+            .failure();
+        let stderr = parse_stderr(&assert.get_output().stderr, project.root());
+        assert_eq!(stderr["error"], "plan-source-duplicate-key");
+        assert!(!project.plan_path().exists(), "a refused create must not write plan.yaml");
+    }
+
+    // -- plan execute (guest-only verb: native refusal) --------------------------------------
+
+    #[test]
+    fn plan_execute_refused_natively() {
+        // `plan execute` lives in the shared grammar but runs only in
+        // the workflow guest; the native binary refuses it with the
+        // standard argument error (wire code `argument`, exit 2) — the
+        // mirror image of the guest's native-only refusals.
+        let project = Project::init();
+        let assert = specify_cmd()
+            .current_dir(project.root())
+            .args(["--format", "json", "plan", "execute"])
+            .assert()
+            .failure();
+        assert_eq!(assert.get_output().status.code(), Some(2));
+        let stderr = parse_stderr(&assert.get_output().stderr, project.root());
+        assert_eq!(stderr["error"], "argument");
+        let message = stderr["message"].as_str().expect("message string");
+        assert!(message.contains("workflow guest"), "{message}");
+    }
+
     // -- plan create --auto-approve (auto-approve Gate-1 contract) ---------------------------
 
     #[test]

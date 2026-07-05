@@ -30,7 +30,8 @@ pub use propose::{
     build_request, resolve_target, resolve_topology,
 };
 pub use status::{
-    NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line, plan_status_body,
+    LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,
+    plan_status_body,
 };
 #[cfg(test)]
 pub use test_fixtures::{PLAN_EXAMPLE_YAML, change, change_with_deps, plan_with_changes};

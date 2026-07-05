@@ -5971,6 +5971,7 @@ dependencies = [
  "omnia",
  "omnia-testkit",
  "omnia-wasi-http",
+ "omnia-wasi-model",
  "serde_json",
  "tokio",
 ]

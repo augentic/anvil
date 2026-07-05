@@ -18,6 +18,8 @@ mod agents_lock;
 mod decisions;
 #[path = "design_system_parts.rs"]
 mod design_system_parts;
+#[path = "execute.rs"]
+mod execute;
 #[path = "goldens.rs"]
 mod goldens;
 #[path = "judgment.rs"]

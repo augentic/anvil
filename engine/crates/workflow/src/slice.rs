@@ -26,6 +26,10 @@ pub use model::SliceModel;
 pub use outcome::Kind as OutcomeKind;
 pub use synthesis::authority::{Agreement, ClaimRef, Resolution, resolve};
 pub use synthesis::baseline::{BaselineIndex, DomainBaseline, DomainKind};
+pub use synthesis::evidence::{
+    KernelEvidence, evidence_path, read_evidence_index, read_source_inputs,
+};
+pub use synthesis::persist::{failure_reason as synthesize_failure_reason, persist_synthesized};
 pub use synthesis::project::{ProjectionHeader, project};
 pub use synthesis::render::{
     ExpectedRequirement, RenderedSpec, expected_provenance_lines, render_spec_files,

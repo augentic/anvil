@@ -290,6 +290,17 @@ impl<'a> Layout<'a> {
         self.plan_dir().join(".specify").join("plan.lock")
     }
 
+    /// Absolute path to `<plan-root>/.specify/guest.lock` — the guest
+    /// execute loop's create-exclusive advisory marker (RFC-61 D1,
+    /// [`crate::orchestrate::GuestMarker`]). Guest-vs-guest breakout
+    /// refusal only: it does not interlock with the native flock at
+    /// [`Self::plan_lock_path`] (non-concurrent stack use is the
+    /// documented coexistence rule).
+    #[must_use]
+    pub fn guest_lock_path(&self) -> PathBuf {
+        self.plan_dir().join(".specify").join("guest.lock")
+    }
+
     /// Absolute path to `<plan-root>/change.md` — the umbrella
     /// operator brief beside `plan.yaml`. Platform-level artifact.
     #[must_use]
