@@ -76,6 +76,94 @@ fn resolves_target_from_local_dir() {
 }
 
 #[test]
+fn resolves_shrunk_source_manifest() {
+    // RFC-61 S2 two-shape window: a post-cutover manifest carries only
+    // `name` / `version` / `axis` / `description`. It must resolve with
+    // the machinery absent, and the operation set derives from the
+    // closed WIT contract instead of `briefs.keys()`.
+    let (_tmp, project) = local_project();
+    let manifest_dir = project.join("adapters").join("sources").join("shrunk");
+    fs::create_dir_all(&manifest_dir).expect("create shrunk source dir");
+    fs::write(
+        manifest_dir.join("adapter.yaml"),
+        r"name: shrunk
+version: 1.0.0
+axis: source
+description: Shrunk post-cutover source manifest.
+",
+    )
+    .expect("write shrunk source manifest");
+
+    let resolved = SourceAdapter::resolve(&AdapterRef::bare("shrunk"), &project)
+        .expect("shrunk source manifest resolves");
+    assert!(resolved.manifest.briefs.is_empty(), "absent briefs resolve as an empty map");
+    assert_eq!(resolved.manifest.execution, None, "absent execution resolves as None");
+    assert_eq!(
+        resolved.manifest.operations().copied().collect::<Vec<_>>(),
+        vec![SourceOperation::Extract, SourceOperation::Survey],
+        "briefless operation set derives from the closed WIT contract"
+    );
+}
+
+#[test]
+fn resolves_shrunk_target_manifest() {
+    // Target-axis counterpart, keeping the optional `platforms`
+    // capability the shrunk vectis manifest retains.
+    let (_tmp, project) = local_project();
+    let manifest_dir = project.join("adapters").join("targets").join("shrunk-target");
+    fs::create_dir_all(&manifest_dir).expect("create shrunk target dir");
+    fs::write(
+        manifest_dir.join("adapter.yaml"),
+        r"name: shrunk-target
+version: 1.0.0
+axis: target
+description: Shrunk post-cutover target manifest.
+platforms:
+  required: true
+  allowed: [core, ios, android]
+  default: [core, ios, android]
+",
+    )
+    .expect("write shrunk target manifest");
+
+    let resolved = TargetAdapter::resolve(&AdapterRef::bare("shrunk-target"), &project)
+        .expect("shrunk target manifest resolves");
+    assert!(resolved.manifest.briefs.is_empty(), "absent briefs resolve as an empty map");
+    assert_eq!(resolved.manifest.execution, None, "absent execution resolves as None");
+    assert!(resolved.manifest.platforms.is_some(), "retained platforms capability survives");
+    assert_eq!(
+        resolved.manifest.operations().copied().collect::<Vec<_>>(),
+        vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape],
+        "briefless operation set derives from the closed WIT contract"
+    );
+}
+
+#[test]
+fn partial_briefs_rejected_at_load_time() {
+    // The relax is all-or-nothing: a manifest that carries `briefs`
+    // is still held to the full per-axis key set.
+    let (_tmp, project) = local_project();
+    let manifest_dir = project.join("adapters").join("sources").join("partial");
+    fs::create_dir_all(&manifest_dir).expect("create partial source dir");
+    fs::write(
+        manifest_dir.join("adapter.yaml"),
+        r"name: partial
+version: 1.0.0
+axis: source
+description: Source manifest with a partial briefs map.
+briefs:
+  survey: briefs/survey.md
+",
+    )
+    .expect("write partial source manifest");
+
+    let err = SourceAdapter::resolve(&AdapterRef::bare("partial"), &project)
+        .expect_err("a present-but-partial briefs map must fail");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-schema-violation"), "expected schema violation: {detail}");
+}
+
+#[test]
 fn axis_collision_rejected_at_resolve_time() {
     // Both `adapters/sources/foo/` and `adapters/targets/foo/` exist
     // in the fixture. Per DECISIONS.md §"Adapter name uniqueness"

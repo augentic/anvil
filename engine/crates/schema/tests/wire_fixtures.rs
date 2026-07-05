@@ -90,6 +90,27 @@ inputs:
     required: true
 ";
 
+/// RFC-61 S2 two-shape window: the shrunk post-cutover manifest keeps
+/// only `name` / `version` / `axis` / `description` (plus `platforms`
+/// on vectis) — `briefs` and `execution` are optional at the top level.
+const PLUGIN_VALID_SHRUNK_SOURCE: &str = r"
+name: typescript
+version: 1.0.0
+axis: source
+description: Shrunk post-cutover source manifest.
+";
+
+const PLUGIN_VALID_SHRUNK_TARGET: &str = r"
+name: vectis
+version: 1.0.0
+axis: target
+description: Shrunk post-cutover target manifest.
+platforms:
+  required: true
+  allowed: [core, ios, android]
+  default: [core, ios, android]
+";
+
 const PLUGIN_INVALID_NO_AXIS: &str = r"
 name: typescript
 version: 1.0.0
@@ -135,6 +156,8 @@ fn plugin_accepts_source_and_target_shapes() {
         &yaml(PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS),
         "plugin/target-with-native-hooks",
     );
+    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_SOURCE), "plugin/shrunk-source");
+    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_TARGET), "plugin/shrunk-target");
 }
 
 #[test]
@@ -192,6 +215,7 @@ host_prereq:
 fn source_accepts_canonical_shape() {
     let v = load(SOURCE_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_SOURCE), "source/valid");
+    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_SOURCE), "source/shrunk");
 }
 
 #[test]
@@ -260,6 +284,7 @@ host_prereq:
 fn target_accepts_canonical_shape() {
     let v = load(TARGET_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_TARGET), "target/valid");
+    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_TARGET), "target/shrunk");
 }
 
 #[test]

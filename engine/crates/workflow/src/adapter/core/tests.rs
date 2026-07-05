@@ -353,16 +353,6 @@ platforms:
 
 #[test]
 fn typed_gates() {
-    // The typed execution gate refuses a missing mode (exit 2) and accepts a declared one.
-    let Error::Validation { code, .. } = check_execution(None, Path::new("adapter.yaml"))
-        .expect_err("missing execution must be rejected")
-    else {
-        panic!("expected Error::Validation");
-    };
-    assert_eq!(code, "adapter-execution-mode-required");
-    check_execution(Some(Execution::Agent), Path::new("adapter.yaml")).expect("agent passes");
-    check_execution(Some(Execution::Tool), Path::new("adapter.yaml")).expect("tool passes");
-
     let manifest = TargetAdapter {
         name: "demo-target".into(),
         version: semver::Version::new(1, 0, 0),

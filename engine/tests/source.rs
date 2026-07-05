@@ -733,6 +733,40 @@ mod preview {
     }
 
     #[test]
+    fn preview_fails_when_briefless() {
+        // RFC-61 S2 two-shape window: a shrunk post-cutover manifest
+        // resolves, but the two-phase agent handoff has no brief to
+        // hand off — the shared prep seam refuses it at the point of
+        // use with a typed error.
+        let tmp = tempdir().expect("tempdir");
+        let root = tmp.path();
+        let adapter_dir = root.join("adapters/sources/shrunk");
+        fs::create_dir_all(&adapter_dir).expect("create shrunk adapter dir");
+        fs::write(
+            adapter_dir.join("adapter.yaml"),
+            "name: shrunk\nversion: 1.0.0\naxis: source\ndescription: Shrunk post-cutover source manifest.\n",
+        )
+        .expect("write shrunk manifest");
+
+        let source_dir = root.join("my-source");
+        fs::create_dir_all(&source_dir).expect("create source dir");
+
+        let assert = specify_cmd()
+            .current_dir(root)
+            .args(["--format", "json", "source", "preview", "shrunk"])
+            .arg("--source")
+            .arg(&source_dir)
+            .arg("--project-dir")
+            .arg(root)
+            .assert()
+            .failure();
+
+        let stderr = parse_stderr(&assert.get_output().stderr, root);
+        assert_eq!(stderr["error"], "adapter-briefs-missing");
+        assert_eq!(stderr["exit-code"], 2);
+    }
+
+    #[test]
     fn preview_fails_when_adapter_not_found() {
         let tmp = tempdir().expect("tempdir");
         let root = tmp.path();

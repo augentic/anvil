@@ -15,6 +15,7 @@
 pub const WIRE_CODES: &[&str] = &[
     "adapter-arg-malformed",
     "adapter-axis-mismatch",
+    "adapter-briefs-missing",
     "adapter-build-failed",
     "adapter-canonicalize-failed",
     "adapter-cli-too-old",

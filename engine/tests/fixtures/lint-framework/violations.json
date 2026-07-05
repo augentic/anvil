@@ -24,36 +24,13 @@
       "title": "Adapter Manifest Schema: schema validation failed"
     },
     {
-      "artifact": "code",
-      "confidence": "high",
-      "evidence": {
-        "data": {
-          "json_pointer": ""
-        },
-        "kind": "structured",
-        "summary": "\"briefs\" is a required property"
-      },
-      "fingerprint": "sha256:fbd92b05f54d0aafc7426966d7f4e27948eea00d7f9de4f79ec05c52ddf83953",
-      "id": "FIND-0002",
-      "impact": "An adapter manifest fails adapter.schema.json validation.",
-      "kind": "violation",
-      "location": {
-        "path": "adapters/targets/omnia/adapter.yaml"
-      },
-      "remediation": "See adapters/shared/rules/core/CORE-001-adapter-schema.md",
-      "rule-id": "CORE-001",
-      "severity": "critical",
-      "source": "deterministic",
-      "title": "Adapter Manifest Schema: schema validation failed"
-    },
-    {
       "artifact": "unknown",
       "evidence": {
         "kind": "snippet",
         "value": "Rules namespace ownership: adapters/targets/omnia/rules/frame-misplaced.md — FRAME-* ids are reserved for framework-repo declarative rules and may not be placed under adapter trees (got 'FRAME-001' under rules owner 'omnia')"
       },
       "fingerprint": "sha256:d68b0b6612d28b1f0acf7e501e9646f3dd53e78dc0739c1c4db010832677d336",
-      "id": "FIND-0003",
+      "id": "FIND-0002",
       "impact": "A rule's id-namespace prefix is not owned by the rules directory it lives under, so the codex namespace ownership invariant is broken.",
       "kind": "violation",
       "location": {
@@ -67,7 +44,7 @@
     }
   ],
   "summary": {
-    "critical": 2,
+    "critical": 1,
     "important": 1,
     "optional": 0,
     "suggestion": 0

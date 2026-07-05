@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/adapter.schema.json",
   "title": "Specify adapter manifest",
-  "description": "Shared shape for source and target adapter manifests (`adapter.yaml`) per workflow §Adapter implementation shape. Carries the kebab-case `name`, semver `version`, the `axis` discriminator (`source` or `target`), the `briefs.<operation>` map of relative brief paths, and an optional singular `extension` declaration (RFC-48 D11). The set of operations is closed by the per-axis `briefs` constraints in `source.schema.json` and `target.schema.json` — `briefs.keys()` is the canonical operation iterator.",
+  "description": "Shared shape for source and target adapter manifests (`adapter.yaml`) per workflow §Adapter implementation shape. Carries the kebab-case `name`, semver `version`, the `axis` discriminator (`source` or `target`), an optional `briefs.<operation>` map of relative brief paths, and an optional singular `extension` declaration (RFC-48 D11). `briefs` is optional during the RFC-61 two-shape coexistence window: a manifest that carries it is held to the per-axis closed key set in `source.schema.json` / `target.schema.json`, and a manifest that omits it derives its operation set from the closed WIT contract (`wit/specify.wit`).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "version", "axis", "description", "briefs"],
+  "required": ["name", "version", "axis", "description"],
   "properties": {
     "name": {
       "$ref": "#/$defs/kebabName",

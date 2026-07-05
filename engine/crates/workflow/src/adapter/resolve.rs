@@ -12,8 +12,8 @@ use specify_error::Error;
 use super::core::{
     ADAPTER_FILENAME, AdapterLocation, AdapterRef, Axis, ResolvedSourceAdapter,
     ResolvedTargetAdapter, SourceAdapter, TargetAdapter, adapter_axis_dir, cache_dir,
-    check_axis_and_name, check_execution, check_prepare_requires_extension,
-    check_requested_version, check_requires_specify, check_version,
+    check_axis_and_name, check_prepare_requires_extension, check_requested_version,
+    check_requires_specify, check_version,
 };
 use super::validate_manifest::{axis_collision_error, sibling_manifest_path, validate_schema};
 
@@ -60,7 +60,6 @@ impl SourceAdapter {
         let (manifest, location, manifest_path) =
             resolve_typed::<Self>(Axis::Source, adapter_ref, project_dir)?;
         check_axis_and_name(Axis::Source, name, manifest.axis, &manifest.name, &manifest_path)?;
-        check_execution(manifest.execution, &manifest_path)?;
         check_requested_version(
             adapter_ref.version.as_ref(),
             name,
@@ -120,7 +119,6 @@ impl TargetAdapter {
         let (manifest, location, manifest_path) =
             resolve_typed::<Self>(Axis::Target, adapter_ref, project_dir)?;
         check_axis_and_name(Axis::Target, name, manifest.axis, &manifest.name, &manifest_path)?;
-        check_execution(manifest.execution, &manifest_path)?;
         check_requested_version(
             adapter_ref.version.as_ref(),
             name,

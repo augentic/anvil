@@ -622,6 +622,47 @@ screens:
         let stderr = parse_json(&assert.get_output().stderr);
         assert_eq!(stderr["error"], "target-build-tool-unsupported");
     }
+
+    #[test]
+    fn briefless_manifest_refuses_native_build() {
+        // RFC-61 S2 two-shape window: a shrunk post-cutover manifest
+        // resolves, but the native two-phase build machinery is gone
+        // with it — the verb refuses at the point of use with a typed
+        // error instead of dispatching an agent handoff with no brief.
+        let project = Project::init();
+        stage_refined_slice(&project);
+
+        // `init` caches the resolved manifest; shrink it to the
+        // post-cutover shape (no `briefs`, no `execution`).
+        let cached =
+            expected_cache_dir(project.root()).join("manifests/targets/omnia/adapter.yaml");
+        fs::write(
+            &cached,
+            "name: omnia\nversion: 1.0.0\naxis: target\ndescription: Shrunk post-cutover target manifest.\n",
+        )
+        .expect("rewrite cached manifest to the shrunk shape");
+
+        let assert = specify_cmd()
+            .current_dir(project.root())
+            .args(["--format", "json", "slice", "build", "my-slice"])
+            .assert()
+            .failure();
+        let stderr = parse_json(&assert.get_output().stderr);
+        assert_eq!(stderr["error"], "adapter-execution-mode-required");
+
+        // The abort fires before any side effect: no request write, no
+        // `target.execution.agent` journal emit.
+        assert!(
+            !project.slices_dir().join("my-slice/build/request.yaml").exists(),
+            "no request.yaml may be written for a refused build"
+        );
+        let events = read_journal_normalized(project.root());
+        assert!(
+            !event_ids(&events).contains(&"target.execution.agent"),
+            "no agent handoff event may fire for a refused build, got: {:?}",
+            event_ids(&events)
+        );
+    }
 }
 
 mod create {

@@ -5,15 +5,16 @@
 //! [`SourceOperation`] (`extract | survey`) vs. [`TargetOperation`]
 //! (`shape | build | merge`). The in-memory split into
 //! [`SourceAdapter`] / [`TargetAdapter`] pushes the kebab-string
-//! boundary out to the YAML parse step — `briefs.keys()` is now the
-//! typed source-of-truth operation iterator, with serde rejecting any
-//! unknown variant before downstream code ever sees a string.
+//! boundary out to the YAML parse step — `briefs.keys()` is the typed
+//! operation iterator for full-shape manifests (with serde rejecting
+//! any unknown variant before downstream code ever sees a string), and
+//! briefless post-cutover manifests fall back to the axis's closed WIT
+//! operation set (`wit/specify.wit`).
 //!
 //! Resolution lives in [`super::resolve`]; schema validation and the
 //! cross-axis collision probe in [`super::validate_manifest`]. This
-//! module owns the manifest types, the path helpers, and the two
-//! post-load coherence gates ([`check_axis_and_name`],
-//! [`check_execution`]).
+//! module owns the manifest types, the path helpers, and the post-load
+//! coherence gates ([`check_axis_and_name`] and friends).
 //!
 //! See [DECISIONS.md §"Operations typed at parse boundary"] for the
 //! rationale.
@@ -451,18 +452,19 @@ pub struct SourceAdapter {
     /// successful [`SourceAdapter::resolve`]; the field is retained
     /// so YAML round-trips byte-for-byte through serde.
     pub axis: Axis,
-    /// Closed adapter execution mode. Required by
-    /// `source.schema.json`; modelled as `Option` (mirroring
-    /// `description`) so the typed `check_execution` gate rejects a
-    /// manifest that omits it with `adapter-execution-mode-required`
-    /// rather than defaulting silently.
+    /// Closed adapter execution mode. Optional on the wire (RFC-61
+    /// two-shape window): shrunk post-cutover manifests omit it, and
+    /// native consumers that dispatch on it fail at the point of use
+    /// (`adapter-execution-mode-required`) rather than at resolve time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution: Option<Execution>,
-    /// Typed source-operation → relative brief path map. Closed by
-    /// `source.schema.json#/properties/briefs`: every source manifest
-    /// declares `extract` + `survey`. `briefs.keys()` is the
-    /// canonical operation iterator — exposed via
+    /// Typed source-operation → relative brief path map. Optional on
+    /// the wire (RFC-61 two-shape window): when present,
+    /// `source.schema.json#/properties/briefs` closes it to the full
+    /// `extract` + `survey` set; when absent (empty map), the operation
+    /// set derives from the closed WIT contract instead — see
     /// [`SourceAdapter::operations`].
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub briefs: BTreeMap<SourceOperation, String>,
     /// Optional singular declared WASI extension (RFC-48 D11).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -504,19 +506,21 @@ pub struct TargetAdapter {
     /// a successful [`TargetAdapter::resolve`]; the field is retained
     /// so YAML round-trips byte-for-byte through serde.
     pub axis: Axis,
-    /// Closed adapter execution mode. Required by
-    /// `target.schema.json`; modelled as `Option` (mirroring
-    /// `description`) so the typed `check_execution` gate rejects a
-    /// manifest that omits it with `adapter-execution-mode-required`
-    /// rather than defaulting silently. First-party target manifests
-    /// carry `agent` as a placeholder.
+    /// Closed adapter execution mode. Optional on the wire (RFC-61
+    /// two-shape window): shrunk post-cutover manifests omit it, and
+    /// native consumers that dispatch on it fail at the point of use
+    /// (`adapter-execution-mode-required`) rather than at resolve time.
+    /// Full-shape first-party target manifests carry `agent` as a
+    /// placeholder.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub execution: Option<Execution>,
-    /// Typed target-operation → relative brief path map. Closed by
-    /// `target.schema.json#/properties/briefs`: every target manifest
-    /// declares `shape` + `build` + `merge`. `briefs.keys()` is the
-    /// canonical operation iterator — exposed via
-    /// [`TargetAdapter::operations`].
+    /// Typed target-operation → relative brief path map. Optional on
+    /// the wire (RFC-61 two-shape window): when present,
+    /// `target.schema.json#/properties/briefs` closes it to the full
+    /// `shape` + `build` + `merge` set; when absent (empty map), the
+    /// operation set derives from the closed WIT contract instead —
+    /// see [`TargetAdapter::operations`].
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub briefs: BTreeMap<TargetOperation, String>,
     /// Optional singular declared WASI extension (RFC-48 D11).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -580,23 +584,34 @@ pub struct ResolvedTargetAdapter {
 
 impl SourceAdapter {
     /// Iterator over the source operations this adapter declares, in
-    /// ascending kebab-name order (`extract < survey`). After the
-    /// collapse of the dedicated `operations[]` field (review 1.A1)
-    /// and the operation-type refactor (review 1.B1),
-    /// `briefs.keys()` is the canonical typed operation source.
+    /// ascending kebab-name order (`extract < survey`). For full-shape
+    /// manifests `briefs.keys()` is the canonical typed operation
+    /// source; a briefless post-cutover manifest falls back to the
+    /// axis's closed WIT operation set (`wit/specify.wit`), which the
+    /// full `briefs` key set equals by schema.
     pub fn operations(&self) -> impl Iterator<Item = &SourceOperation> {
-        self.briefs.keys()
+        const WIT_OPERATIONS: &[SourceOperation] =
+            &[SourceOperation::Extract, SourceOperation::Survey];
+        let fallback: &[SourceOperation] =
+            if self.briefs.is_empty() { WIT_OPERATIONS } else { &[] };
+        self.briefs.keys().chain(fallback)
     }
 }
 
 impl TargetAdapter {
     /// Iterator over the target operations this adapter declares, in
-    /// ascending kebab-name order (`build < merge < shape`). After
-    /// the collapse of the dedicated `operations[]` field (review
-    /// 1.A1) and the operation-type refactor (review 1.B1),
-    /// `briefs.keys()` is the canonical typed operation source.
+    /// ascending kebab-name order (`build < merge < shape`). For
+    /// full-shape manifests `briefs.keys()` is the canonical typed
+    /// operation source; a briefless post-cutover manifest falls back
+    /// to the axis's closed WIT operation set (`wit/specify.wit`:
+    /// guidance/build/merge, with `shape` the manifest spelling of
+    /// `guidance`), which the full `briefs` key set equals by schema.
     pub fn operations(&self) -> impl Iterator<Item = &TargetOperation> {
-        self.briefs.keys()
+        const WIT_OPERATIONS: &[TargetOperation] =
+            &[TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape];
+        let fallback: &[TargetOperation] =
+            if self.briefs.is_empty() { WIT_OPERATIONS } else { &[] };
+        self.briefs.keys().chain(fallback)
     }
 }
 
@@ -657,29 +672,6 @@ pub(super) fn check_axis_and_name(
                 manifest_path.display(),
             ),
         });
-    }
-    Ok(())
-}
-
-/// Typed `execution`-mode gate, run after schema validation
-/// and the axis/name coherence check.
-///
-/// Single-signal abort, `Error::Validation` (exit 2) with the kebab
-/// `error` discriminant from the wire contract:
-/// `adapter-execution-mode-required` — the manifest omits `execution`.
-/// The per-axis JSON Schemas also mark `execution` `required`, so this
-/// typed gate is the belt-and-suspenders that refuses to default
-/// silently when a manifest reaches the loader through a path that
-/// bypassed schema validation.
-pub(super) fn check_execution(
-    execution: Option<Execution>, manifest_path: &Path,
-) -> Result<(), Error> {
-    if execution.is_none() {
-        return Err(Error::validation_failed(
-            "adapter-execution-mode-required",
-            "adapter manifest declares a closed `execution` mode",
-            format!("{} omits the required `execution` field", manifest_path.display()),
-        ));
     }
     Ok(())
 }

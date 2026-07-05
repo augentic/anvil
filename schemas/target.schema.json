@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/target.schema.json",
   "title": "Specify target adapter manifest",
-  "description": "Refines `adapter.schema.json` for target adapters per workflow §Target adapter contract. Locks `axis` to the literal `target` and requires `briefs.shape`, `briefs.build`, and `briefs.merge` — together these close the operation set to `{shape, build, merge}` (the canonical iterator is `briefs.keys()`). The `kebabName` and `extensionDeclaration` `$defs` are intentionally inlined (rather than `$ref`-resolved against `adapter.schema.json`) so the schema compiles without a registry lookup; keep the embedded `name` pattern byte-identical to `adapter.schema.json#/$defs/kebabName.pattern`.",
+  "description": "Refines `adapter.schema.json` for target adapters per workflow §Target adapter contract. Locks `axis` to the literal `target`. `briefs` and `execution` are optional during the RFC-61 two-shape coexistence window: a manifest that carries `briefs` must declare `briefs.shape`, `briefs.build`, and `briefs.merge` (the full closed set), and a manifest that omits it derives the operation set from the closed WIT contract (`wit/specify.wit`: guidance/build/merge, with `shape` the manifest spelling of `guidance`). The `kebabName` and `extensionDeclaration` `$defs` are intentionally inlined (rather than `$ref`-resolved against `adapter.schema.json`) so the schema compiles without a registry lookup; keep the embedded `name` pattern byte-identical to `adapter.schema.json#/$defs/kebabName.pattern`.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "version", "axis", "description", "briefs", "execution"],
+  "required": ["name", "version", "axis", "description"],
   "properties": {
     "name": { "$ref": "#/$defs/kebabName" },
     "version": {

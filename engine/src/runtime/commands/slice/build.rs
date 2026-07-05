@@ -114,6 +114,9 @@ struct BuildResult {
 /// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing` from the manifest `prepare` extension hook dispatch.
 /// - `target-build-verify-gate-failed` from a manifest-declared `finalize_verify` hook.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
+/// - `adapter-execution-mode-required` when the manifest omits
+///   `execution` (a shrunk post-cutover manifest carries no native
+///   build machinery).
 pub fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
     let slice_dir = ctx.slices_dir().join(name);
     let metadata = SliceMetadata::load(&slice_dir)?;
@@ -122,10 +125,19 @@ pub fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
 
     match resolved.manifest.execution {
         Some(Execution::Tool) => run_tool(ctx, name, &slice_dir, &resolved.manifest),
-        _ => match phase {
+        Some(Execution::Agent) => match phase {
             Phase::Prepare => prepare(ctx, name, &slice_dir, &resolved),
             Phase::Finalize => finalize(ctx, name, &slice_dir, &resolved),
         },
+        None => Err(Error::validation_failed(
+            "adapter-execution-mode-required",
+            "the native `slice build` dispatch requires the manifest's `execution` mode",
+            format!(
+                "target adapter `{}` omits `execution`; a shrunk post-cutover manifest carries \
+                 no native build machinery, so run the build through the workflow guest instead",
+                resolved.manifest.name
+            ),
+        )),
     }
 }
 
@@ -138,6 +150,9 @@ fn prepare(
     ctx: &Ctx, name: &str, slice_dir: &Path, resolved: &ResolvedTargetAdapter,
 ) -> Result<()> {
     let manifest = &resolved.manifest;
+    // Resolved up front so a briefless manifest aborts before the
+    // request write, the hook dispatches, and the journal emit.
+    let build_brief = build_brief_path(resolved)?;
     let request_path = assemble_and_write_request(ctx, name, slice_dir, &manifest.inputs)?;
 
     dispatch_host_prereq_hook(resolved, &ctx.project_dir, slice_dir)?;
@@ -154,7 +169,6 @@ fn prepare(
         "slice.build",
     );
 
-    let build_brief = build_brief_path(resolved)?;
     let briefs_dir =
         build_brief.parent().map_or_else(|| resolved.location.path().clone(), Path::to_path_buf);
     let handoff = BuildHandoff {

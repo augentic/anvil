@@ -205,7 +205,9 @@ pub struct SourcePrep {
 /// # Errors
 ///
 /// Propagates [`SourceAdapter::resolve`] failures (`adapter-not-found`,
-/// `adapter-schema-violation`, …) and I/O failures from the `evidence/`
+/// `adapter-schema-violation`, …), refuses a briefless post-cutover
+/// manifest (`adapter-briefs-missing` — the two-phase handoff has no
+/// brief to hand off), and I/O failures from the `evidence/`
 /// directory create.
 pub fn prepare(request: &PrepRequest<'_>) -> Result<SourcePrep> {
     let adapter_ref = AdapterRef {
@@ -213,6 +215,18 @@ pub fn prepare(request: &PrepRequest<'_>) -> Result<SourcePrep> {
         version: request.version.clone(),
     };
     let resolved = SourceAdapter::resolve(&adapter_ref, request.project_dir)?;
+    if resolved.manifest.briefs.is_empty() {
+        return Err(Error::validation_failed(
+            "adapter-briefs-missing",
+            "the two-phase source handoff requires a manifest with `briefs`",
+            format!(
+                "source adapter `{}` declares no `briefs`; a shrunk post-cutover manifest \
+                 carries no agent-handoff machinery, so run the operation through the workflow \
+                 guest instead",
+                resolved.manifest.name
+            ),
+        ));
+    }
     let adapter_dir = resolved.location.path().clone();
     let briefs_dir = adapter_dir.join(BRIEFS_DIR);
 
