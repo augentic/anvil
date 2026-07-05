@@ -36,6 +36,7 @@ mod registry;
 mod runner;
 #[path = "synthesis_baseline.rs"]
 mod synthesis_baseline;
+#[cfg(feature = "native")]
 #[path = "upgrade.rs"]
 mod upgrade;
 #[path = "workspace.rs"]

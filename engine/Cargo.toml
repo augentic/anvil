@@ -175,7 +175,6 @@ globset = "0.4"
 ignore = "0.4"
 jiff = { version = "0.2", default-features = false, features = ["serde", "std"] }
 jsonschema = { version = "0.46", default-features = false }
-libc = "0.2"
 oci-client = { version = "0.16", default-features = false, features = ["rustls-tls"] }
 omnia = "0.35.0"
 omnia-guest = "0.35.0"

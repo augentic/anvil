@@ -91,9 +91,9 @@ pub fn acquire(layout: Layout<'_>, now: Timestamp) -> Result<PlanLockGuard, Erro
         .write(true)
         .open(&path)
         .map_err(Error::Io)?;
-    match file.try_lock() {
-        Ok(()) => {}
-        Err(std::fs::TryLockError::WouldBlock) => {
+    match imp::try_acquire(&file)? {
+        LockProbe::Unheld => {}
+        LockProbe::Held => {
             let holder = holder_pid(&path);
             return Err(Error::validation_failed(
                 "plan-lock-busy",
@@ -101,7 +101,6 @@ pub fn acquire(layout: Layout<'_>, now: Timestamp) -> Result<PlanLockGuard, Erro
                 format!("holder-pid={holder}"),
             ));
         }
-        Err(std::fs::TryLockError::Error(err)) => return Err(Error::Io(err)),
     }
     write_body(&mut file, now).map_err(Error::Io)?;
     Ok(PlanLockGuard { _file: file })
@@ -164,18 +163,26 @@ mod imp {
 
     use super::LockProbe;
 
-    /// `flock`-family try-acquire (std's `File::try_lock`) on the
-    /// caller's fresh descriptor: success means nobody held it (the
-    /// probe lock is released immediately); would-block means a driver
-    /// holds it.
-    pub(super) fn probe_open(file: &File) -> Result<LockProbe, Error> {
+    /// `flock`-family try-acquire (std's `File::try_lock`) held for the
+    /// descriptor's lifetime: `Unheld` means the caller now owns the
+    /// lock; `Held` means another driver would-block us.
+    pub(super) fn try_acquire(file: &File) -> Result<LockProbe, Error> {
         match file.try_lock() {
-            Ok(()) => {
+            Ok(()) => Ok(LockProbe::Unheld),
+            Err(std::fs::TryLockError::WouldBlock) => Ok(LockProbe::Held),
+            Err(std::fs::TryLockError::Error(err)) => Err(Error::Io(err)),
+        }
+    }
+
+    /// Probe variant of [`try_acquire`]: a successful acquire is
+    /// released immediately so the probe never retains the lock.
+    pub(super) fn probe_open(file: &File) -> Result<LockProbe, Error> {
+        match try_acquire(file)? {
+            LockProbe::Unheld => {
                 file.unlock().map_err(Error::Io)?;
                 Ok(LockProbe::Unheld)
             }
-            Err(std::fs::TryLockError::WouldBlock) => Ok(LockProbe::Held),
-            Err(std::fs::TryLockError::Error(err)) => Err(Error::Io(err)),
+            LockProbe::Held => Ok(LockProbe::Held),
         }
     }
 }
@@ -187,6 +194,14 @@ mod imp {
     use specify_error::Error;
 
     use super::LockProbe;
+
+    /// No flock family off Unix (wasm32-wasip2 included): grant every
+    /// acquire so single-driver ownership degrades to the caller's own
+    /// discipline (the guest execute loop is a structural single driver
+    /// and owns its own create-exclusive marker).
+    pub(super) fn try_acquire(_file: &File) -> Result<LockProbe, Error> {
+        Ok(LockProbe::Unheld)
+    }
 
     /// No advisory-lock probe off Unix: report `Held` so enforcement
     /// degrades to permissive rather than bricking every driver verb.

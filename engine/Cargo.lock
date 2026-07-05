@@ -5987,7 +5987,6 @@ dependencies = [
  "glob",
  "jiff",
  "jsonschema",
- "libc",
  "petgraph 0.8.3",
  "proptest",
  "regex",

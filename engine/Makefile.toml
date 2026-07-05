@@ -15,10 +15,10 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt-check", "lint", "test", "test-docs", "doc"]
+dependencies = ["fmt-check", "lint", "check-wasm-core", "test", "test-docs", "doc"]
 
 [tasks.ci]
-dependencies = ["fmt-check", "lint", "test", "test-docs", "doc", "vet", "deny"]
+dependencies = ["fmt-check", "lint", "check-wasm-core", "test", "test-docs", "doc", "vet", "deny"]
 
 # -------------------------------------
 # Individual Actions
@@ -69,6 +69,16 @@ script = '''
 cargo outdated --workspace --depth 1
 '''
 install_crate = "cargo-outdated"
+
+# Check wasm core
+#
+# Keeper for the workflow core's wasm32-cleanliness: the guest shim
+# depends on specify-workflow with default-features = false, so the
+# non-`native` surface must always compile for wasm32-wasip2.
+[tasks.check-wasm-core]
+command = "cargo"
+args = ["check", "-p", "specify-workflow", "--no-default-features", "--target", "wasm32-wasip2"]
+env = { RUSTFLAGS = "-Dwarnings" }
 
 # Build guests
 #

@@ -6,24 +6,12 @@ use std::path::Path;
 
 use specify_error::Error;
 
-/// `EXDEV` ("cross-device") errno. The `std::fs::rename` fallback to
-/// copy-then-remove only fires on this code.
-#[cfg(unix)]
-const EXDEV: i32 = libc::EXDEV;
-
-/// Windows uses `ERROR_NOT_SAME_DEVICE` (17) as its cross-volume
-/// signal; `std::fs::rename` surfaces it through `raw_os_error()` the
-/// same way Unix surfaces `EXDEV`. We don't currently test on Windows
-/// but wire the constant so the fallback is consistent.
-#[cfg(windows)]
-const EXDEV: i32 = 17;
-
-#[cfg(not(any(unix, windows)))]
-const EXDEV: i32 = 18;
-
-/// Move `src` to `dst`. Uses `rename` first, then falls back to
-/// copy-then-remove on `EXDEV` (cross-device) so archives on a
-/// different mount from the working tree still work.
+/// Move `src` to `dst`, falling back to copy-then-remove across mounts.
+///
+/// Uses `rename` first, then falls back on
+/// [`io::ErrorKind::CrossesDevices`] (`EXDEV` / `ERROR_NOT_SAME_DEVICE`
+/// — std maps the platform code) so archives on a different mount from
+/// the working tree still work.
 ///
 /// Dispatches on `src.is_dir()`: directories copy recursively, files
 /// via a single `std::fs::copy`. The two old helpers
@@ -38,7 +26,7 @@ const EXDEV: i32 = 18;
 pub fn move_atomic(src: &Path, dst: &Path) -> Result<(), Error> {
     match std::fs::rename(src, dst) {
         Ok(()) => Ok(()),
-        Err(err) if err.raw_os_error() == Some(EXDEV) => {
+        Err(err) if err.kind() == io::ErrorKind::CrossesDevices => {
             if src.is_dir() {
                 copy_dir_recursive(src, dst)?;
                 std::fs::remove_dir_all(src)?;
