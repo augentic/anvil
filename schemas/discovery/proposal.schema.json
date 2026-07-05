@@ -243,6 +243,29 @@
         }
       }
     },
+    "gateProse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change", "discovery-summary", "discovery-source-inventory"],
+      "description": "Gate 1 review prose authored alongside the grouping (RFC-61 S1). Optional on the canonical envelope so native `specify plan propose --from` responses stay valid; the derived judgment-answer schema requires it, so the collapsed guest `plan author` orchestration always receives the prose and persists it into `change.md` / `discovery.md`. Section bodies only — the orchestrator owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, the `##` headings).",
+      "properties": {
+        "change": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The `change.md` operator brief body rendered below the deterministic `# Change — <name>` heading: intent, scope, and the Gate 1 review prose the skill flow authored by hand (`## Tentative merges`, `## Cross-cutting leads`, `## Likely divergences` when applicable)."
+        },
+        "discovery-summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The `discovery.md` `## Summary` section body — one-line counts (`Sources: N. Leads: M.`); adapter-specific tallies are permitted. Body only, no heading."
+        },
+        "discovery-source-inventory": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The `discovery.md` `## Source inventory` section body — one row per bound source under `plan.yaml.sources.<key>`: key, adapter, path or value. Body only, no heading."
+        }
+      }
+    },
     "responseSlice": {
       "type": "object",
       "additionalProperties": false,
@@ -313,6 +336,9 @@
           "items": {
             "$ref": "#/$defs/responseSlice"
           }
+        },
+        "gate": {
+          "$ref": "#/$defs/gateProse"
         }
       }
     }

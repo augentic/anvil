@@ -4,7 +4,7 @@
 
 mod add;
 mod amend;
-mod args;
+pub(crate) mod args;
 pub mod cli;
 mod create;
 mod entry;
@@ -68,6 +68,15 @@ pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
             flag: "<command>",
             detail: "`specify plan execute` runs only in the workflow guest; natively the \
                      execute loop is driven by the /spec:execute skill"
+                .to_string(),
+        }),
+        // Guest-only, same posture as `plan execute`: the collapsed
+        // plan-authoring flow is an orchestration; natively the flow is
+        // driven by the /spec:plan skill through the per-verb surface.
+        PlanAction::Author { .. } => Err(Error::Argument {
+            flag: "<command>",
+            detail: "`specify plan author` runs only in the workflow guest; natively \
+                     plan authoring is driven by the /spec:plan skill"
                 .to_string(),
         }),
     }

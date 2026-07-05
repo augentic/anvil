@@ -4,8 +4,10 @@
 //! against mocked Model + seams: plan approved → claim → refine (extract
 //! fan-out, synthesis judgment, persist, validate, `refined`) → build →
 //! merge, per entry, to `drained`. Plus the typed stop paths (Gate 1
-//! refusal, a failing build) and the D1 create-exclusive guest-marker
-//! posture.
+//! refusal, a failing build), the D1 create-exclusive guest-marker
+//! posture, and the standalone `slice refine <name>` breakout
+//! (`orchestrate::refine_breakout`, RFC-61 S1 parity gap 2), which
+//! shares this harness.
 
 use std::fs;
 use std::path::PathBuf;
@@ -420,6 +422,112 @@ async fn build_failure_stops_typed_entry_kept() {
         panic!("expected the re-reported stop, got {outcome:?}");
     };
     assert_eq!(reason, StopReason::BuildFailed);
+}
+
+/// The refine breakout acts on the named slice directly against a
+/// `pending` entry — it refines to `refined` without advancing
+/// per-entry status (`plan next` stays the only `in-progress` writer).
+#[tokio::test]
+async fn refine_breakout_skips_entry_claim() {
+    let project = Project::new();
+    project.seed_plan(APPROVED_PLAN);
+    project.seed_discovery(&["feature-x", "feature-y"]).await;
+    let survey_events = project.journal_event_ids().len();
+
+    let model = specify_guest_model::MockModel::answering([Box::leak(
+        synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
+    ) as &'static str]);
+    let sources =
+        MockSourceSeam::scripted([], [Ok(intent_evidence("greeting.fix", "Fix the greeting."))]);
+    let targets = MockTargetSeam::scripted([Ok("Shape guidance.".to_string())], []);
+
+    let outcome = orchestrate::refine_breakout(
+        &model,
+        &sources,
+        &targets,
+        project.layout(),
+        now(),
+        "feature-x",
+    )
+    .await
+    .expect("the breakout refines the named slice");
+    assert_eq!(outcome.slice, "feature-x");
+    assert_eq!(outcome.extracted, [("intent".to_string(), "feature-x".to_string())]);
+
+    // The slice is `refined`; the plan entry was never claimed.
+    let metadata =
+        specify_workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
+            .expect("slice metadata");
+    assert_eq!(metadata.status, specify_workflow::slice::LifecycleStatus::Refined);
+    assert_eq!(metadata.target, "omnia@1.0.0", "target resolved from the bound topology");
+    let plan = project.plan();
+    let entry = plan.entries.iter().find(|e| e.name == "feature-x").expect("entry");
+    assert_eq!(entry.status, Status::Pending, "the breakout never advances per-entry status");
+
+    // The per-phase refine cadence, with no `plan.entry.advanced`.
+    let ids = project.journal_event_ids();
+    assert_eq!(
+        &ids[survey_events..],
+        [
+            "source.execution.agent",
+            "slice.extract.completed",
+            "slice.synthesize.agent",
+            "slice.synthesize.started",
+            "slice.synthesize.completed",
+            "slice.transition.refined",
+        ]
+    );
+}
+
+/// A `done` entry refuses the breakout — merge already folded the
+/// slice into the baseline.
+#[tokio::test]
+async fn refine_breakout_refuses_done_entry() {
+    let project = Project::new();
+    project.seed_plan(&APPROVED_PLAN.replace(
+        "  - name: feature-x\n    status: pending\n",
+        "  - name: feature-x\n    status: done\n",
+    ));
+
+    let model = specify_guest_model::MockModel::answering([]);
+    let sources = MockSourceSeam::scripted([], []);
+    let targets = MockTargetSeam::scripted([], []);
+    let err = orchestrate::refine_breakout(
+        &model,
+        &sources,
+        &targets,
+        project.layout(),
+        now(),
+        "feature-x",
+    )
+    .await
+    .expect_err("a done entry refuses the breakout");
+    assert_eq!(err.variant_str(), "slice-refine-entry-done");
+    assert!(err.to_string().contains("--undo"), "the error names the walk-back verb: {err}");
+    assert!(project.journal_event_ids().is_empty(), "refused before any phase work");
+}
+
+/// An unknown slice name surfaces the same entry-missing error the
+/// refine phase raises inside the loop.
+#[tokio::test]
+async fn refine_breakout_refuses_unknown_entry() {
+    let project = Project::new();
+    project.seed_plan(APPROVED_PLAN);
+
+    let model = specify_guest_model::MockModel::answering([]);
+    let sources = MockSourceSeam::scripted([], []);
+    let targets = MockTargetSeam::scripted([], []);
+    let err = orchestrate::refine_breakout(
+        &model,
+        &sources,
+        &targets,
+        project.layout(),
+        now(),
+        "feature-z",
+    )
+    .await
+    .expect_err("an unknown entry refuses the breakout");
+    assert_eq!(err.variant_str(), "slice-synthesize-entry-missing");
 }
 
 #[tokio::test]

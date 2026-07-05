@@ -85,6 +85,23 @@ pub enum SliceAction {
         #[arg(long = "from", value_name = "RESPONSE_JSON", conflicts_with = "dry_run")]
         from: Option<PathBuf>,
     },
+    /// Refine one named plan entry's slice to `refined` in the
+    /// workflow guest: slice create (re-entry safe), per-binding
+    /// extract fan-out, the synthesis judgment leg, the persist tail,
+    /// validate, and the `refined` transition — the `/spec:refine`
+    /// breakout outside the execute loop.
+    ///
+    /// Acts on the named slice directly against a `pending` or
+    /// `in-progress` plan entry (the standalone `slice build <name>`
+    /// posture); never advances per-entry status, and refuses a `done`
+    /// entry.
+    ///
+    /// Guest-only. The native binary refuses this verb — natively the
+    /// phase is driven by the `/spec:refine` skill.
+    Refine {
+        /// Slice name (a `plan.yaml.slices[]` entry)
+        name: String,
+    },
     /// Build a slice through its bound target adapter's `build`
     /// operation and gate the `built` transition.
     ///

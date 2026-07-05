@@ -177,6 +177,32 @@ pub enum PlanAction {
         #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
         actor: String,
     },
+    /// Author a plan end-to-end in the workflow guest: scaffold
+    /// `plan.yaml` (`plan create` semantics), survey every bound
+    /// source into `discovery.md`, reconcile the leads into
+    /// `plan.yaml.slices[]` through the judgment leg, persist the
+    /// Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and
+    /// `## Source inventory`), validate, and exit at `pending` with
+    /// the literal Gate 1 transition hint.
+    ///
+    /// Guest-only. The native binary refuses this verb — natively the
+    /// flow is driven by the `/spec:plan` skill, which composes the
+    /// same steps through the per-verb surface (`plan create`, `source
+    /// survey`, `plan propose --dry-run/--from`, `plan validate`).
+    Author {
+        /// Kebab-case change name
+        name: String,
+        /// Named source binding, repeatable — the `plan create`
+        /// grammar verbatim: `--source <key>=<adapter>:<path>` or
+        /// `--source <key>=<adapter>:value:<literal>`.
+        #[arg(long = "source")]
+        sources: Vec<SourceArg>,
+        /// Operator intent as a literal string — pure sugar for
+        /// `--source intent=intent:value:<string>`, exactly as on
+        /// `plan create`.
+        #[arg(long = "intent", value_name = "STRING")]
+        intent: Option<String>,
+    },
     /// Run the drained execute loop in the workflow guest: claim →
     /// refine → build → merge per entry until the plan projects
     /// `drained` or a stop condition halts it (exit 2,

@@ -24,12 +24,14 @@
 //! process CWD, which WASI does not model the way a native process
 //! does.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use specify_error::{Error, Result};
+use specify_workflow::change::SourceBinding;
 
-use crate::cli::{Cli, Commands, Format};
+use crate::cli::{Cli, Commands, Format, SourceArg};
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::plan::cli::PlanAction;
 use crate::commands::slice::cli::{SliceAction, SliceMergeAction};
@@ -102,6 +104,37 @@ pub enum Verb {
     /// `specify plan execute` → `orchestrate::execute` (guest-only:
     /// the drained execute loop; the native binary refuses the verb).
     Execute,
+    /// `specify plan author <name> [--source ...] [--intent ...]` →
+    /// `orchestrate::author` (guest-only: the collapsed `/spec:plan`
+    /// flow; the native binary refuses the verb).
+    Author {
+        /// Kebab-case change name.
+        name: String,
+        /// Desugared `--source` / `--intent` bindings — the same
+        /// structured map `plan create` hands `Plan::init`.
+        sources: BTreeMap<String, SourceBinding>,
+    },
+    /// `specify slice refine <name>` → `orchestrate::refine_breakout`
+    /// (guest-only: the `/spec:refine` breakout outside the execute
+    /// loop; the native binary refuses the verb).
+    Refine {
+        /// Slice name (a `plan.yaml.slices[]` entry).
+        slice: String,
+    },
+}
+
+/// Desugar the `plan author` argument surface into the structured
+/// source-binding map — the `plan create` handler's rules verbatim:
+/// `--intent` appends the value-bound intent binding before the
+/// duplicate-key gate, so an explicit `--source intent=...` in the
+/// same invocation trips `plan-source-duplicate-key`.
+fn author_bindings(
+    mut sources: Vec<SourceArg>, intent: Option<String>,
+) -> Result<BTreeMap<String, SourceBinding>> {
+    if let Some(value) = intent {
+        sources.push(SourceArg::intent(value));
+    }
+    commands::plan::args::build_source_map(sources)
 }
 
 /// Parse guest argv through the shared grammar.
@@ -172,12 +205,30 @@ pub fn route(cli: Cli) -> Route {
             // orchestration (Milestone E); native refuses it in the
             // shared table.
             PlanAction::Execute => orchestrate(Verb::Execute),
+            // The collapsed plan-authoring flow (Milestone S1); native
+            // refuses it in the shared table. Binding desugar failures
+            // (duplicate keys) surface on the standard error envelope
+            // before any orchestration is described.
+            PlanAction::Author {
+                name,
+                sources,
+                intent,
+            } => match author_bindings(sources, intent) {
+                Ok(bindings) => orchestrate(Verb::Author {
+                    name,
+                    sources: bindings,
+                }),
+                Err(err) => Route::Handled(report(format, &err)),
+            },
             action => {
                 Route::Handled(scoped(format, plan_dir, |ctx| commands::plan::run(ctx, action)))
             }
         },
         Commands::Slice { action } => match action {
             SliceAction::Build { name, .. } => orchestrate(Verb::Build { slice: name }),
+            // The refine breakout (Milestone S1, parity gap 2); native
+            // refuses it in the shared table.
+            SliceAction::Refine { name } => orchestrate(Verb::Refine { slice: name }),
             SliceAction::Merge {
                 action:
                     SliceMergeAction::Run {

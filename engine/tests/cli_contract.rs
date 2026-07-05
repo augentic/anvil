@@ -69,6 +69,23 @@ fn dump_carries_known_surface() {
         assert!(top_verbs.contains(verb), "top-level verb `{verb}` missing: {top_verbs:?}");
     }
 
+    // The guest-only orchestration verbs (RFC-61) ride the shared
+    // grammar: parsed by both binaries, dispatched in the guest,
+    // refused natively with the standard argument error.
+    for (family, verb) in [("plan", "execute"), ("plan", "author"), ("slice", "refine")] {
+        let nested: BTreeSet<&str> = dump["commands"]["subcommands"]
+            .as_array()
+            .expect("subcommands array")
+            .iter()
+            .find(|node| node["name"] == family)
+            .and_then(|node| node["subcommands"].as_array())
+            .unwrap_or_else(|| panic!("`{family}` verb family carries subcommands"))
+            .iter()
+            .map(|node| node["name"].as_str().expect("verb name"))
+            .collect();
+        assert!(nested.contains(verb), "`{family} {verb}` missing from the grammar: {nested:?}");
+    }
+
     let exit_codes: Vec<u64> = dump["exit-codes"]
         .as_array()
         .expect("exit-codes array")
@@ -79,6 +96,8 @@ fn dump_carries_known_surface() {
 
     let error_ids = dump["error-ids"].as_array().expect("error-ids array");
     assert!(error_ids.iter().any(|id| id == "adapter-not-found"));
+    assert!(error_ids.iter().any(|id| id == "plan-author-workspace-unsupported"));
+    assert!(error_ids.iter().any(|id| id == "slice-refine-entry-done"));
     let event_ids = dump["journal-event-ids"].as_array().expect("event-ids array");
     assert!(event_ids.iter().any(|id| id == "slice.build.failed"));
     let schemas = dump["schemas"].as_array().expect("schemas array");

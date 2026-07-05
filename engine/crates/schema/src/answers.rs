@@ -175,12 +175,20 @@ pub fn proposal() -> Value {
     let residual: Vec<&String> = defs.as_object().expect("$defs is an object").keys().collect();
     assert_eq!(
         residual,
-        ["disagreement", "kebabName", "responseMember", "responseSlice"],
+        ["disagreement", "gateProse", "kebabName", "responseMember", "responseSlice"],
         "unclassified canonical $defs entry; extend the request-only trim list or accept it \
          into the answer vocabulary"
     );
 
     let body = response.as_object_mut().expect("response def is an object");
+    // Gate 1 prose is optional on the canonical envelope (native
+    // `plan propose --from` responses stay valid without it) but
+    // mandatory on the judgment answer: the collapsed `plan author`
+    // orchestration persists the prose into `change.md` /
+    // `discovery.md`, so an answer without it is incomplete.
+    let required = body.get_mut("required").and_then(Value::as_array_mut).expect("required array");
+    assert!(!required.iter().any(|entry| entry == "gate"), "gate must be canonically optional");
+    required.push(json!("gate"));
     body.insert("$schema".to_string(), json!("https://json-schema.org/draft/2020-12/schema"));
     body.insert("$id".to_string(), json!(format!("{ANSWERS_ID_BASE}/proposal.schema.json")));
     body.insert("title".to_string(), json!("Specify plan propose answer"));

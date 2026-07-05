@@ -107,6 +107,74 @@ fn plan_execute_routes_to_orchestrator() {
 }
 
 #[test]
+fn plan_author_routes_with_bindings() {
+    // `plan author` is guest-only argv (RFC-61 S1): the route desugars
+    // `--source` / `--intent` into the structured binding map the
+    // orchestrator hands `Plan::init`.
+    let cli = parse_ok(&[
+        "specify",
+        "plan",
+        "author",
+        "account-revamp",
+        "--source",
+        "docs=documentation:./design-notes",
+        "--intent",
+        "Refresh registration.",
+    ]);
+    let Route::Orchestrate(Orchestration { verb, .. }) = route(cli) else {
+        panic!("plan author must route to the shim's orchestrator dispatch");
+    };
+    let Verb::Author { name, sources } = verb else {
+        panic!("expected the author verb, got {verb:?}");
+    };
+    assert_eq!(name, "account-revamp");
+    let keys: Vec<&str> = sources.keys().map(String::as_str).collect();
+    assert_eq!(keys, ["docs", "intent"]);
+    assert_eq!(sources["docs"].adapter, "documentation");
+    assert_eq!(sources["docs"].path.as_deref(), Some("./design-notes"));
+    assert_eq!(sources["intent"].adapter, "intent");
+    assert_eq!(sources["intent"].value.as_deref(), Some("Refresh registration."));
+}
+
+#[test]
+fn plan_author_duplicate_binding_refused() {
+    // `--intent` desugars to the intent binding before the
+    // duplicate-key gate, so pairing it with an explicit
+    // `--source intent=...` refuses in-route (the `plan create`
+    // semantics verbatim).
+    let cli = parse_ok(&[
+        "specify",
+        "plan",
+        "author",
+        "account-revamp",
+        "--source",
+        "intent=intent:value:one",
+        "--intent",
+        "two",
+    ]);
+    let Route::Handled(exit) = route(cli) else {
+        panic!("a duplicate binding must be refused in-process, not orchestrated");
+    };
+    assert_eq!(exit, Exit::GenericFailure, "plan-source-duplicate-key maps to the generic exit");
+}
+
+#[test]
+fn slice_refine_routes_to_orchestrator() {
+    // The `/spec:refine` breakout is guest-only argv (RFC-61 S1
+    // parity gap 2); natively the shared verb table refuses it.
+    let cli = parse_ok(&["specify", "slice", "refine", "billing"]);
+    let Route::Orchestrate(Orchestration { verb, .. }) = route(cli) else {
+        panic!("slice refine must route to the shim's orchestrator dispatch");
+    };
+    assert_eq!(
+        verb,
+        Verb::Refine {
+            slice: "billing".to_string(),
+        }
+    );
+}
+
+#[test]
 fn global_flags_thread_to_orchestration() {
     let cli = parse_ok(&[
         "specify",

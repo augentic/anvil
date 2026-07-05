@@ -131,6 +131,71 @@ async fn run(format: Format, plan_dir: Option<PathBuf>, verb: Verb) -> Result<()
                 writeln!(w, "archived: {}", body.archive_path.display())
             })
         }
+        Verb::Author { name, sources } => {
+            let outcome =
+                orchestrate::author(&Provider, &Provider, ctx.layout(), now, &name, sources)
+                    .await?;
+            let body = AuthorBody {
+                plan: outcome.plan,
+                lifecycle: "pending",
+                surveyed: outcome
+                    .surveyed
+                    .into_iter()
+                    .map(|surveyed| AuthorSurvey {
+                        source: surveyed.source,
+                        adapter: surveyed.adapter,
+                        leads: surveyed.leads,
+                    })
+                    .collect(),
+                slices: outcome.slices,
+                hint: outcome.hint,
+            };
+            ctx.write(&body, |w, body| {
+                for surveyed in &body.surveyed {
+                    writeln!(
+                        w,
+                        "surveyed {} via {} ({} lead(s))",
+                        surveyed.source,
+                        surveyed.adapter,
+                        surveyed.leads.len()
+                    )?;
+                }
+                for slice in &body.slices {
+                    writeln!(w, "slice: {slice}")?;
+                }
+                writeln!(w, "{}", body.hint)
+            })
+        }
+        Verb::Refine { slice } => {
+            let outcome = orchestrate::refine_breakout(
+                &Provider,
+                &Provider,
+                &Provider,
+                ctx.layout(),
+                now,
+                &slice,
+            )
+            .await?;
+            let body = RefineBody {
+                slice: outcome.slice,
+                artifacts: outcome.artifacts,
+                extracted: outcome
+                    .extracted
+                    .into_iter()
+                    .map(|(source, lead)| RefineExtract { source, lead })
+                    .collect(),
+            };
+            ctx.write(&body, |w, body| {
+                writeln!(w, "refined {}", body.slice)?;
+                for extract in &body.extracted {
+                    writeln!(w, "extracted: {}/{}", extract.source, extract.lead)?;
+                }
+                for artifact in &body.artifacts {
+                    writeln!(w, "artifact: {artifact}")?;
+                }
+                Ok(())
+            })
+        }
         Verb::Execute => {
             let manifest_inputs = ctx.resolve_target_adapter()?.manifest.inputs;
             let tree = WorkingTree {
@@ -190,6 +255,43 @@ async fn run(format: Format, plan_dir: Option<PathBuf>, verb: Verb) -> Result<()
             }
         }
     }
+}
+
+/// Success envelope for the guest `plan author` exit at `pending`.
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct AuthorBody {
+    plan: String,
+    lifecycle: &'static str,
+    surveyed: Vec<AuthorSurvey>,
+    slices: Vec<String>,
+    hint: String,
+}
+
+/// One surveyed source in the authoring fan-out, in plan-binding order.
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct AuthorSurvey {
+    source: String,
+    adapter: String,
+    leads: Vec<String>,
+}
+
+/// Success envelope for the guest `slice refine` breakout.
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct RefineBody {
+    slice: String,
+    artifacts: Vec<String>,
+    extracted: Vec<RefineExtract>,
+}
+
+/// One extracted `(source, lead)` pair, in binding order.
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+struct RefineExtract {
+    source: String,
+    lead: String,
 }
 
 /// Success envelope for the guest `plan execute` drained exit.

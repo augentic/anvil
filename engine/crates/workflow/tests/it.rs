@@ -14,6 +14,8 @@ mod adapter;
 mod agents_fences_render;
 #[path = "agents_lock.rs"]
 mod agents_lock;
+#[path = "author.rs"]
+mod author;
 #[path = "decisions.rs"]
 mod decisions;
 #[path = "design_system_parts.rs"]

@@ -220,6 +220,39 @@ impl Discovery {
         self.write_atomic(path)
     }
 
+    /// Replace the prose preceding `## Lead inventory` with `preamble`
+    /// (normalised to end with one blank line), keeping the lead
+    /// inventory and trailing prose untouched.
+    ///
+    /// The mutation is validated by round-trip: the re-rendered
+    /// document must parse back to an identical [`Discovery`], so a
+    /// preamble that would corrupt the structure (e.g. one carrying
+    /// its own `## Lead inventory` heading or `### <id>` blocks) is
+    /// rejected without touching `self`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Diag`] (`discovery-preamble-invalid`) when the
+    /// preamble breaks the document's parse round-trip.
+    pub fn set_preamble(&mut self, preamble: &str) -> Result<()> {
+        let mut candidate = self.clone();
+        candidate.prefix = match preamble.trim_end() {
+            "" => String::new(),
+            trimmed => format!("{trimmed}\n\n"),
+        };
+        let reparsed = Self::parse(&candidate.render())?;
+        if reparsed != candidate {
+            return Err(Error::Diag {
+                code: "discovery-preamble-invalid",
+                detail: "the preamble does not round-trip: it must be prose only — no \
+                         `## Lead inventory` heading and no `### <source>:<lead>` blocks"
+                    .to_string(),
+            });
+        }
+        *self = candidate;
+        Ok(())
+    }
+
     /// Render the document back to its on-disk shape.
     fn render(&self) -> String {
         let mut out = String::with_capacity(self.prefix.len() + self.suffix.len() + 128);

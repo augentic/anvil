@@ -216,12 +216,19 @@ fn evidence_answer_strips_lead() {
     );
 }
 
-/// The proposal answer accepts a `kind: response` grouping, rejects a
-/// `kind: request` document (the request arm is trimmed), and rejects a
-/// slice with no sources.
+/// The proposal answer accepts a `kind: response` grouping carrying
+/// the Gate 1 prose, rejects a `kind: request` document (the request
+/// arm is trimmed), rejects a slice with no sources, and rejects an
+/// answer without the `gate` object (canonically optional, but the
+/// derivation makes it required on the judgment answer).
 #[test]
 fn proposal_answer_is_response_only() {
     let schema = answers::proposal();
+    let gate = json!({
+        "change": "## Intent\n\nRefresh registration.",
+        "discovery-summary": "Sources: 2. Leads: 1.",
+        "discovery-source-inventory": "| key | adapter | path |\n|---|---|---|"
+    });
     assert_accepts(
         &schema,
         &json!({
@@ -238,7 +245,8 @@ fn proposal_answer_is_response_only() {
                         { "source": "docs", "value": "12" }
                     ]
                 }]
-            }]
+            }],
+            "gate": gate
         }),
         "answers/proposal",
     );
@@ -249,8 +257,25 @@ fn proposal_answer_is_response_only() {
     );
     assert_rejects(
         &schema,
-        &json!({ "version": 1, "kind": "response", "slices": [{ "name": "x", "sources": [] }] }),
+        &json!({
+            "version": 1,
+            "kind": "response",
+            "slices": [{ "name": "x", "sources": [] }],
+            "gate": gate
+        }),
         "answers/proposal-empty-sources",
+    );
+    assert_rejects(
+        &schema,
+        &json!({
+            "version": 1,
+            "kind": "response",
+            "slices": [{
+                "name": "user-registration",
+                "sources": [{ "source": "legacy", "lead": "user-registration" }]
+            }]
+        }),
+        "answers/proposal-gate-required",
     );
 }
 

@@ -4,7 +4,7 @@
 mod plan;
 
 pub use plan::core::{
-    Divergence, Entry, EntryPatch, LeadCatalog, LeadCatalogEntry, Lifecycle, LoopStep,
+    Divergence, Entry, EntryPatch, GateProse, LeadCatalog, LeadCatalogEntry, Lifecycle, LoopStep,
     NextActionKind, NextBody, NextReason, Patch, Plan, ProjectRef, ProposalKind, ProposalRequest,
     ProposalResponse, ProposeOutcome, ResponseMember, ResponseSlice, SliceAuthorityOverride,
     SliceSourceBinding, SourceBinding, Status, StatusBody, StatusCounts, StopBody, StopReason,

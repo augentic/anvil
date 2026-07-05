@@ -27,8 +27,8 @@ pub use catalog::{LeadCatalog, build_catalog, build_request};
 pub use kernel::{ProposeOutcome, resolve_target};
 pub use topology::{apply_greenfield_seed, resolve_topology};
 pub use wire::{
-    LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest, ProposalResponse, ResponseMember,
-    ResponseSlice,
+    GateProse, LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest, ProposalResponse,
+    ResponseMember, ResponseSlice,
 };
 
 /// Wire version pinned by `schemas/discovery/proposal.schema.json`

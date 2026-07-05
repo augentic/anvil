@@ -92,6 +92,16 @@ pub fn run(ctx: &Ctx, action: SliceAction) -> Result<()> {
             flag: "<command>",
             detail: "`specify slice build` dispatches outside the shared verb table".to_string(),
         }),
+        // Guest-only, the mirror of `plan execute`'s refusal: the guest
+        // router peels `slice refine` off into an orchestration before
+        // this table; natively the phase is driven by the /spec:refine
+        // skill.
+        SliceAction::Refine { .. } => Err(Error::Argument {
+            flag: "<command>",
+            detail: "`specify slice refine` runs only in the workflow guest; natively the \
+                     refine phase is driven by the /spec:refine skill"
+                .to_string(),
+        }),
         SliceAction::Merge { action } => match action {
             SliceMergeAction::Run {
                 name,

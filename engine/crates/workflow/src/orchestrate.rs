@@ -24,6 +24,7 @@
 //! (architecture.md §"Time injection"); library code never reads the
 //! clock.
 
+mod author;
 mod execute;
 mod merge;
 mod refine;
@@ -33,9 +34,10 @@ mod target;
 
 use specify_error::Error;
 
+pub use self::author::{AuthorOutcome, author};
 pub use self::execute::{ExecuteOutcome, GuestMarker, PhaseRun, execute};
 pub use self::merge::{MergeOutcome, merge};
-pub use self::refine::{RefineOutcome, refine};
+pub use self::refine::{RefineOutcome, refine, refine_breakout};
 pub use self::source::{ExtractOutcome, SurveyedSource, extract, survey, survey_all};
 pub use self::synthesize::{SynthesizeRequest, synthesize};
 pub use self::target::{BuildOutcome, build};

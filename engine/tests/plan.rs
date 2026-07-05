@@ -3233,6 +3233,27 @@ slices:
         assert!(message.contains("workflow guest"), "{message}");
     }
 
+    // -- plan author (guest-only verb: native refusal) ----------------------------------------
+
+    #[test]
+    fn plan_author_refused_natively() {
+        // `plan author` (the collapsed /spec:plan flow, RFC-61 S1)
+        // lives in the shared grammar but runs only in the workflow
+        // guest — the same refusal posture as `plan execute`.
+        let project = Project::init();
+        let assert = specify_cmd()
+            .current_dir(project.root())
+            .args(["--format", "json", "plan", "author", "fresh", "--intent", "Fix the typo."])
+            .assert()
+            .failure();
+        assert_eq!(assert.get_output().status.code(), Some(2));
+        let stderr = parse_stderr(&assert.get_output().stderr, project.root());
+        assert_eq!(stderr["error"], "argument");
+        let message = stderr["message"].as_str().expect("message string");
+        assert!(message.contains("workflow guest"), "{message}");
+        assert!(!project.plan_path().exists(), "a refused author must not write plan.yaml");
+    }
+
     // -- plan create --auto-approve (auto-approve Gate-1 contract) ---------------------------
 
     #[test]

@@ -36,6 +36,33 @@
       ],
       "type": "object"
     },
+    "gateProse": {
+      "additionalProperties": false,
+      "description": "Gate 1 review prose authored alongside the grouping (RFC-61 S1). Optional on the canonical envelope so native `specify plan propose --from` responses stay valid; the derived judgment-answer schema requires it, so the collapsed guest `plan author` orchestration always receives the prose and persists it into `change.md` / `discovery.md`. Section bodies only — the orchestrator owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, the `##` headings).",
+      "properties": {
+        "change": {
+          "description": "The `change.md` operator brief body rendered below the deterministic `# Change — <name>` heading: intent, scope, and the Gate 1 review prose the skill flow authored by hand (`## Tentative merges`, `## Cross-cutting leads`, `## Likely divergences` when applicable).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "discovery-source-inventory": {
+          "description": "The `discovery.md` `## Source inventory` section body — one row per bound source under `plan.yaml.sources.<key>`: key, adapter, path or value. Body only, no heading.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "discovery-summary": {
+          "description": "The `discovery.md` `## Summary` section body — one-line counts (`Sources: N. Leads: M.`); adapter-specific tallies are permitted. Body only, no heading.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "change",
+        "discovery-summary",
+        "discovery-source-inventory"
+      ],
+      "type": "object"
+    },
     "kebabName": {
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "type": "string"
@@ -119,6 +146,9 @@
   "additionalProperties": false,
   "description": "Generated judgment-answer schema — derived from schemas/discovery/proposal.schema.json by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to the plan-time lead-reconciliation judgment: the canonical `kind: response` envelope arm (the agent grouping `specify plan propose --from` consumes), with the request-only definitions trimmed.",
   "properties": {
+    "gate": {
+      "$ref": "#/$defs/gateProse"
+    },
     "kind": {
       "const": "response"
     },
@@ -136,7 +166,8 @@
   "required": [
     "version",
     "kind",
-    "slices"
+    "slices",
+    "gate"
   ],
   "title": "Specify plan propose answer",
   "type": "object"

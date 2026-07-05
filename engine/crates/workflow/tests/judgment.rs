@@ -36,11 +36,13 @@ mod propose_leg {
     #[tokio::test]
     async fn happy_path() {
         let model = MockModel::answering([GROUPING]);
-        let response =
-            propose::reconcile(&model, &request(), |_| Ok(())).await.expect("reconcile succeeds");
+        let response = propose::reconcile(&model, &request(), None, |_| Ok(()))
+            .await
+            .expect("reconcile succeeds");
         assert_eq!(response.kind, ProposalKind::Response);
         assert_eq!(response.slices.len(), 1);
         assert_eq!(response.slices[0].name, "user-registration");
+        assert!(response.gate.is_none(), "no gate prose without a context");
 
         let calls = model.requests();
         assert_eq!(calls.len(), 1);
@@ -51,6 +53,51 @@ mod propose_leg {
             calls[0].messages[0].content.contains("user-registration"),
             "the request rides the user prompt"
         );
+        assert!(
+            !calls[0].messages[0].content.contains("## Plan context"),
+            "no plan context without a gate context"
+        );
+    }
+
+    #[tokio::test]
+    async fn gate_context_rides_user_message() {
+        let answer = serde_json::to_string(&serde_json::json!({
+            "version": 1,
+            "kind": "response",
+            "slices": [{
+                "name": "user-registration",
+                "sources": [{ "source": "legacy", "lead": "user-registration" }]
+            }],
+            "gate": {
+                "change": "## Intent\n\nRefresh registration.",
+                "discovery-summary": "Sources: 1. Leads: 1.",
+                "discovery-source-inventory": "| key | adapter | path |"
+            }
+        }))
+        .expect("answer serialises");
+        let model = MockModel::answering([Box::leak(answer.into_boxed_str()) as &'static str]);
+        let sources = BTreeMap::from([(
+            "legacy".to_string(),
+            serde_json::from_value::<specify_workflow::change::SourceBinding>(serde_json::json!({
+                "adapter": "typescript",
+                "path": "./vendor/legacy"
+            }))
+            .expect("binding fixture parses"),
+        )]);
+        let context = propose::GateContext {
+            plan: "account-revamp",
+            sources: &sources,
+        };
+        let response = propose::reconcile(&model, &request(), Some(context), |_| Ok(()))
+            .await
+            .expect("reconcile succeeds");
+        let gate = response.gate.expect("gate prose parsed");
+        assert_eq!(gate.discovery_summary, "Sources: 1. Leads: 1.");
+
+        let user = &model.requests()[0].messages[0].content;
+        assert!(user.contains("## Plan context"), "plan context section present: {user}");
+        assert!(user.contains("- plan: account-revamp"), "{user}");
+        assert!(user.contains("legacy: adapter `typescript`, path `./vendor/legacy`"), "{user}");
     }
 
     #[tokio::test]
@@ -59,8 +106,9 @@ mod propose_leg {
         // the repair attempt succeeds.
         let bad = r#"{ "version": 1, "kind": "request", "projects": [], "leads": [] }"#;
         let model = MockModel::answering([bad, GROUPING]);
-        let response =
-            propose::reconcile(&model, &request(), |_| Ok(())).await.expect("repair succeeds");
+        let response = propose::reconcile(&model, &request(), None, |_| Ok(()))
+            .await
+            .expect("repair succeeds");
         assert_eq!(response.slices.len(), 1);
 
         let calls = model.requests();
@@ -74,7 +122,7 @@ mod propose_leg {
     async fn kernel_check_participates_in_repair() {
         let mut rejected = 0;
         let model = MockModel::answering([GROUPING, GROUPING]);
-        let response = propose::reconcile(&model, &request(), |_| {
+        let response = propose::reconcile(&model, &request(), None, |_| {
             if rejected == 0 {
                 rejected += 1;
                 return Err(specify_error::Error::validation_failed(
@@ -99,7 +147,7 @@ mod propose_leg {
         let model = MockModel::scripted([Err(specify_guest_model::Error::InvalidAnswer(
             "answer failed the create gate".to_string(),
         ))]);
-        let err = propose::reconcile(&model, &request(), |_| Ok(()))
+        let err = propose::reconcile(&model, &request(), None, |_| Ok(()))
             .await
             .expect_err("model failure propagates");
         assert!(err.to_string().contains("judgment-model-failed"), "{err}");
@@ -110,8 +158,9 @@ mod propose_leg {
     async fn repair_budget_exhausts() {
         let bad = r#"{ "version": 1, "kind": "request", "projects": [], "leads": [] }"#;
         let model = MockModel::answering([bad, bad, bad]);
-        let err =
-            propose::reconcile(&model, &request(), |_| Ok(())).await.expect_err("budget exhausts");
+        let err = propose::reconcile(&model, &request(), None, |_| Ok(()))
+            .await
+            .expect_err("budget exhausts");
         assert!(err.to_string().contains("proposal-schema"), "last tail failure surfaces: {err}");
         assert_eq!(model.requests().len(), 3, "initial attempt plus MAX_REPAIRS");
     }

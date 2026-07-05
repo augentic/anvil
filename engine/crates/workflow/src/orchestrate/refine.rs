@@ -28,7 +28,7 @@ use specify_error::Error;
 use specify_guest_model::Model;
 
 use super::synthesize::SynthesizeRequest;
-use crate::change::{Entry, Plan, resolve_topology};
+use crate::change::{Entry, Plan, Status, resolve_target, resolve_topology};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
 use crate::judgment::synthesize::Kernel;
@@ -180,6 +180,60 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
         slice: slice.to_string(),
         artifacts,
         extracted,
+    })
+}
+
+/// Refine one named plan entry outside the execute loop — the guest
+/// breakout of `/spec:refine` (RFC-61 S1, parity gap 2).
+///
+/// Claim semantics mirror the standalone `slice build <name>` posture:
+/// the verb acts on the named slice directly against a `pending` or
+/// `in-progress` plan entry, never advancing per-entry status (`plan
+/// next` stays the only `in-progress` writer), and refuses a `done`
+/// entry. The target is caller-free: it resolves from the slice's own
+/// `metadata.yaml` when the slice already exists (a resumed
+/// `refining` breakout), else from the bound project's topology — the
+/// same resolution `plan next` hands the execute loop.
+///
+/// # Errors
+///
+/// - `slice-refine-entry-done` when the entry has already merged.
+/// - `slice-create-target-missing` when neither the slice metadata nor
+///   the topology resolves a target.
+/// - everything [`refine`] surfaces.
+pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam>(
+    model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str,
+) -> Result<RefineOutcome, Error> {
+    let entry = load_entry(layout, slice)?;
+    if entry.status == Status::Done {
+        return Err(Error::validation_failed(
+            "slice-refine-entry-done",
+            "the plan entry is still open",
+            format!(
+                "plan entry `{slice}` is already `done`; walk it back with `specify plan \
+                 transition {slice} --undo` before re-refining"
+            ),
+        ));
+    }
+    let target = breakout_target(layout, &entry, slice)?;
+    refine(model, sources, targets, layout, now, slice, &target).await
+}
+
+/// Resolve the breakout's target value: the slice's recorded
+/// `metadata.yaml` target when the slice directory already exists,
+/// else the bound project's topology.
+fn breakout_target(layout: Layout<'_>, entry: &Entry, slice: &str) -> Result<String, Error> {
+    if let Ok(metadata) = crate::slice::SliceMetadata::load(&layout.slices_dir().join(slice)) {
+        return Ok(metadata.target);
+    }
+    let config = ProjectConfig::load(layout.project_dir())?;
+    let topology = resolve_topology(&config, layout.project_dir())?;
+    resolve_target(entry, &topology).map(|target| target.to_string()).map_err(|err| Error::Diag {
+        code: "slice-create-target-missing",
+        detail: format!(
+            "no target resolved for slice `{slice}`: {err}; declare the project adapter (or fix \
+             the bound project's topology) before refining"
+        ),
     })
 }
 

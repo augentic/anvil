@@ -25,9 +25,9 @@ pub use model::{
 };
 pub use next::{NextBody, NextReason, plan_next_body};
 pub use propose::{
-    LeadCatalog, LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest, ProposalResponse,
-    ProposeOutcome, ResponseMember, ResponseSlice, apply_greenfield_seed, build_catalog,
-    build_request, resolve_target, resolve_topology,
+    GateProse, LeadCatalog, LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest,
+    ProposalResponse, ProposeOutcome, ResponseMember, ResponseSlice, apply_greenfield_seed,
+    build_catalog, build_request, resolve_target, resolve_topology,
 };
 pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,

@@ -140,6 +140,35 @@ pub struct ProposalResponse {
     /// The agent's slices, in response order — the kernel writes
     /// `plan.yaml.slices[]` in this order.
     pub slices: Vec<ResponseSlice>,
+    /// Gate 1 review prose authored alongside the grouping (RFC-61
+    /// S1). Optional on the canonical envelope so native `plan propose
+    /// --from` responses stay valid; the derived judgment-answer
+    /// schema requires it, and the collapsed `plan author`
+    /// orchestration persists it into `change.md` / `discovery.md`.
+    /// The projection kernel ignores it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gate: Option<GateProse>,
+}
+
+/// Gate 1 review prose riding a [`ProposalResponse`]: section bodies
+/// only — the orchestrator owns every deterministic frame (`# Change —
+/// <name>`, `# Discovery — <name>`, the `##` headings).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct GateProse {
+    /// The `change.md` operator brief body rendered below the
+    /// deterministic `# Change — <name>` heading: intent, scope, and
+    /// the Gate 1 review sections the skill flow authored by hand
+    /// (`## Tentative merges`, `## Cross-cutting leads`, `## Likely
+    /// divergences` when applicable).
+    pub change: String,
+    /// The `discovery.md` `## Summary` section body — one-line counts
+    /// (`Sources: N. Leads: M.`). Body only, no heading.
+    pub discovery_summary: String,
+    /// The `discovery.md` `## Source inventory` section body — one row
+    /// per bound source under `plan.yaml.sources.<key>`: key, adapter,
+    /// path or value. Body only, no heading.
+    pub discovery_source_inventory: String,
 }
 
 /// One `slices[]` row in a [`ProposalResponse`]: one slice of work
