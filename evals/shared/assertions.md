@@ -534,6 +534,61 @@ The correct `chdir` into the slot happens without the operator changing director
 
 **Judgment flag.** Evidence pointer: the captured breakout stage output showing the operator stayed at the workspace root while the build reported work in the slot.
 
+## `guest-execute-loop`
+
+### `guest-loop-drained`
+
+The composed runtime's `plan execute` (the workflow guest's inverted loop) exits 0 reporting drained, and the plan entry is stamped `done` by the guest merge.
+
+**Probe.**
+
+```bash
+# the captured `plan execute` invocation exits 0 with the drained envelope
+specify plan status --format json    # expect "action":"drained"
+grep -c 'status: done' plan.yaml     # equals the slice count
+```
+
+### `guest-journal-cadence`
+
+The guest loop journalled the full per-slice cadence over the `"."` preopen — claim, extract, synthesize, build, merge, archive — in claim order.
+
+**Probe.**
+
+```bash
+specify journal show --filter plan.entry.advanced | jq -c .payload      # one advance per slice
+specify journal show --filter slice.synthesize.completed | jq -c .payload
+specify journal show --filter slice.build.succeeded | jq -c .payload
+specify journal show --filter slice.merge.succeeded | jq -c .payload
+specify journal show --filter slice.archive.created | jq -c .payload    # no merge-sha key (guest skips git)
+```
+
+### `guest-generated-crate-verifies`
+
+The `target:omnia` guest build's generated crate passes its own verification — the generated-output-correctness gate; a schema-valid `build/report.yaml` alone does not count the slice done.
+
+**Probe.**
+
+```bash
+ls crates/                                   # the generated crate directory exists
+cargo check --manifest-path crates/*/Cargo.toml; echo "exit=$?"    # expect exit=0
+```
+
+### `guest-marker-released`
+
+The guest execute marker is released on the clean exit — no stale `.specify/guest.lock` survives a drained run.
+
+**Probe.**
+
+```bash
+test ! -f .specify/guest.lock && echo released
+```
+
+### `guest-spec-sensible`
+
+The synthesized baseline spec is a faithful, well-formed rendering of the operator intent — prose quality is a reading, not a mechanical property.
+
+**Judgment flag.** Evidence pointer: the merged `.specify/specs/<domain>/spec.md` quoted against the plan's intent string, noting requirement fidelity and `Sources: intent` provenance.
+
 ## `workspace-stale-recovery`
 
 ### `dirty-slot-detected-at-sync`

@@ -180,11 +180,17 @@ jiff = { version = "0.2", default-features = false, features = ["serde", "std"] 
 jsonschema = { version = "0.46", default-features = false }
 oci-client = { version = "0.16", default-features = false, features = ["rustls-tls"] }
 omnia = "0.35.0"
+# Spawned cursor-agent model backend (unpublished). Temporarily supplied
+# from the sibling augentic/backends checkout, matching the omnia local-path
+# posture below; re-pin to a pushed rev before this branch finalizes
+# (specify-adapters pins the same crate by git rev).
+omnia-cursor = { path = "../../backends/crates/cursor" }
 omnia-guest = "0.35.0"
 # Test-only scaffolding; unpublished, supplied by [patch.crates-io] below.
 omnia-testkit = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
+omnia-wasi-otel = "0.35.0"
 petgraph = "0.8"
 proptest = "1.11.0"
 rayon = "1"
@@ -234,6 +240,7 @@ omnia-testkit = { path = "../../omnia/crates/testkit" }
 omnia-wasi-config = { path = "../../omnia/crates/wasi-config" }
 omnia-wasi-http = { path = "../../omnia/crates/wasi-http" }
 omnia-wasi-model = { path = "../../omnia/crates/wasi-model" }
+omnia-wasi-otel = { path = "../../omnia/crates/wasi-otel" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io; omnia's own
 # [patch.crates-io] supplies it, but patches do not propagate to dependents,

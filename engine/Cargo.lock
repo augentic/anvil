@@ -3709,6 +3709,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "omnia-cursor"
+version = "0.28.0"
+dependencies = [
+ "anyhow",
+ "omnia",
+ "omnia-wasi-model",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "omnia-guest"
 version = "0.35.0"
 dependencies = [
@@ -5968,11 +5981,18 @@ dependencies = [
  "anyhow",
  "assert_cmd",
  "cfg-if",
+ "jiff",
  "omnia",
+ "omnia-cursor",
  "omnia-testkit",
  "omnia-wasi-http",
  "omnia-wasi-model",
+ "omnia-wasi-otel",
  "serde_json",
+ "specify-guest-model",
+ "specify-model",
+ "specify-workflow",
+ "tempfile",
  "tokio",
 ]
 

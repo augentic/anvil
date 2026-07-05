@@ -42,6 +42,7 @@ Same delegation as **Run all scenarios**, but the agent follows the [single-scen
 | `[workspace-two-projects](scenarios/workspace-two-projects.md)`       | Workspace `/spec:execute` across two projects                            |
 | `[workspace-fail-resume](scenarios/workspace-fail-resume.md)`         | Workspace breakout after build failure                                   |
 | `[workspace-stale-recovery](scenarios/workspace-stale-recovery.md)`   | Stale-workspace recovery                                                 |
+| `[guest-execute-loop](scenarios/guest-execute-loop.md)`               | Composed-runtime inverted loop (workflow guest drives `plan execute`)    |
 
 
 ## Building the `specify` runtime

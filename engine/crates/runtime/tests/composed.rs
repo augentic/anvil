@@ -14,7 +14,7 @@
 use anyhow::Result;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 
-use crate::common::{self, Bundle, ECHO_WASM, Quiet, WORKFLOW_WASM};
+use crate::common::{self, Bundle, Quiet, WORKFLOW_WASM};
 
 // Drive one command-mode run of the composed deployment with the given
 // guest argv (argv[0], the program name, is supplied by the runtime core),
@@ -60,26 +60,29 @@ async fn usage_error_passthrough() -> Result<()> {
 
 // The real binary + the checked-in omnia.toml: stdout carries the shared
 // grammar's version line, proving argv forwarding (`-- --version`) through
-// the subprocess surface.
+// the subprocess surface — and that the full N+1 manifest (workflow + the
+// eight committed adapter guests) composes. Targets the replay sibling
+// (`specify-runtime-replay`): the cursor-bound `specify-runtime` requires
+// `cursor-agent` on PATH at backend connect, which CI must not.
 #[test]
 fn binary_stdout() -> Result<()> {
     let engine = common::workspace_root();
-    for file in [ECHO_WASM, WORKFLOW_WASM] {
-        common::guest_wasm(file);
-        // omnia.toml resolves guest paths relative to itself, so the built
-        // artifacts must sit under engine/target (the default target dir).
-        let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(file);
-        assert!(
-            expected.exists(),
-            "omnia.toml expects {expected}; run `cargo make build-guests` from engine/",
-            expected = expected.display()
-        );
-    }
+    common::guest_wasm(WORKFLOW_WASM);
+    // omnia.toml resolves guest paths relative to itself, so the built
+    // workflow artifact must sit under engine/target (the default target
+    // dir) and the committed adapter guests in the sibling checkout.
+    let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(WORKFLOW_WASM);
+    assert!(
+        expected.exists(),
+        "omnia.toml expects {expected}; run `cargo make build-guests` from engine/",
+        expected = expected.display()
+    );
+    common::adapters_root();
 
     // An ephemeral port keeps the background HTTP trigger from colliding with
     // parallel test runs; command mode exits when the CLI guest finishes.
     let port = free_port()?;
-    let output = assert_cmd::Command::cargo_bin("specify-runtime")?
+    let output = assert_cmd::Command::cargo_bin("specify-runtime-replay")?
         .current_dir(&engine)
         .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
         .args(["run", "--config", "omnia.toml", "--", "--version"])

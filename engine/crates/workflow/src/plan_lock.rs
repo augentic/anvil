@@ -109,6 +109,13 @@ pub fn acquire(layout: Layout<'_>, now: Timestamp) -> Result<PlanLockGuard, Erro
 /// Diagnostic lock-body writer: truncate then write the holder pid,
 /// hostname, and acquisition timestamp. Best-effort metadata; the OS
 /// advisory lock — not these bytes — is the lock identity.
+///
+/// Native-only in practice: no guest verb dispatches `acquire` (the
+/// execute loop claims through the lock-free core and holds the D1
+/// guest marker instead), so the unguarded `std::process::id()` — an
+/// abort on wasm32-wasip2 — never runs in-guest. A future guest verb
+/// that wraps the flock must route this through a platform guard like
+/// `orchestrate::execute`'s `holder_pid()`.
 fn write_body(file: &mut File, now: Timestamp) -> std::io::Result<()> {
     file.set_len(0)?;
     let host = std::env::var("HOSTNAME")

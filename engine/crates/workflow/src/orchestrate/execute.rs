@@ -341,9 +341,26 @@ impl GuestMarker {
         let host = std::env::var("HOSTNAME")
             .or_else(|_| std::env::var("HOST"))
             .unwrap_or_else(|_| "unknown".to_string());
-        write!(file, "pid={}\nhostname={host}\nacquired-at={now}\n", std::process::id())
+        write!(file, "pid={}\nhostname={host}\nacquired-at={now}\n", holder_pid())
             .map_err(Error::Io)?;
         Ok(Self { path })
+    }
+}
+
+/// The marker body's holder pid — diagnostics only.
+///
+/// `std::process::id()` aborts on `wasm32-wasip2` (WASI models no
+/// process table), so the guest records `0`: the staleness posture never
+/// probes the recorded pid, and `0` is unambiguous prose for "no pid on
+/// this platform".
+fn holder_pid() -> u32 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        0
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::process::id()
     }
 }
 
