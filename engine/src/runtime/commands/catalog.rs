@@ -1,7 +1,7 @@
 //! Dispatcher for `specify catalog *`. Owns the `match action` table
 //! for the component-catalog inference verb.
 
-pub mod cli;
+pub use specify_dispatch::commands::catalog::cli;
 mod infer;
 
 use specify_error::Result;

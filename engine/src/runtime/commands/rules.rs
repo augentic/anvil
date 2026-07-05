@@ -12,6 +12,6 @@
 //! projects resolve shared `UNI-*` rules without a co-located framework
 //! checkout or a manual `--rules-root`.
 
-pub mod cli;
+pub use specify_dispatch::commands::rules::cli;
 pub mod export;
 pub mod sync;

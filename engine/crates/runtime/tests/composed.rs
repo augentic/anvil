@@ -1,52 +1,66 @@
-//! Command-mode tests over the composed walking-skeleton deployment.
+//! Command-mode tests over the composed deployment, driving the real
+//! workflow guest shim (RFC-61 Step 4, Milestone D).
 //!
 //! In-process: build the two-guest deployment from a manifest and drive the
-//! workflow guest's `wasi:cli/run` through `omnia::run`, proving the
-//! host-mediated `augentic:specify/source` link dispatch end to end (guest
-//! stdout is inherited in-process, so these assert the exit path). Subprocess:
-//! run the real `specify-runtime` binary against the checked-in `omnia.toml`
-//! and assert the printed lead and mount-preopen lines — the full
-//! walking-skeleton proof.
+//! workflow guest's `wasi:cli/run` through `omnia::run` with real argv,
+//! proving the wasip3 argv seam and the exit-code passthrough end to end
+//! (guest stdout is inherited in-process, so these assert the exit path).
+//! Subprocess: run the real `specify-runtime` binary against the checked-in
+//! `omnia.toml` and assert the shim's stdout. The adapter link dispatch
+//! itself (survey/extract/build through `augentic:specify/source`/`target`)
+//! needs a scaffolded `.specify/` project in the mount and lands with the
+//! Milestone F composed workflow tests.
 
 use anyhow::Result;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 
 use crate::common::{self, Bundle, ECHO_WASM, Quiet, WORKFLOW_WASM};
 
-// Drive one command-mode run of the skeleton deployment, with the echo guest
-// registered under `echo_id`.
-async fn run_command(echo_id: &str) -> Result<ExitStatus> {
+// Drive one command-mode run of the composed deployment with the given
+// guest argv (argv[0], the program name, is supplied by the runtime core),
+// with the echo guest registered under `echo_id`.
+async fn run_command(echo_id: &str, args: &[&str]) -> Result<ExitStatus> {
     let manifest = common::skeleton_manifest(echo_id)?;
-    let builder =
-        DeploymentBuilder::new().config(manifest.path().to_path_buf()).mode(Mode::Command);
+    let builder = DeploymentBuilder::new()
+        .config(manifest.path().to_path_buf())
+        .mode(Mode::Command)
+        .args(args.iter().map(ToString::to_string).collect::<Vec<_>>());
     omnia::run::<Bundle, Quiet>(builder).await
 }
 
-// The workflow guest's survey("source:echo") dispatches through the link to
-// the echo guest, its preopen table carries the manifest's `"."` mount, and
-// the run exits 0 (the guest hard-fails on a missing mount).
+// The happy exit path: `--version` parses through the shared grammar and
+// the run exits 0 — the deployment composes (both `augentic:specify` link
+// imports resolve), argv reaches clap, and success returns through
+// `wasi:cli/run`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn dispatch() -> Result<()> {
-    let status = run_command("source:echo").await?;
+    let status = run_command("source:echo", &["--version"]).await?;
     assert_eq!(status.code(), 0, "composed command run exits 0");
     Ok(())
 }
 
-// With the echo guest registered under a different id, the survey dispatch
-// finds no target and the run must not succeed — either the guest observes
-// the failure and exits nonzero, or the dispatch error surfaces as a trap.
-// The guest checks survey before the mount, so this fails for the bad id.
+// Nonzero exit-code passthrough: a pure workflow verb against the empty
+// mount fails `not-initialized` (exit 1), and the guest carries the exact
+// code through `wasi:cli/exit#exit-with-code` — not a bare trap.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn missing_source() {
-    // An Err from the run (a host-side dispatch error surfacing as a trap) is
-    // also a failed run, so only an Ok status needs the nonzero assertion.
-    if let Ok(status) = run_command("source:other").await {
-        assert_ne!(status.code(), 0, "survey against an unregistered id must not exit 0");
-    }
+async fn exit_passthrough() -> Result<()> {
+    let status = run_command("source:echo", &["plan", "status"]).await?;
+    assert_eq!(status.code(), 1, "not-initialized must pass exit 1 through");
+    Ok(())
 }
 
-// The real binary + the checked-in omnia.toml: stdout carries the echoed lead
-// and the mount-preopen proof.
+// clap's usage-error contract passes through too: an unknown verb exits 2,
+// matching the native binary.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn usage_error_passthrough() -> Result<()> {
+    let status = run_command("source:echo", &["no-such-verb"]).await?;
+    assert_eq!(status.code(), 2, "clap usage errors must pass exit 2 through");
+    Ok(())
+}
+
+// The real binary + the checked-in omnia.toml: stdout carries the shared
+// grammar's version line, proving argv forwarding (`-- --version`) through
+// the subprocess surface.
 #[test]
 fn binary_stdout() -> Result<()> {
     let engine = common::workspace_root();
@@ -68,7 +82,7 @@ fn binary_stdout() -> Result<()> {
     let output = assert_cmd::Command::cargo_bin("specify-runtime")?
         .current_dir(&engine)
         .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
-        .args(["run", "--config", "omnia.toml"])
+        .args(["run", "--config", "omnia.toml", "--", "--version"])
         .output()?;
 
     assert!(
@@ -78,14 +92,8 @@ fn binary_stdout() -> Result<()> {
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains("lead: echo — echo lead from source:echo"),
-        "stdout did not carry the echoed lead:\n{stdout}"
-    );
-    assert!(
-        stdout.contains("mount: . ok"),
-        "stdout did not carry the mount-preopen proof:\n{stdout}"
-    );
+    let version_line = format!("specify {}", env!("CARGO_PKG_VERSION"));
+    assert!(stdout.contains(&version_line), "stdout did not carry `{version_line}`:\n{stdout}");
     Ok(())
 }
 

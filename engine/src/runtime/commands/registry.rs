@@ -2,7 +2,7 @@
 //! sibling modules; shared response DTOs live in `registry/dto.rs`.
 
 mod add;
-pub mod cli;
+pub use specify_dispatch::commands::registry::cli;
 mod dto;
 mod remove;
 mod validate;

@@ -58,6 +58,49 @@ pub async fn survey_all(
     Ok(surveyed)
 }
 
+/// Survey one `plan.yaml` source binding through the seam and merge
+/// its lead set into `discovery.md`.
+///
+/// The guest collapse of one `specify source survey <source>`
+/// invocation (the per-source counterpart of [`survey_all`]): resolves
+/// `source` against `plan.yaml.sources.<key>`, optionally guards the
+/// plan name, and runs the same dispatch → attribute → validate →
+/// merge → journal leg.
+///
+/// # Errors
+///
+/// - propagates `plan.yaml` load failures.
+/// - `Error::Argument` (`--plan`) when `plan_guard` names a different
+///   plan — the native verb's guard verbatim.
+/// - `source-unknown` when `source` is not a `plan.yaml.sources` key.
+/// - `seam-dispatch-failed` when the seam dispatch fails.
+/// - propagates lead schema-validation and discovery-merge failures.
+pub async fn survey(
+    seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str,
+    plan_guard: Option<&str>,
+) -> Result<SurveyedSource, Error> {
+    let plan = Plan::load(&layout.plan_path())?;
+    if let Some(expected) = plan_guard
+        && plan.name.as_str() != expected
+    {
+        return Err(Error::Argument {
+            flag: "--plan",
+            detail: format!(
+                "--plan `{expected}` does not match the active plan `{}` at plan.yaml",
+                plan.name
+            ),
+        });
+    }
+    let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
+        code: "source-unknown",
+        detail: format!(
+            "no source `{source}` in plan.yaml.sources; `specify source survey` resolves \
+             its argument against the plan's source keys, not the adapter name"
+        ),
+    })?;
+    survey_one(seam, layout, now, source, binding).await
+}
+
 /// Survey one binding: dispatch, attribute, validate, merge, journal.
 async fn survey_one(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str,
@@ -148,7 +191,7 @@ pub async fn extract(
     let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
         code: "source-unknown",
         detail: format!(
-            "no source `{source}` in plan.yaml.sources; the extract orchestrator resolves \
+            "no source `{source}` in plan.yaml.sources; `specify source extract` resolves \
              its argument against the plan's source keys, not the adapter name"
         ),
     })?;

@@ -41,6 +41,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use serde_json::Value;
 use specify_diagnostics::Diagnostic;
+use specify_dispatch::commands::slice::bracket;
+use specify_dispatch::commands::source::cli::Phase;
 use specify_error::{Error, Result};
 use specify_registry::host::CapturedOutput;
 use specify_workflow::adapter::{
@@ -57,7 +59,6 @@ use specify_workflow::slice::{
 };
 
 use crate::runtime::commands::extension;
-use crate::runtime::commands::source::cli::Phase;
 use crate::runtime::context::Ctx;
 
 /// Handoff envelope printed by the agent `prepare` phase. The agent
@@ -113,7 +114,7 @@ struct BuildResult {
 /// - `target-build-materialize-failed` / `plan-bootstrap-app-icon-missing` from the manifest `prepare` extension hook dispatch.
 /// - `target-build-verify-gate-failed` from a manifest-declared `finalize_verify` hook.
 /// - `target-build-tool-unsupported` from the `execution: tool` seam.
-pub(super) fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
+pub fn run(ctx: &Ctx, name: &str, phase: Phase) -> Result<()> {
     let slice_dir = ctx.slices_dir().join(name);
     let metadata = SliceMetadata::load(&slice_dir)?;
     let target_ref = adapter_ref_from_value(&metadata.target);
@@ -313,7 +314,7 @@ fn error_messages(errors: &Value) -> Option<String> {
 fn finalize(
     ctx: &Ctx, name: &str, slice_dir: &Path, resolved: &ResolvedTargetAdapter,
 ) -> Result<()> {
-    let body = super::bracket(
+    let body = bracket(
         ctx,
         "slice.build",
         EventKind::SliceBuildStarted {

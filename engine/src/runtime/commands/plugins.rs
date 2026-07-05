@@ -3,20 +3,19 @@
 //!
 //! Bootstrap verbs: they operate on the Cursor plugin cache and the
 //! marketplace manifest, never a `.specify/` project, so they use the
-//! project-context-free [`dispatch`](super::dispatch) path and never
+//! project-context-free `specify_dispatch::commands::dispatch` path and never
 //! call [`ProjectConfig::load`]. `doctor` is read-only and only fails
 //! on filesystem / marketplace-parse errors — drift is a finding, not
 //! an error. `refresh` deletes the marketplace-scoped cache root after
 //! `--yes`, journals `plugins.refreshed` into the discoverable project
 //! root (if any), and prints a restart instruction.
 
-pub mod cli;
-
 use std::io::Write;
 use std::path::Path;
 
 use jiff::Timestamp;
 use serde::Serialize;
+pub use specify_dispatch::commands::plugins::cli;
 use specify_error::{Error, Result};
 use specify_workflow::cmd::real_cmd;
 use specify_workflow::config::{Layout, ProjectConfig};

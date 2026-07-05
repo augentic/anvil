@@ -1,8 +1,9 @@
-# Walking-skeleton deployment manifest (RFC-61 Step 1). Paths resolve
-# relative to this file. Build the guests first:
+# Composed deployment manifest (RFC-61 Step 1 skeleton, Step 4 shim).
+# Paths resolve relative to this file. Build the guests first:
 #   cargo build -p specify-echo-guest -p specify-workflow-guest --target wasm32-wasip2
-# then run from this directory:
-#   cargo run -p specify-runtime -- run --config omnia.toml
+# then run a workflow-guest verb from this directory (args after `--`
+# become the guest's argv):
+#   cargo run -p specify-runtime -- run --config omnia.toml -- --version
 
 [[guest]]
 id = "workflow"

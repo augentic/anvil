@@ -5829,6 +5829,7 @@ dependencies = [
  "serde-saphyr",
  "serde_json",
  "specify-diagnostics",
+ "specify-dispatch",
  "specify-error",
  "specify-model",
  "specify-registry",
@@ -5851,6 +5852,26 @@ dependencies = [
  "specify-error",
  "specify-schema",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "specify-dispatch"
+version = "0.27.2"
+dependencies = [
+ "clap",
+ "clap_complete",
+ "jiff",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "specify-diagnostics",
+ "specify-error",
+ "specify-model",
+ "specify-schema",
+ "specify-workflow",
+ "strum 0.28.0",
+ "tempfile",
 ]
 
 [[package]]
@@ -6021,6 +6042,14 @@ name = "specify-workflow-guest"
 version = "0.27.2"
 dependencies = [
  "omnia-guest",
+ "serde",
+ "serde_json",
+ "specify-diagnostics",
+ "specify-dispatch",
+ "specify-error",
+ "specify-guest-model",
+ "specify-model",
+ "specify-workflow",
  "wasip3",
  "wit-bindgen 0.58.0",
 ]

@@ -1,13 +1,24 @@
-//! Workflow-skeleton guest component for the RFC-61 migration.
+//! The workflow guest: the deployment's only `wasi:cli/run` exporter
+//! (RFC-61 Step 4, Milestone D).
 //!
-//! The deployment's only `wasi:cli/run` exporter. Imports the `augentic:specify`
-//! `workflow` world's `source` / `target` interfaces, satisfied at runtime by
-//! Omnia's host-mediated link dispatch (each call routes to the exporting guest
-//! by its `adapter-id` first argument). `run` drives one `survey` call against
-//! the echo source adapter and prints each lead to stdout, then proves the
-//! `[[mount]]` preopen seam by finding the `"."` entry in the preopen table.
-//! Deliberately model-free: the component exists to exercise the runtime
-//! seams, not Specify logic.
+//! Argv arrives through wasip3 and parses through the shared
+//! `specify-dispatch` grammar — the exact clap tree the native binary
+//! parses, so every shared verb is argv- and envelope-compatible with
+//! native. `specify_dispatch::guest::route` runs pure workflow verbs
+//! in-process; the four collapsed orchestrator verbs come back as a
+//! `specify_dispatch::guest::Orchestration` and `verbs::drive` runs
+//! them against `provider::Provider` — the WIT-backed
+//! `Model + SourceSeam + TargetSeam` implementation over this world's
+//! `source` / `target` imports (satisfied at runtime by Omnia's
+//! host-mediated dispatch, routed to the exporting adapter guest by
+//! each call's `adapter-id` first argument).
+//!
+//! The project root is the `"."` mount preopen: WASI resolves relative
+//! paths against it, so `Ctx::load`'s CWD walk finds
+//! `.specify/project.yaml` exactly as a native run from the project
+//! root would. Exit codes pass through verbatim — `Exit::code()` maps
+//! onto `wasi:cli/exit#exit-with-code`, preserving the native binary's
+//! closed exit-code contract.
 #![cfg(target_arch = "wasm32")]
 
 mod bindings {
@@ -31,37 +42,42 @@ mod bindings {
     });
 }
 
-/// The manifest id the deployment registers the echo source adapter under;
-/// host-mediated dispatch routes the `survey` call to it by this first argument.
-const ECHO_ADAPTER_ID: &str = "source:echo";
+mod provider;
+mod verbs;
+
+use specify_dispatch::guest::{self, Route};
+use specify_dispatch::output::Exit;
 
 struct CliGuest;
 wasip3::cli::command::export!(CliGuest);
 
 impl wasip3::exports::cli::run::Guest for CliGuest {
     async fn run() -> Result<(), ()> {
-        let leads =
-            match bindings::augentic::specify::source::survey(ECHO_ADAPTER_ID.to_string()).await {
-                Ok(leads) => leads,
-                Err(error) => {
-                    eprintln!("survey failed: {error:?}");
-                    return Err(());
-                }
-            };
-        for lead in leads {
-            println!("lead: {} — {}", lead.lead, lead.synopsis);
-        }
-
-        // The mount-preopen seam: the host resolves the manifest's `[[mount]]`
-        // into this guest's preopen table; finding the `"."` entry proves the
-        // seam end to end. Part of the skeleton's contract, so its absence is
-        // a hard failure.
-        if wasip3::filesystem::preopens::get_directories().iter().any(|(_, name)| name == ".") {
-            println!("mount: . ok");
-            Ok(())
-        } else {
-            eprintln!("mount `.` missing from the preopen table");
-            Err(())
-        }
+        // argv verbatim as the host provides it, argv[0] included —
+        // the shared grammar sees exactly what native clap sees.
+        let argv = wasip3::cli::environment::get_arguments();
+        let cli = match guest::parse(argv) {
+            Ok(cli) => cli,
+            Err(exit) => return finish(exit),
+        };
+        let exit = match guest::route(cli) {
+            Route::Handled(exit) => exit,
+            Route::Orchestrate(orchestration) => verbs::drive(orchestration).await,
+        };
+        finish(exit)
     }
+}
+
+/// Exit-code passthrough: success returns through `run`'s happy leg;
+/// any other code exits through `wasi:cli/exit#exit-with-code`, so the
+/// host observes the same numeric contract the native binary's
+/// `ExitCode` carries.
+fn finish(exit: Exit) -> Result<(), ()> {
+    let code = exit.code();
+    if code == 0 {
+        return Ok(());
+    }
+    wasip3::cli::exit::exit_with_code(code);
+    // exit-with-code does not return; this leg only pacifies the type.
+    Err(())
 }

@@ -1,22 +1,18 @@
-//! Shared CLI output format and the single [`emit`] entry point used by
-//! every `specify` surface, plus the shared lint output tail:
-//! [`run_lint`] is the one kernel both lint handlers call —
-//! [`emit_lint_report`] renders one envelope and the internal
-//! `finish_lint` turns the outcome into the handler's terminal
-//! `Result<()>` so both lint surfaces differ only in pipeline config,
-//! not output/exit plumbing.
+//! The shared lint output tail: [`run_lint`] is the one kernel both
+//! lint handlers call — [`emit_lint_report`] renders one envelope and
+//! the internal `finish_lint` turns the outcome into the handler's
+//! terminal `Result<()>` so both lint surfaces differ only in pipeline
+//! config, not output/exit plumbing. The shared [`Format`] and `emit`
+//! entry point live in `specify_dispatch::output` (re-exported here).
 
-use std::io::Write;
 use std::time::Instant;
 
-use clap::ValueEnum;
 use jiff::Timestamp;
-use serde::Serialize;
 use specify_diagnostics::{
     DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, Format as DiagnosticsFormat,
     RenderError, render,
 };
-use specify_error::{Error, Result};
+use specify_error::Result;
 use specify_standards::ResolveInputs;
 use specify_standards::lint::diagnostics::map_render_error;
 use specify_standards::lint::ignore::{blocking_findings_present, deny_blocking_findings};
@@ -24,41 +20,7 @@ use specify_standards::lint::runner::{PipelineConfig, RunOutcome, run as run_pip
 use specify_workflow::config::Layout;
 use specify_workflow::journal::{self, LintScope};
 
-/// Structured (`json`) or human (`text`) CLI output.
-#[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
-pub enum Format {
-    /// Human-readable lines on stdout/stderr.
-    Text,
-    /// Pretty-printed JSON envelopes for skill/CI consumption.
-    Json,
-}
-
-/// Emit `payload` through `writer` in the requested format. JSON
-/// serialises the body directly via `serde_json::to_writer_pretty`;
-/// Text delegates to `render_text`. The single signature covers
-/// both success (stdout) and failure (stderr) — there is one entry
-/// point for all structured output. Callers construct the locked
-/// writer at the boundary so the sink choice is visible at the
-/// call site.
-///
-/// # Errors
-///
-/// Propagates the underlying serialization or I/O error.
-pub fn emit<T: Serialize>(
-    writer: &mut dyn Write, format: Format, payload: &T,
-    render_text: impl FnOnce(&mut dyn Write, &T) -> std::io::Result<()>,
-) -> Result<(), Error> {
-    match format {
-        Format::Json => {
-            serde_json::to_writer_pretty(&mut *writer, payload).map_err(|err| Error::Diag {
-                code: "json-serialize-failed",
-                detail: format!("failed to serialize JSON response: {err}"),
-            })?;
-            writeln!(writer).map_err(Error::Io)
-        }
-        Format::Text => render_text(writer, payload).map_err(Error::Io),
-    }
-}
+pub use crate::runtime::output::Format;
 
 /// The shared lint-output tail for the `specify lint` and `specify lint framework`
 /// handlers. Carries the already-composed

@@ -6,6 +6,6 @@
 //! codes route through `Exit::from(&Error)` per lint exit mapping and
 //! [`crate::runtime::output`].
 
-pub mod cli;
+pub use specify_dispatch::commands::lint::cli;
 pub mod framework;
 pub mod project;

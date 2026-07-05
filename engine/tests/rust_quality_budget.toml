@@ -19,5 +19,6 @@ workflow = 61
 registry = 40
 extension = 13
 schema = 10
-specify = 7
+dispatch = 4
+specify = 3
 model = 1

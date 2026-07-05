@@ -32,7 +32,7 @@ mod target;
 use specify_error::Error;
 
 pub use self::merge::{MergeOutcome, merge};
-pub use self::source::{ExtractOutcome, SurveyedSource, extract, survey_all};
+pub use self::source::{ExtractOutcome, SurveyedSource, extract, survey, survey_all};
 pub use self::synthesize::{SynthesizeRequest, synthesize};
 pub use self::target::{BuildOutcome, build};
 use crate::seam;

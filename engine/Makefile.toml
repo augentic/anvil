@@ -72,12 +72,17 @@ install_crate = "cargo-outdated"
 
 # Check wasm core
 #
-# Keeper for the workflow core's wasm32-cleanliness: the guest shim
-# depends on specify-workflow with default-features = false, so the
-# non-`native` surface must always compile for wasm32-wasip2.
+# Keeper for the wasm32-cleanliness of the guest-facing crates: the
+# guest shim depends on specify-workflow (no `native` feature) and
+# specify-dispatch, so both must always compile for wasm32-wasip2.
 [tasks.check-wasm-core]
 command = "cargo"
-args = ["check", "-p", "specify-workflow", "--no-default-features", "--target", "wasm32-wasip2"]
+args = [
+    "check",
+    "-p", "specify-workflow", "--no-default-features",
+    "-p", "specify-dispatch",
+    "--target", "wasm32-wasip2",
+]
 env = { RUSTFLAGS = "-Dwarnings" }
 
 # Build guests

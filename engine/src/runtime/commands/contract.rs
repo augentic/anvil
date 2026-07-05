@@ -6,5 +6,4 @@
 //! prose can be cross-checked against the binary instead of by `rg`
 //! discipline.
 
-pub mod cli;
 pub mod dump;

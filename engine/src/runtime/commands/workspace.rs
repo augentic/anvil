@@ -1,7 +1,5 @@
 //! `specify workspace *` handlers — `sync`, `prepare`, `push`.
 
-pub mod cli;
-
 mod prepare;
 mod push;
 mod sync;

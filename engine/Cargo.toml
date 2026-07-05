@@ -24,8 +24,9 @@ serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
 specify-diagnostics.workspace = true
+specify-dispatch.workspace = true
 specify-standards.workspace = true
-specify-workflow.workspace = true
+specify-workflow = { workspace = true, features = ["native"] }
 specify-model.workspace = true
 specify-error.workspace = true
 specify-schema.workspace = true
@@ -54,6 +55,7 @@ workspace = true
 [workspace]
 members = [
     "crates/diagnostics",
+    "crates/dispatch",
     "crates/standards",
     "crates/error",
     "crates/guest-model",
@@ -193,10 +195,14 @@ serde-saphyr = "0.0.26"
 serde_json = "1"
 sha2 = "0.11"
 specify-diagnostics = { path = "crates/diagnostics" }
+specify-dispatch = { path = "crates/dispatch" }
 specify-guest-model = { path = "crates/guest-model" }
 specify-standards = { path = "crates/standards" }
 specify-model = { path = "crates/model" }
-specify-workflow = { path = "crates/workflow" }
+# `default-features = false` at the workspace level so wasm32-facing
+# members (specify-dispatch) stay off the `native` feature; the root
+# binary re-enables it explicitly.
+specify-workflow = { path = "crates/workflow", default-features = false }
 specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
 specify-registry = { path = "crates/registry" }

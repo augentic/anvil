@@ -7,8 +7,6 @@
 //! self-contained. `publish` packs, pushes the single-layer OCI
 //! artifact, pulls it back, and verifies the recorded digest.
 
-pub mod cli;
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 

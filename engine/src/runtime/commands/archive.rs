@@ -3,13 +3,11 @@
 
 use std::io::Write;
 
+use cli::ArchiveAction;
 use serde::Serialize;
+pub use specify_dispatch::commands::archive::cli;
 use specify_error::{Error, Result};
 use specify_workflow::slice::actions::{Retention, prune};
-
-pub mod cli;
-
-use cli::ArchiveAction;
 
 use crate::runtime::context::Ctx;
 

@@ -1,15 +1,18 @@
 //! `specify` library surface — clap parse, dispatch, and exit mapping.
-//! See `DECISIONS.md` for the exit-code contract.
+//!
+//! The argv grammar, output envelopes, exit-code contract, and pure
+//! workflow verb handlers live in the wasm-clean `specify-dispatch`
+//! crate (re-exported here); this module keeps the native-only
+//! handlers. See `DECISIONS.md` for the exit-code contract.
 
-mod cli;
 pub(crate) mod commands;
-mod context;
-pub(crate) mod output;
 
 use std::process::ExitCode;
 
 use clap::Parser;
-pub use output::Exit;
+pub use specify_dispatch::output;
+pub use specify_dispatch::output::Exit;
+pub(crate) use specify_dispatch::{cli, context};
 
 /// Parse argv, dispatch the subcommand, and return the process exit
 /// code. The `specify` binary calls into this.
