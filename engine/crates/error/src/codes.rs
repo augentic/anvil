@@ -203,6 +203,7 @@ pub const WIRE_CODES: &[&str] = &[
     "schema-cache-poisoned",
     "schema-meta-compilable",
     "schema-meta-loadable",
+    "seam-dispatch-failed",
     "slice-already-exists",
     "slice-create-target-missing",
     "slice-dir-missing-metadata",

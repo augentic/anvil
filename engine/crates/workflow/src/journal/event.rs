@@ -254,6 +254,17 @@ pub enum EventKind {
         /// Short human reason / finding code for the failure.
         reason: String,
     },
+    /// The guest merge orchestrator skipped the workspace-clone git
+    /// commit leg — the workflow guest owns no git surface, so the
+    /// merge lands on `.specify/` state only (RFC-61 Step 4). Explicit
+    /// so a journal reader can tell a guest merge (no `merge-sha` on
+    /// its `slice.archive.created`) from a native merge that simply ran
+    /// outside a clone. Native `specify slice merge` never emits this.
+    #[serde(rename = "slice.merge.commit-skipped", rename_all = "kebab-case")]
+    SliceMergeCommitSkipped {
+        /// Slice id under `plan.yaml.slices[].name`.
+        slice_name: SliceName,
+    },
     /// `specify source survey --phase finalize` validated and merged
     /// one source's lead set into `discovery.md`. The plan-time peer
     /// of [`Self::SliceExtractCompleted`]; one event per `(source,
@@ -512,6 +523,7 @@ pub const WIRE_EVENT_IDS: &[&str] = &[
     "slice.build.started",
     "slice.build.succeeded",
     "slice.extract.completed",
+    "slice.merge.commit-skipped",
     "slice.merge.failed",
     "slice.merge.started",
     "slice.merge.succeeded",

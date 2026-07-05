@@ -82,6 +82,38 @@ impl std::ops::Deref for MergeCommit {
     }
 }
 
+/// One-line human summary of a merged entry's operations, e.g.
+/// `2 added, 1 modified` or `created baseline with 4 requirement(s)`.
+///
+/// Shared by the `slice merge run` output and the
+/// `slice.archive.created` outcome-ledger summary (both the native
+/// verb and the guest merge orchestrator), so the ledger text never
+/// drifts between the two paths.
+#[must_use]
+pub fn summarise_operations(ops: &[crate::merge::MergeOperation]) -> String {
+    use crate::merge::MergeOperation;
+    let mut counts: [(u32, &str); 4] =
+        [(0, "added"), (0, "modified"), (0, "removed"), (0, "renamed")];
+    let mut created_baseline = None;
+    for op in ops {
+        match op {
+            MergeOperation::Added { .. } => counts[0].0 += 1,
+            MergeOperation::Modified { .. } => counts[1].0 += 1,
+            MergeOperation::Removed { .. } => counts[2].0 += 1,
+            MergeOperation::Renamed { .. } => counts[3].0 += 1,
+            MergeOperation::CreatedBaseline { requirement_count } => {
+                created_baseline = Some(*requirement_count);
+            }
+        }
+    }
+    if let Some(count) = created_baseline {
+        return format!("created baseline with {count} requirement(s)");
+    }
+    let parts: Vec<String> =
+        counts.iter().filter(|(c, _)| *c > 0).map(|(c, label)| format!("{c} {label}")).collect();
+    if parts.is_empty() { "no-op".to_string() } else { parts.join(", ") }
+}
+
 /// One opaque-replace file pre-image discovered under a
 /// [`MergeStrategy::OpaqueReplace`] class's `staged_dir`.
 #[derive(Debug, Clone)]

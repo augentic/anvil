@@ -13,6 +13,6 @@ pub use artifact_class::{ArtifactClass, MergeStrategy};
 pub use engine::{MergeOperation, MergeResult, merge};
 pub use slice::{
     BaselineConflict, MergeCommit, MergePreviewEntry, OpaqueAction, OpaquePreviewEntry,
-    PreviewResult, conflict_check,
+    PreviewResult, conflict_check, summarise_operations,
 };
 pub use validate::validate_baseline;

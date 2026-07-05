@@ -28,6 +28,8 @@ mod merge_composition;
 mod merge_slice;
 #[path = "native_hook.rs"]
 mod native_hook;
+#[path = "orchestrate.rs"]
+mod orchestrate;
 #[path = "plan_schema.rs"]
 mod plan_schema;
 #[path = "propose_topology.rs"]

@@ -13,7 +13,7 @@ use specify_workflow::config::with_state;
 use specify_workflow::journal::{self, EventKind};
 use specify_workflow::merge::{
     BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, clone_commit,
-    conflict_check, slice,
+    conflict_check, slice, summarise_operations,
 };
 
 use super::artifact_classes;
@@ -110,7 +110,7 @@ fn emit_archive_created(
     } else {
         merged
             .iter()
-            .map(|e| format!("{}: {}", e.name, summarise_ops(&e.result.operations)))
+            .map(|e| format!("{}: {}", e.name, summarise_operations(&e.result.operations)))
             .collect::<Vec<_>>()
             .join("; ")
     };
@@ -209,7 +209,7 @@ struct RunBody<'a> {
 
 fn write_run_text(w: &mut dyn Write, body: &RunBody<'_>) -> std::io::Result<()> {
     for entry in body.merged_specs {
-        writeln!(w, "{}: {}", entry.name, summarise_ops(&entry.result.operations))?;
+        writeln!(w, "{}: {}", entry.name, summarise_operations(&entry.result.operations))?;
     }
     writeln!(w, "Archived to {}", body.archive_path.display())
 }
@@ -227,7 +227,7 @@ fn write_preview_text(w: &mut dyn Write, body: &PreviewBody<'_>) -> std::io::Res
         writeln!(w, "No delta specs to merge.")?;
     } else {
         for entry in &body.specs {
-            writeln!(w, "{}: {}", entry.name, summarise_ops(&entry.result.operations))?;
+            writeln!(w, "{}: {}", entry.name, summarise_operations(&entry.result.operations))?;
             for op in &entry.result.operations {
                 writeln!(w, "  {}", operation_label(op))?;
             }
@@ -296,27 +296,4 @@ fn operation_label(op: &MergeOperation) -> String {
             format!("CREATING baseline with {requirement_count} requirement(s)")
         }
     }
-}
-
-fn summarise_ops(ops: &[MergeOperation]) -> String {
-    let mut counts: [(u32, &str); 4] =
-        [(0, "added"), (0, "modified"), (0, "removed"), (0, "renamed")];
-    let mut created_baseline = None;
-    for op in ops {
-        match op {
-            MergeOperation::Added { .. } => counts[0].0 += 1,
-            MergeOperation::Modified { .. } => counts[1].0 += 1,
-            MergeOperation::Removed { .. } => counts[2].0 += 1,
-            MergeOperation::Renamed { .. } => counts[3].0 += 1,
-            MergeOperation::CreatedBaseline { requirement_count } => {
-                created_baseline = Some(*requirement_count);
-            }
-        }
-    }
-    if let Some(count) = created_baseline {
-        return format!("created baseline with {count} requirement(s)");
-    }
-    let parts: Vec<String> =
-        counts.iter().filter(|(c, _)| *c > 0).map(|(c, label)| format!("{c} {label}")).collect();
-    if parts.is_empty() { "no-op".to_string() } else { parts.join(", ") }
 }

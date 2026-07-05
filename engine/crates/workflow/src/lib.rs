@@ -16,12 +16,14 @@ pub mod journal;
 pub mod judgment;
 pub mod merge;
 pub mod name;
+pub mod orchestrate;
 pub mod plan_lock;
 pub mod platform;
 #[cfg(feature = "native")]
 pub mod plugins;
 pub mod registry;
 pub mod schema;
+pub mod seam;
 pub mod slice;
 #[cfg(feature = "native")]
 pub mod upgrade;
