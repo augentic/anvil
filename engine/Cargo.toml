@@ -215,15 +215,16 @@ wasmtime-wasi = { version = "45.0.3", default-features = false, features = ["p2"
 
 [patch.crates-io]
 # The omnia 0.35.0 crates (and the internal omnia-* crates they pull in) are
-# unpublished pre-publish pins, supplied from the pushed `testing-fixes` head
-# until the first crates.io release.
-omnia = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
-omnia-guest = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
-omnia-guest-macros = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
-omnia-host-macros = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
-omnia-testkit = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
-omnia-wasi-config = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
-omnia-wasi-http = { git = "https://github.com/augentic/omnia.git", rev = "63c24f0367dd6f8ffaa319f74f5bd2f3fa6d222b" }
+# unpublished pre-publish pins. Temporarily supplied from the sibling local
+# checkout's `specify-feedback` branch while the async link-dispatch change
+# lands there; re-pin to the pushed rev before this branch finalizes.
+omnia = { path = "../../omnia/crates/omnia" }
+omnia-guest = { path = "../../omnia/crates/omnia-guest" }
+omnia-guest-macros = { path = "../../omnia/crates/guest-macros" }
+omnia-host-macros = { path = "../../omnia/crates/host-macros" }
+omnia-testkit = { path = "../../omnia/crates/testkit" }
+omnia-wasi-config = { path = "../../omnia/crates/wasi-config" }
+omnia-wasi-http = { path = "../../omnia/crates/wasi-http" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io; omnia's own
 # [patch.crates-io] supplies it, but patches do not propagate to dependents,

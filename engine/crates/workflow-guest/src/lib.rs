@@ -40,13 +40,14 @@ wasip3::cli::command::export!(CliGuest);
 
 impl wasip3::exports::cli::run::Guest for CliGuest {
     async fn run() -> Result<(), ()> {
-        let leads = match bindings::augentic::specify::source::survey(ECHO_ADAPTER_ID.to_string()).await {
-            Ok(leads) => leads,
-            Err(error) => {
-                eprintln!("survey failed: {error:?}");
-                return Err(());
-            }
-        };
+        let leads =
+            match bindings::augentic::specify::source::survey(ECHO_ADAPTER_ID.to_string()).await {
+                Ok(leads) => leads,
+                Err(error) => {
+                    eprintln!("survey failed: {error:?}");
+                    return Err(());
+                }
+            };
         for lead in leads {
             println!("lead: {} — {}", lead.lead, lead.synopsis);
         }
