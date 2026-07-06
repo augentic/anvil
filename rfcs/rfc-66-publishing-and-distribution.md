@@ -1,10 +1,10 @@
 # RFC-66: Publishing and Distribution — One Transport, Two Axes
 
-> Status: Proposed · Depends: [RFC-63](rfc-63-adapter-hydration.md) (hydration kernel, store root, `adapters.lock`), RFC-64 (one-component artifact, wasm-pkg publish — landed in `specify-adapters`), [RFC-65](rfc-65-standalone-deployment.md) (the `specify:` naming cut, the embedded core guest) · Owns: how every Specify artifact is published by developers and acquired by operators, across both repos
+> Status: Proposed · Depends: [RFC-63](rfc-63-adapter-hydration.md) (hydration kernel, store root, `adapters.lock`), RFC-64 (one-component artifact, wasm-pkg publish — landed in `specify-adapters`), [RFC-65](rfc-65-standalone-deployment.md) (the `specify:` naming cut, the binary-versioned core guest) · Owns: how every Specify artifact is published by developers and acquired by operators, across both repos
 
 ## Abstract
 
-Every published wasm artifact — the WIT contract and the adapter components — travels over **one transport**: wasm-pkg/OCI, backed by GHCR behind a static well-known file at `augentic.io`. Everything native — the host binary, with the core guest embedded inside it (RFC-65 move 4) — travels over GitHub Releases and Homebrew. The developer axis collapses to *bump one `Cargo.toml` version, push a tag*: idempotent tag-driven workflows publish only what moved, authenticated by `GITHUB_TOKEN` alone. The operator axis collapses to *`brew install augentic/tap/specify`*: adapters hydrate through the RFC-63 kernel at init and sync, and the core guest rides the binary so upgrading the binary is the only version knob an operator turns. No custom registry service, no pack format, no crates.io, no dev-tool binary, no committed wasm.
+Every wasm-shaped artifact — the WIT contract, the adapter components, the core guest — travels over **one transport**: wasm-pkg/OCI, backed by GHCR behind a static well-known file at `augentic.io`. Everything native — the host binary — travels over GitHub Releases and Homebrew, optionally carrying its core guest embedded (RFC-65 move 4). The developer axis collapses to *bump one `Cargo.toml` version, push a tag*: idempotent tag-driven workflows publish only what moved, authenticated by `GITHUB_TOKEN` alone. The operator axis collapses to *`brew install augentic/tap/specify`*: adapters hydrate through the RFC-63 kernel at init and sync, and the core guest carries the binary's own version — pulled at init or already embedded — so upgrading the binary is the only version knob an operator turns. No custom registry service, no pack format, no crates.io, no dev-tool binary, no committed wasm.
 
 ## The artifact inventory
 
@@ -12,7 +12,7 @@ Every published wasm artifact — the WIT contract and the adapter components �
 | -------- | -------- | ------------ | ----------- |
 | WIT contract | `specify:adapter@<ver>` (the RFC-65 rename of `augentic:specify`) | `specify` release workflow, on `package` version change | `specify-adapters` as a pinned `wkg get` into `wit/deps/` |
 | Adapter components | `specify:<name>@<ver>` | `specify-adapters` release workflow (RFC-64, as landed) | `install_tofu` hydration into the RFC-63 store |
-| Core guest | none — no registry identity | built from the tagged tree and embedded in the binary via the generic `runtime!` embed option (RFC-65 move 4) | rides inside the installed binary |
+| Core guest | `specify:core@<binary version>` | `specify` release workflow, same tag as the binary | hydrated at init — or already embedded when the binary opts into the generic `runtime!` embed (RFC-65 move 4) |
 | Host binary | GitHub Release archives + brew formula | `specify` release pipeline (as landed) + automated tap bump | `brew install augentic/tap/specify`; archives and `cargo install --git` as fallbacks |
 
 ## The registry: a static file over GHCR
@@ -41,10 +41,10 @@ The wasm-pkg client resolves registry metadata through the well-known path autom
 
 ### Specify repo
 
-The existing tag-driven pipeline (`release.yaml` → `publish.yaml` → `release-binaries.yaml`) changes twice on the same `v*` tag:
+The existing tag-driven pipeline (`release.yaml` → `publish.yaml` → `release-binaries.yaml`) grows two publish jobs on the same `v*` tag:
 
-1. **The core guest is built, not published.** Each platform build compiles the core guest from the tagged tree to `wasm32-wasip2` and hands it to the generic `runtime!` embed option (RFC-65 move 4), so every binary carries its own core. This deletes the committed `crates/workflow-guest/guest.wasm`, its `.sha256` sidecar, the `tests/dist.rs` staleness gate, and the "refresh the embedded guest" release-checklist item — the guest is *built at build time* from source, never committed. (Under RFC-65's fallback — a published `specify:core@<binary version>` — this becomes one more idempotent `wkg publish` job in the same workflow; nothing else on this axis changes.)
-2. **A WIT publish job** — `specify:adapter@<wit version>` via `wkg wit build` + `wkg publish` for `wit/specify.wit`, guarded by a version-changed probe so the job is a no-op on tags that did not bump the WIT `package` declaration.
+1. **Publish `specify:core@<tag version>`** — build the core guest from the tagged tree to `wasm32-wasip2` and `wkg publish` it, idempotent like the adapters loop. Binaries built with Omnia's generic `runtime!` embed option additionally carry the same component compiled in (RFC-65 move 4) and skip core hydration; the publish job still runs regardless, keeping the pulled path universal. Either way this deletes the committed `crates/workflow-guest/guest.wasm`, its `.sha256` sidecar, the `tests/dist.rs` staleness gate, and the "refresh the embedded guest" release-checklist item — the guest is built from the tagged source at publish (or build) time, never committed.
+2. **Publish the WIT** — `specify:adapter@<wit version>` via `wkg wit build` + `wkg publish` for `wit/specify.wit`, guarded by a version-changed probe so the job is a no-op on tags that did not bump the WIT `package` declaration.
 
 Every publish leg lives in a `cargo make publish-*` task; the GitHub workflow is a thin caller. Local emergency publishing runs the same task with a developer's own token — one code path, two invocation surfaces.
 
@@ -68,7 +68,7 @@ cd my-project && specify init       # the guided front door — RFC-65 §"Operat
 
 Hydration first fires inside `specify init` (a native verb on RFC-65's provisioning surface); everything wasm arrives transparently behind it:
 
-- **The core guest rides inside the binary.** Embedded at build time from the same tagged tree (RFC-65 move 4), so there is no core hydration, no core pin, and no skew surface at all: the operator has exactly one version knob, and upgrading the binary *is* upgrading the core — by construction, not by release discipline.
+- **The core guest carries the binary's version.** Pulled at init (`specify:core@<the binary's own version>`) or already embedded when the binary opts into the generic embed (RFC-65 move 4) — either way there is no core pin surface and no second knob: upgrading the binary is upgrading the core, and the two modes are indistinguishable to the operator.
 - **Adapters hydrate per RFC-63 as written** — `install_tofu` at the provisioning-surface triggers (init and `specify adapters sync`); the `$HOME/.specify/adapters` store; the committed `.specify/adapters.lock` digest pin; `--frozen` for reproducibility-strict CI; a typed `adapter-not-installed` error (never a guest-side fetch) on a plan-time or runtime store miss. This RFC changes nothing in that design; it supplies the registry backing that makes it work on a fresh machine.
 
 ### Tap automation
@@ -84,7 +84,7 @@ Each of these is a tempting complication the standing posture already argues aga
 - **A custom registry service.** The well-known file plus GHCR is the whole backend. If GHCR ever becomes the wrong host, the static file is the migration lever — consumers re-resolve, identities never change.
 - **Version-range resolution.** Exact pins everywhere (RFC-63's determinism boundary). "Latest" exists only at human decision points: `specify upgrade`'s release probe and `init` choosing a pin. RM-21 keeps ownership of ranges and floors.
 - **A dev-tool binary for publishing.** The publish surface is `cargo make` tasks called by workflows (RFC-65's YAGNI posture). A bash loop over `wkg publish` is not a product.
-- **Committed wasm.** The adapters repo got there at RFC-64; building the core guest at build time and embedding it through the macro's generic option gets this repo there too. Per the RFC-64 invariant: a slow dev loop is fixed with a path override or fetch-from-registry developer manifest, never a return to committed blobs.
+- **Committed wasm.** The adapters repo got there at RFC-64; publishing (or optionally embedding) the release-built core guest gets this repo there too. Per the RFC-64 invariant: a slow dev loop is fixed with a path override or fetch-from-registry developer manifest, never a return to committed blobs.
 - **crates.io publishing.** Unchanged from `docs/release.md`: the workspace rides `[patch.crates-io]` pins and has no external crate consumers.
 
 ## Scope
@@ -92,7 +92,7 @@ Each of these is a tempting complication the standing posture already argues aga
 - The `augentic.io` well-known registry file and the GHCR package backing (public first-party packages under `ghcr.io/augentic/`).
 - Publish-auth migration to `GITHUB_TOKEN` in both repos' release workflows; retirement of the registry username/password secrets.
 - Idempotent publish loops (skip-if-present) in both repos, factored into `cargo make publish-*` tasks the workflows call.
-- The release-build core-guest leg: build-from-tag into the `runtime!` embed option, and deletion of the committed workflow guest, its sidecar, the `tests/dist.rs` gate, and the release-checklist refresh item. (The published-`specify:core` fallback job, if RFC-65 move 4 falls back, slots into the same workflow.)
+- The `specify:core` publish job on the `specify` `v*` tag (with opt-in embed adoption per RFC-65 move 4), and deletion of the committed workflow guest, its sidecar, the `tests/dist.rs` gate, and the release-checklist refresh item.
 - The WIT publish job (`specify:adapter`), the adapters-side `wit/deps/` vendored consume with a single pin and a `wit-vendor` task, the sibling-path dev override, and the `check-pins` rewrite from sibling parity to pinned-version parity.
 - The `augentic/homebrew-tap` repo, the templated formula, and the automated tap bump at the tail of `release-binaries.yaml`.
 - Documentation: `docs/release.md` gains the core-guest and WIT publish legs and the tap bump; the install docs lead with brew.
@@ -112,7 +112,7 @@ Each of these is a tempting complication the standing posture already argues aga
 1. On a machine with no wasm-pkg configuration, `wkg get specify:omnia@<published>` resolves through `https://augentic.io/.well-known/wasm-pkg/registry.json` to an anonymous GHCR pull, and `specify init` hydrates the same identity through `install_tofu` with no credentials.
 2. Neither repo's release workflow references a registry username or password secret; both publish with `GITHUB_TOKEN` only.
 3. Re-running either repo's publish workflow against an already-published tag succeeds and pushes nothing: every identity probe reports present, every leg skips.
-4. A `specify` tag `v<x.y.z>` produces binaries embedding the core guest built from that same tag through the generic `runtime!` embed option; no `specify:core` registry package exists; the committed `crates/workflow-guest/guest.wasm`, its sidecar, and the `tests/dist.rs` gate are deleted.
+4. A `specify` tag `v<x.y.z>` publishes `specify:core@<x.y.z>`; the binary built from that tag hydrates exactly that identity (or carries it embedded, when the build opted into the generic embed); the committed `crates/workflow-guest/guest.wasm`, its sidecar, and the `tests/dist.rs` gate are deleted.
 5. The adapters repo builds with no sibling checkout: `wit/deps/` carries the pinned published `specify:adapter`, `check-pins` verifies the vendored bytes against the pin, and the RFC-64 migration-window carve-out is gone.
 6. `brew install augentic/tap/specify` on a clean macOS machine yields a working binary whose `specify upgrade --dry-run` plans the brew channel; a subsequent release tag updates the tap without human action.
 7. `cargo make ci` and `make lint` are green in both repos, and `docs/release.md` describes the full pipeline (binary, core guest, WIT, adapters, tap) without a manual refresh step for any committed artifact.
@@ -122,6 +122,6 @@ Each of these is a tempting complication the standing posture already argues aga
 - **The well-known file is load-bearing.** Every consume path resolves through `augentic.io`; the file must be served with high availability (a static host or CDN — it changes only on a backend migration). Outage degrades to the existing overrides: a project pins `.specify/wasm-pkg.toml` at `ghcr.io` directly and nothing else changes.
 - **GHCR is an implementation detail, and must stay one.** No identity, no lockfile digest, and no prose outside this RFC and the workflows names `ghcr.io`; the `specify:` identities and `augentic.io` host are the stable surface. Migrating hosts is editing one JSON file and re-pushing packages — digests in `adapters.lock` verify content equivalence across the move.
 - **Idempotency is the immutability enforcement.** Skip-if-present is what prevents a re-tag from mutating a published version. The probe must distinguish "absent" from "registry unreachable" — a network failure aborts the leg rather than treating the identity as unpublished.
-- **The binary↔core-guest lockstep is structural.** The embed makes binary version = core version by construction; the release invariant reduces to "the platform builds compile the core guest from the tagged tree", which the build dependency enforces. The adapter `specify-floor` discipline remains the runtime backstop for adapter skew.
+- **The binary↔core-guest lockstep is a release invariant (structural under the embed).** On the pulled path, a binary version whose `specify:core` publish leg failed is a broken release: the workflow must fail the release when the core push fails, not ship the binary without it. Under the optional embed the lockstep holds by construction instead. The adapter `specify-floor` discipline remains the runtime backstop for adapter skew.
 - **The tap bump must not become a second release process.** The formula is regenerated from release artifacts, never hand-edited; if the bump job fails, re-running it is safe (same archives, same digests).
-- **Sequencing.** The registry backing, `GITHUB_TOKEN` migration, and idempotent loops land first — they are independent of RFC-65 and immediately useful. The core-guest embed rides RFC-65's Omnia dependency; if the embed option falls through, the fallback `specify:core` publish job slots into the same workflows without touching this RFC's other legs. The WIT ownership flip rides the RFC-65 naming cut. Tap automation is orthogonal and lands whenever.
+- **Sequencing.** The registry backing, `GITHUB_TOKEN` migration, and idempotent loops land first — they are independent of RFC-65 and immediately useful. The `specify:core` publish job can land inert (published but unconsumed) to de-risk RFC-65; the optional embed rides Omnia's timetable without blocking anything. The WIT ownership flip rides the RFC-65 naming cut. Tap automation is orthogonal and lands whenever.

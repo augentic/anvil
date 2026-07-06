@@ -1,6 +1,6 @@
 # RFC-63: Adapter Hydration and the Central Store
 
-> Status: Proposed · Depends: [RFC-61](rfc-61-omnia-migration.md) (guests by path, the generated deployment), RFC-64 (one-component adapter artifact, wasm-pkg transport — landed) · Revised against: [RFC-65](rfc-65-standalone-deployment.md) (the provisioning / guest surface split, the embedded core guest) and [RFC-66](rfc-66-publishing-and-distribution.md) (registry backing, publish workflows) · Owns: how a project's declared component identities become a fully provisioned, runnable deployment — locally and in the cloud
+> Status: Proposed · Depends: [RFC-61](rfc-61-omnia-migration.md) (guests by path, the generated deployment), RFC-64 (one-component adapter artifact, wasm-pkg transport — landed) · Revised against: [RFC-65](rfc-65-standalone-deployment.md) (the provisioning / guest surface split, the binary-versioned core guest) and [RFC-66](rfc-66-publishing-and-distribution.md) (registry backing, publish workflows) · Owns: how a project's declared component identities become a fully provisioned, runnable deployment — locally and in the cloud
 
 ## Abstract
 
@@ -37,16 +37,16 @@ One kernel, `hydrate(refs) -> resolved set`: for each pinned `name@<semver>`, pr
 
 Two triggers share the kernel, both native verbs on RFC-65's **provisioning surface** (the kernel itself is surface-agnostic). Guided init elicitation (RFC-65 §"Operator onboarding") lives strictly above the kernel, gathering arguments — nothing at or below the kernel blocks on a TTY, so the non-interactive property holds on every machine shape:
 
-- **`specify init`** hydrates the target identity recorded on `project.yaml.adapter`, plus every identity in the new optional `project.yaml.adapters:` prefetch list (both axes, pinned) — so a project that knows its source set up front provisions everything in one command. Init then generates the deployment manifest and hands off to the guest scaffold leg (RFC-65's bootstrap order). `specify init --upgrade` re-runs hydration against the (possibly re-pinned) declared set.
+- **`specify init`** hydrates the target identity recorded on `project.yaml.adapter`, plus every identity in the new optional `project.yaml.adapters:` prefetch list (both axes, pinned), plus `specify:core@<the binary's own version>` when the binary does not embed its core (below) — so a project that knows its source set up front provisions everything in one command. Init then generates the deployment manifest and hands off to the guest scaffold leg (RFC-65's bootstrap order). `specify init --upgrade` re-runs hydration against the (possibly re-pinned) declared set.
 - **`specify adapters sync`** is the explicit verb: read `project.yaml` (and `plan.yaml` when present), hydrate every declared identity, regenerate the manifest, print the resolved set with per-identity store paths and digests. It is the one-line cloud bootstrap and the operator's cache-priming and diagnosis surface. `--frozen` turns any would-be fetch into a typed failure (`adapter-not-installed`) for offline and reproducibility-strict CI.
 
 **The guest never hydrates.** Under RFC-65 plan validation runs in the core guest, which holds no network or global-store capability — and per RFC-65's fence, the provisioning surface must not regrow a runtime role, nor the runtime a fetching one. A plan binding a pinned source adapter absent from the store therefore surfaces as a typed `adapter-not-installed` error naming the identity and the literal sync command, and the operator (or the driving skill) runs the sync trigger. Runtime store misses behave as `--frozen` always would: fail loudly, fetch nothing.
 
 ## Deployment manifest generation
 
-The runtime stops reading a hand-authored `omnia.toml` in consumer projects. After hydration, the provisioning surface **generates** the deployment manifest into the per-project derived cache (out-of-tree, per the cache-layout decision): one `[[guest]]` per resolved adapter pointing at `<store>/<name>@<version>.wasm`, the `[[mount]]` of the project directory as writable `"."`, one `[[route.http]]` MCP prefix per adapter, and the core guest's link allow-list — exactly the shape the in-tree developer manifest models today. The manifest is a derived artifact: regenerated whenever the declared adapter set or pins change, never committed, never hand-edited.
+The runtime stops reading a hand-authored `omnia.toml` in consumer projects. After hydration, the provisioning surface **generates** the deployment manifest into the per-project derived cache (out-of-tree, per the cache-layout decision): one `[[guest]]` per resolved pulled component (every adapter, plus the core when not embedded) pointing at `<store>/<name>@<version>.wasm`, the `[[mount]]` of the project directory as writable `"."`, one `[[route.http]]` MCP prefix per adapter, and the core guest's link allow-list — exactly the shape the in-tree developer manifest models today. The manifest is a derived artifact: regenerated whenever the declared component set or pins change, never committed, never hand-edited.
 
-**The core guest is not hydrated.** It ships inside the binary through the generic `runtime!` embed option (RFC-65 move 4): the binary version *is* the core version, so hydration concerns adapters only, there is no core pin surface, and the generated manifest describes the adapter half of the deployment — the host layer wires its embedded core itself. Today's committed workflow guest (RFC-61 D-dist) is the same posture with a hand-rolled mechanism; the RFC-65 cut re-mechanises the embed without changing this RFC's kernel or manifest generator.
+**The core guest is resolved embedded-first.** A binary built with Omnia's generic `runtime!` embed option (RFC-65 move 4) carries its core and wires it itself — no hydration, no manifest entry. Otherwise the kernel hydrates `specify:core@<the binary's own version>` like any adapter and the manifest references its store entry. Both modes pin the core to the binary version, so there is no core pin surface either way. Today's committed workflow guest (RFC-61 D-dist) is the embed posture with a hand-rolled mechanism; the RFC-65 cut replaces it with the pulled baseline or the generic embed, changing nothing in this RFC's kernel or manifest generator.
 
 ## Cloud posture
 
@@ -63,13 +63,13 @@ The cloud story is the local story with the knobs exposed, not a second mechanis
 - The hydration kernel and its two provisioning-surface triggers, including the `project.yaml.adapters:` prefetch list (additive, optional).
 - The typed `adapter-not-installed` posture for plan-time and runtime store misses (the guest-never-hydrates fence).
 - `specify adapters sync` with `--frozen`.
-- Deployment-manifest generation from resolved adapter store entries (the embedded core guest needs no manifest entry — RFC-65 move 4).
+- Deployment-manifest generation from resolved store entries (the core guest appears as one more resolved entry when pulled; an embedded core needs none — RFC-65 move 4).
 - The committed `.specify/adapters.lock` digest pin.
 
 ## Out of scope
 
 - **Version-range resolution and a release index** — hydration requires exact pins; RM-21 owns ranges, floors, and the compatibility matrix.
-- **Registry backing and publish workflows** — the well-known file, GHCR packages, idempotent publish loops, and the release-build core-guest embed leg are [RFC-66](rfc-66-publishing-and-distribution.md)'s.
+- **Registry backing and publish workflows** — the well-known file, GHCR packages, idempotent publish loops, and the `specify:core` publish job are [RFC-66](rfc-66-publishing-and-distribution.md)'s.
 - **The surface split and the core guest's existence** — [RFC-65](rfc-65-standalone-deployment.md)'s; this RFC supplies the provisioning kernel both sides of that cut share.
 - **Third-party adapter namespaces** — the first-party `specify:` posture is unchanged.
 - **Store garbage collection** — entries are immutable and shared across projects; a retention policy over unreferenced identities is a follow-up, not a blocker (the store grows by one file per `(name, version)` ever used).
