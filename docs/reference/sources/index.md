@@ -23,7 +23,7 @@ You bind sources per change at plan time (`/spec:plan <name> source docs=./desig
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
 | `captures` | A runtime capture tree (from `/capture:wiretapper`) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
-Authority is set on the **Evidence document** during `extract`, not in `adapter.yaml`; the table above lists the default each adapter's extract brief emits. Operators can override authority per slice at Gate 1 with `specify plan amend <entry> --authority-override`.
+Authority is set on the **Evidence document** during `extract`, not in `adapter.yaml`; the table above lists the default each adapter's extract prompt emits. Operators can override authority per slice at Gate 1 with `specify plan amend <entry> --authority-override`.
 
 ## Manifest shape
 
@@ -34,15 +34,7 @@ Every source adapter ships a single `adapter.yaml` at `adapters/sources/<name>/`
 name: typescript
 version: "1.0.0"
 axis: source
-execution: agent
 description: TypeScript / JavaScript legacy-code source adapter.
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
-# optional: WASI helper tools the host caches alongside the manifest
-tools:
-  - name: replay-index
-    version: 0.1.0
 ```
 
 | Field | Required | Meaning |
@@ -50,10 +42,9 @@ tools:
 | `name` | yes | Kebab-case source identifier. Must match the directory name under `adapters/sources/` and be unique across both axes. |
 | `version` | yes | Exact semver string (`x.y.z`, e.g. `"1.0.0"`). The adapter's identity; resolution keys on it. |
 | `axis` | yes | Must be `source`. |
-| `execution` | yes | Must be `agent` — source extraction is agent-only. The brief is run by an agent via the two-phase `prepare` / `finalize` handoff. |
 | `description` | yes | Single-sentence summary of what the source reads and emits. |
-| `briefs` | yes | Map of operation → brief markdown path relative to the manifest. The keys are the operation set, closed to `survey` and `extract` by `source.schema.json`. |
-| `tools` | no | WASI helpers the host caches in the out-of-tree per-project cache at `<project-cache>/manifests/sources/<name>/`. See [Tool declarations](../../explanation/tool-declarations.md). |
+
+The operation set is not declared in the manifest — it derives from the closed WIT contract (`wit/specify.wit`: `survey`, `extract`), and the prompts are compiled into the adapter guest.
 
 ## How a source adapter participates in the loop
 
@@ -62,11 +53,11 @@ tools:
 /spec:refine  →  runs source.extract   (emits evidence/<source>.yaml)
 ```
 
-Both operations run sandboxed under the WASI Preview 2 posture — directory preopens only, no inherited host environment, no network. The host gives `survey` and `extract` read-only access to the bound source path and a write-only scratch directory, and denies access to the project root. See [Sandboxing](../../explanation/adapter-anatomy.md#sandboxing) for the preopened roots and the `prepare` / `finalize` two-phase agent dispatch.
+Both operations run sandboxed under the WASI Preview 2 posture — directory preopens only, no inherited host environment, no network. The host gives `survey` and `extract` read-only access to the bound source path and a write-only scratch directory, and denies access to the project root. See [Sandboxing](../../explanation/adapter-anatomy.md#sandboxing) for the preopened roots and the guest orchestration that drives each operation.
 
 ## Validation
 
-The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set and the closed `[survey, extract]` operation list. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation through the two-phase agent handoff.
+The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set above. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation as one guest orchestration each.
 
 ## See also
 

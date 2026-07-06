@@ -186,7 +186,7 @@ Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI
 
 ```markdown
 \{{#template templates/when-open.md}}
-Use this guide when `/spec:execute` parks on build or merge failure.
+Use this guide when `specify plan execute` parks on build or merge failure.
 \{{#template templates/when-close.md}}
 ```
 

@@ -4,7 +4,7 @@ First-party rules that enforce framework-repository invariants through the share
 
 This directory is the peer of [`adapters/shared/prose/rules/universal/`](../universal/README.md): same file shape, same JSON Schema, different namespace ownership. `CORE-*` is the only namespace allowed under `adapters/shared/prose/rules/core/`; the `rules` WASI tool (CORE-009) rejects any non-`CORE-*` rule placed here and any `CORE-*` rule placed elsewhere.
 
-See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
+See [docs/explanation/standards-layer.md](../../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 
 ## File shape
 
@@ -80,7 +80,7 @@ The three relational / presence kinds dispatch on a `value:` mechanism selector 
 1. Pick the next free `CORE-NNN`. Do not reuse retired ids; mark deprecated rules with a `deprecated:` block and leave the file in place so historical citations resolve.
 2. Mirror an existing rule (start from [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md)) for the frontmatter shape; the schema is the source of truth.
 3. Add the rule, then run `make lint`. `specify lint framework` resolves the new file and exercises its hints across the framework tree; investigate any findings before opening the PR. Confirm the rule actually fires against a known-bad fixture — a rule that resolves but matches nothing is the usual failure mode.
-4. Keep all policy in the rule's `config:`. The engine's `lint_no_embedded_policy` Layer-3 guard rejects any rule-specific literal that creeps into the dispatcher. For a Road B (`kind: tool`) rule, add the check to the in-process family checker under `crates/standards/src/lint/framework_tools/<name>.rs` (see [docs/contributing/checks.md](../../../../docs/contributing/checks.md)).
+4. Keep all policy in the rule's `config:`. The engine's `lint_no_embedded_policy` Layer-3 guard rejects any rule-specific literal that creeps into the dispatcher. For a Road B (`kind: tool`) rule, add the check to the in-process family checker under `crates/standards/src/lint/framework_tools/<name>.rs` (see [docs/contributing/checks.md](../../../../../docs/contributing/checks.md)).
 5. New engine behaviour is covered by mechanism-named, rule-agnostic tests (`crates/standards/tests/lint_hint_<kind>.rs`) and each tool's in-crate tests — not by per-rule parity tests.
 
 ## Rule families and overlapping concerns
@@ -109,5 +109,5 @@ When editing one member of a family, check whether the sibling rules need a matc
 ## References
 
 - [Shared engineering standards (`UNI-*`)](../universal/README.md) — sibling pack; same file shape, different namespace ownership.
-- [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) — how workflow, artifacts, and engineering standards compose.
-- [docs/contributing/checks.md](../../../../docs/contributing/checks.md) — how to extend framework checks: Road A declarative hints versus Road B referenced WASI tools.
+- [docs/explanation/standards-layer.md](../../../../../docs/explanation/standards-layer.md) — how workflow, artifacts, and engineering standards compose.
+- [docs/contributing/checks.md](../../../../../docs/contributing/checks.md) — how to extend framework checks: Road A declarative hints versus Road B referenced WASI tools.

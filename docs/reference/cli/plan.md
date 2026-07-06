@@ -7,13 +7,15 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | Verb | When to use |
 |------|-------------|
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
+| `author` | Guest-routed authoring orchestration: scaffold, survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/spec:plan`. |
+| `execute` | Guest-routed driver loop over an approved plan: claim → refine → build → merge per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.specify/guest.lock` marker. |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state. |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [reconciliation](#lead-reconciliation-inside-specify-plan-author) | The reconcile leg inside `specify plan author`: validates the agent grouping and replaces `slices[]` on a replaceable plan. |
 | [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> approved`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
-| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `/spec:execute` reports `stuck`. |
-| [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
+| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `specify plan execute` reports `stuck`. |
+| [`next`](#specify-plan-next) | Report the next eligible entry (used by the execute loop and ad-hoc operators). |
 | [`status`](#specify-plan-status) | Read-only projection of the plan's execution state into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`). |
 | [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. Usually invoked by `/spec:finalize` after it observes merged PRs. |
 
@@ -44,7 +46,7 @@ Base shape checks: duplicate entry names, dependency cycles, unknown `depends-on
 - `project-missing-multi-repo` (important) -- when the registry has multiple projects, every change must carry a `project` field.
 - `topology-cache-stale` (suggestion) -- a workspace slot's `project.yaml` (target adapter, description) or its baseline projection (`surface[]` / `recent[]`) has diverged from the committed `.specify/topology.lock`. The project's `project.yaml` plus its baseline are authoritative; the fix is `specify workspace sync` to regenerate the cache.
 
-Health diagnostics layered on top — first triage step when `/spec:execute` reports `stuck`:
+Health diagnostics layered on top — first triage step when `specify plan execute` reports `stuck`:
 
 | Code | Severity | Meaning | Recovery |
 |------|----------|---------|----------|
@@ -66,9 +68,7 @@ specify plan next
 
 Returns the first `pending` entry whose `depends-on` entries are all `done`. Returns an error if no eligible entry exists.
 
-With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`).
-
-`plan next` is a plan-state writer (the sole writer of per-entry `in-progress`), so it probes the `.specify/plan.lock` driver lock and refuses an unlocked session with `plan-lock-not-held` (exit 2). Hold the lock per the execute skill's plan-lock reference; use `specify plan status` for a lock-free read.
+With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`). `plan next` is the sole writer of per-entry `in-progress`; use `specify plan status` for a pure read.
 
 ### specify plan status
 
@@ -169,8 +169,6 @@ specify plan transition <name> <target> [--reason "<text>"]
 Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 
 At most one entry may be `in-progress` at a time.
-
-Per-entry transitions (`done` and `--undo`) probe the `.specify/plan.lock` driver lock and refuse an unlocked session with `plan-lock-not-held` (exit 2). The plan-level `approved` stamp is exempt — Gate 1 precedes any driver session.
 
 ### specify plan archive
 

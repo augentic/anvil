@@ -264,8 +264,10 @@ fn discover_rule_files(project_dir: &Path) -> Vec<PathBuf> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir =
-            crate::lint::layout::framework_shared_dir(project_dir).join("rules").join(pack);
+        let pack_dir = crate::lint::layout::framework_shared_dir(project_dir)
+            .join("prose")
+            .join("rules")
+            .join(pack);
         let mut files = Vec::new();
         walk_files(&pack_dir, &mut files);
         for path in files {
@@ -299,8 +301,10 @@ fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir =
-            crate::lint::layout::framework_shared_dir(project_dir).join("rules").join(pack);
+        let pack_dir = crate::lint::layout::framework_shared_dir(project_dir)
+            .join("prose")
+            .join("rules")
+            .join(pack);
         if path.strip_prefix(&pack_dir).is_ok() {
             return Some(pack.to_string());
         }
@@ -427,7 +431,10 @@ mod tests {
         let findings = check_rule_body_heading(dir.path());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_BODY_HEADING_MISSING);
-        assert_eq!(findings[0].path.as_deref(), Some("adapters/shared/prose/rules/universal/UNI-001.md"));
+        assert_eq!(
+            findings[0].path.as_deref(),
+            Some("adapters/shared/prose/rules/universal/UNI-001.md")
+        );
         assert!(findings[0].message.contains("`## Rule`"));
 
         // CORE-009: a prefix the owning directory does not own is flagged.

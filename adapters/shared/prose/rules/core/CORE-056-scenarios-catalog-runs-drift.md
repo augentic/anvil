@@ -24,7 +24,7 @@ rule_hints:
 
 ## Rule
 
-The scenario catalog (`evals/scenarios/README.md`), the scenario files (`evals/scenarios/<id>.md`), and the committed run records (`evals/runs/<id>.<result>.md`) must agree. The catalog is the single status surface and the run record is the contract behind every status flip (see the [record contract](../../../../evals/runs/README.md)): a status-bearing row (`passed` / `failed` / `deferred`) requires exactly one committed record whose `<result>` token agrees per this rule's `status-result-map`, and a `pending` or `parked` row must have no record at all.
+The scenario catalog (`evals/scenarios/README.md`), the scenario files (`evals/scenarios/<id>.md`), and the committed run records (`evals/runs/<id>.<result>.md`) must agree. The catalog is the single status surface and the run record is the contract behind every status flip (see the [record contract](../../../../../evals/runs/README.md)): a status-bearing row (`passed` / `failed` / `deferred`) requires exactly one committed record whose `<result>` token agrees per this rule's `status-result-map`, and a `pending` or `parked` row must have no record at all.
 
 This check is whole-tree: the `scenarios` framework tool parses every group-table row in the catalog (id from the File link), joins it against the scenario tree and the run-record filenames, and validates the Status and Gate cells against the closed value sets carried in this rule's `config:`. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 

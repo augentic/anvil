@@ -19,7 +19,7 @@ Example NDJSON line (illustrative):
 ```
 
 - **`passed`** / **`failed`** / **`skipped`** — non-negative integers from the target runner's test classification.
-- **`runner`** — identifies the target adapter version and command (e.g. `omnia-target@1 (cargo nextest)`, `contracts-target@1 (specify extension run contract)`).
+- **`runner`** — identifies the target adapter version and command (e.g. `omnia-target@1 (cargo nextest)`, `contracts-target@1 (in-guest contract validator)`).
 
 Taxonomy reference: [`DECISIONS.md` — journal events](https://github.com/augentic/specify/blob/main/DECISIONS.md).
 
@@ -38,8 +38,8 @@ replay:
 
 Worked examples:
 
-- With block: [`evals/fixtures/targets/omnia/with-replay/`](../../../../evals/fixtures/targets/omnia/with-replay/)
-- Without block (omission-is-not-an-error): [`evals/fixtures/targets/omnia/without-replay/`](../../../../evals/fixtures/targets/omnia/without-replay/)
+- With block: [`evals/fixtures/targets/omnia/with-replay/`](../../../../../evals/fixtures/targets/omnia/with-replay/)
+- Without block (omission-is-not-an-error): [`evals/fixtures/targets/omnia/without-replay/`](../../../../../evals/fixtures/targets/omnia/without-replay/)
 
 The block is additive; it must not reshape other `metadata.yaml` fields. `/spec:merge` reads it when present for the one-line closing summary described in [`hook-contract.md`](hook-contract.md).
 

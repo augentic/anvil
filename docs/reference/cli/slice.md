@@ -12,7 +12,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | [synthesis](#synthesis-inside-specify-slice-refine) | The synthesis leg inside `specify slice refine`: turns the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml` via the projection kernel. |
 | [`model`](#specify-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#specify-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
-| [`build`](#specify-slice-build) | Build the slice through its bound target adapter: `--phase prepare` assembles the build request, `--phase finalize` validates the report and gates the `built` transition. |
+| [`build`](#specify-slice-build) | Build the slice through its bound target adapter: the guest orchestration assembles the build request, drives the target's build operation, validates the report, and gates the `built` transition. |
 | [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`refining` -> `refined` -> `built` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
@@ -195,7 +195,7 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under top-level `workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
-**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`). When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it probes the `.specify/plan.lock` driver lock first and refuses an unlocked session with `plan-lock-not-held` (exit 2); plan-less standalone merges skip the probe.
+**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass. When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp). Standalone breakouts do not take the guest marker — the lifecycle gates are the correctness fence.
 
 ### specify slice task
 

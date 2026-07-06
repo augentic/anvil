@@ -8,15 +8,15 @@ Specify organises work in three layers above the CLI substrate. See [The layered
 
 | Layer | What it automates | Manual fallback |
 | ----- | ----------------- | --------------- |
-| Layer 2 | `/spec:plan`, `/spec:execute`, `/spec:finalize` | Individual skills + `specify plan *` / `specify slice *` |
+| Layer 2 | `/spec:plan`, `specify plan execute`, `/spec:finalize` | Individual skills + `specify plan *` / `specify slice *` |
 | Layer 1 | Per-slice refine → build → merge inside execute | Run `/spec:refine`, `/spec:build`, `/spec:merge` by hand |
 | Layer 0 | Project and adapter configuration | `specify init`, `specify source resolve`, `specify target resolve` |
 
 ## When execute fails
 
-1. Read the stop hint from `/spec:execute` (failing task, log path, or conflict paths).
+1. Read the stop hint from `specify plan execute` (failing task, log path, or conflict paths).
 2. Fix the underlying issue in code or specs.
-3. Resume with `/spec:execute` or run the parked phase manually — see [Drive a slice manually](drive-slice-manually.md).
+3. Resume with `specify plan execute` or run the parked phase manually — see [Drive a slice manually](drive-slice-manually.md).
 
 ## When you want full manual control
 

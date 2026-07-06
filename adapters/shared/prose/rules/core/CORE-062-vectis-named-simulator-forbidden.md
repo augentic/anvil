@@ -22,4 +22,4 @@ Vectis iOS verify and merge prompts must never tell agents to patch `iOS/Makefil
 
 ## Fix
 
-Remove named-destination instructions. Point agents at `specify extension run vectis -- sync ios-scaffold` and Swift-only repair per the Vectis iOS build prompt (`targets/vectis/prose/prompts/build/ios/write.md` in specify-adapters).
+Remove named-destination instructions. Point agents at the vectis guest's `sync ios-scaffold` helper and Swift-only repair per the Vectis iOS build prompt (`targets/vectis/prose/prompts/build/ios/write.md` in specify-adapters).

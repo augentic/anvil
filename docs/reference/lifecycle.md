@@ -15,7 +15,7 @@ Specify's layered design is explained in [The Layered Stack](../explanation/laye
 
 Two stored states. The plan lifecycle does not move further during execution — "currently executing" and "drained" are computed from per-entry status.
 
-`/spec:plan` writes `pending`. The operator stamps `approved` — this is **Gate 1**, the only review seam Specify ships. `/spec:plan` never writes `approved` itself. `/spec:execute` refuses to start unless the plan is `approved`.
+`/spec:plan` writes `pending`. The operator stamps `approved` — this is **Gate 1**, the only review seam Specify ships. `/spec:plan` never writes `approved` itself. `specify plan execute` refuses to start unless the plan is `approved`.
 
 ## Per-entry lifecycle
 

@@ -4,7 +4,7 @@ Plan and execute a change with three slices bound to a documentation source. Thi
 
 ## What you will build
 
-An account-management revamp driven by written design notes: three Omnia slices (`account-registration`, `password-reset`, `account-audit-log`) that `/spec:execute` drives in plan order.
+An account-management revamp driven by written design notes: three Omnia slices (`account-registration`, `password-reset`, `account-audit-log`) that `specify plan execute` drives in plan order.
 
 ## Prerequisites
 
@@ -68,7 +68,7 @@ See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 ## Step 3 — Execute and watch per-entry status
 
 ```text
-/spec:execute
+specify plan execute
 ```
 
 Watch `plan.yaml.slices[].status` move from `pending` to `in-progress` to `done`.

@@ -27,7 +27,7 @@ Every change flows through one rhythm:
 
 1. **Plan** — `/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
 2. **Operator review (Gate 1)** — you stamp `approved`: `specify plan transition <name> approved`.
-3. **Execute** — `/spec:execute` loops per slice: refine → build → merge.
+3. **Execute** — `specify plan execute` loops per slice: refine → build → merge.
 4. **Finalize** — `/spec:finalize` pushes branches and archives the plan; opening and merging PRs is operator-owned, outside Specify.
 
 <div class="pipeline">
@@ -51,7 +51,7 @@ Artifacts are regular files — you commit and review them like source code. `/s
 
 ## What you interact with
 
-**Skills** — slash-commands in Cursor (`/spec:init`, `/spec:plan`, `/spec:execute`, `/spec:finalize`). The full skill list lives in the [Quick reference card](../reference/quick-reference.md).
+**Skills** — slash-commands in Cursor (`/spec:init`, `/spec:plan`, `/spec:finalize`, and the per-slice breakouts). The full skill list lives in the [Quick reference card](../reference/quick-reference.md).
 
 You can also run one phase by hand (a **breakout**) — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 

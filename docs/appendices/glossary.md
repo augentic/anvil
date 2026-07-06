@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `guidance` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -28,18 +28,18 @@ A structured document that defines part of a slice. The core slice artifacts are
 The accumulated set of merged specs at `.specify/specs/` and merged contracts at `contracts/`. Represents the current known behavioural and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/prose/briefs/{survey,extract}.md` or `adapters/targets/<name>/prose/briefs/{shape,build,merge}.md`.
+A markdown prompt file shipped by a source or target adapter that drives one operation, compiled into the adapter guest. Prompts live under `adapters/sources/<name>/prose/prompts/{survey,extract}.md` or `adapters/targets/<name>/prose/prompts/{guidance,build,merge}.md`.
 
 **Breakout verb**
-`/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `/spec:execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Shares the same skill body as the in-loop call.
+`/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `specify plan execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Invokes the same guest orchestration as the in-loop call.
 
 ## C
 
 **Change**
-The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
+The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/spec:plan`, `specify plan execute`, `/spec:finalize`.
 
 **Change branch**
-The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
+The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `specify plan execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
 
 **Claim**
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
@@ -73,7 +73,7 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
 
 **Execute**
-The supervised driver skill (`/spec:execute`) that loops per slice: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
+The guest-routed driver loop (`specify plan execute`) that claims each entry and runs refine → build → merge until the plan drains. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
 The slice-time operation declared by a source adapter. Reads one `Lead` plus the bound source and returns `Evidence` content the CLI persists.
@@ -125,9 +125,6 @@ The change's table of contents in `plan.yaml`. Contains `sources:` (top-level so
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
 
-**Prepare and finalize (slice build)**
-The two phases of `specify slice build <slice>`. `--phase prepare` (default) assembles and schema-validates the build request and hands it to the target's `build` brief; `--phase finalize` validates the report the brief writes and gates the `refined → built` transition. The same two-phase pattern (`prepare` builds the sandbox, `finalize` validates output) governs source `survey` / `extract` under `execution: agent`.
-
 **Project (plan routing)**
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
@@ -151,7 +148,7 @@ A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requ
 ## S
 
 **Shape**
-The idiom-guidance brief shipped by a target adapter. Read by core synthesis as context; not executed. Empty `shape` is valid.
+The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.
 
 **Skill**
 An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/spec:build`). Skills delegate deterministic work to the CLI and use judgment for everything else.
@@ -177,7 +174,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`.
+Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

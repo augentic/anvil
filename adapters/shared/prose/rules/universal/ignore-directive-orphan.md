@@ -21,4 +21,4 @@ A `specify-ignore` directive must suppress a real finding. When a directive's ru
 
 ## See Also
 
-- [Ignore directives reference](../../../../docs/reference/ignore-directives.md) — full grammar, comment-style table, and exit semantics.
+- [Ignore directives reference](../../../../../docs/reference/ignore-directives.md) — full grammar, comment-style table, and exit semantics.

@@ -2,7 +2,7 @@
 id: CORE-005
 title: Skill Body Line Count
 severity: important
-trigger: A `plugins/<plugin>/skills/<skill>/SKILL.md` body exceeds the 200-line cap pinned by [docs/standards/skill-authoring.md](../../../../docs/standards/skill-authoring.md), crowding out the operator's request and every other skill body that fires after it.
+trigger: A `plugins/<plugin>/skills/<skill>/SKILL.md` body exceeds the 200-line cap pinned by [docs/standards/skill-authoring.md](../../../../../docs/standards/skill-authoring.md), crowding out the operator's request and every other skill body that fires after it.
 rule_hints:
   - kind: path-pattern
     value: "plugins/**/SKILL.md"
@@ -30,4 +30,4 @@ The deterministic-hint interpreter consumes the `Skill` facts the framework inde
 
 ## Fix
 
-Move the long-form prose into `references/<topic>.md` and replace the inline material in the SKILL.md body with a one-line link to the reference. The 200-line cap is a floor, not a budget — see [`docs/standards/skill-authoring.md` "References discipline"](../../../../docs/standards/skill-authoring.md) for the canonical relocate-to-`references/` pattern and which sections (`Critical Path`, the invocation surface, the dispatch table, the canonical decision points) stay in the SKILL.md body.
+Move the long-form prose into `references/<topic>.md` and replace the inline material in the SKILL.md body with a one-line link to the reference. The 200-line cap is a floor, not a budget — see [`docs/standards/skill-authoring.md` "References discipline"](../../../../../docs/standards/skill-authoring.md) for the canonical relocate-to-`references/` pattern and which sections (`Critical Path`, the invocation surface, the dispatch table, the canonical decision points) stay in the SKILL.md body.

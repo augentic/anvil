@@ -23,7 +23,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
-| `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
+| `specify plan execute`   | Drive the per-slice refine → build → merge loop (CLI verb, no skill wrapper)                   |
 | `/spec:finalize`         | Push branches, then archive the plan (PRs are opened and merged by the operator outside Specify) |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
@@ -82,7 +82,7 @@ specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --div
 specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
 specify plan transition <plan-name> approved                 # Gate 1; operator-only (lock-exempt)
 specify plan status                                      # read-only next-action projection
-specify plan next                                        # active in-progress, or pick next pending (requires the plan lock)
+specify plan next                                        # active in-progress, or pick next pending
 specify plan archive
 
 # Slice management
@@ -132,8 +132,8 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
     ├── change.md         # operator brief (per active change)
     ├── plan.yaml         # change plan
     ├── discovery.md      # plan-time lead inventory
-    ├── plan.lock         # advisory file lock for /spec:execute and breakouts (CLI-probed: unlocked drivers get plan-lock-not-held)
-    ├── cache/           # cached adapter manifests + briefs ({sources,targets}/)
+    ├── guest.lock        # create-exclusive marker held by guest orchestrations (second driver gets guest-marker-held)
+    ├── cache/           # cached adapter manifests + prompts ({sources,targets}/)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
     ├── specs/            # merged baseline
     ├── workspace/        # workspace slots (workspace mode only)

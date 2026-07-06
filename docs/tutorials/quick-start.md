@@ -128,7 +128,7 @@ Sources: 1. Leads: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo approved` to stamp Gate 1, then `/spec:execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo approved` to stamp Gate 1, then `specify plan execute` to drive the slices.
 ```
 
 #### Operator review step (Gate 1)
@@ -150,7 +150,7 @@ Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 Drive the per-slice loop:
 
 ```text
-/spec:execute
+specify plan execute
 ```
 
 Inside execute, each slice runs **refine → build → merge**:
@@ -220,7 +220,7 @@ Finalize pushes branches (when an `origin` is configured) and archives the plan.
 
 
 > [!TIP]
-> **Done.** You completed the full rhythm: `/spec:init` scaffolds once; `/spec:plan` exits at `pending`; Gate 1 is the operator review seam; `/spec:execute` loops refine → build → merge; `/spec:finalize` closes the change.
+> **Done.** You completed the full rhythm: `/spec:init` scaffolds once; `/spec:plan` exits at `pending`; Gate 1 is the operator review seam; `specify plan execute` loops refine → build → merge; `/spec:finalize` closes the change.
 
 <div class="see-also">
 <strong>See also</strong>
@@ -228,6 +228,6 @@ Finalize pushes branches (when an `origin` is configured) and archives the plan.
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
-- [Change skills](../reference/change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize` reference
+- [Change skills](../reference/change-skills/index.md) — `/spec:plan`, `specify plan execute`, `/spec:finalize` reference
 </div>
 

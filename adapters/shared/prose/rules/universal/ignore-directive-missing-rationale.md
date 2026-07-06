@@ -21,4 +21,4 @@ The 16-character minimum on the rationale is the floor at which a rationale is l
 
 ## See Also
 
-- [Ignore directives reference](../../../../docs/reference/ignore-directives.md) — full grammar, comment-style table, and exit semantics.
+- [Ignore directives reference](../../../../../docs/reference/ignore-directives.md) — full grammar, comment-style table, and exit semantics.

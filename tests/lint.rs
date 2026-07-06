@@ -1039,7 +1039,8 @@ mod project {
         let project = root.path().join("project");
         let codex = root.path().join("rules");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal")).expect("mkdir codex");
+        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal"))
+            .expect("mkdir codex");
 
         fs::write(
             project.join(".specify").join("project.yaml"),
@@ -1237,7 +1238,8 @@ mod project {
         let project: PathBuf = root.path().join("project");
         let codex: PathBuf = root.path().join("rules");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal")).expect("mkdir codex");
+        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal"))
+            .expect("mkdir codex");
 
         fs::write(project.join(".specify").join("project.yaml"), "name: review-journal-e2e\n")
             .expect("write project.yaml");
@@ -1466,7 +1468,8 @@ mod project {
         let codex = root.path().join("rules");
         let cache = root.path().join("tool-cache");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal")).expect("mkdir codex");
+        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal"))
+            .expect("mkdir codex");
         fs::create_dir_all(&cache).expect("mkdir tool cache");
 
         let wasm = Path::new(env!("CARGO_MANIFEST_DIR"))

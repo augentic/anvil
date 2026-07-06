@@ -68,7 +68,7 @@ Surface Error-level findings before stamping approved.
 specify plan transition <plan-name> approved
 ```
 
-Only after this transition will `/spec:execute` start.
+Only after this transition will `specify plan execute` start.
 
 ## Splitting one slice into two
 

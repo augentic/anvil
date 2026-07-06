@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`tests/fixtures/plan/`](../../tests/fixtures/plan) and [`tests/fixtures/e2e/goldens/`](../../tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`tests/fixtures/plan/`](../../tests/fixtures/plan/) and [`tests/fixtures/e2e/goldens/`](../../tests/fixtures/e2e/goldens/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
 ### `specify plan create`
 
@@ -267,7 +267,7 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `shape-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -313,21 +313,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 
 ### `specify slice build`
 
-Two envelope shapes inside the guest-routed orchestration. The **handoff** envelope is assembled after schema-validating the build request: `request` is the assembled `build/request.yaml` the adapter guest's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. The orchestration emits `target.execution.agent` before driving the judgment leg.
-
-```json
-{
-  "slice": "identity-service",
-  "target": "omnia@1.0.0",
-  "execution": "agent",
-  "request": "<TEMPDIR>/.specify/slices/identity-service/build/request.yaml",
-  "report": "<TEMPDIR>/.specify/slices/identity-service/build/report.yaml",
-  "briefs-dir": "<TEMPDIR>/adapters/targets/omnia/briefs",
-  "build-brief": "<TEMPDIR>/adapters/targets/omnia/prose/briefs/build.md"
-}
-```
-
-The finalize tail validates the report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+One envelope shape inside the guest-routed orchestration: the request is assembled and schema-validated, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail validates the report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
 ```json
 {
@@ -340,7 +326,7 @@ The finalize tail validates the report against `schemas/target/build-report.sche
 
 ### `specify slice validate`
 
-Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specify lint`, `specify lint framework`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
+Runs the slice-shape and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specify lint`, `specify lint framework`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
 
 Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
 

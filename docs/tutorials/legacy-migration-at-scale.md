@@ -17,7 +17,7 @@ At plan time, bind a code source alongside or instead of documentation:
 
 The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`.
 
-Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `/spec:execute` drives each slice through refine → build → merge.
+Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `specify plan execute` drives each slice through refine → build → merge.
 
 ## Capture and replay
 

@@ -62,38 +62,38 @@ The canonical "skills MUST NOT" list:
 - **Never reimplement validation, adapter resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with a stable anchor instead.
 
-## Brief authoring
+## Prompt authoring
 
-Adapter briefs live at `adapters/targets/<name>/prose/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/prose/briefs/{survey,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+Adapter prompts live at `adapters/targets/<name>/prose/prompts/{guidance,build,merge}.md` (target adapters) and `adapters/sources/<name>/prose/prompts/{survey,extract}.md` (source adapters). They are markdown documents compiled into the adapter guest and driven by the guest orchestrations. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
 
-Briefs split into two roles:
+Prompts split into two roles:
 
-- **Parent briefs** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-briefs by relative-link instruction. The CLI resolves only the parent path declared in `adapter.yaml`; the agent walks links into sub-briefs.
-- **Phase sub-briefs** carry the operational body of one phase. They live under `adapters/targets/<name>/prose/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/prose/briefs/extract/<axis>.md`.
+- **Parent prompts** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-prompts by relative-link instruction. The agent walks links into sub-prompts.
+- **Phase sub-prompts** carry the operational body of one phase. They live under `adapters/targets/<name>/prose/prompts/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/prose/prompts/extract/<axis>.md`.
 
 The discipline:
 
-1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — briefs are compiled into the adapter guest and never carry frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1.
-2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing.
-3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`.
-4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as [`CORE-019`](../../adapters/shared/prose/rules/core/CORE-019-links-broken-reference.md) failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
-5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
+1. **No frontmatter on prompts.** Prompts are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — prompts are compiled into the adapter guest and never carry frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1.
+2. **Parent prompts cap at 150 non-blank lines (hard).** Parent prompts orchestrate; orchestration that needs more than 150 lines means a sub-prompt is missing.
+3. **Phase sub-prompts cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase prompts (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`.
+4. **References are cited via markdown links, never inlined.** Prompts use relative paths into `plugins/<name>/references/` so that broken links surface as [`CORE-019`](../../adapters/shared/prose/rules/core/CORE-019-links-broken-reference.md) failures. Inlining a template body in a prompt defeats the cap discipline and removes the link-resolution safety net.
+5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Prompts cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from prompt size caps because it is not a prompt.
 
 The pattern that emerges:
 
 ```text
-adapters/targets/<name>/prose/briefs/
-  shape.md                  parent: synthesis idiom guidance, <=150 LOC
+adapters/targets/<name>/prose/prompts/
+  guidance.md               parent: synthesis idiom guidance, <=150 LOC
   build.md                  parent: orchestrator, <=150 LOC
   merge.md                  parent: pre-merge gate, <=150 LOC
-  build/<phase>.md          phase sub-brief, soft cap 500 / hard cap 800 LOC
+  build/<phase>.md          phase sub-prompt, soft cap 500 / hard cap 800 LOC
 
 plugins/<name>/references/
   <topic>.md                load-on-demand depth
   examples/<flavour>/...    worked examples (no size cap)
 ```
 
-A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/prose/briefs/extract/<axis>.md`).
+A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/prose/prompts/extract/<axis>.md`).
 
 ## Envelope examples and wire contract
 
@@ -122,9 +122,9 @@ The upstream specs are Anthropic's [Agent Skills overview](https://platform.clau
 
 **Description examples — good.**
 
-> "Build the active in-progress slice by driving the two-phase `specify slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task."
+> "Build the active in-progress slice by invoking the guest-routed `specify slice build` verb. Use when `specify plan execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry after fixing a failing task."
 
-What + when, with concrete triggers (`/spec:execute`, `/spec:refine`) the discovery scorer can match.
+What + when, with concrete triggers (`specify plan execute`, `/spec:refine`) the discovery scorer can match.
 
 > "Authors, imports, and verifies OpenAPI 3.1 HTTP API contracts for Specify changes, including path operations, request and response schemas, parameters, auth, examples, and baseline deltas. Use when a contracts build needs an HTTP API contract, when an operator supplies or asks for an OpenAPI document, or when verifying OpenAPI compatibility after a merge."
 

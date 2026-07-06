@@ -13,7 +13,7 @@ rule_hints:
 
 ## Rule
 
-Skill bodies must not embed CLI envelope JSON examples. Link to [docs/reference/cli-output-shapes.md](../../../../docs/reference/cli-output-shapes.md) instead.
+Skill bodies must not embed CLI envelope JSON examples. Link to [docs/reference/cli-output-shapes.md](../../../../../docs/reference/cli-output-shapes.md) instead.
 
 ## Look For
 

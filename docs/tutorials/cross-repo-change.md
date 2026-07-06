@@ -41,13 +41,13 @@ specify workspace sync
 specify workspace prepare <project> --change <name>
 ```
 
-`/spec:execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace; phase skills `chdir` into `workspace/<project>/`.
+`specify plan execute` calls sync and prepare as it routes into each slot. Plan artifacts stay at the workspace; phase skills `chdir` into `workspace/<project>/`.
 
 ## Step 4 — Execute with workspace routing
 
 ```bash
 specify plan transition <name> approved
-/spec:execute
+specify plan execute
 ```
 
 When a slice targets a project slot, refine/build/merge run inside that clone. Residue commits and merge commits follow workspace rules documented in [specify workspace](../reference/cli/workspace.md).

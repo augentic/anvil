@@ -41,4 +41,4 @@ Slash skills (`/plugin:skill`) take positional arguments only. Reserve `--flags`
 
 ## Fix
 
-Rewrite as positional skill arguments per [docs/standards/skill-authoring.md](../../../../docs/standards/skill-authoring.md).
+Rewrite as positional skill arguments per [docs/standards/skill-authoring.md](../../../../../docs/standards/skill-authoring.md).

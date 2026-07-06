@@ -1,6 +1,6 @@
 # Runtime Capture
 
-Runtime capture for migration workflows. Source-code survey lives in the [`typescript` source adapter](https://github.com/augentic/specify-adapters/blob/main/sources/typescript/prose/briefs/survey.md); capture consumption lives in the [`captures` source adapter](https://github.com/augentic/specify-adapters/tree/main/sources/captures/); replay test generation and build-time verification live in the [Omnia target `build` briefs](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/briefs/build.md). Cloning a source tree is an inlined guarded `git clone` snippet at the callers — see [`plugins/capture/skills/wiretapper/SKILL.md`](skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
+Runtime capture for migration workflows. Source-code survey lives in the [`typescript` source adapter](https://github.com/augentic/specify-adapters/blob/main/sources/typescript/prose/prompts/survey.md); capture consumption lives in the [`captures` source adapter](https://github.com/augentic/specify-adapters/tree/main/sources/captures/); replay test generation and build-time verification live in the [Omnia target `build` prompts](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build.md). Cloning a source tree is an inlined guarded `git clone` snippet at the callers — see [`plugins/capture/skills/wiretapper/SKILL.md`](skills/wiretapper/SKILL.md) for legacy-repo bootstrap.
 
 ## Skills
 
