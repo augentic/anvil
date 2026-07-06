@@ -72,7 +72,7 @@ pub struct SliceMetadata {
     pub outcome: Option<Outcome>,
 }
 
-/// Result of a target-adapter operation (shape | build | merge) as
+/// Result of a target-adapter operation (guidance | build | merge) as
 /// recorded in `metadata.yaml`. Read by `/spec:execute` on phase
 /// return to decide the next plan transition.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

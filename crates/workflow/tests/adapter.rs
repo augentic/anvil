@@ -262,7 +262,7 @@ fn target_metadata_from_describe_answer() {
     assert_eq!(platforms.allowed.len(), 3);
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
-        vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape],
+        vec![TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge],
         "operation set derives from the closed WIT contract"
     );
 

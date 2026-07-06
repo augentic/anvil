@@ -26,7 +26,7 @@
 //! `evidence_claims` anchor index, then hands them in. **Kernel
 //! determinism**: given fixed
 //! inputs the output is byte-identical, and target-independent by
-//! construction — no `target` or shape-brief input reaches this
+//! construction — no `target` or guidance-brief input reaches this
 //! function.
 
 use std::collections::{BTreeMap, BTreeSet};

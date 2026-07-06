@@ -267,7 +267,7 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `shape-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -290,7 +290,7 @@ The synthesis leg inside the guest-routed `specify slice refine` assembles the a
       ]
     }
   ],
-  "shape-brief": "# Shape brief\n…"
+  "guidance-brief": "# Guidance brief\n…"
 }
 ```
 

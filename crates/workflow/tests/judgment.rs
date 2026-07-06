@@ -196,7 +196,7 @@ mod synthesize_leg {
             "kind": "inputs",
             "slice": "user-registration",
             "sources": [],
-            "shape-brief": "Shape brief body."
+            "guidance-brief": "Guidance brief body."
         }))
         .expect("inputs fixture parses")
     }

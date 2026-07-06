@@ -48,7 +48,7 @@ use crate::registry::topology::{Surface, TopologyLock};
 ///   a regular `project.yaml` omits `adapter` — a corrupt project that
 ///   `specify init` never produces.
 /// - Any error from [`TargetAdapter::resolve`] (`adapter-not-found`,
-///   `adapter-schema-violation`, …) when the regular project's adapter
+///   `adapter-describe-failed`, …) when the regular project's adapter
 ///   cannot be resolved.
 pub fn resolve_topology(config: &ProjectConfig, project_dir: &Path) -> Result<Vec<ProjectRef>> {
     if config.workspace {

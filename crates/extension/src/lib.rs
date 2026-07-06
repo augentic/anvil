@@ -265,7 +265,7 @@ pub struct ExtensionManifest {
 /// Plugin axis discriminator per workflow §Adapter vocabulary.
 ///
 /// Source plugins (`extract` / `survey`) and target plugins
-/// (`shape` / `build` / `merge`) share the single-component adapter
+/// (`guidance` / `build` / `merge`) share the single-component adapter
 /// shape (RFC-64); `Axis` is what disambiguates them in
 /// [`ExtensionScope::Plugin`] and in prose-tree layouts
 /// (`{sources,targets}/<name>/`).

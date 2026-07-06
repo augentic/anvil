@@ -38,7 +38,7 @@ fn axis_routing() {
     };
     assert_eq!(
         target.operations().copied().collect::<Vec<_>>(),
-        vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape]
+        vec![TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge]
     );
 
     // RFC-64 identity: a pin resolves as itself, a bare name as the

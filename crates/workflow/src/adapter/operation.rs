@@ -93,8 +93,8 @@ impl SourceOperation {
 pub enum TargetOperation {
     /// Build — implementation, driven by `/spec:build`.
     Build,
+    /// Guidance — synthesis-time guidance read by core during `/spec:refine`.
+    Guidance,
     /// Merge — landing gate, driven by `/spec:merge`.
     Merge,
-    /// Shape — synthesis-time guidance read by core during `/spec:refine`.
-    Shape,
 }

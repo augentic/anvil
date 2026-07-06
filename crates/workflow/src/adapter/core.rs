@@ -32,7 +32,7 @@ use crate::adapter::operation::{SourceOperation, TargetOperation};
 pub enum Axis {
     /// Source adapter — `extract` + `survey`.
     Source,
-    /// Target adapter — `shape` + `build` + `merge`.
+    /// Target adapter — `guidance` + `build` + `merge`.
     Target,
 }
 
@@ -339,13 +339,12 @@ impl SourceAdapter {
 
 impl TargetAdapter {
     /// Iterator over the target operations this adapter serves, in
-    /// ascending kebab-name order (`build < merge < shape`) — the
+    /// ascending kebab-name order (`build < guidance < merge`) — the
     /// axis's closed WIT operation set (`wit/specify.wit`:
-    /// guidance/build/merge, with `shape` the historical spelling of
-    /// `guidance`).
+    /// guidance/build/merge).
     pub fn operations(&self) -> impl Iterator<Item = &TargetOperation> {
         const WIT_OPERATIONS: &[TargetOperation] =
-            &[TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape];
+            &[TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge];
         WIT_OPERATIONS.iter()
     }
 }

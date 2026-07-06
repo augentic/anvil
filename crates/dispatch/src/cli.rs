@@ -125,7 +125,7 @@ pub enum Commands {
     },
 
     /// Target adapter operations (workflow contract). Target adapters
-    /// provide `shape` + `build` + `merge` capabilities and resolve to a
+    /// provide `guidance` + `build` + `merge` capabilities and resolve to a
     /// single `.wasm` component: the global store entry for pinned
     /// identities, the development release build for bare names (RFC-64).
     Target {

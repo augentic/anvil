@@ -135,7 +135,7 @@ pub trait SourceSeam: Send + Sync {
 /// decision D2).
 pub trait TargetSeam: Send + Sync {
     /// Guidance on the expected build artifacts for this target, read
-    /// by synthesis in place of the manifest `shape` brief.
+    /// by synthesis as the guidance brief.
     fn guidance(&self, id: String) -> impl Future<Output = Result<String, Error>> + Send;
 
     /// Build `slice` against the shared project mount. The report is

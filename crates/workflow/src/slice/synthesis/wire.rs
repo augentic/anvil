@@ -135,9 +135,9 @@ pub struct SynthesisInputs {
     /// One entry per bound source, carrying its inline `lead` and
     /// `claims`.
     pub sources: Vec<SynthesisSourceInput>,
-    /// The resolved target `shape` brief body. Resolved and read by C8 —
+    /// The resolved target guidance body. Resolved and read by C8 —
     /// never by this module.
-    pub shape_brief: String,
+    pub guidance_brief: String,
     /// RFC-46 D5 — the slice's bound project baseline surface (one entry
     /// per `.specify/specs/<domain>/spec.md`), so synthesis reconciles
     /// against existing requirements instead of duplicating them. Read
@@ -245,12 +245,12 @@ impl SynthesisSourceInput {
 /// `sources` is one [`SynthesisSourceInput`] per bound source — the
 /// caller builds the vec by reading each `evidence/<source>.yaml`
 /// (e.g. via [`SynthesisSourceInput::from_evidence_file`]).
-/// `shape_brief` is the bound target's resolved `shape` brief body,
+/// `guidance_brief` is the bound target's resolved guidance body,
 /// provided by C8 (which resolves the [`crate::adapter::TargetAdapter`]
 /// and reads the brief) so this function stays pure and adapter-free.
 #[must_use]
 pub fn build_synthesis_inputs(
-    slice: &str, sources: &[SynthesisSourceInput], shape_brief: &str, baseline: &[Surface],
+    slice: &str, sources: &[SynthesisSourceInput], guidance_brief: &str, baseline: &[Surface],
     baseline_detail: &[BaselineDomainDetail],
 ) -> SynthesisInputs {
     SynthesisInputs {
@@ -258,7 +258,7 @@ pub fn build_synthesis_inputs(
         kind: SynthesisInputsKind::Inputs,
         slice: slice.to_string(),
         sources: sources.to_vec(),
-        shape_brief: shape_brief.to_string(),
+        guidance_brief: guidance_brief.to_string(),
         baseline: baseline.to_vec(),
         baseline_detail: baseline_detail.to_vec(),
     }

@@ -1266,7 +1266,7 @@ mod metadata {
         // `#[non_exhaustive]` boundary on `Outcome`; round-trip through
         // YAML instead so the wire shape is what's exercised.
         for kind in ["success", "failure", "deferred"] {
-            for phase in ["shape", "build", "merge"] {
+            for phase in ["guidance", "build", "merge"] {
                 let yaml = format!(
                     "phase: {phase}\noutcome: {kind}\nat: \"2024-08-01T10:00:00Z\"\nsummary: some summary\n"
                 );

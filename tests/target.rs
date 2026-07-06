@@ -29,8 +29,8 @@ fn resolve_bare_returns_component() {
     let ops: Vec<&str> =
         actual["operations"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
     // The envelope derives operations from the closed WIT contract, in
-    // ascending kebab-name order: build < merge < shape.
-    assert_eq!(ops, vec!["build", "merge", "shape"]);
+    // ascending kebab-name order: build < guidance < merge.
+    assert_eq!(ops, vec!["build", "guidance", "merge"]);
     let resolved = actual["resolved-path"].as_str().expect("resolved-path str");
     assert!(
         resolved.ends_with("components/omnia.wasm"),

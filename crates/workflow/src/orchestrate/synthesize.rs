@@ -10,7 +10,7 @@ use crate::registry::topology::Surface;
 use crate::seam::TargetSeam;
 use crate::slice::{BaselineDomainDetail, SynthesisSourceInput, build_synthesis_inputs};
 
-/// The caller-assembled inputs to [`synthesize`], minus the shape
+/// The caller-assembled inputs to [`synthesize`], minus the guidance
 /// guidance the orchestrator fetches through the seam.
 ///
 /// Mirrors what the retired native `slice synthesize` verb distilled
@@ -31,8 +31,8 @@ pub struct SynthesizeRequest<'a> {
     pub baseline_detail: &'a [BaselineDomainDetail],
 }
 
-/// Run the synthesis judgment leg with the shape brief read through
-/// `seam.guidance(target)` instead of the manifest `shape` brief.
+/// Run the synthesis judgment leg with the guidance brief read
+/// through `seam.guidance(target)`.
 ///
 /// Identical to the native assembly up to the inputs envelope
 /// ([`build_synthesis_inputs`] then the Milestone B
