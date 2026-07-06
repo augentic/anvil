@@ -23,7 +23,7 @@ const RULES: &[&str] =
     &[RULE_NAMESPACE_OWNERSHIP_VIOLATION, RULE_DUPLICATE_RULE_ID, RULE_BODY_HEADING_MISSING];
 
 /// Shared `universal` / `core` rules-pack directory names under
-/// `adapters/codex/rules/`. Mechanism (filesystem layout), not policy.
+/// `codex/rules/`. Mechanism (filesystem layout), not policy.
 const SHARED_PACKS: [&str; 2] = ["universal", "core"];
 
 /// `specify`-owned namespace policy CORE-009 supplies in `config:`.
@@ -402,10 +402,10 @@ mod tests {
     #[test]
     fn clean_tree_is_silent() {
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/codex/rules/core/CORE-001.md", "CORE-001");
-        write_rule(dir.path(), "adapters/codex/rules/universal/UNI-001.md", "UNI-001");
-        write_rule(dir.path(), "adapters/targets/omnia/prose/rules/OMNIA-001.md", "OMNIA-001");
-        write_rule(dir.path(), "adapters/sources/documentation/prose/rules/SRC-001.md", "SRC-001");
+        write_rule(dir.path(), "codex/rules/core/CORE-001.md", "CORE-001");
+        write_rule(dir.path(), "codex/rules/universal/UNI-001.md", "UNI-001");
+        write_rule(dir.path(), "targets/omnia/prose/rules/OMNIA-001.md", "OMNIA-001");
+        write_rule(dir.path(), "sources/documentation/prose/rules/SRC-001.md", "SRC-001");
         assert!(check_namespace_ownership(dir.path(), &policy()).is_empty());
         assert!(check_duplicate_rule_id(dir.path()).is_empty());
         assert!(check_rule_body_heading(dir.path()).is_empty());
@@ -420,10 +420,10 @@ mod tests {
     fn flags_violations() {
         // CORE-053: a rule whose body lacks the `## Rule` heading is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/codex/rules/core/CORE-001.md", "CORE-001");
+        write_rule(dir.path(), "codex/rules/core/CORE-001.md", "CORE-001");
         write_rule_without_heading(
             dir.path(),
-            "adapters/codex/rules/universal/UNI-001.md",
+            "codex/rules/universal/UNI-001.md",
             "UNI-001",
         );
         let findings = check_rule_body_heading(dir.path());
@@ -431,13 +431,13 @@ mod tests {
         assert_eq!(findings[0].rule_id, RULE_BODY_HEADING_MISSING);
         assert_eq!(
             findings[0].path.as_deref(),
-            Some("adapters/codex/rules/universal/UNI-001.md")
+            Some("codex/rules/universal/UNI-001.md")
         );
         assert!(findings[0].message.contains("`## Rule`"));
 
         // CORE-009: a prefix the owning directory does not own is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/targets/omnia/prose/rules/VECTIS-001.md", "VECTIS-001");
+        write_rule(dir.path(), "targets/omnia/prose/rules/VECTIS-001.md", "VECTIS-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_NAMESPACE_OWNERSHIP_VIOLATION);
@@ -446,7 +446,7 @@ mod tests {
 
         // CORE-009: a reserved FRAME-* id under an adapter tree is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/targets/omnia/prose/rules/FRAME-001.md", "FRAME-001");
+        write_rule(dir.path(), "targets/omnia/prose/rules/FRAME-001.md", "FRAME-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("FRAME-* ids are reserved"));
@@ -454,15 +454,15 @@ mod tests {
 
         // CORE-009: an owner with no configured namespace is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/targets/newadapter/prose/rules/OMNIA-001.md", "OMNIA-001");
+        write_rule(dir.path(), "targets/newadapter/prose/rules/OMNIA-001.md", "OMNIA-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("has no configured namespace"));
 
         // CORE-026: the same id in two files is a whole-tree duplicate.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/codex/rules/core/first.md", "CORE-100");
-        write_rule(dir.path(), "adapters/codex/rules/core/second.md", "CORE-100");
+        write_rule(dir.path(), "codex/rules/core/first.md", "CORE-100");
+        write_rule(dir.path(), "codex/rules/core/second.md", "CORE-100");
         let findings = check_duplicate_rule_id(dir.path());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_DUPLICATE_RULE_ID);

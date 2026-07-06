@@ -8,15 +8,15 @@ This is a pre-1.0 codebase. There are no backward-compatibility constraints on s
 
 Each `SKILL.md` `description` field must:
 
-- Lead with an **imperative verb** drawn from the curated allow-list in [`CORE-036`](../../adapters/codex/rules/core/CORE-036-skill-description-grammar.md)'s `field-grammar` hint `config:`. Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
+- Lead with an **imperative verb** drawn from the curated allow-list in [`CORE-036`](../../codex/rules/core/CORE-036-skill-description-grammar.md)'s `field-grammar` hint `config:`. Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
 - Contain a `Use when …` clause so the skill-discovery surface can match on intent rather than vocabulary. The clause describes a trigger condition (when an operator should reach for this skill over its siblings), not a restatement of what the skill does. "Use when an operator wants to X" is an anti-pattern; "Use when starting Y from scratch, not when resuming Z" is the shape.
 - Stay **≤ 512 chars** total.
 
-[`CORE-036`](../../adapters/codex/rules/core/CORE-036-skill-description-grammar.md) enforces the first two rules; the embedded skill schema's `description.maxLength` (via [`CORE-044`](../../adapters/codex/rules/core/CORE-044-skill-schema-violation.md)) enforces the cap.
+[`CORE-036`](../../codex/rules/core/CORE-036-skill-description-grammar.md) enforces the first two rules; the embedded skill schema's `description.maxLength` (via [`CORE-044`](../../codex/rules/core/CORE-044-skill-schema-violation.md)) enforces the cap.
 
 ## Argument-hint grammar
 
-Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by [`CORE-035`](../../adapters/codex/rules/core/CORE-035-skill-argument-hint-grammar.md)'s `field-grammar` hint):
+Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by [`CORE-035`](../../codex/rules/core/CORE-035-skill-argument-hint-grammar.md)'s `field-grammar` hint):
 
 - `<name>` — required positional, kebab-case noun (e.g. `<slice-dir>`, `<change-name>`).
 - `[name]` — optional positional (e.g. `[crate-name]`, `[mode]`).
@@ -33,7 +33,7 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 
 The body and per-section caps are authoring conventions enforced at review time — the declarative line-count rules (the retired CORE-005 / CORE-045) were deleted with the Omnia-migration lint shrink, since invoke-and-relay skill bodies no longer approach the caps.
 
-All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across schema and docs by [`CORE-024`](../../adapters/codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md)'s `prose` checker.
+All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across schema and docs by [`CORE-024`](../../codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md)'s `prose` checker.
 
 ## References discipline
 
@@ -45,9 +45,9 @@ Push prose to `references/<topic>.md` under the plugin (runtime canonical) befor
 
 The frontmatter and body caps above are the floor. These additional rules tighten the SKILL.md as a navigable artifact:
 
-1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by [`CORE-038`](../../adapters/codex/rules/core/CORE-038-frontmatter-restatement.md).
+1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by [`CORE-038`](../../codex/rules/core/CORE-038-frontmatter-restatement.md).
 2. **`## Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose. The Critical Path may take either of two forms: a flat 5–7 entry numbered/bullet list, or 5–7 `### N. Title` H3 step headings (when each step has its own concise body); duplicating both forms in the same body is the anti-pattern this rule eliminated.
-3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Delete the historical reference and cite current references from the skill body. Mechanically enforced by [`CORE-016`](../../adapters/codex/rules/core/CORE-016-specify-history-citation.md).
+3. **No historical design-record citations in skill bodies.** Implementation-history references in prose train operators on how the system was *built*, not how it works *today*. Delete the historical reference and cite current references from the skill body. Mechanically enforced by [`CORE-016`](../../codex/rules/core/CORE-016-specify-history-citation.md).
 4. **If present, `## Phase outcome contract` is a single-line link, not a paragraph.** Phase skills are *not* required to carry this section — none do today, and no predicate enforces its presence; the canonical contract lives in [`plugins/spec/references/phase-outcome-contract.md`](../../plugins/spec/references/phase-outcome-contract.md). When a skill does include the section, replace any opening prose with the single-line `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` rather than restating the contract.
 
 ## Cross-cutting guardrails
@@ -64,25 +64,25 @@ The canonical "skills MUST NOT" list:
 
 ## Prompt authoring
 
-Adapter prompts live at `adapters/targets/<name>/prose/prompts/{guidance,build,merge}.md` (target adapters) and `adapters/sources/<name>/prose/prompts/{survey,extract}.md` (source adapters). They are markdown documents compiled into the adapter guest and driven by the guest orchestrations. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+Adapter prompts live in specify-adapters at `targets/<name>/prose/prompts/{guidance,build,merge}.md` (target adapters) and `sources/<name>/prose/prompts/{survey,extract}.md` (source adapters). They are markdown documents compiled into the adapter guest and driven by the guest orchestrations. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
 
 Prompts split into two roles:
 
 - **Parent prompts** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-prompts by relative-link instruction. The agent walks links into sub-prompts.
-- **Phase sub-prompts** carry the operational body of one phase. They live under `adapters/targets/<name>/prose/prompts/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/prose/prompts/extract/<axis>.md`.
+- **Phase sub-prompts** carry the operational body of one phase. They live under `targets/<name>/prose/prompts/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `sources/<name>/prose/prompts/extract/<axis>.md`.
 
 The discipline:
 
 1. **No frontmatter on prompts.** Prompts are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — prompts are compiled into the adapter guest and never carry frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1.
 2. **Parent prompts cap at 150 non-blank lines (hard).** Parent prompts orchestrate; orchestration that needs more than 150 lines means a sub-prompt is missing.
 3. **Phase sub-prompts cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase prompts (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`.
-4. **References are cited via markdown links, never inlined.** Prompts use relative paths into `plugins/<name>/references/` so that broken links surface as [`CORE-019`](../../adapters/codex/rules/core/CORE-019-links-broken-reference.md) failures. Inlining a template body in a prompt defeats the cap discipline and removes the link-resolution safety net.
+4. **References are cited via markdown links, never inlined.** Prompts use relative paths into `plugins/<name>/references/` so that broken links surface as [`CORE-019`](../../codex/rules/core/CORE-019-links-broken-reference.md) failures. Inlining a template body in a prompt defeats the cap discipline and removes the link-resolution safety net.
 5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Prompts cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from prompt size caps because it is not a prompt.
 
 The pattern that emerges:
 
 ```text
-adapters/targets/<name>/prose/prompts/
+targets/<name>/prose/prompts/
   guidance.md               parent: synthesis idiom guidance, <=150 LOC
   build.md                  parent: orchestrator, <=150 LOC
   merge.md                  parent: pre-merge gate, <=150 LOC
@@ -93,7 +93,7 @@ plugins/<name>/references/
   examples/<flavour>/...    worked examples (no size cap)
 ```
 
-A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/prose/prompts/extract/<axis>.md`).
+A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`sources/<name>/prose/prompts/extract/<axis>.md`).
 
 ## Envelope examples and wire contract
 

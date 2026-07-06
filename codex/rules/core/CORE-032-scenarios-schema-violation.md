@@ -5,7 +5,7 @@ severity: important
 trigger: Scenario frontmatter fails scenario.schema.json.
 rule_hints:
   - kind: path-pattern
-    value: adapters/codex/rules/core/CORE-032-scenarios-schema-violation.md
+    value: codex/rules/core/CORE-032-scenarios-schema-violation.md
     description: Sentinel include so the rule carries a candidate set; the `scenario` schema selector validates the whole scenario fact family and ignores the candidate set.
   - kind: schema
     value: scenario

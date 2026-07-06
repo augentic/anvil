@@ -115,12 +115,13 @@ fn build_report(
 }
 
 /// Canonicalise the framework root after a structural sanity check
-/// (the `adapters/` directory, with or without `plugins/`), so every
-/// downstream path in the report is anchored at a stable absolute root.
-/// An adapters-only root is a first-class framework root: the
+/// (at least one flattened adapter tree — `codex/`, `sources/`, or
+/// `targets/` — with or without `plugins/`), so every downstream path
+/// in the report is anchored at a stable absolute root. An
+/// adapters-only root is a first-class framework root: the
 /// plugin-bound checkers no-op when their inputs are absent.
 fn canonical_framework_root(root: &Path) -> Result<PathBuf> {
-    if !root.join("adapters").is_dir() {
+    if !["codex", "sources", "targets"].iter().any(|dir| root.join(dir).is_dir()) {
         return Err(Error::Diag {
             code: "framework-root",
             detail: format!("not a framework root: {}", root.display()),

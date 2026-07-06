@@ -5,8 +5,8 @@ severity: important
 trigger: An adapter prompt references an unknown schemas.specify.dev tool schema URL.
 rule_hints:
   - kind: path-pattern
-    value: adapters/codex/rules/core/CORE-018-links-prompt-schema-link-resolve.md
-    description: Sentinel path so the whole-tree links-registry tool runs exactly once; the tool walks PROJECT_DIR/adapters itself rather than the passed candidate.
+    value: codex/rules/core/CORE-018-links-prompt-schema-link-resolve.md
+    description: Sentinel path so the whole-tree links-registry tool runs exactly once; the tool walks the adapter trees under PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: links-registry
     config:
@@ -20,7 +20,7 @@ rule_hints:
 
 Every `https://schemas.specify.dev/<tool>/<name>.schema.json` URL in an adapter prompt or reference must resolve to a schema owned by a known tool. The tool→schema registry lives in this rule's `config:` so schema ownership is framework-owned policy, not baked into the checker. The tool reads the registry from the forwarded config; the engine only relays it.
 
-This check is whole-tree: the `links-registry` framework tool walks `PROJECT_DIR/adapters` for markdown, ignoring URLs inside fenced or inline code. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
+This check is whole-tree: the `links-registry` framework tool walks the adapter trees (`codex/`, `sources/`, `targets/`) for markdown, ignoring URLs inside fenced or inline code. The rule's `path-pattern` names a single sentinel file so the tool runs exactly once per lint; the tool reads `PROJECT_DIR` and walks the tree itself.
 
 ## Look For
 

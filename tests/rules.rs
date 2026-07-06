@@ -16,9 +16,9 @@ mod codex {
     use crate::common::{expected_cache_dir, omnia_component, parse_json, specify_cmd};
 
     /// Write a schema-valid shared rule under
-    /// `<root>/adapters/codex/rules/universal/<id>.md`.
+    /// `<root>/codex/rules/universal/<id>.md`.
     fn write_universal_rule(root: &Path, id: &str) {
-        let path = root.join(format!("adapters/codex/rules/universal/{id}.md"));
+        let path = root.join(format!("codex/rules/universal/{id}.md"));
         fs::create_dir_all(path.parent().expect("rule parent")).expect("mkdir rule dir");
         fs::write(
         &path,
@@ -35,7 +35,7 @@ mod codex {
     /// ancestors for the shared rules tree, so the pack sits in the
     /// same synthetic root.
     fn synthetic_source(root: &Path) -> PathBuf {
-        let omnia = root.join("adapters/targets/omnia.wasm");
+        let omnia = root.join("targets/omnia.wasm");
         fs::create_dir_all(omnia.parent().expect("component parent")).expect("mkdir targets dir");
         fs::copy(omnia_component(), &omnia).expect("stage synthetic omnia component");
         write_universal_rule(root, "UNI-901");
@@ -57,7 +57,7 @@ mod codex {
             .success();
 
         let cached = expected_cache_dir(project.path())
-            .join("codex/adapters/codex/rules/universal/UNI-901.md");
+            .join("codex/codex/rules/universal/UNI-901.md");
         assert!(cached.is_file(), "init must distribute the shared codex into the cache");
 
         // `rules export` resolves the distributed shared rule with NO
@@ -103,7 +103,7 @@ mod codex {
         assert_eq!(value["distributed"], true, "sync must redistribute, got:\n{value:#}");
 
         let cached = expected_cache_dir(project.path())
-            .join("codex/adapters/codex/rules/universal/UNI-901.md");
+            .join("codex/codex/rules/universal/UNI-901.md");
         assert!(cached.is_file(), "rules sync must repopulate the codex cache");
     }
 
@@ -201,7 +201,7 @@ mod export {
         let rules_root = tempdir().expect("rules root");
         let project = tempdir().expect("project");
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             &basic_rule("UNI-001", "Shared anchor", "important"),
         );
         write_rule_md(
@@ -225,7 +225,7 @@ mod export {
         let rules_root = tempdir().expect("rules root");
         let project = tempdir().expect("project");
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             &basic_rule("UNI-001", "Shared anchor", "important"),
         );
         write_rule_md(
@@ -251,11 +251,11 @@ mod export {
         let rules_root = tempdir().expect("rules root");
         let project = tempdir().expect("project");
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             &basic_rule("UNI-001", "Active shared", "important"),
         );
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-009.md"),
+            &rules_root.path().join("codex/rules/universal/uni-009.md"),
             &deprecated_rule("UNI-009", "UNI-001"),
         );
 
@@ -279,11 +279,11 @@ mod export {
         let rules_root = tempdir().expect("rules root");
         let project = tempdir().expect("project");
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             &basic_rule("UNI-001", "Active shared", "important"),
         );
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-009.md"),
+            &rules_root.path().join("codex/rules/universal/uni-009.md"),
             &deprecated_rule("UNI-009", "UNI-001"),
         );
 
@@ -306,7 +306,7 @@ mod export {
         let rules_root = tempdir().expect("rules root");
         let project = tempdir().expect("project");
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             &basic_rule("UNI-001", "Shared anchor", "important"),
         );
         write_rule_md(
@@ -346,11 +346,11 @@ mod export {
         let rules_root = tempdir().expect("rules root");
         let project = tempdir().expect("project");
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             &basic_rule("UNI-001", "Critical shared", "critical"),
         );
         write_rule_md(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-002.md"),
+            &rules_root.path().join("codex/rules/universal/uni-002.md"),
             &basic_rule("UNI-002", "Optional shared", "optional"),
         );
         write_rule_md(
@@ -378,7 +378,7 @@ mod export {
     }
 
     /// CLI smoke test: a hand-built rules-root tree with
-    /// a `CORE-*` rule under `adapters/codex/rules/core/` excludes that
+    /// a `CORE-*` rule under `codex/rules/core/` excludes that
     /// rule from `specify rules export` by default and includes it under
     /// `--include-core`. Uses `assert_cmd` so the closed CLI plumbing
     /// (clap struct → handler → resolver) is exercised end-to-end.
@@ -388,14 +388,14 @@ mod export {
         let project = tempdir().expect("project tempdir");
 
         write_rule_fixture(
-            &rules_root.path().join("adapters/codex/rules/universal/uni-001.md"),
+            &rules_root.path().join("codex/rules/universal/uni-001.md"),
             "UNI-001",
             "Universal anchor",
         );
         // This fixture uses a high out-of-the-way id (`CORE-999`) so the
         // test never collides with a first-party core rule.
         write_rule_fixture(
-            &rules_root.path().join("adapters/codex/rules/core/CORE-fixture.md"),
+            &rules_root.path().join("codex/rules/core/CORE-fixture.md"),
             "CORE-999",
             "Core fixture",
         );

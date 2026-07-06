@@ -35,9 +35,9 @@ mod support {
     ///   are never created so the per-adapter overlay arm short-circuits.
     pub fn scaffold_framework(root: &Path) {
         for rel in [
-            "adapters/sources",
-            "adapters/targets",
-            "adapters/codex",
+            "sources",
+            "targets",
+            "codex",
             "plugins",
             "plugins/test/skills",
         ] {
@@ -169,7 +169,7 @@ mod framework {
     /// Both are otherwise schema-valid and carry no hints, so the only
     /// finding the predicate produces is the duplicate-id collision.
     fn write_duplicate_rule_id(root: &Path) {
-        let core_dir = root.join("adapters/codex/rules/core");
+        let core_dir = root.join("codex/rules/core");
         fs::create_dir_all(&core_dir).expect("mkdir core rules");
         for file in ["CORE-100-first.md", "CORE-100-second.md"] {
             fs::write(
@@ -296,12 +296,12 @@ mod framework_adapters {
     fn scaffold_adapters_only(root: &Path) {
         write(
             root,
-            "adapters/sources/documentation/prose/prompts/survey.md",
+            "sources/documentation/prose/prompts/survey.md",
             "# documentation.survey\n\nMinimal prompt.\n\n## Inputs\n\n- intent.\n\n## Output contract\n\nLeads.\n",
         );
         write(
             root,
-            "adapters/targets/omnia/prose/prompts/shape.md",
+            "targets/omnia/prose/prompts/shape.md",
             "# omnia.shape\n\nMinimal prompt.\n\n## Inputs\n\n- spec.\n\n## Output contract\n\nA reconciled spec.\n",
         );
     }
@@ -311,10 +311,10 @@ mod framework_adapters {
     fn write_marketplace_rule(root: &Path) {
         write(
             root,
-            "adapters/codex/rules/core/CORE-022-plugins-marketplace-drift.md",
+            "codex/rules/core/CORE-022-plugins-marketplace-drift.md",
             "---\nid: CORE-022\ntitle: Plugins Marketplace Drift\nseverity: important\n\
 trigger: marketplace.json drifts from on-disk plugin layout.\n\
-rule_hints:\n  - kind: path-pattern\n    value: adapters/codex/rules/core/CORE-022-plugins-marketplace-drift.md\n  - kind: tool\n    value: marketplace\n---\n\n\
+rule_hints:\n  - kind: path-pattern\n    value: codex/rules/core/CORE-022-plugins-marketplace-drift.md\n  - kind: tool\n    value: marketplace\n---\n\n\
 ## Rule\n\nSynthetic CORE-022 for adapters-only tests.\n",
         );
     }
@@ -324,10 +324,10 @@ rule_hints:\n  - kind: path-pattern\n    value: adapters/codex/rules/core/CORE-0
     fn write_prose_rule(root: &Path) {
         write(
             root,
-            "adapters/codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md",
+            "codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md",
             "---\nid: CORE-024\ntitle: Prose Numeric Cap Exceeded\nseverity: important\n\
 trigger: A documented skill numeric cap drifted from its canonical source.\n\
-rule_hints:\n  - kind: path-pattern\n    value: adapters/codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md\n  - kind: tool\n    value: prose\n    config:\n      description-cap: 512\n      body-cap: 200\n---\n\n\
+rule_hints:\n  - kind: path-pattern\n    value: codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md\n  - kind: tool\n    value: prose\n    config:\n      description-cap: 512\n      body-cap: 200\n---\n\n\
 ## Rule\n\nSynthetic CORE-024 for adapters-only tests.\n",
         );
     }
@@ -455,10 +455,10 @@ mod framework_json {
     /// synthetic rule validates component catalogs (`components.yaml`)
     /// against the registered `components` schema instead.
     fn write_core_catalog_schema_rule(root: &Path) {
-        fs::create_dir_all(root.join("adapters/codex/rules/core")).expect("core rules dir");
+        fs::create_dir_all(root.join("codex/rules/core")).expect("core rules dir");
         write_codex_rule(
             root,
-            "adapters/codex/rules/core/CORE-001-catalog-schema.md",
+            "codex/rules/core/CORE-001-catalog-schema.md",
             r"---
 id: CORE-001
 title: Component Catalog Schema
@@ -492,10 +492,10 @@ Fix catalog.
     /// in `augentic/specify`. A sentinel `path-pattern` runs the whole-tree
     /// tool exactly once.
     fn write_core_namespace_owner_rule(root: &Path) {
-        fs::create_dir_all(root.join("adapters/codex/rules/core")).expect("core rules dir");
+        fs::create_dir_all(root.join("codex/rules/core")).expect("core rules dir");
         write_codex_rule(
             root,
-            "adapters/codex/rules/core/CORE-009-rule-namespace-owner.md",
+            "codex/rules/core/CORE-009-rule-namespace-owner.md",
             r"---
 id: CORE-009
 title: Rule Namespace Owner
@@ -503,7 +503,7 @@ severity: important
 trigger: A rule id namespace prefix is not owned by its rules directory.
 rule_hints:
   - kind: path-pattern
-    value: adapters/codex/rules/core/CORE-009-rule-namespace-owner.md
+    value: codex/rules/core/CORE-009-rule-namespace-owner.md
   - kind: tool
     value: rules
     config:
@@ -660,7 +660,7 @@ Body preserved so the rule passes shape validation.
         write_scaffold(temp.path());
         write_codex_rule(
             temp.path(),
-            "adapters/sources/documentation/prose/rules/src-001.md",
+            "sources/documentation/prose/rules/src-001.md",
             &valid_rule_body("SRC-001"),
         );
 
@@ -702,7 +702,7 @@ Body preserved so the rule passes shape validation.
 
         write_codex_rule(
             temp.path(),
-            "adapters/codex/rules/universal/uni-999.md",
+            "codex/rules/universal/uni-999.md",
             &valid_rule_body("UNI-999"),
         );
         write_core_namespace_owner_rule(temp.path());
@@ -713,7 +713,7 @@ Body preserved so the rule passes shape validation.
         fs::write(&bad_catalog, "components: {}\n").expect("bad catalog");
         write_codex_rule(
             temp.path(),
-            "adapters/targets/omnia/prose/rules/frame-misplaced.md",
+            "targets/omnia/prose/rules/frame-misplaced.md",
             &valid_rule_body("FRAME-001"),
         );
 
@@ -815,7 +815,7 @@ Body preserved so the rule passes shape validation.
         write_scaffold(temp.path());
         write_codex_rule(
             temp.path(),
-            "adapters/sources/documentation/prose/rules/src-001.md",
+            "sources/documentation/prose/rules/src-001.md",
             &valid_rule_body("SRC-001"),
         );
 
@@ -919,7 +919,7 @@ mod project {
     ///   least passes the `kind: tool` evaluator contract `is_declared` half) plus a `notes.md` file
     ///   carrying the literal `TODO` token the UNI-100 regex hint matches.
     /// - `codex_dir/` — a fresh rules tree with one shared rule under
-    ///   `adapters/codex/rules/universal/uni-100.md`. The rule's
+    ///   `codex/rules/universal/uni-100.md`. The rule's
     ///   `kind: regex` hint pattern is `TODO`.
     struct Fixture {
         _root: TempDir,
@@ -932,7 +932,7 @@ mod project {
         let project = root.path().join("project");
         let codex = root.path().join("rules");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/codex/rules/universal"))
+        fs::create_dir_all(codex.join("codex/rules/universal"))
             .expect("mkdir codex");
 
         fs::write(
@@ -951,7 +951,7 @@ mod project {
             .expect("write notes.md");
 
         fs::write(
-            codex.join("adapters/codex/rules/universal/uni-100.md"),
+            codex.join("codex/rules/universal/uni-100.md"),
             concat!(
                 "---\n",
                 "id: UNI-100\n",
@@ -986,7 +986,7 @@ mod project {
     fn write_regex_rule(codex: &Path, id: &str, severity: &str, pattern: &str) {
         let slug = id.to_ascii_lowercase();
         fs::write(
-            codex.join(format!("adapters/codex/rules/universal/{slug}.md")),
+            codex.join(format!("codex/rules/universal/{slug}.md")),
             format!(
                 "---\n\
              id: {id}\n\
@@ -1131,7 +1131,7 @@ mod project {
         let project: PathBuf = root.path().join("project");
         let codex: PathBuf = root.path().join("rules");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/codex/rules/universal"))
+        fs::create_dir_all(codex.join("codex/rules/universal"))
             .expect("mkdir codex");
 
         fs::write(project.join(".specify").join("project.yaml"), "name: review-journal-e2e\n")
@@ -1151,7 +1151,7 @@ mod project {
         .expect("write notes.md");
 
         fs::write(
-            codex.join("adapters/codex/rules/universal/uni-100.md"),
+            codex.join("codex/rules/universal/uni-100.md"),
             concat!(
                 "---\n",
                 "id: UNI-100\n",
@@ -1225,7 +1225,7 @@ mod project {
     }
 
     /// rules-root resolution / lint exit mapping negative: with no `--rules-root`, no project-local
-    /// `adapters/codex/rules/universal/` rung, and no distributed
+    /// `codex/rules/universal/` rung, and no distributed
     /// out-of-tree `<project-cache>/codex/` cache, the resolver returns
     /// `rules-root-required`. The CLI surfaces it on stderr and exits 2.
     #[test]
@@ -1361,7 +1361,7 @@ mod project {
         let codex = root.path().join("rules");
         let cache = root.path().join("tool-cache");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/codex/rules/universal"))
+        fs::create_dir_all(codex.join("codex/rules/universal"))
             .expect("mkdir codex");
         fs::create_dir_all(&cache).expect("mkdir tool cache");
 
@@ -1378,7 +1378,7 @@ mod project {
         .expect("write project.yaml");
 
         fs::write(
-            codex.join("adapters/codex/rules/universal/uni-200.md"),
+            codex.join("codex/rules/universal/uni-200.md"),
             concat!(
                 "---\n",
                 "id: UNI-200\n",

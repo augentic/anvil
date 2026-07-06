@@ -8,9 +8,9 @@ Under [RFC-61](rfc-61-omnia-migration.md) an adapter's briefs compile into its c
 
 ## Where the time goes
 
-The harness exists (`evals/<adapter>/run.sh` driving `crates/eval-driver` + `crates/eval-guest` in `specify-adapters`) and the loop it runs has two cost classes:
+The harness exists (the flattened `evals` package in `specify-adapters`: the `eval-driver` + `eval-guest` example targets — `evals/{runtime,guest}.rs` — driven per scenario by the `#[ignore]`d tests in `evals/live.rs`) and the loop it runs has two cost classes:
 
-1. **Rebuild tax.** A brief edit invalidates the prose registry — `specify-prose-registry` emits `cargo:rerun-if-changed` per embedded document — so the adapter core and shim rebuild to `wasm32-wasip2` on every edit, and each runner invocation then goes through `cargo run -q -p specify-eval-driver`, a native workspace freshness check. Tens of seconds per iteration, all of it waste for a prose-only change: no Rust changed.
+1. **Rebuild tax.** A brief edit invalidates the prose registry — `specify-prose-registry` emits `cargo:rerun-if-changed` per embedded document — so the adapter core and shim rebuild to `wasm32-wasip2` on every edit, and each live-test invocation shells out to `cargo build` for the guests and the driver before spawning it, a native workspace freshness check. Tens of seconds per iteration, all of it waste for a prose-only change: no Rust changed.
 2. **Model tax.** The cursor backend spawns a fresh, context-free `cursor-agent` per `create`. A full `build` through the contracts guest is several sub-flow legs plus a verify-repair pass, and the eval guest currently exposes no smaller unit than one whole operation (and only `target.build` at that).
 
 The design goal: an author iterating on one brief pays exactly one model leg per iteration and zero compilation.
@@ -30,7 +30,7 @@ With the overlay in place the prose loop collapses to *edit markdown → re-invo
 Three layers, cheapest first; escalate only when the layer below cannot answer the question:
 
 1. **Native, no model** (seconds): the wasm-free core's tests assert prompt assembly through `MockModel`, which records every `Request` — "did my brief edit land in the assembled `system` / `user` text" never needs a component or a model call.
-2. **Composed, no model**: a `DRY_RUN=1` wiring smoke (generalized from the vectis runner to every runner) plus the replay-backend runtime tests prove manifest, mount, link, and MCP-route wiring without `cursor-agent`.
+2. **Composed, no model**: the non-ignored `wiring` tests in `evals/live.rs` (scenario seeding + manifest rendering for every scenario, run by ordinary CI) plus the replay-backend runtime tests prove manifest, mount, link, and MCP-route wiring without `cursor-agent`.
 3. **Composed, live**: the eval runner with the overlay — the only layer that judges the prose's effect on model output, and under this RFC the only layer that costs a model leg.
 
 ## One operation per invocation
@@ -40,14 +40,14 @@ The eval guest's argv grows an operation selector. Today it accepts `<adapter-id
 ## Driver ergonomics
 
 - **Model override.** `Request.model` is always `None` from guest-kit's `judgment` helper, and RFC-61's invariant keeps model ids out of guests. The override therefore lands in the eval driver's backend binding: an environment variable (working name `SPECIFY_EVAL_MODEL`) the driver passes to the cursor backend, letting authors iterate on a fast model and confirm on the default — without the id ever entering a guest or the WIT contract.
-- **Prebuilt driver.** The runners invoke the built `specify-eval-driver` binary directly instead of `cargo run -q`, removing the per-invocation workspace freshness check; a one-time build task produces it.
+- **Prebuilt driver.** Landed: the live tests spawn the built `eval-driver` example binary directly. The remaining cost is the per-invocation `cargo build` freshness check, which the prose overlay makes a no-op for prose-only edits.
 - **Watch loop.** A `cargo make` task wraps the runner in a file watch over the adapter's prose trees, so the save-to-report loop is hands-off.
 
 ## Scope
 
 - The `prose-overlay` feature in `specify-guest-kit` (registry + shelf read paths) and the runner support that seeds and enables it.
 - The operation selector on the eval guest.
-- The driver-level model override, prebuilt-driver invocation, `DRY_RUN` generalization, and the watch task.
+- The driver-level model override and the watch task. (Prebuilt-driver invocation and the wiring-smoke generalization landed with the `evals/live.rs` test runner: each live test spawns the built `eval-driver` example binary, and the non-ignored `wiring` tests smoke every scenario model-free.)
 
 ## Out of scope
 

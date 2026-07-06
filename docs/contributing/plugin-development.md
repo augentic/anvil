@@ -103,9 +103,7 @@ Agent-critical prose is **runtime-canonical** under [`plugins/spec/references/`]
 
 Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
 
-Adapter briefs link to `references/spec-runtime/` inside each adapter (see [`adapters/codex/references/runtime/README.md`](../../adapters/codex/references/runtime/README.md)). Each adapter's `references/spec-runtime` is a single directory symlink to the shared bundle at `adapters/codex/references/runtime/`, which is itself a tree of symlinks to the plugin canonical files — so there is nothing to materialise or keep in sync. Edit the canonical file under `plugins/spec/references/`; `specify init` dereferences the symlinks into the cached adapter copy.
-
-When you also maintain the forked copy in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) (`codex/references/runtime/`), run `make check-adapters-parity` from a sibling checkout after changing `plugins/spec/references/` and sync any drift before merging.
+Adapter prompts in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) link to `references/spec-runtime/` inside each adapter: each adapter's `references/spec-runtime` is a directory symlink to that repo's `codex/references/runtime/`, whose files are embedded into the published adapter components at build time. That tree is the canonical copy of the spec-runtime bundle; when a change to `plugins/spec/references/` here affects prose the adapters mirror, port it to `codex/references/runtime/` in specify-adapters in the same change.
 
 | Book-only (not agent runtime) | Purpose |
 |------|---------|

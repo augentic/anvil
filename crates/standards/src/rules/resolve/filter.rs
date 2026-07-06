@@ -114,7 +114,7 @@ pub fn filter(
 
 /// `true` when the entry survives the consumer-export `core` filter.
 ///
-/// Rules resolved from `adapters/codex/rules/core/`
+/// Rules resolved from `codex/rules/core/`
 /// (i.e. [`Origin::Core`]) are excluded from the export by default; the
 /// caller opts in via `--include-core`.
 const fn keeps_core(origin: Origin, include_core: bool) -> bool {

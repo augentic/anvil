@@ -7,7 +7,7 @@ rule_hints:
   - kind: path-pattern
     value: "docs/**/*.md"
   - kind: path-pattern
-    value: "adapters/**/*.md"
+    value: "{codex,sources,targets}/**/*.md"
   - kind: path-pattern
     value: "plugins/**/*.md"
   - kind: path-pattern
@@ -15,7 +15,7 @@ rule_hints:
   - kind: path-pattern
     value: "!docs/assets/**"
   - kind: path-pattern
-    value: "!adapters/codex/rules/**"
+    value: "!codex/rules/**"
   - kind: regex
     value: "(?i)RFC[-\\s]+(\\d+)"
     config:

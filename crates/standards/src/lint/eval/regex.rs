@@ -213,7 +213,7 @@ mod tests {
             references: None,
             origin: Origin::Core,
             path_root: PathRoot::RulesRoot,
-            path: "adapters/codex/rules/core/CORE-050.md".to_string(),
+            path: "codex/rules/core/CORE-050.md".to_string(),
             body: String::new(),
             deprecated: None,
         }

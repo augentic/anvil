@@ -5,7 +5,7 @@ severity: critical
 trigger: A rules markdown file fails rule.schema.json validation.
 rule_hints:
   - kind: path-pattern
-    value: adapters/**/rules/**/*.md
+    value: "{codex,sources,targets}/**/rules/**/*.md"
     description: Narrow the candidate set to rule markdown files under every source, target, and shared rules tree before schema validation.
   - kind: path-pattern
     value: "!**/README.md"

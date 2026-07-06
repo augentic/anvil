@@ -8,11 +8,11 @@ INSTALL_DIR ?= $(HOME)/.local/bin
 CURSOR_HOME ?= $(HOME)/.cursor
 MARKETPLACE := augentic
 
-.PHONY: ci lint install-cli use-local-plugins use-team-plugins check-adapters-parity
+.PHONY: ci lint install-cli use-local-plugins use-team-plugins
 
 # Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the
 # repo root), then the framework lint over the in-tree prose
-# (plugins/, docs/, adapters/).
+# (plugins/, docs/, codex/).
 ci:
 	cargo make ci
 	$(MAKE) lint
@@ -20,10 +20,6 @@ ci:
 # Framework lint over the prose surface, built from the in-tree binary.
 lint:
 	cargo run -q -p specify -- lint framework --framework-root .
-
-# Compare forked spec-runtime files in a sibling specify-adapters checkout.
-check-adapters-parity:
-	sh scripts/check-adapters-spec-runtime-parity.sh
 
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:

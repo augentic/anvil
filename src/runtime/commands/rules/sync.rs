@@ -73,7 +73,7 @@ fn write_text(w: &mut dyn std::io::Write, body: &Body) -> std::io::Result<()> {
         writeln!(
             w,
             "No shared codex distributed: adapter source `{}` carries no \
-             adapters/codex/rules/universal/ pack",
+             codex/rules/universal/ pack",
             body.source
         )?;
     }

@@ -5,7 +5,7 @@ severity: important
 trigger: The canonical review-team-protocol document is missing so overlays cannot be validated.
 rule_hints:
   - kind: path-pattern
-    value: adapters/codex/rules/core/CORE-011-agent-teams-missing-canonical.md
+    value: codex/rules/core/CORE-011-agent-teams-missing-canonical.md
     description: Sentinel include so the rule carries a candidate set; the `presence` file selector evaluates the whole file fact family and ignores the candidate set.
   - kind: presence
     value: file

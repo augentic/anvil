@@ -106,7 +106,7 @@ pub struct FrameworkArgs {
 pub struct ProjectArgs {
     /// Codex root supplying shared `UNI-*` rules. Resolution
     /// order (rules-root resolution): this flag / `$RULES_ROOT` env →
-    /// monorepo `adapters/codex/rules/universal/` under the project →
+    /// monorepo `codex/rules/universal/` under the project →
     /// distributed out-of-tree codex cache `<project-cache>/codex/` (populated by
     /// `specify init` / `specify rules sync`). Missing every rung exits
     /// 2 with `rules-root-required`.
@@ -145,7 +145,7 @@ pub struct ProjectArgs {
     pub dump_model: bool,
 
     /// Include `CORE-*` rules resolved from
-    /// `adapters/codex/rules/core/`.
+    /// `codex/rules/core/`.
     /// Default off — consumer-project review runs never evaluate
     /// `CORE-*` hints unless the caller opts in.
     #[arg(long)]

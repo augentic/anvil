@@ -86,18 +86,18 @@ pub(super) fn cache_adapter(
     Ok(source)
 }
 
-/// Canonical codex layout inside the codex cache (and an engine-style
+/// Canonical codex layout inside the codex cache (and a framework
 /// source checkout): the universal shared-rules pack. The codex
 /// resolver joins this same relative path onto its rules root, so
 /// mirroring it under the cache keeps the probe free of special-casing.
-const UNIVERSAL_RULES_REL: &str = "adapters/codex/rules/universal";
+const UNIVERSAL_RULES_REL: &str = "codex/rules/universal";
 /// Canonical codex layout for the framework `core/` pack (distributed
 /// only under `--include-framework`).
-const CORE_RULES_REL: &str = "adapters/codex/rules/core";
+const CORE_RULES_REL: &str = "codex/rules/core";
 
 /// Absolute path to the project codex cache root,
 /// `<project-cache>/codex/` (out-of-tree). Shared/core packs land
-/// beneath it mirroring `adapters/codex/rules/{universal,core}/`.
+/// beneath it mirroring `codex/rules/{universal,core}/`.
 #[must_use]
 pub fn codex_cache_root(project_dir: &Path) -> PathBuf {
     Layout::new(project_dir).cache_dir().join("codex")
@@ -135,12 +135,11 @@ impl CodexMeta {
 ///
 /// A development component lives inside its source checkout
 /// (`<repo>/target/wasm32-wasip2/release/…`), so the shared codex is
-/// found by walking the component's ancestors for a prose tree — the
-/// engine-repo layout (`adapters/codex/rules/`) or the adapters
-/// repo layout (`codex/rules/`). Whichever is found is mirrored
-/// into the out-of-tree `<project-cache>/codex/` under the canonical
-/// `adapters/codex/rules/{universal,core}` layout the codex
-/// resolver probes.
+/// found by walking the component's ancestors for the flattened
+/// `codex/rules/` tree both framework repos carry at their root.
+/// Whichever is found is mirrored into the out-of-tree
+/// `<project-cache>/codex/` under the canonical
+/// `codex/rules/{universal,core}` layout the codex resolver probes.
 ///
 /// Returns `Ok(true)` when the codex was distributed, `Ok(false)` when
 /// no ancestor carries a shared `universal/` pack — a fail-soft path so
@@ -175,20 +174,15 @@ pub(super) fn cache_codex(
 /// Locate the shared-rules root (`…/codex/rules/`, carrying a
 /// `universal/` pack) for a component file by walking its ancestors.
 ///
-/// Probes each ancestor for the engine-repo layout
-/// (`<base>/adapters/codex/rules/`) and the adapters-repo layout
+/// Probes each ancestor for the flattened repo-root layout
 /// (`<base>/codex/rules/`). The walk anchors on the component's
 /// own checkout, so an adapter nested inside an unrelated outer repo
 /// never adopts that repo's rules tree unless no inner match exists.
 fn rules_root_for_component(component: &Path) -> Option<PathBuf> {
     for base in component.ancestors() {
-        for candidate in [
-            base.join("adapters").join("codex").join("rules"),
-            base.join("codex").join("rules"),
-        ] {
-            if candidate.join("universal").is_dir() {
-                return Some(candidate);
-            }
+        let candidate = base.join("codex").join("rules");
+        if candidate.join("universal").is_dir() {
+            return Some(candidate);
         }
     }
     None

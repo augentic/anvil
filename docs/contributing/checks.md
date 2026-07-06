@@ -33,7 +33,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 | **Engineering standards** | `specify lint project`                 | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI  |
 | **Build-time judgment**   | Target `build/review.md` briefs        | Active slice during `/spec:build`  | Model-assisted codex policy → `REVIEW.md`                       |
 
-Rule *content* lives under `adapters/**/rules/` (engineering standards). `docs/standards/` is **authoring** house style only.
+Rule *content* lives under `codex/rules/` here and per-adapter `prose/rules/` overlays in specify-adapters (engineering standards). `docs/standards/` is **authoring** house style only.
 
 ## Running checks
 
@@ -63,7 +63,7 @@ cargo test -p specify-standards
 
 ### CI
 
-CI is one job. [`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml) builds the in-tree binary on a stable toolchain (with `Swatinem/rust-cache`), runs `cargo make ci` from the repo root (the full Rust workspace gate), then runs `specify lint framework --framework-root .` over the prose plus a spec-runtime symlink check. The prose↔runtime contract is intra-repo: one PR, one CI run.
+CI is one job. [`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml) builds the in-tree binary on a stable toolchain (with `Swatinem/rust-cache`), runs `cargo make ci` from the repo root (the full Rust workspace gate), then runs `specify lint framework --framework-root .` over the prose. The prose↔runtime contract is intra-repo: one PR, one CI run.
 
 When invoking `specify lint framework` directly (not via `make lint`), run it from the repo root or pass `--framework-root` / set `SPECIFY_ROOT` to the plugin-repo root. Authoritative schemas are embedded in the `specify` binary.
 
@@ -92,7 +92,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
-Rule files live under [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/). The generic hint evaluators live in-tree under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
+Rule files live under [`codex/rules/core/`](../../codex/rules/core/). The generic hint evaluators live in-tree under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
 
 ### JSON output
 
@@ -138,7 +138,7 @@ Adapter-manifest shape is no longer a lint concern: manifests are validated at r
 
 Every symlink under `plugins/` must resolve to a valid target.
 
-The per-target-adapter `agent-teams.md` overlays are part of the same surface: each `adapters/targets/<name>/prose/references/agent-teams.md` MUST be a real symlink resolving (through the shared runtime overlay) to `docs/reference/review-team-protocol.md`. Regular-file overlays are forbidden — a symlink chain cannot drift in content, so CORE-011 (canonical-document presence) plus the CI symlink check is the whole enforcement surface. The retired CORE-008 digest pin and CORE-012 `agent-teams` tool policed a regular-file overlay form that is no longer admitted.
+The per-target-adapter `agent-teams.md` overlays are part of the same surface: each `targets/<name>/prose/references/agent-teams.md` in specify-adapters MUST be a real symlink resolving (through that repo's shared runtime overlay) to the review-team protocol. Regular-file overlays are forbidden — a symlink chain cannot drift in content, so CORE-011 (canonical-document presence) plus the CI symlink check is the whole enforcement surface. The retired CORE-008 digest pin and CORE-012 `agent-teams` tool policed a regular-file overlay form that is no longer admitted.
 
 **Common fix:** recreate the symlink if the target was moved or renamed; if an overlay was committed as a regular file, replace it with a symlink to the shared runtime overlay.
 
@@ -158,7 +158,7 @@ Links in `SKILL.md` bodies that point to `references/...` or `examples/...` path
 
 ### 5. Deployable surfaces must not link into `docs/`
 
-`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/codex/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
+`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under adapter `prose/prompts/` + `prose/references/` trees whose targets escape into `docs/`. Contributor codex under `codex/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, inside each adapter in `augentic/specify-adapters`, `references/spec-runtime/` (embedded into the published component).
 
 ### 6. Skill directive validation
 
@@ -173,7 +173,7 @@ Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 
 ### 8. Instruction file preambles
 
-Files matching `adapters/targets/**/instructions/<name>.md` must contain an output location preamble:
+Files matching `targets/**/instructions/<name>.md` must contain an output location preamble:
 
 ```markdown
 > **Output location**: `.specify/slices/...`
@@ -186,11 +186,11 @@ This prevents cross-plugin path contamination by making every instruction file d
 Eval scenario files are validated against [`schemas/authoring/scenario.schema.json`](../../schemas/authoring/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
 1. `evals/scenarios/<id>.md` — the flat platform scenario pack (one self-contained scenario per `.md`; the `README.md` catalog is skipped).
-2. `adapters/targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
-3. `adapters/targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
+2. `targets/<target>/tests/<scenario>.md` — flat owner-local target scenarios.
+3. `targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
 4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`adapters/targets/contracts/tests/`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`targets/contracts/tests/`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -231,15 +231,15 @@ Internal markdown link resolution within scenarios is handled by check 1 (markdo
 **Example failure messages:**
 
 ```text
-FAIL: scenarios.schema-violation: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
-  at adapters/targets/contracts/tests/_probe.md:1
-FAIL: scenarios.stages-not-contiguous: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ["build","define"]
-  at adapters/targets/contracts/tests/_probe.md:1
-FAIL: scenarios.body-id-mismatch: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
-  at adapters/targets/contracts/tests/_probe.md:1
-FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: adapters/targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
-  at adapters/targets/contracts/tests/_probe.md:1
-FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: adapters/targets/contracts/tests/_probe.md, adapters/targets/contracts/tests/describe.md
+FAIL: scenarios.schema-violation: Scenario frontmatter: targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+  at targets/contracts/tests/_probe.md:1
+FAIL: scenarios.stages-not-contiguous: Scenario frontmatter: targets/contracts/tests/_probe.md — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ["build","define"]
+  at targets/contracts/tests/_probe.md:1
+FAIL: scenarios.body-id-mismatch: Scenario frontmatter: targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+  at targets/contracts/tests/_probe.md:1
+FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+  at targets/contracts/tests/_probe.md:1
+FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: targets/contracts/tests/_probe.md, targets/contracts/tests/describe.md
 ```
 
 Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace, and ensure new scenario ids are unique.
@@ -253,7 +253,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 11. First-party rule shape
 
-First-party rule files are validated in the shared tree at `adapters/codex/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
+First-party rule files are validated in the shared tree at `codex/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `sources/*/prose/rules/**/*.md` and `targets/<name>/prose/rules/**/*.md` (specify-adapters).
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
@@ -263,22 +263,22 @@ invoke any external validator. It validates:
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
-- **Namespace ownership** -- `adapters/codex/rules/universal/` owns `UNI-*`;
+- **Namespace ownership** -- `codex/rules/universal/` owns `UNI-*`;
   `omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`;
   `vectis` owns `VECTIS-*`.
 
 **Example failure messages:**
 
 ```text
-FAIL: rules.schema-violation: Rule frontmatter: adapters/codex/rules/universal/example.md — / missing required property 'trigger'
-  at adapters/codex/rules/universal/example.md:1
-FAIL: rules.schema-violation: Rule frontmatter: adapters/codex/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-  at adapters/codex/rules/universal/example.md:1
-FAIL: rules.schema-violation: Rule body: adapters/codex/rules/universal/example.md — missing required '## Rule' heading
-  at adapters/codex/rules/universal/example.md:1
-FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/codex/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
-  at adapters/codex/rules/universal/example.md:1
-FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/codex/rules/universal/a.md, adapters/codex/rules/universal/b.md
+FAIL: rules.schema-violation: Rule frontmatter: codex/rules/universal/example.md — / missing required property 'trigger'
+  at codex/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule frontmatter: codex/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at codex/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule body: codex/rules/universal/example.md — missing required '## Rule' heading
+  at codex/rules/universal/example.md:1
+FAIL: rules.namespace-ownership-violation: Rule namespace ownership: codex/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at codex/rules/universal/example.md:1
+FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: codex/rules/universal/a.md, codex/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -290,7 +290,7 @@ subagents before reusing or moving ids between adapter-owned namespaces.
 
 ### 12. Tool-owned schema link resolution
 
-Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file under `adapters/` must resolve to a known tool-owned schema. The check maintains a hardcoded registry of tool → schema-name mappings (currently `vectis` → `tokens`, `assets`, `composition`; the `contract` tool declares no embedded schemas). URLs inside fenced code blocks and inline code spans are skipped.
+Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file under the adapter trees (`codex/`, `sources/`, `targets/`) must resolve to a known tool-owned schema. The check maintains a hardcoded registry of tool → schema-name mappings (currently `vectis` → `tokens`, `assets`, `composition`; the `contract` tool declares no embedded schemas). URLs inside fenced code blocks and inline code spans are skipped.
 
 This enforces the tool-owned schema contract: plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
 
@@ -300,7 +300,7 @@ CLI-contract citation drift (the retired CORE-057 / CORE-060 family and the `spe
 
 ## Extending the checks
 
-Every framework check is a `CORE-*` rule under [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
+Every framework check is a `CORE-*` rule under [`codex/rules/core/`](../../codex/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
 
 ### Road A — declarative hint
 
@@ -316,7 +316,7 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 - **`field-grammar`** — `field-tokens` + `config: { field, token-pattern }` (each whitespace token of the field matches the regex) or `field-first-word` + `config: { field, allowed }` (the field's first alphabetic word is allow-listed).
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
 
-Each evaluator is generic: it reads its policy (allowed set, owner map, canonical path, grammar pattern) from the rule's `config:`, never from a constant in the engine. The selector kinds serve `presence` → CORE-042 / CORE-011 / CORE-059, `field-grammar` → CORE-035 / CORE-036, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-002-links-unresolved.md`](../../adapters/codex/rules/core/CORE-002-links-unresolved.md). See [`adapters/codex/rules/core/README.md`](../../adapters/codex/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
+Each evaluator is generic: it reads its policy (allowed set, owner map, canonical path, grammar pattern) from the rule's `config:`, never from a constant in the engine. The selector kinds serve `presence` → CORE-042 / CORE-011 / CORE-059, `field-grammar` → CORE-035 / CORE-036, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-002-links-unresolved.md`](../../codex/rules/core/CORE-002-links-unresolved.md). See [`codex/rules/core/README.md`](../../codex/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
 **Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** unit test beside the evaluator in `crates/standards/src/lint/eval/<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
@@ -346,10 +346,10 @@ To add or extend one:
 
 To add a `CORE-*` rule (either road):
 
-1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
+1. Pick the next free `CORE-NNN` id and add the rule file under [`codex/rules/core/`](../../codex/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
 2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint project` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
 
-Checks are numbered 1–12 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/) and do not consume a number in this list.
+Checks are numbered 1–12 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`codex/rules/core/`](../../codex/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 

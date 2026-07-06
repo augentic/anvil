@@ -54,9 +54,9 @@ pub enum Origin {
     Target,
     /// Source-adapter overlay (`adapters/sources/<name>/prose/rules/`).
     Source,
-    /// Shared rules (`adapters/codex/rules/...`).
+    /// Shared rules (`codex/rules/...`).
     Shared,
-    /// Core pack overlay (`adapters/codex/rules/core/`). Excluded
+    /// Core pack overlay (`codex/rules/core/`). Excluded
     /// from consumer exports unless `--include-core` is set.
     Core,
     /// Indexer fallback: cache rule files whose path does not match

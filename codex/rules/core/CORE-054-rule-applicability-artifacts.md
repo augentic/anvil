@@ -5,7 +5,7 @@ severity: important
 trigger: A framework `CORE-*` rule declares a populated `applicability.artifacts` set, which the framework-profile resolver silently drops before any hint runs.
 rule_hints:
   - kind: path-pattern
-    value: "adapters/codex/rules/core/CORE-*.md"
+    value: "codex/rules/core/CORE-*.md"
   - kind: regex
     value: "^\\s*artifacts:\\s*"
     config:
@@ -19,7 +19,7 @@ Framework `CORE-*` rules must scope themselves with `kind: path-pattern` hints, 
 
 ## Look For
 
-- An `applicability:` block whose `artifacts:` list is non-empty (block list or inline `[doc]`) in any `adapters/codex/rules/core/CORE-*.md` file.
+- An `applicability:` block whose `artifacts:` list is non-empty (block list or inline `[doc]`) in any `codex/rules/core/CORE-*.md` file.
 - A core rule that resolves but never fires on a known-bad fixture — the usual symptom of the silent drop.
 
 ## Fix

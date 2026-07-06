@@ -5,7 +5,7 @@ severity: important
 trigger: A markdown file contains an `[label](target)` link whose relative target does not exist on disk after joining against the file's parent directory.
 rule_hints:
   - kind: path-pattern
-    value: "adapters/**/*.md"
+    value: "{codex,sources,targets}/**/*.md"
     description: Adapter manifests, prompts, references, and rules.
   - kind: path-pattern
     value: "plugins/**/*.md"
@@ -23,7 +23,7 @@ rule_hints:
 
 ## Rule
 
-Every relative `[label](target)` markdown link under `adapters/`, `plugins/`, `docs/`, or `.cursor/` must resolve to an existing path on disk after the link target is joined against the markdown file's parent directory. URL-style targets (`http://…`, `https://…`, `mailto://…`), anchor-only references (`#section`), and targets the indexer cannot reason about (empty after fragment stripping) are skipped — the rule fires only on references the resolver attempted and rejected.
+Every relative `[label](target)` markdown link under the adapter trees (`codex/`, `sources/`, `targets/`), `plugins/`, `docs/`, or `.cursor/` must resolve to an existing path on disk after the link target is joined against the markdown file's parent directory. URL-style targets (`http://…`, `https://…`, `mailto://…`), anchor-only references (`#section`), and targets the indexer cannot reason about (empty after fragment stripping) are skipped — the rule fires only on references the resolver attempted and rejected.
 
 The path scope excludes archival trees and the proposals directory by design, because they intentionally cite future or deferred work whose targets do not yet exist on disk.
 

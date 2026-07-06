@@ -8,7 +8,7 @@ Specify separates three concerns that often collapse in agentic delivery stacks.
 | --- | --- | --- |
 | **Workflow** | Orchestrate phases and lifecycle transitions | `/spec:*` phase skills; `specify plan`, `specify slice`, `specify workspace` |
 | **Artifacts** | Capture slice-local and baseline product intent | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, `plan.yaml`, baseline under `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Rules under `adapters/**/rules/`; `specify rules export` and `specify lint project` |
+| **Engineering standards** | Durable policy that outlives any slice | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays; `specify rules export` and `specify lint project` |
 
 Workflow **mutates** `.specify/` state through a closed set of CLI verbs. Artifacts **record** what a slice means to build and merge. Engineering standards **constrain** how work is done — they do not transition plans, slices, or changes.
 
@@ -19,8 +19,8 @@ Two different uses of "standards" appear in this repository:
 
 | Term | Meaning | Location |
 | --- | --- | --- |
-| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify`; framework invariants also ship as [`CORE-*` rules](../../adapters/codex/rules/core/) resolved by a generic dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy in the rule's `config:`) |
-| **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `adapters/codex/rules/`, `adapters/targets/<name>/prose/rules/`, and optional source overlays — resolved by `specify rules export` and enforced by `specify lint project` |
+| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify`; framework invariants also ship as [`CORE-*` rules](../../codex/rules/core/) resolved by a generic dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy in the rule's `config:`) |
+| **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `codex/rules/`, `targets/<name>/prose/rules/` (specify-adapters), and optional source overlays — resolved by `specify rules export` and enforced by `specify lint project` |
 
 Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
 
@@ -49,5 +49,5 @@ The split means lint code physically cannot construct or transition a slice, pla
 - [Core concepts](concepts.md) — change rhythm and slice loop
 - [Artifacts in depth](artifacts.md) — artifact responsibilities
 - [Consistency checks](../contributing/checks.md) — `specify lint framework` vs `specify lint project`
-- [Shared UNI-* codex inventory](../../adapters/codex/rules/universal/README.md)
+- [Shared UNI-* codex inventory](../../codex/rules/universal/README.md)
 - [Ignore directives](../reference/ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and exit semantics

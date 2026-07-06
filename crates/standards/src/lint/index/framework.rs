@@ -1,9 +1,11 @@
 //! Framework scan profile walker per the standards-layer contract §F1.
 //!
-//! Symmetric counterpart to [`super::files`]: walks the framework
-//! repository (`augentic/specify`) with a wider include set, a
-//! follow-the-link symlink policy, and cycle detection. Recognised
-//! roots: `adapters/**`, `plugins/**`, `docs/**`, `.cursor/**`,
+//! Symmetric counterpart to [`super::files`]: walks a framework
+//! repository (`augentic/specify` or `augentic/specify-adapters`)
+//! with a wider include set, a follow-the-link symlink policy, and
+//! cycle detection. Recognised roots: the nested `adapters/**` shape
+//! plus its flattened counterparts `codex/**` / `sources/**` /
+//! `targets/**`, then `plugins/**`, `docs/**`, `.cursor/**`,
 //! `rfcs/**`, `scripts/**`, `schemas/**`, plus the catch-all
 //! `**/AGENTS.md` and `**/REVIEW.md` files and the repo-root
 //! `README.md`.
@@ -254,6 +256,9 @@ fn is_included(relative: &str) -> bool {
 
 const INCLUDE_PREFIXES: &[&str] = &[
     "adapters/",
+    "codex/",
+    "sources/",
+    "targets/",
     "plugins/",
     "docs/",
     ".cursor/",

@@ -15,7 +15,7 @@ See [AGENTS.md](../../AGENTS.md#vocabulary).
 
 See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; this repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
-Workflow skills orchestrate phases; **engineering standards** live in rules (`adapters/**/rules/`); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
+Workflow skills orchestrate phases; **engineering standards** live in rules (`codex/rules/` and per-adapter `prose/rules/` overlays); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
 
 ## Main Inputs
 
@@ -56,22 +56,13 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop) + shared references/
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/adapters/
-  ├── sources/            # Source adapters: guest crate + prose/prompts/{survey,extract}.md
-  │   ├── intent/             # operator brief; degenerate N=1 entry point
-  │   ├── documentation/      # operator-provided written intent
-  │   ├── typescript/    # legacy TypeScript survey + extract
-  │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
-  │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
-  ├── targets/              # Target adapters: guest crate + prose/prompts/{guidance,build,merge}.md
-  │   ├── omnia/
-  │   ├── vectis/
-  │   └── contracts/
-  └── codex/                # Shared codex (UNI-* rules, replay hooks, spec-runtime bundle)
-      ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review prompts
-      └── references/replay/
+/codex/                   # Shared codex rule packs (adapter trees live in augentic/specify-adapters)
+  ├── rules/universal/    # Shared UNI-* engineering rules read by per-target review prompts
+  └── rules/core/         # Framework CORE-* rules driving specify lint framework
 /scripts/                 # Validation and plugin management
 ```
+
+Source and target adapter trees (guest crates + `prose/prompts/`, per-adapter `prose/rules/` overlays, and the `codex/references/` prose embedded into components) live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters).
 
 ## Validation
 
@@ -138,7 +129,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/codex/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../codex/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 
@@ -150,6 +141,6 @@ Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](
 
 - Review `docs/explanation/augentic-specify-usage.md`
 - Review the relevant `SKILL.md`
-- Review `adapters/targets/omnia/references/`
-- Review `adapters/targets/vectis/references/`
+- Review `targets/omnia/prose/references/` in specify-adapters
+- Review `targets/vectis/prose/references/` in specify-adapters
 - Open an issue for bugs or enhancement requests

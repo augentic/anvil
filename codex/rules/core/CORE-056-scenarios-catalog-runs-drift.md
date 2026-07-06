@@ -5,7 +5,7 @@ severity: important
 trigger: The scenario catalog's group tables disagree with the scenario files on disk or the committed run records.
 rule_hints:
   - kind: path-pattern
-    value: adapters/codex/rules/core/CORE-056-scenarios-catalog-runs-drift.md
+    value: codex/rules/core/CORE-056-scenarios-catalog-runs-drift.md
     description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: scenarios

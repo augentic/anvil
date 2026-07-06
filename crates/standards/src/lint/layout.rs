@@ -1,18 +1,16 @@
 //! Framework-root adapter layout resolution (nested vs flattened).
 //!
-//! Two framework-root shapes ship today. Specify's own framework root
-//! nests the adapter axes and codex pack under `adapters/`
-//! (`adapters/sources/`, `adapters/targets/`, `adapters/codex/`). The
-//! extracted `specify-adapters` framework root promotes them to the
-//! repo root (`sources/`, `targets/`, `codex/`). These helpers give
-//! the directory-walking checkers and fact extractors one definition of
-//! "where the axes live" so every site agrees.
+//! Both first-party framework roots (`specify`, `specify-adapters`)
+//! carry the flattened shape: the adapter axes and codex pack sit at
+//! the repo root (`sources/`, `targets/`, `codex/`). The nested shape
+//! — everything under `adapters/` — survives for consumer projects
+//! (whose adapter overlays live at `adapters/{sources,targets}/`) and
+//! legacy fixtures. These helpers give the directory-walking checkers
+//! and fact extractors one definition of "where the axes live" so
+//! every site agrees.
 //!
 //! Detection is structural: a root carrying an `adapters/` directory is
-//! the nested shape; any other root is treated as flattened. This keeps
-//! the nested shape (specify, the engine test fixtures, consumer
-//! projects) byte-for-byte unchanged while letting a flattened root
-//! resolve to its promoted axes.
+//! the nested shape; any other root is treated as flattened.
 
 use std::path::{Path, PathBuf};
 

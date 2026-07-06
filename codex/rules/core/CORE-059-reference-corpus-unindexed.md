@@ -8,9 +8,9 @@ rule_hints:
     value: directory-index
     config:
       roots:
-        - adapters/sources/*/prose/references/*
-        - adapters/targets/*/prose/references/*
-        - adapters/codex/references/*
+        - sources/*/prose/references/*
+        - targets/*/prose/references/*
+        - codex/references/*
       index: README.md
       min-files: 2
     description: Over the directory prefixes of the file facts, each directory matching a `roots` glob (one directory depth; `*` does not cross `/`) with at least `min-files` files beneath it must carry a `README.md` directly inside it; an unindexed corpus directory is a finding located at the directory.
@@ -29,4 +29,4 @@ The deterministic hint walks the directory prefixes of the indexed file facts, k
 
 ## Fix
 
-Add a `README.md` directly inside the flagged directory: a title, one sentence on what the corpus covers, and a table or list naming each member file with a one-line description of when an agent should read it. Mirror an existing corpus index (for example `adapters/targets/omnia/prose/references/providers/README.md`). Keep it an index — deep content belongs in the member files, not the README.
+Add a `README.md` directly inside the flagged directory: a title, one sentence on what the corpus covers, and a table or list naming each member file with a one-line description of when an agent should read it. Mirror an existing corpus index (for example `targets/omnia/prose/references/providers/README.md`). Keep it an index — deep content belongs in the member files, not the README.
