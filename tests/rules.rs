@@ -56,8 +56,8 @@ mod codex {
             .assert()
             .success();
 
-        let cached = expected_cache_dir(project.path())
-            .join("codex/codex/rules/universal/UNI-901.md");
+        let cached =
+            expected_cache_dir(project.path()).join("codex/codex/rules/universal/UNI-901.md");
         assert!(cached.is_file(), "init must distribute the shared codex into the cache");
 
         // `rules export` resolves the distributed shared rule with NO
@@ -102,8 +102,8 @@ mod codex {
         let value = parse_json(&assert.get_output().stdout);
         assert_eq!(value["distributed"], true, "sync must redistribute, got:\n{value:#}");
 
-        let cached = expected_cache_dir(project.path())
-            .join("codex/codex/rules/universal/UNI-901.md");
+        let cached =
+            expected_cache_dir(project.path()).join("codex/codex/rules/universal/UNI-901.md");
         assert!(cached.is_file(), "rules sync must repopulate the codex cache");
     }
 

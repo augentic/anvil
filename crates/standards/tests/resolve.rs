@@ -429,11 +429,7 @@ fn readme_md_is_skipped() {
 #[test]
 fn monorepo_split_anchors() {
     let project = TempDir::new().expect("project");
-    write_rule(
-        &project.path().join("codex/rules/universal/uni-001.md"),
-        "UNI-001",
-        "Shared",
-    );
+    write_rule(&project.path().join("codex/rules/universal/uni-001.md"), "UNI-001", "Shared");
     write_rule(
         &project.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
@@ -466,11 +462,7 @@ fn monorepo_split_anchors() {
 #[test]
 fn monorepo_no_double_fallback_walk() {
     let project = TempDir::new().expect("project");
-    write_rule(
-        &project.path().join("codex/rules/universal/uni-001.md"),
-        "UNI-001",
-        "Shared",
-    );
+    write_rule(&project.path().join("codex/rules/universal/uni-001.md"), "UNI-001", "Shared");
     write_rule(
         &project.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
@@ -488,11 +480,7 @@ fn monorepo_no_double_fallback_walk() {
 fn discovery_is_non_recursive() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
-    write_rule(
-        &rules_root.path().join("codex/rules/universal/uni-001.md"),
-        "UNI-001",
-        "Shared",
-    );
+    write_rule(&rules_root.path().join("codex/rules/universal/uni-001.md"), "UNI-001", "Shared");
     write_rule(
         &rules_root.path().join("codex/rules/universal/nested/uni-002.md"),
         "UNI-002",
@@ -512,11 +500,7 @@ fn discovery_is_non_recursive() {
 fn missing_overlays_are_silent() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
-    write_rule(
-        &rules_root.path().join("codex/rules/universal/uni-001.md"),
-        "UNI-001",
-        "Shared",
-    );
+    write_rule(&rules_root.path().join("codex/rules/universal/uni-001.md"), "UNI-001", "Shared");
 
     let sources: Vec<String> = vec!["unbound-source".to_string()];
     let result =
@@ -556,11 +540,7 @@ fn parse_error_includes_path() {
 fn ch13_inputs_are_accepted_but_ignored() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
-    write_rule(
-        &rules_root.path().join("codex/rules/universal/uni-001.md"),
-        "UNI-001",
-        "Shared",
-    );
+    write_rule(&rules_root.path().join("codex/rules/universal/uni-001.md"), "UNI-001", "Shared");
 
     let artifact_paths = vec![PathBuf::from("crates/billing/src/lib.rs")];
     let languages = vec!["rust".to_string()];

@@ -264,9 +264,8 @@ fn discover_rule_files(project_dir: &Path) -> Vec<PathBuf> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir = crate::lint::layout::framework_codex_dir(project_dir)
-            .join("rules")
-            .join(pack);
+        let pack_dir =
+            crate::lint::layout::framework_codex_dir(project_dir).join("rules").join(pack);
         let mut files = Vec::new();
         walk_files(&pack_dir, &mut files);
         for path in files {
@@ -300,9 +299,8 @@ fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir = crate::lint::layout::framework_codex_dir(project_dir)
-            .join("rules")
-            .join(pack);
+        let pack_dir =
+            crate::lint::layout::framework_codex_dir(project_dir).join("rules").join(pack);
         if path.strip_prefix(&pack_dir).is_ok() {
             return Some(pack.to_string());
         }
@@ -421,18 +419,11 @@ mod tests {
         // CORE-053: a rule whose body lacks the `## Rule` heading is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "codex/rules/core/CORE-001.md", "CORE-001");
-        write_rule_without_heading(
-            dir.path(),
-            "codex/rules/universal/UNI-001.md",
-            "UNI-001",
-        );
+        write_rule_without_heading(dir.path(), "codex/rules/universal/UNI-001.md", "UNI-001");
         let findings = check_rule_body_heading(dir.path());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_BODY_HEADING_MISSING);
-        assert_eq!(
-            findings[0].path.as_deref(),
-            Some("codex/rules/universal/UNI-001.md")
-        );
+        assert_eq!(findings[0].path.as_deref(), Some("codex/rules/universal/UNI-001.md"));
         assert!(findings[0].message.contains("`## Rule`"));
 
         // CORE-009: a prefix the owning directory does not own is flagged.
