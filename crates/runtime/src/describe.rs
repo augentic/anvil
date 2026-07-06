@@ -30,9 +30,9 @@ use omnia::wasmtime::{Config, Engine, Store};
 /// Which axis interface to invoke `describe` on.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DescribeAxis {
-    /// `augentic:specify/source@0.1.0`.
+    /// `specify:adapter/source@0.1.0`.
     Source,
-    /// `augentic:specify/target@0.1.0`.
+    /// `specify:adapter/target@0.1.0`.
     Target,
 }
 
@@ -41,8 +41,8 @@ impl DescribeAxis {
     #[must_use]
     pub const fn interface(self) -> &'static str {
         match self {
-            Self::Source => "augentic:specify/source@0.1.0",
-            Self::Target => "augentic:specify/target@0.1.0",
+            Self::Source => "specify:adapter/source@0.1.0",
+            Self::Target => "specify:adapter/target@0.1.0",
         }
     }
 
@@ -218,7 +218,7 @@ fn check_axis(
         });
     }
     Err(DescribeFailure::Other(anyhow::anyhow!(
-        "component exports no `augentic:specify` axis interface (found: {})",
+        "component exports no `specify:adapter` axis interface (found: {})",
         exports.join(", "),
     )))
 }

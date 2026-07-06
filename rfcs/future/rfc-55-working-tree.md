@@ -1,6 +1,6 @@
 # RFC-55: Working-Tree Materialization — the git-aware `wasi:filesystem` backend
 
-> **Status: Deferred.** The in-place migration ([RFC-61](../rfc-61-omnia-migration.md)) runs every guest against the shared `[[mount]]` preopens of the operator's live project tree, so materialized working trees are not needed until a multi-node deployment exists. The `revision` / `changeset` types stay in `augentic:specify` as this RFC's forward hook. Original: Order 6 of 10 · Stage S4 · Depends: RFC-51, RFC-52 (superseded by RFC-61; removed from the tree, recoverable from git history) · Owns: the value↔tree boundary
+> **Status: Deferred.** The in-place migration ([RFC-61](../rfc-61-omnia-migration.md)) runs every guest against the shared `[[mount]]` preopens of the operator's live project tree, so materialized working trees are not needed until a multi-node deployment exists. The `revision` / `changeset` types stay in `specify:adapter` as this RFC's forward hook. Original: Order 6 of 10 · Stage S4 · Depends: RFC-51, RFC-52 (superseded by RFC-61; removed from the tree, recoverable from git history) · Owns: the value↔tree boundary
 
 ## Abstract
 

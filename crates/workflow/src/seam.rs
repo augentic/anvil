@@ -1,4 +1,4 @@
-//! The adapter seam: capability traits over the `augentic:specify`
+//! The adapter seam: capability traits over the `specify:adapter`
 //! guest-to-guest contract (RFC-61 Step 4, Milestone C).
 //!
 //! [`SourceSeam`] and [`TargetSeam`] mirror the WIT `source` / `target`

@@ -15,8 +15,8 @@ use crate::Platform;
 fn axis_routing() {
     assert_eq!(Axis::Source.dir_segment(), "sources");
     assert_eq!(Axis::Target.dir_segment(), "targets");
-    assert_eq!(Axis::Source.interface(), "augentic:specify/source@0.1.0");
-    assert_eq!(Axis::Target.interface(), "augentic:specify/target@0.1.0");
+    assert_eq!(Axis::Source.interface(), "specify:adapter/source@0.1.0");
+    assert_eq!(Axis::Target.interface(), "specify:adapter/target@0.1.0");
 
     // The operation sets derive from the closed WIT contract:
     // extract < survey for sources, build < merge < shape for targets.

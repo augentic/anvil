@@ -298,7 +298,7 @@ fn manifest_document(
         "[[guest]]\n\
          id = \"workflow\"\n\
          source.path = {workflow}\n\
-         link = [\"augentic:specify/source@0.1.0\", \"augentic:specify/target@0.1.0\"]\n\n",
+         link = [\"specify:adapter/source@0.1.0\", \"specify:adapter/target@0.1.0\"]\n\n",
         workflow = toml_string(workflow),
     );
     for adapter in adapters {

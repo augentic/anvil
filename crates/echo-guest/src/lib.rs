@@ -1,6 +1,6 @@
 //! Echo source-adapter guest component for the RFC-61 migration.
 //!
-//! Exports the `augentic:specify` `source-adapter` world — `survey` returns one
+//! Exports the `specify:adapter` `source-adapter` world — `survey` returns one
 //! hardcoded lead echoing the `adapter-id` argument and `extract` returns one
 //! trivial claim echoing the lead — plus `wasi:http/incoming-handler`, serving
 //! a compiled-in single-document MCP reference shelf. Deliberately model-free:
@@ -36,7 +36,7 @@ mod bindings {
     export!(EchoAdapter);
 }
 
-use bindings::exports::augentic::specify::source::{
+use bindings::exports::specify::adapter::source::{
     AdapterId, Authority, Claim, ClaimKind, Error, Evidence, Guest, Lead, Manifest,
 };
 use omnia_guest::mcp::{

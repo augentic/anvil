@@ -149,7 +149,7 @@ pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest
         "[[guest]]\n\
          id = \"workflow\"\n\
          source.path = \"{workflow}\"\n\
-         link = [\"augentic:specify/source@0.1.0\", \"augentic:specify/target@0.1.0\"]\n\n",
+         link = [\"specify:adapter/source@0.1.0\", \"specify:adapter/target@0.1.0\"]\n\n",
         workflow = workflow.display(),
     );
     for id in adapters {
@@ -213,7 +213,7 @@ pub fn skeleton_manifest(echo_id: &str) -> Result<TempManifest> {
         "[[guest]]\n\
          id = \"workflow\"\n\
          source.path = \"{workflow}\"\n\
-         link = [\"augentic:specify/source@0.1.0\", \"augentic:specify/target@0.1.0\"]\n\n\
+         link = [\"specify:adapter/source@0.1.0\", \"specify:adapter/target@0.1.0\"]\n\n\
          [[guest]]\n\
          id = \"{echo_id}\"\n\
          source.path = \"{echo}\"\n\n\

@@ -7,7 +7,7 @@
 //! (guest stdout is inherited in-process, so these assert the exit path).
 //! Subprocess: run the replay binary against the checked-in
 //! `omnia.toml` and assert the shim's stdout. The adapter link dispatch
-//! itself (survey/extract/build through `augentic:specify/source`/`target`)
+//! itself (survey/extract/build through `specify:adapter/source`/`target`)
 //! needs a scaffolded `.specify/` project in the mount and lands with the
 //! Milestone F composed workflow tests.
 
@@ -29,7 +29,7 @@ async fn run_command(echo_id: &str, args: &[&str]) -> Result<ExitStatus> {
 }
 
 // The happy exit path: `--version` parses through the shared grammar and
-// the run exits 0 — the deployment composes (both `augentic:specify` link
+// the run exits 0 — the deployment composes (both `specify:adapter` link
 // imports resolve), argv reaches clap, and success returns through
 // `wasi:cli/run`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

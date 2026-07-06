@@ -62,7 +62,7 @@ cd "$sandbox"
 addr="${HTTP_ADDR:-127.0.0.1:8094}"
 {
   printf '[[guest]]\nid = "workflow"\nsource.path = "%s"\n' "$workflow_wasm"
-  printf 'link = ["augentic:specify/source@0.1.0", "augentic:specify/target@0.1.0"]\n\n'
+  printf 'link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]\n\n'
   for id in source:intent source:documentation source:typescript source:screenshots \
             source:captures target:contracts target:omnia target:vectis; do
     axis="${id%%:*}"; name="${id#*:}"

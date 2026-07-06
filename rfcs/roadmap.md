@@ -36,12 +36,12 @@ The runtime architecture — Specify as a family of Wasm guests on the Omnia run
 
 Realising the architecture spans four repositories, coordinated only through versioned WIT seams — never a shared build or a lockstep release.
 
-- **`augentic/specify`** (this repo) — owns the typed contract (the `augentic:specify` package), the Specify runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the workflow guest, and the operator CLI surface.
+- **`augentic/specify`** (this repo) — owns the typed contract (the `specify:adapter` package), the Specify runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the workflow guest, and the operator CLI surface.
 - **`augentic/omnia`** — owns the generic runtime library (the Wasmtime interpreter, the pluggable host-service framework, multi-guest deployments, host-mediated linking) and the general-purpose host interfaces, including `wasi-model` (`omnia:model/completion.create`). It carries zero Specify domain knowledge and zero model knowledge.
 - **`augentic/backends`** — owns the model backends behind `wasi-model`: `omnia-cursor` (spawns `cursor-agent` against the mounted working tree with MCP grants) and `omnia-genai` (frontier / hosted APIs); Omnia's in-tree `ModelDefault` covers deterministic replay.
-- **`augentic/specify-adapters`** — consumes the `augentic:specify` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references.
+- **`augentic/specify-adapters`** — consumes the `specify:adapter` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references.
 
-One Specify-owned seam is versioned across the boundary: `augentic:specify` (this repo → adapters). Land a published `augentic:specify` pin before the adapter components that consume it, and treat the seam as a contract so neither repo blocks the other. The Omnia runtime — including the `wasi-model` host interface — is consumed as an ordinary upstream dependency.
+One Specify-owned seam is versioned across the boundary: `specify:adapter` (this repo → adapters). Land a published `specify:adapter` pin before the adapter components that consume it, and treat the seam as a contract so neither repo blocks the other. The Omnia runtime — including the `wasi-model` host interface — is consumed as an ordinary upstream dependency.
 
 ## Sequenced Roadmap
 
@@ -160,7 +160,7 @@ specify execute resume <run-id>
 #### RM-21: Adapter ecosystem operating model
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
-**Reframed by [RFC-61](rfc-61-omnia-migration.md):** an adapter is a wasm component implementing one axis of the versioned `augentic:specify` WIT contract, so compatibility becomes WIT-package versioning rather than manifest brief-path machinery (deleted at RFC-64). Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
+**Reframed by [RFC-61](rfc-61-omnia-migration.md):** an adapter is a wasm component implementing one axis of the versioned `specify:adapter` WIT contract, so compatibility becomes WIT-package versioning rather than manifest brief-path machinery (deleted at RFC-64). Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
 **Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, reference shelves) beyond the first-party Omnia/Vectis/contracts set.
 
 #### RM-22: Hosted observability dashboards

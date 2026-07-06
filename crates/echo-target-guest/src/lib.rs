@@ -1,6 +1,6 @@
 //! Echo target-adapter guest component (RFC-64 fixture).
 //!
-//! Exports the `augentic:specify` `target-adapter` world with trivial,
+//! Exports the `specify:adapter` `target-adapter` world with trivial,
 //! model-free operations plus `wasi:http/incoming-handler` serving a
 //! compiled-in single-document MCP reference shelf. The component
 //! exists so host-side tests (init platform gates, describe-driven
@@ -38,7 +38,7 @@ mod bindings {
     export!(EchoTarget);
 }
 
-use bindings::exports::augentic::specify::target::{
+use bindings::exports::specify::adapter::target::{
     AdapterId, Changeset, Error, Guest, Input, Manifest, Platform, PlatformsCapability, Report,
     Status, WorkingTree,
 };

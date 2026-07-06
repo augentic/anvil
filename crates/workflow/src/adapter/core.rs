@@ -47,13 +47,13 @@ impl Axis {
         }
     }
 
-    /// The `augentic:specify` axis interface a component of this axis
+    /// The `specify:adapter` axis interface a component of this axis
     /// exports — the instance name the describe dispatch invokes.
     #[must_use]
     pub const fn interface(self) -> &'static str {
         match self {
-            Self::Source => "augentic:specify/source@0.1.0",
-            Self::Target => "augentic:specify/target@0.1.0",
+            Self::Source => "specify:adapter/source@0.1.0",
+            Self::Target => "specify:adapter/target@0.1.0",
         }
     }
 }

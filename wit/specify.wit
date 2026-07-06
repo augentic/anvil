@@ -1,4 +1,4 @@
-/// The `augentic:specify` adapter contract, revised per RFC-61.
+/// The `specify:adapter` adapter contract, revised per RFC-61.
 ///
 /// Adapter guests export exactly one axis interface (`source` xor `target`)
 /// plus `wasi:http/incoming-handler`, which serves the adapter's compiled-in
@@ -23,7 +23,7 @@
 /// preopens, so operations name trees by `revision` (plus an optional
 /// subpath) and open their own `"."` preopen rather than receiving a
 /// directory handle.
-package augentic:specify@0.1.0;
+package specify:adapter@0.1.0;
 
 interface types {
   /// The error returned by operations.

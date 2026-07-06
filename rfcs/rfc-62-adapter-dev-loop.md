@@ -69,5 +69,5 @@ The eval guest's argv grows an operation selector. Today it accepts `<adapter-id
 
 - **Dev/prod divergence.** An overlay run proves prose against the live files, not against the shipped component; graded evidence (the committed run summaries, the eval sweep) comes from embedded builds only. The overlay exists to iterate, never to certify.
 - **Fail-loud lookup holds.** The overlay never silently serves an empty or partial document; a miss falls back to the embedded body, and a path absent from both keeps the registry's existing panic contract.
-- **The seam does not move.** No change to `augentic:specify` — this is harness and guest-kit surface only, and the operation selector uses the seam operations as they exist.
+- **The seam does not move.** No change to `specify:adapter` — this is harness and guest-kit surface only, and the operation selector uses the seam operations as they exist.
 - **Model ids stay out of guests.** The override is backend configuration in the driver, preserving RFC-61's contract-agnosticism invariant.

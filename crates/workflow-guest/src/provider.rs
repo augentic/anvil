@@ -31,7 +31,7 @@ use specify_workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam
 use specify_workflow::slice::build::wire::BUILD_VERSION;
 use specify_workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
-use crate::bindings::augentic::specify::{source, target, types};
+use crate::bindings::specify::adapter::{source, target, types};
 
 /// The workflow guest's seam provider: every capability the
 /// orchestrators need, backed by the world's WIT imports.

@@ -10,7 +10,7 @@
 //!   `plan execute` without a model call, and the merge cadence lands in
 //!   the journal on the shared `"."` preopen.
 //! - **Link dispatch + pending model future** — `source survey` routes
-//!   through `augentic:specify/source` to the *real* committed intent
+//!   through `specify:adapter/source` to the *real* committed intent
 //!   guest, whose judgment leg awaits `omnia:model/completion`; the stub
 //!   backend pends then fails, and the failure comes back as the typed
 //!   `seam-dispatch-failed` exit — not a trap.
@@ -279,7 +279,7 @@ async fn execute_drains_merge_leg() -> Result<()> {
 
 // Link dispatch to a real committed adapter guest, surviving a pending
 // model future: `source survey intent` routes through
-// `augentic:specify/source` to the intent guest, whose judgment leg
+// `specify:adapter/source` to the intent guest, whose judgment leg
 // awaits `omnia:model/completion`. The stub backend parks the future and
 // then fails, so the WIT error variant must come back across two guest
 // boundaries as the typed `seam-dispatch-failed` failure envelope (exit
