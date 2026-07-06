@@ -45,7 +45,7 @@ fn parse_success_matrix() {
     assert_eq!(references[0].label, "documentation.extract determinism rules");
     assert_eq!(
         references[0].path.as_deref(),
-        Some("adapters/sources/documentation/briefs/extract.md"),
+        Some("adapters/sources/documentation/prose/briefs/extract.md"),
     );
     assert!(rule.body.contains("\n## Rule\n"));
 

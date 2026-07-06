@@ -10,8 +10,7 @@
 //!
 //! - the native `specify` binary routes its shared verbs through the
 //!   [`commands`] entry points and keeps the native-only handlers
-//!   (init, extension, lint, workspace, `plan lock`, `slice build`, …)
-//!   in its own crate;
+//!   (init, lint, workspace, upgrade, …) in its own crate;
 //! - the workflow guest shim (`crates/workflow-guest`) parses argv
 //!   through [`guest::route`], runs the pure verbs in-process, and
 //!   drives the [`guest::Orchestration`] verbs against its

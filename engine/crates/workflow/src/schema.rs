@@ -76,14 +76,13 @@ pub fn validate_plan_yaml(content: &str) -> Result<()> {
 /// Validate a lead-reconciliation envelope against the embedded
 /// `schemas/discovery/proposal.schema.json`.
 ///
-/// Backs `specify plan propose`: the dry-run request the
-/// CLI emits and the agent grouping response read by `--from` share one
+/// Backs the guest `plan author` reconciliation: the assembled request
+/// and the agent grouping response share one
 /// schema, discriminated by the closed `kind: request | response`
 /// `oneOf`. A single call validates either kind — there is no separate
 /// request/response entry point.
 ///
-/// Both envelopes arrive as JSON (the request on stdout, the response
-/// from stdin or a `--from <file>` path), so parsing through
+/// Both envelopes ride the judgment call as JSON, so parsing through
 /// [`serde_saphyr::from_str`] — which accepts JSON as a YAML subset —
 /// mirrors [`validate_plan_yaml`] and lets hand-authored YAML responses
 /// validate too. On a clean parse the value is checked against
@@ -110,7 +109,7 @@ const MODEL_SCHEMA_URL: &str =
 /// Validate an agent synthesis response against the embedded
 /// `schemas/slice/synthesis.schema.json`.
 ///
-/// Backs `specify slice synthesize`: synthesis is
+/// Backs the guest refine orchestration's synthesis leg: synthesis is
 /// always agent-dispatched, so the only schema-validated wire is the
 /// returned `kind: response`. Its `model` property `$ref`s
 /// `model.schema.json` by a relative URI, so the validator is built

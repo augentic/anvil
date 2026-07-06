@@ -145,7 +145,7 @@ Manifests do not carry a `pipeline:` field. Brief existence and operation covera
 
 Every symlink under `plugins/` must resolve to a valid target.
 
-The per-target-adapter `agent-teams.md` overlays are part of the same surface: each `adapters/targets/<name>/references/agent-teams.md` MUST be a real symlink resolving (through the shared runtime overlay) to `docs/reference/review-team-protocol.md`. Regular-file overlays are forbidden — a symlink chain cannot drift in content, so CORE-011 (canonical-document presence) plus the CI symlink check is the whole enforcement surface. The retired CORE-008 digest pin and CORE-012 `agent-teams` tool policed a regular-file overlay form that is no longer admitted.
+The per-target-adapter `agent-teams.md` overlays are part of the same surface: each `adapters/targets/<name>/prose/references/agent-teams.md` MUST be a real symlink resolving (through the shared runtime overlay) to `docs/reference/review-team-protocol.md`. Regular-file overlays are forbidden — a symlink chain cannot drift in content, so CORE-011 (canonical-document presence) plus the CI symlink check is the whole enforcement surface. The retired CORE-008 digest pin and CORE-012 `agent-teams` tool policed a regular-file overlay form that is no longer admitted.
 
 **Common fix:** recreate the symlink if the target was moved or renamed; if an overlay was committed as a regular file, replace it with a symlink to the shared runtime overlay.
 
@@ -271,7 +271,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 13. First-party rule shape
 
-First-party rule files are validated in the shared tree at `adapters/shared/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/rules/**/*.md` and `adapters/targets/<name>/rules/**/*.md`.
+First-party rule files are validated in the shared tree at `adapters/shared/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
@@ -312,7 +312,7 @@ Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file unde
 
 This enforces the tool-owned schema contract: plugin briefs cite schemas by canonical `$id` URL, and the check ensures every cited URL matches a real schema in the tool's embedded registry. The rule id is `links.brief-schema-link-resolve`.
 
-**Common fix:** verify the tool name and schema name in the URL. Use `specify extension schema <tool> <name>` to confirm the schema exists. If the schema was renamed or retired, update the URL or remove the reference.
+**Common fix:** verify the tool name and schema name in the URL against the owning adapter's embedded schema registry (in `specify-adapters`). If the schema was renamed or retired, update the URL or remove the reference.
 
 ### 15. CLI contract drift
 

@@ -13,8 +13,8 @@ use crate::slice::{BaselineDomainDetail, SynthesisSourceInput, build_synthesis_i
 /// The caller-assembled inputs to [`synthesize`], minus the shape
 /// guidance the orchestrator fetches through the seam.
 ///
-/// Mirrors what the native `slice synthesize` verb distils before it
-/// assembles the inputs envelope: the per-source Evidence
+/// Mirrors what the retired native `slice synthesize` verb distilled
+/// before it assembled the inputs envelope: the per-source Evidence
 /// contributions and the baseline context.
 #[derive(Debug)]
 pub struct SynthesizeRequest<'a> {

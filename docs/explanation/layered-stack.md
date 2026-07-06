@@ -66,11 +66,11 @@ The plan is the change's table of contents. `/spec:plan` produces it by surveyin
 
 `/spec:execute` consumes the approved plan by picking the next eligible slice (`specify plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
-The matching CLI surface spans **`specify plan {create, propose, add, amend, remove, transition, next, finalize}`**, **`specify workspace {sync, push, prepare}`** for multi-repo changes, and **`specify extension run`** for declared WASI helpers.
+The matching CLI surface spans **`specify plan {create, author, execute, add, amend, remove, transition, next}`** and **`specify workspace {sync, push, prepare}`** for multi-repo changes.
 
 ### Gate 1: the operator review seam
 
-The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan propose --from`, `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` before any per-slice work runs.
+The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` (or re-run `specify plan author` to re-reconcile wholesale) before any per-slice work runs.
 
 The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
 

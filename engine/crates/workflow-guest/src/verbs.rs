@@ -93,18 +93,13 @@ async fn run(format: Format, plan_dir: Option<PathBuf>, verb: Verb) -> Result<()
                 target: outcome.target,
                 status: outcome.status,
                 findings: outcome.findings,
-                warnings: outcome.warnings.into_iter().map(|warning| warning.title).collect(),
             };
             ctx.write(&body, |w, body| {
                 writeln!(
                     w,
                     "built {} against {} ({} finding(s))",
                     body.slice, body.target, body.findings
-                )?;
-                for warning in &body.warnings {
-                    writeln!(w, "warning: {warning}")?;
-                }
-                Ok(())
+                )
             })
         }
         Verb::Merge {
@@ -336,7 +331,6 @@ struct BuildBody {
     target: String,
     status: BuildStatus,
     findings: usize,
-    warnings: Vec<String>,
 }
 
 /// Success envelope for the guest `slice merge run`.

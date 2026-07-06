@@ -1,8 +1,6 @@
 //! Clap derive surface for the `specify plan *` verbs. The umbrella
 //! `cli.rs` re-exports [`PlanAction`].
 
-use std::path::PathBuf;
-
 use clap::{ArgAction, Args, Subcommand};
 
 use crate::cli::{AuthorityOverrideKindAssign, SliceSourceArg, SourceArg};
@@ -105,28 +103,6 @@ pub enum PlanAction {
     /// so wholesale replacement plus targeted edits can be combined
     /// in a single invocation when needed.
     Amend(AmendArgs),
-    /// Reconcile surveyed leads into `plan.yaml.slices[]`.
-    ///
-    /// Exactly one mode is required — the parser rejects passing both:
-    ///
-    /// - `--dry-run` reads the surveyed `discovery.md` lead inventory and
-    ///   the resolved project topology (`registry.yaml` for a workspace, or
-    ///   the sole project synthesised from `project.yaml`) and emits the
-    ///   `kind: request` envelope for the agent to group, recreating the
-    ///   plan scratch lane (`.specify/scratch/plan/`) empty for the
-    ///   response envelope. Writes no plan state. Aborts with
-    ///   `plan-reconcile-empty-catalog` when `discovery.md` carries no
-    ///   leads.
-    /// - `--from <response.json>` is the only writer. On every invocation
-    ///   it re-reads `discovery.md`, rebuilds the lead catalog (never
-    ///   trusting a prior dry-run snapshot), validates the agent's
-    ///   grouping response, and replaces `plan.yaml.slices[]` wholesale —
-    ///   in the agent's response order — then emits the single
-    ///   `plan.reconcile.completed` event.
-    ///
-    /// Passing neither mode fails with `plan-propose-mode-required`
-    /// (exit 2).
-    Propose(ProposeArgs),
     /// Remove a pending plan entry while the plan is still replaceable
     /// (`lifecycle: pending` and every entry `pending`). Gate 1 curation
     /// only — defers a lead without re-surveying `discovery.md`.
@@ -185,10 +161,8 @@ pub enum PlanAction {
     /// `## Source inventory`), validate, and exit at `pending` with
     /// the literal Gate 1 transition hint.
     ///
-    /// Guest-only. The native binary refuses this verb — natively the
-    /// flow is driven by the `/spec:plan` skill, which composes the
-    /// same steps through the per-verb surface (`plan create`, `source
-    /// survey`, `plan propose --dry-run/--from`, `plan validate`).
+    /// Guest-only through the composed-deployment leg: the `/spec:plan`
+    /// skill invokes this single verb and relays its output.
     Author {
         /// Kebab-case change name
         name: String,
@@ -208,13 +182,9 @@ pub enum PlanAction {
     /// `drained` or a stop condition halts it (exit 2,
     /// `plan-execute-stopped`).
     ///
-    /// Guest-only. The native binary refuses this verb — natively the
-    /// loop is driven by the `/spec:execute` skill, which composes the
-    /// same phases through the per-verb surface under the plan lock.
-    /// In-guest the loop holds the create-exclusive
-    /// `.specify/guest.lock` marker instead (guest-vs-guest refusal
-    /// only; no cross-stack interlock with the native flock —
-    /// non-concurrent stack use is the coexistence rule).
+    /// Guest-only through the composed-deployment leg: the loop holds
+    /// the create-exclusive `.specify/guest.lock` marker
+    /// (guest-vs-guest refusal only) while it drives the phases.
     Execute,
     /// Archive the current plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`
     Archive {
@@ -223,38 +193,6 @@ pub enum PlanAction {
         #[arg(long)]
         force: bool,
     },
-    /// Acquire the exclusive plan lock, run `<cmd>` under it, and
-    /// release on the child's exit (the `flock(1)` command form).
-    ///
-    /// The OS advisory lock on `<plan-root>/.specify/plan.lock` is held
-    /// for the spawned child's lifetime; the plan-state-writing verbs
-    /// (`plan next`, per-entry `plan transition`, `slice merge run`)
-    /// run as children and pass their own lock probe. A second driver
-    /// that finds the lock held fails fast with `plan-lock-busy`
-    /// (exit 2). Re-entrant invocations — a breakout under a parent
-    /// `/spec:execute` — skip re-acquisition when `SPECIFY_PLAN_LOCK_HELD=1`
-    /// is already set, which the wrapper exports for the child. The
-    /// child's exit code is passed through unchanged. Pass any global
-    /// flags (e.g. `--plan-dir`) before the `--`.
-    Lock {
-        /// Command (and its arguments) to run under the plan lock.
-        /// Everything after `--` is forwarded verbatim to the child.
-        #[arg(last = true, required = true)]
-        command: Vec<String>,
-    },
-}
-
-/// Flag surface for `specify plan propose`. The two flags are mutually
-/// exclusive (`--from` `conflicts_with` `--dry-run`); the handler
-/// rejects passing neither with `plan-propose-mode-required`.
-#[derive(Debug, Args)]
-pub struct ProposeArgs {
-    /// Emit the reconciliation request envelope (flat lead catalog + project topology) for the agent. Writes no plan state; resets .specify/scratch/plan/.
-    #[arg(long = "dry-run", action = ArgAction::SetTrue)]
-    pub dry_run: bool,
-    /// Apply the agent's grouping response, validate it, and replace plan.yaml.slices[]. The only writer.
-    #[arg(long = "from", value_name = "RESPONSE_JSON", conflicts_with = "dry_run")]
-    pub from: Option<PathBuf>,
 }
 
 /// Flag surface for `specify plan add`. Grouped into one struct so the

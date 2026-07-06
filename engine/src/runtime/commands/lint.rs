@@ -9,3 +9,4 @@
 pub use specify_dispatch::commands::lint::cli;
 pub mod framework;
 pub mod project;
+pub mod tools;

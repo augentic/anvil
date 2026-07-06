@@ -85,7 +85,7 @@ Start with a strong code-oriented base model, likely Qwen3 Coder 7B Instruct or 
 
 The preferred framework strategy is one shared base model with separate LoRA adapters: one for Omnia first, then one for Vectis once the scorer and training loop are stable. A single adapter with a framework tag is cheaper but risks cross-pollinating Omnia and Vectis conventions.
 
-The SLM should not memorize the whole reference corpus. Keep `adapters/targets/omnia/references/*.md` and examples in retrieval, then train the model to follow retrieved references and emit the expected crate shape. This keeps SDK changes cheap: update the reference docs first, run a delta fine-tune only when behavior actually drifts.
+The SLM should not memorize the whole reference corpus. Keep `adapters/targets/omnia/prose/references/*.md` and examples in retrieval, then train the model to follow retrieved references and emit the expected crate shape. This keeps SDK changes cheap: update the reference docs first, run a delta fine-tune only when behavior actually drifts.
 
 ### Training Pipeline
 
@@ -180,4 +180,4 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 - RFC-28 — [DECISIONS.md §Diagnostic substrate](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
 - RFC-32 — [DECISIONS.md §Standards layer split](../../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
 - RFC-10 / RFC-13
-- [`adapters/targets/omnia/briefs/build/crate.md`](../../adapters/targets/omnia/briefs/build/crate.md)
+- [`adapters/targets/omnia/prose/briefs/build/crate.md`](../../adapters/targets/omnia/prose/briefs/build/crate.md)

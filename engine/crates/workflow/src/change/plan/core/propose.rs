@@ -1,9 +1,9 @@
 //! Lead-reconciliation envelope DTOs and the plan-time `propose`
 //! domain core.
 //!
-//! `specify plan propose` wraps agent-led lead reconciliation in a
-//! CLI-owned projection kernel. The wire contract is a single
-//! envelope discriminated by a closed `kind: request | response`,
+//! The guest `plan author` orchestration wraps agent-led lead
+//! reconciliation in this projection kernel. The wire contract is a
+//! single envelope discriminated by a closed `kind: request | response`,
 //! validated against `schemas/discovery/proposal.schema.json`
 //! ([`crate::schema::validate_proposal_json`]). The pieces split across
 //! focused submodules, re-exported here so the public path stays

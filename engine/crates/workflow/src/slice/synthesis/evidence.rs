@@ -1,9 +1,8 @@
 //! On-disk Evidence distillation for the synthesis kernel.
 //!
 //! Distils the per-source `authority` map, the `(source, id) → kind`
-//! claim anchor index, and the per-source inputs envelope rows. Shared
-//! by the native `slice synthesize` handler and the guest refine
-//! orchestrator.
+//! claim anchor index, and the per-source inputs envelope rows for the
+//! guest refine orchestrator.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

@@ -6,7 +6,7 @@
 //! per-source survey fan-out (via [`super::survey_all`]), the
 //! reconciliation judgment leg ([`crate::judgment::propose::reconcile`]
 //! with the kernel-projection check inside the repair loop), the
-//! `plan propose --from` persist tail (`Plan::propose_from` under the
+//! reconcile persist tail (`Plan::propose_from` under the
 //! atomic write loop plus the `plan.reconcile.completed` event), the
 //! Gate 1 prose persistence into `change.md` / `discovery.md`, and the
 //! `plan validate` doctor sweep. The run exits with the plan at
@@ -119,7 +119,7 @@ pub async fn author<P: Model, S: SourceSeam>(
     })?;
 
     // Only after the write commits: emit the reconcile event (the
-    // native `plan propose --from` cadence).
+    // retired native verb's cadence).
     let event = Event::new(
         now,
         EventKind::PlanReconcileCompleted {
@@ -196,7 +196,7 @@ fn scaffold(
 }
 
 /// Resolve the project topology the request embeds — the same
-/// projection the native `plan propose` handler runs, minus the
+/// projection the retired native `plan propose` handler ran, minus the
 /// operator-facing `greenfield-seed-shadowed` advisories (the seed
 /// projection itself still applies).
 fn load_topology(layout: Layout<'_>) -> Result<Vec<ProjectRef>, Error> {

@@ -10,7 +10,7 @@
 //!   `<project-cache>/manifests/sources/<name>/`; `(target, …)`
 //!   mirrors under `manifests/targets/`.
 //! - schema validation — both the shared shape and the axis-specific
-//!   refinements (axis literal, closed `briefs.<operation>` keys) reject
+//!   refinements (axis literal, retired old-stack keys) reject
 //!   hand-rolled inputs.
 
 use std::fs;
@@ -51,10 +51,6 @@ fn resolves_source_from_local_dir() {
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![SourceOperation::Extract, SourceOperation::Survey]
     );
-    assert_eq!(
-        resolved.manifest.briefs.get(&SourceOperation::Extract).map(String::as_str),
-        Some("briefs/extract.md")
-    );
     assert!(matches!(resolved.location, AdapterLocation::Local(_)));
     assert!(resolved.location.path().ends_with("adapters/sources/typescript"));
 }
@@ -66,8 +62,8 @@ fn resolves_target_from_local_dir() {
         .expect("resolve target adapter from adapters/targets/<name>/adapter.yaml");
     assert_eq!(resolved.manifest.name, "omnia");
     assert_eq!(resolved.manifest.axis, Axis::Target);
-    // `briefs` is a BTreeMap, so `operations()` yields keys in
-    // ascending kebab-name order: build < merge < shape.
+    // `operations()` yields the closed WIT set in ascending kebab-name
+    // order: build < merge < shape.
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape]
@@ -77,10 +73,9 @@ fn resolves_target_from_local_dir() {
 
 #[test]
 fn resolves_shrunk_source_manifest() {
-    // RFC-61 S2 two-shape window: a post-cutover manifest carries only
-    // `name` / `version` / `axis` / `description`. It must resolve with
-    // the machinery absent, and the operation set derives from the
-    // closed WIT contract instead of `briefs.keys()`.
+    // The post-cutover manifest carries only `name` / `version` /
+    // `axis` / `description`. It must resolve, and the operation set
+    // derives from the closed WIT contract.
     let (_tmp, project) = local_project();
     let manifest_dir = project.join("adapters").join("sources").join("shrunk");
     fs::create_dir_all(&manifest_dir).expect("create shrunk source dir");
@@ -96,12 +91,10 @@ description: Shrunk post-cutover source manifest.
 
     let resolved = SourceAdapter::resolve(&AdapterRef::bare("shrunk"), &project)
         .expect("shrunk source manifest resolves");
-    assert!(resolved.manifest.briefs.is_empty(), "absent briefs resolve as an empty map");
-    assert_eq!(resolved.manifest.execution, None, "absent execution resolves as None");
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![SourceOperation::Extract, SourceOperation::Survey],
-        "briefless operation set derives from the closed WIT contract"
+        "operation set derives from the closed WIT contract"
     );
 }
 
@@ -128,39 +121,67 @@ platforms:
 
     let resolved = TargetAdapter::resolve(&AdapterRef::bare("shrunk-target"), &project)
         .expect("shrunk target manifest resolves");
-    assert!(resolved.manifest.briefs.is_empty(), "absent briefs resolve as an empty map");
-    assert_eq!(resolved.manifest.execution, None, "absent execution resolves as None");
     assert!(resolved.manifest.platforms.is_some(), "retained platforms capability survives");
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape],
-        "briefless operation set derives from the closed WIT contract"
+        "operation set derives from the closed WIT contract"
     );
 }
 
 #[test]
-fn partial_briefs_rejected_at_load_time() {
-    // The relax is all-or-nothing: a manifest that carries `briefs`
-    // is still held to the full per-axis key set.
+fn retired_manifest_keys_rejected_at_load() {
+    // The S4 schema close: the old-stack `briefs` / `execution` /
+    // `extension` / `prepare` / hook keys are no longer legal manifest
+    // properties on either axis.
     let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("sources").join("partial");
-    fs::create_dir_all(&manifest_dir).expect("create partial source dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: partial
-version: 1.0.0
-axis: source
-description: Source manifest with a partial briefs map.
-briefs:
-  survey: briefs/survey.md
-",
-    )
-    .expect("write partial source manifest");
+    let source_cases = [
+        ("with-briefs", "briefs:\n  survey: briefs/survey.md\n  extract: briefs/extract.md"),
+        ("with-execution", "execution: agent"),
+        ("with-extension", "extension:\n  name: demo-tool"),
+    ];
+    for (name, block) in source_cases {
+        let manifest_dir = project.join("adapters").join("sources").join(name);
+        fs::create_dir_all(&manifest_dir).expect("create retired-key source dir");
+        fs::write(
+            manifest_dir.join("adapter.yaml"),
+            format!(
+                "name: {name}\nversion: 1.0.0\naxis: source\ndescription: Retired key.\n{block}\n"
+            ),
+        )
+        .expect("write retired-key source manifest");
+        let err = SourceAdapter::resolve(&AdapterRef::bare(name), &project)
+            .expect_err("a retired manifest key must fail");
+        let detail = err.to_string();
+        assert!(
+            detail.contains("adapter-schema-violation"),
+            "expected schema violation for `{name}`: {detail}"
+        );
+    }
 
-    let err = SourceAdapter::resolve(&AdapterRef::bare("partial"), &project)
-        .expect_err("a present-but-partial briefs map must fail");
-    let detail = err.to_string();
-    assert!(detail.contains("adapter-schema-violation"), "expected schema violation: {detail}");
+    let target_cases = [
+        ("with-prepare", "prepare:\n  argv: [prepare, build]"),
+        ("with-hooks", "host_prereq:\n  script: scripts/host-prereq.sh"),
+        ("with-catalog", "catalog:\n  infer: true"),
+    ];
+    for (name, block) in target_cases {
+        let manifest_dir = project.join("adapters").join("targets").join(name);
+        fs::create_dir_all(&manifest_dir).expect("create retired-key target dir");
+        fs::write(
+            manifest_dir.join("adapter.yaml"),
+            format!(
+                "name: {name}\nversion: 1.0.0\naxis: target\ndescription: Retired key.\n{block}\n"
+            ),
+        )
+        .expect("write retired-key target manifest");
+        let err = TargetAdapter::resolve(&AdapterRef::bare(name), &project)
+            .expect_err("a retired manifest key must fail");
+        let detail = err.to_string();
+        assert!(
+            detail.contains("adapter-schema-violation"),
+            "expected schema violation for `{name}`: {detail}"
+        );
+    }
 }
 
 #[test]
@@ -257,10 +278,6 @@ fn cache_wins_over_local() {
         r"name: typescript
 version: 7.0.0
 axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 description: Cached source adapter fixture.
 ",
     )
@@ -290,10 +307,6 @@ fn pinned_resolves_from_store() {
         r"name: typescript
 version: 2.3.4
 axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 description: Store-resident source adapter fixture.
 ",
     )
@@ -317,139 +330,43 @@ fn missing_adapter_reports_not_found() {
 }
 
 #[test]
-fn schema_violations_reject_at_load_time() {
-    // Source-axis adapter with the wrong brief key set — `shape` is
-    // not a source operation, and `extract` is required by
-    // `source.schema.json#/properties/briefs`.
-    let (_tmp, project) = local_project();
-    let bad_root = project.join("adapters").join("sources").join("wrong-ops");
-    fs::create_dir_all(&bad_root).expect("create bad source dir");
-    fs::write(
-        bad_root.join("adapter.yaml"),
-        r"name: wrong-ops
-version: 1.0.0
-axis: source
-briefs:
-  survey: briefs/survey.md
-  shape: briefs/shape.md
-",
-    )
-    .expect("write bad manifest");
-
-    let err = SourceAdapter::resolve(&AdapterRef::bare("wrong-ops"), &project)
-        .expect_err("source-axis adapter with wrong brief keys must fail");
-    let detail = err.to_string();
-    assert!(
-        detail.contains("adapter-schema-violation")
-            || detail.contains("adapter-manifest-malformed"),
-        "expected schema violation, got: {detail}"
-    );
-}
-
-#[test]
-fn resolves_captures_with_extension() {
-    // workflow §Acceptance scenario #26-1 (release blocker, D1):
-    // pin the loader against the live `adapters/sources/captures/`
-    // adapter shape. The manifest carries a singular `extension`
-    // declaration (RFC-48 D11) — an optional run `name` plus structured
-    // `{read, write}` permissions — and a free-form `description:`
-    // field; both must round-trip through the axis-aware loader.
-    //
-    // This test is the cli-side complement to the deno harness
-    // assertions in `augentic/specify` at
-    // `tests/cross_repo/sources_test.ts` — the harness pins the
-    // golden-fixture data shape (Evidence + provenance.yaml +
-    // discovery.md) while this test pins the loader behaviour.
+fn resolves_captures_manifest() {
+    // workflow §Acceptance scenario #26-1 (release blocker, D1): pin
+    // the loader against the live `adapters/sources/captures/` adapter
+    // shape — the shrunk post-cutover manifest with a free-form
+    // `description:`.
     let (_tmp, project) = local_project();
     let manifest_dir = project.join("adapters").join("sources").join("captures");
-    fs::create_dir_all(manifest_dir.join("briefs")).expect("create captures adapter dir");
+    fs::create_dir_all(&manifest_dir).expect("create captures adapter dir");
     fs::write(
         manifest_dir.join("adapter.yaml"),
-        r#"name: captures
+        r"name: captures
 version: 1.0.0
 axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
-extension:
-  name: replay-index
-  permissions:
-    read: ["$PROJECT_DIR/.specify"]
-    write: []
 description: >-
   Runtime capture source adapter. Walks a read-only capture tree under
   `$SOURCE_DIR` and emits one lead per observed handler entry point.
-"#,
+",
     )
     .expect("write captures manifest");
-    fs::write(manifest_dir.join("briefs/survey.md"), "# survey\n").expect("survey brief stub");
-    fs::write(manifest_dir.join("briefs/extract.md"), "# extract\n").expect("extract brief stub");
 
     let resolved = SourceAdapter::resolve(&AdapterRef::bare("captures"), &project)
         .expect("captures adapter loads via SourceAdapter::resolve");
     assert_eq!(resolved.manifest.name, "captures");
     assert_eq!(resolved.manifest.axis, Axis::Source);
-    let extension = resolved.manifest.extension.as_ref().expect("singular extension declared");
-    assert_eq!(extension.name.as_deref(), Some("replay-index"));
-    assert_eq!(extension.permissions.read, vec!["$PROJECT_DIR/.specify".to_string()]);
-    assert!(extension.permissions.write.is_empty());
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![SourceOperation::Extract, SourceOperation::Survey],
-        "captures declares survey + extract per workflow §Runtime source adapter"
-    );
-    assert_eq!(
-        resolved.manifest.briefs.get(&SourceOperation::Extract).map(String::as_str),
-        Some("briefs/extract.md")
+        "captures serves survey + extract per workflow §Runtime source adapter"
     );
     assert!(
         matches!(resolved.location, AdapterLocation::Local(_)),
-        "live plg manifest resolves under adapters/sources/<name>/ (local axis)"
+        "live manifest resolves under adapters/sources/<name>/ (local axis)"
     );
     assert!(
         resolved.location.path().ends_with("adapters/sources/captures"),
-        "resolver root must land on the plg-tree adapter directory, got: {}",
+        "resolver root must land on the adapter directory, got: {}",
         resolved.location.path().display()
-    );
-}
-
-#[test]
-fn resolves_target_with_native_build_hooks() {
-    // A target manifest may declare `host_prereq` and `finalize_verify`
-    // native build hooks. Both must round-trip through the two-stage
-    // schema gates and `TargetAdapter::resolve`.
-    let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("targets").join("with-native-hooks");
-    fs::create_dir_all(&manifest_dir).expect("create target adapter dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: with-native-hooks
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-host_prereq:
-  script: scripts/host-prereq.sh
-finalize_verify:
-  script: scripts/finalize-verify.sh
-description: Target adapter declaring native build hooks.
-",
-    )
-    .expect("write manifest with native build hooks");
-
-    let resolved = TargetAdapter::resolve(&AdapterRef::bare("with-native-hooks"), &project)
-        .expect("target adapter declaring native build hooks resolves");
-    assert_eq!(
-        resolved.manifest.host_prereq.as_ref().expect("host_prereq").script,
-        "scripts/host-prereq.sh"
-    );
-    assert_eq!(
-        resolved.manifest.finalize_verify.as_ref().expect("finalize_verify").script,
-        "scripts/finalize-verify.sh"
     );
 }
 
@@ -467,11 +384,6 @@ fn resolves_target_adapter_with_inputs() {
         r"name: with-inputs
 version: 1.0.0
 axis: target
-execution: tool
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 inputs:
   - path: tokens.yaml
     required: true
@@ -517,11 +429,6 @@ fn malformed_input_rejected_at_load() {
         r"name: bad-inputs
 version: 1.0.0
 axis: target
-execution: tool
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 inputs:
   - path: tokens.yaml
 description: Target adapter with a malformed input entry.
@@ -552,10 +459,7 @@ fn axis_mismatch_reports_diagnostic() {
         r"name: mislabeled
 version: 1.0.0
 axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
+description: Mislabeled fixture.
 ",
     )
     .expect("write manifest");

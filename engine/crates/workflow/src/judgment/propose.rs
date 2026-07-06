@@ -1,8 +1,8 @@
 //! The propose reconciliation judgment leg.
 //!
-//! One schema-gated `create` over the same request envelope
-//! `plan propose --dry-run` emits, with the same deterministic tail
-//! `plan propose --from` runs (raw-bytes schema gate, typed parse) plus
+//! One schema-gated `create` over the same request envelope the
+//! retired `plan propose --dry-run` emitted, with the same deterministic
+//! tail `plan propose --from` ran (raw-bytes schema gate, typed parse) plus
 //! a caller-supplied kernel check, inside the shared repair loop. The
 //! caller owns the surrounding IO: assembling the request, running
 //! `Plan::propose_from` for real under the atomic write loop, and the

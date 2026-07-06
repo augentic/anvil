@@ -199,7 +199,7 @@ pub enum Divergence {
     /// `plan.amend.divergence` `from` field on the first transition.
     #[serde(rename = "none")]
     None,
-    /// Staged by the `/spec:plan` agent after `propose --from`, via
+    /// Staged by the `/spec:plan` agent after the reconcile write, via
     /// `specify plan amend --divergence likely`, on
     /// materially-disagreeing lead synopses.
     Likely,

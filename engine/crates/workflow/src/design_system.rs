@@ -3,11 +3,12 @@
 //!
 //! The catalog lives at `.specify/design-system/components.yaml` and
 //! declares shared UI components that the Vectis target factors into
-//! shared code at build time. The catalog is **written by
-//! `specify catalog infer --phase bind`** (binding the names the build
-//! skill or operator parts supply) and **reviewed by the operator**,
-//! who may reject or rename entries. An absent catalog still means "no
-//! factoring", so projects without one work exactly as before.
+//! shared code at build time. The catalog is **written by the guest
+//! build orchestration's bind bookkeeping** (driven by the
+//! `${SLICE_DIR}/build/component-bindings.yaml` artifact the target
+//! build emits) and **reviewed by the operator**, who may reject or
+//! rename entries. An absent catalog still means "no factoring", so
+//! projects without one work exactly as before.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -124,8 +125,8 @@ impl ComponentsCatalog {
         self.components.get(slug).map(|entry| entry.status)
     }
 
-    /// An empty, version-pinned catalog — the starting point when
-    /// `specify catalog infer --phase bind` finds no existing file.
+    /// An empty, version-pinned catalog — the starting point when the
+    /// bind bookkeeping finds no existing file.
     #[must_use]
     pub const fn empty() -> Self {
         Self {

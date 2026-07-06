@@ -76,8 +76,7 @@ specify target resolve <value>                           # validate a target ada
 
 # Plan management
 specify plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specify plan propose --dry-run --format json                   # request the flat lead catalog + project topology
-specify plan propose --from <response.json>                    # default slice writer after survey
+specify plan author                                            # survey + reconcile + validate; exits at pending
 specify plan add <entry> --sources <key>=<lead> --project <name>
 specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
@@ -98,7 +97,7 @@ specify workspace prepare <project> --change <name>
 specify workspace push [<project>...]                    # publish specify/<name> branch as PR
 
 # Tools
-specify extension run <name> [args...]                        # run a declared WASI tool
+# adapter helper tools are in-guest library code (no host dispatch verb)
 
 # Maintenance & bootstrap
 specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update

@@ -63,7 +63,7 @@ impl LeadCatalog {
 /// Build the `(source, lead)` identity set from a surveyed
 /// `discovery.md`.
 ///
-/// Shared with the response-validation kernel: `propose --from`
+/// Shared with the response-validation kernel: the reconciliation tail
 /// re-reads `discovery.md`, calls this to rebuild the catalog, then
 /// checks every response `(source, lead)` against it. Duplicate
 /// identities collapse into one set entry (see [`LeadCatalog`]).
@@ -87,8 +87,8 @@ pub fn build_catalog(discovery: &Discovery) -> LeadCatalog {
 /// # Errors
 ///
 /// Returns [`Error::Validation`] (`plan-reconcile-empty-catalog`, exit
-/// 2) when `discovery.md` carries no leads — `propose --dry-run` has
-/// nothing to reconcile.
+/// 2) when `discovery.md` carries no leads — the reconciliation
+/// request has nothing to group.
 pub fn build_request(discovery: &Discovery, projects: &[ProjectRef]) -> Result<ProposalRequest> {
     let leads: Vec<LeadCatalogEntry> = discovery
         .leads()
@@ -104,7 +104,7 @@ pub fn build_request(discovery: &Discovery, projects: &[ProjectRef]) -> Result<P
     if leads.is_empty() {
         return Err(Error::validation_failed(
             "plan-reconcile-empty-catalog",
-            "propose --dry-run requires at least one surveyed lead",
+            "lead reconciliation requires at least one surveyed lead",
             "discovery.md carries no leads under `## Lead inventory`",
         ));
     }

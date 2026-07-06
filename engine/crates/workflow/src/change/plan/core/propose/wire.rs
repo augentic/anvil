@@ -31,7 +31,7 @@ pub enum ProposalKind {
 
 /// `kind: request` envelope — the lead-centric catalog the agent groups.
 ///
-/// Emitted by `specify plan propose --dry-run --format json`: a flat
+/// Assembled by the guest `plan author` orchestration: a flat
 /// `leads[]` catalog read 1:1 from `discovery.md`, plus the `projects[]`
 /// topology the agent binds slices to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -126,10 +126,10 @@ pub struct LeadCatalogEntry {
 
 /// `kind: response` envelope — the agent's slice grouping.
 ///
-/// Consumed by `specify plan propose --from`. The DTO is shape-only; the
-/// partition, fan-out, project-binding, and name-derivation invariants
-/// are enforced by the projection kernel (`Plan::propose_from`), not by
-/// serde.
+/// Consumed by the guest `plan author` orchestration's judgment tail.
+/// The DTO is shape-only; the partition, fan-out, project-binding, and
+/// name-derivation invariants are enforced by the projection kernel
+/// (`Plan::propose_from`), not by serde.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProposalResponse {
@@ -141,11 +141,10 @@ pub struct ProposalResponse {
     /// `plan.yaml.slices[]` in this order.
     pub slices: Vec<ResponseSlice>,
     /// Gate 1 review prose authored alongside the grouping (RFC-61
-    /// S1). Optional on the canonical envelope so native `plan propose
-    /// --from` responses stay valid; the derived judgment-answer
-    /// schema requires it, and the collapsed `plan author`
-    /// orchestration persists it into `change.md` / `discovery.md`.
-    /// The projection kernel ignores it.
+    /// S1). Canonically optional; the derived judgment-answer schema
+    /// requires it, and the collapsed `plan author` orchestration
+    /// persists it into `change.md` / `discovery.md`. The projection
+    /// kernel ignores it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate: Option<GateProse>,
 }

@@ -4,7 +4,7 @@ Shared **engineering standards** catalog — target-agnostic rules under `adapte
 
 See [docs/explanation/standards-layer.md](../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 
-This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/rules/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`). Source-adapter overlays under `adapters/sources/<name>/rules/` share a single namespace, `SRC-*`: every source-adapter owner maps to `{"SRC"}` in `check::rules`'s namespace map by the `check::rules` namespace map, so any new source adapter that grows an overlay opts into `SRC-*` without coordinating a per-adapter namespace. `FRAME-*` is reserved for declarative framework rules and MUST NOT appear under `adapters/*/rules/`. Namespace ownership is enforced by `specify lint framework`.
+This directory owns the `UNI-*` namespace. Target-specific rules live in per-adapter overlays under `adapters/targets/<name>/prose/rules/` (omnia: `OMNIA-*` / `RUST-*` / `SEC-*`; contracts: `IFACE-*`; vectis: `VECTIS-*`). Source-adapter overlays under `adapters/sources/<name>/prose/rules/` share a single namespace, `SRC-*`: every source-adapter owner maps to `{"SRC"}` in `check::rules`'s namespace map by the `check::rules` namespace map, so any new source adapter that grows an overlay opts into `SRC-*` without coordinating a per-adapter namespace. `FRAME-*` is reserved for declarative framework rules and MUST NOT appear under `adapters/*/rules/`. Namespace ownership is enforced by `specify lint framework`.
 
 Sibling shared hook directory: [`../../target-hooks/replay/`](../../target-hooks/replay/) — shared build-time replay hook contract for targets that opt in.
 
@@ -79,8 +79,8 @@ Optional frontmatter fields (`applicability`, `lint_mode`, `rule_hints`, `refere
 
 Target review briefs read this directory directly and apply each rule with target-specific heuristics:
 
-- **Omnia** — [`adapters/targets/omnia/briefs/build/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build/review.md) phase 3 ("Universal checks (lead)") applies every `UNI-*` rule in the inventory above, skipping rules already covered by the SEC / COR / QUA specialists per the table in [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/references/review-categories.md).
-- **Vectis** — [`adapters/targets/vectis/references/review/universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/references/review/universal-checks.md) lists the Crux/Rust heuristics for each `UNI-*` and the overlaps to skip.
+- **Omnia** — [`adapters/targets/omnia/prose/briefs/build/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/briefs/build/review.md) phase 3 ("Universal checks (lead)") applies every `UNI-*` rule in the inventory above, skipping rules already covered by the SEC / COR / QUA specialists per the table in [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/references/review-categories.md).
+- **Vectis** — [`adapters/targets/vectis/prose/references/review/universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/references/review/universal-checks.md) lists the Crux/Rust heuristics for each `UNI-*` and the overlaps to skip.
 - **Contracts** — [`docs/reference/targets/contracts.md`](../../../../docs/reference/targets/contracts.md) cites its overlay alongside this shared set.
 
 A review finding always carries:
@@ -94,7 +94,7 @@ Adapter overlays are preferred over the shared rule when both match — e.g. a h
 
 1. Pick the next free `UNI-NNN`. Do not reuse retired ids; mark old rules with a `deprecated:` block in the frontmatter and keep the file so historical citations still resolve.
 2. Create the file with the frontmatter and `## Rule` heading shown above.
-3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/references/review-categories.md), Vectis [`universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/references/review/universal-checks.md), etc.) — `make lint` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
+3. Wire the new id into any target review references that should apply it (Omnia [`review-categories.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/references/review-categories.md), Vectis [`universal-checks.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/references/review/universal-checks.md), etc.) — `make lint` does **not** verify that every consumer cites every rule, so coverage is a manual concern.
 4. Run `make lint` (which forwards to `specify lint framework`). The relevant predicate is `framework::check::rules` in `specify-standards`, which enforces frontmatter validity, the `## Rule` body heading, namespace ownership, and id uniqueness across the shared tree and every per-adapter overlay.
 
 `README.md` files (case-insensitive) under any codex directory are skipped by the discovery walk and are reserved for index pages like this one — they are never validated as rules.

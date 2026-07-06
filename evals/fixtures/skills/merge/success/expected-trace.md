@@ -5,7 +5,7 @@ Visible side effects of `/spec:merge password-hash-rotate` on the success path:
 1. `SPECIFY_PLAN_LOCK_HELD` is unset → the body drives the phase under `specify plan lock -- <cmd>` (single-repo), which takes `.specify/plan.lock` before any plan verb and exports `SPECIFY_PLAN_LOCK_HELD=1` to the child.
 2. `specify plan next --format json` returns the entry `name: password-hash-rotate, target: omnia, status: in-progress` (the CLI's lock probe passes — the wrapper holds the lock).
 3. `.specify/slices/password-hash-rotate/metadata.yaml` reads `status: built` → proceed.
-4. `specify target resolve omnia --format json` returns the resolved manifest path; the body reads `adapters/targets/omnia/briefs/merge.md` from there.
+4. `specify target resolve omnia --format json` returns the resolved manifest path; the body reads `adapters/targets/omnia/prose/briefs/merge.md` from there.
 5. The brief's pre-merge gate runs and passes: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo check --workspace`, `cargo test`, `cargo build --target wasm32-wasip2 --release --workspace` all green.
 6. AskQuestion confirmation prompts the operator (interactive path) and the operator selects "Proceed".
 7. `specify slice merge run password-hash-rotate --format json` is called exactly once. The CLI atomically:

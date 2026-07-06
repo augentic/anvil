@@ -4,7 +4,6 @@ use std::path::Path;
 
 use jiff::Timestamp;
 use serde::Serialize;
-use specify_diagnostics::Diagnostic;
 use specify_error::Error;
 use specify_model::atomic::bytes_write;
 
@@ -18,12 +17,11 @@ use crate::seam::{Input, TargetSeam, WorkingTree};
 use crate::slice::{
     BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
     build_request, enforce_report_no_blocking_on_success, enforce_report_outputs_exist,
-    evaluate_ui_surface_coherence,
 };
 
 /// The validated result of a completed [`build`], mirroring the native
 /// finalize output: the report's slice / target / status plus the
-/// finding count and any non-blocking A4 coherence warnings.
+/// finding count.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildOutcome {
     /// Slice that was built.
@@ -34,24 +32,22 @@ pub struct BuildOutcome {
     pub status: BuildStatus,
     /// Count of (non-blocking) findings on the report.
     pub findings: usize,
-    /// Non-blocking UI-surface coherence warnings (A4). Advisory only.
-    pub warnings: Vec<Diagnostic>,
 }
 
 /// Build one slice through the seam and run the native finalize tail.
 ///
-/// The guest collapse of `specify slice build --phase prepare` +
-/// `--phase finalize`: assembles, schema-gates, and persists
+/// The guest collapse of the retired two-phase `slice build`
+/// (prepare + finalize): assembles, schema-gates, and persists
 /// `build/request.yaml` (parity with the native prepare), journals
 /// `target.execution.agent`, then brackets the dispatch + finalize tail
 /// with `slice.build.started` / `slice.build.succeeded` /
 /// `slice.build.failed`. The tail is the native one verbatim — report
 /// schema gate, slice-name match, [`enforce_report_no_blocking_on_success`],
-/// [`enforce_report_outputs_exist`], failure-status rejection, the
-/// `Refined → Built` transition, and the advisory
-/// [`evaluate_ui_surface_coherence`] — minus the three dropped shell
-/// hooks (`prepare.argv`, `host_prereq`, `finalize_verify`; see
-/// [`crate::orchestrate`]).
+/// [`enforce_report_outputs_exist`], failure-status rejection, and the
+/// `Refined → Built` transition — minus the three dropped shell hooks
+/// (`prepare.argv`, `host_prereq`, `finalize_verify`; see
+/// [`crate::orchestrate`]). The UI-surface coherence judgement lives
+/// in the target adapter's own guest (the vectis core's report gate).
 ///
 /// `manifest_inputs` is the bound target's declared build-inputs list
 /// (empty when the target declares none); `tree` names the snapshot
@@ -174,16 +170,11 @@ async fn dispatch_and_finalize(
 
     slice_actions::transition(slice_dir, LifecycleStatus::Built, now)?;
 
-    // A4 self-consistency: advisory warnings only — they never gate the
-    // transition (already done) or the outcome.
-    let warnings = evaluate_ui_surface_coherence(&report, &slice_dir.join("composition.yaml"));
-
     Ok(BuildOutcome {
         slice: slice.to_string(),
         target: report.target,
         status: report.status,
         findings: report.findings.len(),
-        warnings,
     })
 }
 

@@ -10,7 +10,7 @@ The skill body MUST:
 
 1. Acquire the plan lock when invoked standalone (`SPECIFY_PLAN_LOCK_HELD` unset) — before any plan verb; `specify plan next` and `specify slice merge run` are CLI-gated and refuse an unlocked driver with `plan-lock-not-held`.
 2. Resolve the slice via `specify plan next` (or validate the supplied `[slice-name]` arg matches it).
-3. Read and execute `adapters/targets/omnia/briefs/merge.md`'s pre-merge gate.
+3. Read and execute `adapters/targets/omnia/prose/briefs/merge.md`'s pre-merge gate.
 4. Run the AskQuestion confirmation when interactive (skip when `SPECIFY_PLAN_LOCK_HELD=1`).
 5. Run `specify slice merge run password-hash-rotate --format json` exactly once. The CLI atomically:
    - applies the delta merge against `.specify/specs/`,

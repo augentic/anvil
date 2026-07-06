@@ -343,8 +343,8 @@ mod unit {
         // flagging only its own over-cap brief.
         let mut model = empty_model();
         model.briefs = vec![
-            brief("adapters/targets/demo/briefs/build.md", BriefScope::Parent, 5),
-            brief("adapters/targets/demo/briefs/build/phase.md", BriefScope::Phase, 2),
+            brief("adapters/targets/demo/prose/briefs/build.md", BriefScope::Parent, 5),
+            brief("adapters/targets/demo/prose/briefs/build/phase.md", BriefScope::Phase, 2),
         ];
         let parent = hint_with_config(
             HintKind::Cardinality,
@@ -352,14 +352,14 @@ mod unit {
             Some(json!({ "max": 3 })),
         );
         let out = evaluate(&rule(), &parent, &[], &model, &mut 1).expect("evaluate");
-        assert_eq!(flagged_paths(&out), vec!["adapters/targets/demo/briefs/build.md"]);
+        assert_eq!(flagged_paths(&out), vec!["adapters/targets/demo/prose/briefs/build.md"]);
         let phase = hint_with_config(
             HintKind::Cardinality,
             "brief-phase-body-line-count",
             Some(json!({ "max": 1 })),
         );
         let out = evaluate(&rule(), &phase, &[], &model, &mut 1).expect("evaluate");
-        assert_eq!(flagged_paths(&out), vec!["adapters/targets/demo/briefs/build/phase.md"]);
+        assert_eq!(flagged_paths(&out), vec!["adapters/targets/demo/prose/briefs/build/phase.md"]);
     }
 
     #[test]

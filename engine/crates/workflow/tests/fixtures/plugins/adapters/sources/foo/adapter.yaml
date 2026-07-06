@@ -1,7 +1,4 @@
 name: foo
 version: "1.0.0"
 axis: source
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 description: Test fixture for the source axis collision case.

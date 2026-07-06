@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -232,44 +231,6 @@ fn stage_and_install_replaces_existing() {
     stage_and_install(&staged_replacement, &dest).expect("replace staged");
     assert_eq!(fs::read(dest.join(MODULE_FILENAME)).expect("read replacement"), b"replacement");
     assert!(!dest.join("nested").exists(), "replacement removes old tree");
-}
-
-#[test]
-fn scan_for_gc_isolates_scope() {
-    let cache_dir = scratch_dir("gc-cache");
-    let _env = cache_env(&cache_dir);
-
-    let kept_project = write_cached_version(
-        &project_scope(),
-        "demo-tool",
-        "1.0.0",
-        "https://example.test/demo-tool.wasm",
-    );
-    let stale_project = write_cached_version(
-        &project_scope(),
-        "demo-tool",
-        "1.1.0",
-        "https://example.test/demo-tool-new.wasm",
-    );
-    let stale_adapter = write_cached_version(
-        &plugin_target_scope(),
-        "demo-tool",
-        "1.0.0",
-        "https://example.test/demo-tool.wasm",
-    );
-
-    let kept = HashSet::from([(
-        "demo-tool".to_string(),
-        "1.0.0".to_string(),
-        "https://example.test/demo-tool.wasm".to_string(),
-    )]);
-
-    let project_gc = scan_for_gc(&project_scope(), &kept).expect("project gc");
-    assert_eq!(project_gc, vec![stale_project]);
-    assert!(kept_project.exists());
-
-    let adapter_gc = scan_for_gc(&plugin_target_scope(), &HashSet::new()).expect("adapter gc");
-    assert_eq!(adapter_gc, vec![stale_adapter]);
 }
 
 // `tool_dir` segments become literal cache path components, so a name

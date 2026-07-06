@@ -56,6 +56,7 @@ pub fn extract(file: &DiscoveredFile) -> Option<Brief> {
 /// `operation` is the phase directory segment.
 fn parse_brief_path(relative: &str) -> Option<(AdapterAxis, &str, &str, BriefScope)> {
     let (axis, adapter, tail) = super::path_util::parse_adapter_prefix(relative)?;
+    let tail = tail.strip_prefix("prose/").unwrap_or(tail);
     let inner = tail.strip_prefix("briefs/")?;
     let stem = inner.strip_suffix(".md")?;
     match inner.split_once('/') {

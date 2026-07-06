@@ -37,9 +37,11 @@ pub const EVIDENCE_JSON_SCHEMA: &str = include_str!("../../../../schemas/evidenc
 /// against this shape before `Discovery::merge_survey` makes it visible.
 pub const LEAD_JSON_SCHEMA: &str = include_str!("../../../../schemas/discovery/lead.schema.json");
 
-/// Schema for the lead-reconciliation request/response envelope
-/// (`specify plan propose`). A closed `kind: request | response`
-/// `oneOf` discriminates the dry-run catalog from the agent grouping.
+/// Schema for the lead-reconciliation request/response envelope.
+///
+/// Driven by the guest `plan author` orchestration. A closed `kind:
+/// request | response` `oneOf` discriminates the catalog from the
+/// agent grouping.
 pub const PROPOSAL_JSON_SCHEMA: &str =
     include_str!("../../../../schemas/discovery/proposal.schema.json");
 

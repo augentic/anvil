@@ -144,6 +144,10 @@ fn guest_owned_verbs_route_to_guest_leg() {
         vec!["plan", "execute"],
         vec!["plan", "author", "demo-change", "--intent", "demo"],
         vec!["slice", "refine", "demo-slice"],
+        vec!["slice", "build", "demo-slice"],
+        vec!["slice", "merge", "run", "demo-slice"],
+        vec!["source", "survey", "demo-source"],
+        vec!["source", "extract", "demo-source", "demo-lead", "--slice", "demo-slice"],
     ] {
         let output = specify_cmd()
             .current_dir(project.path())

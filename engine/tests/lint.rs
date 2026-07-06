@@ -303,24 +303,22 @@ mod framework_adapters {
             root,
             "adapters/sources/documentation/adapter.yaml",
             "name: documentation\nversion: \"1.0.0\"\naxis: source\n\
-description: Adapters-only source fixture.\n\
-briefs:\n  survey: briefs/survey.md\n  extract: briefs/extract.md\n",
+description: Adapters-only source fixture.\n",
         );
         write(
             root,
-            "adapters/sources/documentation/briefs/survey.md",
+            "adapters/sources/documentation/prose/briefs/survey.md",
             "# documentation.survey\n\nMinimal brief.\n\n## Inputs\n\n- intent.\n\n## Output contract\n\nLeads.\n",
         );
         write(
             root,
             "adapters/targets/omnia/adapter.yaml",
             "name: omnia\nversion: \"1.0.0\"\naxis: target\n\
-description: Adapters-only target fixture.\n\
-briefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\n",
+description: Adapters-only target fixture.\n",
         );
         write(
             root,
-            "adapters/targets/omnia/briefs/shape.md",
+            "adapters/targets/omnia/prose/briefs/shape.md",
             "# omnia.shape\n\nMinimal brief.\n\n## Inputs\n\n- spec.\n\n## Output contract\n\nA reconciled spec.\n",
         );
     }
@@ -409,7 +407,7 @@ extension:\n  name: withext\n  permissions:\n    read:\n      - $PROJECT_DIR\n",
         );
         write(
             temp.path(),
-            "adapters/targets/withext/briefs/shape.md",
+            "adapters/targets/withext/prose/briefs/shape.md",
             "# withext.shape\n\nMinimal brief.\n",
         );
 
@@ -605,7 +603,7 @@ Move the rule to the directory that owns its prefix.
     /// `adapters/sources/<name>/adapter.yaml` so
     /// `adapter.missing-manifest` does not fire when a `<name>` source
     /// adapter directory is created (e.g. by writing a rule under
-    /// `adapters/sources/<name>/rules/`).
+    /// `adapters/sources/<name>/prose/rules/`).
     fn write_source_adapter_manifest(root: &Path, name: &str) {
         let path = root.join("adapters").join("sources").join(name).join("adapter.yaml");
         fs::create_dir_all(path.parent().expect("source adapter parent"))
@@ -617,9 +615,6 @@ Move the rule to the directory that owns its prefix.
 version: 1.0.0
 axis: source
 description: Synthetic source adapter for specify lint framework golden tests.
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 "
             ),
         )
@@ -653,9 +648,7 @@ Body preserved so the rule passes shape validation.
 
     /// Write a minimal target-adapter manifest at
     /// `adapters/targets/<name>/adapter.yaml` that validates against
-    /// `target.schema.json`. The brief paths are strings only — they
-    /// never need to resolve on disk for the schema or brief-size
-    /// predicates to short-circuit.
+    /// `target.schema.json`.
     fn write_target_adapter_manifest(root: &Path, name: &str) {
         let path = root.join("adapters").join("targets").join(name).join("adapter.yaml");
         fs::create_dir_all(path.parent().expect("adapter parent")).expect("mkdir adapter parent");
@@ -666,10 +659,6 @@ Body preserved so the rule passes shape validation.
 version: 1.0.0
 axis: target
 description: Synthetic target adapter for specify lint framework golden tests.
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 "
             ),
         )
@@ -779,7 +768,7 @@ briefs:
         write_source_adapter_manifest(temp.path(), "documentation");
         write_codex_rule(
             temp.path(),
-            "adapters/sources/documentation/rules/src-001.md",
+            "adapters/sources/documentation/prose/rules/src-001.md",
             &valid_rule_body("SRC-001"),
         );
 
@@ -831,7 +820,7 @@ briefs:
             .expect("bad manifest");
         write_codex_rule(
             temp.path(),
-            "adapters/targets/omnia/rules/frame-misplaced.md",
+            "adapters/targets/omnia/prose/rules/frame-misplaced.md",
             &valid_rule_body("FRAME-001"),
         );
 
@@ -934,7 +923,7 @@ briefs:
         write_source_adapter_manifest(temp.path(), "documentation");
         write_codex_rule(
             temp.path(),
-            "adapters/sources/documentation/rules/src-001.md",
+            "adapters/sources/documentation/prose/rules/src-001.md",
             &valid_rule_body("SRC-001"),
         );
 
@@ -1460,6 +1449,91 @@ mod project {
         assert!(
             important >= 1 && suggestion >= 1,
             "both tiers must surface (exit driven by the blocking tier, not count); envelope:\n{envelope:#}"
+        );
+    }
+
+    /// The surviving project-scope WASI tool path: a `kind: tool` rule
+    /// naming a declared `tools[]` entry resolves the component through
+    /// `specify_registry::resolver::resolve` (file:// source into an
+    /// isolated cache) and executes it under `WasiRunner`. The `echo`
+    /// fixture exits 0 with non-`DiagnosticReport` stdout, which the
+    /// tool evaluator folds to zero findings — so a clean exit proves
+    /// the resolve + run leg worked end-to-end (a resolver or runtime
+    /// failure surfaces as a lint error and a non-zero exit).
+    #[test]
+    fn wasi_tool_path_runs() {
+        let root = TempDir::new().expect("create tempdir");
+        let project = root.path().join("project");
+        let codex = root.path().join("rules");
+        let cache = root.path().join("tool-cache");
+        fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
+        fs::create_dir_all(codex.join("adapters/shared/rules/universal")).expect("mkdir codex");
+        fs::create_dir_all(&cache).expect("mkdir tool cache");
+
+        let wasm = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/tools-test-project/wasm/echo.wasm");
+        assert!(wasm.is_file(), "echo fixture missing at {}", wasm.display());
+        fs::write(
+            project.join(".specify").join("project.yaml"),
+            format!(
+                "name: lint-wasi-e2e\ntools:\n  - name: echo\n    version: 0.1.0\n    source: \"file://{}\"\n",
+                wasm.display()
+            ),
+        )
+        .expect("write project.yaml");
+
+        fs::write(
+            codex.join("adapters/shared/rules/universal/uni-200.md"),
+            concat!(
+                "---\n",
+                "id: UNI-200\n",
+                "title: Run the echo tool\n",
+                "severity: important\n",
+                "trigger: exercises the declared-tool WASI dispatch path.\n",
+                "lint_mode: deterministic\n",
+                "rule_hints:\n",
+                "  - kind: tool\n",
+                "    value: echo\n",
+                "---\n",
+                "## Rule\n\nDispatch the declared echo tool.\n",
+            ),
+        )
+        .expect("write UNI-200");
+
+        let mut cmd = Command::cargo_bin("specify").expect("cargo_bin(specify)");
+        cmd.arg("--format")
+            .arg("json")
+            .arg("lint")
+            .arg("project")
+            .arg("--target")
+            .arg("omnia")
+            .arg("--project-dir")
+            .arg(&project)
+            .arg("--rules-root")
+            .arg(&codex)
+            .arg("--output-format")
+            .arg("json")
+            .env_remove("RULES_ROOT")
+            .env("SPECIFY_EXTENSIONS_CACHE", &cache)
+            .env(
+                "SPECIFY_WASMTIME_CACHE",
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("target").join("wasmtime-cache"),
+            );
+        let output = cmd.output().expect("specify invocation");
+
+        assert_eq!(
+            output.status.code(),
+            Some(0),
+            "tool resolved + ran clean, so the scan must exit 0; stderr:\n{}\nstdout:\n{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let stdout = std::str::from_utf8(&output.stdout).expect("utf8 stdout");
+        let validator = compile_review_result_validator();
+        assert_validates(&validator, stdout, "review-result");
+        assert!(
+            cache.join("project--lint-wasi-e2e/echo/0.1.0").is_dir(),
+            "resolve must materialise the tool in the isolated cache"
         );
     }
 }

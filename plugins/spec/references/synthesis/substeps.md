@@ -1,6 +1,6 @@
 # Substep contract
 
-The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `shape` brief; later sections never rewrite earlier ones. `specify slice synthesize --from` projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
+The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `shape` brief; later sections never rewrite earlier ones. The `specify slice refine` persist tail projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
 
 ## 1. `proposal.md`
 
@@ -15,7 +15,7 @@ Required H2 sections, in order: `## Why`, `## Domains`, `## Non-goals`. Each `##
 
 ## 2. `specs/<domain>/spec.md`
 
-Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Domains` entry, keyed by `domain`; `specify slice synthesize` writes one file per domain at `specs/<domain>/spec.md`. The domain slug is kebab-case and maps directly from the `## Domains` bullet. The target shape brief explains how to choose domains for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
+Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Domains` entry, keyed by `domain`; the synthesis kernel writes one file per domain at `specs/<domain>/spec.md`. The domain slug is kebab-case and maps directly from the `## Domains` bullet. The target shape brief explains how to choose domains for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
 
 Author each requirement as prose only — heading and body. The kernel injects the `ID:` / `Sources:` / `Status:` lines and the headline tag from `model.yaml`; see [`requirement-block.md`](requirement-block.md) for the prose you write and the block the kernel renders.
 
@@ -32,7 +32,7 @@ Each requirement may include one or more scenarios (rendered as `#### Scenario:`
 
 ## 3. `design.md`
 
-Technical implementation guidance. Folds in the target `shape` brief (`adapters/targets/<target>/briefs/shape.md`) and any source claim that informs implementation but not behaviour. Required H2s, in order:
+Technical implementation guidance. Folds in the target `shape` brief (`adapters/targets/<target>/prose/briefs/shape.md`) and any source claim that informs implementation but not behaviour. Required H2s, in order:
 
 1. `## Domain model` — types, IDs, newtypes. Drawn from `type` claims on code Evidence and from `requirement` claim subjects on documentation Evidence; shaped by the target's `shape` (Omnia provider DI, Vectis Crux idioms, contracts format choice).
 2. `## APIs and integrations` — external surfaces (HTTP routes, message topics, WebSocket exports, contract endpoints). Drawn from `excerpt` and `call` claims and from `requirement` claims that name an external surface.

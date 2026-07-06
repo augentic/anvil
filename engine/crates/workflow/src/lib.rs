@@ -17,7 +17,6 @@ pub mod judgment;
 pub mod merge;
 pub mod name;
 pub mod orchestrate;
-pub mod plan_lock;
 pub mod platform;
 #[cfg(feature = "native")]
 pub mod plugins;

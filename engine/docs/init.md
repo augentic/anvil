@@ -19,7 +19,7 @@ the project will use. The CLI writes:
 
 - `project.yaml` (adapter identifier, `specify` floor, and
   `platforms` when the target declares a platform capability).
-- `.specify/` (slices, archive, plans, cache, workspace, plan.lock).
+- `.specify/` (slices, archive, scratch, journal, guest.lock marker).
 - `.specify/wasm-pkg.toml` — project-local wasm-pkg registry config,
   prefilled with the canonical `specify -> augentic.io` namespace
   mapping. Edit it to point first-party tool fetches at an internal

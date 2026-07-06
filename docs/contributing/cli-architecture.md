@@ -1,6 +1,6 @@
 # CLI Architecture
 
-The `specify` CLI lives in the in-tree [`engine/`](../../engine) Cargo workspace. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify extension run`.
+The `specify` CLI lives in the in-tree [`engine/`](../../engine) Cargo workspace. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as in-guest adapter library code inside each adapter's committed `guest.wasm`.
 
 ## Core crate dependency graph
 
@@ -21,7 +21,7 @@ The crates form a layered dependency graph with `specify-error` at the base:
 
 ![specify CLI crate dependency graph](../assets/diagrams/contributing/cli-crate-graph.svg)
 
-Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers ship as a committed `adapter.wasm` declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/adapter.yaml) (its singular `extension` block): the `vectis` extension exposes `validate` for UI artifact validation and `scaffold` for render-only scaffolding. The root CLI is responsible for resolving, permissioning, and running that extension; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
+Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers ship as a committed `adapter.wasm` declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/adapter.yaml) (its singular `extension` block): the `vectis` extension exposes `validate` for UI artifact validation and `scaffold` for render-only scaffolding. The root CLI is responsible for resolving, permissioning, and running that extension; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
 
 ## Dispatch pattern
 
@@ -83,7 +83,7 @@ The mapping from error variants to exit codes:
 
 ## Error handling
 
-Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Adapter tool diagnostics written by a WASI guest pass through `specify extension run` on stdout/stderr when the guest starts successfully.
+Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Project-scope WASI tool diagnostics surface through `specify lint project`'s declared-tool dispatch.
 
 The pattern for a command handler:
 

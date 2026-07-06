@@ -1,27 +1,17 @@
-# specify plan propose
+# Lead reconciliation (inside `specify plan author`)
 
-Reconcile surveyed `discovery.md` leads into the plan's `slices[]` grouping. Two modes; exactly one is required.
+The reconcile leg inside the guest-routed `specify plan author` groups the surveyed `discovery.md` leads into the plan's `slices[]` rows (the standalone two-phase envelope verb retired at the Omnia-migration cutover).
 
-```bash
-specify plan propose --dry-run [--format json]
-specify plan propose --from <response.json> [--format json]
-```
+- The **request** side is a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter).
+- The **write** side is the **only slice writer**. It schema-validates the judgment response (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates explicit slice names, binds projects, atomically replaces `plan.yaml.slices[]`, then emits `plan.reconcile.completed`. It never trusts a stale snapshot.
 
-- `--dry-run` emits the **request envelope** — a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). It writes no plan state and emits no journal event; its only filesystem effect is recreating the plan scratch lane (`.specify/scratch/plan/`) empty, so `--from` can never consume a stale response envelope from a prior run.
-- `--from <response.json>` is the **only slice writer**. It schema-validates the raw response file (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates explicit slice names, binds projects, atomically replaces `plan.yaml.slices[]`, then emits `plan.reconcile.completed`. It never trusts a prior dry-run snapshot.
-
-Passing neither mode fails with `plan-propose-mode-required`; passing both is rejected by the argument parser.
-
-The response file's canonical location is `.specify/scratch/plan/propose-response.json` — the gitignored plan scratch lane that `--dry-run` just reset. Never write the envelope to the project root.
-
-**Replaceable gate.** `--from` runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise `plan-reconcile-plan-not-replaceable`.
+**Replaceable gate.** The write runs only while the plan is replaceable — `lifecycle: pending` and every entry `pending`; otherwise `plan-reconcile-plan-not-replaceable`.
 
 Validation codes (all exit 2):
 
 | Code | Meaning |
 |------|---------|
-| `plan-propose-mode-required` | Neither `--dry-run` nor `--from` was given. |
-| `proposal-schema` | The `--from` response file failed JSON-Schema validation. |
+| `proposal-schema` | The judgment response failed JSON-Schema validation. |
 | `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
 | `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
 | `lead-coverage-orphan` | Grouped leads do not achieve total coverage — a surveyed lead is referenced by no slice. |
@@ -33,7 +23,7 @@ Validation codes (all exit 2):
 | `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |
 | `plan-reconcile-plan-not-replaceable` | The plan is approved or carries a non-pending entry. |
 
-Advisory findings (non-blocking; `--from` still succeeds, exit 0):
+Advisory findings (non-blocking; the write still succeeds, exit 0):
 
 | Code | Meaning |
 |------|---------|
@@ -42,4 +32,4 @@ Advisory findings (non-blocking; `--from` still succeeds, exit 0):
 | `slice-divergence-orphan-values` | A slice records `disagreements[]` without a `divergence` flag. |
 | `greenfield-seed-shadowed` | A bound project still declares a `registry.yaml` `greenfield_seed` after acquiring a baseline (`.specify/specs/` exists); the derived `surface[]` supersedes the seed — remove it. |
 
-Envelopes validate against `schemas/discovery/proposal.schema.json` (`kind: request` for `--dry-run`, `kind: response` for `--from`). Full CLI reference: [specify plan](https://specify.augentic.io/reference/cli/plan.html#specify-plan-propose).
+Envelopes validate against `schemas/discovery/proposal.schema.json` (closed `kind: request | response`). Full CLI reference: [specify plan](https://specify.augentic.io/reference/cli/plan.html).

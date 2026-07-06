@@ -100,7 +100,7 @@ Agent-critical prose is **runtime-canonical** under [`plugins/spec/references/`]
 | [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) | Cross-cutting "do not / never / always" rules for skills |
 | [`plugins/spec/references/specialist-usage.md`](../../plugins/spec/references/specialist-usage.md) | How specialists consume the four artifacts |
 | [`plugins/spec/references/reconciliation.md`](../../plugins/spec/references/reconciliation.md) | Plan-time leads and slice-time evidence |
-| [`plugins/spec/references/cli/plan-propose.md`](../../plugins/spec/references/cli/plan-propose.md) | `specify plan propose` contract for `/spec:plan` |
+| [`plugins/spec/references/cli/plan-propose.md`](../../plugins/spec/references/cli/plan-propose.md) | lead-reconciliation contract behind `specify plan author` |
 
 Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
 

@@ -20,12 +20,12 @@ Specify organises work in three layers above the CLI substrate. See [The layered
 
 ## When you want full manual control
 
-Drive one slice without the execute loop. Hold the plan lock for the session by running the driver under `specify plan lock -- <cmd>` (see the execute skill's plan-lock reference) — `specify plan next` and `specify slice merge run` refuse an unlocked driver with `plan-lock-not-held`. The Gate 1 stamp is exempt:
+Drive one slice without the execute loop — the breakout verbs need no driver lock (mutual exclusion is guest-owned by the `plan execute` marker; the lifecycle gates fence breakouts). The Gate 1 stamp comes first:
 
 ```bash
 specify plan transition <name> approved   # exempt from the lock
 # hold .specify/plan.lock for the driver's lifetime
-specify plan lock -- bash -c '
+bash -c '
   specify plan next
   # /spec:refine <slice>, /spec:build <slice>, /spec:merge <slice>
 '

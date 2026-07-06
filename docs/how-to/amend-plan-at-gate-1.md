@@ -10,7 +10,7 @@ Gate 1 is the operator review step between plan authoring and execution. `/spec:
 
 | Goal | Prefer |
 | --- | --- |
-| Rethink cross-source grouping | Re-run `specify plan propose --from` (replaces all slices) |
+| Rethink cross-source grouping | Re-run `specify plan author` (replaces all slices) |
 | Defer a lead out of this change | `specify plan remove <entry>` |
 | Split or merge entries | `specify plan add` + `specify plan amend` + `specify plan remove` — see the [plan command reference](../reference/cli/plan.md) |
 | Divergence stamp, authority override, single-source fix | `specify plan amend <entry>` (the scalpel) |

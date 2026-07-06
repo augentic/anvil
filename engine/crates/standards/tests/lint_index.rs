@@ -48,15 +48,15 @@ mod framework_indexer {
         let tempdir = tempfile::tempdir().expect("tempdir");
         crate::common::copy_dir(&fixture_src(), tempdir.path());
 
-        // `agent-teams.md` symlink in `adapters/targets/omnia/references/`
+        // `agent-teams.md` symlink in `adapters/targets/omnia/prose/references/`
         // pointing at the canonical `docs/reference/review-team-protocol.md`.
         // The `references/` parent isn't checked in (git doesn't track empty
         // dirs); create it before placing the link so the cross-platform
         // symlink calls below have a valid parent.
-        let link_dir = tempdir.path().join("adapters/targets/omnia/references");
+        let link_dir = tempdir.path().join("adapters/targets/omnia/prose/references");
         fs::create_dir_all(&link_dir).expect("create link parent");
         let link_path = link_dir.join("agent-teams.md");
-        let link_target = "../../../../docs/reference/review-team-protocol.md";
+        let link_target = "../../../../../docs/reference/review-team-protocol.md";
         #[cfg(unix)]
         std::os::unix::fs::symlink(link_target, &link_path).expect("create unix symlink");
         #[cfg(windows)]
@@ -123,7 +123,7 @@ mod framework_indexer {
         let symlink = model
             .symlinks
             .iter()
-            .find(|s| s.path == "adapters/targets/omnia/references/agent-teams.md")
+            .find(|s| s.path == "adapters/targets/omnia/prose/references/agent-teams.md")
             .expect("symlink fact recorded");
         assert!(!symlink.broken);
         assert_eq!(
@@ -490,7 +490,7 @@ mod model_round_trip {
                 image: false,
             }],
             symlinks: vec![Symlink {
-                path: "adapters/targets/omnia/references/agent-teams.md".into(),
+                path: "adapters/targets/omnia/prose/references/agent-teams.md".into(),
                 target: "../../../shared/agent-teams.md".into(),
                 broken: false,
                 resolved_target: Some("docs/reference/review-team-protocol.md".into()),
@@ -518,7 +518,7 @@ mod model_round_trip {
                 raw: "// specify-ignore: UNI-014 — documented rationale that is long enough".into(),
             }],
             briefs: vec![Brief {
-                path: "adapters/sources/intent/briefs/survey.md".into(),
+                path: "adapters/sources/intent/prose/briefs/survey.md".into(),
                 axis: AdapterAxis::Sources,
                 adapter: "intent".into(),
                 operation: "survey".into(),

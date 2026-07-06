@@ -9,23 +9,15 @@ use clap::Subcommand;
 #[derive(Debug, Subcommand)]
 pub enum AdapterAction {
     /// Build a self-contained adapter artifact: dereference the in-repo
-    /// `adapters/shared/` symlinks into real bytes, exclude the declared
-    /// `extension/` source and the dev/VCS cruft, and pack the tree into
-    /// a byte-deterministic layer (RFC-48 D1/D9/D12). Reports the layer's
+    /// `adapters/shared/` symlinks into real bytes, exclude the Rust
+    /// source trees and the dev/VCS cruft, and pack the tree into a
+    /// byte-deterministic layer (RFC-48 D1/D9/D12). Reports the layer's
     /// content digest and entry count.
     Build {
         /// Adapter directory holding `adapter.yaml` (defaults to the
         /// current directory).
         #[arg(long, default_value = ".")]
         path: PathBuf,
-        /// Pack and report the layer digest without compiling the
-        /// declared extension or writing the committed `adapter.wasm`.
-        #[arg(long)]
-        dry_run: bool,
-        /// Recompile the declared extension crate to the committed
-        /// `adapter.wasm` even when one already exists (RFC-48 D10).
-        #[arg(long)]
-        refresh_extension: bool,
     },
     /// Pack the adapter, publish it as an immutable, content-addressed
     /// single-layer OCI artifact under `reference`, pull it back, and

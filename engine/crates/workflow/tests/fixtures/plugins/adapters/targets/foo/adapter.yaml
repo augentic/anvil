@@ -1,8 +1,4 @@
 name: foo
 version: "1.0.0"
 axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 description: Test fixture for the target axis collision case.

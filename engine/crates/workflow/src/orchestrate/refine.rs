@@ -5,9 +5,9 @@
 //! `slice create --if-exists continue` (re-entry safe — a slice parked
 //! at `refining` resumes), the per-binding `source extract` fan-out
 //! (via [`super::extract`]), the synthesis judgment leg with seam
-//! guidance (via [`super::synthesize`]), the native persist tail
-//! ([`persist_synthesized`] — the same pipeline `slice synthesize
-//! --from` runs), `slice validate`'s gate sweep + adapter rules, and
+//! guidance (via [`super::synthesize`]), the persist tail
+//! ([`persist_synthesized`] — the same pipeline the retired `slice
+//! synthesize --from` ran), `slice validate`'s gate sweep + adapter rules, and
 //! the `refined` transition.
 //!
 //! Journal cadence composes the native verbs': extract events from
@@ -93,7 +93,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
     }
 
     // Assemble the kernel context the judgment leg projects against —
-    // the same inputs `slice synthesize --from` distils.
+    // the same inputs the retired `slice synthesize --from` distilled.
     let source_inputs = read_source_inputs(&slice_dir, &entry)?;
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();

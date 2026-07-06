@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use super::*;
 use crate::Platform;
 
@@ -9,9 +7,10 @@ use crate::Platform;
 // here (RFC-50). Adapter-specific manifest invariants belong in the
 // adapter's own suite under `specify-adapters`.
 //
-// The nine former single-purpose tests collapse into three: the manifest
-// serde matrix, the typed `pub(super)` gate functions (which cannot re-home),
-// and the cache-path router. Every former assertion is preserved.
+// Three collapsed tests: the manifest serde matrix, the typed
+// `pub(super)` gate functions (which cannot re-home), and the
+// cache-path router. Every former assertion over the post-cutover
+// manifest shape is preserved.
 
 #[test]
 fn axis_routing() {
@@ -31,17 +30,14 @@ fn axis_routing() {
     );
 }
 
-#[expect(clippy::too_many_lines, reason = "collapsed serde matrix: one block per former test")]
 #[test]
 fn manifest_serde_shapes() {
-    // Source operations are a closed enum; BTreeMap key order is extract < survey.
+    // The operation set derives from the closed WIT contract:
+    // extract < survey for sources, build < merge < shape for targets.
     let source: SourceAdapter = serde_saphyr::from_str(
         r"name: demo-source
 version: 1.0.0
 axis: source
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 ",
     )
     .expect("parse source");
@@ -54,15 +50,10 @@ briefs:
             .expect("reparse");
     assert_eq!(source, reparsed);
 
-    // Target operations order build < merge < shape (kebab-case BTreeMap keys).
     let target: TargetAdapter = serde_saphyr::from_str(
         r"name: demo-target
 version: 1.0.0
 axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 ",
     )
     .expect("parse target");
@@ -71,150 +62,47 @@ briefs:
         vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape]
     );
 
-    // `execution: agent` round-trips kebab-case; `tool` parses on the target axis.
-    let manifest: SourceAdapter = serde_saphyr::from_str(
-        r"name: demo-source
-version: 1.0.0
-axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
-",
-    )
-    .expect("parse agent");
-    assert_eq!(manifest.execution, Some(Execution::Agent));
-    let rendered = serde_saphyr::to_string(&manifest).expect("serialise");
-    assert!(rendered.contains("execution: agent"), "execution round-trips kebab-case:\n{rendered}");
-    assert_eq!(manifest, serde_saphyr::from_str::<SourceAdapter>(&rendered).expect("reparse"));
-    let target: TargetAdapter = serde_saphyr::from_str(
-        r"name: demo-target
-version: 1.0.0
-axis: target
-execution: tool
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-",
-    )
-    .expect("parse tool");
-    assert_eq!(target.execution, Some(Execution::Tool));
-
-    // RFC-48 D11: the singular `extension` object carries an optional run
-    // `name` plus structured `{read, write}` permissions and round-trips.
-    let manifest: TargetAdapter = serde_saphyr::from_str(
-        r#"name: demo-target
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-extension:
-  name: demo-tool
-  permissions:
-    read: ["$PROJECT_DIR/demo"]
-    write: []
-"#,
-    )
-    .expect("parse");
-    let extension = manifest.extension.as_ref().expect("extension declared");
-    assert_eq!(extension.name.as_deref(), Some("demo-tool"));
-    assert_eq!(extension.permissions.read, vec!["$PROJECT_DIR/demo".to_string()]);
-    assert!(extension.permissions.write.is_empty());
-    assert_eq!(
-        manifest,
-        serde_saphyr::from_str::<TargetAdapter>(
-            &serde_saphyr::to_string(&manifest).expect("serialise")
-        )
-        .expect("reparse")
-    );
-
-    // An empty `extension: {}` defaults the run name to the adapter name.
-    let omitted: TargetAdapter = serde_saphyr::from_str(
-        r"name: demo-target
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-extension: {}
-",
-    )
-    .expect("parse");
-    assert!(omitted.extension.as_ref().expect("extension").name.is_none());
-
-    // Target-only prepare hook and catalog capability round-trip.
-    let manifest: TargetAdapter = serde_saphyr::from_str(
-        r"name: demo-target
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-extension: {}
-prepare:
-  argv: [prepare, build]
-host_prereq:
-  script: scripts/build-host-prereq.sh
-finalize_verify:
-  script: scripts/build-finalize-verify.sh
-catalog:
-  infer: true
-",
-    )
-    .expect("parse prepare + catalog");
-    assert_eq!(manifest.prepare.as_ref().expect("prepare").argv, ["prepare", "build"]);
-    assert_eq!(
-        manifest.host_prereq.as_ref().expect("host_prereq").script,
-        "scripts/build-host-prereq.sh"
-    );
-    assert_eq!(
-        manifest.finalize_verify.as_ref().expect("finalize_verify").script,
-        "scripts/build-finalize-verify.sh"
-    );
-    assert!(manifest.catalog.as_ref().expect("catalog").infer);
-
-    // The retired plural `tools[]` array and per-extension version/source/sha256 are denied.
-    serde_saphyr::from_str::<TargetAdapter>(
-        r"name: demo-target
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-tools:
-  - name: demo-tool
-    version: 1.0.0
-",
-    )
-    .expect_err("the plural tools[] array no longer parses");
-    for retired in ["version: 1.0.0", "source: https://example.com/x.wasm", "sha256: abc"] {
-        let yaml = format!(
-            "name: demo-target\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\nextension:\n  name: demo-tool\n  {retired}\n",
+    // The retired old-stack manifest keys no longer parse: the typed
+    // structs are `deny_unknown_fields`, so `briefs` / `execution` /
+    // `extension` / `prepare` / `catalog` all fail the serde boundary.
+    for retired in [
+        "briefs:\n  survey: briefs/survey.md\n  extract: briefs/extract.md",
+        "execution: agent",
+        "extension: {}",
+    ] {
+        let yaml = format!("name: demo-source\nversion: 1.0.0\naxis: source\n{retired}\n");
+        assert!(
+            serde_saphyr::from_str::<SourceAdapter>(&yaml).is_err(),
+            "source manifest must reject retired key block `{retired}`",
         );
+    }
+    for retired in [
+        "briefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md",
+        "execution: tool",
+        "extension: {}",
+        "prepare:\n  argv: [prepare, build]",
+        "host_prereq:\n  script: scripts/build-host-prereq.sh",
+        "finalize_verify:\n  script: scripts/build-finalize-verify.sh",
+        "catalog:\n  infer: true",
+    ] {
+        let yaml = format!("name: demo-target\nversion: 1.0.0\naxis: target\n{retired}\n");
         assert!(
             serde_saphyr::from_str::<TargetAdapter>(&yaml).is_err(),
-            "extension must reject retired field `{retired}`",
+            "target manifest must reject retired key block `{retired}`",
         );
     }
 
+    manifest_version_fields();
+    manifest_inputs();
+    manifest_platforms();
+}
+
+fn manifest_version_fields() {
     // RFC-47 D1: `version` is a semver string on the wire, typed in memory.
     let manifest: SourceAdapter = serde_saphyr::from_str(
         r"name: demo-source
 version: 2.3.4
 axis: source
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 ",
     )
     .expect("parse");
@@ -227,11 +115,6 @@ briefs:
 version: 1.0.0
 specify: "0.28.0"
 axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 "#,
     )
     .expect("parse");
@@ -243,59 +126,68 @@ briefs:
         r"name: demo-source
 version: 1.0.0
 axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 ",
     )
     .expect("parse");
     assert_eq!(source.requires_specify, None);
+}
 
-    // `shape` is a target operation; on a source manifest it must fail at the
-    // typed `briefs: BTreeMap<SourceOperation, _>` boundary.
-    let err = serde_saphyr::from_str::<SourceAdapter>(
-        r"name: bogus
-version: 1.0.0
-axis: source
-briefs:
-  survey: briefs/survey.md
-  shape: briefs/shape.md
-",
-    )
-    .expect_err("unknown source operation must be rejected");
-    let detail = err.to_string();
-    assert!(
-        detail.contains("shape") || detail.contains("survey"),
-        "expected closed-enum diagnostic, got: {detail}"
-    );
-
-    // Absent platforms default to None and elide on write.
-    let bare: TargetAdapter = serde_saphyr::from_str(
+fn manifest_inputs() {
+    // Target-only `inputs` round-trip; absent inputs default to empty and
+    // elide on write.
+    let with_inputs: TargetAdapter = serde_saphyr::from_str(
         r"name: demo-target
 version: 1.0.0
 axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
+inputs:
+  - path: tokens.yaml
+    required: true
+  - path: assets.yaml
+    required: false
 ",
     )
-    .expect("parse");
-    assert_eq!(bare.platforms, None, "absent platforms must default to None");
-    let rendered = serde_saphyr::to_string(&bare).expect("serialise");
+    .expect("parse inputs");
+    assert_eq!(with_inputs.inputs.len(), 2);
+    assert_eq!(with_inputs.inputs[0].path, "tokens.yaml");
+    assert!(with_inputs.inputs[0].required);
+    assert!(!with_inputs.inputs[1].required);
+    assert_eq!(
+        with_inputs,
+        serde_saphyr::from_str::<TargetAdapter>(
+            &serde_saphyr::to_string(&with_inputs).expect("serialise")
+        )
+        .expect("reparse")
+    );
+    let target: TargetAdapter = serde_saphyr::from_str(
+        r"name: demo-target
+version: 1.0.0
+axis: target
+",
+    )
+    .expect("parse target");
+    assert!(target.inputs.is_empty(), "absent inputs default to empty");
+    let rendered = serde_saphyr::to_string(&target).expect("serialise");
+    assert!(!rendered.contains("inputs"), "absent inputs must elide on write:\n{rendered}");
+}
+
+fn manifest_platforms() {
+    // Absent platforms default to None and elide on write.
+    let target: TargetAdapter = serde_saphyr::from_str(
+        r"name: demo-target
+version: 1.0.0
+axis: target
+",
+    )
+    .expect("parse target");
+    let rendered = serde_saphyr::to_string(&target).expect("serialise");
+    assert_eq!(target.platforms, None, "absent platforms must default to None");
     assert!(!rendered.contains("platforms"), "absent platforms must elide on write:\n{rendered}");
-    assert_eq!(bare, serde_saphyr::from_str::<TargetAdapter>(&rendered).expect("reparse"));
 
     // A required capability carries allowed + default platform sets.
     let required: TargetAdapter = serde_saphyr::from_str(
         r"name: demo-target
 version: 1.0.0
 axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 platforms:
   required: true
   allowed:
@@ -327,10 +219,6 @@ platforms:
         r"name: demo-optional
 version: 1.0.0
 axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 platforms:
   required: false
   allowed:
@@ -353,36 +241,6 @@ platforms:
 
 #[test]
 fn typed_gates() {
-    let manifest = TargetAdapter {
-        name: "demo-target".into(),
-        version: semver::Version::new(1, 0, 0),
-        requires_specify: None,
-        axis: Axis::Target,
-        execution: Some(Execution::Agent),
-        briefs: BTreeMap::from([
-            (TargetOperation::Shape, "briefs/shape.md".into()),
-            (TargetOperation::Build, "briefs/build.md".into()),
-            (TargetOperation::Merge, "briefs/merge.md".into()),
-        ]),
-        extension: None,
-        inputs: Vec::new(),
-        description: None,
-        platforms: None,
-        prepare: Some(PrepareHookDeclaration {
-            argv: vec!["prepare".into(), "build".into()],
-        }),
-        host_prereq: None,
-        finalize_verify: None,
-        catalog: None,
-    };
-    let Error::Validation { code, .. } =
-        check_prepare_requires_extension(&manifest, Path::new("adapter.yaml"))
-            .expect_err("prepare without extension must be rejected")
-    else {
-        panic!("expected Error::Validation");
-    };
-    assert_eq!(code, "adapter-prepare-without-extension");
-
     // The belt-and-suspenders version gate: a non-semver version is `adapter-version-malformed`.
     let Error::Validation { code, .. } =
         check_version(&serde_json::json!({ "version": "1" }), Path::new("adapter.yaml"))

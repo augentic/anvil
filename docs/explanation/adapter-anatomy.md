@@ -56,7 +56,7 @@ briefs:
   merge: briefs/merge.md
 ```
 
-Shared rules: kebab-case `name` unique per axis; required `version` exact-semver string that is the adapter's identity (resolution keys on it, and synthesized refs render `name@<semver>`); optional `specify` host-CLI compatibility floor (an exact-semver minimum platform version the adapter needs, enforced at resolve time and aborting with `adapter-cli-too-old` on exit 3 when the running binary is older; absent means no floor); required closed `execution` mode (sources are agent-only, so `source.schema.json` enumerates `agent`; targets may declare `agent` | `tool`); `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; an optional singular `extension` object declaring at most one WASI helper, whose bytes ship as a committed `adapter.wasm` at the adapter root (built from a co-located `extension/` crate and bundled into the published artifact) and resolve through `specify extension run <name>`. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+Shared rules: kebab-case `name` unique per axis; required `version` exact-semver string that is the adapter's identity (resolution keys on it, and synthesized refs render `name@<semver>`); optional `specify` host-CLI compatibility floor (an exact-semver minimum platform version the adapter needs, enforced at resolve time and aborting with `adapter-cli-too-old` on exit 3 when the running binary is older; absent means no floor); required closed `execution` mode (sources are agent-only, so `source.schema.json` enumerates `agent`; targets may declare `agent` | `tool`); `briefs.keys()` is the canonical operation set (closed per axis by `source.schema.json` and `target.schema.json` — sources expose `survey` / `extract`, targets expose `shape` / `build` / `merge`); each declared key resolves to a brief markdown file; deterministic helper behaviour ships as in-guest library code inside the adapter's committed `guest.wasm` (there is no separate extension declaration or host-dispatched WASI helper). Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 
@@ -123,7 +123,7 @@ Target-specific structured outputs are produced by `build` alongside the code th
 
 The adapter loader (`crates/workflow/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
 
-CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and `specify plan propose --from` write slice bindings into `plan.yaml`.
+CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and the reconcile leg inside `specify plan author` write slice bindings into `plan.yaml`.
 
 ## Authority resolution
 
@@ -174,10 +174,10 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 ## Authoring checklist
 
 1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
-2. **Create the directory.** `adapters/sources/<name>/` or `adapters/targets/<name>/` with `adapter.yaml` and a `briefs/` subdirectory.
+2. **Create the directory.** `adapters/sources/<name>/` or `adapters/targets/<name>/` with `adapter.yaml` and a `prose/briefs/` subdirectory (plus `prose/references/` and, where needed, `prose/rules/`).
 3. **Declare the operations.** Populate `briefs.<operation>` for each operation the adapter implements; `briefs.keys()` is the operation set and is closed per axis by the schema.
 4. **Write the briefs.** Each brief is a markdown file the host hands to the agent. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `shape` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
-5. **Declare an extension (optional).** Declare at most one WASI helper in the singular `extension` object; its committed `adapter.wasm` (built from the co-located `extension/` crate) ships in the adapter artifact and runs via `specify extension run <name>`.
+5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's committed `guest.wasm`; there is no separate extension declaration.
 6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make lint` runs the documentation predicates and the schema validators.
 
 ## Adapter manifests vs Cursor plugin manifests

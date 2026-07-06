@@ -78,9 +78,9 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
-### `specify plan propose --dry-run`
+### Lead-reconciliation request envelope {#plan-reconcile-request}
 
-Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
+The reconcile leg inside the guest-routed `specify plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
 
 ```json
 {
@@ -97,9 +97,9 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
 }
 ```
 
-### `specify plan propose --from`
+### Lead-reconciliation write summary {#plan-reconcile-write}
 
-Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
+Success summary after the reconcile kernel projects the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
 
 ```json
 {
@@ -265,9 +265,9 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 }
 ```
 
-### `specify slice synthesize --dry-run`
+### Synthesis envelopes {#synthesis-envelopes}
 
-Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -294,7 +294,7 @@ Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry 
 }
 ```
 
-### `specify slice synthesize --from`
+### Synthesis persist summary
 
 Success summary after the projection kernel persisted the artifacts. `artifacts[]` lists the slice-relative paths written, in write order. Emits `slice.synthesize.started` then `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and exits non-zero.
 
@@ -313,7 +313,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 
 ### `specify slice build`
 
-Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** envelope after assembling and schema-validating the build request: `request` is the assembled `build/request.yaml` the agent's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. Emits `target.execution.agent` and returns without blocking.
+Two envelope shapes inside the guest-routed orchestration. The **handoff** envelope is assembled after schema-validating the build request: `request` is the assembled `build/request.yaml` the adapter guest's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. The orchestration emits `target.execution.agent` before driving the judgment leg.
 
 ```json
 {
@@ -323,11 +323,11 @@ Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** 
   "request": "<TEMPDIR>/.specify/slices/identity-service/build/request.yaml",
   "report": "<TEMPDIR>/.specify/slices/identity-service/build/report.yaml",
   "briefs-dir": "<TEMPDIR>/adapters/targets/omnia/briefs",
-  "build-brief": "<TEMPDIR>/adapters/targets/omnia/briefs/build.md"
+  "build-brief": "<TEMPDIR>/adapters/targets/omnia/prose/briefs/build.md"
 }
 ```
 
-`--phase finalize` validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+The finalize tail validates the report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
 ```json
 {

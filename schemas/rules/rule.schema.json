@@ -652,7 +652,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["known-schemas"],
-      "description": "`kind: tool` (`links-registry`) configuration for the brief schema-URL check (CORE-018). The tool→schema registry is policy supplied by the rule, not the tool; the engine relays this block to the tool verbatim.",
+      "description": "`kind: tool` (`links-registry`) configuration for the prompt schema-URL check (CORE-018). The tool→schema registry is policy supplied by the rule, not the tool; the engine relays this block to the tool verbatim.",
       "properties": {
         "known-schemas": {
           "type": "array",

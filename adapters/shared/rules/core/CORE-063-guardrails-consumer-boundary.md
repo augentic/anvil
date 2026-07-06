@@ -15,7 +15,7 @@ rule_hints:
 
 ## Rule
 
-The specify-adapters repository carries a forked copy of the spec-runtime guardrails bundle. Vectis build and merge briefs link `../references/spec-runtime/guardrails.md#consumer-tooling-boundary` — when that section is absent, agents read stale rules and may patch upstream templates in-band.
+The specify-adapters repository carries a forked copy of the spec-runtime guardrails bundle. Vectis build and merge prompts link `../references/spec-runtime/guardrails.md#consumer-tooling-boundary` — when that section is absent, agents read stale rules and may patch upstream templates in-band.
 
 Specify-adapters CI enforces this via `check-guardrails-consumer-boundary` in `Makefile.toml`. When `specify lint framework` is available against this tree, the same `regex` hint with `config: { file-must-contain: true }` fires there too.
 

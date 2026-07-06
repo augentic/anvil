@@ -56,12 +56,6 @@ pub(super) fn validate(ctx: &Ctx) -> Result<()> {
 /// return it. The only writer of per-entry `in-progress` per
 /// workflow §CLI surface.
 pub(super) fn next(ctx: &Ctx) -> Result<()> {
-    // Plan-lock gate: refuse an unlocked driver before touching plan state.
-    // A missing plan.yaml falls through to the artifact-not-found error
-    // below — the lock refusal only makes sense once a plan exists.
-    if ctx.layout().plan_path().exists() {
-        specify_workflow::plan_lock::require_held(ctx.layout())?;
-    }
     // The slice's target adapter is resolved on demand from the bound
     // project's topology, so the
     // topology inputs (`config` / `project_dir`) ride into the state
@@ -133,10 +127,9 @@ pub(super) fn transition(
             detail,
         })?;
     let plan_path = ctx.layout().plan_path();
-    let layout = ctx.layout();
     let body = with_state::<Plan, _, _>(ctx.layout(), "plan.yaml", move |plan| {
         if undo {
-            dispatch_undo(plan, layout, &plan_path, &name)
+            dispatch_undo(plan, &plan_path, &name)
         } else {
             // Clap's `required_unless_present = "undo"` guarantees a
             // target here; the unwrap_or surfaces the same usage
@@ -145,7 +138,7 @@ pub(super) fn transition(
                 flag: "<target>",
                 detail: "transition target is required unless --undo is set".to_string(),
             })?;
-            dispatch_transition(plan, layout, &plan_path, &name, &target)
+            dispatch_transition(plan, &plan_path, &name, &target)
         }
     })?;
     // workflow §Observability: every status / lifecycle move emits
@@ -186,8 +179,7 @@ pub(super) fn transition(
 }
 
 fn dispatch_undo(
-    plan: &mut Plan, layout: specify_workflow::config::Layout<'_>, plan_path: &std::path::Path,
-    name: &str,
+    plan: &mut Plan, plan_path: &std::path::Path, name: &str,
 ) -> Result<TransitionBody> {
     if name == plan.name.as_str() {
         return Err(Error::Argument {
@@ -198,9 +190,6 @@ fn dispatch_undo(
                 .to_string(),
         });
     }
-    // Per-entry status walks are loop-phase plan-state
-    // writes — refuse an unlocked driver.
-    specify_workflow::plan_lock::require_held(layout)?;
     let (from, to) = plan.transition_undo(name)?;
     let entry = plan.entries.iter().find(|e| e.name == name).ok_or_else(|| Error::Diag {
         code: "plan-entry-not-found",
@@ -218,8 +207,7 @@ fn dispatch_undo(
 }
 
 fn dispatch_transition(
-    plan: &mut Plan, layout: specify_workflow::config::Layout<'_>, plan_path: &std::path::Path,
-    name: &str, target: &str,
+    plan: &mut Plan, plan_path: &std::path::Path, name: &str, target: &str,
 ) -> Result<TransitionBody> {
     if name == plan.name.as_str() {
         // Plan-level transition: only `approved` is legal.
@@ -262,11 +250,6 @@ fn dispatch_transition(
     // `blocked`/`failed`/`skipped` are not v1 states.
     match target {
         "done" => {
-            // The per-entry close is a loop-phase plan-state
-            // write — refuse an unlocked driver. The plan-level Gate 1
-            // stamp above is exempt (it precedes any driver session);
-            // invalid targets fail on the argument before the probe.
-            specify_workflow::plan_lock::require_held(layout)?;
             let idx =
                 plan.entries.iter().position(|e| e.name == name).ok_or_else(|| Error::Diag {
                     code: "plan-entry-not-found",

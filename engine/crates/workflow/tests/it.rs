@@ -30,8 +30,6 @@ mod judgment;
 mod merge_composition;
 #[path = "merge_slice.rs"]
 mod merge_slice;
-#[path = "native_hook.rs"]
-mod native_hook;
 #[path = "orchestrate.rs"]
 mod orchestrate;
 #[path = "plan_schema.rs"]

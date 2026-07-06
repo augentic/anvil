@@ -89,9 +89,9 @@ pub enum EventKind {
     },
     /// Stamped `slices[].divergence` via
     /// `specify plan amend --divergence <likely|accepted|rejected>`.
-    /// The CLI is the single writer. In the propose flow the
+    /// The CLI is the single writer. In the reconcile flow the
     /// `/spec:plan` agent stages `likely`
-    /// through this event after `propose --from`; the operator later
+    /// through this event after the reconcile write; the operator later
     /// flips `accepted` / `rejected` the same way. This is the only
     /// path that writes the `divergence` field.
     #[serde(rename = "plan.amend.divergence", rename_all = "kebab-case")]
@@ -116,7 +116,7 @@ pub enum EventKind {
         /// Slice id under `plan.yaml.slices[].name`.
         slice_name: SliceName,
     },
-    /// `specify source extract --phase finalize` validated and
+    /// The `source extract` finalize tail validated and
     /// persisted one source-bound Evidence document. One event per
     /// `(source, slice)` pair. CLI-owned — the `/spec:refine` skill
     /// never emits this via `specify journal emit`.
@@ -265,7 +265,7 @@ pub enum EventKind {
         /// Slice id under `plan.yaml.slices[].name`.
         slice_name: SliceName,
     },
-    /// `specify source survey --phase finalize` validated and merged
+    /// The `source survey` finalize tail validated and merged
     /// one source's lead set into `discovery.md`. The plan-time peer
     /// of [`Self::SliceExtractCompleted`]; one event per `(source,
     /// survey)` run. CLI-owned.
@@ -343,8 +343,8 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         source: Option<String>,
     },
-    /// `specify plan propose --from` validated the agent reconciliation
-    /// response and wrote `plan.yaml.slices[]`. One indivisible event
+    /// The `plan author` reconcile kernel validated the agent
+    /// reconciliation response and wrote `plan.yaml.slices[]`. One indivisible event
     /// per successful invocation — the `/spec:plan` skill never calls
     /// `specify journal emit` here.
     #[serde(rename = "plan.reconcile.completed", rename_all = "kebab-case")]

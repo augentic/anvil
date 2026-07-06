@@ -1,16 +1,16 @@
 //! Guest workflow orchestrators (RFC-61 Step 4, Milestone C).
 //!
-//! Each function collapses one of today's two-phase CLI handoff
+//! Each function collapses one of the old stack's two-phase CLI handoff
 //! surfaces into a single call that dispatches across the
-//! [`crate::seam`] capability traits and then runs the native verb's
-//! validate-before-visible tail: survey fan-out feeds
+//! [`crate::seam`] capability traits and then runs the retired native
+//! verb's validate-before-visible tail: survey fan-out feeds
 //! `Discovery::merge_survey`, extract persists schema-gated Evidence,
 //! build keeps the finalize tail (report schema gate, `enforce_report_*`,
 //! the `built` transition, the `slice.build.*` bracket), and merge stays
-//! deterministic-only per RFC-61 decision D2. The native envelope verbs
-//! (`specify source survey/extract`, `specify slice build --phase`,
-//! `specify slice merge`) are untouched — these are new code paths the
-//! Milestone D guest shim will drive.
+//! deterministic-only per RFC-61 decision D2. Since Step 5 Milestone S4
+//! these are the *only* code paths — the native two-phase envelope verbs
+//! were deleted and `specify source survey/extract`, `specify slice
+//! build`, and `specify slice merge run` route here through the guest.
 //!
 //! Three deliberate drops from the native build surface, per the step-3
 //! precedent: no `prepare.argv` extension hook (targets own their

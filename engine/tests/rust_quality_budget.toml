@@ -15,10 +15,10 @@
 # docs/standards/testing.md and unit-test-reduction.md.
 [crate]
 standards = 72
-workflow = 61
-registry = 40
+workflow = 60
+registry = 39
 extension = 13
 schema = 10
-dispatch = 4
+dispatch = 1
 specify = 3
 model = 1

@@ -299,9 +299,8 @@ fn claim_next(layout: Layout<'_>, now: Timestamp) -> Result<Option<Claim>, Error
 /// No pid-liveness probe: WASI gives the guest no process table to
 /// check a recorded pid against, so self-healing would be a guess.
 ///
-/// **No cross-stack interlock**: the native `/spec:execute` flock
-/// ([`crate::plan_lock`]) neither takes nor probes this marker;
-/// non-concurrent stack use is the documented coexistence rule.
+/// This marker is the only execute-run interlock: the retired native
+/// stack's flock-based `plan lock` wrapper is gone with the old stack.
 #[derive(Debug)]
 pub struct GuestMarker {
     path: PathBuf,

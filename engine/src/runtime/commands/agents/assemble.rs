@@ -72,12 +72,7 @@ fn collect_adapter_inputs(
     project_dir: &Path,
 ) -> Result<()> {
     let manifest = adapter.location.path().join(ADAPTER_FILENAME);
-    add_adapter_input(collector, project_dir, &adapter.location, &manifest)?;
-    for relative in adapter.manifest.briefs.values() {
-        let brief_path = adapter.location.path().join(relative);
-        add_adapter_input(collector, project_dir, &adapter.location, &brief_path)?;
-    }
-    Ok(())
+    add_adapter_input(collector, project_dir, &adapter.location, &manifest)
 }
 
 /// Record one adapter input file. A project-local adapter is recorded
@@ -129,32 +124,10 @@ fn logical_path(prefix: &str, root: &Path, path: &Path) -> String {
 }
 
 fn adapter_summary(adapter: &ResolvedTargetAdapter) -> render::Adapter {
-    let mut briefs: Vec<render::Brief> = adapter
-        .manifest
-        .briefs
-        .keys()
-        .map(|operation| {
-            let label = operation.to_string();
-            render::Brief {
-                phase: label.clone(),
-                id: label,
-                description: String::new(),
-            }
-        })
-        .collect();
-    briefs.sort_by(|left, right| {
-        (&left.phase, &left.id, &left.description).cmp(&(
-            &right.phase,
-            &right.id,
-            &right.description,
-        ))
-    });
-
     render::Adapter {
         name: adapter.manifest.name.clone(),
         version: adapter.manifest.version.clone(),
         description: adapter.manifest.description.clone().unwrap_or_default(),
-        briefs,
     }
 }
 

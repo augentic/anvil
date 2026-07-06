@@ -50,9 +50,9 @@ use specify_diagnostics::Severity;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Origin {
-    /// Target-adapter overlay (`adapters/targets/<name>/rules/`).
+    /// Target-adapter overlay (`adapters/targets/<name>/prose/rules/`).
     Target,
-    /// Source-adapter overlay (`adapters/sources/<name>/rules/`).
+    /// Source-adapter overlay (`adapters/sources/<name>/prose/rules/`).
     Source,
     /// Shared rules (`adapters/shared/rules/...`).
     Shared,

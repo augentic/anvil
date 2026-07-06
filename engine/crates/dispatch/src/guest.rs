@@ -9,15 +9,8 @@
 //! but *dispatched* in the shim, where the WIT-provided seam lives:
 //! [`route`] returns the [`Orchestration`] descriptor and the shim
 //! drives the matching `specify_workflow::orchestrate` entry point
-//! against its providers. Native-only verbs (init, extension, lint,
-//! workspace, `plan lock`, `slice build --phase`'s hook paths, …) have
-//! no guest handler and fail with `Error::Argument` (exit 2).
-//!
-//! Guest-only argv semantics (documented divergence): `--phase` on
-//! `source survey`, `source extract`, and `slice build` is accepted by
-//! the shared grammar but ignored in-guest — the orchestrators collapse
-//! prepare + finalize into one call, so there is no phase seam for an
-//! agent to sit between.
+//! against its providers. Native-only verbs (init, lint, workspace, …)
+//! have no guest handler and fail with `Error::Argument` (exit 2).
 //!
 //! Project-scoped guest verbs anchor [`Ctx`] at `"."` — the mount
 //! preopen that carries the project root — instead of walking from the
@@ -63,9 +56,8 @@ pub struct Orchestration {
     pub verb: Verb,
 }
 
-/// The collapsed orchestrator verb surface. Argv-compatible with the
-/// native two-phase verbs — same words, same flags — so the Step 5
-/// skill thinning is a rename-free swap.
+/// The collapsed orchestrator verb surface — the same words and flags
+/// the native binary parses before routing them to its guest leg.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Verb {
     /// `specify source survey <source>` → `orchestrate::survey`.
@@ -176,13 +168,13 @@ pub fn route(cli: Cli) -> Route {
     };
     match cli.command {
         Commands::Source { action } => match action {
-            // `--phase` is accepted but ignored in-guest (see the
-            // module docs): the orchestrators collapse both phases.
-            SourceAction::Survey { source, plan, .. } => orchestrate(Verb::Survey { source, plan }),
-            SourceAction::Extract {
-                source, lead, slice, ..
-            } => orchestrate(Verb::Extract { source, lead, slice }),
-            action => Route::Handled(commands::dispatch_source(format, plan_dir, action)),
+            SourceAction::Survey { source, plan } => orchestrate(Verb::Survey { source, plan }),
+            SourceAction::Extract { source, lead, slice } => {
+                orchestrate(Verb::Extract { source, lead, slice })
+            }
+            action @ SourceAction::Resolve { .. } => {
+                Route::Handled(commands::dispatch_source(format, plan_dir, action))
+            }
         },
         Commands::Target { action } => Route::Handled(commands::dispatch_target(format, action)),
         // Inlined rather than `commands::dispatch_journal` on purpose:
@@ -197,13 +189,9 @@ pub fn route(cli: Cli) -> Route {
             }
         }),
         Commands::Plan { action } => match action {
-            // No subprocesses in-guest: the lock fences separate OS
-            // processes racing the plan, and the guest collapses every
-            // breakout in-process (RFC-61 orchestrate posture).
-            PlanAction::Lock { .. } => Route::Handled(unsupported(format, "plan lock")),
             // The drained execute loop is the guest's flagship
-            // orchestration (Milestone E); native refuses it in the
-            // shared table.
+            // orchestration (Milestone E); native routes it to the
+            // guest leg.
             PlanAction::Execute => orchestrate(Verb::Execute),
             // The collapsed plan-authoring flow (Milestone S1); native
             // refuses it in the shared table. Binding desugar failures
@@ -225,9 +213,9 @@ pub fn route(cli: Cli) -> Route {
             }
         },
         Commands::Slice { action } => match action {
-            SliceAction::Build { name, .. } => orchestrate(Verb::Build { slice: name }),
+            SliceAction::Build { name } => orchestrate(Verb::Build { slice: name }),
             // The refine breakout (Milestone S1, parity gap 2); native
-            // refuses it in the shared table.
+            // routes it to the guest leg.
             SliceAction::Refine { name } => orchestrate(Verb::Refine { slice: name }),
             SliceAction::Merge {
                 action:
@@ -246,9 +234,7 @@ pub fn route(cli: Cli) -> Route {
         Commands::Init { .. } => Route::Handled(unsupported(format, "init")),
         Commands::Adapter { .. } => Route::Handled(unsupported(format, "adapter")),
         Commands::Rules { .. } => Route::Handled(unsupported(format, "rules")),
-        Commands::Extension { .. } => Route::Handled(unsupported(format, "extension")),
         Commands::Lint { .. } => Route::Handled(unsupported(format, "lint")),
-        Commands::Catalog { .. } => Route::Handled(unsupported(format, "catalog")),
         Commands::Archive { .. } => Route::Handled(unsupported(format, "archive")),
         Commands::Registry { .. } => Route::Handled(unsupported(format, "registry")),
         Commands::Workspace { .. } => Route::Handled(unsupported(format, "workspace")),

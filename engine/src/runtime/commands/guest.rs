@@ -1,8 +1,9 @@
 //! Guest-owned verb triage: the composed-deployment leg of the binary.
 //!
 //! The collapsed orchestrator verbs the native handlers refuse (`plan
-//! execute`, `plan author`, `slice refine`) run in the workflow guest
-//! against the composed deployment — workflow guest + adapter guests +
+//! execute`, `plan author`, `slice refine`, `slice build`,
+//! `slice merge run`, `source survey`, `source extract`) run in the
+//! workflow guest against the composed deployment — workflow guest + adapter guests +
 //! the spawning `cursor-agent` model backend — awaited through
 //! `specify_runtime::drive` in command mode with the HTTP trigger in
 //! the background and the guest exit code passed through to the
@@ -20,7 +21,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use specify_dispatch::commands::plan::cli::PlanAction;
-use specify_dispatch::commands::slice::cli::SliceAction;
+use specify_dispatch::commands::slice::cli::{SliceAction, SliceMergeAction};
+use specify_dispatch::commands::source::cli::SourceAction;
 use specify_error::Error;
 use specify_workflow::adapter::{
     AdapterRef, Axis, SourceAdapter, TargetAdapter, adapter_axis_dir, cache_axis_dir,
@@ -61,7 +63,17 @@ pub const fn owned(command: &Commands) -> bool {
         Commands::Plan { action } => {
             matches!(action, PlanAction::Execute | PlanAction::Author { .. })
         }
-        Commands::Slice { action } => matches!(action, SliceAction::Refine { .. }),
+        Commands::Slice { action } => matches!(
+            action,
+            SliceAction::Refine { .. }
+                | SliceAction::Build { .. }
+                | SliceAction::Merge {
+                    action: SliceMergeAction::Run { .. }
+                }
+        ),
+        Commands::Source { action } => {
+            matches!(action, SourceAction::Survey { .. } | SourceAction::Extract { .. })
+        }
         _ => false,
     }
 }

@@ -24,12 +24,10 @@ Each binding creates a slot in `plan.yaml.sources` and contributes leads to `dis
 
 ## Multi-source slices
 
-At propose time, reconcile leads across sources through the D2 envelope:
+At plan-authoring time, reconcile leads across sources through the guest orchestration (survey fan-out, reconcile judgment, and slice write in one verb):
 
 ```bash
-specify plan propose --dry-run --format json
-# agent authors response.json
-specify plan propose --from response.json
+specify plan author
 ```
 
 Single-source intent slices may omit `project` when only one project exists; the kernel auto-binds and normalises `sources: [intent]`.

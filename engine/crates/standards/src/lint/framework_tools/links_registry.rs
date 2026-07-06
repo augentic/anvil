@@ -1,6 +1,6 @@
 //! In-process `links-registry` framework checker (Road B `kind: tool`).
 //!
-//! Covers CORE-018 (`schemas.specify.dev` URLs in adapter briefs must
+//! Covers CORE-018 (`schemas.specify.dev` URLs in adapter prompts must
 //! resolve to a known tool-owned schema; the tool→schema registry is
 //! CORE-018's forwarded `config:`) and CORE-020 (`<!-- skill:
 //! plugin:skill -->` directives must resolve against the on-disk skill
@@ -15,10 +15,10 @@ use serde_json::Value as JsonValue;
 
 use super::support::{ToolFinding, parsed_config, relative_display, requested_rule, walk_files};
 
-const RULE_BRIEF_SCHEMA_LINK_RESOLVE: &str = "CORE-018";
+const RULE_PROMPT_SCHEMA_LINK_RESOLVE: &str = "CORE-018";
 const RULE_UNRESOLVED_DIRECTIVE: &str = "CORE-020";
 
-const RULES: &[&str] = &[RULE_BRIEF_SCHEMA_LINK_RESOLVE, RULE_UNRESOLVED_DIRECTIVE];
+const RULES: &[&str] = &[RULE_PROMPT_SCHEMA_LINK_RESOLVE, RULE_UNRESOLVED_DIRECTIVE];
 
 /// One tool→schema-name registry row the CORE-018 rule supplies in
 /// `config:`.
@@ -42,7 +42,7 @@ pub fn run(project_dir: &Path, args: &[String]) -> Vec<ToolFinding> {
     let config = parsed_config(args);
 
     let mut findings = Vec::new();
-    if scoped.is_none() || scoped == Some(RULE_BRIEF_SCHEMA_LINK_RESOLVE) {
+    if scoped.is_none() || scoped == Some(RULE_PROMPT_SCHEMA_LINK_RESOLVE) {
         let registry = known_schemas(config.as_ref());
         findings.extend(check_schema_links(project_dir, &registry));
     }
@@ -65,8 +65,8 @@ fn wire_finding(finding: LinkFinding) -> ToolFinding {
 
 fn guidance(rule_id: &str) -> (&'static str, &'static str) {
     match rule_id {
-        RULE_BRIEF_SCHEMA_LINK_RESOLVE => (
-            "An adapter brief references a schemas.specify.dev URL that does not resolve to a known tool-owned schema, so readers follow a dead link.",
+        RULE_PROMPT_SCHEMA_LINK_RESOLVE => (
+            "An adapter prompt references a schemas.specify.dev URL that does not resolve to a known tool-owned schema, so readers follow a dead link.",
             "Point the URL at a schema named in the rule's known-schemas registry, or register the schema with its owning tool first.",
         ),
         _ => (
@@ -101,7 +101,7 @@ fn known_schema_row(row: &JsonValue) -> Option<KnownSchema> {
 }
 
 /// CORE-018: every `https://schemas.specify.dev/<tool>/<name>.schema.json`
-/// URL in an adapter brief or reference must resolve to a known
+/// URL in an adapter prompt or reference must resolve to a known
 /// tool-owned schema named in the supplied `registry`. URLs in fenced or
 /// inline code are ignored.
 fn check_schema_links(project_dir: &Path, registry: &[KnownSchema]) -> Vec<LinkFinding> {
@@ -137,7 +137,7 @@ fn check_schema_links(project_dir: &Path, registry: &[KnownSchema]) -> Vec<LinkF
                 if !is_known_schema(registry, tool, name) {
                     let url = cap.get(0).map_or("", |m| m.as_str());
                     findings.push(LinkFinding {
-                        rule_id: RULE_BRIEF_SCHEMA_LINK_RESOLVE,
+                        rule_id: RULE_PROMPT_SCHEMA_LINK_RESOLVE,
                         path: Some(rel.clone()),
                         message: format!(
                             "{rel}:{} — schema URL '{url}' does not resolve to a known \
@@ -305,17 +305,17 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "adapters/targets/demo-target/briefs/build.md",
+            "adapters/targets/demo-target/prose/prompts/build.md",
             "See https://schemas.specify.dev/demo-target/unknown.schema.json for details.\n",
         );
         let findings = check_schema_links(dir.path(), &sample_registry());
         assert_eq!(findings.len(), 1);
-        assert_eq!(findings[0].rule_id, RULE_BRIEF_SCHEMA_LINK_RESOLVE);
+        assert_eq!(findings[0].rule_id, RULE_PROMPT_SCHEMA_LINK_RESOLVE);
 
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "adapters/targets/demo-target/briefs/build.md",
+            "adapters/targets/demo-target/prose/prompts/build.md",
             "See https://schemas.specify.dev/demo-target/tokens.schema.json for details.\n",
         );
         assert!(check_schema_links(dir.path(), &sample_registry()).is_empty());

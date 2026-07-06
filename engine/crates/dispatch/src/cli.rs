@@ -10,9 +10,7 @@ use specify_model::evidence::ClaimKind;
 
 use crate::commands::adapter::cli::AdapterAction;
 use crate::commands::archive::cli::ArchiveAction;
-use crate::commands::catalog::cli::CatalogAction;
 use crate::commands::contract::cli::ContractAction;
-use crate::commands::extension::cli::ExtensionAction;
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::lint::cli::LintAction;
 use crate::commands::plan::cli::PlanAction;
@@ -159,13 +157,6 @@ pub enum Commands {
         action: RulesAction,
     },
 
-    /// WASI extension runner.
-    Extension {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: ExtensionAction,
-    },
-
     /// Deterministic lint (`specify lint` v1). Resolves applicable codex
     /// rules, builds a `WorkspaceModel`, evaluates deterministic hints,
     /// and emits the `DiagnosticReport` envelope. Read-only.
@@ -186,17 +177,6 @@ pub enum Commands {
         action: SliceAction,
     },
 
-    /// Component-catalog inference. `infer --phase report`
-    /// clusters repeated structures in the composition baseline and
-    /// prints a name-free report; `infer --phase bind` records
-    /// skill/operator names against fingerprints and writes
-    /// `components.yaml` under the no-overwrite / uniqueness guards.
-    Catalog {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: CatalogAction,
-    },
-
     /// Slice-archive cache maintenance. The archived slice folders
     /// under `.specify/archive/` are a prunable convenience cache;
     /// `prune` reclaims disk by retention bound.
@@ -206,8 +186,7 @@ pub enum Commands {
         action: ArchiveAction,
     },
 
-    /// Executable plan operations — `plan.yaml` lifecycle and the
-    /// `/spec:execute` driver lock.
+    /// Executable plan operations — `plan.yaml` lifecycle.
     Plan {
         /// Nested action for this verb family.
         #[command(subcommand)]

@@ -81,7 +81,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set the four `GIT_*` env vars from `tests/common::GIT_ENV` so authorship is deterministic.
 
-`tests/plan/end_to_end.rs` is the RM-05 (multi-repo evals) deterministic CLI proof — the end-to-end fan-in-twice / fan-out-once path (`source survey` → `plan propose --dry-run | --from` → per-slice `source extract` → `slice synthesize` → `slice build` → `slice merge`, plus `depends-on` ordering and byte-identical kernel re-projection). Read it first when extending multi-repo coverage; the exhaustive reconcile-code coverage over the same fan-out shape lives in `tests/workflow/`.
+The end-to-end fan-in-twice / fan-out-once path now runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice) and the guest-routing tests in `tests/guest.rs`; the exhaustive reconcile-code coverage over the same fan-out shape lives in `tests/workflow/`.
 
 ## Golden file discipline
 
@@ -90,4 +90,4 @@ Test function names are identifiers, not sentences — the same brevity rules as
 ## Test-side gotchas
 
 - Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or `stamp_slice_outcome` in `tests/common/mod.rs` when a test needs a stamped phase outcome. The tests in `tests/slice.rs` are the canonical patterns.
-- WASI fixture components used by extension run/schema suites (`tests/extension.rs`), `catalog infer` (`tests/catalog_infer.rs`), and slice prepare (`tests/slice.rs`) are rebuilt via `scripts/regen-wasm-fixtures.sh`. Checked-in outputs live under `tests/fixtures/` — `tools-test-project/wasm/`, `tools-test-adp/wasm/exit-seven.wasm`, and `adapters/targets/dispatch-fixture/adapter.wasm`; only re-run when a fixture source changes.
+- The WASI fixture components used by the `specify lint project` declared-tool path test (`tests/lint.rs`) are rebuilt via `scripts/regen-wasm-fixtures.sh`. Checked-in outputs live under `tests/fixtures/tools-test-project/wasm/`; only re-run when a fixture source changes.

@@ -602,7 +602,7 @@ fn resolved_codex_accepts_example() {
                 "references": [
                     {
                         "label": "Omnia guardrails",
-                        "path": "adapters/targets/omnia/references/guardrails.md"
+                        "path": "adapters/targets/omnia/prose/references/guardrails.md"
                     }
                 ],
                 "body": "## Rule\n\nConfiguration values that vary between deployments must not be hardcoded in generated code.\n",

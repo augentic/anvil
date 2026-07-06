@@ -46,20 +46,17 @@ fn resolve_local_returns_manifest() {
     assert_eq!(actual["location"], "local");
     let ops: Vec<&str> =
         actual["operations"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
-    // After the `operations[]` collapse (review 1.A1), the envelope
-    // derives operations from `briefs.keys()` — a BTreeMap, so order is
-    // ascending kebab-name: build < merge < shape.
+    // The envelope derives operations from the closed WIT contract, in
+    // ascending kebab-name order: build < merge < shape.
     assert_eq!(ops, vec!["build", "merge", "shape"]);
     let resolved = actual["resolved-path"].as_str().expect("resolved-path str");
     assert!(
         resolved.ends_with("adapters/targets/omnia"),
         "resolved-path {resolved} must end with targets/omnia"
     );
-    let briefs_dir = actual["briefs-dir"].as_str().expect("briefs-dir str");
-    assert_eq!(
-        briefs_dir,
-        format!("{resolved}/briefs"),
-        "briefs-dir must be the resolved adapter root joined with briefs/"
+    assert!(
+        actual.get("briefs-dir").is_none(),
+        "briefs-dir left the envelope with the compiled-in briefs cutover"
     );
 }
 

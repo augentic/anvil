@@ -397,7 +397,6 @@ async fn build_happy_path_runs_finalize_tail() {
     assert_eq!(outcome.target, "omnia@1.0.0");
     assert_eq!(outcome.status, BuildStatus::Success);
     assert_eq!(outcome.findings, 0);
-    assert!(outcome.warnings.is_empty(), "no A4 warnings for a 0-screen slice");
 
     // Request + report persisted, parity with the native two phases.
     let build_dir = project.slice_dir().join("build");

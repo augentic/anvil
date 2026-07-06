@@ -1,12 +1,12 @@
 ---
 name: specify-build
-description: Build the active in-progress slice by driving the two-phase `specify slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task; not when the slice has yet to be refined (use `/spec:refine`) or has already merged.
+description: Build the active in-progress slice by driving the guest-routed `specify slice build` verb and running its target adapter's build brief. Use when `/spec:execute` parks on a build failure, when running build standalone after `/spec:refine`, or to retry the brief after fixing a failing task; not when the slice has yet to be refined (use `/spec:refine`) or has already merged.
 argument-hint: "[slice-name]"
 ---
 
 # Build skill
 
-Build the active `in-progress` slice. The skill body is shared with the `/spec:execute` loop — when the loop runs build, it loads this same body. Both the loop and standalone breakouts resolve the active slice from `specify plan next`, hold the same plan lock, and drive the two-phase `specify slice build` verb (prepare → brief → finalize), mirroring how `specify source survey` / `extract` split. Deterministic work — slice resolution, lifecycle reads, target resolution, build-request assembly, report schema-validation, the `target-build-*` aborts, the `slice.build.*` events, and the `Refined → Built` transition gate — flows through the `specify` CLI; this body owns ONLY running the target build brief against the prepared request.
+Build the active `in-progress` slice. The skill body is shared with the `/spec:execute` loop — when the loop runs build, it loads this same body. Both the loop and standalone breakouts resolve the active slice from `specify plan next` and drive the guest-routed `specify slice build` orchestration (request assembly → brief → finalize tail). Deterministic work — slice resolution, lifecycle reads, target resolution, build-request assembly, report schema-validation, the `target-build-*` aborts, the `slice.build.*` events, and the `Refined → Built` transition gate — flows through the `specify` CLI; this body owns ONLY running the target build brief against the prepared request.
 
 The skill refuses only on slice lifecycle. Synthesis review tags (`[unknown]`, `[conflict]`, `[divergence]`) carried in `spec.md` are review signals, not build blockers — operators may have reconciled the tags after `/spec:refine` (via `specify plan amend --authority-override` + re-refine, or prose edits outside the kernel-rendered provenance lines), and the brief proceeds against whatever spec is on disk.
 
@@ -17,8 +17,8 @@ $SLICE                  = active in-progress plan entry's slice name (from `spec
 $TARGET                 = active slice's target adapter (from the prepare handoff)
 $PROJECT                = active slice's workspace project (workspace mode only)
 $SLICE_DIR              = .specify/slices/$SLICE/
-$REQUEST                = $SLICE_DIR/build/request.yaml (CLI-written in --phase prepare)
-$REPORT                 = $SLICE_DIR/build/report.yaml (brief-written, validated in --phase finalize)
+$REQUEST                = $SLICE_DIR/build/request.yaml (written by the orchestration's request-assembly leg)
+$REPORT                 = $SLICE_DIR/build/report.yaml (brief-written, validated by the finalize tail)
 $LOG_PATH               = brief-captured stdout/stderr on failure (target-specific path)
 ```
 
@@ -26,13 +26,13 @@ $LOG_PATH               = brief-captured stdout/stderr on failure (target-specif
 
 ## Critical Path
 
-1. **Hold the plan lock.** Drive this phase under `specify plan lock -- <cmd>` (the workspace lock in workspace mode, via `--plan-dir`) *before* any plan verb; see [plan-lock.md](../../references/plan-lock.md). When env var `SPECIFY_PLAN_LOCK_HELD=1` the parent loop already holds it and the CLI skips re-acquisition automatically. `specify plan next` is CLI-gated and refuses an unlocked driver with `plan-lock-not-held`.
+1. **Mutual exclusion is guest-owned.** The guest-routed verbs hold the `.specify/guest.lock` marker for the run's lifetime (see [plan-lock.md](../../references/plan-lock.md)); a concurrent driver fails loudly host-side. No explicit lock step remains.
 2. **Resolve the active slice.** Run `specify plan next --format json`. If `[slice-name]` was passed, validate it matches the returned `in-progress` entry; refuse on mismatch. Read `$PROJECT` (workspace mode) from the same response.
 3. **Workspace routing.** When `.specify/project.yaml` carries `workspace: true`, route per [`../execute/references/workspace-routing.md`](../execute/references/workspace-routing.md) (sync, `chdir` into the slot, `SPECIFY_PLAN_DIR` export; restore on exit). Single-repo mode is a no-op.
 4. **Refuse on slice lifecycle.** Read `$SLICE_DIR/metadata.yaml`. Proceed only when `status: refined`. Pre-`refined` (e.g. `refining`) → halt with hint pointing at `/spec:refine`. Post-`refined` (`built`, `merged`, `dropped`) → halt with "no rebuild needed" / "already merged".
-5. **Prepare the build request.** Run `specify slice build $SLICE --phase prepare --format json`. The CLI resolves `$TARGET` from the slice's bound `metadata.yaml`, assembles + schema-validates the request to `$REQUEST`, emits `target.execution.agent`, and prints a handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`, `execution: agent`) without blocking. Read `target`, `request`, `report`, and `build-brief` / `briefs-dir` from it. (`execution: tool` targets run single-phase and ignore `--phase`; no first-party tool target exists today.)
-6. **Run the target build brief.** Read the handoff's `build-brief` (`adapters/targets/$TARGET/briefs/build.md`) and execute it against the prepared `$REQUEST` — agent codegen plus target-local validation. The brief carries the orchestration (omnia: crate / test / guest / review; vectis: core / iOS / Android / `composition.yaml`; contracts: format-dispatched author-import-verify). Follow it linearly; do not invoke standalone writer or reviewer skills directly. Write the build report to the handoff's `report` path (`$REPORT`) — `status: success` on a clean run, `status: failure` on a brief-side failure (see § Stop hint contract).
-7. **Finalize and gate the transition.** Run `specify slice build $SLICE --phase finalize --format json`. The CLI frames entry with `slice.build.started`, reads + schema-validates `$REPORT`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`) and any `status: failure` report (`target-build-failed`), and on a clean success report GATES the `Refined → Built` transition, emitting `slice.build.succeeded`. On any failure it emits `slice.build.failed`, exits non-zero, and leaves the slice at `refined` (see § Stop hint contract). Return control to the caller; `/spec:execute` advances to merge, otherwise the operator runs `/spec:merge $SLICE`.
+5. **Run the build orchestration.** Run `specify slice build $SLICE --format json`. The orchestration resolves `$TARGET` from the slice's bound `metadata.yaml`, assembles + schema-validates the request to `$REQUEST`, emits `target.execution.agent`, and surfaces the handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`, `execution: agent`). Read `target`, `request`, `report`, and `build-brief` / `briefs-dir` from it.
+6. **Run the target build brief.** Read the handoff's `build-brief` (`adapters/targets/$TARGET/prose/briefs/build.md`) and execute it against the prepared `$REQUEST` — agent codegen plus target-local validation. The brief carries the orchestration (omnia: crate / test / guest / review; vectis: core / iOS / Android / `composition.yaml`; contracts: format-dispatched author-import-verify). Follow it linearly; do not invoke standalone writer or reviewer skills directly. Write the build report to the handoff's `report` path (`$REPORT`) — `status: success` on a clean run, `status: failure` on a brief-side failure (see § Stop hint contract).
+7. **Finalize and gate the transition.** The orchestration's finalize tail frames entry with `slice.build.started`, reads + schema-validates `$REPORT`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`) and any `status: failure` report (`target-build-failed`), and on a clean success report GATES the `Refined → Built` transition, emitting `slice.build.succeeded`. On any failure it emits `slice.build.failed`, exits non-zero, and leaves the slice at `refined` (see § Stop hint contract). Return control to the caller; `/spec:execute` advances to merge, otherwise the operator runs `/spec:merge $SLICE`.
 
 ## Stop hint contract
 
@@ -44,15 +44,15 @@ A build failure surfaces a stop hint as the body's final output — a single str
 - `log-path` — absolute path to the captured stdout/stderr (`$SLICE_DIR/.build-log` is the default; targets MAY override).
 - `next-action` — typically `re-run /spec:build $SLICE after fix`, optionally a target-specific suggestion (e.g. `inspect $LOG_PATH for clippy lints`).
 
-A failure can surface from (a) **prepare** (`target-build-input-missing` / `target-build-request-schema`) — the skill stops before step 6 and never writes `$REPORT`; (b) the **brief's** own verify-repair loop — write a `status: failure` report and let `--phase finalize` convert it into the structured abort; or (c) **finalize** (`target-build-report-schema`, `target-build-success-with-blocking-finding`, `target-build-failed`).
+A failure can surface from (a) **request assembly** (`target-build-input-missing` / `target-build-request-schema`) — the run stops before step 6 and never writes `$REPORT`; (b) the **brief's** own verify-repair loop — write a `status: failure` report and let the finalize tail convert it into the structured abort; or (c) the **finalize tail** (`target-build-report-schema`, `target-build-success-with-blocking-finding`, `target-build-failed`).
 
-Render the hint as the final visible output of the run. Do not call `specify slice transition $SLICE built` by hand — `--phase finalize` owns the gate and stamps `built` only on a clean success report; on any failure report (or a prepare-side abort) the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly. Do not write to `plan.yaml`; the per-entry status stays `in-progress`, which is the v1 wire signal that execution is parked rather than drained.
+Render the hint as the final visible output of the run. Do not call `specify slice transition $SLICE built` by hand — the finalize tail owns the gate and stamps `built` only on a clean success report; on any failure report (or a prepare-side abort) the slice stays `refined` so the loop (or a re-invocation) re-enters cleanly. Do not write to `plan.yaml`; the per-entry status stays `in-progress`, which is the v1 wire signal that execution is parked rather than drained.
 
 ## Guardrails
 
 - **Refuse only on slice lifecycle, never on synthesis tags.** `[unknown]` / `[conflict]` / `[divergence]` in `spec.md` are review signals; the build proceeds against whatever spec is on disk.
-- **The `built` transition is owned by `specify slice build $SLICE --phase finalize`.** `/spec:build` never calls `specify slice transition $SLICE built`; the `Refined → Built` gate fires inside finalize on a clean success report.
-- **Never write `plan.yaml` from this body.** Per-entry transitions are owned by `specify plan next` (writes `in-progress`) and `specify slice merge` (writes `done`). `/spec:build` writes no lifecycle state by hand — the slice's `metadata.yaml` is stamped by `specify slice build --phase finalize`.
+- **The `built` transition is owned by the `specify slice build` finalize tail.** `/spec:build` never calls `specify slice transition $SLICE built`; the `Refined → Built` gate fires inside the tail on a clean success report.
+- **Never write `plan.yaml` from this body.** Per-entry transitions are owned by `specify plan next` (writes `in-progress`) and `specify slice merge` (writes `done`). `/spec:build` writes no lifecycle state by hand — the slice's `metadata.yaml` is stamped by the `specify slice build` finalize tail.
 - **Lifecycle single-writer:** [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
 - **Never invoke standalone writer or reviewer skills directly.** The target build brief carries those bodies inline; calling them out-of-band bypasses brief orchestration and breaks shape-injection guarantees.
 - On prepare/finalize abort, exhausted verify-repair, or a `deferred` outcome: emit the stop hint and **exit**; never patch adapters, templates, or cache — [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary).
@@ -61,4 +61,4 @@ Render the hint as the final visible output of the run. Do not call `specify sli
 
 - [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state) — single-writer rules for `metadata.yaml`, `plan.yaml`, archive paths.
 - [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary) — stop on scaffold/verify/finalize/toolchain failure; never patch upstream tooling in-band.
-- `adapters/targets/<target>/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts); it also writes the `build/report.yaml` that `--phase finalize` validates.
+- `adapters/targets/<target>/prose/briefs/build.md` — the orchestration this skill loads and executes (omnia, vectis, contracts); it also writes the `build/report.yaml` that the finalize tail validates.

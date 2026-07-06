@@ -26,7 +26,7 @@ The `test-citations` selector of the `cli-contract` kind closes the gap. The pin
 - An inline code span matching `tests/….rs` must be a file in the inventory.
 - A link target under one of the configured CLI-repo prefixes pointing into `tests/` must resolve — a file citation exactly, a directory citation by containing at least one inventoried file. `#L…` fragments are ignored.
 
-The scope is deliberately narrower than [CORE-057](CORE-057-cli-contract-drift.md): only `docs/**` and `AGENTS.md`, because adapter references and briefs legitimately describe `tests/` layouts of *generated downstream crates* (`tests/provider.rs` in an Omnia consumer project) that are not CLI tests and must not be checked against the CLI inventory.
+The scope is deliberately narrower than [CORE-057](CORE-057-cli-contract-drift.md): only `docs/**` and `AGENTS.md`, because adapter references and prompts legitimately describe `tests/` layouts of *generated downstream crates* (`tests/provider.rs` in an Omnia consumer project) that are not CLI tests and must not be checked against the CLI inventory.
 
 ## Look For
 

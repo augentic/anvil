@@ -7,7 +7,7 @@ applicability:
   adapters: [documentation]
 references:
   - label: documentation.extract determinism rules
-    path: adapters/sources/documentation/briefs/extract.md
+    path: adapters/sources/documentation/prose/briefs/extract.md
 ---
 
 ## Rule

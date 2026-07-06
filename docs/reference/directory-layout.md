@@ -79,10 +79,10 @@ The regenerable **cache** lives outside the working tree, in a per-project direc
 $XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
 ├── manifests/sources/<name>/                     # Source adapter manifest mirror
 │   ├── adapter.yaml
-│   └── briefs/{survey,extract}.md
+│   └── prose/briefs/{survey,extract}.md
 ├── manifests/targets/<name>/                     # Target adapter manifest mirror
 │   ├── adapter.yaml
-│   └── briefs/{shape,build,merge}.md
+│   └── prose/briefs/{shape,build,merge}.md
 ├── manifests/manifest-meta.yaml                  # Manifest mirror provenance stamp
 └── codex/                                        # Distributed shared-rules codex (+ codex-meta.yaml)
 
@@ -95,7 +95,7 @@ $XDG_CACHE_HOME/specify/mirrors/<url-id>.git      # Persistent bare mirror per r
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specify plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside `specify slice refine` / `specify plan execute` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -113,7 +113,7 @@ The memoization root lives outside the working tree, in a per-project directory 
 
 ### `scratch/`
 
-The transient working-state root and the lone gitignored tenant *inside* `.specify/` — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. `<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen), recreated empty at `prepare` time. `plan/` is the plan-phase handoff lane: `specify plan propose --dry-run` recreates it empty and the agent writes the reconciliation response envelope to `plan/propose-response.json`. Because the cache is out-of-tree, "a scratch write never pollutes a cache artifact" is structural rather than conventional.
+The transient working-state root and the lone gitignored tenant *inside* `.specify/` — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. Per-run lanes are recreated empty by their owning verb. Because the cache is out-of-tree, "a scratch write never pollutes a cache artifact" is structural rather than conventional.
 
 ### `workspace/` (top-level)
 

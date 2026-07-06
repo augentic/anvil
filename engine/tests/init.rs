@@ -179,15 +179,12 @@ mod base {
         // (exit 2) and never scaffolds the project.
         let tmp = tempdir().unwrap();
         let adapter = tmp.path().join("adapters/targets/adapter-limited");
-        fs::create_dir_all(adapter.join("briefs")).unwrap();
+        fs::create_dir_all(&adapter).unwrap();
         fs::write(
         adapter.join("adapter.yaml"),
-        "name: adapter-limited\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\ndescription: Stub adapter that only allows core + ios\nplatforms:\n  required: true\n  allowed: [core, ios]\n  default: [core, ios]\n",
+        "name: adapter-limited\nversion: 1.0.0\naxis: target\ndescription: Stub adapter that only allows core + ios\nplatforms:\n  required: true\n  allowed: [core, ios]\n  default: [core, ios]\n",
     )
     .unwrap();
-        for brief in ["shape.md", "build.md", "merge.md"] {
-            fs::write(adapter.join("briefs").join(brief), "# Stub\n").unwrap();
-        }
 
         let assert = specify_cmd()
             .current_dir(tmp.path())

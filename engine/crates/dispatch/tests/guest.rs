@@ -65,9 +65,7 @@ fn extract_routes_to_orchestrator() {
 
 #[test]
 fn build_routes_to_orchestrator() {
-    // `--phase` is accepted by the shared grammar but ignored in-guest:
-    // the orchestrator collapses prepare + finalize into one call.
-    let cli = parse_ok(&["specify", "slice", "build", "billing", "--phase", "prepare"]);
+    let cli = parse_ok(&["specify", "slice", "build", "billing"]);
     let Route::Orchestrate(Orchestration { verb, .. }) = route(cli) else {
         panic!("slice build must route to the shim's orchestrator dispatch");
     };
@@ -201,7 +199,6 @@ fn native_only_verbs_refused_exit_two() {
         vec!["specify", "lint", "framework"],
         vec!["specify", "workspace", "sync"],
         vec!["specify", "upgrade"],
-        vec!["specify", "plan", "lock", "--", "true"],
     ] {
         let cli = parse_ok(&argv);
         let Route::Handled(exit) = route(cli) else {

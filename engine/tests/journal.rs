@@ -256,8 +256,9 @@ slices:
 
 #[test]
 fn amend_divergence_likely_to_rejected() {
-    // source/target split note: `propose` writes `divergence: likely` and
-    // the operator may transition it to `rejected` at Gate 1.
+    // source/target split note: guest-side reconciliation writes
+    // `divergence: likely` and the operator may transition it to
+    // `rejected` at Gate 1.
     let project = Project::init();
     project.seed_plan(
         "name: platform-v2
@@ -504,8 +505,8 @@ fn agent_emit_one_event_per_line() {
     // drives `append` directly because the CLI does not own a
     // `journal append` verb (workflow §"What was cut and why").
     // `slice.synthesis.*` is CLI-owned via `specify slice validate`;
-    // `slice.extract.completed` is CLI-owned via
-    // `specify source extract --phase finalize`.
+    // `slice.extract.completed` is guest-owned via the guest-routed
+    // `specify source extract`.
     let project = Project::init();
     let layout = Layout::new(project.root());
     let fixed: jiff::Timestamp =

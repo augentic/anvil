@@ -6,7 +6,7 @@ trigger: A markdown file contains an `[label](target)` link whose relative targe
 rule_hints:
   - kind: path-pattern
     value: "adapters/**/*.md"
-    description: Adapter manifests, briefs, references, and rules.
+    description: Adapter manifests, prompts, references, and rules.
   - kind: path-pattern
     value: "plugins/**/*.md"
     description: Plugin marketplace skills and their reference bodies.
@@ -27,7 +27,7 @@ Every relative `[label](target)` markdown link under `adapters/`, `plugins/`, `d
 
 The path scope excludes archival trees and the proposals directory by design, because they intentionally cite future or deferred work whose targets do not yet exist on disk.
 
-Broken links rot documentation: skill briefs, target adapter references, codex bodies, and AGENTS map files all rely on the fence-aware `[label](target)` shape that this rule covers. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced (`crates/standards/src/lint/index/markdown.rs::extract_links` + `index.rs::resolve_link`), so the rule cost is one BTreeSet lookup per candidate file at lint time.
+Broken links rot documentation: skills, adapter prompts and references, codex bodies, and AGENTS map files all rely on the fence-aware `[label](target)` shape that this rule covers. The deterministic-hint interpreter consumes the `markdown_link` facts the indexer already produced (`crates/standards/src/lint/index/markdown.rs::extract_links` + `index.rs::resolve_link`), so the rule cost is one BTreeSet lookup per candidate file at lint time.
 
 ## Look For
 

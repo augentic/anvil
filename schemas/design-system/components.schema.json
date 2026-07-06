@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.specify.dev/specify/design-system/components.schema.json",
   "title": "Component Catalog",
-  "description": "Validates `.specify/design-system/components.yaml`, the agent-inferred, operator-reviewable component catalog. Each entry declares a shared UI component that the Vectis target factors into shared code at build time. The catalog is written by `specify catalog infer --phase bind` (binding the names the build skill or operator parts supply) and reviewed by the operator, who may reject or rename entries.",
+  "description": "Validates `.specify/design-system/components.yaml`, the agent-inferred, operator-reviewable component catalog. Each entry declares a shared UI component that the Vectis target factors into shared code at build time. The catalog is written by the vectis target's in-guest catalog bind phase (binding the names the build skill or operator parts supply) and reviewed by the operator, who may reject or rename entries.",
   "type": "object",
   "required": ["version", "components"],
   "additionalProperties": false,
@@ -27,7 +27,7 @@
           "fingerprint": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
-            "description": "Structural fingerprint (lowercase SHA-256 hex) of the normalised group skeleton this slug was bound to. Recorded by `specify catalog infer --phase bind` so a later `--phase report` run can echo the bound slug for an already-named cluster (run-to-run binding stability). Optional: hand-authored entries omit it."
+            "description": "Structural fingerprint (lowercase SHA-256 hex) of the normalised group skeleton this slug was bound to. Recorded by the vectis target's in-guest catalog bind phase so a later report pass can echo the bound slug for an already-named cluster (run-to-run binding stability). Optional: hand-authored entries omit it."
           }
         }
       },

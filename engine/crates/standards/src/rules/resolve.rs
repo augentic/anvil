@@ -33,11 +33,11 @@
 //! Source-adapter (root 3) and target-adapter (root 4) overlays follow
 //! the closed location order in rules root resolution:
 //!
-//! 1. project-local `{project_dir}/adapters/{sources,targets}/<name>/rules/`;
-//! 2. manifest cache `<project-cache>/manifests/{sources,targets}/<name>/rules/`
+//! 1. project-local `{project_dir}/adapters/{sources,targets}/<name>/prose/rules/`;
+//! 2. manifest cache `<project-cache>/manifests/{sources,targets}/<name>/prose/rules/`
 //!    (out-of-tree; provenance recorded under [`PathRoot::Cache`] with a
 //!    cache-relative `manifests/...` path);
-//! 3. rules-root fallback `{rules_root}/adapters/{sources,targets}/<name>/rules/`,
+//! 3. rules-root fallback `{rules_root}/adapters/{sources,targets}/<name>/prose/rules/`,
 //!    **only** when `inputs.rules_root.is_some()` (step 1 of the probe);
 //! 4. omit when no rung exists.
 //!
@@ -335,10 +335,17 @@ fn load_overlay(
     project_dir: &Path, rules_root: &Path, explicit_rules_root: bool, axis_segment: &str,
     adapter_name: &str, origin: Origin, out: &mut Vec<ResolvedRuleEntry>,
 ) -> Result<(), ResolveError> {
-    let project_local =
-        project_dir.join("adapters").join(axis_segment).join(adapter_name).join("rules");
-    let manifest_cache =
-        manifest_cache_root(project_dir).join(axis_segment).join(adapter_name).join("rules");
+    let project_local = project_dir
+        .join("adapters")
+        .join(axis_segment)
+        .join(adapter_name)
+        .join("prose")
+        .join("rules");
+    let manifest_cache = manifest_cache_root(project_dir)
+        .join(axis_segment)
+        .join(adapter_name)
+        .join("prose")
+        .join("rules");
 
     if project_local.is_dir() {
         return collect_overlay(&project_local, project_dir, PathRoot::ProjectDir, origin, out);
@@ -346,12 +353,16 @@ fn load_overlay(
     if manifest_cache.is_dir() {
         // Physical files live out-of-tree; record provenance under the
         // stable cache-relative `manifests/...` path (PathRoot::Cache).
-        let logical = format!("{MANIFEST_CACHE_LOGICAL}/{axis_segment}/{adapter_name}/rules");
+        let logical = format!("{MANIFEST_CACHE_LOGICAL}/{axis_segment}/{adapter_name}/prose/rules");
         return collect_overlay_logical(&manifest_cache, &logical, origin, out);
     }
     if explicit_rules_root {
-        let fallback =
-            rules_root.join("adapters").join(axis_segment).join(adapter_name).join("rules");
+        let fallback = rules_root
+            .join("adapters")
+            .join(axis_segment)
+            .join(adapter_name)
+            .join("prose")
+            .join("rules");
         if fallback.is_dir() {
             return collect_overlay(&fallback, rules_root, PathRoot::RulesRoot, origin, out);
         }

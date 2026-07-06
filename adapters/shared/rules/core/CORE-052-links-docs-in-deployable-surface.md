@@ -8,10 +8,10 @@ rule_hints:
     value: "plugins/**/*.md"
     description: Marketplace skills and their reference bodies (a deployed surface).
   - kind: path-pattern
-    value: "adapters/**/briefs/*.md"
-    description: Adapter operation briefs that ship with the adapter.
+    value: "adapters/**/prose/prompts/*.md"
+    description: Adapter operation prompts that ship with the adapter.
   - kind: path-pattern
-    value: "adapters/**/references/*.md"
+    value: "adapters/**/prose/references/*.md"
     description: Adapter reference bodies that ship with the adapter.
   - kind: regex
     value: "\\]\\((docs/|[^)]*\\.\\./docs/)[^)]*\\)"
@@ -20,13 +20,13 @@ rule_hints:
 
 ## Rule
 
-Deployable surfaces — marketplace skills and the briefs and references that ship inside an adapter — must not link into the repository's `docs/` tree. `docs/` is contributor documentation that does not travel with a published plugin or adapter, so a `docs/`-targeted link resolves in this repo but dangles wherever the surface is deployed.
+Deployable surfaces — marketplace skills and the prompts and references that ship inside an adapter — must not link into the repository's `docs/` tree. `docs/` is contributor documentation that does not travel with a published plugin or adapter, so a `docs/`-targeted link resolves in this repo but dangles wherever the surface is deployed.
 
 The deterministic-hint interpreter narrows to the deployable file set with `path-pattern` hints, then flags any `[label](target)` link whose target is root-relative (`docs/…`) or escapes upward into `../docs/…`. URL targets are not matched because they begin with a scheme rather than `docs/` or `../docs/`.
 
 ## Look For
 
-- A skill or brief that links to `docs/explanation/…` or `../../docs/reference/…`.
+- A skill or prompt that links to `docs/explanation/…` or `../../docs/reference/…`.
 - A reference body that cites a contributor doc instead of co-located plugin/adapter material.
 
 ## Fix

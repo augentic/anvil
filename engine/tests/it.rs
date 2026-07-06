@@ -14,8 +14,6 @@ mod adapter;
 mod archive;
 #[path = "bootstrap.rs"]
 mod bootstrap;
-#[path = "catalog_infer.rs"]
-mod catalog_infer;
 #[path = "cli.rs"]
 mod cli;
 #[path = "cli_contract.rs"]
@@ -24,8 +22,6 @@ mod cli_contract;
 mod dist;
 #[path = "e2e.rs"]
 mod e2e;
-#[path = "extension.rs"]
-mod extension;
 #[path = "guest.rs"]
 mod guest;
 #[path = "init.rs"]

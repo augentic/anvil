@@ -1,9 +1,8 @@
 //! Post-projection synthesis persistence: the render → stage → persist
-//! tail shared by `specify slice synthesize --from` and the guest
-//! refine orchestrator ([`crate::orchestrate`]).
+//! tail run by the guest refine orchestrator ([`crate::orchestrate`]).
 //!
 //! [`persist_synthesized`] takes an already-projected model (the
-//! kernel ran — natively in the `--from` handler, in-guest inside the
+//! kernel ran in-guest inside the
 //! judgment repair loop) and owns everything after it: the serialised
 //! model re-validation, the provenance render into each
 //! `specs/<domain>/spec.md`, the `metadata.touched_specs` refresh, and

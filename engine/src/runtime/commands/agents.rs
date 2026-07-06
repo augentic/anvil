@@ -73,20 +73,12 @@ mod tests {
 
     fn write_minimal_adapter(project_dir: &Path) {
         let adapter_dir = project_dir.join("adapters").join("targets").join("mini");
-        let briefs_dir = adapter_dir.join("briefs");
-        fs::create_dir_all(&briefs_dir).expect("create adapter dirs");
+        fs::create_dir_all(&adapter_dir).expect("create adapter dirs");
         fs::write(
             adapter_dir.join("adapter.yaml"),
-            "name: mini\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\ndescription: Mini adapter\n",
+            "name: mini\nversion: 1.0.0\naxis: target\ndescription: Mini adapter\n",
         )
         .expect("write adapter");
-        for op in ["shape", "build", "merge"] {
-            fs::write(
-                briefs_dir.join(format!("{op}.md")),
-                format!("---\nid: {op}\ndescription: {op} brief\n---\n"),
-            )
-            .expect("write brief");
-        }
     }
 
     fn sample_config() -> ProjectConfig {
@@ -156,9 +148,6 @@ mod tests {
                 ".specify/slices/alpha/metadata.yaml",
                 ".specify/slices/zeta/metadata.yaml",
                 "adapters/targets/mini/adapter.yaml",
-                "adapters/targets/mini/briefs/build.md",
-                "adapters/targets/mini/briefs/merge.md",
-                "adapters/targets/mini/briefs/shape.md",
                 "registry.yaml",
             ]
         );

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/source.schema.json",
   "title": "Specify source adapter manifest",
-  "description": "Refines `adapter.schema.json` for source adapters per workflow §Source adapter contract. Locks `axis` to the literal `source`. `briefs` and `execution` are optional during the RFC-61 two-shape coexistence window: a manifest that carries `briefs` must declare both `briefs.extract` and `briefs.survey` (the full closed set), and a manifest that omits it derives the operation set from the closed WIT contract (`wit/specify.wit`: `{extract, survey}`). The `kebabName` and `extensionDeclaration` `$defs` are intentionally inlined (rather than `$ref`-resolved against `adapter.schema.json`) so the schema compiles without a registry lookup; the embedded `name` pattern MUST stay byte-identical to `adapter.schema.json#/$defs/kebabName.pattern`.",
+  "description": "Refines `adapter.schema.json` for source adapters per workflow §Source adapter contract. Locks `axis` to the literal `source`. The operation set is not declared on the wire — it derives from the closed WIT contract (`wit/specify.wit`: `{extract, survey}`). The `kebabName` `$def` is intentionally inlined (rather than `$ref`-resolved against `adapter.schema.json`) so the schema compiles without a registry lookup; the embedded `name` pattern MUST stay byte-identical to `adapter.schema.json#/$defs/kebabName.pattern`.",
   "type": "object",
   "additionalProperties": false,
   "required": ["name", "version", "axis", "description"],
@@ -22,62 +22,15 @@
       "const": "source",
       "description": "Locked to `source` for source-adapter manifests."
     },
-    "briefs": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["extract", "survey"],
-      "properties": {
-        "survey": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
-        },
-        "extract": {
-          "type": "string",
-          "minLength": 1,
-          "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://).+$"
-        }
-      }
-    },
-    "extension": {
-      "$ref": "#/$defs/extensionDeclaration"
-    },
     "description": {
       "type": "string",
       "minLength": 1
-    },
-    "execution": {
-      "type": "string",
-      "enum": ["agent"],
-      "description": "Closed adapter execution mode. Source adapters are agent-only: `survey` and `extract` run as two-phase agent handoffs."
     }
   },
   "$defs": {
     "kebabName": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
-    },
-    "extensionDeclaration": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "name": { "$ref": "#/$defs/kebabName" },
-        "permissions": { "$ref": "#/$defs/extensionPermissions" }
-      }
-    },
-    "extensionPermissions": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "read": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "write": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 }
-        }
-      }
     }
   }
 }

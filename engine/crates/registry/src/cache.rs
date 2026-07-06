@@ -1,6 +1,6 @@
 //! Global cache layout and metadata helpers for resolved WASI tools.
 //! Owns pure path/scope helpers and the [`Status`] decision API;
-//! I/O concerns live in [`fetch`], [`gc`], and [`meta`].
+//! I/O concerns live in [`fetch`] and [`meta`].
 
 use std::path::{Component, Path, PathBuf};
 use std::{env, fs, io};
@@ -9,14 +9,12 @@ use crate::error::ExtensionError;
 use crate::manifest::ExtensionScope;
 
 pub mod fetch;
-pub mod gc;
 pub mod meta;
 
 #[cfg(test)]
 mod tests;
 
 pub use fetch::stage_and_install;
-pub use gc::scan as scan_for_gc;
 pub(crate) use meta::SIDECAR_SCHEMA_VERSION;
 pub use meta::{Sidecar, read_sidecar, write_sidecar};
 

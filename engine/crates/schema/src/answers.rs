@@ -136,7 +136,7 @@ pub fn report() -> Value {
     report
 }
 
-/// The `plan propose` reconciliation answer.
+/// The plan-time lead-reconciliation answer.
 ///
 /// The canonical proposal envelope narrowed to its `kind: response`
 /// arm, with the request-only `$defs` trimmed away so the document
@@ -181,8 +181,8 @@ pub fn proposal() -> Value {
     );
 
     let body = response.as_object_mut().expect("response def is an object");
-    // Gate 1 prose is optional on the canonical envelope (native
-    // `plan propose --from` responses stay valid without it) but
+    // Gate 1 prose is optional on the canonical envelope (the retired
+    // native verb accepted responses without it) but
     // mandatory on the judgment answer: the collapsed `plan author`
     // orchestration persists the prose into `change.md` /
     // `discovery.md`, so an answer without it is incomplete.
@@ -191,7 +191,7 @@ pub fn proposal() -> Value {
     required.push(json!("gate"));
     body.insert("$schema".to_string(), json!("https://json-schema.org/draft/2020-12/schema"));
     body.insert("$id".to_string(), json!(format!("{ANSWERS_ID_BASE}/proposal.schema.json")));
-    body.insert("title".to_string(), json!("Specify plan propose answer"));
+    body.insert("title".to_string(), json!("Specify plan reconciliation answer"));
     body.insert(
         "description".to_string(),
         json!(
@@ -199,8 +199,8 @@ pub fn proposal() -> Value {
              schemas/discovery/proposal.schema.json by specify-schema's answer \
              derivation; do not edit. Validates the schema-gated answer to the \
              plan-time lead-reconciliation judgment: the canonical `kind: \
-             response` envelope arm (the agent grouping `specify plan propose \
-             --from` consumes), with the request-only definitions trimmed."
+             response` envelope arm the guest `plan author` orchestration \
+             consumes, with the request-only definitions trimmed."
         ),
     );
     body.insert("$defs".to_string(), defs);

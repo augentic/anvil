@@ -2,16 +2,17 @@
 //!
 //! The native binary's dispatcher calls the per-family `dispatch_*`
 //! entry points here for every pure workflow verb; native-only verbs
-//! (init, extension, lint, workspace, `plan lock`, `slice build`, …)
-//! keep their handlers in the binary crate and only their clap action
-//! enums live here (under each family's `cli` module) so the grammar
-//! stays whole.
+//! (init, lint, workspace, …) keep their handlers in the binary crate
+//! and only their clap action enums live here (under each family's
+//! `cli` module) so the grammar stays whole. Guest-owned orchestrator
+//! verbs (`source survey`/`extract`, `slice refine`/`build`,
+//! `slice merge run`, `plan author`/`execute`) carry only their clap
+//! surface here — the workflow guest drives the matching
+//! `specify_workflow::orchestrate` entry points.
 
 pub mod adapter;
 pub mod archive;
-pub mod catalog;
 pub mod contract;
-pub mod extension;
 pub mod journal;
 pub mod lint;
 pub mod plan;
@@ -42,37 +43,34 @@ use crate::commands::target::cli::TargetAction;
 use crate::context::Ctx;
 use crate::output::{self, Exit, report};
 
-/// Dispatch the `specify source {resolve, preview, survey, extract}`
-/// family.
+/// Dispatch the `specify source {resolve, survey, extract}` family.
 ///
-/// The arms keep their distinct context posture — `resolve` /
-/// `preview` are project-context-free ([`dispatch`]), `survey` /
-/// `extract` are project-scoped ([`scoped`]).
-pub fn dispatch_source(format: Format, plan_dir: Option<PathBuf>, action: SourceAction) -> Exit {
+/// Only `resolve` runs through the shared table (project-context-free,
+/// [`dispatch`]); `survey` / `extract` are guest-owned collapsed
+/// orchestrations peeled off by both dispatchers before this table —
+/// the defensive arms keep the match exhaustive and never collapse a
+/// real run to a misleading success.
+pub fn dispatch_source(format: Format, _plan_dir: Option<PathBuf>, action: SourceAction) -> Exit {
     match action {
         SourceAction::Resolve { name, project_dir } => {
             dispatch(format, || resolve_adapter(format, Axis::Source, &name, &project_dir))
         }
-        SourceAction::Preview {
-            adapter,
-            source,
-            lead,
-            out,
-            project_dir,
-        } => dispatch(format, || {
-            source::preview::preview(format, &adapter, &source, &lead, out.as_deref(), &project_dir)
-        }),
-        SourceAction::Survey { source, plan, phase } => scoped(format, plan_dir, |ctx| {
-            source::survey::run(ctx, &source, plan.as_deref(), phase)
-        }),
-        SourceAction::Extract {
-            source,
-            lead,
-            slice,
-            phase,
-        } => {
-            scoped(format, plan_dir, |ctx| source::extract::run(ctx, &source, &lead, &slice, phase))
-        }
+        SourceAction::Survey { .. } => report(
+            format,
+            &specify_error::Error::Argument {
+                flag: "<command>",
+                detail: "`specify source survey` dispatches outside the shared verb table"
+                    .to_string(),
+            },
+        ),
+        SourceAction::Extract { .. } => report(
+            format,
+            &specify_error::Error::Argument {
+                flag: "<command>",
+                detail: "`specify source extract` dispatches outside the shared verb table"
+                    .to_string(),
+            },
+        ),
     }
 }
 
@@ -153,14 +151,6 @@ where
     }
 }
 
-/// Directory segment under a resolved adapter root that holds the
-/// brief markdown files.
-///
-/// Manifest brief paths are relative and join onto
-/// `<adapter-root>/briefs/`. Shared with the source prep seam
-/// ([`source::prep`]) so the C1 `briefs-dir` is computed in one place.
-pub const BRIEFS_DIR: &str = "briefs";
-
 /// Render `findings` as a neutral [`DiagnosticReport`] on stdout in the
 /// active `Ctx` format. JSON serialises the wire envelope
 /// (`{ version, summary, findings }`); text renders a PASS/FAIL banner
@@ -200,10 +190,6 @@ struct ResolveBody {
     axis: &'static str,
     name: String,
     resolved_path: String,
-    /// Absolute path to the resolved adapter's `briefs/` directory —
-    /// `<resolved-path>/briefs`. Brief paths in the manifest are
-    /// relative (e.g. `briefs/extract.md`) and join onto this root.
-    briefs_dir: PathBuf,
     location: &'static str,
     operations: Vec<String>,
     description: Option<String>,
@@ -213,7 +199,6 @@ fn write_resolve_text(w: &mut dyn Write, body: &ResolveBody) -> std::io::Result<
     writeln!(w, "{}", body.resolved_path)?;
     writeln!(w, "  axis: {}", body.axis)?;
     writeln!(w, "  name: {}", body.name)?;
-    writeln!(w, "  briefs-dir: {}", body.briefs_dir.display())?;
     writeln!(w, "  location: {}", body.location)?;
     writeln!(w, "  operations: {}", body.operations.join(", "))?;
     if let Some(desc) = &body.description {
@@ -234,20 +219,16 @@ fn write_resolve_text(w: &mut dyn Write, body: &ResolveBody) -> std::io::Result<
 /// (workflow §CLI surface).
 fn resolve_adapter(format: Format, axis: Axis, value: &str, project_dir: &Path) -> Result<()> {
     // Common envelope shape; only the per-axis resolver and the
-    // `@version` strip (target-only) differ. `briefs_dir` is the
-    // resolved adapter root joined with `briefs/` — the directory the
-    // manifest's relative brief paths join onto (preview.rs:68).
-    let (name, resolved_path, briefs_dir, location, operations, description) = match axis {
+    // `@version` strip (target-only) differ.
+    let (name, resolved_path, location, operations, description) = match axis {
         Axis::Source => {
             let resolved = SourceAdapter::resolve(&adapter_ref_from_value(value), project_dir)?;
             let operations = resolved.manifest.operations().map(ToString::to_string).collect();
-            let briefs_dir = resolved.location.path().join(BRIEFS_DIR);
             let resolved_path = resolved.location.path().display().to_string();
             let location = resolved.location.label();
             (
                 resolved.manifest.name,
                 resolved_path,
-                briefs_dir,
                 location,
                 operations,
                 resolved.manifest.description,
@@ -256,13 +237,11 @@ fn resolve_adapter(format: Format, axis: Axis, value: &str, project_dir: &Path) 
         Axis::Target => {
             let resolved = TargetAdapter::resolve(&adapter_ref_from_value(value), project_dir)?;
             let operations = resolved.manifest.operations().map(ToString::to_string).collect();
-            let briefs_dir = resolved.location.path().join(BRIEFS_DIR);
             let resolved_path = resolved.location.path().display().to_string();
             let location = resolved.location.label();
             (
                 resolved.manifest.name,
                 resolved_path,
-                briefs_dir,
                 location,
                 operations,
                 resolved.manifest.description,
@@ -273,7 +252,6 @@ fn resolve_adapter(format: Format, axis: Axis, value: &str, project_dir: &Path) 
         axis: axis.dir_segment(),
         name,
         resolved_path,
-        briefs_dir,
         location,
         operations,
         description,

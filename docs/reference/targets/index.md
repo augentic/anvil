@@ -45,7 +45,7 @@ inputs:
 | `briefs`      | yes      | Map of operation → brief markdown path relative to the manifest. |
 | `inputs`      | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `specify slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
 
-An optional singular `extension` object declares at most one WASI helper; its committed `adapter.wasm` (built from the co-located `extension/` crate) ships in the adapter artifact and runs via `specify extension run <name>`. See [Tool declarations](../../explanation/tool-declarations.md).
+Deterministic helper behaviour is in-guest library code compiled into the adapter's committed `guest.wasm`; there is no separate extension declaration or host-dispatched helper. See [Tool declarations](../../explanation/tool-declarations.md).
 
 ## How a target adapter participates in the loop
 
@@ -77,8 +77,8 @@ A target adapter ships a manifest plus the briefs that implement domain behaviou
 
 Shared material used by multiple adapters lives outside the adapter roots under `adapters/shared/`:
 
-- **`codex/universal/`** — shared **engineering standards** (`UNI-*`) at [`adapters/shared/rules/universal/`](../../../adapters/shared/rules/universal/); per-target overlays stay at `adapters/targets/<name>/rules/`. See [Standards layer](../../explanation/standards-layer.md).
-- **`target-hooks/replay/`** — shared build-time replay hook contract at [`adapters/shared/target-hooks/replay/`](../../../adapters/shared/target-hooks/replay/); per-target runners stay at `adapters/targets/<name>/briefs/build/replay.md` when implemented.
+- **`codex/universal/`** — shared **engineering standards** (`UNI-*`) at [`adapters/shared/rules/universal/`](../../../adapters/shared/rules/universal/); per-target overlays stay at `adapters/targets/<name>/prose/rules/`. See [Standards layer](../../explanation/standards-layer.md).
+- **`target-hooks/replay/`** — shared build-time replay hook contract at [`adapters/shared/target-hooks/replay/`](../../../adapters/shared/target-hooks/replay/); per-target runners stay at `adapters/targets/<name>/prose/briefs/build/replay.md` when implemented.
 
 ## Validation
 

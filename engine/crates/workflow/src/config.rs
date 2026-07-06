@@ -220,32 +220,11 @@ impl<'a> Layout<'a> {
     /// [`specify_schema::cache::project_cache_dir`]. Lives outside the
     /// working tree, keyed by a digest of the project path, so deleting
     /// it costs recomputation only and it never pollutes git. Transient
-    /// per-run working state lives in-tree under [`Self::scratch_dir`].
+    /// per-run working state lives in-tree under `.specify/scratch/`
+    /// (gitignored at init; see DECISIONS.md §"Cache layout").
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
         specify_schema::cache::project_cache_dir(self.project_dir)
-    }
-
-    /// Absolute path to `<project_dir>/.specify/scratch/` — the
-    /// transient working-state root. Per-run lanes only (source
-    /// operation `$SCRATCH_DIR` lanes, the plan handoff lane); every
-    /// lane is recreated empty by its owning verb, so the tree can be
-    /// wiped at any time at zero cost. Disjoint from
-    /// [`Self::cache_dir`] so a scratch write can never pollute a
-    /// cache artifact. See DECISIONS.md §"Cache layout".
-    #[must_use]
-    pub fn scratch_dir(&self) -> PathBuf {
-        self.specify_dir().join("scratch")
-    }
-
-    /// Absolute path to `<project_dir>/.specify/scratch/plan/` — the
-    /// plan-phase handoff lane. `specify plan propose --dry-run`
-    /// recreates it empty; the agent writes the reconciliation
-    /// response envelope (`propose-response.json`) into it for
-    /// `specify plan propose --from`.
-    #[must_use]
-    pub fn plan_scratch_dir(&self) -> PathBuf {
-        self.scratch_dir().join("plan")
     }
 
     /// Absolute path to `<project_dir>/.specify/decisions/` — the
@@ -281,21 +260,11 @@ impl<'a> Layout<'a> {
         self.plan_dir().join("plan.yaml")
     }
 
-    /// Absolute path to `<plan-root>/.specify/plan.lock` — the
-    /// skill-acquired `/spec:execute` driver lock
-    /// ([`crate::plan_lock`]). Anchored at the plan root so slot-side
-    /// phase work under `--plan-dir` probes the *workspace* lock.
-    #[must_use]
-    pub fn plan_lock_path(&self) -> PathBuf {
-        self.plan_dir().join(".specify").join("plan.lock")
-    }
-
     /// Absolute path to `<plan-root>/.specify/guest.lock` — the guest
     /// execute loop's create-exclusive advisory marker (RFC-61 D1,
     /// [`crate::orchestrate::GuestMarker`]). Guest-vs-guest breakout
-    /// refusal only: it does not interlock with the native flock at
-    /// [`Self::plan_lock_path`] (non-concurrent stack use is the
-    /// documented coexistence rule).
+    /// refusal: the only concurrency fence left after the retired
+    /// native plan lock (D-planlock).
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {
         self.plan_dir().join(".specify").join("guest.lock")

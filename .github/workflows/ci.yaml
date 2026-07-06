@@ -38,7 +38,7 @@ jobs:
         run: |
           shopt -s nullglob
           status=0
-          for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
+          for d in adapters/sources/*/prose/references/spec-runtime adapters/targets/*/prose/references/spec-runtime; do
             if [ ! -L "$d" ]; then
               echo "error: $d must be a symlink to ../../../shared/references/runtime (no materialised copies)" >&2
               status=1

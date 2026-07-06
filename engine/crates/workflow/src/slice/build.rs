@@ -11,5 +11,4 @@
 //! [`crate::schema`], beside the other workflow-aware validators.
 
 pub mod assemble;
-pub mod native_hook;
 pub mod wire;

@@ -64,7 +64,7 @@ A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.
 
 **Location:** `plan.yaml` at the project root (single-project) or `<workspace>/plan.yaml` (workspace mode)
 **Created by:** `/spec:plan` (via `specify plan create`)
-**Modified by:** `specify plan propose --from`, `specify plan add`, `specify plan amend`, `specify plan remove`, `specify plan transition`, `specify plan next`, `specify plan archive`
+**Modified by:** `specify plan author`, `specify plan add`, `specify plan amend`, `specify plan remove`, `specify plan transition`, `specify plan next`, `specify plan archive`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
 

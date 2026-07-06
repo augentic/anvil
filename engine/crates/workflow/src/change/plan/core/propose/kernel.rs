@@ -22,8 +22,8 @@ use crate::registry::topology::Decision;
 
 /// Outcome of a successful [`Plan::propose_from`] projection.
 ///
-/// The reconciliation kernel returns it so the CLI handler (the
-/// `propose --from` command) can emit the single D2
+/// The reconciliation kernel returns it so the caller (the guest
+/// `plan author` orchestration) can emit the single D2
 /// `plan.reconcile.completed` journal event without re-deriving
 /// anything: [`ProposeOutcome::slice_names`] (plus its length) feeds the
 /// payload.
@@ -65,7 +65,7 @@ impl Plan {
         if !self.is_replaceable() {
             return Err(Error::validation_failed(
                 "plan-reconcile-plan-not-replaceable",
-                "propose --from requires a replaceable plan",
+                "lead reconciliation requires a replaceable plan",
                 "lifecycle is approved or any entry is in-progress or done",
             ));
         }

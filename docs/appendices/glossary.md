@@ -11,7 +11,7 @@ A versioned Specify extension. Specify splits adapters by direction: **source ad
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
 
 **API contract**
-A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify extension run contract`).
+A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the contracts adapter's in-guest validator.
 
 **Archive**
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
@@ -28,7 +28,7 @@ A structured document that defines part of a slice. The core slice artifacts are
 The accumulated set of merged specs at `.specify/specs/` and merged contracts at `contracts/`. Represents the current known behavioural and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/briefs/{survey,extract}.md` or `adapters/targets/<name>/briefs/{shape,build,merge}.md`.
+A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/prose/briefs/{survey,extract}.md` or `adapters/targets/<name>/prose/briefs/{shape,build,merge}.md`.
 
 **Breakout verb**
 `/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `/spec:execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Shares the same skill body as the in-loop call.
@@ -132,7 +132,7 @@ The two phases of `specify slice build <slice>`. `--phase prepare` (default) ass
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specify plan propose`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
+The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via the reconcile leg inside `specify plan author`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.

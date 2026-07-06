@@ -77,4 +77,4 @@ A phase failure only stops the loop while it is the *newest* journal terminal fo
 
 ## Lock release
 
-Every stop path releases the plan lock when the `specify plan lock -- <cmd>` child exits — the wrapper holds the lock only for its child's lifetime, so the lock is released the moment the driver returns. Relying on process-exit semantics is the contract; nothing unlocks explicitly. (The CLI's `plan-lock-not-held` refusal — see [`plan-lock.md`](plan-lock.md) — is the runtime guard that no driver re-enters without re-acquiring.)
+Every stop path releases the guest lock when the guest-routed driver exits — the orchestration holds the `.specify/guest.lock` marker only for the run's lifetime, so the lock is released the moment the driver returns. Relying on process-exit semantics is the contract; nothing unlocks explicitly. (See [`plan-lock.md`](plan-lock.md) for the retirement of the native command-wrapper.)

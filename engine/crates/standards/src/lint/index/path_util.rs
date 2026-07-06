@@ -17,9 +17,9 @@ pub(super) fn render(p: &Path) -> Option<String> {
     if MAIN_SEPARATOR == '/' { Some(s.to_owned()) } else { Some(s.replace(MAIN_SEPARATOR, "/")) }
 }
 
-/// Split `adapters/{sources,targets}/<adapter>/<tail>` into the
+/// Split `adapters/{sources,targets}/<adapter>/[<prose>/]<tail>` into the
 /// `(axis, adapter, tail)` triple, where `tail` is everything after the
-/// adapter segment. Returns `None` for any path outside the canonical
+/// adapter segment (including a leading `prose/` when present). Returns `None` for any path outside the canonical
 /// `adapters/<axis>/<adapter>/…` layout or with an empty adapter
 /// segment. The adapter and brief extractors apply their own tail
 /// checks (`adapter.yaml`, `briefs/<op>.md`) on the returned `tail`.

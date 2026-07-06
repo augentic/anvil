@@ -4,10 +4,9 @@
 //! Source and target adapters share the `adapter.yaml` wire shape but
 //! split into [`SourceAdapter`] / [`TargetAdapter`] in memory, each
 //! carrying its closed operation set ([`SourceOperation`] /
-//! [`TargetOperation`]) as the typed `briefs.keys()` source-of-truth.
-//! The split pushes the string boundary out to the YAML parse step;
-//! see [DECISIONS.md §"Operations typed at parse boundary"] for the
-//! rationale.
+//! [`TargetOperation`]) derived from the closed WIT contract
+//! (`wit/specify.wit`). See [DECISIONS.md §"Operations typed at parse
+//! boundary"] for the rationale.
 //!
 //! Resolution is path-agnostic: each axis-specific loader probes
 //! `<project-cache>/manifests/{sources,targets}/<name>/`
@@ -17,11 +16,8 @@
 //! target adapters with colliding names disambiguate by axis. See
 //! [DECISIONS.md §"Cache layout"].
 //!
-//! Brief bodies are read by the agent from paths declared in each
-//! manifest's typed `briefs` map; the CLI never parses brief markdown.
-//! Per the plugin-repo standard
-//! ([`docs/standards/skill-authoring.md`](https://github.com/augentic/specify/blob/main/docs/standards/skill-authoring.md)
-//! §"Brief authoring"), briefs carry no YAML frontmatter.
+//! Brief bodies are read in-guest by each adapter's own workflow
+//! guest; the CLI never parses brief markdown.
 //!
 //! [DECISIONS.md §"Operations typed at parse boundary"]: ../../../DECISIONS.md#operations-typed-at-parse-boundary
 //! [DECISIONS.md §"Cache layout"]: ../../../DECISIONS.md#cache-layout
@@ -32,11 +28,9 @@ mod resolve;
 mod validate_manifest;
 
 pub use core::{
-    ADAPTER_FILENAME, ADAPTER_WASM_FILENAME, ADAPTERS_DIR, AdapterExtensionDeclaration,
-    AdapterLocation, AdapterRef, Axis, BuildInputDeclaration, CatalogCapability, Execution,
-    NativeBuildHookDeclaration, PlatformsCapability, PlatformsViolation, PrepareHookDeclaration,
-    ResolvedTargetAdapter, SourceAdapter, TargetAdapter, adapter_axis_dir, cache_axis_dir,
-    cache_dir, extension_run_name, scratch_dir,
+    ADAPTER_FILENAME, ADAPTER_GUEST_FILENAME, ADAPTERS_DIR, AdapterLocation, AdapterRef, Axis,
+    BuildInputDeclaration, PlatformsCapability, PlatformsViolation, ResolvedTargetAdapter,
+    SourceAdapter, TargetAdapter, adapter_axis_dir, cache_axis_dir, cache_dir,
 };
 
 pub use operation::{SourceOperation, TargetOperation};

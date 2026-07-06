@@ -28,15 +28,6 @@ pub struct Adapter {
     pub name: String,
     pub version: semver::Version,
     pub description: String,
-    pub briefs: Vec<Brief>,
-}
-
-/// One resolved adapter brief.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Brief {
-    pub phase: String,
-    pub id: String,
-    pub description: String,
 }
 
 /// One `project.yaml.rules` override.
@@ -150,14 +141,6 @@ fn conventions_bullets(input: &Input) -> Vec<String> {
             adapter.version,
             one_line(&adapter.description)
         ));
-        for brief in &adapter.briefs {
-            bullets.push(format!(
-                "pipeline `{}/{}`: {}.",
-                one_line(&brief.phase),
-                one_line(&brief.id),
-                one_line(&brief.description)
-            ));
-        }
     }
     for rule in &input.rule_overrides {
         bullets.push(format!(
@@ -249,18 +232,6 @@ mod tests {
                 name: "demo-target".to_string(),
                 version: semver::Version::new(1, 0, 0),
                 description: "Demo target workflow".to_string(),
-                briefs: vec![
-                    Brief {
-                        phase: "define".to_string(),
-                        id: "specs".to_string(),
-                        description: "Write requirements".to_string(),
-                    },
-                    Brief {
-                        phase: "define".to_string(),
-                        id: "proposal".to_string(),
-                        description: "Establish why".to_string(),
-                    },
-                ],
             }),
             rule_overrides: vec![Rule {
                 brief_id: "proposal".to_string(),

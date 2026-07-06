@@ -264,7 +264,7 @@ fn target_overlay_from_project_local() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        &project.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
         "Demo overlay",
     );
@@ -280,7 +280,7 @@ fn target_overlay_from_project_local() {
     assert_eq!(shared.path_root, PathRoot::RulesRoot);
     assert_eq!(target.origin, Origin::Target);
     assert_eq!(target.path_root, PathRoot::ProjectDir);
-    assert_eq!(target.path, "adapters/targets/demo-target/rules/org-001.md");
+    assert_eq!(target.path, "adapters/targets/demo-target/prose/rules/org-001.md");
 }
 
 /// Test 5: rules-root fallback — project-local rung empty, manifest
@@ -295,7 +295,7 @@ fn target_overlay_falls_back_to_rules_root() {
         "Shared universal",
     );
     write_rule(
-        &rules_root.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        &rules_root.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
         "Demo fallback overlay",
     );
@@ -307,7 +307,7 @@ fn target_overlay_falls_back_to_rules_root() {
     let target = result.iter().find(|e| e.rule.id == "ORG-001").expect("target present");
     assert_eq!(target.origin, Origin::Target);
     assert_eq!(target.path_root, PathRoot::RulesRoot);
-    assert_eq!(target.path, "adapters/targets/demo-target/rules/org-001.md");
+    assert_eq!(target.path, "adapters/targets/demo-target/prose/rules/org-001.md");
 }
 
 /// Test 6: source overlay from project-local rung. Confirms
@@ -322,7 +322,7 @@ fn source_overlay_from_project_local() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/sources/demo-source/rules/src-001.md"),
+        &project.path().join("adapters/sources/demo-source/prose/rules/src-001.md"),
         "SRC-001",
         "Source overlay",
     );
@@ -334,7 +334,7 @@ fn source_overlay_from_project_local() {
     let src = result.iter().find(|e| e.rule.id == "SRC-001").expect("source present");
     assert_eq!(src.origin, Origin::Source);
     assert_eq!(src.path_root, PathRoot::ProjectDir);
-    assert_eq!(src.path, "adapters/sources/demo-source/rules/src-001.md");
+    assert_eq!(src.path, "adapters/sources/demo-source/prose/rules/src-001.md");
 }
 
 /// Test 7: multiple bound source adapters each contribute their
@@ -349,12 +349,12 @@ fn multiple_source_overlays() {
         "Shared universal",
     );
     write_rule(
-        &project.path().join("adapters/sources/demo-source/rules/src-001.md"),
+        &project.path().join("adapters/sources/demo-source/prose/rules/src-001.md"),
         "SRC-001",
         "Source overlay",
     );
     write_rule(
-        &project.path().join("adapters/sources/demo-docs/rules/src-002.md"),
+        &project.path().join("adapters/sources/demo-docs/prose/rules/src-002.md"),
         "SRC-002",
         "Docs overlay",
     );
@@ -383,7 +383,7 @@ fn cache_overlay_when_local_missing() {
         "Shared universal",
     );
     write_rule(
-        &manifest_cache(project.path()).join("sources/demo-source/rules/src-001.md"),
+        &manifest_cache(project.path()).join("sources/demo-source/prose/rules/src-001.md"),
         "SRC-001",
         "Source cache overlay",
     );
@@ -395,7 +395,7 @@ fn cache_overlay_when_local_missing() {
     let src = result.iter().find(|e| e.rule.id == "SRC-001").expect("source present");
     assert_eq!(src.origin, Origin::Source);
     assert_eq!(src.path_root, PathRoot::Cache);
-    assert_eq!(src.path, "manifests/sources/demo-source/rules/src-001.md");
+    assert_eq!(src.path, "manifests/sources/demo-source/prose/rules/src-001.md");
 }
 
 /// Test 10: README.md (case-insensitive) is excluded from
@@ -435,12 +435,12 @@ fn monorepo_split_anchors() {
         "Shared",
     );
     write_rule(
-        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        &project.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
         "Target",
     );
     write_rule(
-        &project.path().join("adapters/sources/demo-source/rules/src-001.md"),
+        &project.path().join("adapters/sources/demo-source/prose/rules/src-001.md"),
         "SRC-001",
         "Source",
     );
@@ -472,7 +472,7 @@ fn monorepo_no_double_fallback_walk() {
         "Shared",
     );
     write_rule(
-        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        &project.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
         "Target",
     );

@@ -38,14 +38,14 @@ fn assert_invalid(validator: &Validator, instance: &JsonValue, ctx: &str) {
 
 // --- adapter.schema.json --------------------------------------------
 
+// The post-cutover manifest is prose identity only: `name` / `version`
+// / `axis` / `description`, plus target-only `platforms` / `inputs` and
+// the optional `specify` host-CLI floor. Operation sets derive from the
+// closed WIT contract, never from the wire.
 const PLUGIN_VALID_SOURCE: &str = r"
 name: typescript
 version: 1.0.0
 axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
 description: Extracts behavioural evidence from TypeScript codebases.
 ";
 
@@ -53,97 +53,61 @@ const PLUGIN_VALID_TARGET: &str = r"
 name: omnia
 version: 1.0.0
 axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 description: Omnia Rust WASM target adapter.
 ";
 
-const PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS: &str = r"
-name: demo-target
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-description: Generic target adapter exercising the full target-only optional surface.
-platforms:
-  required: false
-  allowed: [core]
-  default: [core]
-prepare:
-  argv: [prepare, build]
-host_prereq:
-  script: scripts/host-prereq.sh
-finalize_verify:
-  script: scripts/finalize-verify.sh
-catalog:
-  infer: true
-extension:
-  name: demo-extension
-inputs:
-  - path: tokens.yaml
-    required: true
-";
-
-/// RFC-61 S2 two-shape window: the shrunk post-cutover manifest keeps
-/// only `name` / `version` / `axis` / `description` (plus `platforms`
-/// on vectis) — `briefs` and `execution` are optional at the top level.
-const PLUGIN_VALID_SHRUNK_SOURCE: &str = r"
-name: typescript
-version: 1.0.0
-axis: source
-description: Shrunk post-cutover source manifest.
-";
-
-const PLUGIN_VALID_SHRUNK_TARGET: &str = r"
+const PLUGIN_VALID_TARGET_WITH_PLATFORMS: &str = r"
 name: vectis
 version: 1.0.0
 axis: target
-description: Shrunk post-cutover target manifest.
+description: Target manifest carrying the declarative platforms capability.
 platforms:
   required: true
   allowed: [core, ios, android]
   default: [core, ios, android]
 ";
 
+const PLUGIN_VALID_TARGET_WITH_INPUTS: &str = r"
+name: vectis
+version: 1.0.0
+axis: target
+description: Target manifest declaring build inputs.
+inputs:
+  - path: tokens.yaml
+    required: true
+";
+
 const PLUGIN_INVALID_NO_AXIS: &str = r"
 name: typescript
 version: 1.0.0
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
+description: Missing the axis discriminator.
 ";
 
 const PLUGIN_INVALID_BAD_AXIS: &str = r"
 name: typescript
 version: 1.0.0
 axis: lens
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
+description: Unknown axis value.
 ";
 
 const PLUGIN_INVALID_NAME_NOT_KEBAB: &str = r"
 name: CodeTypeScript
 version: 1.0.0
 axis: source
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
+description: Name is not kebab-case.
 ";
 
 const PLUGIN_INVALID_VERSION_NOT_SEMVER: &str = r"
 name: typescript
 version: '1'
 axis: source
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
+description: Version is not semver.
+";
+
+const PLUGIN_INVALID_MISSING_DESCRIPTION: &str = r"
+name: typescript
+version: 1.0.0
+axis: source
 ";
 
 #[test]
@@ -151,13 +115,8 @@ fn plugin_accepts_source_and_target_shapes() {
     let v = load(ADAPTER_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_SOURCE), "plugin/source");
     assert_valid(&v, &yaml(PLUGIN_VALID_TARGET), "plugin/target");
-    assert_valid(
-        &v,
-        &yaml(PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS),
-        "plugin/target-with-native-hooks",
-    );
-    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_SOURCE), "plugin/shrunk-source");
-    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_TARGET), "plugin/shrunk-target");
+    assert_valid(&v, &yaml(PLUGIN_VALID_TARGET_WITH_PLATFORMS), "plugin/target-with-platforms");
+    assert_valid(&v, &yaml(PLUGIN_VALID_TARGET_WITH_INPUTS), "plugin/target-with-inputs");
 }
 
 #[test]
@@ -167,6 +126,30 @@ fn plugin_rejects_axis_and_primitives() {
     assert_invalid(&v, &yaml(PLUGIN_INVALID_BAD_AXIS), "plugin/bad-axis");
     assert_invalid(&v, &yaml(PLUGIN_INVALID_NAME_NOT_KEBAB), "plugin/name-not-kebab");
     assert_invalid(&v, &yaml(PLUGIN_INVALID_VERSION_NOT_SEMVER), "plugin/version-not-semver");
+    assert_invalid(&v, &yaml(PLUGIN_INVALID_MISSING_DESCRIPTION), "plugin/missing-description");
+}
+
+#[test]
+fn plugin_rejects_retired_old_stack_keys() {
+    // The old-stack manifest surface (`briefs`, `execution`,
+    // `extension`, `prepare`, `host_prereq`, `finalize_verify`,
+    // `catalog`) is closed out; `additionalProperties: false` rejects
+    // every retired key.
+    let v = load(ADAPTER_JSON_SCHEMA);
+    for retired in [
+        "briefs:\n  survey: briefs/survey.md\n  extract: briefs/extract.md",
+        "execution: agent",
+        "extension:\n  name: demo-extension",
+        "prepare:\n  argv: [prepare, build]",
+        "host_prereq:\n  script: scripts/host-prereq.sh",
+        "finalize_verify:\n  script: scripts/finalize-verify.sh",
+        "catalog:\n  infer: true",
+    ] {
+        let manifest = format!(
+            "name: demo\nversion: 1.0.0\naxis: target\ndescription: Retired key.\n{retired}\n"
+        );
+        assert_invalid(&v, &yaml(&manifest), &format!("plugin/retired-key `{retired}`"));
+    }
 }
 
 // --- source.schema.json --------------------------------------------
@@ -175,64 +158,31 @@ const SOURCE_INVALID_AXIS_TARGET: &str = r"
 name: typescript
 version: 1.0.0
 axis: target
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
+description: Wrong axis for the source schema.
 ";
 
-const SOURCE_INVALID_EXTRA_BRIEF: &str = r"
+const SOURCE_INVALID_PLATFORMS: &str = r"
 name: typescript
 version: 1.0.0
 axis: source
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
-  shape: briefs/shape.md
-";
-
-const SOURCE_INVALID_MISSING_BRIEF: &str = r"
-name: typescript
-version: 1.0.0
-axis: source
-briefs:
-  survey: briefs/survey.md
-";
-
-const SOURCE_INVALID_NATIVE_BUILD_HOOK: &str = r"
-name: typescript
-version: 1.0.0
-axis: source
-execution: agent
-briefs:
-  survey: briefs/survey.md
-  extract: briefs/extract.md
-description: Source adapter carrying a target-only native build hook.
-host_prereq:
-  script: scripts/host-prereq.sh
+description: Source adapter carrying the target-only platforms capability.
+platforms:
+  required: true
+  allowed: [core]
+  default: [core]
 ";
 
 #[test]
 fn source_accepts_canonical_shape() {
     let v = load(SOURCE_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_SOURCE), "source/valid");
-    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_SOURCE), "source/shrunk");
 }
 
 #[test]
-fn source_rejects_axis_and_brief_violations() {
-    // Brief-key validity is the only thing closing the operation set.
-    // Cover both "extra key under briefs:" and "required brief
-    // missing" to pin that surface.
+fn source_rejects_axis_and_target_only_keys() {
     let v = load(SOURCE_JSON_SCHEMA);
     assert_invalid(&v, &yaml(SOURCE_INVALID_AXIS_TARGET), "source/axis-target");
-    assert_invalid(&v, &yaml(SOURCE_INVALID_EXTRA_BRIEF), "source/extra-brief");
-    assert_invalid(&v, &yaml(SOURCE_INVALID_MISSING_BRIEF), "source/missing-brief");
-}
-
-#[test]
-fn source_rejects_native_build_hooks() {
-    let v = load(SOURCE_JSON_SCHEMA);
-    assert_invalid(&v, &yaml(SOURCE_INVALID_NATIVE_BUILD_HOOK), "source/native-build-hook");
+    assert_invalid(&v, &yaml(SOURCE_INVALID_PLATFORMS), "source/platforms");
 }
 
 // --- target.schema.json --------------------------------------------
@@ -241,76 +191,21 @@ const TARGET_INVALID_AXIS_SOURCE: &str = r"
 name: omnia
 version: 1.0.0
 axis: source
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-";
-
-const TARGET_INVALID_BRIEFS_INCLUDE_EXTRACT: &str = r"
-name: omnia
-version: 1.0.0
-axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-  extract: briefs/extract.md
-";
-
-const TARGET_INVALID_MISSING_MERGE_BRIEF: &str = r"
-name: omnia
-version: 1.0.0
-axis: target
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-";
-
-const TARGET_INVALID_HOOK_SCRIPT_PARENT_DIR: &str = r"
-name: demo-target
-version: 1.0.0
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-host_prereq:
-  script: scripts/../escape.sh
+description: Wrong axis for the target schema.
 ";
 
 #[test]
 fn target_accepts_canonical_shape() {
     let v = load(TARGET_JSON_SCHEMA);
     assert_valid(&v, &yaml(PLUGIN_VALID_TARGET), "target/valid");
-    assert_valid(&v, &yaml(PLUGIN_VALID_SHRUNK_TARGET), "target/shrunk");
+    assert_valid(&v, &yaml(PLUGIN_VALID_TARGET_WITH_PLATFORMS), "target/platforms");
+    assert_valid(&v, &yaml(PLUGIN_VALID_TARGET_WITH_INPUTS), "target/inputs");
 }
 
 #[test]
-fn target_accepts_native_build_hooks() {
-    let v = load(TARGET_JSON_SCHEMA);
-    assert_valid(&v, &yaml(PLUGIN_VALID_TARGET_WITH_NATIVE_HOOKS), "target/native-build-hooks");
-}
-
-#[test]
-fn target_rejects_axis_and_brief_violations() {
-    // The `briefs.*` key set is what closes the target operation set.
-    // Cover an axis-mismatch fixture, an extra source-axis brief key,
-    // and a missing required brief.
+fn target_rejects_axis_mismatch() {
     let v = load(TARGET_JSON_SCHEMA);
     assert_invalid(&v, &yaml(TARGET_INVALID_AXIS_SOURCE), "target/axis-source");
-    assert_invalid(
-        &v,
-        &yaml(TARGET_INVALID_BRIEFS_INCLUDE_EXTRACT),
-        "target/briefs-include-extract",
-    );
-    assert_invalid(&v, &yaml(TARGET_INVALID_MISSING_MERGE_BRIEF), "target/missing-merge-brief");
-    assert_invalid(
-        &v,
-        &yaml(TARGET_INVALID_HOOK_SCRIPT_PARENT_DIR),
-        "target/hook-script-parent-dir",
-    );
 }
 
 // --- evidence.schema.json ------------------------------------------

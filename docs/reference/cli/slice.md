@@ -9,7 +9,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | Verb | When to use |
 |------|-------------|
 | [`create`](#specify-slice-create) | Create a new slice directory with an initial `metadata.yaml`. |
-| [`synthesize`](#specify-slice-synthesize) | Turn the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml`: `--dry-run` emits the agent inputs envelope; `--from <response.json>` runs the projection kernel and persists. |
+| [synthesis](#synthesis-inside-specify-slice-refine) | The synthesis leg inside `specify slice refine`: turns the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml` via the projection kernel. |
 | [`model`](#specify-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#specify-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
 | [`build`](#specify-slice-build) | Build the slice through its bound target adapter: `--phase prepare` assembles the build request, `--phase finalize` validates the report and gates the `built` transition. |
@@ -39,21 +39,16 @@ specify slice create <name> [--if-exists fail|continue|restart] [--format json]
 
 Creates `.specify/slices/<name>/` with an initial `metadata.yaml`.
 
-### specify slice synthesize
+### Synthesis (inside `specify slice refine`)
 
-Turn the slice's `Evidence[]` plus the bound target's `shape` brief into the canonical artifacts and the typed `model.yaml`. Two-phase, mirroring [`specify plan propose`](plan.md#specify-plan-propose): the CLI cannot run an agent, so `--dry-run` emits the inputs the agent reconciles and `--from` projects the agent's response.
+The synthesis engine turns the slice's `Evidence[]` plus the bound target's `shape` brief into the canonical artifacts and the typed `model.yaml`. It runs as the collapsed judgment leg inside the guest-routed `specify slice refine` (and the `plan execute` loop); the standalone two-phase envelope verb retired at the Omnia-migration cutover.
 
-```bash
-specify slice synthesize <name> --dry-run [--format json]
-specify slice synthesize <name> --from <response.json> [--format json]
-```
-
-- `--dry-run` assembles the **inputs** envelope — each bound source's inline `lead` + `claims` (read from `evidence/<source>.yaml`) plus the resolved target `shape` brief body. Authority is **not** included (the kernel resolves it after the response). Read-only: writes nothing and emits a `slice.synthesize.agent` journal event.
-- `--from <response.json>` is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (baseline-aware `REQ` id assignment — slice-global for new domains, continuing from baseline max for additive requirements in modified domains; honour `baseline-id` for modifications; derive `status` and per-claim `winner` markers; render highest-authority-first `Sources:` lists; write inline provenance; stamp the `version` / `slice` / `project` header), renders `## ADDED` / `## MODIFIED` delta sections (modified domains) or flat blocks (new domains) with `ID:` / `Sources:` / `Status:` lines into each `specs/<domain>/spec.md`, auto-scans `metadata.touched_specs`, runs the drift validators, then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
+- The **inputs** leg assembles the **inputs** envelope — each bound source's inline `lead` + `claims` (read from `evidence/<source>.yaml`) plus the resolved target `shape` brief body. Authority is **not** included (the kernel resolves it after the response). Read-only: writes nothing and emits a `slice.synthesize.agent` journal event.
+- The **persist** tail is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (baseline-aware `REQ` id assignment — slice-global for new domains, continuing from baseline max for additive requirements in modified domains; honour `baseline-id` for modifications; derive `status` and per-claim `winner` markers; render highest-authority-first `Sources:` lists; write inline provenance; stamp the `version` / `slice` / `project` header), renders `## ADDED` / `## MODIFIED` delta sections (modified domains) or flat blocks (new domains) with `ID:` / `Sources:` / `Status:` lines into each `specs/<domain>/spec.md`, auto-scans `metadata.touched_specs`, runs the drift validators, then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
 
 The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is always agent-dispatched — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
 
-This is the CLI verb invoked by [`/spec:refine`](../slice-skills/index.md#specrefine) at its synthesis step. See [CLI output shapes](../cli-output-shapes.md#specify-slice-synthesize---dry-run) for the JSON envelope shapes.
+This is the synthesis step inside [`/spec:refine`](../slice-skills/index.md#specrefine). See [CLI output shapes](../cli-output-shapes.md#synthesis-envelopes) for the envelope shapes.
 
 ### specify slice model
 
@@ -77,22 +72,20 @@ Reshapes the inline `model.yaml` data plus on-disk Evidence into the per-require
 
 ### specify slice build
 
-Build the slice through its bound target adapter's `build` operation and gate the `built` transition. Two-phase, mirroring `specify source survey` / `extract`: the CLI cannot run an agent, so `--phase prepare` assembles the build request the agent's `build` brief consumes and `--phase finalize` validates the report the brief writes. The CLI owns request assembly, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate; the target brief owns only code generation.
+Build the slice through its bound target adapter's `build` operation and gate the `built` transition. Guest-routed: one orchestration owns request assembly, the adapter guest's judgment leg, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate; the target's compiled-in brief owns only code generation.
 
 ```bash
-specify slice build <name> [--phase prepare|finalize] [--format json]
+specify slice build <name> [--format json]
 ```
 
 | Argument | Description |
 |----------|-------------|
 | `name` | Slice name (under `.specify/slices/`) |
-| `--phase` | `prepare` (default) or `finalize`. `execution: tool` adapters run the whole operation in one call regardless of the flag. |
-| `--format` | Output format: `json` for the structured handoff / result envelope |
+| `--format` | Output format: `json` for the structured result envelope |
 
-- `--phase prepare` resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, runs the manifest-declared `host_prereq` script when present (via `sh` from the adapter root), runs the manifest-declared `prepare` extension hook when present, emits `target.execution.agent`, prints the handoff envelope (`slice`, `target`, `request`, `report`, `briefs-dir`, `build-brief`), and returns without blocking. The agent then runs the target `build` brief against the prepared request and writes `.specify/slices/<name>/build/report.yaml`.
-- `--phase finalize` emits `slice.build.started`, validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), runs the manifest-declared `finalize_verify` script when present via `sh` (`target-build-verify-gate-failed` on failure), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts prepare with `target-build-input-missing`; missing host toolchain (e.g. unset `ANDROID_HOME`) aborts prepare with `target-build-host-prereq-missing` when the target declares `host_prereq`.
+The orchestration resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, emits `target.execution.agent`, drives the adapter guest's `build` brief (including any in-guest build prelude, e.g. vectis asset materialization and host-prereq gates), then in its finalize tail emits `slice.build.started`, validates the report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts with `target-build-input-missing`.
 
-This is the CLI verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — `finalize` owns the `built` transition gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
+This is the verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — the finalize tail owns the `built` transition gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
 
 ### specify slice transition
 
@@ -118,7 +111,7 @@ specify slice touched-specs <name> --scan
 specify slice touched-specs <name> --set <spec-path>...
 ```
 
-`specify slice synthesize --from` auto-scans and persists `metadata.touched_specs` after a successful write; use `--scan` only when reclassifying without re-synthesising.
+The synthesis persist tail auto-scans and persists `metadata.touched_specs` after a successful write; use `--scan` only when reclassifying without re-synthesising.
 
 ### specify slice overlap
 

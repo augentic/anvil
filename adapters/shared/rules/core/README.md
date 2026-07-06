@@ -46,8 +46,7 @@ The closed `applicability.artifacts` enum carries framework-side tokens alongsid
 | ----------- | ------------------------------------------------- |
 | `skill`     | `plugins/**/SKILL.md` (frontmatter + body)        |
 | `adapter`   | `adapters/**/adapter.yaml` manifests              |
-| `brief`     | `adapters/**/briefs/*.md`                         |
-| `reference` | `adapters/**/references/*.md`                     |
+| `reference` | `adapters/**/prose/references/*.md`                     |
 | `codex`     | `adapters/**/rules/*.md` (rule files themselves)  |
 | `doc`       | `docs/**/*.md`                                    |
 
@@ -101,7 +100,7 @@ Overlays MUST be symlinks — regular-file `agent-teams.md` overlays are forbidd
 | Rule | Title | Role |
 | --- | --- | --- |
 | CORE-002 | Markdown Links Resolve | Generic `[label](target)` relative links resolve on disk. |
-| CORE-018 | Links Brief Schema Link Resolve | Adapter briefs cite only known `schemas.specify.dev` tool-schema URLs. |
+| CORE-018 | Links Prompt Schema Link Resolve | Adapter prompts cite only known `schemas.specify.dev` tool-schema URLs. |
 | CORE-019 | Links Broken Reference | `SKILL.md` references to bundled `references/` / `examples/` paths exist. |
 | CORE-020 | Links Unresolved Directive | Skill directive paths resolve. |
 

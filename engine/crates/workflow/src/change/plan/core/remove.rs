@@ -6,8 +6,8 @@ use specify_error::Error;
 use super::model::{Lifecycle, Plan, Status};
 
 impl Plan {
-    /// Whether the plan accepts wholesale slice replacement (`propose
-    /// --from`) or per-entry removal (`plan remove`).
+    /// Whether the plan accepts wholesale slice replacement (the
+    /// reconciliation kernel) or per-entry removal (`plan remove`).
     #[must_use]
     pub fn is_replaceable(&self) -> bool {
         self.lifecycle == Lifecycle::Pending

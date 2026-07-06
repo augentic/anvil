@@ -38,86 +38,12 @@ fn report_with_ui_surface(screens: u32) -> BuildReport {
     .expect("report with ui-surface deserialises")
 }
 
-/// Write `body` to a `composition.yaml` under a fresh tempdir and return
-/// the dir handle (kept alive by the caller) plus the file path.
-fn staged_composition(body: &str) -> (tempfile::TempDir, PathBuf) {
-    let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("composition.yaml");
-    std::fs::write(&path, body).expect("write composition.yaml");
-    (dir, path)
-}
-
 // The success-with-blocking gate is asserted end-to-end by
 // `engine/tests/slice.rs` (the build-finalize blocking-finding test), so its
-// unit duplicate was deleted. The UI-surface coherence warnings surface in the
-// e2e suite only through `screens:` compositions, so the `delta:` envelope and
-// unreadable/malformed-file branches of `composition_declares_surface` have no
-// CLI fixture — the three former coherence tests are collapsed into one below
-// to keep those branches covered. The output-existence gate likewise has no CLI
-// fixture (`target-build-output-missing` never surfaces e2e), so it stays as
-// the two kept tests below.
-
-/// A4 UI-surface coherence across the full matrix: the two mismatch warnings
-/// (non-UI slice with a `screens:` / `delta:` surface, UI slice with an
-/// empty/absent composition), the coherent silent pairs, the absent-ui-surface
-/// back-compat path, and the all-empty `delta:` envelope. Collapsed from the
-/// three former coherence tests; every assertion is preserved.
-#[test]
-fn coherence() {
-    // screens == 0 against a non-empty `screens:` composition warns
-    // unexpected-for-non-ui; the warning never blocks.
-    let (_d0, screens) = staged_composition("version: 1\nscreens:\n  home:\n    name: Home\n");
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(0), &screens);
-    assert_eq!(warnings.len(), 1, "expected one warning, got {warnings:?}");
-    assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-unexpected-for-non-ui-slice"));
-    assert!(!blocking(&warnings[0]), "A4 warnings must never block");
-
-    // screens > 0 against an empty `screens: {}` composition warns
-    // empty-for-ui-slice.
-    let (_d1, empty) = staged_composition("version: 1\nscreens: {}\n");
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(2), &empty);
-    assert_eq!(warnings.len(), 1, "expected one warning, got {warnings:?}");
-    assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-empty-for-ui-slice"));
-    assert!(!blocking(&warnings[0]), "A4 warnings must never block");
-
-    // An absent composition with a UI-surface claim also flags empty-for-ui
-    // (the unreadable-file early return treats the file as empty).
-    let dir = tempfile::tempdir().expect("tempdir");
-    let missing = dir.path().join("composition.yaml");
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(1), &missing);
-    assert_eq!(warnings.len(), 1, "absent composition for a UI slice warns: {warnings:?}");
-    assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-empty-for-ui-slice"));
-
-    // Coherent pairs and any report without a `ui_surface` claim stay silent.
-    assert!(
-        evaluate_ui_surface_coherence(&report_with_ui_surface(1), &screens).is_empty(),
-        "ui slice + non-empty composition is coherent"
-    );
-    assert!(
-        evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty).is_empty(),
-        "non-ui slice + empty composition is coherent"
-    );
-    assert!(
-        evaluate_ui_surface_coherence(&report("success", &[]), &screens).is_empty(),
-        "absent ui-surface emits no warnings even with a non-empty composition"
-    );
-
-    // A non-empty `delta:` envelope counts as a UI surface; an all-empty
-    // `delta:` does not.
-    let (_added, added) = staged_composition(
-        "version: 1\ndelta:\n  added:\n    home:\n      name: Home\n  modified: {}\n  removed: {}\n",
-    );
-    let warnings = evaluate_ui_surface_coherence(&report_with_ui_surface(0), &added);
-    assert_eq!(warnings.len(), 1, "non-empty delta is a UI surface: {warnings:?}");
-    assert_eq!(warnings[0].rule_id.as_deref(), Some("composition-unexpected-for-non-ui-slice"));
-
-    let (_empty_delta, empty_delta) =
-        staged_composition("version: 1\ndelta:\n  added: {}\n  modified: {}\n  removed: {}\n");
-    assert!(
-        evaluate_ui_surface_coherence(&report_with_ui_surface(0), &empty_delta).is_empty(),
-        "an all-empty delta carries no UI surface"
-    );
-}
+// unit duplicate was deleted. The UI-surface coherence check moved in-guest
+// (the vectis core's report gate), so its unit tests died with it. The
+// output-existence gate has no CLI fixture (`target-build-output-missing`
+// never surfaces e2e), so it stays as the two kept tests below.
 
 /// The `BuildRequest` / `BuildReport` serde envelope: the optional `ui-surface`
 /// claim, the `project-dir` request round-trip, `deny_unknown_fields`

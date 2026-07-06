@@ -285,7 +285,7 @@ fn is_rule_in_axis(path: &Path, axis_root: &Path) -> bool {
         return false;
     };
     let parts = normal_parts(rel);
-    parts.len() >= 3 && parts.get(1).copied() == Some("rules")
+    matches!(parts.as_slice(), [_, "prose", "rules", ..])
 }
 
 fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
@@ -293,7 +293,7 @@ fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
         let axis_dir = crate::lint::layout::framework_axis_dir(project_dir, axis);
         if let Ok(rel) = path.strip_prefix(&axis_dir) {
             let parts = normal_parts(rel);
-            if parts.len() >= 3 && parts.get(1).copied() == Some("rules") {
+            if matches!(parts.as_slice(), [adapter, "prose", "rules", ..] if !adapter.is_empty()) {
                 return parts.first().map(|part| (*part).to_string());
             }
         }
@@ -402,8 +402,8 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         write_rule(dir.path(), "adapters/shared/rules/core/CORE-001.md", "CORE-001");
         write_rule(dir.path(), "adapters/shared/rules/universal/UNI-001.md", "UNI-001");
-        write_rule(dir.path(), "adapters/targets/omnia/rules/OMNIA-001.md", "OMNIA-001");
-        write_rule(dir.path(), "adapters/sources/documentation/rules/SRC-001.md", "SRC-001");
+        write_rule(dir.path(), "adapters/targets/omnia/prose/rules/OMNIA-001.md", "OMNIA-001");
+        write_rule(dir.path(), "adapters/sources/documentation/prose/rules/SRC-001.md", "SRC-001");
         assert!(check_namespace_ownership(dir.path(), &policy()).is_empty());
         assert!(check_duplicate_rule_id(dir.path()).is_empty());
         assert!(check_rule_body_heading(dir.path()).is_empty());
@@ -432,7 +432,7 @@ mod tests {
 
         // CORE-009: a prefix the owning directory does not own is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/targets/omnia/rules/VECTIS-001.md", "VECTIS-001");
+        write_rule(dir.path(), "adapters/targets/omnia/prose/rules/VECTIS-001.md", "VECTIS-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_NAMESPACE_OWNERSHIP_VIOLATION);
@@ -441,7 +441,7 @@ mod tests {
 
         // CORE-009: a reserved FRAME-* id under an adapter tree is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/targets/omnia/rules/FRAME-001.md", "FRAME-001");
+        write_rule(dir.path(), "adapters/targets/omnia/prose/rules/FRAME-001.md", "FRAME-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("FRAME-* ids are reserved"));
@@ -449,7 +449,7 @@ mod tests {
 
         // CORE-009: an owner with no configured namespace is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/targets/newadapter/rules/OMNIA-001.md", "OMNIA-001");
+        write_rule(dir.path(), "adapters/targets/newadapter/prose/rules/OMNIA-001.md", "OMNIA-001");
         let findings = check_namespace_ownership(dir.path(), &policy());
         assert_eq!(findings.len(), 1);
         assert!(findings[0].message.contains("has no configured namespace"));

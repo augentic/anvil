@@ -2,12 +2,13 @@
 //!
 //! Each leg is one schema-gated `Model::create` bracketed by
 //! deterministic tails — the same schema gates and projection kernels
-//! the native two-phase envelope verbs run — inside a bounded repair
+//! the retired native two-phase envelope verbs ran — inside a bounded repair
 //! loop: a tail failure re-prompts with the findings inlined, up to
 //! [`MAX_REPAIRS`] times, per the contracts target's verify-repair
 //! precedent. The native envelope verbs (`plan propose --dry-run |
-//! --from`, `slice synthesize --dry-run | --from`) are untouched; these
-//! legs are the collapsed judgment path the guest orchestrators drive.
+//! --from`, `slice synthesize --dry-run | --from`) were deleted at Step
+//! 5 Milestone S4; these legs are the sole judgment path, driven by the
+//! guest orchestrators.
 
 pub mod propose;
 pub mod prose;

@@ -35,8 +35,8 @@ use specify_standards::lint::runner::PipelineConfig;
 use specify_workflow::journal::LintScope;
 
 use crate::output::{self, LintRun};
-use crate::runtime::commands::extension::{Inventory, ScopedTool, build_inventory};
 use crate::runtime::commands::lint::cli::ProjectArgs;
+use crate::runtime::commands::lint::tools::{Inventory, ScopedTool, build_inventory};
 use crate::runtime::context::Ctx;
 
 /// Handler entry point dispatched from `src/runtime/commands.rs`.

@@ -6,8 +6,8 @@ Cross-target, build-time `replay` rules under `adapters/shared/` — read by any
 
 The **wire format** for runtime captures lives on the source axis:
 
-- [`adapters/sources/captures/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/references/capture-format.md) — directory layout and behavioural JSON fields
-- [`adapters/sources/captures/briefs/extract.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/briefs/extract.md) — `kind: example` claim emission
+- [`adapters/sources/captures/prose/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/prose/references/capture-format.md) — directory layout and behavioural JSON fields
+- [`adapters/sources/captures/prose/briefs/extract.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/prose/briefs/extract.md) — `kind: example` claim emission
 
 This directory owns the **target-side hook contract**: when to run, how to record results, merge posture, and advisory v1 semantics. Test-harness depth (MockProvider, Crux effects, contract tool invocation) stays under each target adapter's `references/` and `briefs/build/replay.md`.
 
@@ -15,7 +15,7 @@ This directory owns the **target-side hook contract**: when to run, how to recor
 
 | Target | Hook status | Entry point |
 |---|---|---|
-| **Omnia** | Implemented | [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/briefs/build/replay.md) |
+| **Omnia** | Implemented | [`../../../targets/omnia/briefs/build/replay.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/briefs/build/replay.md) |
 | **Vectis** | Not implemented (v1) | — |
 | **Contracts** | Not implemented (v1) | — |
 | **default** | Not implemented | — |
@@ -26,7 +26,7 @@ Targets that skip the hook produce no `replay` field and emit no journal event; 
 
 1. Read [`hook-contract.md`](hook-contract.md) for skip rules, preconditions, advisory posture, recording, and merge summary behaviour.
 2. Read [`journal-payload.md`](journal-payload.md) for the closed journal and aspirational `metadata.yaml` shapes.
-3. Implement a target-specific runner in `adapters/targets/<name>/briefs/build/replay.md` (or an inline build step) that links here and adds the runner command, paths, and harness references for that target.
+3. Implement a target-specific runner in `adapters/targets/<name>/prose/briefs/build/replay.md` (or an inline build step) that links here and adds the runner command, paths, and harness references for that target.
 
 ## See also
 

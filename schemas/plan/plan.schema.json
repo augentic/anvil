@@ -191,7 +191,7 @@
             "accepted",
             "rejected"
           ],
-          "description": "workflow \u00a7Plan-time reconciliation \u2014 closed enum for slice-level divergence state. Absent \u2261 `none` (the default). `likely` is set by `/spec:plan`'s `propose` sub-step on materially-disagreeing lead synopses; `accepted` / `rejected` are set by the operator at Gate 1 via `specify plan amend --divergence`. Advisory metadata in v1. workflow \u00a7D5: every value (including `likely`) is CLI-written \u2014 the `/spec:plan` agent stages `likely` via `specify plan amend <plan> <slice> --divergence likely` (after `propose --from`), and `plan create` scaffolds an empty plan that never carries divergence."
+          "description": "workflow \u00a7Plan-time reconciliation \u2014 closed enum for slice-level divergence state. Absent \u2261 `none` (the default). `likely` is set during `/spec:plan`'s lead reconciliation on materially-disagreeing lead synopses; `accepted` / `rejected` are set by the operator at Gate 1 via `specify plan amend --divergence`. Advisory metadata in v1. workflow \u00a7D5: every value (including `likely`) is CLI-written \u2014 the `/spec:plan` agent stages `likely` via `specify plan amend <plan> <slice> --divergence likely` (after `plan author` reconciles), and `plan create` scaffolds an empty plan that never carries divergence."
         },
         "disagreements": {
           "type": "array",

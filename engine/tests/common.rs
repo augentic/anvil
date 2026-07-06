@@ -18,7 +18,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use assert_cmd::Command;
 pub use fs_git::{GIT_ENV, copy_dir, run_git};
@@ -44,23 +43,6 @@ pub fn repo_root() -> PathBuf {
 /// the canonical positional argument for `specify init`.
 pub fn omnia_schema_dir() -> PathBuf {
     repo_root().join("tests").join("fixtures").join("adapters").join("targets").join("omnia")
-}
-
-/// In-repo `dispatch-fixture` target adapter with a committed `adapter.wasm`
-/// for adapter-agnostic host-dispatch integration tests.
-pub fn dispatch_fixture_adapter_dir() -> PathBuf {
-    repo_root()
-        .join("tests")
-        .join("fixtures")
-        .join("adapters")
-        .join("targets")
-        .join("dispatch-fixture")
-}
-
-/// Mirror the `dispatch-fixture` adapter tree (including `adapter.wasm`) into
-/// `<project>/adapters/targets/dispatch-fixture/`.
-pub fn stage_dispatch_fixture(project: &Path) {
-    copy_dir(&dispatch_fixture_adapter_dir(), &project.join("adapters/targets/dispatch-fixture"));
 }
 
 /// Build a fresh `assert_cmd::Command` for the locally-built `specify`
@@ -121,32 +103,6 @@ pub fn expected_cache_dir(project_dir: &Path) -> PathBuf {
     specify_schema::cache::project_cache_dir_in(isolated_cache_root(), project_dir)
 }
 
-/// Exclusive hold on `<root>/.specify/plan.lock` for the guard's
-/// lifetime — stands in for the `/spec:execute` driver session now
-/// that the plan-state-writing verbs (`plan next`, per-entry
-/// `plan transition`, `slice merge run`) probe the lock and refuse an
-/// unlocked driver. Dropping the guard closes the file
-/// and releases the OS advisory lock.
-pub struct PlanLock {
-    _file: fs::File,
-}
-
-/// Acquire the plan lock at `<root>/.specify/plan.lock`, creating the
-/// lockfile (and `.specify/`) as the skill snippet would.
-pub fn hold_plan_lock(root: &Path) -> PlanLock {
-    let dir = root.join(".specify");
-    fs::create_dir_all(&dir).expect("mkdir .specify");
-    let file = fs::File::options()
-        .create(true)
-        .truncate(false)
-        .read(true)
-        .write(true)
-        .open(dir.join("plan.lock"))
-        .expect("open plan.lock");
-    file.lock().expect("acquire plan lock");
-    PlanLock { _file: file }
-}
-
 /// Stamp a phase outcome on `<project>/slices/<name>/metadata.yaml`
 /// through the domain writer merge uses (`stamp_outcome`).
 ///
@@ -204,53 +160,6 @@ pub fn contract_dump_verbs(path: &[&str]) -> Vec<String> {
 pub fn sha256_hex(path: &Path) -> String {
     let bytes = fs::read(path).expect("read bytes for sha256");
     specify_schema::digest::sha256_hex(&bytes)
-}
-
-/// Scaffold a minimal target-adapter project declaring a single WASI tool.
-///
-/// The caller owns `tmp`, keeping the project root alive for the test duration.
-pub fn scaffold_tool_project(
-    tmp: &TempDir, tool_name: &str, wasm_path: &Path,
-) -> (PathBuf, PathBuf) {
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-
-    let project = tmp.path().to_path_buf();
-    let adapter = project.join("adapters/targets/test-adp");
-    let briefs = adapter.join("briefs");
-    fs::create_dir_all(project.join(".specify")).expect("create .specify");
-    fs::create_dir_all(&briefs).expect("create adapter briefs");
-
-    let cache = std::env::temp_dir()
-        .join(format!("specify-tool-schema-{tool_name}-{}-{n}", std::process::id()));
-    fs::create_dir_all(&cache).expect("create cache");
-
-    fs::write(
-        project.join(".specify/project.yaml"),
-        "name: schema-test\nadapter: test-adp\nrules: {}\n",
-    )
-    .expect("write project.yaml");
-    fs::write(
-        adapter.join("adapter.yaml"),
-        format!(
-            "name: test-adp\nversion: 1.0.0\naxis: target\nexecution: agent\nbriefs:\n  shape: briefs/shape.md\n  build: briefs/build.md\n  merge: briefs/merge.md\ndescription: Test adapter\nextension:\n  name: {tool_name}\n"
-        ),
-    )
-    .expect("write adapter.yaml");
-    for op in ["shape", "build", "merge"] {
-        fs::write(
-            briefs.join(format!("{op}.md")),
-            format!("---\nid: {op}\ndescription: {op} brief\n---\n"),
-        )
-        .expect("write brief");
-    }
-
-    // The installed adapter tree carries its WASI component as the
-    // committed `adapter.wasm` (RFC-48 D11); `specify extension run`
-    // resolves the binary from there, not a retired `tools.yaml`.
-    fs::copy(wasm_path, adapter.join("adapter.wasm")).expect("commit adapter.wasm");
-
-    (project, cache)
 }
 
 /// Pinned RFC 3339 timestamp every journal-reading suite normalises
@@ -539,13 +448,6 @@ impl Project {
     /// going through the `plan create` verb.
     pub fn seed_plan(&self, yaml: &str) {
         fs::write(self.plan_path(), yaml).expect("write plan.yaml");
-    }
-
-    /// Hold the project's plan lock for the guard's lifetime (the
-    /// driver-session stand-in for `plan next` / per-entry
-    /// `plan transition` / `slice merge run` invocations).
-    pub fn hold_plan_lock(&self) -> PlanLock {
-        hold_plan_lock(self.root())
     }
 }
 

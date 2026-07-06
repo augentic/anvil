@@ -189,3 +189,13 @@ Verdict: reducible to invoke-and-relay today.
 5. **`catalog infer` re-homing.** The verb dispatches the vectis tool through `extension run` machinery that Step 5 deletes; its dispatch must move onto the in-guest vectis library (or the verb moves in-guest) in the same cut.
 
 No misrouted verbs and no missing refusals were found: every arm of `guest::route()` matches its disposition above, the native binary refuses `plan execute` (mirror-image of the guest's refusals), and the off-Unix `plan_lock` imp degrades permissive exactly where the guest needs it.
+
+## Step 5 Milestone S4 outcome (residue-matrix update)
+
+The S4 cut (see the engine workspace's [`DECISIONS.md` §"Old-stack deletion"](../engine/DECISIONS.md#old-stack-deletion-rfc-61-step-5-milestone-s4)) resolved every open call above. The matrix's "guest routing today" column now describes the shipped binary:
+
+- **Triage set widened.** `source survey`, `source extract`, `slice build`, and `slice merge run` route to the composed-deployment guest leg alongside `plan execute`, `plan author`, and `slice refine`; their native handlers and the whole envelope machinery (`--phase`, `slice synthesize --dry-run/--from`, `plan propose --dry-run/--from`, the two-phase `slice build` handler with `prepare.argv` dispatch) are deleted. Guest-owned verbs marked "in-process handler" above stay native-dispatched shared handlers.
+- **Open calls closed.** `source preview` — retired (D-preview; last consumer of the shared prep seam). `plan lock -- <cmd>` — retired with the `require_held` gates (D-planlock; the D1 guest marker is the only fence, D3 refusal stays). `catalog infer` — retired outright: report judgment and bind bookkeeping are in-guest vectis-core code driven by the build's `${SLICE_DIR}/build/component-bindings.yaml`, with no engine-side catalog capability (D-catalog-infer).
+- **`extension run/fetch/gc/schema`** — deleted as scheduled; `specify-registry` shrank to `pack`/`oci`/`store` plus the `lint project` WASI path.
+- **Gap resolutions.** Gap 1 closed at S1 (`plan author`); gap 2 closed at S1 (`slice refine`); gap 3 stands as documented divergence; gap 4's confirmation happened in the adapters-repo cutover review; gap 5 resolved by retirement rather than re-homing.
+- **Workspace-mode regression (D-workspace).** With `--plan-dir` native-only and the phase verbs guest-routed, workspace-routed plans cannot drive the breakout phase verbs from slots; workspace plans stay on the native pure verbs until slot routing has an in-guest counterpart.

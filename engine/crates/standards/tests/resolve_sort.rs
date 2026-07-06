@@ -67,7 +67,7 @@ fn build_emits_versioned_envelope() {
         "critical",
     );
     write_rule(
-        &project.path().join("adapters/targets/demo-target/rules/org-001.md"),
+        &project.path().join("adapters/targets/demo-target/prose/rules/org-001.md"),
         "ORG-001",
         "Important target",
         "important",

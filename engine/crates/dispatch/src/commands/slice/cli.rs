@@ -1,13 +1,9 @@
 //! Clap derive surface for `specify slice *` and its nested verbs.
 //! The umbrella `cli.rs` re-exports the action enums.
 
-use std::path::PathBuf;
-
+use clap::Subcommand;
 use clap::builder::{PossibleValuesParser, TypedValueParser};
-use clap::{ArgAction, Subcommand};
 use specify_workflow::slice::{CreateIfExists, LifecycleStatus};
-
-use crate::commands::source::cli::Phase;
 
 /// Clap value parser for a workflow enum carrying strum's kebab-case
 /// `EnumString` + `VariantNames` derives. `specify-workflow` is
@@ -54,37 +50,6 @@ pub enum SliceAction {
         #[command(subcommand)]
         action: SliceModelAction,
     },
-    /// Synthesise a slice — assemble the agent INPUTS envelope, or
-    /// project an agent response into `model.yaml` + Markdown artifacts.
-    ///
-    /// Exactly one mode is required — the parser rejects passing both:
-    ///
-    /// - `--dry-run` is read-only. It reads the slice's bound
-    ///   `evidence/<source>.yaml` and the target `shape` brief and
-    ///   emits the `kind: inputs` envelope for the agent synthesis
-    ///   step. Writes nothing; emits the `slice.synthesize.agent`
-    ///   journal event (synthesis is always agent-dispatched).
-    /// - `--from <response.json>` is the only writer. It schema-gates
-    ///   the agent response, resolves authority from the on-disk
-    ///   Evidence and any per-slice override, projects the kernel-owned
-    ///   fields into `model.yaml`, renders provenance into
-    ///   `specs/<domain>/spec.md`, and persists the staged artifacts
-    ///   atomically — emitting `slice.synthesize.started` then
-    ///   `slice.synthesize.completed` (or `slice.synthesize.failed` on
-    ///   error).
-    ///
-    /// Passing neither mode fails with `slice-synthesize-mode-required`
-    /// (exit 2).
-    Synthesize {
-        /// Slice name (under `.specify/slices/`)
-        name: String,
-        /// Assemble and emit the agent INPUTS envelope. Writes nothing.
-        #[arg(long = "dry-run", action = ArgAction::SetTrue)]
-        dry_run: bool,
-        /// Apply the agent's synthesis response, project it, and persist the artifacts. The only writer.
-        #[arg(long = "from", value_name = "RESPONSE_JSON", conflicts_with = "dry_run")]
-        from: Option<PathBuf>,
-    },
     /// Refine one named plan entry's slice to `refined` in the
     /// workflow guest: slice create (re-entry safe), per-binding
     /// extract fan-out, the synthesis judgment leg, the persist tail,
@@ -106,28 +71,14 @@ pub enum SliceAction {
     /// operation and gate the `built` transition.
     ///
     /// Resolves the target from the slice's `metadata.yaml`, then
-    /// owns the build envelopes: request assembly, report validation,
-    /// the `target-build-*` aborts, the `slice.build.*` events, and the
-    /// `built` transition gate. The target brief owns only code
-    /// generation.
-    ///
-    /// For `execution: tool` adapters the single call runs the whole
-    /// operation. For `execution: agent` adapters the operation is
-    /// two-phase: `--phase prepare` (the default) assembles and
-    /// schema-validates the request, writes
-    /// `.specify/slices/<slice>/build/request.yaml`, emits
-    /// `target.execution.agent`, prints the handoff envelope, and
-    /// returns control to the agent; `--phase finalize` validates the
-    /// agent-produced `build/report.yaml`, gates the `built`
-    /// transition, and journals `slice.build.succeeded` /
-    /// `slice.build.failed`.
+    /// drives the collapsed build orchestration in the workflow guest:
+    /// request assembly and schema gate, the target-seam dispatch, the
+    /// report gates (`target-build-*` aborts), the `slice.build.*`
+    /// events, and the `Refined → Built` transition. The target guest
+    /// owns only code generation.
     Build {
         /// Slice name (under `.specify/slices/`)
         name: String,
-        /// Phase to run (`prepare` | `finalize`); `tool` adapters run
-        /// the whole operation regardless.
-        #[arg(long, value_enum, default_value_t = Phase::Prepare)]
-        phase: Phase,
     },
     /// Spec-merge operations for a slice
     Merge {

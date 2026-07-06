@@ -2,11 +2,6 @@
 name: vectis-stub
 version: "1.0.0"
 axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
 description: Stub vectis adapter for platform-capability testing
 platforms:
   required: true

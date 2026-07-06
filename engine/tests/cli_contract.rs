@@ -53,7 +53,6 @@ fn dump_carries_known_surface() {
         "source",
         "target",
         "rules",
-        "extension",
         "lint",
         "slice",
         "archive",
@@ -72,7 +71,14 @@ fn dump_carries_known_surface() {
     // The guest-only orchestration verbs (RFC-61) ride the shared
     // grammar: parsed by both binaries, dispatched in the guest,
     // refused natively with the standard argument error.
-    for (family, verb) in [("plan", "execute"), ("plan", "author"), ("slice", "refine")] {
+    for (family, verb) in [
+        ("plan", "execute"),
+        ("plan", "author"),
+        ("slice", "refine"),
+        ("slice", "build"),
+        ("source", "survey"),
+        ("source", "extract"),
+    ] {
         let nested: BTreeSet<&str> = dump["commands"]["subcommands"]
             .as_array()
             .expect("subcommands array")

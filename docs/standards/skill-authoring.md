@@ -64,25 +64,25 @@ The canonical "skills MUST NOT" list:
 
 ## Brief authoring
 
-Adapter briefs live at `adapters/targets/<name>/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/briefs/{survey,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
+Adapter briefs live at `adapters/targets/<name>/prose/briefs/{shape,build,merge}.md` (target adapters) and `adapters/sources/<name>/prose/briefs/{survey,extract}.md` (source adapters). They are markdown documents the agent reads when a phase skill (`/spec:build`, `/spec:refine`, `/spec:merge`) loads the adapter. They are **not** skills: they carry no `name` / `description` / `argument-hint` frontmatter, they are not loaded by Stage 1 discovery, and the Stage 2 line caps (200 body / 45 section) do not apply.
 
 Briefs split into two roles:
 
 - **Parent briefs** orchestrate. They declare bindings, mode dispatch, the phase order, cross-phase loops (verify-repair, remediation), and the stop-hint contract — then load phase sub-briefs by relative-link instruction. The CLI resolves only the parent path declared in `adapter.yaml`; the agent walks links into sub-briefs.
-- **Phase sub-briefs** carry the operational body of one phase. They live under `adapters/targets/<name>/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/briefs/extract/<axis>.md`.
+- **Phase sub-briefs** carry the operational body of one phase. They live under `adapters/targets/<name>/prose/briefs/build/<phase>.md` (or deeper: `build/<platform>/<phase>.md` for per-platform targets) and `adapters/sources/<name>/prose/briefs/extract/<axis>.md`.
 
 The discipline:
 
-1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — the loader resolves briefs by path from `adapter.yaml` and never reads frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1. Mechanically enforced by [`CORE-014`](../../adapters/shared/rules/core/CORE-014-brief-frontmatter-forbidden.md).
-2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing. Enforced by [`CORE-013`](../../adapters/shared/rules/core/CORE-013-brief-exceeds-size-limit.md).
-3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`. Enforced by [`CORE-013`](../../adapters/shared/rules/core/CORE-013-brief-exceeds-size-limit.md).
+1. **No frontmatter on briefs.** Briefs are not skills. They do not declare `name`, `description`, `argument-hint`, `id`, or any other YAML frontmatter — briefs are compiled into the adapter guest and never carry frontmatter, so any leading `---` block is decoration that drifts and duplicates the body H1.
+2. **Parent briefs cap at 150 non-blank lines (hard).** Parent briefs orchestrate; orchestration that needs more than 150 lines means a sub-brief is missing.
+3. **Phase sub-briefs cap at 500 non-blank lines (soft warn) and 800 non-blank lines (hard fail).** Above 800, split into sub-phase briefs (`build/<phase>/<subphase>.md`) or move material to `plugins/<name>/references/`.
 4. **References are cited via markdown links, never inlined.** Briefs use relative paths into `plugins/<name>/references/` so that broken links surface as [`CORE-019`](../../adapters/shared/rules/core/CORE-019-links-broken-reference.md) failures. Inlining a template body in a brief defeats the cap discipline and removes the link-resolution safety net.
 5. **Worked examples live under `plugins/<name>/references/examples/<flavour>/`.** Briefs cite paths like `examples/<flavour>/…`; they never inline an example. The `references/examples/` tree is exempt from brief size caps because it is not a brief.
 
 The pattern that emerges:
 
 ```text
-adapters/targets/<name>/briefs/
+adapters/targets/<name>/prose/briefs/
   shape.md                  parent: synthesis idiom guidance, <=150 LOC
   build.md                  parent: orchestrator, <=150 LOC
   merge.md                  parent: pre-merge gate, <=150 LOC
@@ -93,7 +93,7 @@ plugins/<name>/references/
   examples/<flavour>/...    worked examples (no size cap)
 ```
 
-A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/briefs/extract/<axis>.md`).
+A 5th phase lands as one new `build/<phase>.md` file plus three lines added to the parent's phase-order list. The same shape works for source adapters (`adapters/sources/<name>/prose/briefs/extract/<axis>.md`).
 
 ## Envelope examples and wire contract
 

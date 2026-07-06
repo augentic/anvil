@@ -1,6 +1,6 @@
 # Reconcile-journal golden
 
-Pins the journal tail `specify plan propose --from` appends to `.specify/journal.jsonl` after it projects the agent reconciliation response onto `plan.yaml.slices[]`. A single `plan.reconcile.completed` event fires per successful invocation. The `/spec:plan` skill never runs `specify journal emit` for D2; the CLI owns this event.
+Pins the journal tail the `plan author` reconcile kernel appends to `.specify/journal.jsonl` after it projects the agent reconciliation response onto `plan.yaml.slices[]`. A single `plan.reconcile.completed` event fires per successful invocation. The `/spec:plan` skill never runs `specify journal emit` for D2; the CLI owns this event.
 
 ## Scenario
 
@@ -14,7 +14,7 @@ That yields three slices (`slice-count: 3`).
 ## What the line pins
 
 - **Shipped wire order** — the line serialises `timestamp` first, then `event`, then `payload` (workflow §Wire format), with kebab-case payload keys.
-- **Single event** — `plan propose --from` emits exactly one `plan.reconcile.completed` event per successful invocation; there is no separate agent-phase journal line.
+- **Single event** — the reconcile kernel emits exactly one `plan.reconcile.completed` event per successful invocation; there is no separate agent-phase journal line.
 - **Completed payload** — `plan.reconcile.completed` carries `plan-name`, the matching `slice-count`, and the `slice-names` in the agent's response order.
 
 ## Files

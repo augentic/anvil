@@ -14,11 +14,9 @@ pub mod validate;
 
 pub use actions::{CreateIfExists, Created, Overlap};
 pub use build::assemble::build_request;
-pub use build::native_hook::run_native_build_hook;
 pub use build::wire::{
     BuildArtifacts, BuildInputs, BuildOutput, BuildReport, BuildRequest, BuildStatus, UiSurface,
     enforce_report_no_blocking_on_success, enforce_report_outputs_exist,
-    evaluate_ui_surface_coherence,
 };
 pub use lifecycle::LifecycleStatus;
 pub use metadata::{Outcome, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec};

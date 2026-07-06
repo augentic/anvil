@@ -41,9 +41,9 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 | [specify plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify source / target resolve](adapter.md) | Resolve source and target adapter manifests | Adapter infrastructure |
-| [specify extension](extension.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
+| [Declared WASI tools](extension.md) | Project-scope `tools[]` resolved and run by `specify lint project` | Deterministic lint helpers |
 | [specify workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
-| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`, `sync`) run through `specify extension run` | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |
+| [Vectis in-guest tools](vectis.md) | In-guest `vectis` behaviours (`validate`, `scaffold`, `sync`) inside the adapter guest | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |
 
 Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specify slice`](slice.md).

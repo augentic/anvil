@@ -3,13 +3,10 @@
 //! Source adapters and target adapters share a manifest shape on the
 //! wire (`adapter.yaml`) but carry disjoint closed operation sets:
 //! [`SourceOperation`] (`extract | survey`) vs. [`TargetOperation`]
-//! (`shape | build | merge`). The in-memory split into
-//! [`SourceAdapter`] / [`TargetAdapter`] pushes the kebab-string
-//! boundary out to the YAML parse step — `briefs.keys()` is the typed
-//! operation iterator for full-shape manifests (with serde rejecting
-//! any unknown variant before downstream code ever sees a string), and
-//! briefless post-cutover manifests fall back to the axis's closed WIT
-//! operation set (`wit/specify.wit`).
+//! (`shape | build | merge`). Post-cutover manifests carry no
+//! `briefs:` map — the operation set is the axis's closed WIT
+//! operation set (`wit/specify.wit`), surfaced by the typed
+//! `operations()` iterators.
 //!
 //! Resolution lives in [`super::resolve`]; schema validation and the
 //! cross-axis collision probe in [`super::validate_manifest`]. This
@@ -21,12 +18,10 @@
 //!
 //! [DECISIONS.md §"Operations typed at parse boundary"]: ../../../../DECISIONS.md#operations-typed-at-parse-boundary
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use specify_error::Error;
-use specify_extension::ExtensionPermissions;
 
 use crate::Platform;
 use crate::adapter::operation::{SourceOperation, TargetOperation};
@@ -39,13 +34,10 @@ use crate::adapter::operation::{SourceOperation, TargetOperation};
 /// `axis:` field disambiguate.
 pub const ADAPTER_FILENAME: &str = "adapter.yaml";
 
-/// Committed WASI extension binary at an adapter's root (RFC-48 D3/D10).
-///
-/// When an adapter declares an `extension`, its WASI component is the
-/// committed `adapter.wasm` beside `adapter.yaml`; `specify extension
-/// run <name>` resolves the binary from the installed adapter tree
-/// rather than a `tools.yaml` sidecar (RFC-48 D11).
-pub const ADAPTER_WASM_FILENAME: &str = "adapter.wasm";
+/// Committed workflow-guest component binary at an adapter's root
+/// (RFC-61): the per-adapter `guest.wasm` composed into the
+/// `augentic:specify` deployment.
+pub const ADAPTER_GUEST_FILENAME: &str = "guest.wasm";
 
 /// Parent directory for in-repo adapter trees.
 pub const ADAPTERS_DIR: &str = "adapters";
@@ -108,65 +100,6 @@ impl Axis {
 #[must_use]
 pub fn adapter_axis_dir(project_dir: &Path, axis: Axis) -> PathBuf {
     project_dir.join(ADAPTERS_DIR).join(axis.dir_segment())
-}
-
-/// The singular WASI extension declared inside an adapter manifest
-/// (RFC-48 D11).
-///
-/// An adapter ships at most one binary, so the manifest carries one
-/// `extension` object rather than a `tools[]` array. Decoupled from
-/// [`specify_extension::Extension`] so adapter loading does not
-/// pull in the WASI runtime surface; the wasm builds from the co-located
-/// `extension/` crate (D10) and rides the adapter's own semver identity
-/// (RFC-47), so a per-extension `version` / `source` / `sha256` is
-/// rejected by the schema. `permissions` reuses
-/// [`ExtensionPermissions`] — the `{read, write}` shape the WASI runner
-/// already speaks.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct AdapterExtensionDeclaration {
-    /// Optional run handle for `specify extension run <name>`; defaults
-    /// to the adapter name when omitted.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    /// Structured WASI filesystem permissions in the `{read, write}`
-    /// shape.
-    #[serde(default, skip_serializing_if = "ExtensionPermissions::is_default")]
-    pub permissions: ExtensionPermissions,
-}
-
-/// Optional prepare hook declared on a target adapter manifest.
-///
-/// When present, `specify slice build --phase prepare` dispatches
-/// `extension run <name> <argv...> <slice-dir>` before the build brief
-/// handoff. Requires a declared `extension` (enforced by schema and the
-/// loader post-schema gate).
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct PrepareHookDeclaration {
-    /// Extension subcommand prefix; the host appends the slice directory.
-    pub argv: Vec<String>,
-}
-
-/// Optional native build hook declared on a target adapter manifest.
-///
-/// When present, `specify slice build` executes the script on the host
-/// with `SPECIFY_PROJECT_DIR` and `SPECIFY_SLICE_DIR` set. `host_prereq`
-/// runs at prepare (before the manifest `prepare` extension hook);
-/// `finalize_verify` runs at finalize on a clean `status: success` report
-/// before the `built` transition.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct NativeBuildHookDeclaration {
-    /// Path relative to the adapter root.
-    pub script: String,
-}
-
-/// Optional catalog capabilities declared on a target adapter manifest.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
-pub struct CatalogCapability {
-    /// When true, `specify catalog infer` may dispatch the extension's
-    /// `infer` subcommand.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub infer: bool,
 }
 
 /// One adapter-declared build input inside a target manifest.
@@ -266,28 +199,6 @@ impl PlatformsCapability {
     }
 }
 
-/// Closed adapter execution mode.
-///
-/// Declared by the required `execution:` field on `adapter.yaml`.
-/// Source adapters are agent-only (`source.schema.json` enumerates
-/// `["agent"]`); target adapters may still declare `tool`, though the
-/// target-side `build` / `merge` dispatch carries `agent` as a
-/// placeholder. See DECISIONS.md §"Adapter execution mode".
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, strum::Display)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum Execution {
-    /// `execution: agent` — the adapter's brief is executed by an agent
-    /// against the sandbox preopens. The CLI orchestrates inputs and
-    /// validates outputs against the schemas; agent outputs are
-    /// non-deterministic, so nothing is memoized.
-    Agent,
-    /// `execution: tool` — target-axis only: `build` / `merge` are
-    /// dispatched through a declared WASI extension or a built-in
-    /// deterministic Rust path. Source adapters are agent-only.
-    Tool,
-}
-
 /// Where an adapter manifest was located on disk.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterLocation {
@@ -357,25 +268,6 @@ pub fn cache_axis_dir(project_dir: &Path, axis: Axis) -> PathBuf {
 #[must_use]
 pub fn cache_dir(project_dir: &Path, axis: Axis, name: &str) -> PathBuf {
     cache_axis_dir(project_dir, axis).join(name)
-}
-
-/// Per-operation agent scratch lane for `(adapter, segment)` —
-/// `.specify/scratch/<adapter>/<segment>/`.
-///
-/// `<segment>` is the literal `survey` for the slice-less survey op or
-/// the slice name for extract.
-/// The write-only `$SCRATCH_DIR` preopen of the source-operation
-/// sandbox. Rooted under the transient in-tree working-state tree
-/// (`.specify/scratch/`), structurally disjoint from the out-of-tree
-/// memoization cache, so a scratch write can never pollute a cache
-/// artifact; see [DECISIONS.md §"Cache layout"].
-///
-/// Path-only helper — the directory may or may not exist on disk.
-///
-/// [DECISIONS.md §"Cache layout"]: ../../../../DECISIONS.md#cache-layout
-#[must_use]
-pub fn scratch_dir(project_dir: &Path, adapter: &str, segment: &str) -> PathBuf {
-    crate::config::Layout::new(project_dir).scratch_dir().join(adapter).join(segment)
 }
 
 /// The identity an adapter resolves against: a kebab-case `name` plus
@@ -452,23 +344,6 @@ pub struct SourceAdapter {
     /// successful [`SourceAdapter::resolve`]; the field is retained
     /// so YAML round-trips byte-for-byte through serde.
     pub axis: Axis,
-    /// Closed adapter execution mode. Optional on the wire (RFC-61
-    /// two-shape window): shrunk post-cutover manifests omit it, and
-    /// native consumers that dispatch on it fail at the point of use
-    /// (`adapter-execution-mode-required`) rather than at resolve time.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub execution: Option<Execution>,
-    /// Typed source-operation → relative brief path map. Optional on
-    /// the wire (RFC-61 two-shape window): when present,
-    /// `source.schema.json#/properties/briefs` closes it to the full
-    /// `extract` + `survey` set; when absent (empty map), the operation
-    /// set derives from the closed WIT contract instead — see
-    /// [`SourceAdapter::operations`].
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub briefs: BTreeMap<SourceOperation, String>,
-    /// Optional singular declared WASI extension (RFC-48 D11).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub extension: Option<AdapterExtensionDeclaration>,
     /// Optional human-readable summary.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -506,29 +381,11 @@ pub struct TargetAdapter {
     /// a successful [`TargetAdapter::resolve`]; the field is retained
     /// so YAML round-trips byte-for-byte through serde.
     pub axis: Axis,
-    /// Closed adapter execution mode. Optional on the wire (RFC-61
-    /// two-shape window): shrunk post-cutover manifests omit it, and
-    /// native consumers that dispatch on it fail at the point of use
-    /// (`adapter-execution-mode-required`) rather than at resolve time.
-    /// Full-shape first-party target manifests carry `agent` as a
-    /// placeholder.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub execution: Option<Execution>,
-    /// Typed target-operation → relative brief path map. Optional on
-    /// the wire (RFC-61 two-shape window): when present,
-    /// `target.schema.json#/properties/briefs` closes it to the full
-    /// `shape` + `build` + `merge` set; when absent (empty map), the
-    /// operation set derives from the closed WIT contract instead —
-    /// see [`TargetAdapter::operations`].
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub briefs: BTreeMap<TargetOperation, String>,
-    /// Optional singular declared WASI extension (RFC-48 D11).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub extension: Option<AdapterExtensionDeclaration>,
     /// Optional adapter-declared build inputs. Each entry is
     /// a path relative to the build request's `inputs.root`, flagged
-    /// `required`; the CLI assembles `inputs.artifacts.additional[]`
-    /// from this list. Defaults to an empty list when omitted.
+    /// `required`; the guest build orchestrator assembles
+    /// `inputs.artifacts.additional[]` from this list. Defaults to an
+    /// empty list when omitted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<BuildInputDeclaration>,
     /// Optional human-readable summary.
@@ -540,18 +397,6 @@ pub struct TargetAdapter {
     /// greenfield scaffolding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub platforms: Option<PlatformsCapability>,
-    /// Optional prepare hook for `specify slice build --phase prepare`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub prepare: Option<PrepareHookDeclaration>,
-    /// Optional host toolchain gate at `specify slice build --phase prepare`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub host_prereq: Option<NativeBuildHookDeclaration>,
-    /// Optional host verify backstop at `specify slice build --phase finalize`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub finalize_verify: Option<NativeBuildHookDeclaration>,
-    /// Optional catalog capabilities (`specify catalog infer`, …).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub catalog: Option<CatalogCapability>,
 }
 
 /// A parsed [`SourceAdapter`] paired with the [`AdapterLocation`] it
@@ -583,65 +428,29 @@ pub struct ResolvedTargetAdapter {
 }
 
 impl SourceAdapter {
-    /// Iterator over the source operations this adapter declares, in
-    /// ascending kebab-name order (`extract < survey`). For full-shape
-    /// manifests `briefs.keys()` is the canonical typed operation
-    /// source; a briefless post-cutover manifest falls back to the
-    /// axis's closed WIT operation set (`wit/specify.wit`), which the
-    /// full `briefs` key set equals by schema.
+    /// Iterator over the source operations this adapter serves, in
+    /// ascending kebab-name order (`extract < survey`). Post-cutover
+    /// manifests carry no `briefs:` map, so the operation set is the
+    /// axis's closed WIT operation set (`wit/specify.wit`).
     pub fn operations(&self) -> impl Iterator<Item = &SourceOperation> {
         const WIT_OPERATIONS: &[SourceOperation] =
             &[SourceOperation::Extract, SourceOperation::Survey];
-        let fallback: &[SourceOperation] =
-            if self.briefs.is_empty() { WIT_OPERATIONS } else { &[] };
-        self.briefs.keys().chain(fallback)
+        WIT_OPERATIONS.iter()
     }
 }
 
 impl TargetAdapter {
-    /// Iterator over the target operations this adapter declares, in
-    /// ascending kebab-name order (`build < merge < shape`). For
-    /// full-shape manifests `briefs.keys()` is the canonical typed
-    /// operation source; a briefless post-cutover manifest falls back
-    /// to the axis's closed WIT operation set (`wit/specify.wit`:
+    /// Iterator over the target operations this adapter serves, in
+    /// ascending kebab-name order (`build < merge < shape`).
+    /// Post-cutover manifests carry no `briefs:` map, so the operation
+    /// set is the axis's closed WIT operation set (`wit/specify.wit`:
     /// guidance/build/merge, with `shape` the manifest spelling of
-    /// `guidance`), which the full `briefs` key set equals by schema.
+    /// `guidance`).
     pub fn operations(&self) -> impl Iterator<Item = &TargetOperation> {
         const WIT_OPERATIONS: &[TargetOperation] =
             &[TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape];
-        let fallback: &[TargetOperation] =
-            if self.briefs.is_empty() { WIT_OPERATIONS } else { &[] };
-        self.briefs.keys().chain(fallback)
+        WIT_OPERATIONS.iter()
     }
-}
-
-/// Resolve the WASI extension run handle for a target adapter.
-///
-/// Returns `None` when the manifest declares no `extension`. When the
-/// declaration omits `extension.name`, the adapter `name` is the
-/// default run handle — mirroring [`AdapterExtensionDeclaration`]'s
-/// contract in the extension inventory assembler.
-#[must_use]
-pub fn extension_run_name(adapter: &TargetAdapter) -> Option<String> {
-    adapter.extension.as_ref().map(|ext| ext.name.clone().unwrap_or_else(|| adapter.name.clone()))
-}
-
-/// Post-load gate: `prepare` requires a declared `extension`.
-///
-/// The target-axis JSON Schema also enforces this via `if/then`; this
-/// typed gate is belt-and-suspenders for manifests that bypass schema
-/// validation.
-pub(super) fn check_prepare_requires_extension(
-    manifest: &TargetAdapter, manifest_path: &Path,
-) -> Result<(), Error> {
-    if manifest.prepare.is_some() && manifest.extension.is_none() {
-        return Err(Error::validation_failed(
-            "adapter-prepare-without-extension",
-            "a target manifest with `prepare` must also declare `extension`",
-            format!("{} declares `prepare` but omits `extension`", manifest_path.display()),
-        ));
-    }
-    Ok(())
 }
 
 /// Post-load axis/name coherence gate, run by [`super::resolve`] after

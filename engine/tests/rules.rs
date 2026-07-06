@@ -201,7 +201,7 @@ mod export {
             &basic_rule("UNI-001", "Shared anchor", "important"),
         );
         write_rule_md(
-            &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
+            &project.path().join("adapters/targets/omnia/prose/rules/omnia-001.md"),
             &basic_rule("OMNIA-001", "Target overlay", "important"),
         );
 
@@ -225,7 +225,7 @@ mod export {
             &basic_rule("UNI-001", "Shared anchor", "important"),
         );
         write_rule_md(
-            &project.path().join("adapters/sources/documentation/rules/src-001.md"),
+            &project.path().join("adapters/sources/documentation/prose/rules/src-001.md"),
             &basic_rule("SRC-001", "Source overlay", "important"),
         );
 
@@ -306,7 +306,7 @@ mod export {
             &basic_rule("UNI-001", "Shared anchor", "important"),
         );
         write_rule_md(
-            &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
+            &project.path().join("adapters/targets/omnia/prose/rules/omnia-001.md"),
             &basic_rule("OMNIA-001", "Target overlay", "important"),
         );
 
@@ -350,7 +350,7 @@ mod export {
             &basic_rule("UNI-002", "Optional shared", "optional"),
         );
         write_rule_md(
-            &project.path().join("adapters/targets/omnia/rules/omnia-001.md"),
+            &project.path().join("adapters/targets/omnia/prose/rules/omnia-001.md"),
             &basic_rule("OMNIA-001", "Target overlay", "important"),
         );
 

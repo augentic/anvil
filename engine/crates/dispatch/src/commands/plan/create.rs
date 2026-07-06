@@ -19,8 +19,8 @@ use crate::context::Ctx;
 /// `specify plan create <name> [--source ...] [--auto-approve]`.
 ///
 /// Scaffolds an empty `plan.yaml` (workflow §The Plan); slices are
-/// authored later by `specify plan propose --from` or `specify plan
-/// add`.
+/// authored later by the `plan author` reconcile kernel or `specify
+/// plan add`.
 ///
 /// When `--auto-approve` is set (auto-approve Gate-1 contract), the plan is constructed
 /// with `lifecycle: approved` *before* the single atomic

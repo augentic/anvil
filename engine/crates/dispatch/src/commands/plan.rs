@@ -1,6 +1,7 @@
-//! Dispatcher for the `specify plan *` verbs (minus `plan lock`, whose
-//! subprocess-spawning handler lives in the binary crate) plus the
-//! shared plan-file helpers its submodules use.
+//! Dispatcher for the `specify plan *` verbs plus the shared plan-file helpers.
+//!
+//! `plan author` / `plan execute` are guest-owned collapsed orchestrations —
+//! only their clap surface lives in `cli`.
 
 mod add;
 mod amend;
@@ -9,7 +10,6 @@ pub mod cli;
 mod create;
 mod entry;
 mod lifecycle;
-mod propose;
 mod remove;
 
 use std::path::{Path, PathBuf};
@@ -41,7 +41,6 @@ pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
         PlanAction::Status => lifecycle::status(ctx),
         PlanAction::Add(args) => add::add(ctx, args),
         PlanAction::Amend(args) => amend::amend(ctx, args),
-        PlanAction::Propose(args) => propose::propose(ctx, args),
         PlanAction::Remove { name } => remove::remove(ctx, name),
         PlanAction::Transition {
             name,
@@ -50,34 +49,19 @@ pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
             actor,
         } => lifecycle::transition(ctx, name, target, undo, &actor),
         PlanAction::Archive { force } => lifecycle::archive(ctx, force),
-        // `plan lock` is peeled off by both dispatchers before this
-        // table (the native binary passes the child's exit code through
-        // `Exit::Code`; the guest refuses it — no subprocesses
-        // in-guest). This defensive arm keeps the match exhaustive and
-        // never collapses a real run to a misleading success.
-        PlanAction::Lock { .. } => Err(Error::Argument {
-            flag: "<command>",
-            detail: "`specify plan lock` dispatches outside the shared verb table".to_string(),
-        }),
-        // Guest-only: the guest router peels `plan execute` off into an
-        // orchestration before this table, so reaching this arm means
-        // the native binary parsed it — refuse with the mirror image of
-        // the guest's native-only refusals (wire code `argument`,
-        // exit 2). Natively the loop is skill-owned until Step 5.
+        // `plan execute` / `plan author` are guest-owned collapsed
+        // orchestrations peeled off by both dispatchers before this
+        // table (the native triage routes them to the guest leg; the
+        // guest router routes them to `specify_workflow::orchestrate`).
+        // The defensive arms keep the match exhaustive and never
+        // collapse a real run to a misleading success.
         PlanAction::Execute => Err(Error::Argument {
             flag: "<command>",
-            detail: "`specify plan execute` runs only in the workflow guest; natively the \
-                     execute loop is driven by the /spec:execute skill"
-                .to_string(),
+            detail: "`specify plan execute` dispatches outside the shared verb table".to_string(),
         }),
-        // Guest-only, same posture as `plan execute`: the collapsed
-        // plan-authoring flow is an orchestration; natively the flow is
-        // driven by the /spec:plan skill through the per-verb surface.
         PlanAction::Author { .. } => Err(Error::Argument {
             flag: "<command>",
-            detail: "`specify plan author` runs only in the workflow guest; natively \
-                     plan authoring is driven by the /spec:plan skill"
-                .to_string(),
+            detail: "`specify plan author` dispatches outside the shared verb table".to_string(),
         }),
     }
 }
