@@ -102,7 +102,7 @@ fn shared_rules_from_explicit_rules_root() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
@@ -116,23 +116,23 @@ fn shared_rules_from_explicit_rules_root() {
     assert_eq!(entry.rule.id, "UNI-001");
     assert_eq!(entry.origin, Origin::Shared);
     assert_eq!(entry.path_root, PathRoot::RulesRoot);
-    assert_eq!(entry.path, "adapters/shared/rules/universal/uni-001.md");
+    assert_eq!(entry.path, "adapters/shared/prose/rules/universal/uni-001.md");
 }
 
 /// Core pack root: rules under
-/// `adapters/shared/rules/core/` resolve with `Origin::Core` and
+/// `adapters/shared/prose/rules/core/` resolve with `Origin::Core` and
 /// `PathRoot::RulesRoot`, alongside any shared-pack rules.
 #[test]
 fn core_rules_from_explicit_rules_root() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/core/CORE-fixture.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/core/CORE-fixture.md"),
         "CORE-001",
         "Core fixture",
     );
@@ -144,7 +144,7 @@ fn core_rules_from_explicit_rules_root() {
     let core = result.iter().find(|e| e.rule.id == "CORE-001").expect("core rule present");
     assert_eq!(core.origin, Origin::Core);
     assert_eq!(core.path_root, PathRoot::RulesRoot);
-    assert_eq!(core.path, "adapters/shared/rules/core/CORE-fixture.md");
+    assert_eq!(core.path, "adapters/shared/prose/rules/core/CORE-fixture.md");
 
     let shared = result.iter().find(|e| e.rule.id == "UNI-001").expect("shared still present");
     assert_eq!(shared.origin, Origin::Shared);
@@ -157,7 +157,7 @@ fn core_rules_from_explicit_rules_root() {
 fn rules_root_probe_falls_back() {
     let project = TempDir::new().expect("project");
     write_rule(
-        &project.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &project.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Monorepo shared",
     );
@@ -170,7 +170,7 @@ fn rules_root_probe_falls_back() {
     let entry = &result[0];
     assert_eq!(entry.origin, Origin::Shared);
     assert_eq!(entry.path_root, PathRoot::RulesRoot);
-    assert_eq!(entry.path, "adapters/shared/rules/universal/uni-001.md");
+    assert_eq!(entry.path, "adapters/shared/prose/rules/universal/uni-001.md");
 }
 
 /// Probe step 3 (RM-07): with no `--rules-root` and no monorepo
@@ -182,7 +182,7 @@ fn shared_rules_from_codex_cache() {
     let project = TempDir::new().expect("project");
     let _cache = scoped_cache(&project);
     write_rule(
-        &codex_cache(project.path()).join("adapters/shared/rules/universal/uni-001.md"),
+        &codex_cache(project.path()).join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Distributed codex shared",
     );
@@ -196,7 +196,7 @@ fn shared_rules_from_codex_cache() {
     assert_eq!(entry.rule.id, "UNI-001");
     assert_eq!(entry.origin, Origin::Shared);
     assert_eq!(entry.path_root, PathRoot::RulesRoot);
-    assert_eq!(entry.path, "adapters/shared/rules/universal/uni-001.md");
+    assert_eq!(entry.path, "adapters/shared/prose/rules/universal/uni-001.md");
 }
 
 /// Probe precedence: the monorepo tree (step 2) wins over the
@@ -207,12 +207,12 @@ fn monorepo_wins_over_codex_cache() {
     let project = TempDir::new().expect("project");
     let _cache = scoped_cache(&project);
     write_rule(
-        &project.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &project.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Monorepo shared",
     );
     write_rule(
-        &codex_cache(project.path()).join("adapters/shared/rules/universal/uni-002.md"),
+        &codex_cache(project.path()).join("adapters/shared/prose/rules/universal/uni-002.md"),
         "UNI-002",
         "Cache shared",
     );
@@ -233,12 +233,12 @@ fn explicit_root_wins_over_codex_cache() {
     let project = TempDir::new().expect("project");
     let _cache = scoped_cache(&project);
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Explicit shared",
     );
     write_rule(
-        &codex_cache(project.path()).join("adapters/shared/rules/universal/uni-002.md"),
+        &codex_cache(project.path()).join("adapters/shared/prose/rules/universal/uni-002.md"),
         "UNI-002",
         "Cache shared",
     );
@@ -259,7 +259,7 @@ fn target_overlay_from_project_local() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
@@ -290,7 +290,7 @@ fn target_overlay_falls_back_to_rules_root() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
@@ -317,7 +317,7 @@ fn source_overlay_from_project_local() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
@@ -344,7 +344,7 @@ fn multiple_source_overlays() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
@@ -378,7 +378,7 @@ fn cache_overlay_when_local_missing() {
     let project = TempDir::new().expect("project");
     let _cache = scoped_cache(&project);
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
@@ -405,14 +405,14 @@ fn readme_md_is_skipped() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared universal",
     );
     // README intentionally has no frontmatter — if discovery
     // walked into it the CH-11 parser would also raise a
     // ParseError, which the assertion below would catch.
-    let readme = rules_root.path().join("adapters/shared/rules/universal/README.md");
+    let readme = rules_root.path().join("adapters/shared/prose/rules/universal/README.md");
     fs::write(&readme, "# Shared codex\n\nNotes about shared rules.\n").expect("write readme");
 
     let sources = no_sources();
@@ -430,7 +430,7 @@ fn readme_md_is_skipped() {
 fn monorepo_split_anchors() {
     let project = TempDir::new().expect("project");
     write_rule(
-        &project.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &project.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared",
     );
@@ -467,7 +467,7 @@ fn monorepo_split_anchors() {
 fn monorepo_no_double_fallback_walk() {
     let project = TempDir::new().expect("project");
     write_rule(
-        &project.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &project.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared",
     );
@@ -489,12 +489,12 @@ fn discovery_is_non_recursive() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared",
     );
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/nested/uni-002.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/nested/uni-002.md"),
         "UNI-002",
         "Nested",
     );
@@ -513,7 +513,7 @@ fn missing_overlays_are_silent() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared",
     );
@@ -532,7 +532,7 @@ fn missing_overlays_are_silent() {
 fn parse_error_includes_path() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
-    let bad_path = rules_root.path().join("adapters/shared/rules/universal/broken.md");
+    let bad_path = rules_root.path().join("adapters/shared/prose/rules/universal/broken.md");
     fs::create_dir_all(bad_path.parent().unwrap()).expect("parent");
     fs::write(&bad_path, "no frontmatter here\n").expect("write broken rule");
 
@@ -557,7 +557,7 @@ fn ch13_inputs_are_accepted_but_ignored() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Shared",
     );

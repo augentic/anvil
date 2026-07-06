@@ -25,7 +25,7 @@ The heading is `### <source>:<lead>` so two sources surfacing the same `lead` st
 
 `topics` is an **optional** inline list of kebab-case slugs the survey agent authors as extra per-lead context. It is additional grouping signal for the propose agent and the join key for the decision-contradiction warning; the CLI computes no grouping from it, and a lead with no `topics` reconciles on its `synopsis` alone. Omit the bullet entirely when a lead is unclassified.
 
-Each `synopsis` SHOULD be content-bearing — name the lead's operation/surface and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. It MAY span more than one line when one is too thin; it stays plan-time headline material, never a back-door for slice-time `Evidence`. There is no survey-time scope-uncertainty flag: a lead is always a lead. Grouping uncertainty is the agent's to express in `change.md` under `## Tentative merges`, never on a lead block — the `/spec:plan` reconcile sub-step never edits `discovery.md` (see [lead reconciliation](./cli/plan-propose.md)).
+Each `synopsis` SHOULD be content-bearing — name the lead's operation/surface and its salient constraint so a same-slug lead from another source can be matched or distinguished on content, not just the shared slug. It MAY span more than one line when one is too thin; it stays plan-time headline material, never a back-door for slice-time `Evidence`. There is no survey-time scope-uncertainty flag: a lead is always a lead. Grouping uncertainty is the agent's to express in `change.md` under `## Tentative merges`, never on a lead block — the reconcile leg inside `specify plan author` never edits `discovery.md`.
 
 ## N=1 degenerate form (`intent.survey`)
 

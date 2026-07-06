@@ -15,7 +15,7 @@ The iOS/Android contract this RFC extends is implemented across two repositories
 - **Canonical masters** live under `design-system/assets/`; **committed exports** under `design-system/assets/exports/<platform>/`.
 - **Materialize:** operators run `specify extension run vectis -- materialize assets`; the in-loop caller is `specify slice build --phase prepare`, which auto-dispatches materialize for in-scope missing exports (see [DECISIONS §K](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/DECISIONS.md#k--materialization-and-render-by-kind)).
 - **Render-by-`kind`:** shell writers copy materialized exports and emit view code by entry `kind` — `vector` / `raster` from shell catalogs, `symbol` only via explicit `symbols.<platform>`. Build-time substitution of platform glyphs for `vector` / `raster` ids is forbidden ([VECTIS-006](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md)).
-- **Bootstrap `app-icon` gate:** `project.yaml.platforms` is the sole authority for platform intent. The gate runs at **build prepare** (`vectis verify --mode bootstrap-app-icon`, re-raised by the host as `plan-bootstrap-app-icon-missing`) — not at plan validate. Platform shell bootstrap is not a plan concern ([plan-propose.md](https://github.com/augentic/specify-adapters/blob/main/shared/references/runtime/cli/plan-propose.md)).
+- **Bootstrap `app-icon` gate:** `project.yaml.platforms` is the sole authority for platform intent. The gate runs at **build prepare** (`vectis verify --mode bootstrap-app-icon`, re-raised by the host as `plan-bootstrap-app-icon-missing`) — not at plan validate. Platform shell bootstrap is not a plan concern ([plan-propose.md](https://github.com/augentic/specify-adapters/blob/main/shared/prose/references/runtime/cli/plan-propose.md)).
 
 ## Motivation
 
@@ -159,6 +159,6 @@ This RFC is a single initiative once a web shell target exists:
 - [`specify/engine/.../slice/build.rs`](../../src/runtime/commands/slice/build.rs) (prepare hook)
 - [`specify/engine/.../platform.rs`](../../crates/workflow/src/platform.rs)
 - [VECTIS-006](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md) (future web column)
-- [plan-propose.md](https://github.com/augentic/specify-adapters/blob/main/shared/references/runtime/cli/plan-propose.md) (explicit non-goal: no plan-time shell bootstrap)
+- [plan-propose.md](https://github.com/augentic/specify-adapters/blob/main/shared/prose/references/runtime/cli/plan-propose.md) (explicit non-goal: no plan-time shell bootstrap)
 - W3C Web App Manifest — icon sizes (192, 512)
 - Apple — `apple-touch-icon` (180×180)

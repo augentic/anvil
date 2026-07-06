@@ -14,7 +14,7 @@ pub enum RulesAction {
     /// Read-only: no `.specify/` writes, no lifecycle transitions,
     /// no journal events. The handler probes for shared `UNI-*`
     /// rules (via `--rules-root`, a project-local monorepo
-    /// `adapters/shared/rules/universal/` tree, or the distributed
+    /// `adapters/shared/prose/rules/universal/` tree, or the distributed
     /// out-of-tree codex cache `<project-cache>/codex/`), discovers the
     /// `--target` and `--source` overlays per the rules contract §"Resolution
     /// roots", and streams the sorted `ResolvedRules` envelope to
@@ -30,7 +30,7 @@ pub enum RulesAction {
     /// codex cache `<project-cache>/codex/`, pinned to the project's adapter
     /// source/ref (codex root resolution, RM-07).
     ///
-    /// Mirrors `adapters/shared/rules/universal/` (and, with
+    /// Mirrors `adapters/shared/prose/rules/universal/` (and, with
     /// `--include-framework`, `core/`) from the adapter source so the
     /// resolver's rules-root probe finds shared `UNI-*` rules without
     /// `--rules-root`. Requires an initialised `.specify/`; writes only
@@ -42,7 +42,7 @@ pub enum RulesAction {
 #[derive(Debug, Args)]
 pub struct SyncArgs {
     /// Also distribute the framework `core/` pack
-    /// (`adapters/shared/rules/core/`) alongside the always-distributed
+    /// (`adapters/shared/prose/rules/core/`) alongside the always-distributed
     /// `universal/` pack. Default off — consumer projects carry only
     /// `UNI-*` rules.
     #[arg(long)]
@@ -63,7 +63,7 @@ pub struct ExportArgs {
     /// Codex root supplying shared `UNI-*` rules and rules-root
     /// fallback overlays (codex root resolution (v1)). When omitted the
     /// resolver probes the project-local monorepo
-    /// `adapters/shared/rules/universal/` tree, then the distributed
+    /// `adapters/shared/prose/rules/universal/` tree, then the distributed
     /// out-of-tree codex cache `<project-cache>/codex/` (populated by `specify init`
     /// / `specify rules sync`); failing both, exits with
     /// `rules-root-required`.
@@ -101,7 +101,7 @@ pub struct ExportArgs {
     pub include_unmatched: bool,
 
     /// Include `CORE-*` rules resolved from
-    /// `adapters/shared/rules/core/`.
+    /// `adapters/shared/prose/rules/core/`.
     /// Default off — consumer-project exports never carry
     /// framework-only `CORE-*` rules unless the caller opts in.
     #[arg(long)]

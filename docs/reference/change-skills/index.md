@@ -13,23 +13,23 @@ Change skills coordinate one or more slices through `change.md` and `plan.yaml`.
 </div>
 
 
-Inside `/spec:execute`, each slice runs through the per-slice loop documented in [Slice skills](../slice-skills/index.md): refine → build → merge. Every phase is also reachable as a manual breakout when execute parks or when you want to drive one slice by hand.
+Inside `specify plan execute`, each slice runs through the per-slice loop documented in [Slice skills](../slice-skills/index.md): refine → build → merge. Every phase is also reachable as a manual breakout when execute parks or when you want to drive one slice by hand.
 
-Each row below links to a per-skill stub; the authoritative operator instructions for every phase live in its canonical skill body under `plugins/spec/skills/<phase>/SKILL.md`.
+Each row below links to a per-phase stub; the skills are ultrathin wrappers, and the orchestration behind each phase lives in the guest-routed `specify` verb the wrapper invokes.
 
 ## Skill summary
 
 | Skill | Purpose | Reads | Writes |
 | ----- | ------- | ----- | ------ |
 | [/spec:plan](plan.md) | Survey sources, propose slices, exit at `pending` | Bound sources, `project.yaml` | `change.md`, `plan.yaml`, `discovery.md` |
-| [/spec:execute](execute.md) | Drive approved plan through refine → build → merge | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
+| [specify plan execute](execute.md) | Drive approved plan through refine → build → merge (CLI verb, no skill wrapper) | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
 | [/spec:finalize](finalize.md) | Push branches, archive plan | Drained plan, workspace slots | Archived plan; no direct `.specify/` writes |
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator that delegates deterministic operations — plan creation, lifecycle transitions, spec merging, workspace sync — to the `specify` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
+Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb — plan authoring, lifecycle transitions, spec merging, and workspace sync all run inside the CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract.
 
-Per-slice work (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) lives in [Slice skills](../slice-skills/index.md). `/spec:execute` sequences those skills; the same bodies run when you invoke a breakout by hand.
+Per-slice work (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) lives in [Slice skills](../slice-skills/index.md). `specify plan execute` sequences the same orchestrations; the same guest legs run when you invoke a breakout by hand.
 
 ## See also
 

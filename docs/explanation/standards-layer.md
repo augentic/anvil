@@ -19,8 +19,8 @@ Two different uses of "standards" appear in this repository:
 
 | Term | Meaning | Location |
 | --- | --- | --- |
-| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify`; framework invariants also ship as [`CORE-*` rules](../../adapters/shared/rules/core/) resolved by a generic dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy in the rule's `config:`) |
-| **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `adapters/shared/rules/`, `adapters/targets/<name>/prose/rules/`, and optional source overlays — resolved by `specify rules export` and enforced by `specify lint project` |
+| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify`; framework invariants also ship as [`CORE-*` rules](../../adapters/shared/prose/rules/core/) resolved by a generic dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy in the rule's `config:`) |
+| **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `adapters/shared/prose/rules/`, `adapters/targets/<name>/prose/rules/`, and optional source overlays — resolved by `specify rules export` and enforced by `specify lint project` |
 
 Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
 
@@ -49,5 +49,5 @@ The split means lint code physically cannot construct or transition a slice, pla
 - [Core concepts](concepts.md) — change rhythm and slice loop
 - [Artifacts in depth](artifacts.md) — artifact responsibilities
 - [Consistency checks](../contributing/checks.md) — `specify lint framework` vs `specify lint project`
-- [Shared UNI-* codex inventory](../../adapters/shared/rules/universal/README.md)
+- [Shared UNI-* codex inventory](../../adapters/shared/prose/rules/universal/README.md)
 - [Ignore directives](../reference/ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and exit semantics

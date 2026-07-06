@@ -51,7 +51,7 @@ pub struct InitOptions<'a> {
     /// already exists so it never clobbers a regular single-repo project.
     pub workspace: bool,
     /// When `true`, also distribute the framework `core/` pack
-    /// (`adapters/shared/rules/core/`) into the project codex cache
+    /// (`adapters/shared/prose/rules/core/`) into the project codex cache
     /// alongside the always-distributed `universal/` pack. Default off:
     /// consumer projects carry only `UNI-*` rules. Ignored for workspace
     /// init (workspaces resolve no adapter and so distribute no codex).
@@ -93,7 +93,7 @@ pub struct InitResult {
     pub cache_present: bool,
     /// Whether the shared codex was distributed into the out-of-tree
     /// `<project-cache>/codex/` during this run. `false` when the
-    /// adapter source tree carries no `adapters/shared/rules/universal/`
+    /// adapter source tree carries no `adapters/shared/prose/rules/universal/`
     /// pack (the consumer then relies on `--rules-root` or a monorepo
     /// checkout) and for workspace init.
     pub codex_present: bool,
@@ -159,7 +159,7 @@ pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> 
 /// Pinned to `adapter_value` — the project's recorded `adapter:`
 /// source/ref (or an operator override). Resolves the adapter source
 /// the same way `init` does (local copy or git sparse checkout), then
-/// mirrors `adapters/shared/rules/universal/` (and, when
+/// mirrors `adapters/shared/prose/rules/universal/` (and, when
 /// `include_framework`, `core/`) into the out-of-tree `<project-cache>/codex/`.
 ///
 /// This is the engine behind `specify rules sync`. `init` distributes
@@ -167,7 +167,7 @@ pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> 
 /// entry point lets a refresh run stand alone without re-running init.
 ///
 /// Returns `Ok(true)` when the codex was distributed, `Ok(false)` when
-/// the adapter source carries no `adapters/shared/rules/universal/`
+/// the adapter source carries no `adapters/shared/prose/rules/universal/`
 /// pack (fail-soft). `now` stamps [`CodexMeta::fetched_at`].
 ///
 /// # Errors

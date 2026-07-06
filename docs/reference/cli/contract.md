@@ -60,7 +60,7 @@ The validator is library code inside the contracts adapter's committed `guest.wa
 
 ## See Also
 
-- [Declared WASI tools](extension.md) — the surviving project-scope tool surface behind `specify lint project`.
+- [Tool declarations](../../explanation/tool-declarations.md) — the surviving project-scope tool surface behind `specify lint project`.
 - [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
 - [`adapters/targets/contracts/prose/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/prose/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.

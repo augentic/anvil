@@ -55,13 +55,13 @@ fn build_emits_versioned_envelope() {
     let rules_root = TempDir::new().expect("rules root");
     let project = TempDir::new().expect("project");
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-002.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-002.md"),
         "UNI-002",
         "Important shared",
         "important",
     );
     write_rule(
-        &rules_root.path().join("adapters/shared/rules/universal/uni-001.md"),
+        &rules_root.path().join("adapters/shared/prose/rules/universal/uni-001.md"),
         "UNI-001",
         "Critical shared",
         "critical",

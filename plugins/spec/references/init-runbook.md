@@ -275,7 +275,7 @@ Render the **greenfield** template for a regular project with no codebase indica
 
 - **CLI-only scaffolding.** Never hand-roll `.specify/` when `specify init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
 - **No pre-cache.** Never pre-populate the out-of-tree per-project cache with adapter material — `specify init` owns adapter fetch and copy when invoked with the adapter positional.
-- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `/spec:execute`, with the bound language source adapter's `extract` brief synthesizing evidence during `/spec:refine`.
+- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is driven by `/spec:plan` -> `specify plan execute`, with the bound language source adapter's `extract` prompt synthesizing evidence during `/spec:refine`.
 - **No registry peer registration.** Workspace init only seeds an empty `projects: []`; peer registration lives in `specify registry add`.
 - **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
 - **Adapter vs `--workspace` is mutually exclusive.** The CLI rejects the combination with a clap parse error and exit code `2`; pick exactly one shape per run.

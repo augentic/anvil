@@ -1,1 +1,0 @@
-../../../../../plugins/spec/references/synthesis/provenance.md

@@ -12,7 +12,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Skills
 
-- [Change Skills](change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize`
+- [Change Skills](change-skills/index.md) — `/spec:plan`, `specify plan execute`, `/spec:finalize`
 - [Slice Skills](slice-skills/index.md) — `/spec:init`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`
 
 ### CLI
@@ -27,7 +27,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### Adapters
 
 - [Source Adapters](sources/index.md) — `survey` + `extract` per first-party source adapter (intent, documentation, typescript, screenshots, captures).
-- [Target Adapters](targets/index.md) — `shape` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
+- [Target Adapters](targets/index.md) — `guidance` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
 
 ### Configuration
 

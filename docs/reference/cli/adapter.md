@@ -10,7 +10,7 @@ Validate and locate a source adapter manifest.
 specify source resolve <name>
 ```
 
-Returns the adapter root, manifest path, and brief paths for `survey` and `extract`. Used by `/spec:plan` during survey and `/spec:refine` during extract.
+Returns the adapter root and manifest path; the `survey` and `extract` prompts are compiled into the adapter guest. Used by the survey and extract orchestrations.
 
 ## specify target resolve
 
@@ -20,7 +20,7 @@ Validate and locate a target adapter manifest.
 specify target resolve <value>
 ```
 
-`<value>` may be a bare adapter name (`omnia`), a URL, or a local path. Returns manifest path and brief paths for `shape`, `build`, and `merge`. Used by `/spec:refine`, `/spec:build`, and `/spec:merge`.
+`<value>` may be a bare adapter name (`omnia`), a URL, or a local path. Returns the adapter root and manifest path; the `guidance`, `build`, and `merge` prompts are compiled into the adapter guest. Used by the refine, build, and merge orchestrations.
 
 ## Caching
 

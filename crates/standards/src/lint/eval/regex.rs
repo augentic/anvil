@@ -259,7 +259,7 @@ mod tests {
             references: None,
             origin: Origin::Core,
             path_root: PathRoot::RulesRoot,
-            path: "adapters/shared/rules/core/CORE-050.md".to_string(),
+            path: "adapters/shared/prose/rules/core/CORE-050.md".to_string(),
             body: String::new(),
             deprecated: None,
         }

@@ -1,6 +1,6 @@
 # Slice skills
 
-Slice skills operate on a single slice inside `.specify/slices/<name>/`. They cover one-time project setup and the per-slice refine → build → merge loop. Change-level skills ([/spec:plan](../change-skills/plan.md), [/spec:execute](../change-skills/execute.md), [/spec:finalize](../change-skills/finalize.md)) sequence these skills inside `/spec:execute`; every step is also reachable as a manual breakout when execute parks.
+Slice skills operate on a single slice inside `.specify/slices/<name>/`. They cover one-time project setup and the per-slice refine → build → merge loop. The change level ([/spec:plan](../change-skills/plan.md), [specify plan execute](../change-skills/execute.md), [/spec:finalize](../change-skills/finalize.md)) sequences the same orchestrations inside `specify plan execute`; every step is also reachable as a manual breakout when execute parks.
 
 ## The per-slice loop
 
@@ -8,7 +8,7 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 /spec:init  →  (plan-time)  →  /spec:refine  →  /spec:build  →  /spec:merge
 ```
 
-`/spec:init` is one-time scaffolding. The loop runs inside `/spec:execute`, but each phase is invokable by hand. See [Drive a slice manually](../../how-to/drive-slice-manually.md).
+`/spec:init` is one-time scaffolding. The loop runs inside `specify plan execute`, but each phase is invokable by hand. See [Drive a slice manually](../../how-to/drive-slice-manually.md).
 
 **Canonical reference.** The authoritative operator surface for every skill — synopsis, arguments, the step-by-step critical path, guardrails, closing hints, and error modes — is its canonical skill body under [`plugins/spec/skills/<phase>/SKILL.md`](../../../plugins/spec/skills/). The sections below are navigation entries and carry no operator steps, so the two surfaces cannot drift.
 
@@ -18,7 +18,7 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 | ----- | ------- | ----- | ------ |
 | [/spec:init](#specinit) | One-time project setup | — | `.specify/`, `project.yaml`, cache, `AGENTS.md` |
 | [/spec:refine](#specrefine) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `model.yaml` |
-| [/spec:build](#specbuild) | Validate artifacts, implement tasks | Slice artifacts, target build brief | Source code, task checkmarks |
+| [/spec:build](#specbuild) | Validate artifacts, implement tasks | Slice artifacts, target build prompts | Source code, task checkmarks |
 | [/spec:merge](#specmerge) | Apply slice deltas to baseline, archive slice | Slice specs, baseline | Updated baseline, archived slice, per-entry `done` |
 | [/spec:drop](#specdrop) | Discard a slice without merging | Slice metadata | Archived slice (dropped) |
 
@@ -30,13 +30,13 @@ See also: [Prerequisites](../../orientation/prerequisites.md) — what to instal
 
 ## /spec:refine
 
-Refine a plan entry's slice — run extract per bound source, synthesize proposal, spec, design, and tasks, validate, transition to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../plugins/spec/references/synthesis/).
+Refine a plan entry's slice — invoke `specify slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../plugins/spec/references/synthesis/).
 
 See also: [Resolve spec conflicts](../../how-to/resolve-spec-conflicts.md) — `[conflict]` and `[divergence]` tags · [Artifact format](../artifact-format.md) — requirement block shape · [Lifecycle](../lifecycle.md) — slice state machine.
 
 ## /spec:build
 
-Implement tasks from a refined slice by driving the two-phase `specify slice build` verb and running the target adapter's build brief. Canonical body: [`/spec:build`](../../../plugins/spec/skills/build/SKILL.md).
+Implement tasks from a refined slice by invoking `specify slice build`, which drives the target adapter's build operation. Canonical body: [`/spec:build`](../../../plugins/spec/skills/build/SKILL.md).
 
 See also: [Drive a slice manually](../../how-to/drive-slice-manually.md) — when execute parks on build · [Artifact format](../artifact-format.md) — skill directive tag syntax.
 
@@ -54,7 +54,7 @@ See also: [Lifecycle](../lifecycle.md) — the dropped state.
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator that delegates deterministic operations to the `specify` CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
+Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
 
 ## See also
 

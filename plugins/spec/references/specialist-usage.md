@@ -2,7 +2,7 @@
 
 Augentic-specific supplement: how specialist skills (Omnia, Vectis, and friends) *consume* the standard artifacts. For artifact structure see [Artifact format](https://specify.augentic.io/reference/artifact-format.html) and [Artifacts in depth](https://specify.augentic.io/explanation/artifacts.html).
 
-Augentic uses stock Specify as its executable workflow contract. Specialist skills read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:plan → /spec:execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice), but they must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
+Augentic uses stock Specify as its executable workflow contract. Specialist skills read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:plan → specify plan execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice), but they must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
 
 ## Where specialists read and write
 

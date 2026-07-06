@@ -16,8 +16,8 @@ Layer 0 is the static project configuration plus the adapter manifests every hig
 The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
-- **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`, `operations: [survey, extract]`).
-- **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`, `operations: [shape, build, merge]`).
+- **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`; operations `survey` / `extract` derive from the WIT contract).
+- **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`; operations `guidance` / `build` / `merge` derive from the WIT contract).
 - **JSON Schemas** — the authoritative `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary, with sources in-tree under [`schemas/`](../../schemas); editors bind to them via remote URLs in [`.vscode/settings.json`](../../.vscode/settings.json).
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
@@ -36,21 +36,21 @@ Layer 1 is the per-slice `refine → build → merge` loop. It operates on **one
 
 ![Layer 1 slice loop](../assets/diagrams/layered-stack/slice-loop.svg)
 
-<p class="pipeline-caption">Breakouts /spec:refine, /spec:build, /spec:merge share the same skill bodies as /spec:execute.</p>
+<p class="pipeline-caption">Breakouts /spec:refine, /spec:build, /spec:merge invoke the same guest orchestrations as specify plan execute.</p>
 </div>
 
-Each skill is an agent-driven orchestrator. It reads the brief pipeline declared by the active adapter (resolved from Layer 0), writes artifacts, runs the active target adapter's build brief, and renders summaries. Deterministic work is delegated to the `specify` CLI underneath.
+Each skill is an ultrathin invoke-and-relay wrapper: it elicits any missing arguments, invokes the matching `specify slice` verb, and relays the output. The guest orchestration underneath owns the sequencing, the judgment legs (extract, synthesis, the target's build prompts), and the validation.
 
 The full set of Layer 1 skills:
 
 | Skill          | Role                                                                                       |
 | -------------- | ------------------------------------------------------------------------------------------ |
-| `/spec:refine` | Run `extract` per bound source, synthesize artifacts, validate, transition to `refined`    |
-| `/spec:build`  | Validate artifacts and implement tasks                                                     |
-| `/spec:merge`  | Apply spec deltas to the baseline and archive the slice; only writer of per-entry `done`   |
-| `/spec:drop`   | Discard a slice without merging                                                            |
+| `/spec:refine` | Wrap `specify slice refine`: extract per bound source, synthesis, validation, `refined`    |
+| `/spec:build`  | Wrap `specify slice build`: the target adapter's build operation and the `built` gate      |
+| `/spec:merge`  | Wrap `specify slice merge run`: baseline delta merge, archive; only writer of per-entry `done` |
+| `/spec:drop`   | Wrap `specify slice drop`: discard a slice without merging                                 |
 
-The matching CLI surface is the **`specify slice ...`** family: `slice create`, `slice transition`, `slice validate`, `slice merge`. Operators rarely call these directly; the skills wrap them.
+The matching CLI surface is the **`specify slice ...`** family: `slice refine`, `slice build`, `slice merge run`, plus the finer-grained `slice create`, `slice transition`, `slice validate`. The skills are one-to-one wrappers over it.
 
 ## Layer 2: Planning and driving a change
 
@@ -58,29 +58,29 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `/spec:plan`     | Survey each bound source, propose `slices[]` rows in `plan.yaml`, validate; exit at `pending`    |
-| `/spec:execute`  | Drive the plan through the Layer 1 loop; refuses unless plan is `approved`                          |
+| `/spec:plan`     | Wrap `specify plan author`: survey each bound source, reconcile `slices[]`, validate; exit at `pending` |
+| `specify plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, no skill wrapper); refuses unless plan is `approved` |
 | `/spec:finalize` | Push branches, then archive the plan (PRs opened and merged by the operator outside Specify)        |
 
-The plan is the change's table of contents. `/spec:plan` produces it by surveying each source, reconciling leads across sources at `propose`, and halting at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
+The plan is the change's table of contents. `/spec:plan` produces it by invoking `specify plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
 
-`/spec:execute` consumes the approved plan by picking the next eligible slice (`specify plan next`), running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
+`specify plan execute` consumes the approved plan by claiming the next eligible entry, running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches and archiving `plan.yaml`.
 
 The matching CLI surface spans **`specify plan {create, author, execute, add, amend, remove, transition, next}`** and **`specify workspace {sync, push, prepare}`** for multi-repo changes.
 
 ### Gate 1: the operator review seam
 
-The pause between `/spec:plan` and `/spec:execute` is the only review seam Specify ships. `/spec:plan` writes `pending`; the operator writes `approved`. `/spec:execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` (or re-run `specify plan author` to re-reconcile wholesale) before any per-slice work runs.
+The pause between `/spec:plan` and `specify plan execute` is the only review seam Specify ships. `/spec:plan` writes `pending`; the operator writes `approved`. `specify plan execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` (or re-run `specify plan author` to re-reconcile wholesale) before any per-slice work runs.
 
-The framework does not ship a single "do everything" command. Teams that want one-command flow compose the three skills in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
+The framework does not ship a single "do everything" command. Teams that want one-command flow compose plan, transition, and execute in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/spec:execute` calls `/spec:refine`, `/spec:build`, and `/spec:merge` — the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside `/spec:execute` or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `specify plan execute` runs the same refine, build, and merge orchestrations the breakout skills invoke one slice at a time. The phase orchestrations themselves do not know whether they are running inside the loop or being driven by a human.
 
 This means you can always drop down a layer:
 
 - If `/spec:plan` produces a plan you want to adjust, use **re-propose** or `specify plan add` / `specify plan remove` for grouping and deferral, and `specify plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then stamp `approved` when ready.
-- If `/spec:execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `/spec:execute` to pick up the next entry.
+- If `specify plan execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `specify plan execute` to pick up the next entry.
 - If `/spec:finalize` halts on an unmerged PR, merge through the forge UI and re-run.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/metadata.yaml` directly — they are plain YAML files.

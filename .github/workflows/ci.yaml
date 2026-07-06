@@ -39,7 +39,7 @@ jobs:
           status=0
           for d in adapters/sources/*/prose/references/spec-runtime adapters/targets/*/prose/references/spec-runtime; do
             if [ ! -L "$d" ]; then
-              echo "error: $d must be a symlink to ../../../shared/references/runtime (no materialised copies)" >&2
+              echo "error: $d must be a symlink to ../../../shared/prose/references/runtime (no materialised copies)" >&2
               status=1
             elif [ ! -e "$d" ]; then
               echo "error: $d is a broken symlink" >&2

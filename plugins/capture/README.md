@@ -15,7 +15,7 @@ git clone "$URL" "$DEST"    --> bootstrap the legacy repo (inlined snippet in wi
 /capture:wiretapper         --> instrument and capture runtime data
 /spec:plan                  --> bind captures source: runtime=./captures/replays
 specify plan transition ... approved
-/spec:execute               --> refine/build/merge; Omnia build/test.md + build/replay.md consume replays
+specify plan execute               --> refine/build/merge; Omnia build/test.md + build/replay.md consume replays
 ```
 
 Captured runtime data must follow [`captures/references/capture-format.md`](https://github.com/augentic/specify-adapters/blob/main/sources/captures/prose/references/capture-format.md).

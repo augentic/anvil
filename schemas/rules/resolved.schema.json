@@ -81,7 +81,7 @@
         "target",
         "unknown"
       ],
-      "description": "Resolver origin tier. Producer-side ordering is `target < source < shared < core < unknown`. `target` comes from a target-adapter overlay; `source` from a source-adapter overlay; `shared` from `adapters/shared/rules/`; `core` from the core rules pack; `unknown` is the consumer indexer's fallback for rule files whose path does not match a recognized adapter shape. JSON Schema does not enforce ordering."
+      "description": "Resolver origin tier. Producer-side ordering is `target < source < shared < core < unknown`. `target` comes from a target-adapter overlay; `source` from a source-adapter overlay; `shared` from `adapters/shared/prose/rules/`; `core` from the core rules pack; `unknown` is the consumer indexer's fallback for rule files whose path does not match a recognized adapter shape. JSON Schema does not enforce ordering."
     },
     "pathRoot": {
       "type": "string",

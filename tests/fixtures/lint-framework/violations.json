@@ -17,7 +17,7 @@
       "location": {
         "path": "adapters/targets/omnia/adapter.yaml"
       },
-      "remediation": "See adapters/shared/rules/core/CORE-001-adapter-schema.md",
+      "remediation": "See adapters/shared/prose/rules/core/CORE-001-adapter-schema.md",
       "rule-id": "CORE-001",
       "severity": "critical",
       "source": "deterministic",

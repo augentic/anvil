@@ -29,11 +29,10 @@ workspace/                                  # Workspace slots (workspace mode on
 ├── project.yaml                            # Project configuration (target, sources, workspace, specify-version)
 ├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
-├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
+├── guest.lock                              # Create-exclusive marker held by guest orchestrations
 │
 ├── scratch/                                # Transient working state (per-run lanes; wiped freely; gitignored)
 │   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
-│   └── plan/propose-response.json          # Plan reconciliation handoff lane
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
@@ -79,10 +78,10 @@ The regenerable **cache** lives outside the working tree, in a per-project direc
 $XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
 ├── manifests/sources/<name>/                     # Source adapter manifest mirror
 │   ├── adapter.yaml
-│   └── prose/briefs/{survey,extract}.md
+│   └── prose/prompts/{survey,extract}.md
 ├── manifests/targets/<name>/                     # Target adapter manifest mirror
 │   ├── adapter.yaml
-│   └── prose/briefs/{shape,build,merge}.md
+│   └── prose/prompts/{guidance,build,merge}.md
 ├── manifests/manifest-meta.yaml                  # Manifest mirror provenance stamp
 └── codex/                                        # Distributed shared-rules codex (+ codex-meta.yaml)
 
@@ -109,7 +108,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### Cache (out-of-tree)
 
-The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the brief every time, with the journal's completion events as the audit trail.
+The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 

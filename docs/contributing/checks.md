@@ -93,7 +93,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
-Rule files live under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/). The generic hint evaluators live in-tree under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
+Rule files live under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/). The generic hint evaluators live in-tree under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
 
 ### JSON output
 
@@ -167,7 +167,7 @@ Links in `SKILL.md` bodies that point to `references/...` or `examples/...` path
 
 ### 6b. Deployable surfaces must not link into `docs/`
 
-`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/shared/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
+`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/shared/prose/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
 
 ### 7. Skill variable consistency
 
@@ -271,7 +271,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 13. First-party rule shape
 
-First-party rule files are validated in the shared tree at `adapters/shared/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
+First-party rule files are validated in the shared tree at `adapters/shared/prose/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
@@ -281,22 +281,22 @@ invoke any external validator. It validates:
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
-- **Namespace ownership** -- `adapters/shared/rules/universal/` owns `UNI-*`;
+- **Namespace ownership** -- `adapters/shared/prose/rules/universal/` owns `UNI-*`;
   `omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`;
   `vectis` owns `VECTIS-*`.
 
 **Example failure messages:**
 
 ```text
-FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/example.md — / missing required property 'trigger'
-  at adapters/shared/rules/universal/example.md:1
-FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-  at adapters/shared/rules/universal/example.md:1
-FAIL: rules.schema-violation: Rule body: adapters/shared/rules/universal/example.md — missing required '## Rule' heading
-  at adapters/shared/rules/universal/example.md:1
-FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/shared/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
-  at adapters/shared/rules/universal/example.md:1
-FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/rules/universal/a.md, adapters/shared/rules/universal/b.md
+FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/prose/rules/universal/example.md — / missing required property 'trigger'
+  at adapters/shared/prose/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/prose/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at adapters/shared/prose/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule body: adapters/shared/prose/rules/universal/example.md — missing required '## Rule' heading
+  at adapters/shared/prose/rules/universal/example.md:1
+FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/shared/prose/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at adapters/shared/prose/rules/universal/example.md:1
+FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/prose/rules/universal/a.md, adapters/shared/prose/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -316,15 +316,15 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 ### 15. CLI contract drift
 
-[`CORE-057`](../../adapters/shared/rules/core/CORE-057-cli-contract-drift.md) checks every CLI citation in this repo's documentation against the contract of the **pinned binary that is running the lint** — the same payload `specify contract dump` emits. `specify …` command lines in `bash`/`sh` fences and inline code walk the verb tree (unknown verbs, undeclared `--flags`); cited journal event ids and fenced-JSON `"event"` / `"error"` values are membership-checked against the declared taxonomies. Because the contract is rebuilt from the binary on each run, every citation is re-checked against the in-tree binary in the same change.
+[`CORE-057`](../../adapters/shared/prose/rules/core/CORE-057-cli-contract-drift.md) checks every CLI citation in this repo's documentation against the contract of the **pinned binary that is running the lint** — the same payload `specify contract dump` emits. `specify …` command lines in `bash`/`sh` fences and inline code walk the verb tree (unknown verbs, undeclared `--flags`); cited journal event ids and fenced-JSON `"event"` / `"error"` values are membership-checked against the declared taxonomies. Because the contract is rebuilt from the binary on each run, every citation is re-checked against the in-tree binary in the same change.
 
-[`CORE-060`](../../adapters/shared/rules/core/CORE-060-cli-test-citation-drift.md) rides the same kind's `test-citations` selector: "proven by a named test" claims — `tests/….rs` inline spans and root `tests/` link targets under `docs/**` and `AGENTS.md` — must exist in the binary's build-time test inventory. Adapter trees are out of scope because they legitimately describe generated downstream-crate `tests/` layouts.
+[`CORE-060`](../../adapters/shared/prose/rules/core/CORE-060-cli-test-citation-drift.md) rides the same kind's `test-citations` selector: "proven by a named test" claims — `tests/….rs` inline spans and root `tests/` link targets under `docs/**` and `AGENTS.md` — must exist in the binary's build-time test inventory. Adapter trees are out of scope because they legitimately describe generated downstream-crate `tests/` layouts.
 
 **Common fix:** align the citation with the live CLI surface (`specify contract dump --format json` or `specify <verb> --help`). For intentional non-verbs — negative claims like "there is no `workspace merge` subcommand" or retired-verb history — drop the `specify ` prefix inside the code span so the citation stops being an invocation. Documented-ahead surfaces (verbs designed but not yet shipped) ride the rule's `config: ignore` with a comment, and the entry is removed when the verb lands.
 
 ## Extending the checks
 
-Every framework check is a `CORE-*` rule under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
+Every framework check is a `CORE-*` rule under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
 
 ### Road A — declarative hint
 
@@ -343,7 +343,7 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
 - **`cli-contract`** — `invocations` + `config: { langs }` (every `specify …` command line in matching fences and inline code walks the verb tree; unknown verbs and undeclared `--flags` flag), `event-ids` / `error-codes` + `config: { json-fields }` (cited journal event ids and error discriminants are membership-checked; event-id candidates are gated to the contract's own id families), or `test-citations` + `config: { link-prefixes }` (cited `tests/….rs` spans and root `tests/` link targets are membership-checked against the binary's build-time test inventory). The contract itself — verb tree, flags, event ids, error discriminants, tests — is injected by the running binary (the `specify contract dump` payload), so the rule carries exemptions in `config:` but never a verb list.
 
-Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010, the `schema` scenario selector → CORE-032, the `unique` scenario selector → CORE-030, and `cli-contract` → CORE-057 / CORE-060. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/rules/core/README.md`](../../adapters/shared/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
+Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010, the `schema` scenario selector → CORE-032, the `unique` scenario selector → CORE-030, and `cli-contract` → CORE-057 / CORE-060. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/prose/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/prose/rules/core/README.md`](../../adapters/shared/prose/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
 **Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** unit test beside the evaluator in `crates/standards/src/lint/eval/<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
@@ -375,10 +375,10 @@ To add or extend one:
 
 To add a `CORE-*` rule (either road):
 
-1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
+1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
 2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint project` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
 
-Checks are numbered 1–15 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/rules/core/`](../../adapters/shared/rules/core/) and do not consume a number in this list.
+Checks are numbered 1–15 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 

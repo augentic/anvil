@@ -1,1 +1,0 @@
-../../../../plugins/spec/references/artifact-validation-checklist.md

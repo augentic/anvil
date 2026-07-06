@@ -11,7 +11,7 @@
 //!
 //! `cache_codex` distributes the shared codex packs that ship beside
 //! the target adapter in its source repo
-//! (`adapters/shared/rules/{universal,core}/`) into the project codex
+//! (`adapters/shared/prose/rules/{universal,core}/`) into the project codex
 //! cache at `<project-cache>/codex/`, pinned to the same source/ref as
 //! the adapter. The codex resolver's rules-root probe finds that tree
 //! without a co-located framework checkout or a manual `--rules-root`
@@ -93,14 +93,14 @@ pub(super) fn cache_adapter(
 /// framework source tree. The codex resolver joins this same relative
 /// path onto its rules root, so mirroring it under the cache keeps the
 /// probe free of special-casing.
-const UNIVERSAL_RULES_REL: &str = "adapters/shared/rules/universal";
+const UNIVERSAL_RULES_REL: &str = "adapters/shared/prose/rules/universal";
 /// Project-relative path to the framework `core/` pack (distributed
 /// only under `--include-framework`).
-const CORE_RULES_REL: &str = "adapters/shared/rules/core";
+const CORE_RULES_REL: &str = "adapters/shared/prose/rules/core";
 
 /// Absolute path to the project codex cache root,
 /// `<project-cache>/codex/` (out-of-tree). Shared/core packs land
-/// beneath it mirroring `adapters/shared/rules/{universal,core}/`.
+/// beneath it mirroring `adapters/shared/prose/rules/{universal,core}/`.
 #[must_use]
 pub fn codex_cache_root(project_dir: &Path) -> PathBuf {
     Layout::new(project_dir).cache_dir().join("codex")
@@ -177,16 +177,16 @@ pub(super) fn cache_codex(
 /// Resolve the shared-codex root for a resolved adapter `source_dir`.
 ///
 /// An adapter resolves from `<base>/adapters/{targets,sources}/<name>`,
-/// and its shared codex lives at `<base>/adapters/shared/rules/` — a
+/// and its shared codex lives at `<base>/adapters/shared/prose/rules/` — a
 /// sibling of the `targets`/`sources` dir under the *same* `adapters/`
 /// parent. We therefore anchor on the adapter's own `adapters/` ancestor
 /// and probe `<base>` for the shared pack, rather than accepting the pack
 /// at any outer ancestor. This anchor works for local sources
 /// (canonicalised adapter dir under a repo checkout) and for git sources
-/// (the sparse checkout temp dir, which fetches `adapters/shared/rules/`
+/// (the sparse checkout temp dir, which fetches `adapters/shared/prose/rules/`
 /// in the same sparse set — see `init/git.rs`), while keeping an adapter
 /// nested inside an unrelated outer repo from adopting that repo's
-/// `adapters/shared/rules/` tree.
+/// `adapters/shared/prose/rules/` tree.
 fn repo_root_with_codex(source_dir: &Path) -> Option<PathBuf> {
     let adapters_dir =
         source_dir.ancestors().find(|dir| dir.file_name() == Some(OsStr::new("adapters")))?;

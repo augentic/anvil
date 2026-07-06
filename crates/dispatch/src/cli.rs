@@ -90,7 +90,7 @@ pub enum Commands {
         #[arg(long)]
         workspace: bool,
         /// Also distribute the framework `core/` pack
-        /// (`adapters/shared/rules/core/`) into the project codex cache
+        /// (`adapters/shared/prose/rules/core/`) into the project codex cache
         /// alongside the shared `universal/` pack. Default off —
         /// consumer projects carry only `UNI-*` rules. Ignored with
         /// `--workspace`.

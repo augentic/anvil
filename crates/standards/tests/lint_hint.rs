@@ -143,7 +143,7 @@ mod ignore_directive_pass {
             references: None,
             origin: Origin::Shared,
             path_root: PathRoot::RulesRoot,
-            path: format!("adapters/shared/rules/universal/{rule_id}.md"),
+            path: format!("adapters/shared/prose/rules/universal/{rule_id}.md"),
             body: String::new(),
             deprecated: None,
         }

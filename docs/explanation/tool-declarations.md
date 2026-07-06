@@ -91,5 +91,4 @@ Tool declaration structure is validated when `specify lint project` assembles it
 
 ## See also
 
-- [Declared WASI tools](../reference/cli/extension.md) -- the surviving tool surface behind `specify lint project`
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- adapter helpers as in-guest library code

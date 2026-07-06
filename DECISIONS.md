@@ -548,9 +548,9 @@ The rules parser consumes the canonical rule schema directly via `specify_schema
 
 ## Shared codex distribution
 
-Consumer projects resolve shared `UNI-*` rules without a co-located framework checkout or a manual `--rules-root` (RM-07). The shared codex ships beside the target adapter in its source repo (`adapters/shared/rules/{universal,core}/`); `specify init` and `specify rules sync` mirror it into the out-of-tree `<project-cache>/codex/`, **pinned to the same adapter source/ref**.
+Consumer projects resolve shared `UNI-*` rules without a co-located framework checkout or a manual `--rules-root` (RM-07). The shared codex ships beside the target adapter in its source repo (`adapters/shared/prose/rules/{universal,core}/`); `specify init` and `specify rules sync` mirror it into the out-of-tree `<project-cache>/codex/`, **pinned to the same adapter source/ref**.
 
-- **Probe order** (`probe_rules_root` in `crates/standards/src/rules/resolve.rs`): explicit `--rules-root` → monorepo `adapters/shared/rules/universal/` → codex cache → `rules-root-required`. The cache rung is a derived root, so the fallback overlay stays skipped, exactly like the monorepo case; both `specify lint` and `specify rules export` honour it.
+- **Probe order** (`probe_rules_root` in `crates/standards/src/rules/resolve.rs`): explicit `--rules-root` → monorepo `adapters/shared/prose/rules/universal/` → codex cache → `rules-root-required`. The cache rung is a derived root, so the fallback overlay stays skipped, exactly like the monorepo case; both `specify lint` and `specify rules export` honour it.
 - **Distribution.** `cache_codex` / `sync_codex` walk up from the resolved adapter `source_dir` to the nearest ancestor carrying the `universal/` pack and copy it (plus `core/` under `--include-framework`); git sources fetch in the same sparse checkout as the adapter. **Fail-soft:** a source tree without the pack leaves the cache empty and the consumer falls back to `--rules-root`.
 - **Provenance.** `CodexMeta` (`codex-meta.yaml`) records the pinned source, `include_framework`, and `fetched_at`. Audit-only; the resolver never reads it.
 - **Distribution vs evaluation are independent.** `--include-framework` controls what lands in the cache; the resolver's `include_core` controls whether `CORE-*` rules are evaluated/exported. Consumer projects default to neither.

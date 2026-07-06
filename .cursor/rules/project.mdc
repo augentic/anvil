@@ -28,7 +28,7 @@ When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
 2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
-3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **adapters/sources/`<name>`/briefs/** / **adapters/targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
+3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **sources/`<name>`/prose/prompts/** / **targets/`<name>`/prose/prompts/** in specify-adapters (+ each adapter's local `references/`) - authoritative patterns and examples
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
@@ -53,22 +53,22 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 /.cursor-plugin/          # Multi-plugin marketplace manifest
 /docs/                    # Extended documentation (explanation, contributing)
 /plugins/
-  ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop) + shared references/
+  ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop) + shared references/
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /adapters/
-  ├── sources/            # Source adapters: adapter.yaml + briefs/{survey,extract}.md
+  ├── sources/            # Source adapters: adapter.yaml + prose/prompts/{survey,extract}.md
   │   ├── intent/             # operator brief; degenerate N=1 entry point
   │   ├── documentation/      # operator-provided written intent
   │   ├── typescript/    # legacy TypeScript survey + extract
   │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
-  ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
+  ├── targets/              # Target adapters: adapter.yaml + prose/prompts/{guidance,build,merge}.md
   │   ├── omnia/
   │   ├── vectis/
   │   └── contracts/
   └── shared/               # Shared adapter support material, not adapters
-      ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
+      ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review prompts
       └── target-hooks/replay/
 /scripts/                 # Validation and plugin management
 ```
@@ -138,7 +138,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/prose/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 

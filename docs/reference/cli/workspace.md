@@ -22,7 +22,7 @@ Selectors are registry project names. Unknown selectors fail before filesystem, 
 
 ## Branch preparation
 
-Before `/spec:execute` mutates a remote-backed workspace slot, the executor prepares the slot on the change branch:
+Before `specify plan execute` mutates a remote-backed workspace slot, the executor prepares the slot on the change branch:
 
 1. Fetch `origin`.
 2. Resolve `origin/HEAD` as the remote default branch.
@@ -30,7 +30,7 @@ Before `/spec:execute` mutates a remote-backed workspace slot, the executor prep
 4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
 5. Refuse unsafe dirty work before checkout or mutation.
 
-The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/spec:execute`, `specify workspace push`, and `/spec:finalize` (which runs `specify plan archive` after the push). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
+The hidden `workspace prepare` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `specify plan execute`, `specify workspace push`, and `/spec:finalize` (which runs `specify plan archive` after the push). If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
@@ -129,5 +129,5 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and the `pushed`
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
-- [/spec:execute](../change-skills/execute.md) -- skill that drives workspace execution
+- [specify plan execute](../change-skills/execute.md) -- the guest-routed driver loop
 - [`specify plan archive`](plan.md) -- archive verb used by `/spec:finalize` after PRs are operator-merged

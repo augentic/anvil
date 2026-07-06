@@ -1,1 +1,0 @@
-../../../../plugins/spec/references/stop-conditions.md
