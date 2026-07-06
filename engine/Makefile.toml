@@ -94,6 +94,18 @@ env = { RUSTFLAGS = "-Dwarnings" }
 command = "cargo"
 args = ["build", "-p", "specify-echo-guest", "-p", "specify-workflow-guest", "--target", "wasm32-wasip2"]
 
+# Dist guest
+#
+# Rebuild the release workflow-guest component and refresh the committed
+# embed source at crates/workflow-guest/guest.wasm (the `specify` binary
+# `include_bytes!`s it — DECISIONS.md §"Workflow-guest distribution").
+# Run after changing guest-reachable code and commit the refreshed artifact.
+[tasks.dist-guest]
+script = '''
+cargo build -p specify-workflow-guest --release --target wasm32-wasip2
+cp target/wasm32-wasip2/release/specify_workflow_guest.wasm crates/workflow-guest/guest.wasm
+'''
+
 # Test
 #
 # `clean` is deliberately not in the dependency list: the

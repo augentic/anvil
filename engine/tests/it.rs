@@ -24,6 +24,8 @@ mod cli_contract;
 mod e2e;
 #[path = "extension.rs"]
 mod extension;
+#[path = "guest.rs"]
+mod guest;
 #[path = "init.rs"]
 mod init;
 #[path = "journal.rs"]

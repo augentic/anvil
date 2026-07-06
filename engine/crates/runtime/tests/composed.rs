@@ -5,7 +5,7 @@
 //! workflow guest's `wasi:cli/run` through `omnia::run` with real argv,
 //! proving the wasip3 argv seam and the exit-code passthrough end to end
 //! (guest stdout is inherited in-process, so these assert the exit path).
-//! Subprocess: run the real `specify-runtime` binary against the checked-in
+//! Subprocess: run the replay binary against the checked-in
 //! `omnia.toml` and assert the shim's stdout. The adapter link dispatch
 //! itself (survey/extract/build through `augentic:specify/source`/`target`)
 //! needs a scaffolded `.specify/` project in the mount and lands with the
@@ -62,8 +62,9 @@ async fn usage_error_passthrough() -> Result<()> {
 // grammar's version line, proving argv forwarding (`-- --version`) through
 // the subprocess surface — and that the full N+1 manifest (workflow + the
 // eight committed adapter guests) composes. Targets the replay sibling
-// (`specify-runtime-replay`): the cursor-bound `specify-runtime` requires
-// `cursor-agent` on PATH at backend connect, which CI must not.
+// (`specify-runtime-replay`): the `specify` binary's cursor-bound guest
+// leg requires `cursor-agent` on PATH at backend connect, which CI must
+// not.
 #[test]
 fn binary_stdout() -> Result<()> {
     let engine = common::workspace_root();

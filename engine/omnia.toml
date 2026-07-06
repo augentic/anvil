@@ -7,11 +7,11 @@
 # `guest.wasm` artifacts in the sibling augentic/specify-adapters checkout —
 # the same sibling posture as the omnia [patch.crates-io] path pins in
 # Cargo.toml, re-pointed at published artifacts before this branch
-# finalizes. Run a workflow-guest verb from this directory (args after `--`
-# become the guest's argv):
-#   cargo run -p specify-runtime -- run --config omnia.toml -- --version
-# (`specify-runtime` requires `cursor-agent` on PATH at connect; the replay
-# sibling `specify-runtime-replay` runs the same manifest without it.)
+# finalizes. The `specify` binary's guest leg honors a project-root
+# omnia.toml like this one over its transient assembly (DECISIONS.md
+# §"One `specify` binary"); the replay sibling drives the manifest
+# without `cursor-agent` (args after `--` become the guest's argv):
+#   cargo run -p specify-runtime-replay -- run --config omnia.toml -- --version
 
 [[guest]]
 id = "workflow"

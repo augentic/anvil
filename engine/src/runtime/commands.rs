@@ -10,6 +10,7 @@ pub mod archive;
 pub mod catalog;
 pub mod contract;
 pub mod extension;
+pub mod guest;
 mod init;
 pub mod lint;
 pub mod plan;

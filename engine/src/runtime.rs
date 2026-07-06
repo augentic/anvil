@@ -14,10 +14,18 @@ pub use specify_dispatch::output;
 pub use specify_dispatch::output::Exit;
 pub(crate) use specify_dispatch::{cli, context};
 
-/// Parse argv, dispatch the subcommand, and return the process exit
-/// code. The `specify` binary calls into this.
+/// Parse argv once, triage the verb, and return the process exit code.
+/// The `specify` binary calls into this.
+///
+/// Guest-owned verbs (the collapsed orchestrators the native handler
+/// table refuses) route to the composed deployment through
+/// `commands::guest`; everything else dispatches in-process through
+/// today's handlers. See `DECISIONS.md` §"One `specify` binary".
 #[must_use]
 pub fn run() -> ExitCode {
     let cli = cli::Cli::parse();
+    if commands::guest::owned(&cli.command) {
+        return commands::guest::run(cli.format).into();
+    }
     commands::run(cli).into()
 }

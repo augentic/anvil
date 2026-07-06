@@ -8,6 +8,10 @@ description = "Specify CLI — deterministic operations for spec-driven developm
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
+# Unpublishable to crates.io while the omnia stack rides [patch.crates-io]
+# path/git pins; the binary ships through the release-binaries.yaml archive
+# workflow instead (DECISIONS.md §"Release identity").
+publish = false
 # Integration tests are auto-discovered off: the per-area files under tests/
 # are pulled into the single `it` binary via tests/it.rs (one binary per
 # crate). Targets are declared explicitly under `[[test]]` below.
@@ -31,7 +35,9 @@ specify-model.workspace = true
 specify-error.workspace = true
 specify-schema.workspace = true
 specify-registry.workspace = true
+specify-runtime.workspace = true
 strum.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
@@ -212,6 +218,7 @@ specify-workflow = { path = "crates/workflow", default-features = false }
 specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
 specify-registry = { path = "crates/registry" }
+specify-runtime = { path = "crates/runtime" }
 specify-extension = { path = "crates/extension" }
 strum = { version = "0.28", features = ["derive"] }
 tar = "0.4"

@@ -1,17 +1,19 @@
 #!/bin/bash
 # Operator replay driver for the `guest-execute-loop` scenario: the
-# RFC-61 Step 4 inverted loop through the composed Omnia deployment.
+# inverted loop through the composed Omnia deployment, driven by the
+# triage `specify` binary itself (RFC-61 Step 5 Milestone S3).
 #
 #   bash evals/drivers/guest-execute-loop.sh
 #
-# Builds the workflow guest and the runtime binary, seeds the sandbox
-# project (vendored omnia target adapter, one-slice intent plan stamped
-# approved at Gate 1), writes the deployment manifest (workflow guest +
-# the eight committed adapter guests from the sibling specify-adapters
-# checkout), then drives `source survey intent` and `plan execute`
-# through `specify-runtime` with the live cursor backend. Post-run
-# probes per the scenario's assertion ids run at the end; grading and
-# the run record stay operator-owned.
+# Builds the workflow guest and the `specify` binary, seeds the sandbox
+# project (vendored omnia target adapter), writes the deployment
+# manifest (workflow guest + the eight committed adapter guests from
+# the sibling specify-adapters checkout) at the sandbox root — the
+# triage guest leg honors a project-root omnia.toml over its transient
+# assembly — then drives `plan author` and `plan execute` through
+# `specify` with the live cursor backend, stamping Gate 1 natively in
+# between. Post-run probes per the scenario's assertion ids run at the
+# end; grading and the run record stay operator-owned.
 #
 # Not CI. Requires `cursor-agent` on PATH (logged in) and the sibling
 # augentic/specify-adapters checkout. Makes real model calls.
@@ -32,34 +34,32 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
   exit 2
 }
 
-# Build the binaries under test and the workflow guest.
+# Build the binary under test and a fresh workflow guest (the manifest
+# below points at the debug guest so the loop under test is the branch
+# head, not the committed embed).
 (
   cd "$engine"
-  cargo build -q -p specify -p specify-runtime
+  cargo build -q -p specify
   cargo build -q -p specify-workflow-guest --target wasm32-wasip2
 )
 specify="$engine/target/debug/specify"
-runtime="$engine/target/debug/specify-runtime"
 workflow_wasm="$engine/target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
 
 # Seed the sandbox: vendored target adapter (symlinks dereferenced — the
 # adapter's reference symlinks point into the checkout's shared/ tree,
-# which the vendored copy does not carry), init, one-slice intent plan,
-# operator Gate-1 stamp. The relative adapter path matters: it resolves
-# against the guest's "." preopen at execute time, where the out-of-tree
-# manifest cache and absolute host paths do not exist.
+# which the vendored copy does not carry), then init. The relative
+# adapter path matters: it resolves against the guest's "." preopen at
+# execute time, where the out-of-tree manifest cache and absolute host
+# paths do not exist.
 rm -rf "$sandbox"
 mkdir -p "$sandbox/adapters/targets"
 cp -RL "$adapters/targets/omnia" "$sandbox/adapters/targets/omnia"
 cd "$sandbox"
 "$specify" init ./adapters/targets/omnia --name guest-demo
-"$specify" plan create guest-demo \
-  --intent "Provide a greeting service with one operation that returns a fixed greeting string."
-"$specify" plan add greeting-service --sources intent
-"$specify" plan transition guest-demo approved
 
 # The deployment manifest: the checked-in engine/omnia.toml shape with the
-# "." mount re-pointed at the sandbox.
+# "." mount re-pointed at the sandbox. The triage guest leg picks this up
+# from the project root instead of assembling its transient manifest.
 addr="${HTTP_ADDR:-127.0.0.1:8094}"
 {
   printf '[[guest]]\nid = "workflow"\nsource.path = "%s"\n' "$workflow_wasm"
@@ -84,16 +84,20 @@ log="$sandbox/guest-execute-loop.log"
 echo "guest-execute-loop: sandbox=$sandbox log=$log"
 
 drive() {
-  echo "==> specify-runtime -- $*" | tee -a "$log"
+  echo "==> specify $*" | tee -a "$log"
   HTTP_ADDR="$addr" \
   SPECIFY_INTENT_MCP_URL="http://$addr/mcp/intent" \
   SPECIFY_OMNIA_MCP_URL="http://$addr/mcp/omnia" \
-    "$runtime" run --config "$sandbox/omnia.toml" -- "$@" 2>&1 | tee -a "$log"
+    "$specify" "$@" 2>&1 | tee -a "$log"
 }
 
-# The inverted loop: survey through the source:intent guest, then the
-# guest execute loop to drained.
-drive source survey intent
+# The inverted loop: author the plan in-guest (survey through the
+# source:intent guest, lead reconciliation through the workflow guest's
+# judgment leg), stamp Gate 1 natively, then the guest execute loop to
+# drained.
+drive plan author guest-demo \
+  --intent "Provide a greeting service with one operation that returns a fixed greeting string."
+"$specify" plan transition guest-demo approved
 drive plan execute
 
 # Post-run probes (see evals/shared/assertions.md#guest-execute-loop);

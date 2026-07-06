@@ -1,6 +1,6 @@
 [package]
 name = "specify-runtime"
-description = "Omnia runtime! host binary for Specify WASI components"
+description = "Omnia composed-deployment host surface for Specify WASI components"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,12 +11,13 @@ publish = false
 # the per-area hubs are pulled in via tests/it.rs `#[path]` includes.
 autotests = false
 
-# The target guard in main.rs needs cfg-if on every target; a stray
-# wasm32 build of the whole workspace then compiles to an empty main.
+# The target guard in src/bin/replay.rs needs cfg-if on every target; a
+# stray wasm32 build of the whole workspace then compiles to an empty main
+# (the lib guards itself with a crate-level #![cfg]).
 [dependencies]
 cfg-if.workspace = true
 
-# Host-only: the runtime binary never compiles for the guest wasm32 targets,
+# Host-only: the runtime surface never compiles for the guest wasm32 targets,
 # so its dependencies live under the same target gate omnia itself uses.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -46,7 +47,10 @@ path = "tests/it.rs"
 
 # The replay sibling over the same manifest surface: `WasiModel:
 # ModelDefault` instead of the cursor backend, for component-level tests
-# and examples (RFC-61 §target shape — not an operational mode).
+# and examples (RFC-61 §target shape — not an operational mode). The
+# cursor-bound binary is the root `specify` itself: its triage main drives
+# guest-owned verbs through this crate's `drive` (DECISIONS.md §"One
+# `specify` binary").
 [[bin]]
 name = "specify-runtime-replay"
 path = "src/bin/replay.rs"

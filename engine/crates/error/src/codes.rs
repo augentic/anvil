@@ -99,6 +99,7 @@ pub const WIRE_CODES: &[&str] = &[
     "framework-root",
     "framework-tool-runner",
     "guest-marker-held",
+    "guest-runtime-failed",
     "init-requires-adapter-or-workspace",
     "invalid-name",
     "io",

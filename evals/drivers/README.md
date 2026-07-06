@@ -16,7 +16,7 @@ The loop is driven entirely by the CLI: [`lib.sh`](lib.sh) reads `specify plan s
 | `execute-pause-resume.sh` | `execute-pause-resume` | Park after build prepare, breakout, resume |
 | `workspace.sh` | workspace-* | Cross-repo workspace execute / fail / stale recovery |
 | `contract-lifecycle.sh` | `contract-lifecycle` | Execute-phase loop only (plan setup stays agent-driven) |
-| `guest-execute-loop.sh` | `guest-execute-loop` | Composed-runtime inverted loop (builds guests, seeds the sandbox, drives `specify-runtime`) |
+| `guest-execute-loop.sh` | `guest-execute-loop` | Composed-runtime inverted loop (builds guests, seeds the sandbox, drives the triage `specify` binary's guest leg) |
 
 Sandboxes materialise under `evals/.sandbox/<scenario>/` (gitignored). Override roots with `SPECIFY_FRAMEWORK`, `SPECIFY_SANDBOX`, `SPECIFY_BIN`, or `SPECIFY_WS` when replaying on another machine.
 

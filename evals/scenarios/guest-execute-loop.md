@@ -38,21 +38,16 @@ The entrypoint names `/spec:execute` because the guest's `plan execute` is that 
 
 Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md), except `init` uses a local adapter path (the guest resolves the target adapter project-locally; the out-of-tree manifest cache is not preopened): vendor `targets/omnia` from the sibling `augentic/specify-adapters` checkout into the sandbox at `adapters/targets/omnia/`, then `specify init ./adapters/targets/omnia`. `cursor-agent` must be on PATH and logged in. The [`guest-execute-loop` driver](../drivers/README.md) automates the clerical setup below and the invocation's runtime calls; driving through it is equivalent to typing the steps.
 
-Create the plan with the native CLI (plan authoring stays native; the guest owns the loop):
-
-```bash
-specify plan create guest-demo --intent "Provide a greeting service with one operation that returns a fixed greeting string."
-specify plan add greeting-service --sources intent
-specify plan transition guest-demo approved     # Gate 1 — the operator's stamp
-```
-
-Write the deployment manifest: workflow guest (built by `cargo build -p specify-workflow-guest --target wasm32-wasip2` under `engine/`) plus the eight committed adapter `guest.wasm` files from the sibling checkout, each adapter's MCP shelf routed at `/mcp/<name>`, one writable `"."` mount at the sandbox — the checked-in [`engine/omnia.toml`](../../engine/omnia.toml) shape with the mount re-pointed. Export `SPECIFY_INTENT_MCP_URL` / `SPECIFY_OMNIA_MCP_URL` at the served `HTTP_ADDR` so the spawned cursor-agent can read the adapter shelves.
+Write the deployment manifest at the sandbox root: workflow guest (built by `cargo build -p specify-workflow-guest --target wasm32-wasip2` under `engine/`) plus the eight committed adapter `guest.wasm` files from the sibling checkout, each adapter's MCP shelf routed at `/mcp/<name>`, one writable `"."` mount at the sandbox — the checked-in [`engine/omnia.toml`](../../engine/omnia.toml) shape with the mount re-pointed. The triage `specify` binary honors a project-root `omnia.toml` over its transient assembly, so the guest legs below run against this manifest. Export `SPECIFY_INTENT_MCP_URL` / `SPECIFY_OMNIA_MCP_URL` at the served `HTTP_ADDR` so the spawned cursor-agent can read the adapter shelves.
 
 ## Invocation
 
-1. **Survey** — `cargo run -p specify-runtime -- run --config <sandbox>/omnia.toml -- source survey intent` (from `engine/`). The workflow guest dispatches to the `source:intent` guest, whose judgment leg runs on the live cursor backend; confirm one lead named `greeting-service` lands in `discovery.md`.
-2. **Execute** — `… -- plan execute`. The guest loop claims the entry, refines (extract through the intent guest, synthesis through the workflow guest's own judgment leg), builds through the `target:omnia` guest (generated crate lands under `crates/` in the sandbox), merges, and exits drained.
-3. **Verify the generated output** — `cargo check` (and `cargo test` where tests were generated) in the generated crate, per the [generated-output-correctness gate](../../docs/contributing/evals.md#fan-in--fan-out-proof).
+All from the sandbox root, through the one `specify` binary — guest-owned verbs route to the composed deployment, everything else runs in-process.
+
+1. **Author** — `specify plan author guest-demo --intent "Provide a greeting service with one operation that returns a fixed greeting string."`. The workflow guest scaffolds the plan, surveys through the `source:intent` guest (judgment leg on the live cursor backend), reconciles the leads into `plan.yaml.slices[]`, and exits at `pending`; confirm one lead named `greeting-service` lands in `discovery.md`.
+2. **Gate 1** — `specify plan transition guest-demo approved` (native — the operator's stamp).
+3. **Execute** — `specify plan execute`. The guest loop claims the entry, refines (extract through the intent guest, synthesis through the workflow guest's own judgment leg), builds through the `target:omnia` guest (generated crate lands under `crates/` in the sandbox), merges, and exits drained.
+4. **Verify the generated output** — `cargo check` (and `cargo test` where tests were generated) in the generated crate, per the [generated-output-correctness gate](../../docs/contributing/evals.md#fan-in--fan-out-proof).
 
 ## Assertions
 

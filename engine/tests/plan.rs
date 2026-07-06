@@ -3212,46 +3212,48 @@ slices:
         assert!(!project.plan_path().exists(), "a refused create must not write plan.yaml");
     }
 
-    // -- plan execute (guest-only verb: native refusal) --------------------------------------
+    // -- plan execute (guest-owned verb: triage routes it to the guest leg) -------------------
 
     #[test]
-    fn plan_execute_refused_natively() {
+    fn plan_execute_routes_to_guest_leg() {
         // `plan execute` lives in the shared grammar but runs only in
-        // the workflow guest; the native binary refuses it with the
-        // standard argument error (wire code `argument`, exit 2) — the
-        // mirror image of the guest's native-only refusals.
+        // the workflow guest; the triage main routes it to the
+        // composed-deployment leg instead of the native handler table
+        // (DECISIONS.md §"One `specify` binary"). With no `cursor-agent`
+        // on PATH the leg fails deterministically at backend connect —
+        // the host-side `guest-runtime-failed` envelope, not the old
+        // native `argument` refusal.
+        let empty_path = tempdir().expect("empty PATH dir");
         let project = Project::init();
         let assert = specify_cmd()
             .current_dir(project.root())
+            .env("PATH", empty_path.path())
             .args(["--format", "json", "plan", "execute"])
             .assert()
             .failure();
-        assert_eq!(assert.get_output().status.code(), Some(2));
+        assert_eq!(assert.get_output().status.code(), Some(1));
         let stderr = parse_stderr(&assert.get_output().stderr, project.root());
-        assert_eq!(stderr["error"], "argument");
-        let message = stderr["message"].as_str().expect("message string");
-        assert!(message.contains("workflow guest"), "{message}");
+        assert_eq!(stderr["error"], "guest-runtime-failed");
     }
 
-    // -- plan author (guest-only verb: native refusal) ----------------------------------------
+    // -- plan author (guest-owned verb: triage routes it to the guest leg) --------------------
 
     #[test]
-    fn plan_author_refused_natively() {
-        // `plan author` (the collapsed /spec:plan flow, RFC-61 S1)
-        // lives in the shared grammar but runs only in the workflow
-        // guest — the same refusal posture as `plan execute`.
+    fn plan_author_routes_to_guest_leg() {
+        // `plan author` (the collapsed /spec:plan flow, RFC-61 S1) —
+        // the same triage posture as `plan execute`.
+        let empty_path = tempdir().expect("empty PATH dir");
         let project = Project::init();
         let assert = specify_cmd()
             .current_dir(project.root())
+            .env("PATH", empty_path.path())
             .args(["--format", "json", "plan", "author", "fresh", "--intent", "Fix the typo."])
             .assert()
             .failure();
-        assert_eq!(assert.get_output().status.code(), Some(2));
+        assert_eq!(assert.get_output().status.code(), Some(1));
         let stderr = parse_stderr(&assert.get_output().stderr, project.root());
-        assert_eq!(stderr["error"], "argument");
-        let message = stderr["message"].as_str().expect("message string");
-        assert!(message.contains("workflow guest"), "{message}");
-        assert!(!project.plan_path().exists(), "a refused author must not write plan.yaml");
+        assert_eq!(stderr["error"], "guest-runtime-failed");
+        assert!(!project.plan_path().exists(), "a failed author must not write plan.yaml");
     }
 
     // -- plan create --auto-approve (auto-approve Gate-1 contract) ---------------------------
