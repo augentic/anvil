@@ -20,6 +20,8 @@ mod catalog_infer;
 mod cli;
 #[path = "cli_contract.rs"]
 mod cli_contract;
+#[path = "dist.rs"]
+mod dist;
 #[path = "e2e.rs"]
 mod e2e;
 #[path = "extension.rs"]

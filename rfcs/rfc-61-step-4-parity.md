@@ -61,7 +61,7 @@ Verified verb-by-verb against `guest::route()`; the routing column states what t
 | `upgrade` | refused | native residue | Self-update (network). |
 | `plugins doctor` / `refresh` | refused | native residue | Cursor plugin-cache maintenance on the host machine. |
 
-Global flags: `--format` and `--plan-dir` are shared and honoured on both sides. `--phase` on `source survey` / `source extract` / `slice build` is the one documented argv divergence — parsed everywhere, ignored in-guest, deleted at Step 5.
+Global flags: `--format` is shared and honoured on both sides. `--plan-dir` is **native-only on guest-routed verbs**: the guest anchors plan artifacts at the `"."` preopen (the working directory), so a plan-root override has no in-guest home — the S3 triage layer refuses `--plan-dir` (or `SPECIFY_PLAN_DIR`) with any value other than the working directory on the standard argument-error surface (wire code `argument`, exit 2) rather than silently ignoring it. `--phase` on `source survey` / `source extract` / `slice build` is the other documented argv divergence — parsed everywhere, ignored in-guest, deleted at Step 5.
 
 ## Skill-orchestration coverage map
 

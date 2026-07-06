@@ -25,7 +25,7 @@ pub(crate) use specify_dispatch::{cli, context};
 pub fn run() -> ExitCode {
     let cli = cli::Cli::parse();
     if commands::guest::owned(&cli.command) {
-        return commands::guest::run(cli.format).into();
+        return commands::guest::run(cli.format, cli.plan_dir.as_deref()).into();
     }
     commands::run(cli).into()
 }

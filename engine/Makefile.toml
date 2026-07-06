@@ -96,14 +96,19 @@ args = ["build", "-p", "specify-echo-guest", "-p", "specify-workflow-guest", "--
 
 # Dist guest
 #
-# Rebuild the release workflow-guest component and refresh the committed
+# Rebuild the release workflow-guest component, refresh the committed
 # embed source at crates/workflow-guest/guest.wasm (the `specify` binary
-# `include_bytes!`s it — DECISIONS.md §"Workflow-guest distribution").
-# Run after changing guest-reachable code and commit the refreshed artifact.
+# `include_bytes!`s it — DECISIONS.md §"Workflow-guest distribution"),
+# and re-record the guest.wasm.sha256 staleness sidecar the tests/dist.rs
+# gate checks in `ci`. Run after changing guest-reachable code and commit
+# the refreshed artifact + sidecar together. This task is the only
+# supported sidecar writer: it rebuilds before recording, so the sidecar
+# can never pair a fresh source fingerprint with a stale component.
 [tasks.dist-guest]
 script = '''
 cargo build -p specify-workflow-guest --release --target wasm32-wasip2
 cp target/wasm32-wasip2/release/specify_workflow_guest.wasm crates/workflow-guest/guest.wasm
+REGENERATE_GOLDENS=1 cargo nextest run --test it dist::embedded_guest_sidecar
 '''
 
 # Test

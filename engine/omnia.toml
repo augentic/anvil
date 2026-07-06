@@ -1,3 +1,9 @@
+# DEV-ONLY replay manifest — not an operator template. Debug-built guest
+# paths and sibling-checkout adapter paths below only resolve in a
+# development environment; running a guest verb with cwd = engine/ picks
+# this file up wholesale (omnia.toml-wins), which is exactly its purpose
+# here and a footgun anywhere else.
+#
 # Composed deployment manifest (RFC-61 Step 4, Milestone F): the workflow
 # guest plus the eight adapter guests, each adapter's MCP reference shelf
 # routed at /mcp/<name>, over one writable "." mount.

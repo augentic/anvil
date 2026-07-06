@@ -5,10 +5,10 @@
 //! these tests stage a stub script that answers `--version` and fails
 //! any real invocation — the covered flows never legitimately reach a
 //! completion. The composed run itself is real: the embedded workflow
-//! guest is staged into a transient manifest, adapter guests are
-//! discovered from the project tree, and the guest's exit code passes
-//! through to the process exit. See DECISIONS.md §"One `specify`
-//! binary".
+//! guest is staged into a transient manifest, adapter guests resolve
+//! through the axis resolvers (bound adapters) or the directory scan
+//! (unbound), and the guest's exit code passes through to the process
+//! exit. See DECISIONS.md §"One `specify` binary".
 
 // The stub is a `sh` script; the covered behavior is identical across
 // unix hosts and no CI leg runs the suite on Windows.
@@ -162,6 +162,158 @@ fn guest_owned_verbs_route_to_guest_leg() {
             "verb {argv:?} must route to the composed-deployment leg"
         );
     }
+}
+
+// `--plan-dir` is native-only on guest-routed verbs: the guest anchors
+// plan artifacts at the `"."` preopen, so a plan root that is not the
+// working directory is refused loudly on the standard argument surface
+// instead of being silently ignored (Step 4 parity ledger).
+#[test]
+fn plan_dir_refused_on_guest_leg() {
+    let project = tempdir().expect("project dir");
+    let elsewhere = tempdir().expect("other plan root");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .arg("--plan-dir")
+        .arg(elsewhere.path())
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(2), "a foreign plan root must refuse with exit 2");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "argument");
+
+    // A value resolving to the working directory itself is a no-op and
+    // passes through to the composed-deployment leg (which then fails
+    // at backend connect on the empty PATH — proving triage proceeded).
+    let empty = tempdir().expect("empty PATH dir");
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("PATH", empty.path())
+        .arg("--plan-dir")
+        .arg(project.path())
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1));
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "guest-runtime-failed");
+}
+
+// An adapter directory that resolves (has `adapter.yaml`) but carries no
+// committed `guest.wasm` is a typed host error, not a silent omission
+// from the deployment manifest.
+#[test]
+fn adapter_without_guest_wasm_fails_loudly() {
+    let project = tempdir().expect("project dir");
+    let adapter_dir = project.path().join("adapters").join("sources").join("hollow");
+    fs::create_dir_all(&adapter_dir).expect("adapter dir");
+    fs::write(
+        adapter_dir.join("adapter.yaml"),
+        "name: hollow\nversion: 1.0.0\naxis: source\ndescription: No committed guest.\n",
+    )
+    .expect("write adapter.yaml");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1));
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "guest-runtime-failed");
+    let message = envelope["message"].as_str().unwrap_or_default();
+    assert!(
+        message.contains("hollow") && message.contains("guest.wasm"),
+        "the error must name the adapter and the missing component: {message}"
+    );
+}
+
+// Bound adapters resolve with the resolvers' precedence: a `plan.yaml`
+// source binding pinned to `(name, version)` reaches the RFC-48 store —
+// which the old name-only directory scan could never probe — and a
+// missing install surfaces the resolver's own typed `adapter-not-found`
+// instead of a silently thinner deployment.
+#[test]
+fn bound_adapter_resolves_from_store() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    fs::write(
+        project.path().join("plan.yaml"),
+        "name: store-parity\nsources:\n  echo:\n    adapter: echo\n    version: 1.0.0\n    path: ./x\nslices: []\n",
+    )
+    .expect("write plan.yaml");
+
+    let store = tempdir().expect("adapter store root");
+    let entry = store.path().join("echo@1.0.0");
+    fs::create_dir_all(&entry).expect("store entry");
+    fs::write(
+        entry.join("adapter.yaml"),
+        "name: echo\nversion: 1.0.0\naxis: source\ndescription: Echo source adapter.\n",
+    )
+    .expect("write store manifest");
+    fs::copy(echo_guest_wasm(), entry.join("guest.wasm")).expect("stage store guest");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("PATH", stub_path(stub.path()))
+        .env("SPECIFY_ADAPTER_CACHE", store.path())
+        .env_remove("RUST_LOG")
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1), "the verb must reach the guest: {output:?}");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(
+        envelope["error"], "not-initialized",
+        "the store-resolved guest must deploy and the verb fail *inside* the guest"
+    );
+
+    // Without the store entry the binding cannot resolve anywhere, and
+    // the resolver's typed diagnostic surfaces host-side.
+    let empty_store = tempdir().expect("empty store root");
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("PATH", stub_path(stub.path()))
+        .env("SPECIFY_ADAPTER_CACHE", empty_store.path())
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1));
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "adapter-not-found");
+}
+
+// Manifest hygiene: host paths are emitted as escaped TOML strings, so
+// a project path containing `"` and `\` still assembles a parseable
+// deployment manifest and the verb fails *inside* the guest.
+#[test]
+fn manifest_escapes_hostile_paths() {
+    let stub = stub_cursor_agent();
+    let tmp = tempdir().expect("parent dir");
+    let project = tmp.path().join("we\"ird\\dir");
+    fs::create_dir_all(&project).expect("hostile project dir");
+
+    let output = specify_cmd()
+        .current_dir(&project)
+        .env("PATH", stub_path(stub.path()))
+        .env_remove("RUST_LOG")
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1));
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(
+        envelope["error"], "not-initialized",
+        "the manifest must parse (a raw interpolation would fail host-side): {envelope}"
+    );
 }
 
 // Native residue is untouched by triage: a non-guest verb dispatches
