@@ -21,7 +21,7 @@ Example NDJSON line (illustrative):
 - **`passed`** / **`failed`** / **`skipped`** — non-negative integers from the target runner's test classification.
 - **`runner`** — identifies the target adapter version and command (e.g. `omnia-target@1 (cargo nextest)`, `contracts-target@1 (specify extension run contract)`).
 
-Taxonomy reference: [`engine/DECISIONS.md` — journal events](https://github.com/augentic/specify/blob/main/engine/DECISIONS.md).
+Taxonomy reference: [`DECISIONS.md` — journal events](https://github.com/augentic/specify/blob/main/DECISIONS.md).
 
 ## Aspirational `metadata.yaml` block (future CLI)
 

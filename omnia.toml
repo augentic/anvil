@@ -1,0 +1,99 @@
+# DEV-ONLY replay manifest — not an operator template. Debug-built guest
+# paths and sibling-checkout adapter paths below only resolve in a
+# development environment; running a guest verb with cwd = the repo root
+# picks this file up wholesale (omnia.toml-wins), which is exactly its
+# purpose here and a footgun anywhere else.
+#
+# Composed deployment manifest (RFC-61 Step 4, Milestone F): the workflow
+# guest plus the eight adapter guests, each adapter's MCP reference shelf
+# routed at /mcp/<name>, over one writable "." mount.
+#
+# Paths resolve relative to this file. The workflow guest is built in-tree
+# (`cargo make build-guests`); the adapter guests are the committed
+# `guest.wasm` artifacts in the sibling augentic/specify-adapters checkout —
+# the same sibling posture as the omnia [patch.crates-io] path pins in
+# Cargo.toml, re-pointed at published artifacts before this branch
+# finalizes. The `specify` binary's guest leg honors a project-root
+# omnia.toml like this one over its transient assembly (DECISIONS.md
+# §"One `specify` binary"); the replay sibling drives the manifest
+# without `cursor-agent` (args after `--` become the guest's argv):
+#   cargo run -p specify-runtime-replay -- run --config omnia.toml -- --version
+
+[[guest]]
+id = "workflow"
+source.path = "target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
+# Link names must match the component's import names exactly (omnia's
+# polyfill is an exact string match), so they carry the WIT package version.
+link = ["augentic:specify/source@0.1.0", "augentic:specify/target@0.1.0"]
+
+[[guest]]
+id = "source:intent"
+source.path = "../specify-adapters/sources/intent/guest.wasm"
+
+[[guest]]
+id = "source:documentation"
+source.path = "../specify-adapters/sources/documentation/guest.wasm"
+
+[[guest]]
+id = "source:typescript"
+source.path = "../specify-adapters/sources/typescript/guest.wasm"
+
+[[guest]]
+id = "source:screenshots"
+source.path = "../specify-adapters/sources/screenshots/guest.wasm"
+
+[[guest]]
+id = "source:captures"
+source.path = "../specify-adapters/sources/captures/guest.wasm"
+
+[[guest]]
+id = "target:contracts"
+source.path = "../specify-adapters/targets/contracts/guest.wasm"
+
+[[guest]]
+id = "target:omnia"
+source.path = "../specify-adapters/targets/omnia/guest.wasm"
+
+[[guest]]
+id = "target:vectis"
+source.path = "../specify-adapters/targets/vectis/guest.wasm"
+
+[[mount]]
+name = "."
+path = "crates/runtime/workspace"
+writable = true
+
+[[route.http]]
+prefix = "/mcp/intent"
+guest = "source:intent"
+
+[[route.http]]
+prefix = "/mcp/documentation"
+guest = "source:documentation"
+
+[[route.http]]
+prefix = "/mcp/typescript"
+guest = "source:typescript"
+
+[[route.http]]
+prefix = "/mcp/screenshots"
+guest = "source:screenshots"
+
+[[route.http]]
+prefix = "/mcp/captures"
+guest = "source:captures"
+
+[[route.http]]
+prefix = "/mcp/contracts"
+guest = "target:contracts"
+
+[[route.http]]
+prefix = "/mcp/omnia"
+guest = "target:omnia"
+
+[[route.http]]
+prefix = "/mcp/vectis"
+guest = "target:vectis"
+
+[transport]
+default = "in-process"

@@ -25,7 +25,7 @@ Inputs:
   symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
   other call; if the bare command does not resolve to that build, prepend the symlink dir to
   PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
-  `engine/target/release/specify` path (see evals/shared/setup.md).
+  `target/release/specify` path (see evals/shared/setup.md).
 - Scenario: evals/scenarios/<id>.md
 - Shared setup: evals/shared/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).

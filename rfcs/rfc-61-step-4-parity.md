@@ -2,7 +2,7 @@
 
 > Status: Step-boundary audit (Step 4, Milestone G) for [RFC-61](rfc-61-omnia-migration.md) · Audited surfaces: the shared clap grammar (`engine/crates/dispatch/src/cli.rs`), the guest route table (`engine/crates/dispatch/src/guest.rs`), the guest orchestrators (`engine/crates/workflow/src/orchestrate/`), and all eight `plugins/spec/skills/*/SKILL.md` bodies on the `specify-wasm` branch.
 
-This document is the Step 4 → Step 5 gate artifact: it classifies every CLI verb by where it runs after the workflow-guest port, and maps every orchestration line in the eight phase skills to its guest home, per the RFC's invoke-and-relay test ("a skill that cannot be reduced to 'invoke and relay' indicates workflow logic that belongs in the guest and must be ported before the skill is thinned"). Standing decisions cited here live in the engine workspace's [`DECISIONS.md`](../engine/DECISIONS.md).
+This document is the Step 4 → Step 5 gate artifact: it classifies every CLI verb by where it runs after the workflow-guest port, and maps every orchestration line in the eight phase skills to its guest home, per the RFC's invoke-and-relay test ("a skill that cannot be reduced to 'invoke and relay' indicates workflow logic that belongs in the guest and must be ported before the skill is thinned"). Standing decisions cited here live in the engine workspace's [`DECISIONS.md`](../DECISIONS.md).
 
 ## Dispositions
 
@@ -192,7 +192,7 @@ No misrouted verbs and no missing refusals were found: every arm of `guest::rout
 
 ## Step 5 Milestone S4 outcome (residue-matrix update)
 
-The S4 cut (see the engine workspace's [`DECISIONS.md` §"Old-stack deletion"](../engine/DECISIONS.md#old-stack-deletion-rfc-61-step-5-milestone-s4)) resolved every open call above. The matrix's "guest routing today" column now describes the shipped binary:
+The S4 cut (see the engine workspace's [`DECISIONS.md` §"Old-stack deletion"](../DECISIONS.md#old-stack-deletion-milestone-s4)) resolved every open call above. The matrix's "guest routing today" column now describes the shipped binary:
 
 - **Triage set widened.** `source survey`, `source extract`, `slice build`, and `slice merge run` route to the composed-deployment guest leg alongside `plan execute`, `plan author`, and `slice refine`; their native handlers and the whole envelope machinery (`--phase`, `slice synthesize --dry-run/--from`, `plan propose --dry-run/--from`, the two-phase `slice build` handler with `prepare.argv` dispatch) are deleted. Guest-owned verbs marked "in-process handler" above stay native-dispatched shared handlers.
 - **Open calls closed.** `source preview` — retired (D-preview; last consumer of the shared prep seam). `plan lock -- <cmd>` — retired with the `require_held` gates (D-planlock; the D1 guest marker is the only fence, D3 refusal stays). `catalog infer` — retired outright: report judgment and bind bookkeeping are in-guest vectis-core code driven by the build's `${SLICE_DIR}/build/component-bindings.yaml`, with no engine-side catalog capability (D-catalog-infer).

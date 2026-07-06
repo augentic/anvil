@@ -38,7 +38,7 @@ The entrypoint names `/spec:execute` because the guest's `plan execute` is that 
 
 Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md), except `init` uses a local adapter path (the guest resolves the target adapter project-locally; the out-of-tree manifest cache is not preopened): vendor `targets/omnia` from the sibling `augentic/specify-adapters` checkout into the sandbox at `adapters/targets/omnia/`, then `specify init ./adapters/targets/omnia`. `cursor-agent` must be on PATH and logged in. The [`guest-execute-loop` driver](../drivers/README.md) automates the clerical setup below and the invocation's runtime calls; driving through it is equivalent to typing the steps.
 
-Write the deployment manifest at the sandbox root: workflow guest (built by `cargo build -p specify-workflow-guest --target wasm32-wasip2` under `engine/`) plus the eight committed adapter `guest.wasm` files from the sibling checkout, each adapter's MCP shelf routed at `/mcp/<name>`, one writable `"."` mount at the sandbox — the checked-in [`engine/omnia.toml`](../../engine/omnia.toml) shape with the mount re-pointed. The triage `specify` binary honors a project-root `omnia.toml` over its transient assembly, so the guest legs below run against this manifest. Export `SPECIFY_INTENT_MCP_URL` / `SPECIFY_OMNIA_MCP_URL` at the served `HTTP_ADDR` so the spawned cursor-agent can read the adapter shelves.
+Write the deployment manifest at the sandbox root: workflow guest (built by `cargo build -p specify-workflow-guest --target wasm32-wasip2` from the repo root) plus the eight committed adapter `guest.wasm` files from the sibling checkout, each adapter's MCP shelf routed at `/mcp/<name>`, one writable `"."` mount at the sandbox — the checked-in [`omnia.toml`](../../omnia.toml) shape with the mount re-pointed. The triage `specify` binary honors a project-root `omnia.toml` over its transient assembly, so the guest legs below run against this manifest. Export `SPECIFY_INTENT_MCP_URL` / `SPECIFY_OMNIA_MCP_URL` at the served `HTTP_ADDR` so the spawned cursor-agent can read the adapter shelves.
 
 ## Invocation
 
@@ -59,7 +59,7 @@ All from the sandbox root, through the one `specify` binary — guest-owned verb
 
 ## Scope
 
-This is the **runtime-composition and live-judgment gate** for the inverted loop, not a planning-ergonomics scenario (that is `intent-only`). The deterministic substrate — argv/exit passthrough, link dispatch, the model-free merge leg, journal-append over the preopen, MCP shelves — is proven by the composed tests under `engine/crates/runtime/tests/` on every commit; this scenario admits only what those cannot reach: judgment legs against the live cursor backend end to end (source survey/extract, synthesis, target codegen) and the quality of what they emit.
+This is the **runtime-composition and live-judgment gate** for the inverted loop, not a planning-ergonomics scenario (that is `intent-only`). The deterministic substrate — argv/exit passthrough, link dispatch, the model-free merge leg, journal-append over the preopen, MCP shelves — is proven by the composed tests under `crates/runtime/tests/` on every commit; this scenario admits only what those cannot reach: judgment legs against the live cursor backend end to end (source survey/extract, synthesis, target codegen) and the quality of what they emit.
 
 ## Negative expectations
 

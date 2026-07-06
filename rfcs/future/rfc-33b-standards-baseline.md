@@ -1,6 +1,6 @@
 # RFC-33b: Standards Baseline
 
-> Status: Deferred · Depends (all landed): the [Diagnostic substrate](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28), the [deterministic consumer scanner](../../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema) (RFC-32), and the [lint-finding lifecycle](../../engine/DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) · Enables: [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
+> Status: Deferred · Depends (all landed): the [Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28), the [deterministic consumer scanner](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema) (RFC-32), and the [lint-finding lifecycle](../../DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) · Enables: [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
 
 ## Abstract
 
@@ -188,8 +188,8 @@ Behavioural notes:
 
 ## References
 
-- [Diagnostic substrate](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28) — the `Diagnostic` envelope and fingerprint, in `specify-diagnostics`.
-- [Standards layer split](../../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema) (RFC-32) — `WorkspaceModel` and the consumer scanner, in `specify-standards`.
-- [Lint finding lifecycle](../../engine/DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) — ignore directives, the `disposition` field, and the `lint-completed` event.
+- [Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28) — the `Diagnostic` envelope and fingerprint, in `specify-diagnostics`.
+- [Standards layer split](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema) (RFC-32) — `WorkspaceModel` and the consumer scanner, in `specify-standards`.
+- [Lint finding lifecycle](../../DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) — ignore directives, the `disposition` field, and the `lint-completed` event.
 - [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
 - [Specify Roadmap — RM-14](../roadmap.md#rm-14-local-structured-workflow-events)

@@ -31,7 +31,7 @@ This directory contains JSON Schemas and bundled workflow fixtures used by the `
 
 ## Generated judgment-answer schemas
 
-The documents under [`answers/`](answers/) are **generated** — never hand-edited. Each is the `format: schema(...)` payload an adapter guest sends with a judgment `omnia:model/completion.create` call (RFC-61), derived from a canonical schema above by `specify-schema`'s `answers` module: call-scoped envelope fields the caller already knows are stripped (their property schemas become `false`), and cross-file `$ref`s are inlined so one self-contained document rides the model call. Regenerate via `REGENERATE_GOLDENS=1 cargo nextest run -p specify-schema` under `engine/`; the `answers` parity test keeps the copies byte-exact.
+The documents under [`answers/`](answers/) are **generated** — never hand-edited. Each is the `format: schema(...)` payload an adapter guest sends with a judgment `omnia:model/completion.create` call (RFC-61), derived from a canonical schema above by `specify-schema`'s `answers` module: call-scoped envelope fields the caller already knows are stripped (their property schemas become `false`), and cross-file `$ref`s are inlined so one self-contained document rides the model call. Regenerate via `REGENERATE_GOLDENS=1 cargo nextest run -p specify-schema` from the repo root; the `answers` parity test keeps the copies byte-exact.
 
 | Schema | Derived from | Answer for |
 |---|---|---|
@@ -41,4 +41,4 @@ The documents under [`answers/`](answers/) are **generated** — never hand-edit
 
 ## Bundled workflow schema
 
-The published Specify workflow target adapters live in `augentic/specify` under `adapters/targets/omnia`, `adapters/targets/vectis`, and `adapters/targets/contracts`. The CLI carries a minimal [`tests/fixtures/adapters/targets/omnia/`](../engine/tests/fixtures/adapters/targets/omnia) workflow-contract fixture for its own integration tests.
+The published Specify workflow target adapters live in `augentic/specify` under `adapters/targets/omnia`, `adapters/targets/vectis`, and `adapters/targets/contracts`. The CLI carries a minimal [`tests/fixtures/adapters/targets/omnia/`](../tests/fixtures/adapters/targets/omnia) workflow-contract fixture for its own integration tests.

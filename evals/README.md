@@ -1,8 +1,8 @@
 # Eval packs
 
-Operator-driven eval scenarios and reference corpora for the Specify repo. The scenarios covered here are agent-based. All deterministic tests live under `engine/`.
+Operator-driven eval scenarios and reference corpora for the Specify repo. The scenarios covered here are agent-based. All deterministic tests live in the Rust workspace at the repo root.
 
-Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree `engine/` workspace builds on first `make install-cli`) and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
+Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree workspace builds on first `make install-cli`) and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
 
 ## Run all scenarios
 
@@ -55,7 +55,7 @@ The agent runs this for you as runbook step 1; run it directly only when you wan
 make install-cli
 ```
 
-`make install-cli` builds `engine/target/release/specify` from the in-tree `engine/` workspace and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those live under `engine/` (`cargo make test`).
+`make install-cli` builds `target/release/specify` from the in-tree workspace and symlinks `specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), warning if that directory is not on your `PATH`. The symlink always points at the freshly built binary, so the bare `specify` command stays current — confirm with `specify --version`. It does not re-run the deterministic tests; those live in the workspace (`cargo make test`).
 
 ## Layout
 

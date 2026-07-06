@@ -10,15 +10,16 @@ MARKETPLACE := augentic
 
 .PHONY: ci lint install-cli use-local-plugins use-team-plugins check-adapters-parity
 
-# Full local gate: the Rust workspace CI under engine/, then the framework
-# lint over the in-tree prose (plugins/, docs/, adapters/).
+# Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the
+# repo root), then the framework lint over the in-tree prose
+# (plugins/, docs/, adapters/).
 ci:
-	cd engine && cargo make ci
+	cargo make ci
 	$(MAKE) lint
 
 # Framework lint over the prose surface, built from the in-tree binary.
 lint:
-	cd engine && cargo run -q -p specify -- lint framework --framework-root ..
+	cargo run -q -p specify -- lint framework --framework-root .
 
 # Compare forked spec-runtime files in a sibling specify-adapters checkout.
 check-adapters-parity:
@@ -27,8 +28,8 @@ check-adapters-parity:
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:
 	@mkdir -p "$(INSTALL_DIR)"
-	cd engine && cargo build --release -p specify
-	@ln -sfn "$(CURDIR)/engine/target/release/specify" "$(INSTALL_DIR)/specify"
+	cargo build --release -p specify
+	@ln -sfn "$(CURDIR)/target/release/specify" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 
 # Mirror the working-tree plugins into the Cursor plugin cache so a local
@@ -48,4 +49,11 @@ use-local-plugins:
 # Clear the augentic plugin cache via the in-tree binary's own verb
 # (journaled, marketplace-scoped). Cursor refetches on restart.
 use-team-plugins:
-	cd engine && cargo run -q -p specify -- plugins refresh --project-dir .. --yes
+	cargo run -q -p specify -- plugins refresh --project-dir . --yes
+
+# Any other target passes through to cargo make (Makefile.toml), so the
+# engine convention `make test` / `make fmt` / `make check` keeps working
+# from the repo root.
+.PHONY: %
+%:
+	@cargo make $@

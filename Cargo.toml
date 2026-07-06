@@ -1,0 +1,291 @@
+[package]
+name = "specify"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Specify CLI — deterministic operations for spec-driven development"
+categories = ["command-line-utilities", "development-tools"]
+keywords = ["specify", "cli", "spec", "workflow", "automation"]
+readme = "README.md"
+# Unpublishable to crates.io while the omnia stack rides [patch.crates-io]
+# path/git pins; the binary ships through the release-binaries.yaml archive
+# workflow instead (DECISIONS.md §"Release identity").
+publish = false
+# Integration tests are auto-discovered off: the per-area files under tests/
+# are pulled into the single `it` binary via tests/it.rs (one binary per
+# crate). Targets are declared explicitly under `[[test]]` below.
+autotests = false
+
+[dependencies]
+clap.workspace = true
+clap_complete.workspace = true
+glob.workspace = true
+jiff.workspace = true
+regex.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+specify-diagnostics.workspace = true
+specify-dispatch.workspace = true
+specify-standards.workspace = true
+specify-workflow = { workspace = true, features = ["native"] }
+specify-model.workspace = true
+specify-error.workspace = true
+specify-schema.workspace = true
+specify-registry.workspace = true
+specify-runtime.workspace = true
+strum.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+jsonschema.workspace = true
+tempfile.workspace = true
+
+# `it` is the consolidated integration binary; `rust_quality` is the standalone
+# dev-only Rust-quality gate. Both are declared because `autotests = false`.
+[[test]]
+name = "it"
+path = "tests/it.rs"
+
+[[test]]
+name = "rust_quality"
+path = "tests/rust_quality.rs"
+
+[lints]
+workspace = true
+
+[workspace]
+members = [
+    "crates/diagnostics",
+    "crates/dispatch",
+    "crates/standards",
+    "crates/error",
+    "crates/guest-model",
+    "crates/model",
+    "crates/schema",
+    "crates/registry",
+    "crates/extension",
+    "crates/workflow",
+    "crates/echo-guest",
+    "crates/workflow-guest",
+    "crates/runtime",
+]
+
+[workspace.package]
+authors = ["Augentic"]
+edition = "2024"
+homepage = "https://augentic.io"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/augentic/specify"
+rust-version = "1.95"
+version = "0.27.2"
+
+[workspace.lints.rust]
+# https://dirname.github.io/rust-std-doc/rustc/lints/listing/allowed-by-default.html
+elided_lifetimes_in_paths = "warn"
+explicit_outlives_requirements = "warn"
+let_underscore_drop = "warn"
+macro_use_extern_crate = "warn"
+meta_variable_misuse = "warn"
+missing_copy_implementations = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+redundant_lifetimes = "warn"
+single_use_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unsafe_code = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+# https://doc.rust-lang.org/stable/clippy/index.html
+# Groups carry priority = -1 so individual lints below can override them.
+all = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# The `cargo` group's `multiple_crate_versions` lint is the wrong signal in a
+# workspace this size: transitive duplicates accrete from upstream crates we do
+# not control (windows-sys generations, wasmparser/wit-* cycles, rand v0.8/0.9),
+# and the ratchet allowlist that used to live in `clippy.toml` grew without ever
+# shrinking. A quarterly `cargo tree --duplicates` audit is the cheaper signal.
+multiple_crate_versions = "allow"
+
+# Cherry-picked lints are from the `restriction` lint group in order to drive up
+# consistency, quality, and brevity
+# See https://microsoft.github.io/rust-guidelines/guidelines/universal/index.html
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+as_pointer_underscore = "warn"
+assertions_on_result_states = "warn"
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+deref_by_slicing = "warn"
+disallowed_script_idents = "warn"
+empty_drop = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+fn_to_numeric_cast_any = "warn"
+if_then_some_else_none = "warn"
+infinite_loop = "warn"
+iter_over_hash_type = "warn"
+map_err_ignore = "warn"
+mixed_read_write_in_expression = "warn"
+mod_module_files = "warn"
+non_zero_suggestions = "warn"
+partial_pub_fields = "warn"
+pub_without_shorthand = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_type_annotations = "warn"
+ref_patterns = "warn"
+renamed_function_params = "warn"
+same_name_method = "warn"
+semicolon_outside_block = "warn"
+string_add = "warn"
+todo = "warn"
+try_err = "warn"
+undocumented_unsafe_blocks = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+unneeded_field_pattern = "warn"
+unseparated_literal_suffix = "warn"
+unused_result_ok = "warn"
+verbose_file_reads = "warn"
+
+# Recommended-but-skipped restriction lints with rationale:
+# - `tests_outside_test_module`: fires on every integration test in `tests/*.rs`
+#   (by construction, integration tests are top-level fns in their own crate
+#   and cannot be inside `#[cfg(test)] mod tests`).
+# - `str_to_string` / `string_to_string`: opinionated against `.to_string()` on
+#   `&str`; `string_to_string` was also removed from clippy in 1.95 in favour of
+#   `clippy::implicit_clone`.
+# - `field_scoped_visibility_modifiers`: the workspace deliberately uses
+#   `pub(crate)` / `pub(super)` on struct fields throughout.
+
+[workspace.dependencies]
+anyhow = "1"
+assert_cmd = "2"
+base16ct = { version = "0.2", features = ["alloc"] }
+cfg-if = "1"
+clap = { version = "4", features = ["derive", "env"] }
+clap_complete = "4"
+futures-util = "0.3"
+glob = "0.3"
+globset = "0.4"
+ignore = "0.4"
+jiff = { version = "0.2", default-features = false, features = ["serde", "std"] }
+jsonschema = { version = "0.46", default-features = false }
+oci-client = { version = "0.16", default-features = false, features = ["rustls-tls"] }
+omnia = "0.35.0"
+# Spawned cursor-agent model backend (unpublished). Temporarily supplied
+# from the sibling augentic/backends checkout, matching the omnia local-path
+# posture below; re-pin to a pushed rev before this branch finalizes
+# (specify-adapters pins the same crate by git rev).
+omnia-cursor = { path = "../backends/crates/cursor" }
+omnia-guest = "0.35.0"
+# Test-only scaffolding; unpublished, supplied by [patch.crates-io] below.
+omnia-testkit = "0.35.0"
+omnia-wasi-http = "0.35.0"
+omnia-wasi-model = "0.35.0"
+omnia-wasi-otel = "0.35.0"
+petgraph = "0.8"
+proptest = "1.11.0"
+rayon = "1"
+regex = "1"
+semver = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde-saphyr = "0.0.26"
+serde_json = "1"
+sha2 = "0.11"
+specify-diagnostics = { path = "crates/diagnostics" }
+specify-dispatch = { path = "crates/dispatch" }
+specify-guest-model = { path = "crates/guest-model" }
+specify-standards = { path = "crates/standards" }
+specify-model = { path = "crates/model" }
+# `default-features = false` at the workspace level so wasm32-facing
+# members (specify-dispatch) stay off the `native` feature; the root
+# binary re-enables it explicitly.
+specify-workflow = { path = "crates/workflow", default-features = false }
+specify-error = { path = "crates/error" }
+specify-schema = { path = "crates/schema" }
+specify-registry = { path = "crates/registry" }
+specify-runtime = { path = "crates/runtime" }
+specify-extension = { path = "crates/extension" }
+strum = { version = "0.28", features = ["derive"] }
+tar = "0.4"
+tempfile = "3"
+thiserror = "2"
+toml = "1"
+tokio = { version = "1", features = ["fs", "io-util", "rt"] }
+ureq = { version = "3", features = ["json"] }
+wasip3 = { version = "0.7.0", features = ["http-compat"] }
+wasm-pkg-client = "0.15"
+wit-bindgen = { version = "0.58.0", features = ["async-spawn"] }
+zstd = "0.13"
+wasmtime = { version = "45.0.3", default-features = false, features = ["cache", "component-model", "cranelift", "runtime"] }
+wasmtime-wasi = { version = "45.0.3", default-features = false, features = ["p2"] }
+
+[patch.crates-io]
+# The omnia 0.35.0 crates (and the internal omnia-* crates they pull in) are
+# unpublished pre-publish pins. Temporarily supplied from the sibling local
+# checkout's `specify-feedback` branch while the async link-dispatch change
+# lands there; re-pin to the pushed rev before this branch finalizes.
+omnia = { path = "../omnia/crates/omnia" }
+omnia-guest = { path = "../omnia/crates/omnia-guest" }
+omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+omnia-host-macros = { path = "../omnia/crates/host-macros" }
+omnia-testkit = { path = "../omnia/crates/testkit" }
+omnia-wasi-config = { path = "../omnia/crates/wasi-config" }
+omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
+omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
+
+# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io; omnia's own
+# [patch.crates-io] supplies it, but patches do not propagate to dependents,
+# so this workspace carries the same patch pinned to the rev omnia's
+# Cargo.lock records.
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc", rev = "b347c61db52dea9fe515a349ac9a91ba11cfe4f9" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc", rev = "b347c61db52dea9fe515a349ac9a91ba11cfe4f9" }
+
+[profile.release]
+lto = true
+opt-level = 2
+strip = true
+
+# Cranelift JIT-compiles WASI components at run time; built at debug
+# opt-level the vectis component costs 40-70s per compile, so the
+# compiler-path crates are optimized even in dev/test profiles. Sole
+# cost is one cold rebuild of these dependencies.
+[profile.dev.package.wasmtime-internal-cranelift]
+opt-level = 2
+[profile.dev.package.wasmtime-environ]
+opt-level = 2
+[profile.dev.package.cranelift-codegen]
+opt-level = 2
+[profile.dev.package.cranelift-frontend]
+opt-level = 2
+[profile.dev.package.cranelift-entity]
+opt-level = 2
+[profile.dev.package.cranelift-bforest]
+opt-level = 2
+[profile.dev.package.cranelift-bitset]
+opt-level = 2
+[profile.dev.package.cranelift-control]
+opt-level = 2
+[profile.dev.package.cranelift-native]
+opt-level = 2
+[profile.dev.package.cranelift-assembler-x64]
+opt-level = 2
+[profile.dev.package.regalloc2]
+opt-level = 2
+[profile.dev.package.wasmparser]
+opt-level = 2

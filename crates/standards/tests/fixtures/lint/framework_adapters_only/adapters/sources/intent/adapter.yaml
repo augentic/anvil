@@ -1,0 +1,4 @@
+name: intent
+version: "1.0.0"
+axis: source
+description: Operator-supplied free-form intent. Minimal fixture.

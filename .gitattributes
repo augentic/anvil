@@ -2,3 +2,6 @@
 # Primary language: Markdown
 * linguist-documentation=false
 *.md linguist-detectable=true
+
+# Shell installer must stay LF even on Windows checkouts so `curl | sh` works.
+install.sh text eol=lf

@@ -23,7 +23,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 
 ## Code style
 
-### Rust (engine/)
+### Rust (the workspace at the repo root)
 
 - Format with `cargo fmt`
 - Lint with `cargo clippy -- -D warnings`
@@ -32,7 +32,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 ### Skills and documentation (specify)
 
 - Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Skill Authoring Standards](docs/standards/skill-authoring.md)
-- `make lint` must pass before submitting a pull request. It needs only a Rust toolchain: it builds the in-tree `specify` binary under `engine/` and runs the checks. See [Consistency Checks](docs/contributing/checks.md).
+- `make lint` must pass before submitting a pull request. It needs only a Rust toolchain: it builds the in-tree `specify` binary and runs the checks. See [Consistency Checks](docs/contributing/checks.md).
 - Use kebab-case for file names, change names, and adapter identifiers
 
 ## Developer's Certificate of Origin

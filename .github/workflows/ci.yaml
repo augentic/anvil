@@ -8,12 +8,11 @@ permissions:
 
 jobs:
   # Full Rust workspace gate (clippy, fmt, test, doctests, doc, vet, deny)
-  # via the shared org workflow. The workspace lives under engine/, so the
-  # reusable workflow is pointed there with working-directory.
+  # via the shared org workflow. The workspace lives at the repo root.
   rust:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     with:
-      working-directory: engine
+      working-directory: .
     secrets: inherit
 
   # Repo-specific prose gate: spec-runtime symlink integrity plus the
@@ -53,7 +52,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: engine
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 

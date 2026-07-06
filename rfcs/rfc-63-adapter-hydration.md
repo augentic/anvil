@@ -1,6 +1,6 @@
 # RFC-63: Adapter Hydration and the Central Store
 
-> Status: Proposed · Depends: [RFC-61](rfc-61-omnia-migration.md) (guests by path, the generated deployment), RFC-47/48 (adapter identity, OCI transport, the global store — landed; see the CLI workspace's [DECISIONS.md](../engine/DECISIONS.md#rfc-48-adapter-store-and-transport)) · Owns: how `specify init` turns a `project.yaml` into a fully provisioned, runnable deployment — locally and in the cloud
+> Status: Proposed · Depends: [RFC-61](rfc-61-omnia-migration.md) (guests by path, the generated deployment), RFC-47/48 (adapter identity, OCI transport, the global store — landed; see the CLI workspace's [DECISIONS.md](../DECISIONS.md#rfc-48-adapter-store-and-transport)) · Owns: how `specify init` turns a `project.yaml` into a fully provisioned, runnable deployment — locally and in the cloud
 
 ## Abstract
 

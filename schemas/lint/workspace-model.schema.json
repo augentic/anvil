@@ -92,11 +92,6 @@
       "items": { "$ref": "#/$defs/fencedBlock" },
       "description": "`WorkspaceModel` entity: `fenced_block` facts from the fence-aware markdown pass. Optional in v1 envelopes; producers omit when empty."
     },
-    "briefs": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/brief" },
-      "description": "`WorkspaceModel` entity: `brief` facts from `adapters/**/briefs/**/*.md` (parent briefs and phase sub-briefs) under the framework scan profile (§F1). Optional in v1 envelopes; absent under the project profile so the product wire shape is unchanged."
-    },
     "scenarios": {
       "type": "array",
       "items": { "$ref": "#/$defs/scenario" },
@@ -270,44 +265,6 @@
         }
       }
     },
-    "brief": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["path", "axis", "adapter", "operation", "scope", "sections", "body-line-count"],
-      "properties": {
-        "path": { "$ref": "#/$defs/relativePath" },
-        "axis": {
-          "type": "string",
-          "enum": ["sources", "targets"],
-          "description": "`WorkspaceModel` entity: owning adapter axis (`sources` xor `targets`)."
-        },
-        "adapter": {
-          "type": "string",
-          "minLength": 1,
-          "description": "`WorkspaceModel` entity: owning adapter slug (the directory under `adapters/{sources,targets}/`)."
-        },
-        "operation": {
-          "type": "string",
-          "minLength": 1,
-          "description": "`WorkspaceModel` entity: operation slug for the brief. For a parent brief the brief stem (`extract`, `survey`, `shape`, `build`, `merge`); for a phase sub-brief the phase directory (`build`, `extract`)."
-        },
-        "scope": {
-          "type": "string",
-          "enum": ["parent", "phase"],
-          "description": "`WorkspaceModel` entity: parent orchestrator brief (`briefs/<op>.md`) vs phase sub-brief (`briefs/{build,extract}/**/*.md`). The size-budget selector a `cardinality` brief metric narrows on."
-        },
-        "sections": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "description": "`WorkspaceModel` entity: `##` heading titles found in the body, in document order after fence and HTML-comment stripping."
-        },
-        "body-line-count": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "`WorkspaceModel` entity: total non-empty markdown body lines (frontmatter excluded when present)."
-        }
-      }
-    },
     "adapterManifest": {
       "type": "object",
       "additionalProperties": false,
@@ -328,12 +285,6 @@
           "type": "string",
           "minLength": 1,
           "description": "Optional manifest version; absent when the adapter does not pin one."
-        },
-        "brief-keys": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "`WorkspaceModel` entity: operation slugs declared as the `briefs:` map keys in the manifest body. Empty / absent when the manifest omits the field. Consumed by the `kind: set-coverage` interpreter (`adapter-briefs` source discriminator)."
         }
       }
     },

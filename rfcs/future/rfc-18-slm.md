@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: an SLM model backend behind the `wasi-model` boundary ([RFC-61](../rfc-61-omnia-migration.md)) — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
+> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../DECISIONS.md)) - Architecture: an SLM model backend behind the `wasi-model` boundary ([RFC-61](../rfc-61-omnia-migration.md)) — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 
@@ -177,7 +177,7 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- RFC-28 — [DECISIONS.md §Diagnostic substrate](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
-- RFC-32 — [DECISIONS.md §Standards layer split](../../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
+- RFC-28 — [DECISIONS.md §Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- RFC-32 — [DECISIONS.md §Standards layer split](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
 - RFC-10 / RFC-13
 - [`adapters/targets/omnia/prose/briefs/build/crate.md`](../../adapters/targets/omnia/prose/briefs/build/crate.md)

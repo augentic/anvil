@@ -77,14 +77,13 @@
               "tasks",
               "skill",
               "adapter",
-              "brief",
               "reference",
               "codex",
               "rfc",
               "doc"
             ]
           },
-          "description": "Closed artifact category tokens. Consumer-side tokens (`code`, `tests`, `contracts`, `specs`, `design`, `tasks`) compose with framework-side tokens (`skill`, `adapter`, `brief`, `reference`, `codex`, `rfc`, `doc`)."
+          "description": "Closed artifact category tokens. Consumer-side tokens (`code`, `tests`, `contracts`, `specs`, `design`, `tasks`) compose with framework-side tokens (`skill`, `adapter`, `reference`, `codex`, `rfc`, `doc`)."
         },
         "paths": {
           "type": "array",
@@ -151,14 +150,13 @@
             "description": "Optional human explanation for the hint."
           },
           "config": {
-            "description": "Per-kind configuration carrying the policy values the engine reads (caps, allow-lists, override maps, expected sets, canonical paths) or relays to a referenced `kind: tool` checker. `regex` -> regexHintConfig; `reference-resolves` -> referenceResolvesHintConfig; `cardinality` -> cardinalityHintConfig; `unique` -> uniqueHintConfig; `set-coverage` -> setCoverageHintConfig or expectedOperationsHintConfig; `fenced-block` -> fencedBlockHintConfig or fencedBlockContainsHintConfig; `constant-eq` -> constantEqHintConfig or constantFieldEqHintConfig; `presence` (file / markdown-section / directory-index) -> presenceHintConfig (the frontmatter selector carries no config); `field-grammar` (field-tokens / field-first-word) -> fieldGrammarHintConfig; `cross-reference` -> crossReferenceHintConfig; `cli-contract` (invocations) -> cliContractInvocationsHintConfig; `cli-contract` (event-ids / error-codes) -> cliContractIdsHintConfig; `cli-contract` (test-citations) -> cliContractTestCitationsHintConfig; `tool` (skill-body) -> criticalPathHintConfig or variableCoverageHintConfig; `tool` (links-registry) -> schemaRegistryHintConfig; `tool` (prose) -> numericCapHintConfig; `tool` (rules) -> nsOwnerHintConfig; `tool` (scenarios) -> catalogRunsHintConfig.",
+            "description": "Per-kind configuration carrying the policy values the engine reads (caps, allow-lists, override maps, expected sets, canonical paths) or relays to a referenced `kind: tool` checker. `regex` -> regexHintConfig; `reference-resolves` -> referenceResolvesHintConfig; `cardinality` -> cardinalityHintConfig; `unique` -> uniqueHintConfig; `set-coverage` -> setCoverageHintConfig; `fenced-block` -> fencedBlockHintConfig or fencedBlockContainsHintConfig; `constant-eq` -> constantEqHintConfig or constantFieldEqHintConfig; `presence` (file / markdown-section / directory-index) -> presenceHintConfig (the frontmatter selector carries no config); `field-grammar` (field-tokens / field-first-word) -> fieldGrammarHintConfig; `cross-reference` -> crossReferenceHintConfig; `cli-contract` (invocations) -> cliContractInvocationsHintConfig; `cli-contract` (event-ids / error-codes) -> cliContractIdsHintConfig; `cli-contract` (test-citations) -> cliContractTestCitationsHintConfig; `tool` (skill-body) -> criticalPathHintConfig or variableCoverageHintConfig; `tool` (links-registry) -> schemaRegistryHintConfig; `tool` (prose) -> numericCapHintConfig; `tool` (rules) -> nsOwnerHintConfig; `tool` (scenarios) -> catalogRunsHintConfig.",
             "oneOf": [
               { "$ref": "#/$defs/regexHintConfig" },
               { "$ref": "#/$defs/referenceResolvesHintConfig" },
               { "$ref": "#/$defs/cardinalityHintConfig" },
               { "$ref": "#/$defs/uniqueHintConfig" },
               { "$ref": "#/$defs/setCoverageHintConfig" },
-              { "$ref": "#/$defs/expectedOperationsHintConfig" },
               { "$ref": "#/$defs/fencedBlockHintConfig" },
               { "$ref": "#/$defs/fencedBlockContainsHintConfig" },
               { "$ref": "#/$defs/constantEqHintConfig" },
@@ -341,41 +339,6 @@
           "type": "string",
           "minLength": 1,
           "description": "Fact field whose value must be unique across the candidate set (e.g. `skill-name`)."
-        }
-      }
-    },
-    "expectedOperationsHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["expected-operations"],
-      "description": "`kind: set-coverage` hint configuration for the `adapter-briefs` source (CORE-004 / CORE-007). The per-axis expected operation sets are policy supplied by the rule, not the engine. The optional `mode` selects the one-sided `subset` (default — CORE-004) or two-sided `exact` (CORE-007) comparison.",
-      "properties": {
-        "mode": {
-          "type": "string",
-          "enum": ["subset", "exact"],
-          "description": "Comparison direction against the expected operation set. `subset` (default) flags only operations the manifest fails to cover; `exact` additionally flags unexpected keys (the two-sided tightening)."
-        },
-        "expected-operations": {
-          "type": "object",
-          "additionalProperties": false,
-          "minProperties": 1,
-          "description": "`<axis> -> [expected briefs operations]` map. The axis tokens are the closed adapter axes; the operation lists are the policy.",
-          "properties": {
-            "sources": {
-              "type": "array",
-              "minItems": 1,
-              "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1 },
-              "description": "Operations a source adapter's `briefs.keys()` must declare."
-            },
-            "targets": {
-              "type": "array",
-              "minItems": 1,
-              "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1 },
-              "description": "Operations a target adapter's `briefs.keys()` must declare."
-            }
-          }
         }
       }
     },

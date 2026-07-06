@@ -20,7 +20,6 @@
 set -eu
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
-engine="$root/engine"
 adapters="${SPECIFY_ADAPTERS:-$root/../specify-adapters}"
 sandbox="${SPECIFY_SANDBOX:-$root/evals/.sandbox}/guest-execute-loop"
 
@@ -38,12 +37,12 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
 # below points at the debug guest so the loop under test is the branch
 # head, not the committed embed).
 (
-  cd "$engine"
+  cd "$root"
   cargo build -q -p specify
   cargo build -q -p specify-workflow-guest --target wasm32-wasip2
 )
-specify="$engine/target/debug/specify"
-workflow_wasm="$engine/target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
+specify="$root/target/debug/specify"
+workflow_wasm="$root/target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
 
 # Seed the sandbox: vendored target adapter (symlinks dereferenced — the
 # adapter's reference symlinks point into the checkout's shared/ tree,
@@ -57,8 +56,8 @@ cp -RL "$adapters/targets/omnia" "$sandbox/adapters/targets/omnia"
 cd "$sandbox"
 "$specify" init ./adapters/targets/omnia --name guest-demo
 
-# The deployment manifest: the checked-in engine/omnia.toml shape with the
-# "." mount re-pointed at the sandbox. The triage guest leg picks this up
+# The deployment manifest: the checked-in repo-root omnia.toml shape with
+# the "." mount re-pointed at the sandbox. The triage guest leg picks this up
 # from the project root instead of assembling its transient manifest.
 addr="${HTTP_ADDR:-127.0.0.1:8094}"
 {

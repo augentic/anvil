@@ -3,7 +3,7 @@ name: Release binaries
 # Cross-platform `specify` binary build. Triggered by the `v*.*.*` tag
 # that publish.yaml pushes on a merged release PR; publish.yaml creates
 # the GitHub Release (curated notes) and this workflow attaches the
-# built binary archives to it. The Cargo workspace lives under engine/.
+# built binary archives to it. The Cargo workspace lives at the repo root.
 
 on:
   push:
@@ -56,7 +56,6 @@ jobs:
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: engine
           key: release-${{ matrix.target }}
 
       - name: Install cross
@@ -66,13 +65,11 @@ jobs:
       - name: Build (cargo)
         if: ${{ !matrix.use_cross }}
         shell: bash
-        working-directory: engine
         run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
 
       - name: Build (cross)
         if: matrix.use_cross
         shell: bash
-        working-directory: engine
         run: cross build --release --locked --target ${{ matrix.target }} --bin specify
 
       - name: Compute version
@@ -86,7 +83,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           ARCHIVE="specify-${VERSION}-${{ matrix.target }}.tar.gz"
-          tar -czf "${ARCHIVE}" -C "engine/target/${{ matrix.target }}/release" specify
+          tar -czf "${ARCHIVE}" -C "target/${{ matrix.target }}/release" specify
           shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
 
       - name: Package (windows)
@@ -95,7 +92,7 @@ jobs:
         run: |
           $version = "${{ steps.version.outputs.version }}"
           $archive = "specify-$version-${{ matrix.target }}.zip"
-          7z a $archive "engine\target\${{ matrix.target }}\release\specify.exe"
+          7z a $archive "target\${{ matrix.target }}\release\specify.exe"
           (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLower() + "  " + $archive | Out-File -FilePath "$archive.sha256" -Encoding ascii
 
       - name: Upload artifact

@@ -2,7 +2,7 @@
 
 > **Status: Deferred.** Reconcile with the current source-adapter flow (`survey` / `extract` → `discovery.md` leads, per-source `evidence`, `model.yaml`) and the journal outcome-ledger before implementing: the `slice.archive.created` journal event (`crates/workflow/src/journal/event.rs`) already carries `touched_specs`, `outcome_summary`, `merge_sha`, and promoted `decisions` per merge, so `migration-log.yaml` should be a **materialised projection over those journal events** (and archive contents), scoped to what the journal does not answer — per-`source` migration status and the `mapping` taxonomy. The per-merge ledger event is fired by `specify slice merge` / `specify plan archive`. Backs the roadmap's ["Migration ledger and slice mapping"](../roadmap.md#ideas-parked) parked idea.
 >
-> Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue) and the source-adapter flow in [`engine/docs/standards/workflow.md`](../../engine/docs/standards/workflow.md).
+> Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue) and the source-adapter flow in [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md).
 
 ## Abstract
 
@@ -286,11 +286,11 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 ## References
 
-- [`engine/docs/standards/workflow.md`](../../engine/docs/standards/workflow.md) and [`engine/DECISIONS.md`](../../engine/DECISIONS.md) — the source-adapter flow and merge/archive writers this RFC's ledger annotates.
-- [`engine/crates/workflow/src/journal/event.rs`](../../engine/crates/workflow/src/journal/event.rs) — the `slice.archive.created` outcome-ledger event a rewrite should project the migration ledger over.
+- [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md) and [`engine/DECISIONS.md`](../../DECISIONS.md) — the source-adapter flow and merge/archive writers this RFC's ledger annotates.
+- [`engine/crates/workflow/src/journal/event.rs`](../../crates/workflow/src/journal/event.rs) — the `slice.archive.created` outcome-ledger event a rewrite should project the migration ledger over.
 - [RFC-21: Source Catalogue and Source-Clone Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
 - [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the ledger annotates.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`schemas/plan/plan.schema.json`](../../schemas/plan/plan.schema.json) — the schema this RFC additively extends with `mapping`.
-- [`engine/crates/workflow/src/registry/catalog.rs`](../../engine/crates/workflow/src/registry/catalog.rs) — reference implementation for the `Registry` posture the ledger mirrors.
+- [`engine/crates/workflow/src/registry/catalog.rs`](../../crates/workflow/src/registry/catalog.rs) — reference implementation for the `Registry` posture the ledger mirrors.
