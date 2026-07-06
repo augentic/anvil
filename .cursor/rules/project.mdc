@@ -67,9 +67,9 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   │   ├── omnia/
   │   ├── vectis/
   │   └── contracts/
-  └── shared/               # Shared adapter support material, not adapters
+  └── codex/                # Shared codex (UNI-* rules, replay hooks, spec-runtime bundle)
       ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review prompts
-      └── target-hooks/replay/
+      └── references/replay/
 /scripts/                 # Validation and plugin management
 ```
 
@@ -138,7 +138,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/prose/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/codex/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 

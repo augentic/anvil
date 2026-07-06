@@ -582,7 +582,7 @@ fn resolved_codex_accepts_example() {
                 "lint-mode": "hybrid",
                 "origin": "shared",
                 "path-root": "rules-root",
-                "path": "adapters/shared/prose/rules/universal/hardcoded-configuration.md",
+                "path": "adapters/codex/rules/universal/hardcoded-configuration.md",
                 "applicability": {
                     "adapters": ["omnia"],
                     "languages": ["rust"],

@@ -23,7 +23,7 @@ const RULES: &[&str] =
     &[RULE_NAMESPACE_OWNERSHIP_VIOLATION, RULE_DUPLICATE_RULE_ID, RULE_BODY_HEADING_MISSING];
 
 /// Shared `universal` / `core` rules-pack directory names under
-/// `adapters/shared/prose/rules/`. Mechanism (filesystem layout), not policy.
+/// `adapters/codex/rules/`. Mechanism (filesystem layout), not policy.
 const SHARED_PACKS: [&str; 2] = ["universal", "core"];
 
 /// `specify`-owned namespace policy CORE-009 supplies in `config:`.
@@ -264,8 +264,7 @@ fn discover_rule_files(project_dir: &Path) -> Vec<PathBuf> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir = crate::lint::layout::framework_shared_dir(project_dir)
-            .join("prose")
+        let pack_dir = crate::lint::layout::framework_codex_dir(project_dir)
             .join("rules")
             .join(pack);
         let mut files = Vec::new();
@@ -301,8 +300,7 @@ fn owner_for_path(project_dir: &Path, path: &Path) -> Option<String> {
         }
     }
     for pack in SHARED_PACKS {
-        let pack_dir = crate::lint::layout::framework_shared_dir(project_dir)
-            .join("prose")
+        let pack_dir = crate::lint::layout::framework_codex_dir(project_dir)
             .join("rules")
             .join(pack);
         if path.strip_prefix(&pack_dir).is_ok() {
@@ -404,8 +402,8 @@ mod tests {
     #[test]
     fn clean_tree_is_silent() {
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/shared/prose/rules/core/CORE-001.md", "CORE-001");
-        write_rule(dir.path(), "adapters/shared/prose/rules/universal/UNI-001.md", "UNI-001");
+        write_rule(dir.path(), "adapters/codex/rules/core/CORE-001.md", "CORE-001");
+        write_rule(dir.path(), "adapters/codex/rules/universal/UNI-001.md", "UNI-001");
         write_rule(dir.path(), "adapters/targets/omnia/prose/rules/OMNIA-001.md", "OMNIA-001");
         write_rule(dir.path(), "adapters/sources/documentation/prose/rules/SRC-001.md", "SRC-001");
         assert!(check_namespace_ownership(dir.path(), &policy()).is_empty());
@@ -422,10 +420,10 @@ mod tests {
     fn flags_violations() {
         // CORE-053: a rule whose body lacks the `## Rule` heading is flagged.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/shared/prose/rules/core/CORE-001.md", "CORE-001");
+        write_rule(dir.path(), "adapters/codex/rules/core/CORE-001.md", "CORE-001");
         write_rule_without_heading(
             dir.path(),
-            "adapters/shared/prose/rules/universal/UNI-001.md",
+            "adapters/codex/rules/universal/UNI-001.md",
             "UNI-001",
         );
         let findings = check_rule_body_heading(dir.path());
@@ -433,7 +431,7 @@ mod tests {
         assert_eq!(findings[0].rule_id, RULE_BODY_HEADING_MISSING);
         assert_eq!(
             findings[0].path.as_deref(),
-            Some("adapters/shared/prose/rules/universal/UNI-001.md")
+            Some("adapters/codex/rules/universal/UNI-001.md")
         );
         assert!(findings[0].message.contains("`## Rule`"));
 
@@ -463,8 +461,8 @@ mod tests {
 
         // CORE-026: the same id in two files is a whole-tree duplicate.
         let dir = tempfile::tempdir().expect("tempdir");
-        write_rule(dir.path(), "adapters/shared/prose/rules/core/first.md", "CORE-100");
-        write_rule(dir.path(), "adapters/shared/prose/rules/core/second.md", "CORE-100");
+        write_rule(dir.path(), "adapters/codex/rules/core/first.md", "CORE-100");
+        write_rule(dir.path(), "adapters/codex/rules/core/second.md", "CORE-100");
         let findings = check_duplicate_rule_id(dir.path());
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0].rule_id, RULE_DUPLICATE_RULE_ID);

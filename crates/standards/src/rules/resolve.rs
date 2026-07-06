@@ -15,13 +15,13 @@
 //!
 //! 1. `inputs.rules_root` when supplied — use for root 1 and the
 //!    rules-root fallback overlay (overlay step 3 below).
-//! 2. Else if `{project_dir}/adapters/shared/prose/rules/universal/` exists,
+//! 2. Else if `{project_dir}/adapters/codex/rules/universal/` exists,
 //!    treat `project_dir` as the rules root (monorepo case). In this
 //!    case the rules-root fallback overlay step is **skipped** —
 //!    re-walking `project_dir` would just shadow the project-local
 //!    rung with the same filesystem tree.
 //! 3. Else if the distributed codex cache
-//!    `<project-cache>/codex/adapters/shared/prose/rules/universal/`
+//!    `<project-cache>/codex/adapters/codex/rules/universal/`
 //!    exists (resolved out-of-tree from the OS cache), treat
 //!    `<project-cache>/codex/` as the rules
 //!    root. Populated by codex distribution (RM-07) at `specify init`
@@ -146,7 +146,7 @@ pub enum ResolveError {
     /// `rules-root-required` per codex root resolution and the §490
     /// golden.
     #[error(
-        "rules-root-required: shared UNI-* rules require --rules-root pointing at a tree containing adapters/shared/prose/rules/universal/, a monorepo adapters/shared/prose/rules/universal/ tree, or a distributed codex cache (run `specify rules sync`)"
+        "rules-root-required: shared UNI-* rules require --rules-root pointing at a tree containing adapters/codex/rules/universal/, a monorepo adapters/codex/rules/universal/ tree, or a distributed codex cache (run `specify rules sync`)"
     )]
     RulesRootRequired,
     /// A rule id appeared in more than one discovered file. Per
@@ -189,11 +189,11 @@ pub fn map_resolve_error(err: ResolveError) -> Error {
         ResolveError::RulesRootRequired => Error::validation_failed(
             "rules-root-required",
             "shared UNI-* rules require --rules-root, a project-local \
-             adapters/shared/prose/rules/universal/ tree, or a distributed \
+             adapters/codex/rules/universal/ tree, or a distributed \
              codex cache in the out-of-tree project cache",
             "run `specify rules sync` to distribute the shared codex, or \
              pass --rules-root pointing at a tree containing \
-             adapters/shared/prose/rules/universal/",
+             adapters/codex/rules/universal/",
         ),
         ResolveError::DuplicateRuleId { id, paths } => Error::validation_failed(
             "rules-duplicate-rule-id",
@@ -213,8 +213,8 @@ pub fn map_resolve_error(err: ResolveError) -> Error {
     }
 }
 
-const SHARED_REL: &str = "adapters/shared/prose/rules/universal";
-const CORE_REL: &str = "adapters/shared/prose/rules/core";
+const SHARED_REL: &str = "adapters/codex/rules/universal";
+const CORE_REL: &str = "adapters/codex/rules/core";
 /// Cache-relative provenance prefix recorded for cache-resolved adapter
 /// rules.
 ///

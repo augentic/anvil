@@ -5,7 +5,7 @@ severity: important
 trigger: A rules markdown file's body does not carry the verbatim `## Rule` heading.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-053-rules-body-heading-missing.md
+    value: adapters/codex/rules/core/CORE-053-rules-body-heading-missing.md
     description: Sentinel path so the whole-tree rules tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: rules

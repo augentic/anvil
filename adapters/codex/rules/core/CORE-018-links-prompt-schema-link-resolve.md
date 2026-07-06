@@ -5,7 +5,7 @@ severity: important
 trigger: An adapter prompt references an unknown schemas.specify.dev tool schema URL.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-018-links-prompt-schema-link-resolve.md
+    value: adapters/codex/rules/core/CORE-018-links-prompt-schema-link-resolve.md
     description: Sentinel path so the whole-tree links-registry tool runs exactly once; the tool walks PROJECT_DIR/adapters itself rather than the passed candidate.
   - kind: tool
     value: links-registry

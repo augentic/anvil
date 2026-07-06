@@ -5,7 +5,7 @@ severity: important
 trigger: Scenario body id disagrees with frontmatter id.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-029-scenarios-body-id-mismatch.md
+    value: adapters/codex/rules/core/CORE-029-scenarios-body-id-mismatch.md
     description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: scenarios

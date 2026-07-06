@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/guardrails.md
+../../../../plugins/spec/references/guardrails.md

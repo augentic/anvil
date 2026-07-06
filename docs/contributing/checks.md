@@ -92,7 +92,7 @@ All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `conf
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
 | `rules.*`                  | Rule shape, namespace ownership                                      |
 
-Rule files live under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/). The generic hint evaluators live in-tree under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
+Rule files live under [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/). The generic hint evaluators live in-tree under `crates/standards/src/lint/eval/`; Road B checker source lives in-process in `specify-standards` under `crates/standards/src/lint/framework_tools/`.
 
 ### JSON output
 
@@ -158,7 +158,7 @@ Links in `SKILL.md` bodies that point to `references/...` or `examples/...` path
 
 ### 5. Deployable surfaces must not link into `docs/`
 
-`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/shared/prose/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
+`links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/codex/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
 
 ### 6. Skill directive validation
 
@@ -253,7 +253,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 11. First-party rule shape
 
-First-party rule files are validated in the shared tree at `adapters/shared/prose/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
+First-party rule files are validated in the shared tree at `adapters/codex/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:
@@ -263,22 +263,22 @@ invoke any external validator. It validates:
 - **Required body heading** -- each rule body must include a `## Rule` heading.
 - **Cross-file id uniqueness** -- every codex `id` must be unique across the
   discovered first-party rule set.
-- **Namespace ownership** -- `adapters/shared/prose/rules/universal/` owns `UNI-*`;
+- **Namespace ownership** -- `adapters/codex/rules/universal/` owns `UNI-*`;
   `omnia` owns `OMNIA-*`, `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`;
   `vectis` owns `VECTIS-*`.
 
 **Example failure messages:**
 
 ```text
-FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/prose/rules/universal/example.md — / missing required property 'trigger'
-  at adapters/shared/prose/rules/universal/example.md:1
-FAIL: rules.schema-violation: Rule frontmatter: adapters/shared/prose/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
-  at adapters/shared/prose/rules/universal/example.md:1
-FAIL: rules.schema-violation: Rule body: adapters/shared/prose/rules/universal/example.md — missing required '## Rule' heading
-  at adapters/shared/prose/rules/universal/example.md:1
-FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/shared/prose/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
-  at adapters/shared/prose/rules/universal/example.md:1
-FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/shared/prose/rules/universal/a.md, adapters/shared/prose/rules/universal/b.md
+FAIL: rules.schema-violation: Rule frontmatter: adapters/codex/rules/universal/example.md — / missing required property 'trigger'
+  at adapters/codex/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule frontmatter: adapters/codex/rules/universal/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+  at adapters/codex/rules/universal/example.md:1
+FAIL: rules.schema-violation: Rule body: adapters/codex/rules/universal/example.md — missing required '## Rule' heading
+  at adapters/codex/rules/universal/example.md:1
+FAIL: rules.namespace-ownership-violation: Rule namespace ownership: adapters/codex/rules/universal/example.md — rule owner 'universal' may only use UNI-* ids, got 'SEC-001'
+  at adapters/codex/rules/universal/example.md:1
+FAIL: rules.duplicate-rule-id: Rule duplicate id 'UNI-001' across files: adapters/codex/rules/universal/a.md, adapters/codex/rules/universal/b.md
 ```
 
 Common fixes: add the required `id`, `title`, `severity`, and `trigger`
@@ -300,7 +300,7 @@ CLI-contract citation drift (the retired CORE-057 / CORE-060 family and the `spe
 
 ## Extending the checks
 
-Every framework check is a `CORE-*` rule under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
+Every framework check is a `CORE-*` rule under [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/), resolved by a **generic, rule-agnostic dispatcher** in the in-tree `specify-standards` crate (`crates/standards/`). The engine carries no rule-specific logic and no rule policy. A new check takes one of two roads, and the rule file owns both the check shape and the values it enforces.
 
 ### Road A — declarative hint
 
@@ -316,7 +316,7 @@ The rule carries one or more `rule_hints` of a closed kind interpreted over the 
 - **`field-grammar`** — `field-tokens` + `config: { field, token-pattern }` (each whitespace token of the field matches the regex) or `field-first-word` + `config: { field, allowed }` (the field's first alphabetic word is allow-listed).
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
 
-Each evaluator is generic: it reads its policy (allowed set, owner map, canonical path, grammar pattern) from the rule's `config:`, never from a constant in the engine. The selector kinds serve `presence` → CORE-042 / CORE-011 / CORE-059, `field-grammar` → CORE-035 / CORE-036, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-002-links-unresolved.md`](../../adapters/shared/prose/rules/core/CORE-002-links-unresolved.md). See [`adapters/shared/prose/rules/core/README.md`](../../adapters/shared/prose/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
+Each evaluator is generic: it reads its policy (allowed set, owner map, canonical path, grammar pattern) from the rule's `config:`, never from a constant in the engine. The selector kinds serve `presence` → CORE-042 / CORE-011 / CORE-059, `field-grammar` → CORE-035 / CORE-036, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-002-links-unresolved.md`](../../adapters/codex/rules/core/CORE-002-links-unresolved.md). See [`adapters/codex/rules/core/README.md`](../../adapters/codex/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
 **Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** unit test beside the evaluator in `crates/standards/src/lint/eval/<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
@@ -346,10 +346,10 @@ To add or extend one:
 
 To add a `CORE-*` rule (either road):
 
-1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
+1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
 2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint project` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
 
-Checks are numbered 1–12 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) and do not consume a number in this list.
+Checks are numbered 1–12 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/codex/rules/core/`](../../adapters/codex/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 

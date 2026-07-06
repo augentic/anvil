@@ -32,7 +32,7 @@ fn entry(id: &str, severity: Severity, origin: Origin, deprecated: bool) -> Reso
         rule: rule(id, severity, deprecated),
         origin,
         path_root: PathRoot::RulesRoot,
-        path: format!("adapters/shared/prose/rules/universal/{id}.md"),
+        path: format!("adapters/codex/rules/universal/{id}.md"),
     }
 }
 

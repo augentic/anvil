@@ -37,7 +37,7 @@ mod support {
         for rel in [
             "adapters/sources",
             "adapters/targets",
-            "adapters/shared",
+            "adapters/codex",
             "plugins",
             "plugins/test/skills",
         ] {
@@ -169,7 +169,7 @@ mod framework {
     /// Both are otherwise schema-valid and carry no hints, so the only
     /// finding the predicate produces is the duplicate-id collision.
     fn write_duplicate_rule_id(root: &Path) {
-        let core_dir = root.join("adapters/shared/prose/rules/core");
+        let core_dir = root.join("adapters/codex/rules/core");
         fs::create_dir_all(&core_dir).expect("mkdir core rules");
         for file in ["CORE-100-first.md", "CORE-100-second.md"] {
             fs::write(
@@ -311,10 +311,10 @@ mod framework_adapters {
     fn write_marketplace_rule(root: &Path) {
         write(
             root,
-            "adapters/shared/prose/rules/core/CORE-022-plugins-marketplace-drift.md",
+            "adapters/codex/rules/core/CORE-022-plugins-marketplace-drift.md",
             "---\nid: CORE-022\ntitle: Plugins Marketplace Drift\nseverity: important\n\
 trigger: marketplace.json drifts from on-disk plugin layout.\n\
-rule_hints:\n  - kind: path-pattern\n    value: adapters/shared/prose/rules/core/CORE-022-plugins-marketplace-drift.md\n  - kind: tool\n    value: marketplace\n---\n\n\
+rule_hints:\n  - kind: path-pattern\n    value: adapters/codex/rules/core/CORE-022-plugins-marketplace-drift.md\n  - kind: tool\n    value: marketplace\n---\n\n\
 ## Rule\n\nSynthetic CORE-022 for adapters-only tests.\n",
         );
     }
@@ -324,10 +324,10 @@ rule_hints:\n  - kind: path-pattern\n    value: adapters/shared/prose/rules/core
     fn write_prose_rule(root: &Path) {
         write(
             root,
-            "adapters/shared/prose/rules/core/CORE-024-prose-numeric-cap-exceeded.md",
+            "adapters/codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md",
             "---\nid: CORE-024\ntitle: Prose Numeric Cap Exceeded\nseverity: important\n\
 trigger: A documented skill numeric cap drifted from its canonical source.\n\
-rule_hints:\n  - kind: path-pattern\n    value: adapters/shared/prose/rules/core/CORE-024-prose-numeric-cap-exceeded.md\n  - kind: tool\n    value: prose\n    config:\n      description-cap: 512\n      body-cap: 200\n---\n\n\
+rule_hints:\n  - kind: path-pattern\n    value: adapters/codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md\n  - kind: tool\n    value: prose\n    config:\n      description-cap: 512\n      body-cap: 200\n---\n\n\
 ## Rule\n\nSynthetic CORE-024 for adapters-only tests.\n",
         );
     }
@@ -455,10 +455,10 @@ mod framework_json {
     /// synthetic rule validates component catalogs (`components.yaml`)
     /// against the registered `components` schema instead.
     fn write_core_catalog_schema_rule(root: &Path) {
-        fs::create_dir_all(root.join("adapters/shared/prose/rules/core")).expect("core rules dir");
+        fs::create_dir_all(root.join("adapters/codex/rules/core")).expect("core rules dir");
         write_codex_rule(
             root,
-            "adapters/shared/prose/rules/core/CORE-001-catalog-schema.md",
+            "adapters/codex/rules/core/CORE-001-catalog-schema.md",
             r"---
 id: CORE-001
 title: Component Catalog Schema
@@ -492,10 +492,10 @@ Fix catalog.
     /// in `augentic/specify`. A sentinel `path-pattern` runs the whole-tree
     /// tool exactly once.
     fn write_core_namespace_owner_rule(root: &Path) {
-        fs::create_dir_all(root.join("adapters/shared/prose/rules/core")).expect("core rules dir");
+        fs::create_dir_all(root.join("adapters/codex/rules/core")).expect("core rules dir");
         write_codex_rule(
             root,
-            "adapters/shared/prose/rules/core/CORE-009-rule-namespace-owner.md",
+            "adapters/codex/rules/core/CORE-009-rule-namespace-owner.md",
             r"---
 id: CORE-009
 title: Rule Namespace Owner
@@ -503,7 +503,7 @@ severity: important
 trigger: A rule id namespace prefix is not owned by its rules directory.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-009-rule-namespace-owner.md
+    value: adapters/codex/rules/core/CORE-009-rule-namespace-owner.md
   - kind: tool
     value: rules
     config:
@@ -702,7 +702,7 @@ Body preserved so the rule passes shape validation.
 
         write_codex_rule(
             temp.path(),
-            "adapters/shared/prose/rules/universal/uni-999.md",
+            "adapters/codex/rules/universal/uni-999.md",
             &valid_rule_body("UNI-999"),
         );
         write_core_namespace_owner_rule(temp.path());
@@ -919,7 +919,7 @@ mod project {
     ///   least passes the `kind: tool` evaluator contract `is_declared` half) plus a `notes.md` file
     ///   carrying the literal `TODO` token the UNI-100 regex hint matches.
     /// - `codex_dir/` — a fresh rules tree with one shared rule under
-    ///   `adapters/shared/prose/rules/universal/uni-100.md`. The rule's
+    ///   `adapters/codex/rules/universal/uni-100.md`. The rule's
     ///   `kind: regex` hint pattern is `TODO`.
     struct Fixture {
         _root: TempDir,
@@ -932,7 +932,7 @@ mod project {
         let project = root.path().join("project");
         let codex = root.path().join("rules");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal"))
+        fs::create_dir_all(codex.join("adapters/codex/rules/universal"))
             .expect("mkdir codex");
 
         fs::write(
@@ -951,7 +951,7 @@ mod project {
             .expect("write notes.md");
 
         fs::write(
-            codex.join("adapters/shared/prose/rules/universal/uni-100.md"),
+            codex.join("adapters/codex/rules/universal/uni-100.md"),
             concat!(
                 "---\n",
                 "id: UNI-100\n",
@@ -986,7 +986,7 @@ mod project {
     fn write_regex_rule(codex: &Path, id: &str, severity: &str, pattern: &str) {
         let slug = id.to_ascii_lowercase();
         fs::write(
-            codex.join(format!("adapters/shared/prose/rules/universal/{slug}.md")),
+            codex.join(format!("adapters/codex/rules/universal/{slug}.md")),
             format!(
                 "---\n\
              id: {id}\n\
@@ -1131,7 +1131,7 @@ mod project {
         let project: PathBuf = root.path().join("project");
         let codex: PathBuf = root.path().join("rules");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal"))
+        fs::create_dir_all(codex.join("adapters/codex/rules/universal"))
             .expect("mkdir codex");
 
         fs::write(project.join(".specify").join("project.yaml"), "name: review-journal-e2e\n")
@@ -1151,7 +1151,7 @@ mod project {
         .expect("write notes.md");
 
         fs::write(
-            codex.join("adapters/shared/prose/rules/universal/uni-100.md"),
+            codex.join("adapters/codex/rules/universal/uni-100.md"),
             concat!(
                 "---\n",
                 "id: UNI-100\n",
@@ -1225,7 +1225,7 @@ mod project {
     }
 
     /// rules-root resolution / lint exit mapping negative: with no `--rules-root`, no project-local
-    /// `adapters/shared/prose/rules/universal/` rung, and no distributed
+    /// `adapters/codex/rules/universal/` rung, and no distributed
     /// out-of-tree `<project-cache>/codex/` cache, the resolver returns
     /// `rules-root-required`. The CLI surfaces it on stderr and exits 2.
     #[test]
@@ -1361,7 +1361,7 @@ mod project {
         let codex = root.path().join("rules");
         let cache = root.path().join("tool-cache");
         fs::create_dir_all(project.join(".specify")).expect("mkdir project/.specify");
-        fs::create_dir_all(codex.join("adapters/shared/prose/rules/universal"))
+        fs::create_dir_all(codex.join("adapters/codex/rules/universal"))
             .expect("mkdir codex");
         fs::create_dir_all(&cache).expect("mkdir tool cache");
 
@@ -1378,7 +1378,7 @@ mod project {
         .expect("write project.yaml");
 
         fs::write(
-            codex.join("adapters/shared/prose/rules/universal/uni-200.md"),
+            codex.join("adapters/codex/rules/universal/uni-200.md"),
             concat!(
                 "---\n",
                 "id: UNI-200\n",

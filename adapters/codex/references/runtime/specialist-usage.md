@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/specialist-usage.md
+../../../../plugins/spec/references/specialist-usage.md

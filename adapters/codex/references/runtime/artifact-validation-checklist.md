@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/artifact-validation-checklist.md
+../../../../plugins/spec/references/artifact-validation-checklist.md

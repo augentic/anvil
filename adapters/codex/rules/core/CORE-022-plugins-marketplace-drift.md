@@ -5,7 +5,7 @@ severity: important
 trigger: marketplace.json drifts from on-disk plugin layout.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-022-plugins-marketplace-drift.md
+    value: adapters/codex/rules/core/CORE-022-plugins-marketplace-drift.md
     description: Sentinel path so the whole-tree marketplace tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: marketplace

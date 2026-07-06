@@ -1,1 +1,1 @@
-../../../../../../plugins/spec/references/synthesis/tags.md
+../../../../../plugins/spec/references/synthesis/tags.md

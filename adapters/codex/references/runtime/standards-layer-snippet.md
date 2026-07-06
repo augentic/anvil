@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/standards-layer-snippet.md
+../../../../plugins/spec/references/standards-layer-snippet.md

@@ -5,7 +5,7 @@ severity: important
 trigger: The same rule id appears in more than one rules markdown file.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-026-rules-duplicate-rule-id.md
+    value: adapters/codex/rules/core/CORE-026-rules-duplicate-rule-id.md
     description: Sentinel path so the whole-tree rules tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: rules

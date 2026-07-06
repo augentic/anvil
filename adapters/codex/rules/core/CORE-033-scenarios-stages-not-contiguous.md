@@ -5,7 +5,7 @@ severity: important
 trigger: A scenario's stages list is not a contiguous slice of the slice loop.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-033-scenarios-stages-not-contiguous.md
+    value: adapters/codex/rules/core/CORE-033-scenarios-stages-not-contiguous.md
     description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: scenarios

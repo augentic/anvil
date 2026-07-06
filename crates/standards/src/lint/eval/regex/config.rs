@@ -168,7 +168,7 @@ mod tests {
             references: None,
             origin: crate::rules::Origin::Core,
             path_root: crate::rules::PathRoot::RulesRoot,
-            path: "adapters/shared/prose/rules/core/CORE-016.md".to_string(),
+            path: "adapters/codex/rules/core/CORE-016.md".to_string(),
             body: String::new(),
             deprecated: None,
         }

@@ -5,7 +5,7 @@ severity: important
 trigger: Duplicate scenario ids across files.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-030-scenarios-duplicate-id.md
+    value: adapters/codex/rules/core/CORE-030-scenarios-duplicate-id.md
     description: Sentinel include so the rule carries a candidate set; the `scenario` unique selector evaluates the whole scenario fact family and ignores the candidate set.
   - kind: unique
     value: scenario

@@ -10,7 +10,7 @@ rule_hints:
       roots:
         - adapters/sources/*/prose/references/*
         - adapters/targets/*/prose/references/*
-        - adapters/shared/prose/references/*
+        - adapters/codex/references/*
       index: README.md
       min-files: 2
     description: Over the directory prefixes of the file facts, each directory matching a `roots` glob (one directory depth; `*` does not cross `/`) with at least `min-files` files beneath it must carry a `README.md` directly inside it; an unindexed corpus directory is a finding located at the directory.

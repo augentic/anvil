@@ -32,14 +32,14 @@ jobs:
       # or broken (no materialised copies allowed). First-party adapter
       # trees now live in augentic/specify-adapters, so `nullglob` lets
       # this guard no-op cleanly until/unless an adapter tree returns to
-      # this repo (the adapters/shared/ rule pack carries no such links).
+      # this repo (the adapters/codex/ rule pack carries no such links).
       - name: Verify symlinks
         run: |
           shopt -s nullglob
           status=0
           for d in adapters/sources/*/prose/references/spec-runtime adapters/targets/*/prose/references/spec-runtime; do
             if [ ! -L "$d" ]; then
-              echo "error: $d must be a symlink to ../../../shared/prose/references/runtime (no materialised copies)" >&2
+              echo "error: $d must be a symlink to ../../../codex/references/runtime (no materialised copies)" >&2
               status=1
             elif [ ! -e "$d" ]; then
               echo "error: $d is a broken symlink" >&2

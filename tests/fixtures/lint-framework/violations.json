@@ -17,7 +17,7 @@
       "location": {
         "path": "docs/design-system/components.yaml"
       },
-      "remediation": "See adapters/shared/prose/rules/core/CORE-001-catalog-schema.md",
+      "remediation": "See adapters/codex/rules/core/CORE-001-catalog-schema.md",
       "rule-id": "CORE-001",
       "severity": "critical",
       "source": "deterministic",

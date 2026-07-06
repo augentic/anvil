@@ -52,10 +52,10 @@ The invariant: **adapter resolution is a downstream concern**. Core owns the sli
 
 A target adapter ships as one published component carrying the prompts that implement domain behaviour. Imperative behaviour (provider configuration, file generation, format validation, drift detection) lives in the prompts and in-guest library code. There is no second plugin runtime hidden behind the component.
 
-Shared material used by multiple adapters lives outside the adapter roots under `adapters/shared/`:
+Shared material used by multiple adapters lives outside the adapter roots under `adapters/codex/`:
 
-- **`codex/universal/`** — shared **engineering standards** (`UNI-*`) at [`adapters/shared/prose/rules/universal/`](../../../adapters/shared/prose/rules/universal/); per-target overlays stay at `adapters/targets/<name>/prose/rules/`. See [Standards layer](../../explanation/standards-layer.md).
-- **`target-hooks/replay/`** — shared build-time replay hook contract at [`adapters/shared/prose/references/replay/`](../../../adapters/shared/prose/references/replay/); per-target runners stay at `adapters/targets/<name>/prose/prompts/build/replay.md` when implemented.
+- **`codex/universal/`** — shared **engineering standards** (`UNI-*`) at [`adapters/codex/rules/universal/`](../../../adapters/codex/rules/universal/); per-target overlays stay at `adapters/targets/<name>/prose/rules/`. See [Standards layer](../../explanation/standards-layer.md).
+- **`references/replay/`** — shared build-time replay hook contract at [`adapters/codex/references/replay/`](../../../adapters/codex/references/replay/); per-target runners stay at `adapters/targets/<name>/prose/prompts/build/replay.md` when implemented.
 
 ## Validation
 

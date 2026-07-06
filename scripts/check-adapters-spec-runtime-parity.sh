@@ -6,12 +6,12 @@ set -eu
 SPECIFY_ROOT="${SPECIFY_ROOT:-.}"
 SPECIFY_ADAPTERS_ROOT="${SPECIFY_ADAPTERS_ROOT:-../specify-adapters}"
 
-if [ ! -d "$SPECIFY_ADAPTERS_ROOT/shared/prose/references/runtime" ]; then
+if [ ! -d "$SPECIFY_ADAPTERS_ROOT/codex/references/runtime" ]; then
   echo "check-adapters-spec-runtime-parity: skip (no sibling at $SPECIFY_ADAPTERS_ROOT)"
   exit 0
 fi
 
-README="$SPECIFY_ROOT/adapters/shared/prose/references/runtime/README.md"
+README="$SPECIFY_ROOT/adapters/codex/references/runtime/README.md"
 if [ ! -f "$README" ]; then
   echo "check-adapters-spec-runtime-parity: missing $README" >&2
   exit 1
@@ -35,7 +35,7 @@ printf '%s\n' "$pairs" | while IFS="$(printf '\t')" read -r bundle canonical; do
   [ -n "$bundle" ] || continue
 
   left="$SPECIFY_ROOT/$canonical"
-  right="$SPECIFY_ADAPTERS_ROOT/shared/prose/references/runtime/$bundle"
+  right="$SPECIFY_ADAPTERS_ROOT/codex/references/runtime/$bundle"
 
   if [ ! -f "$left" ]; then
     echo "missing canonical file: $left" >&2
@@ -55,7 +55,7 @@ printf '%s\n' "$pairs" | while IFS="$(printf '\t')" read -r bundle canonical; do
 done || fail=1
 
 if [ "$fail" -ne 0 ]; then
-  echo "Sync specify-adapters shared/prose/references/runtime from specify plugins/spec/references/." >&2
+  echo "Sync specify-adapters codex/references/runtime from specify plugins/spec/references/." >&2
   exit 1
 fi
 

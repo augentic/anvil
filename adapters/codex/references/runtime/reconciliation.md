@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/reconciliation.md
+../../../../plugins/spec/references/reconciliation.md

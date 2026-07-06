@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/phase-outcome-contract.md
+../../../../plugins/spec/references/phase-outcome-contract.md

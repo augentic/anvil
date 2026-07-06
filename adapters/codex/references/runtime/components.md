@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/components.md
+../../../../plugins/spec/references/components.md

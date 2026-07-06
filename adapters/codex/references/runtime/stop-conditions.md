@@ -1,1 +1,1 @@
-../../../../../plugins/spec/references/stop-conditions.md
+../../../../plugins/spec/references/stop-conditions.md

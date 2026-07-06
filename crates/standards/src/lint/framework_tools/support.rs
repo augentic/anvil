@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn requested_rule_reads_candidate_only() {
         let args = vec![
-            "adapters/shared/prose/rules/core/CORE-026-duplicate-rule-id.md".to_string(),
+            "adapters/codex/rules/core/CORE-026-duplicate-rule-id.md".to_string(),
             r#"{"note": "mentions CORE-009 in config"}"#.to_string(),
         ];
         assert_eq!(requested_rule(&args, &["CORE-009", "CORE-026"]), Some("CORE-026"));

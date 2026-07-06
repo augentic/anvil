@@ -5,7 +5,7 @@ severity: important
 trigger: A skill directive references a path that does not resolve.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-020-links-unresolved-directive.md
+    value: adapters/codex/rules/core/CORE-020-links-unresolved-directive.md
     description: Sentinel path so the whole-tree links-registry tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: links-registry

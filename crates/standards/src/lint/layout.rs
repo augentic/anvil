@@ -1,10 +1,10 @@
 //! Framework-root adapter layout resolution (nested vs flattened).
 //!
 //! Two framework-root shapes ship today. Specify's own framework root
-//! nests the adapter axes and shared pack under `adapters/`
-//! (`adapters/sources/`, `adapters/targets/`, `adapters/shared/`). The
+//! nests the adapter axes and codex pack under `adapters/`
+//! (`adapters/sources/`, `adapters/targets/`, `adapters/codex/`). The
 //! extracted `specify-adapters` framework root promotes them to the
-//! repo root (`sources/`, `targets/`, `shared/`). These helpers give
+//! repo root (`sources/`, `targets/`, `codex/`). These helpers give
 //! the directory-walking checkers and fact extractors one definition of
 //! "where the axes live" so every site agrees.
 //!
@@ -16,7 +16,7 @@
 
 use std::path::{Path, PathBuf};
 
-/// The directory under which the adapter axes and shared pack live for
+/// The directory under which the adapter axes and codex pack live for
 /// `project_dir`: `project_dir/adapters` for the nested shape, else
 /// `project_dir` itself for the flattened shape.
 fn adapters_root(project_dir: &Path) -> PathBuf {
@@ -31,16 +31,16 @@ pub(super) fn framework_axis_dir(project_dir: &Path, axis: &str) -> PathBuf {
     adapters_root(project_dir).join(axis)
 }
 
-/// The shared-pack directory for `project_dir`, resolving the
+/// The codex-pack directory for `project_dir`, resolving the
 /// nested-vs-flattened root shape.
 #[must_use]
-pub(super) fn framework_shared_dir(project_dir: &Path) -> PathBuf {
-    adapters_root(project_dir).join("shared")
+pub(super) fn framework_codex_dir(project_dir: &Path) -> PathBuf {
+    adapters_root(project_dir).join("codex")
 }
 
 /// The top-level directories that hold adapter trees, for whole-tree
 /// markdown walks: the single nested `adapters/` directory, or each
-/// present flattened axis / shared directory. An empty result means the
+/// present flattened axis / codex directory. An empty result means the
 /// root carries no adapter tree in either shape.
 #[must_use]
 pub(super) fn framework_adapter_roots(project_dir: &Path) -> Vec<PathBuf> {
@@ -48,7 +48,7 @@ pub(super) fn framework_adapter_roots(project_dir: &Path) -> Vec<PathBuf> {
     if nested.is_dir() {
         return vec![nested];
     }
-    ["sources", "targets", "shared"]
+    ["sources", "targets", "codex"]
         .iter()
         .map(|axis| project_dir.join(axis))
         .filter(|dir| dir.is_dir())
@@ -68,9 +68,9 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         mkdir(dir.path(), "adapters/sources");
         mkdir(dir.path(), "adapters/targets");
-        mkdir(dir.path(), "adapters/shared");
+        mkdir(dir.path(), "adapters/codex");
         assert_eq!(framework_axis_dir(dir.path(), "targets"), dir.path().join("adapters/targets"));
-        assert_eq!(framework_shared_dir(dir.path()), dir.path().join("adapters/shared"));
+        assert_eq!(framework_codex_dir(dir.path()), dir.path().join("adapters/codex"));
         assert_eq!(framework_adapter_roots(dir.path()), vec![dir.path().join("adapters")]);
     }
 
@@ -79,12 +79,12 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         mkdir(dir.path(), "sources");
         mkdir(dir.path(), "targets");
-        mkdir(dir.path(), "shared");
+        mkdir(dir.path(), "codex");
         assert_eq!(framework_axis_dir(dir.path(), "targets"), dir.path().join("targets"));
-        assert_eq!(framework_shared_dir(dir.path()), dir.path().join("shared"));
+        assert_eq!(framework_codex_dir(dir.path()), dir.path().join("codex"));
         assert_eq!(
             framework_adapter_roots(dir.path()),
-            vec![dir.path().join("sources"), dir.path().join("targets"), dir.path().join("shared")]
+            vec![dir.path().join("sources"), dir.path().join("targets"), dir.path().join("codex")]
         );
     }
 }

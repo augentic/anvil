@@ -59,7 +59,7 @@ pub fn rule_with_hints(hints: Vec<RuleHint>) -> ResolvedRule {
         references: None,
         origin: Origin::Core,
         path_root: PathRoot::RulesRoot,
-        path: "adapters/shared/prose/rules/core/TEST-001.md".to_string(),
+        path: "adapters/codex/rules/core/TEST-001.md".to_string(),
         body: String::new(),
         deprecated: None,
     }

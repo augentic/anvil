@@ -5,7 +5,7 @@ severity: important
 trigger: A scenario references an unsafe artifact path.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-028-scenarios-artifact-path-unsafe.md
+    value: adapters/codex/rules/core/CORE-028-scenarios-artifact-path-unsafe.md
     description: Sentinel path so the whole-tree scenarios tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: scenarios

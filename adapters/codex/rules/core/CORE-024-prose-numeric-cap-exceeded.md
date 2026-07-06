@@ -5,7 +5,7 @@ severity: important
 trigger: A documented skill numeric cap drifted from its canonical source.
 rule_hints:
   - kind: path-pattern
-    value: adapters/shared/prose/rules/core/CORE-024-prose-numeric-cap-exceeded.md
+    value: adapters/codex/rules/core/CORE-024-prose-numeric-cap-exceeded.md
     description: Sentinel path so the whole-tree prose tool runs exactly once; the tool walks PROJECT_DIR itself rather than the passed candidate.
   - kind: tool
     value: prose

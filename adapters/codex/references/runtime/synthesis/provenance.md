@@ -1,1 +1,1 @@
-../../../../../../plugins/spec/references/synthesis/provenance.md
+../../../../../plugins/spec/references/synthesis/provenance.md

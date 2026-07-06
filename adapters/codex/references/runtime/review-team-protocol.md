@@ -1,1 +1,1 @@
-../../../../../docs/reference/review-team-protocol.md
+../../../../docs/reference/review-team-protocol.md

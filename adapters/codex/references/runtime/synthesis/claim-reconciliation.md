@@ -1,1 +1,1 @@
-../../../../../../plugins/spec/references/synthesis/claim-reconciliation.md
+../../../../../plugins/spec/references/synthesis/claim-reconciliation.md

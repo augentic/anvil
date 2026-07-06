@@ -1,1 +1,1 @@
-../../../../../../plugins/spec/references/synthesis/authority.md
+../../../../../plugins/spec/references/synthesis/authority.md

@@ -15,7 +15,7 @@ rule_hints:
   - kind: path-pattern
     value: "!docs/assets/**"
   - kind: path-pattern
-    value: "!adapters/shared/prose/rules/**"
+    value: "!adapters/codex/rules/**"
   - kind: regex
     value: "(?i)RFC[-\\s]+(\\d+)"
     config:

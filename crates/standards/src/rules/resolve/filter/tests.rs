@@ -27,7 +27,7 @@ fn make_entry(
         rule: make_rule(id, applicability, deprecated),
         origin: Origin::Shared,
         path_root: PathRoot::RulesRoot,
-        path: format!("adapters/shared/prose/rules/universal/{id}.md"),
+        path: format!("adapters/codex/rules/universal/{id}.md"),
     }
 }
 
@@ -72,7 +72,7 @@ fn core_entry(id: &str) -> ResolvedRuleEntry {
         rule: make_rule(id, None, None),
         origin: Origin::Core,
         path_root: PathRoot::RulesRoot,
-        path: format!("adapters/shared/prose/rules/core/{id}.md"),
+        path: format!("adapters/codex/rules/core/{id}.md"),
     }
 }
 
@@ -394,7 +394,7 @@ fn core_origin_matrix() {
         rule: make_rule("CORE-DEP", None, Some(deprecation_meta())),
         origin: Origin::Core,
         path_root: PathRoot::RulesRoot,
-        path: "adapters/shared/prose/rules/core/CORE-DEP.md".to_string(),
+        path: "adapters/codex/rules/core/CORE-DEP.md".to_string(),
     };
     let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     assert!(filter(vec![entry.clone()], &inputs).is_empty());
