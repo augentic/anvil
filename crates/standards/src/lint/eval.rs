@@ -4,11 +4,10 @@
 //! v1 (Phase 2) ships the four executable hint kinds the contract lists
 //! ([`HintKind::PathPattern`], [`HintKind::Schema`], [`HintKind::Regex`],
 //! [`HintKind::Tool`]). The framework-convergence
-//! family adds [`HintKind::ReferenceResolves`], [`HintKind::Unique`],
-//! [`HintKind::SetCoverage`], [`HintKind::Cardinality`], and
+//! family adds [`HintKind::ReferenceResolves`], [`HintKind::Unique`], and
 //! [`HintKind::ConstantEq`] in the same family. Each rule's
 //! hints are partitioned by kind and evaluated in the fixed order
-//! `path-pattern → schema → reference-resolves → unique → set-coverage → cardinality → constant-eq → fenced-block → presence → field-grammar → cross-reference → cli-contract → regex → tool`
+//! `path-pattern → schema → reference-resolves → unique → constant-eq → fenced-block → presence → field-grammar → regex → tool`
 //! so the cheap filters narrow the candidate file set before the
 //! subprocess boundary fires.
 //!
@@ -40,10 +39,7 @@
 //! truncation loop bails on them rather than synthesising a bogus
 //! payload.
 
-pub mod cardinality;
-pub mod cli_contract;
 pub mod constant_eq;
-pub mod cross_reference;
 mod error;
 pub mod fenced_block;
 pub mod field_grammar;
@@ -53,7 +49,6 @@ pub mod presence;
 pub mod reference_resolves;
 pub mod regex;
 pub mod schema;
-pub mod set_coverage;
 #[cfg(test)]
 pub(crate) mod testkit;
 pub mod tool;
@@ -69,7 +64,6 @@ use specify_error::Error as CliError;
 pub use tool::{NoopToolRunner, ToolOutput, ToolRunError, ToolRunner};
 
 use crate::lint::WorkspaceModel;
-use crate::lint::contract::CliContract;
 use crate::lint::diagnostics::map_hint_error;
 use crate::rules::{HintKind, LintMode, ResolvedRule, RuleHint};
 
@@ -85,10 +79,8 @@ pub struct HintEvalOutcome {
 
 /// Borrowed evaluation environment shared by every per-kind arm.
 ///
-/// Carries the indexed model, the project root, the tool runner
-/// behind `kind: tool`, and the binary-injected CLI contract behind
-/// `kind: cli-contract` (absent when the embedder injects none —
-/// `cli-contract` hints then fail as unsupported).
+/// Carries the indexed model, the project root, and the tool runner
+/// behind `kind: tool`.
 #[derive(Clone, Copy)]
 pub struct EvalEnv<'a> {
     /// Indexed workspace facts.
@@ -97,18 +89,13 @@ pub struct EvalEnv<'a> {
     pub project_dir: &'a Path,
     /// Runner backing `kind: tool` hints.
     pub tool_runner: &'a dyn ToolRunner,
-    /// Binary-injected CLI contract backing `kind: cli-contract`.
-    pub cli_contract: Option<&'a CliContract>,
 }
 
 impl fmt::Debug for EvalEnv<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // `tool_runner` is a trait object without `Debug`; surface its
         // presence without its contents.
-        f.debug_struct("EvalEnv")
-            .field("project_dir", &self.project_dir)
-            .field("cli_contract", &self.cli_contract.is_some())
-            .finish_non_exhaustive()
+        f.debug_struct("EvalEnv").field("project_dir", &self.project_dir).finish_non_exhaustive()
     }
 }
 
@@ -119,7 +106,7 @@ impl fmt::Debug for EvalEnv<'_> {
 /// cache.
 ///
 /// Hints are partitioned by kind and run in the order
-/// `path-pattern → schema → reference-resolves → unique → set-coverage → cardinality → constant-eq → fenced-block → presence → field-grammar → cross-reference → cli-contract → regex → tool`
+/// `path-pattern → schema → reference-resolves → unique → constant-eq → fenced-block → presence → field-grammar → regex → tool`
 /// per §"Evaluation algorithm".
 /// `path-pattern` hits build the candidate file set the later kinds
 /// consume.
@@ -159,14 +146,6 @@ fn evaluate_with_cache(
         let mut new = unique::evaluate(rule, hint, &candidates, model, &mut next_id)?;
         findings.append(&mut new);
     }
-    for hint in partition.set_coverage {
-        let mut new = set_coverage::evaluate(rule, hint, &candidates, model, &mut next_id)?;
-        findings.append(&mut new);
-    }
-    for hint in partition.cardinality {
-        let mut new = cardinality::evaluate(rule, hint, &candidates, model, &mut next_id)?;
-        findings.append(&mut new);
-    }
     for hint in partition.constant_eq {
         let mut new = constant_eq::evaluate(rule, hint, &candidates, model, &mut next_id)?;
         findings.append(&mut new);
@@ -181,22 +160,6 @@ fn evaluate_with_cache(
     }
     for hint in partition.field_grammar {
         let mut new = field_grammar::evaluate(rule, hint, &candidates, model, &mut next_id)?;
-        findings.append(&mut new);
-    }
-    for hint in partition.cross_reference {
-        let mut new = cross_reference::evaluate(rule, hint, &candidates, model, &mut next_id)?;
-        findings.append(&mut new);
-    }
-    for hint in partition.cli_contract {
-        let mut new = cli_contract::evaluate(
-            rule,
-            hint,
-            &candidates,
-            project_dir,
-            model,
-            env.cli_contract,
-            &mut next_id,
-        )?;
         findings.append(&mut new);
     }
     for hint in partition.regex {
@@ -224,14 +187,10 @@ struct PartitionedHints<'a> {
     schema: Vec<&'a RuleHint>,
     reference_resolves: Vec<&'a RuleHint>,
     unique: Vec<&'a RuleHint>,
-    set_coverage: Vec<&'a RuleHint>,
-    cardinality: Vec<&'a RuleHint>,
     constant_eq: Vec<&'a RuleHint>,
     fenced_block: Vec<&'a RuleHint>,
     presence: Vec<&'a RuleHint>,
     field_grammar: Vec<&'a RuleHint>,
-    cross_reference: Vec<&'a RuleHint>,
-    cli_contract: Vec<&'a RuleHint>,
     regex: Vec<&'a RuleHint>,
     tool: Vec<&'a RuleHint>,
 }
@@ -245,14 +204,10 @@ impl<'a> PartitionedHints<'a> {
                 HintKind::Schema => partition.schema.push(hint),
                 HintKind::ReferenceResolves => partition.reference_resolves.push(hint),
                 HintKind::Unique => partition.unique.push(hint),
-                HintKind::SetCoverage => partition.set_coverage.push(hint),
-                HintKind::Cardinality => partition.cardinality.push(hint),
                 HintKind::ConstantEq => partition.constant_eq.push(hint),
                 HintKind::FencedBlock => partition.fenced_block.push(hint),
                 HintKind::Presence => partition.presence.push(hint),
                 HintKind::FieldGrammar => partition.field_grammar.push(hint),
-                HintKind::CrossReference => partition.cross_reference.push(hint),
-                HintKind::CliContract => partition.cli_contract.push(hint),
                 HintKind::Regex => partition.regex.push(hint),
                 HintKind::Tool => partition.tool.push(hint),
             }
@@ -352,8 +307,8 @@ fn build_candidate_set(
 /// Render the candidate `PathBuf` slice into the `/`-relative string
 /// set the fact-iterating sub-evaluators test membership against.
 ///
-/// Every fact-iterating kind (`set-coverage`, `constant-eq`,
-/// `reference-resolves`, `unique`, `cardinality`)
+/// Every fact-iterating kind (`constant-eq`,
+/// `reference-resolves`, `unique`)
 /// narrows its facts to the `path-pattern` candidate set by string
 /// path. Sharing the conversion keeps that lookup identical across
 /// kinds.

@@ -503,8 +503,7 @@ pub struct LintCounts {
 
 /// Every wire event id in the closed [`EventKind`] taxonomy, sorted.
 ///
-/// This is the inventory `specify contract dump` publishes and the
-/// `cli-contract` lint kind checks citations against. The
+/// The closed inventory `specify journal emit` validates against. The
 /// `wire_event_ids` test in `journal/tests.rs` serialises one sample
 /// per variant to prove the table matches the serde renames; adding a
 /// variant without updating this table fails that test.

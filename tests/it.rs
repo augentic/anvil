@@ -16,8 +16,6 @@ mod archive;
 mod bootstrap;
 #[path = "cli.rs"]
 mod cli;
-#[path = "cli_contract.rs"]
-mod cli_contract;
 #[path = "dist.rs"]
 mod dist;
 #[path = "e2e.rs"]

@@ -16,8 +16,7 @@
     "markdown_sections",
     "markdown_links",
     "symlinks",
-    "skills",
-    "adapter_manifests"
+    "skills"
   ],
   "properties": {
     "version": {
@@ -77,11 +76,6 @@
       "items": { "$ref": "#/$defs/skill" },
       "description": "`WorkspaceModel` entity: `skill` facts from `plugins/**/SKILL.md`."
     },
-    "adapter_manifests": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/adapterManifest" },
-      "description": "`WorkspaceModel` entity: `adapter_manifest` facts from `adapters/{sources,targets}/**/adapter.yaml`."
-    },
     "ignore_directives": {
       "type": "array",
       "items": { "$ref": "#/$defs/ignoreDirective" },
@@ -96,11 +90,6 @@
       "type": "array",
       "items": { "$ref": "#/$defs/scenario" },
       "description": "`WorkspaceModel` entity: `scenario` facts from the dedicated scenario discovery pass over the opt-in scenario roots (`evals/scenarios/*.md`, `adapters/targets/*/tests/**`, plugin skill fixtures) under the framework scan profile. Kept out of `files` so no other rule's candidate set changes. Optional in v1 envelopes; absent under the project profile so the product wire shape is unchanged."
-    },
-    "adapter_dirs": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/adapterDir" },
-      "description": "`WorkspaceModel` entity: `adapter_dir` facts from the dedicated adapter-directory pass over the immediate children of `adapters/{sources,targets}` under the framework scan profile (one fact per child directory, with or without an `adapter.yaml`). The source side of the `kind: cross-reference` join. Optional in v1 envelopes; absent under the project profile so the product wire shape is unchanged."
     }
   },
   "$defs": {
@@ -265,29 +254,6 @@
         }
       }
     },
-    "adapterManifest": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["axis", "name", "path"],
-      "properties": {
-        "axis": {
-          "type": "string",
-          "enum": ["sources", "targets"],
-          "description": "`WorkspaceModel` entity: `sources` xor `targets` (the on-disk parent directory under `adapters/`)."
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Adapter name from `adapter.yaml`."
-        },
-        "path": { "$ref": "#/$defs/relativePath" },
-        "version": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Optional manifest version; absent when the adapter does not pin one."
-        }
-      }
-    },
     "scenario": {
       "type": "object",
       "additionalProperties": false,
@@ -318,27 +284,6 @@
           "type": "object",
           "additionalProperties": true,
           "description": "`WorkspaceModel` entity: parsed YAML frontmatter field map. Per-key shape is rule-specific; empty when the opted-in frontmatter failed to parse."
-        }
-      }
-    },
-    "adapterDir": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["path", "axis", "name"],
-      "properties": {
-        "path": {
-          "$ref": "#/$defs/relativePath",
-          "description": "`WorkspaceModel` entity: project-relative path of the adapter directory itself (e.g. `adapters/targets/vectis`); the join key against the containing directory of each `adapter_manifest` path."
-        },
-        "axis": {
-          "type": "string",
-          "enum": ["sources", "targets"],
-          "description": "`WorkspaceModel` entity: `sources` xor `targets` (the parent directory under `adapters/`)."
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "`WorkspaceModel` entity: directory name (the final path segment, e.g. `vectis`)."
         }
       }
     },

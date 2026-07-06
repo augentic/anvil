@@ -63,7 +63,7 @@ pub struct FrameworkArgs {
     pub sources: Vec<String>,
 
     /// Restrict the declarative pass to specific rule ids (debug
-    /// surface: `specify lint framework --rule CORE-001`).
+    /// surface: `specify lint framework --rule CORE-002`).
     /// Repeatable; empty means "evaluate every applicable rule".
     /// Does not filter the imperative pass — authoring rule ids
     /// (`rules.schema-violation`, `skill.unknown-tool`, …) do not

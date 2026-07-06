@@ -257,7 +257,7 @@ mod tests {
         ValidationCase {
             err: || HintError::Unsupported {
                 rule_id: RULE_ID.into(),
-                kind: HintKind::SetCoverage,
+                kind: HintKind::Presence,
                 reason: "reserved",
             },
             rule_id: "review-unsupported-hint-kind",

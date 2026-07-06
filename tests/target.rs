@@ -85,10 +85,8 @@ fn resolve_accepts_version_suffix() {
 #[test]
 fn adapter_group_exposes_build_and_publish() {
     // `specify adapter` is un-retired at RFC-48 as the packaging group
-    // (`build` + `publish`). `--help` must exit 0 and the contract dump
-    // must declare both verbs.
-    specify_cmd().args(["adapter", "--help"]).assert().success();
-    let verbs = common::contract_dump_verbs(&["adapter"]);
+    // (`build` + `publish`). `--help` must exit 0 and list both verbs.
+    let verbs = common::help_verbs(&["adapter"]);
     for verb in ["build", "publish"] {
         assert!(verbs.iter().any(|v| v == verb), "adapter must declare `{verb}`, got: {verbs:?}");
     }

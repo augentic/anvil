@@ -110,13 +110,10 @@
         "tool",
         "unique",
         "reference-resolves",
-        "set-coverage",
-        "cardinality",
         "constant-eq",
         "fenced-block",
         "presence",
-        "field-grammar",
-        "cross-reference"
+        "field-grammar"
       ],
       "description": "Closed v1 deterministic-hint kind enum. Every kind is executable; `specify lint` owns execution semantics."
     },
@@ -153,16 +150,6 @@
           "type": "string",
           "minLength": 1,
           "description": "Per-match filter: skip matches whose remainder starts with this literal prefix."
-        },
-        "slash-skill-positional": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, apply CORE-023 slash-skill positional semantics instead of matching `value` as a regex."
-        },
-        "join-backslash-continuations": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true with `slash-skill-positional`, join backslash- and indent-continued rows before scanning."
         }
       }
     },

@@ -95,15 +95,11 @@ pub enum LintMode {
 
 /// Closed v1 deterministic-hint kind enum.
 ///
-/// After C17 every kind is executable: `path-pattern`, `regex`,
-/// `schema`, `tool`, `reference-resolves`, `unique`, `set-coverage`,
-/// `cardinality`, `constant-eq`,
-/// `fenced-block`, `presence`, `field-grammar`, `cross-reference`,
-/// and `cli-contract`. (`content-digest-eq` was removed when its last
-/// rule consumers retired — agent-teams overlays are symlink-only and
-/// README restatements became links.)
+/// Every kind is executable: `path-pattern`, `regex`, `schema`,
+/// `tool`, `reference-resolves`, `unique`, `constant-eq`,
+/// `fenced-block`, `presence`, and `field-grammar`.
 /// No kind is reserved. (Whole-tree namespace-ownership runs through the
-/// `rules` WASI tool via `kind: tool`, not a dedicated hint kind.)
+/// `rules` checker via `kind: tool`, not a dedicated hint kind.)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum HintKind {
@@ -120,29 +116,17 @@ pub enum HintKind {
     Unique,
     /// Every reference resolves (v1 source discriminator: `markdown-link`).
     ReferenceResolves,
-    /// Assert that the values some candidate file declares cover a
-    /// closed expected set (v1 source discriminator:
-    /// `skill-allowed-tools`; the expected set rides `config`).
-    SetCoverage,
-    /// Assert that some countable property of a candidate is within
-    /// configured bounds (v1 metric selectors: `skill-body-line-count`,
-    /// `markdown-h2-section-body-line-count`;
-    /// the cap rides `config: { max }`).
-    Cardinality,
     /// Assert that an extracted field on a candidate fact equals a
-    /// configured constant (v1 source discriminators:
-    /// `adapter-manifest-field`, `skill-name-plugin-prefix`; the value
-    /// rides `config`).
+    /// configured constant (v1 source discriminator:
+    /// `skill-name-plugin-prefix`; the value rides `config`).
     ConstantEq,
     /// Fence-aware body predicate over [`crate::lint::FencedBlock`] facts
-    /// (`skill-envelope-json-in-body`, …).
+    /// (`fenced-body-contains`).
     FencedBlock,
     /// Assert that a required artifact is present (v1 mechanism
     /// selectors: `frontmatter` — candidate files absent from the
     /// frontmatter fact family; `file` — a single required path in
-    /// `config: { path }`; `markdown-section` — skills over a
-    /// `config: { when: { metric, min } }` threshold lacking the
-    /// `config: { title, level }` section; `directory-index` —
+    /// `config: { path }`; `directory-index` —
     /// directories matching a `config: { roots }` glob with at least
     /// `config: { min-files }` files beneath them but no
     /// `config: { index }` file inside them).
@@ -154,26 +138,6 @@ pub enum HintKind {
     /// alphabetic word of `config: { field }` is in the
     /// `config: { allowed }` list).
     FieldGrammar,
-    /// Assert that every element of a source fact family has a
-    /// corresponding element in a target fact family (a relational
-    /// set-difference join); flag the unmatched source items. `value`
-    /// selects the source family, `config: { target }` the target
-    /// family; the join key is the per-family mechanism (v1 source
-    /// selector: `adapter-dir` joined against the `adapter-manifest`
-    /// target on the manifest's containing directory).
-    CrossReference,
-    /// Check documentation against the binary-injected
-    /// [`crate::lint::contract::CliContract`] (v1 mechanism selectors:
-    /// `invocations` — `specify …` command lines in fenced blocks /
-    /// inline code walk the contract's verb tree; `event-ids` —
-    /// dotted-kebab inline code spans and configured JSON fields,
-    /// gated to the contract's own event-id families, must be known
-    /// journal event ids; `error-codes` — configured JSON fields must
-    /// be known error discriminants; `test-citations` — `tests/…`
-    /// inline code spans and configured link-prefix targets must exist
-    /// in the contract's build-time tests inventory. Exclusions ride
-    /// `config`).
-    CliContract,
 }
 
 /// Inclusive narrowing filter — all populated dimensions match (AND).

@@ -37,8 +37,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 mod facts;
 
 pub use facts::{
-    AdapterDir, AdapterManifest, FencedBlock, File, Frontmatter, IgnoreDirective, MarkdownLink,
-    MarkdownSection, Scenario, Skill, Symlink,
+    FencedBlock, File, Frontmatter, IgnoreDirective, MarkdownLink, MarkdownSection, Scenario,
+    Skill, Symlink,
 };
 
 /// Type-level pin of the `WorkspaceModel` envelope version.
@@ -80,18 +80,6 @@ pub enum FileKind {
     Text,
     /// Treated as opaque bytes; regex hints skip files of this kind.
     Binary,
-}
-
-/// Closed adapter-axis discriminant per the standards-layer contract §"Core entity
-/// families (v1)". Matches the on-disk parent directory under
-/// `adapters/`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum AdapterAxis {
-    /// Source adapter (`adapters/sources/<name>/`).
-    Sources,
-    /// Target adapter (`adapters/targets/<name>/`).
-    Targets,
 }
 
 /// Closed scan-profile discriminant per the standards-layer contract §"`WorkspaceModel`"
@@ -156,9 +144,6 @@ pub struct WorkspaceModel {
     pub symlinks: Vec<Symlink>,
     /// `skill` facts from `plugins/**/SKILL.md`.
     pub skills: Vec<Skill>,
-    /// `adapter_manifest` facts from
-    /// `adapters/{sources,targets}/**/adapter.yaml`.
-    pub adapter_manifests: Vec<AdapterManifest>,
     /// `ignore_directive` facts from the directive indexer.
     /// Optional in v1 envelopes per the schema; the producer always
     /// serialises the array so consumers see one consistent wire
@@ -175,11 +160,4 @@ pub struct WorkspaceModel {
     /// [`Self::files`] so no other rule's candidate set changes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub scenarios: Vec<Scenario>,
-    /// `adapter_dir` facts from the dedicated adapter-directory pass over
-    /// the immediate children of `adapters/{sources,targets}` under the
-    /// framework scan profile. Optional in v1 envelopes; producers omit
-    /// the field when empty so the project profile's wire shape is
-    /// unchanged. The source side of the `kind: cross-reference` join.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub adapter_dirs: Vec<AdapterDir>,
 }

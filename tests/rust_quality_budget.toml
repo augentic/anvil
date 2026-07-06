@@ -14,7 +14,7 @@
 # Crates absent from this table have an implicit budget of 0. See
 # docs/standards/testing.md and unit-test-reduction.md.
 [crate]
-standards = 72
+standards = 55
 workflow = 60
 registry = 39
 extension = 13

@@ -181,7 +181,6 @@ mod ignore_directive_pass {
             model: &model,
             project_dir: tmp.path(),
             tool_runner: runner,
-            cli_contract: None,
         };
         let (mut findings, next_id_counter) =
             evaluate_rules(std::slice::from_ref(&url_rule), env, 1, &[]).expect("evaluate ok");
@@ -656,7 +655,6 @@ mod path_pattern {
             model: &model,
             project_dir: tmp.path(),
             tool_runner: runner,
-            cli_contract: None,
         };
         let (findings, _next_id) =
             evaluate_rules(std::slice::from_ref(&rule), env, 1, &[]).expect("evaluate ok");
@@ -688,7 +686,6 @@ mod path_pattern {
             model: &model,
             project_dir: tmp.path(),
             tool_runner: runner,
-            cli_contract: None,
         };
         let (findings, _next_id) =
             evaluate_rules(std::slice::from_ref(&rule), env, 1, &[]).expect("evaluate ok");
@@ -717,7 +714,6 @@ mod path_pattern {
             model: &model,
             project_dir: tmp.path(),
             tool_runner: runner,
-            cli_contract: None,
         };
         let (findings, _next_id) =
             evaluate_rules(std::slice::from_ref(&rule), env, 1, &[]).expect("evaluate ok");

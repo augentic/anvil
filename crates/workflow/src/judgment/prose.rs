@@ -1,47 +1,45 @@
 //! The workflow guest's embedded prompt corpus.
 //!
 //! Markdown stays the authoring source of truth: the prompt bodies and
-//! the synthesis playbook references are embedded at compile time from
-//! the repository tree (the dependency direction forbids importing the
-//! adapters' `specify-prose-registry`, so the crate embeds directly).
-//! The corpus is small (about 50 kilobytes), so it is pasted into the
-//! system prompt rather than shelved behind an MCP route (decision D8).
+//! the synthesis playbook references are inlined and link-checked by
+//! this crate's `build.rs` (a dangling relative reference fails the
+//! build — RFC-61 embed-time link resolution) and embedded from
+//! `OUT_DIR/prose/`. The corpus is small (about 50 kilobytes), so it is
+//! pasted into the system prompt rather than shelved behind an MCP
+//! route (decision D8).
 
 /// System prompt body for the propose reconciliation leg.
-pub const PROPOSE: &str = include_str!("prompts/propose.md");
+pub const PROPOSE: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/propose.md"));
 
 /// System prompt body for the slice synthesis leg. The playbook
 /// references below are appended as labeled sections.
-pub const SYNTHESIZE: &str = include_str!("prompts/synthesize.md");
+pub const SYNTHESIZE: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/synthesize.md"));
 
 /// `plugins/spec/references/synthesis/substeps.md` — the synthesis
 /// playbook's step ordering.
-pub const SYNTHESIS_SUBSTEPS: &str =
-    include_str!("../../../../plugins/spec/references/synthesis/substeps.md");
+pub const SYNTHESIS_SUBSTEPS: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/substeps.md"));
 
 /// `plugins/spec/references/synthesis/requirement-block.md` — the
 /// requirement-block authoring contract.
 pub const SYNTHESIS_REQUIREMENT_BLOCK: &str =
-    include_str!("../../../../plugins/spec/references/synthesis/requirement-block.md");
+    include_str!(concat!(env!("OUT_DIR"), "/prose/requirement-block.md"));
 
 /// `plugins/spec/references/synthesis/authority.md` — authority
 /// resolution order and override surface.
-pub const SYNTHESIS_AUTHORITY: &str =
-    include_str!("../../../../plugins/spec/references/synthesis/authority.md");
+pub const SYNTHESIS_AUTHORITY: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/authority.md"));
 
 /// `plugins/spec/references/synthesis/claim-reconciliation.md` —
 /// claim-level agreement and reconciliation guidance.
 pub const SYNTHESIS_CLAIM_RECONCILIATION: &str =
-    include_str!("../../../../plugins/spec/references/synthesis/claim-reconciliation.md");
+    include_str!(concat!(env!("OUT_DIR"), "/prose/claim-reconciliation.md"));
 
 /// `plugins/spec/references/synthesis/tags.md` — the `[unknown]` /
 /// `[conflict]` / `[divergence]` tag vocabulary.
-pub const SYNTHESIS_TAGS: &str =
-    include_str!("../../../../plugins/spec/references/synthesis/tags.md");
+pub const SYNTHESIS_TAGS: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/tags.md"));
 
 /// `plugins/spec/references/spec-format.md` — canonical heading
 /// conventions for requirement blocks and scenario headings.
-pub const SPEC_FORMAT: &str = include_str!("../../../../plugins/spec/references/spec-format.md");
+pub const SPEC_FORMAT: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/spec-format.md"));
 
 /// Assemble the synthesis system prompt: the authored prompt body plus
 /// the playbook references as labeled sections, in citation order.

@@ -92,14 +92,6 @@ mod framework_indexer {
         assert_eq!(skill.name, "specify-init");
         assert_eq!(skill.plugin, "spec");
         assert!(skill.body_line_count.unwrap_or(0) >= 1);
-
-        assert!(
-            model.adapter_manifests.len() >= 2,
-            "adapter extractor must emit one fact per `adapter.yaml` (sources + targets)"
-        );
-        let names: Vec<&str> = model.adapter_manifests.iter().map(|m| m.name.as_str()).collect();
-        assert!(names.contains(&"intent"));
-        assert!(names.contains(&"omnia"));
     }
 
     #[test]
@@ -361,9 +353,8 @@ mod model_round_trip {
     use serde_json::{Map, Value, json};
     use specify_schema::{ValidationStatus, WORKSPACE_MODEL_JSON_SCHEMA, validate_value};
     use specify_standards::lint::{
-        AdapterAxis, AdapterDir, AdapterManifest, File, FileKind, Frontmatter, IgnoreDirective,
-        MarkdownLink, MarkdownSection, ScanProfile, Scenario, Skill, Symlink, WorkspaceModel,
-        WorkspaceModelVersion,
+        File, FileKind, Frontmatter, IgnoreDirective, MarkdownLink, MarkdownSection, ScanProfile,
+        Scenario, Skill, Symlink, WorkspaceModel, WorkspaceModelVersion,
     };
 
     fn assert_schema_valid(value: &Value) {
@@ -392,11 +383,9 @@ mod model_round_trip {
             markdown_links: vec![],
             symlinks: vec![],
             skills: vec![],
-            adapter_manifests: vec![],
             ignore_directives: vec![],
             fenced_blocks: vec![],
             scenarios: vec![],
-            adapter_dirs: vec![],
         };
 
         let value = serde_json::to_value(&model).expect("serialise empty model");
@@ -413,7 +402,6 @@ mod model_round_trip {
             "markdown_links",
             "symlinks",
             "skills",
-            "adapter_manifests",
             "ignore_directives",
         ] {
             assert!(
@@ -488,12 +476,6 @@ mod model_round_trip {
                 frontmatter_ref: "plugins/spec/skills/refine/SKILL.md".into(),
                 body_line_count: Some(42),
             }],
-            adapter_manifests: vec![AdapterManifest {
-                axis: AdapterAxis::Targets,
-                name: "omnia".into(),
-                path: "adapters/targets/omnia/adapter.yaml".into(),
-                version: Some("1".into()),
-            }],
             ignore_directives: vec![IgnoreDirective {
                 path: "src/lib.rs".into(),
                 line: 12,
@@ -510,11 +492,6 @@ mod model_round_trip {
                 expected_artifacts: vec!["spec.md".into()],
                 body_id: Some("refine-happy-path".into()),
                 fields: scenario_fields,
-            }],
-            adapter_dirs: vec![AdapterDir {
-                path: "adapters/targets/omnia".into(),
-                axis: AdapterAxis::Targets,
-                name: "omnia".into(),
             }],
         };
 

@@ -28,7 +28,6 @@ use specify_diagnostics::{
 use specify_error::Result;
 
 use crate::lint::ScanProfile;
-use crate::lint::contract::CliContract;
 use crate::lint::diagnostics::{emit_dump_model, map_index_error};
 use crate::lint::eval::tool::ToolRunner;
 use crate::lint::eval::{EvalEnv, evaluate_rules};
@@ -52,11 +51,6 @@ pub struct PipelineConfig<'a> {
     pub rule_filter: &'a [&'a str],
     /// Extension runner backing `kind: tool` hints.
     pub tool_runner: &'a dyn ToolRunner,
-    /// Binary-injected CLI contract backing `kind: cli-contract`
-    /// hints. The root binary builds it (clap introspection + const
-    /// tables); embedders without a contract pass `None` and any
-    /// `cli-contract` hint fails as unsupported.
-    pub cli_contract: Option<&'a CliContract>,
 }
 
 impl fmt::Debug for PipelineConfig<'_> {
@@ -68,7 +62,6 @@ impl fmt::Debug for PipelineConfig<'_> {
             .field("dump_model", &self.dump_model)
             .field("apply_ignore_directives", &self.apply_ignore_directives)
             .field("rule_filter", &self.rule_filter)
-            .field("cli_contract", &self.cli_contract.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -107,7 +100,6 @@ pub fn run(inputs: &ResolveInputs<'_>, config: &PipelineConfig<'_>) -> Result<Ru
         model: &model,
         project_dir: inputs.project_dir,
         tool_runner: config.tool_runner,
-        cli_contract: config.cli_contract,
     };
     let (mut combined, mut next_id) = evaluate_rules(&resolved.rules, env, 1, config.rule_filter)?;
 

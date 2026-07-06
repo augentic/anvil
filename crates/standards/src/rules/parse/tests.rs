@@ -144,15 +144,15 @@ rule_hints:
     assert_eq!(hints[0].kind, HintKind::Regex);
     assert_eq!(hints[0].value, "[invalid regex)(");
 
-    // Reserved hint kinds shape-validate without execution semantics.
+    // Every declared hint kind shape-validates without execution semantics.
     let content = r"---
 id: UNI-014
-title: Reserved hint kinds
+title: Declared hint kinds
 severity: optional
-trigger: Reserved hint kind hint kinds must shape-validate without execution semantics.
+trigger: Declared hint kinds must shape-validate without execution semantics.
 rule_hints:
-  - kind: set-coverage
-    value: 'rule.id'
+  - kind: presence
+    value: 'file'
   - kind: constant-eq
     value: 'UNI'
 ---
@@ -161,7 +161,7 @@ rule_hints:
     let rule = parse_rule(content).expect("parses");
     let hints = rule.rule_hints.expect("hints present");
     assert_eq!(hints.len(), 2);
-    assert_eq!(hints[0].kind, HintKind::SetCoverage);
+    assert_eq!(hints[0].kind, HintKind::Presence);
     assert_eq!(hints[1].kind, HintKind::ConstantEq);
 
     // Framework-side applicability.artifacts tokens compose with consumer-side

@@ -1,7 +1,6 @@
 //! `kind: regex` evaluator per the executable hint-kind contract.
 
 mod config;
-pub mod logical_lines;
 
 use std::path::{Path, PathBuf};
 
@@ -15,24 +14,16 @@ use crate::rules::{ResolvedRule, RuleHint};
 
 const SNIPPET_MAX_CHARS: usize = 240;
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "regex eval handles normal, capture, and slash-skill modes in one pass"
-)]
 pub(crate) fn evaluate(
     rule: &ResolvedRule, hint: &RuleHint, candidates: &[PathBuf], project_dir: &Path,
     model: &WorkspaceModel, next_id: &mut u64,
 ) -> Result<Vec<Diagnostic>, HintError> {
     let cfg = RegexHintConfig::parse(rule, hint)?;
-    let pattern = if matches!(cfg.eval_mode, RegexEvalMode::SlashSkillPositional { .. }) {
-        None
-    } else {
-        Some(Regex::new(&hint.value).map_err(|err| HintError::RegexCompile {
-            rule_id: rule.rule_id.clone(),
-            pattern: hint.value.clone(),
-            source: err,
-        })?)
-    };
+    let pattern = Regex::new(&hint.value).map_err(|err| HintError::RegexCompile {
+        rule_id: rule.rule_id.clone(),
+        pattern: hint.value.clone(),
+        source: err,
+    })?;
 
     let mut out: Vec<Diagnostic> = Vec::new();
     for candidate in candidates {
@@ -53,43 +44,6 @@ pub(crate) fn evaluate(
             }
         };
         let text = String::from_utf8_lossy(&bytes);
-        if let RegexEvalMode::SlashSkillPositional {
-            join_backslash_continuations,
-        } = cfg.eval_mode
-        {
-            let line_iter: Vec<(usize, String)> = if join_backslash_continuations {
-                logical_lines::logical_lines_with_starts(&text)
-            } else {
-                text.lines().enumerate().map(|(idx, line)| (idx + 1, line.to_string())).collect()
-            };
-            for (start_line, logical) in line_iter {
-                if !logical_lines::violates_slash_skill_positional(&logical) {
-                    continue;
-                }
-                let end_line = if join_backslash_continuations && logical.contains('\n') {
-                    start_line + logical.lines().count().saturating_sub(1)
-                } else {
-                    start_line
-                };
-                let line_suffix =
-                    if end_line > start_line { format!("-{end_line}") } else { String::new() };
-                push_finding(
-                    rule,
-                    hint,
-                    &mut out,
-                    next_id,
-                    &candidate_str,
-                    start_line,
-                    1,
-                    &format!(
-                        "Slash skill invocation uses flag-style arguments at line {start_line}{line_suffix}"
-                    ),
-                );
-            }
-            continue;
-        }
-
-        let pattern = pattern.as_ref().expect("slash-skill branch continues above");
         if matches!(cfg.eval_mode, RegexEvalMode::FileMustContain) {
             let any_match = text.lines().any(|line| pattern.is_match(line));
             if !any_match {

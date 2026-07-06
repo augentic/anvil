@@ -128,27 +128,36 @@ pub fn stamp_slice_outcome(
 }
 
 /// Subcommand names beneath the given command path (empty slice for
-/// the top level), read from `specify contract dump`. The robust verb
-/// inventory help tests assert against instead of exact clap wording.
-pub fn contract_dump_verbs(path: &[&str]) -> Vec<String> {
-    let assert = specify_cmd().args(["--format", "json", "contract", "dump"]).assert().success();
-    let dump: Value =
-        serde_json::from_slice(&assert.get_output().stdout).expect("contract dump JSON");
-    let mut node = &dump["commands"];
-    for name in path {
-        node = node["subcommands"]
-            .as_array()
-            .expect("subcommands array")
-            .iter()
-            .find(|n| n["name"] == *name)
-            .unwrap_or_else(|| panic!("verb `{name}` missing from contract dump"));
+/// the top level), parsed from the `Commands:` section of clap's
+/// `--help` output. The verb inventory help tests assert against
+/// instead of exact clap description wording.
+pub fn help_verbs(path: &[&str]) -> Vec<String> {
+    let assert = specify_cmd().args(path).arg("--help").assert().success();
+    let help = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 help output");
+    let mut verbs = Vec::new();
+    let mut in_commands = false;
+    for line in help.lines() {
+        if line.trim_end() == "Commands:" {
+            in_commands = true;
+            continue;
+        }
+        if in_commands {
+            let Some(rest) = line.strip_prefix("  ") else {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                break;
+            };
+            if rest.starts_with(' ') {
+                continue;
+            }
+            if let Some(name) = rest.split_whitespace().next() {
+                verbs.push(name.to_string());
+            }
+        }
     }
-    node["subcommands"]
-        .as_array()
-        .expect("subcommands array")
-        .iter()
-        .map(|n| n["name"].as_str().expect("verb name").to_string())
-        .collect()
+    assert!(!verbs.is_empty(), "no Commands: section parsed from `--help`:\n{help}");
+    verbs
 }
 
 /// Hex-encoded SHA-256 of the bytes at `path`, used by every tool

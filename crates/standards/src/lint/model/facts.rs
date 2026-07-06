@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map as JsonMap, Value as JsonValue};
 
-use super::{AdapterAxis, FileKind};
+use super::FileKind;
 /// `file` fact per the `WorkspaceModel` entity families — produced
 /// by the filesystem walk.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,7 +102,7 @@ const fn is_false(value: &bool) -> bool {
 }
 
 /// `fenced_block` fact — closed fence body extracted for fence-aware evaluators
-/// (CORE-037, CORE-017).
+/// (CORE-017).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct FencedBlock {
@@ -162,54 +162,6 @@ pub struct Skill {
     /// did not compute it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body_line_count: Option<u32>,
-}
-
-/// `adapter_manifest` fact per the `WorkspaceModel` entity families
-/// — extracted from `adapters/{sources,targets}/**/adapter.yaml`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct AdapterManifest {
-    /// Closed `sources` / `targets` discriminant.
-    pub axis: AdapterAxis,
-    /// Adapter name from `adapter.yaml`.
-    pub name: String,
-    /// Project-relative path of the `adapter.yaml` file.
-    pub path: String,
-    /// Optional manifest version; absent when the adapter does not
-    /// pin one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<String>,
-}
-
-/// `adapter_dir` fact per the `WorkspaceModel` entity families.
-///
-/// Produced by the framework profile's dedicated adapter-directory pass
-/// (see [`crate::lint::index::adapter_dir`]): one fact per immediate
-/// child directory under `adapters/sources/` and `adapters/targets/`,
-/// regardless of whether the directory carries an `adapter.yaml`
-/// manifest. Symlinked entries are skipped. Directories are not files,
-/// so this family is kept out of [`crate::lint::WorkspaceModel::files`]
-/// and carries zero blast radius to other rules' candidate sets.
-///
-/// The family is the *source* side of the `kind: cross-reference`
-/// relational join: a `cross-reference` hint flags any [`Self::path`]
-/// that has no corresponding [`AdapterManifest`] (joined on the
-/// manifest's containing directory). Listing every adapter directory —
-/// not just the orphans — keeps the join itself in the evaluator rather
-/// than baked into this extractor.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct AdapterDir {
-    /// Project-relative path of the adapter directory itself (e.g.
-    /// `adapters/targets/vectis`), with forward slashes and no trailing
-    /// separator. The join key against the containing directory of each
-    /// [`AdapterManifest`] path.
-    pub path: String,
-    /// Closed `sources` / `targets` discriminant matching the parent
-    /// directory under `adapters/`.
-    pub axis: AdapterAxis,
-    /// Directory name (the final path segment, e.g. `vectis`).
-    pub name: String,
 }
 
 /// `scenario` fact per the `WorkspaceModel` entity families.

@@ -17,10 +17,9 @@ use crate::common;
 
 #[test]
 fn workspace_help_lists_active_subcommands() {
-    // `workspace --help` must exit 0; the verb inventory is asserted
-    // via the contract dump rather than exact clap wording.
-    specify_cmd().args(["workspace", "--help"]).assert().success();
-    let verbs = common::contract_dump_verbs(&["workspace"]);
+    // `workspace --help` must exit 0; the verb inventory is parsed from
+    // the help `Commands:` section rather than exact clap wording.
+    let verbs = common::help_verbs(&["workspace"]);
     for verb in ["sync", "push"] {
         assert!(verbs.iter().any(|v| v == verb), "workspace must declare `{verb}`: {verbs:?}");
     }

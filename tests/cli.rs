@@ -14,16 +14,15 @@ mod base {
 
     use tempfile::tempdir;
 
-    use crate::common::{contract_dump_verbs, omnia_schema_dir, specify_cmd};
+    use crate::common::{help_verbs, omnia_schema_dir, specify_cmd};
 
     #[test]
     fn help_exits_zero_and_prints_usage() {
         // No exact clap wording: assert exit 0 and that the help text lists
-        // every top-level verb the contract dump declares.
-        let assert = specify_cmd().arg("--help").assert().success();
-        let output = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 stdout");
-        for verb in contract_dump_verbs(&[]) {
-            assert!(output.contains(&verb), "--help must list `{verb}`, got:\n{output}");
+        // the core top-level verbs.
+        let verbs = help_verbs(&[]);
+        for verb in ["init", "plan", "slice", "source", "target", "workspace"] {
+            assert!(verbs.iter().any(|v| v == verb), "--help must list `{verb}`, got: {verbs:?}");
         }
     }
 

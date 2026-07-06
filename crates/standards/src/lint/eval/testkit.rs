@@ -25,11 +25,9 @@ pub fn empty_model() -> WorkspaceModel {
         markdown_links: vec![],
         symlinks: vec![],
         skills: vec![],
-        adapter_manifests: vec![],
         ignore_directives: vec![],
         fenced_blocks: vec![],
         scenarios: vec![],
-        adapter_dirs: vec![],
     }
 }
 

@@ -388,9 +388,8 @@ mod export {
             "UNI-001",
             "Universal anchor",
         );
-        // C7 lands the canonical `CORE-001`; this fixture uses a high
-        // out-of-the-way id (`CORE-999`) so the test never collides with
-        // a future first-party core rule.
+        // This fixture uses a high out-of-the-way id (`CORE-999`) so the
+        // test never collides with a first-party core rule.
         write_rule_fixture(
             &rules_root.path().join("adapters/shared/prose/rules/core/CORE-fixture.md"),
             "CORE-999",

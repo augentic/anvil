@@ -215,7 +215,7 @@ mod no_reserved_hint_kinds {
         collect_const_strings(&schema, &mut kinds);
 
         assert!(
-            kinds.len() >= 12,
+            kinds.len() >= 10,
             "expected the full v1 hint-kind vocabulary in rule.schema.json, found {}: {:?}",
             kinds.len(),
             kinds,

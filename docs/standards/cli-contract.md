@@ -99,7 +99,7 @@ Durable run telemetry is the newline-delimited JSON journal at `.specify/journal
 {"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}
 ```
 
-The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. The ids below are cross-checked against the running binary by CORE-057 on every `make lint`, so this list cannot drift silently:
+The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum's `WIRE_EVENT_IDS` table when the taxonomy changes:
 
 | Family | Event ids | Emitted by |
 |---|---|---|

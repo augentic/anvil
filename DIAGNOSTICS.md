@@ -44,8 +44,8 @@ The engine is a generic dispatcher. Every framework `CORE-*` check is one of two
 
 | Road | Ids (example) | How it runs |
 | --- | --- | --- |
-| Road A — declarative hint | most of `CORE-001..052` | a generic per-kind evaluator (`lint/eval/*`) interprets the rule's `kind:` (`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`) over `WorkspaceModel` facts; the mechanism selector rides `hint.value` (including the whole-tree `value: scenario` selector on `schema` and `unique`) and caps/sets/maps ride the rule's `config:` |
-| Road B — referenced tool | `CORE-009`, `CORE-026`, the scenarios / skill-body / links-registry / marketplace / prose families | `kind: tool` value `<tool>` + a sentinel `path-pattern`; the engine resolves the tool by name (in-process framework checkers) and folds its `DiagnosticReport`. Policy rides the rule's `config:`, forwarded as a second positional arg |
+| Road A — declarative hint | most of the surviving `CORE-*` set | a generic per-kind evaluator (`lint/eval/*`) interprets the rule's `kind:` (`schema`, `reference-resolves`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`) over `WorkspaceModel` facts; the mechanism selector rides `hint.value` (including the whole-tree `value: scenario` selector on `schema` and `unique`) and caps/sets/maps ride the rule's `config:` |
+| Road B — referenced tool | `CORE-009`, `CORE-026`, the scenarios / links-registry / marketplace / prose families | `kind: tool` value `<tool>` + a sentinel `path-pattern`; the engine resolves the tool by name (in-process framework checkers) and folds its `DiagnosticReport`. Policy rides the rule's `config:`, forwarded as a second positional arg |
 
 `specify lint framework` resolves all `CORE-*` / `UNI-*` rules in one pass; no imperative `Check` producer runs on any invocation, and `kind: authoring-predicate` is not a valid rule kind.
 
@@ -55,7 +55,7 @@ Every rule-specific value (a line cap, an owner→prefix map, an expected operat
 
 ### Framework tools
 
-Six framework checkers — `scenarios`, `skill-body`, `links-registry`, `marketplace`, `prose`, `rules` — run in-process as native modules under [`crates/standards/src/lint/framework_tools/`](./crates/standards/src/lint/framework_tools.rs), inside `specify-standards`. The `kind: tool` evaluator resolves a checker name against the in-process `framework_tools` inventory before the `ToolRunner` trait, calling it directly for typed findings (see [DECISIONS.md §"Framework lint engine"](./DECISIONS.md#framework-lint-engine-generic-dispatcher-road-a--road-b)).
+Five framework checkers — `scenarios`, `links-registry`, `marketplace`, `prose`, `rules` — run in-process as native modules under [`crates/standards/src/lint/framework_tools/`](./crates/standards/src/lint/framework_tools.rs), inside `specify-standards`. The `kind: tool` evaluator resolves a checker name against the in-process `framework_tools` inventory before the `ToolRunner` trait, calling it directly for typed findings (see [DECISIONS.md §"Framework lint engine"](./DECISIONS.md#framework-lint-engine-generic-dispatcher-road-a--road-b)).
 
 ### Performance
 

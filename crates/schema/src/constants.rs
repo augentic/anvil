@@ -159,12 +159,6 @@ pub const BUILD_REQUEST_JSON_SCHEMA: &str =
 pub const BUILD_REPORT_JSON_SCHEMA: &str =
     include_str!("../../../schemas/target/build-report.schema.json");
 
-/// Schema for the `specify contract dump` payload — the machine-readable
-/// CLI contract (verb tree, exit codes, error discriminants, journal
-/// event ids, embedded schema paths).
-pub const CONTRACT_DUMP_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/contract/dump.schema.json");
-
 /// Generated judgment-answer schema for a source adapter's `survey`
 /// operation (`{ leads: [...] }`). Derived from `LEAD_JSON_SCHEMA` by
 /// [`crate::answers::leads`]; regenerate via the `answers` parity test.
@@ -187,10 +181,9 @@ pub const REPORT_ANSWER_JSON_SCHEMA: &str =
 /// Every embedded schema as `(constant-name, schemas/-relative path,
 /// body)`, in declaration order.
 ///
-/// The canonical inventory behind two consumers: the
+/// The canonical inventory behind the
 /// `embedded_schemas_match_on_disk_sources` parity test (each body must
-/// byte-match its on-disk source) and `specify contract dump` (which
-/// publishes the relative paths). Add new embedded constants here in
+/// byte-match its on-disk source). Add new embedded constants here in
 /// the same change that declares them.
 pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
     ("ADAPTER_JSON_SCHEMA", "schemas/adapter.schema.json", ADAPTER_JSON_SCHEMA),
@@ -255,7 +248,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         "schemas/target/build-report.schema.json",
         BUILD_REPORT_JSON_SCHEMA,
     ),
-    ("CONTRACT_DUMP_JSON_SCHEMA", "schemas/contract/dump.schema.json", CONTRACT_DUMP_JSON_SCHEMA),
     ("LEADS_ANSWER_JSON_SCHEMA", "schemas/answers/leads.schema.json", LEADS_ANSWER_JSON_SCHEMA),
     (
         "EVIDENCE_ANSWER_JSON_SCHEMA",

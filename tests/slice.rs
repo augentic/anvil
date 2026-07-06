@@ -1279,10 +1279,10 @@ mod metadata {
 
     #[test]
     fn help_lists_axis_verbs() {
-        // Inventory asserted via the contract dump, not clap help wording:
-        // the axis verbs must be present and the retired `change` verb must
-        // stay gone.
-        let verbs = crate::common::contract_dump_verbs(&[]);
+        // Inventory parsed from the help `Commands:` section, not exact
+        // clap wording: the axis verbs must be present and the retired
+        // `change` verb must stay gone.
+        let verbs = crate::common::help_verbs(&[]);
         for verb in ["slice", "source", "target"] {
             assert!(verbs.iter().any(|v| v == verb), "top level must declare `{verb}`: {verbs:?}");
         }

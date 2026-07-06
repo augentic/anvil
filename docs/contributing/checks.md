@@ -80,14 +80,13 @@ FAIL: <rule-id>: <message>
 
 | Road                          | `CORE-*`                                                                                                                         | How enforced                                                                                                                                                                                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Road A — declarative hint     | most of `CORE-001..060`                                                                                                          | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `cardinality`, `set-coverage`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`), interpreted over the workspace model |
-| Road B — referenced tool      | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / skill-body / links-registry / marketplace / prose families               | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named in-process checker and folds its findings                                                                                                                                                                              |
+| Road A — declarative hint     | most surviving `CORE-*` rules                                                                                                    | `rule_hints` on the rule file (`kind:` ∈ `schema`, `reference-resolves`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`), interpreted over the workspace model |
+| Road B — referenced tool      | `CORE-009`, `CORE-026`, `CORE-053`, and the scenarios / links-registry / marketplace / prose families                            | `kind: tool` + a sentinel `path-pattern`; the engine resolves the named in-process checker and folds its findings                                                                                                                                                                              |
 
 All policy (caps, allow-lists, owner maps, expected sets) rides the rule's `config:`; the engine never embeds it.
 
 | Authoring `rule_id` prefix | Topic                                                                |
 | -------------------------- | -------------------------------------------------------------------- |
-| `adapter.*`                | Adapter manifests                                                    |
 | `links.*`                  | Markdown links, skill references, directives, tool-owned schema URLs |
 | `skill.*`                  | `SKILL.md` frontmatter and body                                      |
 | `scenarios.*`              | Eval scenario frontmatter and recorded traces                  |
@@ -129,19 +128,13 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 
 Every relative link in every `.md` file must resolve to an existing file. External links (`http://`, `mailto:`, `#` anchors) and `src/` paths are skipped. Fenced code blocks and HTML comments are stripped before scanning.
 
+The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/workflow/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the lint (the Omnia-migration embed-time link resolution).
+
 **Common fix:** update the link target or remove a stale link.
 
-### 2. Adapter manifest YAML validation
+Adapter-manifest shape is no longer a lint concern: manifests are validated at resolve time by the engine's per-axis schemas (`source.schema.json` / `target.schema.json`, embedded in the binary), and the operation set derives from the WIT contract — a drifted manifest fails resolution, not lint (the Omnia-migration lint shrink and the adapter-artifact handoff).
 
-Every `adapters/sources/<name>/adapter.yaml` validates against `source.schema.json`, and every `adapters/targets/<name>/adapter.yaml` validates against `target.schema.json`. Both schemas ship in-tree under `schemas/` and are loaded by the `specify-standards` crate.
-
-**Common fix:** check that all required fields (`name`, `version`, `axis`, `description`) are present; the operation set is not declared in the manifest — it derives from the WIT contract (`survey` + `extract` for sources; `guidance` + `build` + `merge` for targets).
-
-### 3. Adapter referential integrity
-
-Manifests do not carry a `pipeline:` field. Brief existence and operation coverage are enforced by the per-axis schemas (`source.schema.json` / `target.schema.json`).
-
-### 4. Symlink integrity
+### 2. Symlink integrity
 
 Every symlink under `plugins/` must resolve to a valid target.
 
@@ -149,7 +142,7 @@ The per-target-adapter `agent-teams.md` overlays are part of the same surface: e
 
 **Common fix:** recreate the symlink if the target was moved or renamed; if an overlay was committed as a regular file, replace it with a symlink to the shared runtime overlay.
 
-### 5. SKILL.md frontmatter validation
+### 3. SKILL.md frontmatter validation
 
 Every `SKILL.md` under `plugins/` is validated against the `specify-standards` framework skill schema (the embedded `schemas/authoring/skill.schema.json`):
 
@@ -157,39 +150,28 @@ Every `SKILL.md` under `plugins/` is validated against the `specify-standards` f
 - **Plugin-qualified name** -- `name` is **plugin-qualified** (`<plugin>-<skill>`, e.g. `specify-merge`, `omnia-crate-writer`), not the bare directory name; the per-plugin prefix invariant and global uniqueness across plugins are enforced by `specify lint framework` (CORE-043), since JSON Schema cannot see the surrounding directory
 - **Known tools** -- every entry in `allowed-tools` must be a recognized Cursor tool name or match the `mcp__*` prefix
 
-The recognized tool set includes: `Read`, `Write`, `StrReplace`, `Shell`, `Grep`, `Glob`, `ReadLints`, `WebFetch`, `WebSearch`, `AskQuestion`, `Task`, `TodoWrite`, `SemanticSearch`, `EditNotebook`, `GenerateImage`.
+Skill-body structure checks (line caps, Critical Path sections, envelope-JSON bans, `$VAR` coverage) retired with the Omnia-migration lint shrink: skills are ultrathin invoke-and-relay wrappers, so orchestration consistency lives in the type system, not lint.
 
-Long `SKILL.md` bodies are also checked for structure: bodies over 200 post-frontmatter lines fail (strict — no grandfathering), and bodies with at least 150 post-frontmatter lines must include a `## Critical Path` section with 5-7 bullets, numbered items, or `### N. Title` H3 step headings.
-
-### 6. Skill reference link resolution
+### 4. Skill reference link resolution
 
 Links in `SKILL.md` bodies that point to `references/...` or `examples/...` paths are resolved relative to the skill directory. Every such link must resolve to an existing file.
 
-### 6b. Deployable surfaces must not link into `docs/`
+### 5. Deployable surfaces must not link into `docs/`
 
 `links.docs-in-deployable-surface` (`CORE-052`) flags markdown links under `plugins/` and under `adapters/**/briefs/` + `adapters/**/references/` whose targets escape into `docs/`. Contributor codex under `adapters/shared/prose/rules/` is excluded. Runtime canonical paths are `plugins/spec/references/` and, for adapters after `specify init`, `references/spec-runtime/` inside the cached adapter tree.
 
-### 7. Skill variable consistency
-
-For skills that declare an `## Arguments` or `## Derived Arguments` section with `$VARIABLE = ...` definitions in ` ```text` blocks:
-
-- Every defined variable must be referenced somewhere in the skill body
-- Every `$VARIABLE` reference in the body (outside fenced blocks) must have a definition in the arguments section
-
-Built-in variables (`$ARGUMENTS`, `$HOME`) are excluded from the check.
-
-### 8. Skill directive validation
+### 6. Skill directive validation
 
 `<!-- skill: plugin:skill-name -->` directives in markdown files must reference a real skill. The check walks `plugins/` to build a registry of `plugin → skill` mappings and validates every directive against it. Files under the historical design-record tree are excluded.
 
-### 9. Marketplace manifest consistency
+### 7. Marketplace manifest consistency
 
 Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 
 - Every plugin with a `.cursor-plugin/plugin.json` file must be listed in the manifest
 - Every plugin listed in the manifest must have a `skills/` directory
 
-### 10. Instruction file preambles
+### 8. Instruction file preambles
 
 Files matching `adapters/targets/**/instructions/<name>.md` must contain an output location preamble:
 
@@ -199,7 +181,7 @@ Files matching `adapters/targets/**/instructions/<name>.md` must contain an outp
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.
 
-### 11. Eval scenario frontmatter
+### 9. Eval scenario frontmatter
 
 Eval scenario files are validated against [`schemas/authoring/scenario.schema.json`](../../schemas/authoring/scenario.schema.json) (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
@@ -262,14 +244,14 @@ FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contr
 
 Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace, and ensure new scenario ids are unique.
 
-### 12. Recorded trace freshness
+### 10. Recorded trace freshness
 
 The recorded-trace check is opt-in. If a future suite adds
 `tests/recorded/**/*.jsonl`, every trace must lead with a
 `recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
 `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
 
-### 13. First-party rule shape
+### 11. First-party rule shape
 
 First-party rule files are validated in the shared tree at `adapters/shared/prose/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `adapters/sources/*/prose/rules/**/*.md` and `adapters/targets/<name>/prose/rules/**/*.md`.
 
@@ -306,7 +288,7 @@ frontmatter fields; use canonical severity values (`critical`, `important`,
 shape such as `UNI-001`; add the `## Rule` heading; and coordinate with content
 subagents before reusing or moving ids between adapter-owned namespaces.
 
-### 14. Tool-owned schema link resolution
+### 12. Tool-owned schema link resolution
 
 Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in any `.md` file under `adapters/` must resolve to a known tool-owned schema. The check maintains a hardcoded registry of tool → schema-name mappings (currently `vectis` → `tokens`, `assets`, `composition`; the `contract` tool declares no embedded schemas). URLs inside fenced code blocks and inline code spans are skipped.
 
@@ -314,13 +296,7 @@ This enforces the tool-owned schema contract: plugin briefs cite schemas by cano
 
 **Common fix:** verify the tool name and schema name in the URL against the owning adapter's embedded schema registry (in `specify-adapters`). If the schema was renamed or retired, update the URL or remove the reference.
 
-### 15. CLI contract drift
-
-[`CORE-057`](../../adapters/shared/prose/rules/core/CORE-057-cli-contract-drift.md) checks every CLI citation in this repo's documentation against the contract of the **pinned binary that is running the lint** — the same payload `specify contract dump` emits. `specify …` command lines in `bash`/`sh` fences and inline code walk the verb tree (unknown verbs, undeclared `--flags`); cited journal event ids and fenced-JSON `"event"` / `"error"` values are membership-checked against the declared taxonomies. Because the contract is rebuilt from the binary on each run, every citation is re-checked against the in-tree binary in the same change.
-
-[`CORE-060`](../../adapters/shared/prose/rules/core/CORE-060-cli-test-citation-drift.md) rides the same kind's `test-citations` selector: "proven by a named test" claims — `tests/….rs` inline spans and root `tests/` link targets under `docs/**` and `AGENTS.md` — must exist in the binary's build-time test inventory. Adapter trees are out of scope because they legitimately describe generated downstream-crate `tests/` layouts.
-
-**Common fix:** align the citation with the live CLI surface (`specify contract dump --format json` or `specify <verb> --help`). For intentional non-verbs — negative claims like "there is no `workspace merge` subcommand" or retired-verb history — drop the `specify ` prefix inside the code span so the citation stops being an invocation. Documented-ahead surfaces (verbs designed but not yet shipped) ride the rule's `config: ignore` with a comment, and the entry is removed when the verb lands.
+CLI-contract citation drift (the retired CORE-057 / CORE-060 family and the `specify contract dump` verb behind it) is no longer a lint concern: with orchestration compiled into the workflow guest and skills reduced to invoke-and-relay wrappers, a renamed verb or dropped flag is a compile error, not a documentation-drift finding.
 
 ## Extending the checks
 
@@ -328,22 +304,19 @@ Every framework check is a `CORE-*` rule under [`adapters/shared/prose/rules/cor
 
 ### Road A — declarative hint
 
-The rule carries one or more `rule_hints` of a closed kind interpreted over the workspace model. Reach for Road A for one-liner checks (schema conformance, link/symlink resolution, line caps, uniqueness, fenced-block scans, regex/path scoping, required-artifact presence, frontmatter-field grammar, and relational cross-reference joins). The kinds:
+The rule carries one or more `rule_hints` of a closed kind interpreted over the workspace model. Reach for Road A for one-liner checks (schema conformance, link/symlink resolution, uniqueness, fenced-block scans, regex/path scoping, required-artifact presence, and frontmatter-field grammar). The kinds:
 
-`schema`, `reference-resolves`, `cardinality`, `set-coverage`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`, `cross-reference`, `cli-contract`.
+`schema`, `reference-resolves`, `constant-eq`, `unique`, `fenced-block`, `regex`, `path-pattern`, `presence`, `field-grammar`.
 
 `path-pattern` globs support `{a,b}` brace alternation (`*` never crosses `/`, `**` does), so prefer one alternation hint over a fan-out of near-identical patterns; `regex` values likewise prefer a single `|` alternation per concern.
 
 `hint.value` names the mechanism selector each kind dispatches on:
 
-- **`presence`** — `frontmatter` (a candidate file lacking frontmatter), `file` + `config: { path }` (a missing required path), `markdown-section` + `config: { title, level, when: { metric, min } }` (a candidate over a metric threshold lacking the section), or `directory-index` + `config: { roots, index, min-files }` (a corpus directory matching a one-depth root glob with enough files beneath it but no index file inside it).
+- **`presence`** — `frontmatter` (a candidate file lacking frontmatter), `file` + `config: { path }` (a missing required path), or `directory-index` + `config: { roots, index, min-files }` (a corpus directory matching a one-depth root glob with enough files beneath it but no index file inside it).
 - **`field-grammar`** — `field-tokens` + `config: { field, token-pattern }` (each whitespace token of the field matches the regex) or `field-first-word` + `config: { field, allowed }` (the field's first alphabetic word is allow-listed).
-- **`cross-reference`** — a relational join from an `adapter-dir` (fact-family set difference) or `expected-set` + `config: { entries: [{ key, value }] }` (value-equality) source against a `config: { target }` family (`adapter-manifest`).
-- **`set-coverage`** — the `adapter-briefs` source reads `config: { mode }` (`subset` default — CORE-004, one-sided missing-only; or `exact` — CORE-007, two-sided, additionally flagging unexpected keys) alongside `config: { expected-operations }`.
 - **`schema`** and **`unique`** also accept a whole-tree `value: scenario` selector (the latter with `config: { field: id }`) that reads the scoped scenario fact family directly.
-- **`cli-contract`** — `invocations` + `config: { langs }` (every `specify …` command line in matching fences and inline code walks the verb tree; unknown verbs and undeclared `--flags` flag), `event-ids` / `error-codes` + `config: { json-fields }` (cited journal event ids and error discriminants are membership-checked; event-id candidates are gated to the contract's own id families), or `test-citations` + `config: { link-prefixes }` (cited `tests/….rs` spans and root `tests/` link targets are membership-checked against the binary's build-time test inventory). The contract itself — verb tree, flags, event ids, error discriminants, tests — is injected by the running binary (the `specify contract dump` payload), so the rule carries exemptions in `config:` but never a verb list.
 
-Each evaluator is generic: it reads its policy (cap, allowed set, owner map, expected operations, canonical path, required section, grammar pattern, expected entries) from the rule's `config:`, never from a constant in the engine. The new kinds serve `presence` → CORE-042 / CORE-011 / CORE-041 / CORE-059, `field-grammar` → CORE-035 / CORE-036, `cross-reference` → CORE-010, the `schema` scenario selector → CORE-032, the `unique` scenario selector → CORE-030, and `cli-contract` → CORE-057 / CORE-060. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-001-adapter-schema.md`](../../adapters/shared/prose/rules/core/CORE-001-adapter-schema.md). See [`adapters/shared/prose/rules/core/README.md`](../../adapters/shared/prose/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
+Each evaluator is generic: it reads its policy (allowed set, owner map, canonical path, grammar pattern) from the rule's `config:`, never from a constant in the engine. The selector kinds serve `presence` → CORE-042 / CORE-011 / CORE-059, `field-grammar` → CORE-035 / CORE-036, the `schema` scenario selector → CORE-032, and the `unique` scenario selector → CORE-030. CORE-018 / CORE-020 (link-registry joins) and CORE-022 (marketplace) stay on Road B by design. The chassis worked example is [`CORE-002-links-unresolved.md`](../../adapters/shared/prose/rules/core/CORE-002-links-unresolved.md). See [`adapters/shared/prose/rules/core/README.md`](../../adapters/shared/prose/rules/core/README.md) for the rule-file shape, hint-kind preference, and `config:` conventions.
 
 **Engine cost.** Reusing an existing kind with a new `config:` shape touches `crates/standards/src/lint/eval/<kind>.rs` and the `schemas/rules/rule.schema.json` `$def` (which trips the `crates/schema/tests/schemas.rs` byte-match gate). A brand-new fact may also need an indexer extractor + `workspace-model.schema.json` update. New engine behaviour gets a **mechanism-named, rule-agnostic** unit test beside the evaluator in `crates/standards/src/lint/eval/<kind>.rs` (keyed to a placeholder `UNI-9xx` fixture — never a real `CORE-NNN`).
 
@@ -351,17 +324,15 @@ Each evaluator is generic: it reads its policy (cap, allowed set, owner map, exp
 
 The rule carries `kind: tool`, `value: <tool>`, plus a sentinel `path-pattern`. The engine resolves the named checker from the in-process framework inventory (`crates/standards/src/lint/framework_tools.rs` in `specify-standards`), runs it once per lint, and folds its typed findings directly; the checker stamps each finding with its own `rule_id` / `severity`. Reach for Road B for branchy, whole-tree, cross-fact, registry-backed, or extractor-heavy checks (and for files the indexer does not walk, e.g. `evals/`).
 
-The seven framework checkers are native modules under `crates/standards/src/lint/framework_tools/` in `specify-standards`. Each one and the `CORE-*` rules it serves:
+The five framework checkers are native modules under `crates/standards/src/lint/framework_tools/` in `specify-standards`. Each one and the `CORE-*` rules it serves:
 
 | Checker          | Serves                  |
 | ---------------- | ----------------------- |
 | `scenarios`      | CORE-028, 029, 033, 056 |
-| `skill-body`     | CORE-040, 046, 048      |
 | `links-registry` | CORE-018, 020           |
 | `marketplace`    | CORE-022                |
 | `prose`          | CORE-024                |
 | `rules`          | CORE-009, 026, 053      |
-| `extension`      | CORE-061                |
 
 To add or extend one:
 
@@ -378,7 +349,7 @@ To add a `CORE-*` rule (either road):
 1. Pick the next free `CORE-NNN` id and add the rule file under [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) per the README's frontmatter shape, carrying every policy value in `config:`.
 2. Run `make lint`; `specify lint framework` resolves the new file and runs it against the framework tree by default. The `--include-core` flag is consumer-side only (`specify lint project` / `specify rules export`); `specify lint framework` always sees `CORE-*` rules.
 
-Checks are numbered 1–15 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) and do not consume a number in this list.
+Checks are numbered 1–12 contiguously in this document for the narrative descriptions above; declarative `CORE-*` rules are listed by id in [`adapters/shared/prose/rules/core/`](../../adapters/shared/prose/rules/core/) and do not consume a number in this list.
 
 ## CLI checks
 

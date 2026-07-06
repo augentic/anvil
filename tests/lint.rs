@@ -253,15 +253,9 @@ mod framework_adapters {
     //! framework root (RFC-48 H1): an `adapters/` tree with no `plugins/`
     //! directory and no `.cursor-plugin/marketplace.json`.
     //!
-    //! Two invariants this surface owes:
-    //!
-    //! - The plugin-bound `marketplace` (CORE-022) and `prose` (CORE-024)
-    //!   checkers must **no-op** when their inputs are absent, so an
-    //!   adapters-only root lints clean.
-    //! - The new `extension` checker (CORE-061
-    //!   `adapter-extension-crate-missing`) must **fire** when an adapter
-    //!   declares `adapter.yaml.extension` without the co-located
-    //!   `extension/` crate or the committed `adapter.wasm`.
+    //! The invariant this surface owes: the plugin-bound `marketplace`
+    //! (CORE-022) and `prose` (CORE-024) checkers must **no-op** when
+    //! their inputs are absent, so an adapters-only root lints clean.
     //!
     //! The harness mirrors `framework_json.rs`: it drives the binary via
     //! [`assert_cmd::Command::cargo_bin`] against a synthetic tempdir tree
@@ -349,18 +343,6 @@ rule_hints:\n  - kind: path-pattern\n    value: adapters/shared/prose/rules/core
         );
     }
 
-    /// Synthetic `CORE-061` so the `extension` checker runs.
-    fn write_extension_rule(root: &Path) {
-        write(
-            root,
-            "adapters/shared/prose/rules/core/CORE-061-adapter-extension-crate-missing.md",
-            "---\nid: CORE-061\ntitle: Adapter Extension Crate Missing\nseverity: important\n\
-trigger: adapter.yaml declares an extension block but the co-located crate or committed adapter.wasm is missing.\n\
-rule_hints:\n  - kind: path-pattern\n    value: adapters/shared/prose/rules/core/CORE-061-adapter-extension-crate-missing.md\n  - kind: tool\n    value: extension\n---\n\n\
-## Rule\n\nSynthetic CORE-061 for adapters-only tests.\n",
-        );
-    }
-
     /// An adapters-only root with the plugin-bound `marketplace` and `prose`
     /// rules present but their inputs (`marketplace.json`,
     /// `skill-authoring.md`) absent lints clean: both checkers no-op (H1).
@@ -385,45 +367,6 @@ rule_hints:\n  - kind: path-pattern\n    value: adapters/shared/prose/rules/core
         assert!(
             findings.is_empty(),
             "marketplace + prose checkers must no-op on absent inputs; got:\n{}",
-            String::from_utf8_lossy(&stdout),
-        );
-    }
-
-    /// CORE-061 fires when an adapter declares `adapter.yaml.extension` but
-    /// ships neither the co-located `extension/` crate nor a committed
-    /// `adapter.wasm`.
-    #[test]
-    fn extension_rule_fires_for_missing_crate() {
-        let temp = TempDir::new().expect("tempdir");
-        scaffold_adapters_only(temp.path());
-        write_extension_rule(temp.path());
-        write(
-            temp.path(),
-            "adapters/targets/withext/adapter.yaml",
-            "name: withext\nversion: \"1.0.0\"\naxis: target\n\
-description: Declares an extension without the co-located crate.\n\
-extension:\n  name: withext\n  permissions:\n    read:\n      - $PROJECT_DIR\n",
-        );
-        write(
-            temp.path(),
-            "adapters/targets/withext/prose/prompts/shape.md",
-            "# withext.shape\n\nMinimal prompt.\n",
-        );
-
-        let (code, stdout, stderr) = run_lint_framework_json(temp.path());
-        assert_eq!(
-            code,
-            Some(2),
-            "a declared extension with no crate/wasm must block; stderr:\n{}\nstdout:\n{}",
-            String::from_utf8_lossy(&stderr),
-            String::from_utf8_lossy(&stdout),
-        );
-
-        let envelope: Value = serde_json::from_slice(&stdout).expect("stdout is JSON");
-        let findings = envelope.get("findings").and_then(Value::as_array).expect("findings array");
-        assert!(
-            findings.iter().any(|f| f.get("rule-id").and_then(Value::as_str) == Some("CORE-061")),
-            "expected a CORE-061 extension finding; got:\n{}",
             String::from_utf8_lossy(&stdout),
         );
     }

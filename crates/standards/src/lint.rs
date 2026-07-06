@@ -21,7 +21,6 @@
 //! their fully-qualified path so the `rules` (authoring) and
 //! `review` (enforcement) surfaces cannot collide.
 
-pub mod contract;
 pub mod diagnostics;
 pub mod eval;
 mod framework_tools;

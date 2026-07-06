@@ -11,13 +11,11 @@
 //! trait survives only for the genuine project-side WASI path. Name
 //! resolution and rule-owned `config:` policy forwarding are unchanged.
 
-mod extension;
 mod links_registry;
 mod marketplace;
 mod prose;
 mod rules;
 mod scenarios;
-mod skill_body;
 mod support;
 
 use std::path::Path;
@@ -40,10 +38,6 @@ const FRAMEWORK_CHECKERS: &[FrameworkChecker] = &[
         run: scenarios::run,
     },
     FrameworkChecker {
-        name: "skill-body",
-        run: skill_body::run,
-    },
-    FrameworkChecker {
         name: "links-registry",
         run: links_registry::run,
     },
@@ -58,10 +52,6 @@ const FRAMEWORK_CHECKERS: &[FrameworkChecker] = &[
     FrameworkChecker {
         name: "rules",
         run: rules::run,
-    },
-    FrameworkChecker {
-        name: "extension",
-        run: extension::run,
     },
 ];
 
@@ -97,19 +87,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn declares_exactly_the_seven_checkers() {
-        for name in [
-            "scenarios",
-            "skill-body",
-            "links-registry",
-            "marketplace",
-            "prose",
-            "rules",
-            "extension",
-        ] {
+    fn declares_exactly_the_five_checkers() {
+        for name in ["scenarios", "links-registry", "marketplace", "prose", "rules"] {
             assert!(is_framework_checker(name), "{name} must be declared");
         }
-        assert!(!is_framework_checker("agent-teams"), "agent-teams retired with CORE-012");
+        assert!(!is_framework_checker("skill-body"), "skill-body retired with CORE-040/046/048");
+        assert!(!is_framework_checker("extension"), "extension retired with CORE-061");
         assert!(!is_framework_checker("contract"), "adapter tools stay WASI-resolved");
     }
 

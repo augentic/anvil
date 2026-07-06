@@ -7,8 +7,7 @@
 //! cross-file edges. The framework profile adds
 //! a wider include set, follow-the-link symlink
 //! traversal with cycle detection, and dedicated extractors for
-//! `plugins/**/SKILL.md`, `adapters/**/adapter.yaml`, and
-//! `**/agent-teams.md` symlinks.
+//! `plugins/**/SKILL.md` and `**/agent-teams.md` symlinks.
 //!
 //! Both profiles share the same per-file extractors (`frontmatter`,
 //! `markdown`, `ignore_directives`) and the same `WorkspaceModel`
@@ -17,8 +16,6 @@
 //! closed [`IndexError`] enum the runtime maps to exit codes via
 //! `Exit::from(&Error)`.
 
-pub mod adapter;
-pub mod adapter_dir;
 pub mod files;
 pub mod framework;
 pub mod frontmatter;
@@ -35,8 +32,8 @@ use std::path::{Path, PathBuf};
 use rayon::prelude::*;
 
 use crate::lint::{
-    AdapterManifest, File, Frontmatter, IgnoreDirective, MarkdownLink, MarkdownSection,
-    ScanProfile, Skill, Symlink, WorkspaceModel, WorkspaceModelVersion,
+    File, Frontmatter, IgnoreDirective, MarkdownLink, MarkdownSection, ScanProfile, Skill, Symlink,
+    WorkspaceModel, WorkspaceModelVersion,
 };
 
 /// Closed error set for [`build`].
@@ -77,7 +74,7 @@ pub enum IndexError {
 /// runs the project-scope extractors. Under [`ScanProfile::Framework`]
 /// the walk applies the §F1 include set, follows symlinks with
 /// cycle detection, and runs the framework extractors
-/// (`skill`, `adapter`, `marketplace`) in
+/// (`skill`, `scenario`) in
 /// addition to the shared markdown / frontmatter passes.
 ///
 /// `languages`, when non-empty, narrows the discovered file set to
@@ -171,11 +168,9 @@ fn build_project(
         markdown_links: links_out,
         symlinks: symlinks_facts,
         skills: Vec::new(),
-        adapter_manifests: Vec::new(),
         ignore_directives: ignore_directives_out,
         fenced_blocks: fenced_blocks_out,
         scenarios: Vec::new(),
-        adapter_dirs: Vec::new(),
     })
 }
 
@@ -194,7 +189,6 @@ fn build_framework(
             let links = markdown::extract_links(&file);
             let ignore_directives = ignore_directives::extract(&file);
             let skill = skill::extract(&file);
-            let manifest = adapter::extract(&file);
             let fenced_blocks = markdown::extract_fenced_blocks(&file);
             FrameworkPerFile {
                 file: File {
@@ -208,7 +202,6 @@ fn build_framework(
                 links,
                 ignore_directives,
                 skill,
-                manifest,
                 fenced_blocks,
             }
         })
@@ -220,7 +213,6 @@ fn build_framework(
     let mut links_out: Vec<MarkdownLink> = Vec::new();
     let mut ignore_directives_out: Vec<IgnoreDirective> = Vec::new();
     let mut skills_out: Vec<Skill> = Vec::new();
-    let mut manifests_out: Vec<AdapterManifest> = Vec::new();
     let mut fenced_blocks_out: Vec<crate::lint::FencedBlock> = Vec::new();
     for entry in per_file {
         files_out.push(entry.file);
@@ -233,9 +225,6 @@ fn build_framework(
         fenced_blocks_out.extend(entry.fenced_blocks);
         if let Some(skill) = entry.skill {
             skills_out.push(skill);
-        }
-        if let Some(manifest) = entry.manifest {
-            manifests_out.push(manifest);
         }
     }
 
@@ -263,7 +252,6 @@ fn build_framework(
     sort_ignore_directives(&mut ignore_directives_out);
     sort_fenced_blocks(&mut fenced_blocks_out);
     skills_out.sort_by(|a, b| a.path.cmp(&b.path));
-    manifests_out.sort_by(|a, b| a.path.cmp(&b.path));
 
     Ok(WorkspaceModel {
         version: WorkspaceModelVersion,
@@ -277,11 +265,9 @@ fn build_framework(
         markdown_links: links_out,
         symlinks: symlinks_facts,
         skills: skills_out,
-        adapter_manifests: manifests_out,
         ignore_directives: ignore_directives_out,
         fenced_blocks: fenced_blocks_out,
         scenarios: scenario::extract(project_dir),
-        adapter_dirs: adapter_dir::extract(project_dir),
     })
 }
 
@@ -328,7 +314,6 @@ struct FrameworkPerFile {
     ignore_directives: Vec<IgnoreDirective>,
     fenced_blocks: Vec<crate::lint::FencedBlock>,
     skill: Option<Skill>,
-    manifest: Option<AdapterManifest>,
 }
 
 /// Strip markdown-link facts whose `from_path` was reached through

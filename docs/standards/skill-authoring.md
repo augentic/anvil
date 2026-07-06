@@ -31,9 +31,9 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 - **Body line count** ≤ **200 lines**. Strictly enforced — no per-file grandfathering.
 - **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Strictly enforced — no per-file grandfathering.
 
-The body cap is enforced by the declarative [`CORE-005`](../../adapters/shared/prose/rules/core/CORE-005-skill-body-line-count.md) rule (via the `cardinality` interpreter); the per-section cap by [`CORE-045`](../../adapters/shared/prose/rules/core/CORE-045-skill-section-line-count.md).
+The body and per-section caps are authoring conventions enforced at review time — the declarative line-count rules (the retired CORE-005 / CORE-045) were deleted with the Omnia-migration lint shrink, since invoke-and-relay skill bodies no longer approach the caps.
 
-All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across schema, rules, and docs by [`CORE-024`](../../adapters/shared/prose/rules/core/CORE-024-prose-numeric-cap-exceeded.md)'s `prose` checker.
+All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across schema and docs by [`CORE-024`](../../adapters/shared/prose/rules/core/CORE-024-prose-numeric-cap-exceeded.md)'s `prose` checker.
 
 ## References discipline
 
@@ -97,7 +97,7 @@ A 5th phase lands as one new `build/<phase>.md` file plus three lines added to t
 
 ## Envelope examples and wire contract
 
-CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. [`CORE-037`](../../adapters/shared/prose/rules/core/CORE-037-envelope-json-in-body.md) flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"envelope-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the check is intentionally narrow.
+CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope (a review-time convention — the declarative envelope-fence rule, the retired CORE-037, was deleted with the Omnia-migration lint shrink). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine.
 
 The wire contract itself — exit codes, kebab-case `error` discriminants, the `envelope-version` floor — is owned by the CLI repo. See [cli-contract.md](cli-contract.md) for the surface skills depend on and the link to the authoritative exit-code table.
 

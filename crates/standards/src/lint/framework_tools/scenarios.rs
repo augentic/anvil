@@ -34,7 +34,7 @@ const STAGES_ORDER: [&str; 5] = ["plan", "refine", "build", "merge", "drop"];
 
 /// Run the scenario family scoped by the candidate sentinel path.
 /// A scoped invocation dispatches only the matching sub-check (the
-/// `skill_body` / `rules` per-rule idiom) — with five `kind: tool`
+/// `rules` per-rule idiom) — with five `kind: tool`
 /// scenario rules per `specify lint framework`, running every
 /// sub-check and filtering would repeat the full tree walks ×5.
 pub fn run(project_dir: &Path, args: &[String]) -> Vec<ToolFinding> {

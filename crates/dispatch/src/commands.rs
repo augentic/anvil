@@ -12,7 +12,6 @@
 
 pub mod adapter;
 pub mod archive;
-pub mod contract;
 pub mod journal;
 pub mod lint;
 pub mod plan;

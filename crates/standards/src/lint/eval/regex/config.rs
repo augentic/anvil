@@ -15,8 +15,6 @@ pub enum RegexEvalMode {
     LineNegative,
     /// Flag each candidate file where no line matches the pattern.
     FileMustContain,
-    /// Apply CORE-023 slash-skill positional semantics instead of regex.
-    SlashSkillPositional { join_backslash_continuations: bool },
 }
 
 /// Parsed `regex` hint configuration.
@@ -64,16 +62,11 @@ impl RegexHintConfig {
         }
         let file_must_contain = parsed.file_must_contain.unwrap_or(false);
         let negative_match = parsed.negative_match.unwrap_or(false);
-        let slash_skill_positional = parsed.slash_skill_positional.unwrap_or(false);
-        let join_backslash_continuations = parsed.join_backslash_continuations.unwrap_or(false);
-        let mode_flags = i32::from(file_must_contain)
-            + i32::from(negative_match)
-            + i32::from(slash_skill_positional);
-        if mode_flags > 1 {
+        if file_must_contain && negative_match {
             return Err(HintError::Unsupported {
                 rule_id: rule.rule_id.clone(),
                 kind: HintKind::Regex,
-                reason: "only one of negative-match, file-must-contain, or slash-skill-positional may be set",
+                reason: "only one of negative-match or file-must-contain may be set",
             });
         }
         if file_must_contain && any_capture {
@@ -83,11 +76,7 @@ impl RegexHintConfig {
                 reason: "`file-must-contain` cannot combine with capture thresholds",
             });
         }
-        let eval_mode = if slash_skill_positional {
-            RegexEvalMode::SlashSkillPositional {
-                join_backslash_continuations,
-            }
-        } else if file_must_contain {
+        let eval_mode = if file_must_contain {
             RegexEvalMode::FileMustContain
         } else if negative_match {
             RegexEvalMode::LineNegative
@@ -149,10 +138,6 @@ struct RegexHintConfigWire {
     capture_value: Option<i64>,
     #[serde(default, rename = "suffix-must-not-start-with")]
     suffix_must_not_start_with: Option<String>,
-    #[serde(default, rename = "slash-skill-positional")]
-    slash_skill_positional: Option<bool>,
-    #[serde(default, rename = "join-backslash-continuations")]
-    join_backslash_continuations: Option<bool>,
 }
 
 #[cfg(test)]

@@ -97,25 +97,6 @@ pub fn parsed_config(args: &[String]) -> Option<JsonValue> {
     })
 }
 
-/// Numeric field accessor over the forwarded config; `0` when absent.
-pub fn usize_field(config: Option<&JsonValue>, key: &str) -> usize {
-    config
-        .and_then(|value| value.get(key))
-        .and_then(JsonValue::as_u64)
-        .and_then(|n| usize::try_from(n).ok())
-        .unwrap_or(0)
-}
-
-/// String-array field accessor over the forwarded config; empty when
-/// absent.
-pub fn string_array_field(config: Option<&JsonValue>, key: &str) -> Vec<String> {
-    config
-        .and_then(|value| value.get(key))
-        .and_then(JsonValue::as_array)
-        .map(|items| items.iter().filter_map(|item| item.as_str().map(str::to_string)).collect())
-        .unwrap_or_default()
-}
-
 /// Display `path` relative to `root` with forward slashes.
 pub fn relative_display(root: &std::path::Path, path: &std::path::Path) -> String {
     path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")

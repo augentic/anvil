@@ -24,4 +24,4 @@ Framework `CORE-*` rules must scope themselves with `kind: path-pattern` hints, 
 
 ## Fix
 
-Delete the `applicability.artifacts` block and narrow the candidate file set with `kind: path-pattern` hints instead (see [`CORE-001-adapter-schema.md`](CORE-001-adapter-schema.md) for the worked example and [`README.md`](README.md#applicability-tokens) for the chassis-quirk rationale). The degenerate empty `artifacts: []` form is permitted because it filters nothing.
+Delete the `applicability.artifacts` block and narrow the candidate file set with `kind: path-pattern` hints instead (see [`CORE-002-links-unresolved.md`](CORE-002-links-unresolved.md) for the worked example and [`README.md`](README.md#applicability-tokens) for the chassis-quirk rationale). The degenerate empty `artifacts: []` form is permitted because it filters nothing.

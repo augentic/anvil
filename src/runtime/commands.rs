@@ -8,7 +8,6 @@
 pub mod adapter;
 pub mod agents;
 pub mod archive;
-pub mod contract;
 pub mod guest;
 mod init;
 pub mod lint;
@@ -20,7 +19,6 @@ pub mod workspace;
 
 use clap::CommandFactory;
 use specify_dispatch::commands::adapter::cli::AdapterAction;
-use specify_dispatch::commands::contract::cli::ContractAction;
 use specify_dispatch::commands::lint::cli::LintAction;
 use specify_dispatch::commands::rules::cli::RulesAction;
 use specify_dispatch::commands::workspace::cli::WorkspaceAction;
@@ -77,9 +75,6 @@ pub fn run(cli: Cli) -> Exit {
             clap_complete::generate(shell, &mut cmd, "specify", &mut std::io::stdout());
             Exit::Success
         }
-        Commands::Contract { action } => match action {
-            ContractAction::Dump => dispatch(format, || contract::dump::run(format)),
-        },
         Commands::Upgrade {
             channel,
             yes,

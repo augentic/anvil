@@ -239,7 +239,6 @@ pub fn route(cli: Cli) -> Route {
         Commands::Registry { .. } => Route::Handled(unsupported(format, "registry")),
         Commands::Workspace { .. } => Route::Handled(unsupported(format, "workspace")),
         Commands::Completions { .. } => Route::Handled(unsupported(format, "completions")),
-        Commands::Contract { .. } => Route::Handled(unsupported(format, "contract")),
         Commands::Upgrade { .. } => Route::Handled(unsupported(format, "upgrade")),
         Commands::Plugins { .. } => Route::Handled(unsupported(format, "plugins")),
     }

@@ -1,14 +1,13 @@
 //! Registry of stable kebab-case error discriminants on the CLI wire.
 //!
-//! [`WIRE_CODES`] is the closed inventory `specify contract dump`
-//! publishes and the `cli-contract` lint kind checks citations against.
-//! It covers the typed [`crate::Error`] variant discriminants, every
-//! literal `Diag` / `Validation` code at a production call site, and
-//! the `filesystem-<op>` composites. Rule-derived dynamic codes (e.g.
-//! a `specify slice validate` rule id folded into `Error::Validation`)
+//! [`WIRE_CODES`] is the closed inventory of discriminants skills and
+//! CI consumers may match against. It covers the typed
+//! [`crate::Error`] variant discriminants, every literal `Diag` /
+//! `Validation` code at a production call site, and the
+//! `filesystem-<op>` composites. Rule-derived dynamic codes (e.g. a
+//! `specify slice validate` rule id folded into `Error::Validation`)
 //! are intentionally out of scope — consumers allowlist those by rule
-//! registry, not here. The binary's `tests/cli_contract.rs` source
-//! scan keeps this list in sync with the call sites.
+//! registry, not here.
 
 /// Every stable kebab-case error discriminant the CLI can emit as the
 /// JSON envelope `error` field, sorted and deduplicated.

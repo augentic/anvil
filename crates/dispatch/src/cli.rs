@@ -10,7 +10,6 @@ use specify_model::evidence::ClaimKind;
 
 use crate::commands::adapter::cli::AdapterAction;
 use crate::commands::archive::cli::ArchiveAction;
-use crate::commands::contract::cli::ContractAction;
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::lint::cli::LintAction;
 use crate::commands::plan::cli::PlanAction;
@@ -53,8 +52,8 @@ pub struct Cli {
 }
 
 /// The full `specify` verb tree — every family, native-only ones
-/// included, so `--help`, shell completions, and `contract dump` see
-/// one grammar wherever the parse runs.
+/// included, so `--help` and shell completions see one grammar
+/// wherever the parse runs.
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Initialize .specify/ in a project.
@@ -226,16 +225,6 @@ pub enum Commands {
     Completions {
         /// Target shell — one of `bash`, `elvish`, `fish`, `powershell`, `zsh`.
         shell: Shell,
-    },
-
-    /// Machine-readable CLI contract (verbs, exit codes, error ids,
-    /// journal event ids, embedded schemas). Read-only and
-    /// project-context-free; the lint cross-check and external
-    /// documentation tooling consume `contract dump --format json`.
-    Contract {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: ContractAction,
     },
 
     /// Self-update the `specify` binary across its install channel.

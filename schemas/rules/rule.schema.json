@@ -129,14 +129,10 @@
               { "const": "tool" },
               { "const": "unique" },
               { "const": "reference-resolves" },
-              { "const": "set-coverage" },
-              { "const": "cardinality" },
               { "const": "constant-eq" },
               { "const": "fenced-block" },
               { "const": "presence" },
-              { "const": "field-grammar" },
-              { "const": "cross-reference" },
-              { "const": "cli-contract" }
+              { "const": "field-grammar" }
             ]
           },
           "value": {
@@ -150,29 +146,19 @@
             "description": "Optional human explanation for the hint."
           },
           "config": {
-            "description": "Per-kind configuration carrying the policy values the engine reads (caps, allow-lists, override maps, expected sets, canonical paths) or relays to a referenced `kind: tool` checker. `regex` -> regexHintConfig; `reference-resolves` -> referenceResolvesHintConfig; `cardinality` -> cardinalityHintConfig; `unique` -> uniqueHintConfig; `set-coverage` -> setCoverageHintConfig; `fenced-block` -> fencedBlockHintConfig or fencedBlockContainsHintConfig; `constant-eq` -> constantEqHintConfig or constantFieldEqHintConfig; `presence` (file / markdown-section / directory-index) -> presenceHintConfig (the frontmatter selector carries no config); `field-grammar` (field-tokens / field-first-word) -> fieldGrammarHintConfig; `cross-reference` -> crossReferenceHintConfig; `cli-contract` (invocations) -> cliContractInvocationsHintConfig; `cli-contract` (event-ids / error-codes) -> cliContractIdsHintConfig; `cli-contract` (test-citations) -> cliContractTestCitationsHintConfig; `tool` (skill-body) -> criticalPathHintConfig or variableCoverageHintConfig; `tool` (links-registry) -> schemaRegistryHintConfig; `tool` (prose) -> numericCapHintConfig; `tool` (rules) -> nsOwnerHintConfig; `tool` (scenarios) -> catalogRunsHintConfig.",
+            "description": "Per-kind configuration carrying the policy values the engine reads (caps, allow-lists, override maps, expected sets, canonical paths) or relays to a referenced `kind: tool` checker. `regex` -> regexHintConfig; `reference-resolves` -> referenceResolvesHintConfig; `unique` -> uniqueHintConfig; `fenced-block` -> fencedBlockContainsHintConfig; `constant-eq` -> constantEqHintConfig; `presence` (file / directory-index) -> presenceHintConfig (the frontmatter selector carries no config); `field-grammar` (field-tokens / field-first-word) -> fieldGrammarHintConfig; `tool` (links-registry) -> schemaRegistryHintConfig; `tool` (prose) -> numericCapHintConfig; `tool` (rules) -> nsOwnerHintConfig; `tool` (scenarios) -> catalogRunsHintConfig.",
             "oneOf": [
               { "$ref": "#/$defs/regexHintConfig" },
               { "$ref": "#/$defs/referenceResolvesHintConfig" },
-              { "$ref": "#/$defs/cardinalityHintConfig" },
               { "$ref": "#/$defs/uniqueHintConfig" },
-              { "$ref": "#/$defs/setCoverageHintConfig" },
-              { "$ref": "#/$defs/fencedBlockHintConfig" },
               { "$ref": "#/$defs/fencedBlockContainsHintConfig" },
               { "$ref": "#/$defs/constantEqHintConfig" },
-              { "$ref": "#/$defs/constantFieldEqHintConfig" },
-              { "$ref": "#/$defs/criticalPathHintConfig" },
-              { "$ref": "#/$defs/variableCoverageHintConfig" },
               { "$ref": "#/$defs/schemaRegistryHintConfig" },
               { "$ref": "#/$defs/numericCapHintConfig" },
               { "$ref": "#/$defs/nsOwnerHintConfig" },
               { "$ref": "#/$defs/catalogRunsHintConfig" },
               { "$ref": "#/$defs/presenceHintConfig" },
-              { "$ref": "#/$defs/fieldGrammarHintConfig" },
-              { "$ref": "#/$defs/crossReferenceHintConfig" },
-              { "$ref": "#/$defs/cliContractInvocationsHintConfig" },
-              { "$ref": "#/$defs/cliContractIdsHintConfig" },
-              { "$ref": "#/$defs/cliContractTestCitationsHintConfig" }
+              { "$ref": "#/$defs/fieldGrammarHintConfig" }
             ]
           }
         }
@@ -273,16 +259,6 @@
           "type": "string",
           "minLength": 1,
           "description": "Per-match filter: skip matches whose remainder starts with this literal prefix."
-        },
-        "slash-skill-positional": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true, apply CORE-023 slash-skill positional semantics instead of matching `value` as a regex."
-        },
-        "join-backslash-continuations": {
-          "type": "boolean",
-          "default": false,
-          "description": "When true with `slash-skill-positional`, join backslash- and indent-continued rows before scanning."
         }
       }
     },
@@ -316,19 +292,6 @@
         }
       }
     },
-    "cardinalityHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["max"],
-      "description": "Optional `kind: cardinality` hint configuration. `max` is the inclusive upper bound a counted metric may reach; it is policy supplied by the rule, not the engine.",
-      "properties": {
-        "max": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Inclusive maximum for the selected metric; values strictly greater are flagged."
-        }
-      }
-    },
     "uniqueHintConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -339,48 +302,6 @@
           "type": "string",
           "minLength": 1,
           "description": "Fact field whose value must be unique across the candidate set (e.g. `skill-name`)."
-        }
-      }
-    },
-    "setCoverageHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["allowed"],
-      "description": "Optional `kind: set-coverage` hint configuration for the `skill-allowed-tools` source. Both the recognised-value set and the prefix exemptions are policy supplied by the rule, not the engine.",
-      "properties": {
-        "allowed": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "The closed set of recognised values a declared set must be covered by."
-        },
-        "allowed-prefixes": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Prefixes that exempt a declared value from the allow-list (e.g. `mcp__`)."
-        }
-      }
-    },
-    "fencedBlockHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["langs", "max-lines"],
-      "description": "Optional `kind: fenced-block` hint configuration for the `inline-json-too-long` source. The language allow-list and line cap are policy supplied by the rule, not the engine.",
-      "properties": {
-        "langs": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Fence info strings this rule scopes to (e.g. `json`, `jsonc`)."
-        },
-        "max-lines": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Inclusive maximum fence-body line count; longer fences are flagged."
         }
       }
     },
@@ -416,62 +337,6 @@
           "type": "object",
           "additionalProperties": { "type": "string", "minLength": 1 },
           "description": "`<plugin-dir> -> <required-prefix-base>` redirects for plugins whose skill-name prefix differs from the directory slug."
-        }
-      }
-    },
-    "constantFieldEqHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["field", "equals"],
-      "description": "`kind: constant-eq` hint configuration for the `adapter-manifest-field` source (CORE-006). Both the field selector and the expected value are policy supplied by the rule, not the engine.",
-      "properties": {
-        "field": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Adapter-manifest field to compare (e.g. `version`)."
-        },
-        "equals": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Value the selected field must equal (e.g. `1`)."
-        }
-      }
-    },
-    "criticalPathHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["min-body-lines"],
-      "description": "`kind: tool` (`skill-body`) configuration for the `## Critical Path` checks (CORE-040 / CORE-041). The line threshold and item bounds are policy supplied by the rule, not the tool. The engine relays this block to the tool verbatim.",
-      "properties": {
-        "min-body-lines": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Body-line threshold at or above which a skill must carry (and correctly shape) a `## Critical Path` section."
-        },
-        "min-items": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Inclusive lower bound on Critical Path entries (CORE-040 only)."
-        },
-        "max-items": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Inclusive upper bound on Critical Path entries (CORE-040 only)."
-        }
-      }
-    },
-    "variableCoverageHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["builtin-vars"],
-      "description": "`kind: tool` (`skill-body`) configuration for the `$VAR` coverage check (CORE-048). The built-in variable allow-list is policy supplied by the rule, not the tool.",
-      "properties": {
-        "builtin-vars": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Variable names exempt from definition / reference coverage (e.g. `ARGUMENTS`, `HOME`)."
         }
       }
     },
@@ -517,99 +382,6 @@
           }
         }
       ]
-    },
-    "crossReferenceHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["target"],
-      "description": "`kind: cross-reference` hint configuration. `target` names the target fact family the source (the hint `value`) is joined against. With a fact-family source (e.g. `value: adapter-dir`) the join is presence-only: source items with no corresponding target item are flagged. The source / target selectors and the join keys are mechanism; which family is which is policy supplied by the rule, not the engine.",
-      "properties": {
-        "target": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Target fact-family selector the source is joined against (e.g. `adapter-manifest` for a presence join)."
-        }
-      }
-    },
-    "cliContractInvocationsHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["langs"],
-      "description": "`kind: cli-contract` configuration for the `invocations` selector. The fence language set and the offending-token exemptions are policy supplied by the rule, not the engine; the contract itself is injected by the running binary.",
-      "properties": {
-        "langs": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Fence info strings whose bodies are scanned for `specify …` command lines (e.g. `bash`, `sh`, `console`)."
-        },
-        "ignore": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Offending tokens (verbs or `--flags`) exempted from findings (e.g. verbs that are illustrative, not shipped)."
-        }
-      }
-    },
-    "cliContractIdsHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["json-fields"],
-      "description": "`kind: cli-contract` configuration for the `event-ids` / `error-codes` selectors. The probed JSON field names and every exemption are policy supplied by the rule, not the engine; the id lists come from the binary-injected contract.",
-      "properties": {
-        "json-fields": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "JSON field names whose string values are membership-checked in fenced bodies (e.g. `event` for journal lines, `code` for error envelopes)."
-        },
-        "ignore": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Exact tokens exempted from findings (e.g. dotted YAML paths that are not event ids)."
-        },
-        "ignore-suffixes": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Suffix exemptions for the `event-ids` inline-span scan (e.g. `.yaml`, `.md` — dotted tokens that are file names, not ids)."
-        },
-        "allow-prefixes": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Prefix exemptions for dynamically composed id families."
-        }
-      }
-    },
-    "cliContractTestCitationsHintConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["link-prefixes"],
-      "description": "`kind: cli-contract` configuration for the `test-citations` selector. The link-target prefixes and exemptions are policy supplied by the rule, not the engine; the tests/ inventory comes from the binary-injected contract.",
-      "properties": {
-        "link-prefixes": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Link-target prefixes that root a citation of the CLI repo's tests/ tree (e.g. the blob/ and tree/ GitHub URL prefixes)."
-        },
-        "ignore": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": { "type": "string", "minLength": 1 },
-          "description": "Exact cited paths exempted from findings (e.g. downstream generated-project test layouts that are not CLI tests)."
-        }
-      }
     },
     "schemaRegistryHintConfig": {
       "type": "object",
@@ -737,7 +509,7 @@
       }
     },
     "presenceHintConfig": {
-      "description": "`kind: presence` hint configuration. The `file` selector carries `{ path }`; the `markdown-section` selector carries `{ title, level, when: { metric, min } }`; the `directory-index` selector carries `{ roots, index, min-files? }`. The `frontmatter` selector carries no config. Each variant has a unique required key (`path` vs `title` vs `roots`) so the oneOf disambiguates. All values are policy supplied by the rule, not the engine.",
+      "description": "`kind: presence` hint configuration. The `file` selector carries `{ path }`; the `directory-index` selector carries `{ roots, index, min-files? }`. The `frontmatter` selector carries no config. Each variant has a unique required key (`path` vs `roots`) so the oneOf disambiguates. All values are policy supplied by the rule, not the engine.",
       "oneOf": [
         {
           "type": "object",
@@ -777,43 +549,6 @@
               "type": "integer",
               "minimum": 1,
               "description": "Require the index only when at least this many files live beneath the directory (recursive count; default 1)."
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["title", "level", "when"],
-          "description": "`markdown-section` selector: the required heading and the metric threshold that gates the requirement.",
-          "properties": {
-            "title": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Heading text the required markdown section must carry (e.g. `Critical Path`)."
-            },
-            "level": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 6,
-              "description": "Heading level the required section must use (2 for an H2)."
-            },
-            "when": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["metric", "min"],
-              "description": "Threshold gate: the section is required only when the named fact metric reaches `min`.",
-              "properties": {
-                "metric": {
-                  "type": "string",
-                  "minLength": 1,
-                  "description": "Fact metric the threshold gates on (e.g. `skill-body-line-count`)."
-                },
-                "min": {
-                  "type": "integer",
-                  "minimum": 0,
-                  "description": "Inclusive threshold: at or above this metric value the section is required."
-                }
-              }
             }
           }
         }

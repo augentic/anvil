@@ -46,8 +46,7 @@ fn every_schema_compiles() {
 /// `include_str!` binds at compile time, so this guards
 /// against a constant pointing at a stale or duplicated copy: each
 /// [`EMBEDDED_SCHEMAS`] entry re-reads the canonical workspace file at
-/// runtime and asserts equality. The inventory itself lives in the
-/// crate so `specify contract dump` publishes the same list.
+/// runtime and asserts equality.
 #[test]
 fn embedded_schemas_match_on_disk_sources() {
     let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -279,8 +278,7 @@ fn workspace_model_accepts_minimal() {
         "markdown_sections": [],
         "markdown_links": [],
         "symlinks": [],
-        "skills": [],
-        "adapter_manifests": []
+        "skills": []
     });
     let summaries = validate_value(
         &instance,
@@ -540,15 +538,14 @@ fn build_report_failure_with_findings() {
     assert!(errors.is_empty(), "failure-with-findings report must validate; errors: {errors:?}");
 }
 
-/// Per the standards-layer contract §"Hint kinds — reserved", reserved kinds are
-/// shape-validated by this schema with no execution semantics. A
-/// minimal codex-rule frontmatter that declares each reserved kind
-/// must round-trip cleanly so rules exporters accept files awaiting
-/// implementation.
+/// Every declared hint kind is shape-validated by this schema with no
+/// execution semantics. A minimal codex-rule frontmatter that declares
+/// each kind must round-trip cleanly so rules exporters accept files
+/// regardless of evaluator behavior.
 #[test]
-fn codex_rule_accepts_reserved_kinds() {
-    let reserved = ["unique", "reference-resolves", "set-coverage", "cardinality", "constant-eq"];
-    for kind in reserved {
+fn codex_rule_accepts_declared_kinds() {
+    let declared = ["unique", "reference-resolves", "presence", "field-grammar", "constant-eq"];
+    for kind in declared {
         let instance = json!({
             "id": "UNI-014",
             "title": "Reserved-kind smoke fixture",

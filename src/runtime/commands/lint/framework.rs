@@ -84,14 +84,12 @@ fn build_report(
     // runner is never consulted for framework checkers.
     let rule_filter_slice: Vec<&str> = action.rules.iter().map(String::as_str).collect();
     let tool_runner = NoopToolRunner;
-    let cli_contract = crate::runtime::commands::contract::dump::build_contract();
     let config = PipelineConfig {
         profile: ScanProfile::Framework,
         dump_model: action.dump_model,
         apply_ignore_directives: true,
         rule_filter: &rule_filter_slice,
         tool_runner: &tool_runner,
-        cli_contract: Some(&cli_contract),
     };
 
     let scope = LintScope {

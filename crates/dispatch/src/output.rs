@@ -87,8 +87,7 @@ impl Exit {
     }
 }
 
-/// The closed exit-code table as `(code, name, meaning)` rows —
-/// the contract surface `specify contract dump` publishes.
+/// The closed exit-code table as `(code, name, meaning)` rows.
 ///
 /// [`Exit::Code`] (the WASI tool passthrough) is open-ended by design
 /// and intentionally absent. The `exit_code_table_matches_exit` test
