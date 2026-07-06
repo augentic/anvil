@@ -18,11 +18,10 @@ use strum::EnumString;
 
 /// Closed source-adapter operation set (`extract | survey`).
 ///
-/// Source adapters declare exactly these two operations per
-/// workflow §Source adapter contract. The enum is the typed
-/// `briefs.keys()` carried by [`crate::adapter::SourceAdapter`]
-/// (parsed out of `adapters/sources/<name>/adapter.yaml` at load
-/// time).
+/// Source adapters serve exactly these two operations per
+/// workflow §Source adapter contract — the closed WIT operation set
+/// carried by [`crate::adapter::SourceAdapter`] (derived from the
+/// axis, not declared on disk; RFC-64 adapters have no manifest).
 ///
 /// Variants declared in kebab-alphabetical order so `BTreeMap`
 /// iteration matches the wire envelope.
@@ -63,11 +62,11 @@ impl SourceOperation {
 
 /// Closed target-adapter operation set (`shape | build | merge`).
 ///
-/// Target adapters declare exactly these three operations per
-/// workflow §Target adapter contract. The enum is the typed
-/// `briefs.keys()` carried by [`crate::adapter::TargetAdapter`]
-/// (parsed out of `adapters/targets/<name>/adapter.yaml` at load
-/// time) and the discriminant stamped into per-slice outcomes
+/// Target adapters serve exactly these three operations per
+/// workflow §Target adapter contract — the closed WIT operation set
+/// carried by [`crate::adapter::TargetAdapter`] (derived from the
+/// axis, not declared on disk; RFC-64 adapters have no manifest) and
+/// the discriminant stamped into per-slice outcomes
 /// (`<slice_dir>/metadata.yaml.outcome.phase`).
 ///
 /// Refine-time artifacts are synthesised by core, not produced by an

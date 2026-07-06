@@ -290,25 +290,14 @@ mod framework_adapters {
     }
 
     /// Scaffold an adapters-only framework root: one source and one target
-    /// adapter (each manifest + a prompt), with no `plugins/`, no
-    /// `.cursor-plugin/marketplace.json`, and no `docs/standards/`.
+    /// adapter prose tree (RFC-64: adapters carry no manifest files),
+    /// with no `plugins/`, no `.cursor-plugin/marketplace.json`, and no
+    /// `docs/standards/`.
     fn scaffold_adapters_only(root: &Path) {
-        write(
-            root,
-            "adapters/sources/documentation/adapter.yaml",
-            "name: documentation\nversion: \"1.0.0\"\naxis: source\n\
-description: Adapters-only source fixture.\n",
-        );
         write(
             root,
             "adapters/sources/documentation/prose/prompts/survey.md",
             "# documentation.survey\n\nMinimal prompt.\n\n## Inputs\n\n- intent.\n\n## Output contract\n\nLeads.\n",
-        );
-        write(
-            root,
-            "adapters/targets/omnia/adapter.yaml",
-            "name: omnia\nversion: \"1.0.0\"\naxis: target\n\
-description: Adapters-only target fixture.\n",
         );
         write(
             root,
@@ -454,29 +443,32 @@ mod framework_json {
 
     /// The shared `super::support::scaffold_framework` base tree plus the
     /// declarative `CORE-001` rule the golden suite needs (see
-    /// [`write_core_adapter_schema_rule`]).
+    /// [`write_core_catalog_schema_rule`]).
     fn write_scaffold(root: &Path) {
         scaffold_framework(root);
-        write_core_adapter_schema_rule(root);
+        write_core_catalog_schema_rule(root);
     }
 
-    /// Declarative `CORE-001` so adapter manifest schema violations surface
-    /// without relying on rule-file parse failures (which abort codex resolve).
-    fn write_core_adapter_schema_rule(root: &Path) {
+    /// Declarative `CORE-001` so registered-schema violations surface
+    /// without relying on rule-file parse failures (which abort codex
+    /// resolve). Post-RFC-64 there is no adapter manifest schema, so the
+    /// synthetic rule validates component catalogs (`components.yaml`)
+    /// against the registered `components` schema instead.
+    fn write_core_catalog_schema_rule(root: &Path) {
         fs::create_dir_all(root.join("adapters/shared/prose/rules/core")).expect("core rules dir");
         write_codex_rule(
             root,
-            "adapters/shared/prose/rules/core/CORE-001-adapter-schema.md",
+            "adapters/shared/prose/rules/core/CORE-001-catalog-schema.md",
             r"---
 id: CORE-001
-title: Adapter Manifest Schema
+title: Component Catalog Schema
 severity: critical
-trigger: An adapter manifest fails adapter.schema.json validation.
+trigger: A component catalog fails components.schema.json validation.
 rule_hints:
   - kind: path-pattern
-    value: adapters/**/adapter.yaml
+    value: '**/components.yaml'
   - kind: schema
-    value: adapter
+    value: components
 ---
 
 ## Rule
@@ -485,11 +477,11 @@ Synthetic CORE-001 for golden tests.
 
 ## Look For
 
-Invalid manifests.
+Invalid catalogs.
 
 ## Fix
 
-Fix manifest.
+Fix catalog.
 ",
         );
     }
@@ -541,28 +533,6 @@ Move the rule to the directory that owns its prefix.
         );
     }
 
-    /// Write a minimal source-adapter manifest at
-    /// `adapters/sources/<name>/adapter.yaml` so
-    /// `adapter.missing-manifest` does not fire when a `<name>` source
-    /// adapter directory is created (e.g. by writing a rule under
-    /// `adapters/sources/<name>/prose/rules/`).
-    fn write_source_adapter_manifest(root: &Path, name: &str) {
-        let path = root.join("adapters").join("sources").join(name).join("adapter.yaml");
-        fs::create_dir_all(path.parent().expect("source adapter parent"))
-            .expect("mkdir source adapter parent");
-        fs::write(
-            &path,
-            format!(
-                r"name: {name}
-version: 1.0.0
-axis: source
-description: Synthetic source adapter for specify lint framework golden tests.
-"
-            ),
-        )
-        .expect("source adapter.yaml");
-    }
-
     /// Render a structurally-valid rule body with the supplied id.
     fn valid_rule_body(id: &str) -> String {
         format!(
@@ -586,25 +556,6 @@ Body preserved so the rule passes shape validation.
         let path = root.join(rel_path);
         fs::create_dir_all(path.parent().expect("rule parent")).expect("mkdir rule parent");
         fs::write(&path, body).expect("write rule");
-    }
-
-    /// Write a minimal target-adapter manifest at
-    /// `adapters/targets/<name>/adapter.yaml` that validates against
-    /// `target.schema.json`.
-    fn write_target_adapter_manifest(root: &Path, name: &str) {
-        let path = root.join("adapters").join("targets").join(name).join("adapter.yaml");
-        fs::create_dir_all(path.parent().expect("adapter parent")).expect("mkdir adapter parent");
-        fs::write(
-            &path,
-            format!(
-                r"name: {name}
-version: 1.0.0
-axis: target
-description: Synthetic target adapter for specify lint framework golden tests.
-"
-            ),
-        )
-        .expect("adapter.yaml");
     }
 
     /// Run `specify lint framework --framework-root <root> --format json` and
@@ -707,7 +658,6 @@ description: Synthetic target adapter for specify lint framework golden tests.
     fn clean_tree_emits_empty_envelope() {
         let temp = TempDir::new().expect("tempdir");
         write_scaffold(temp.path());
-        write_source_adapter_manifest(temp.path(), "documentation");
         write_codex_rule(
             temp.path(),
             "adapters/sources/documentation/prose/rules/src-001.md",
@@ -756,10 +706,11 @@ description: Synthetic target adapter for specify lint framework golden tests.
             &valid_rule_body("UNI-999"),
         );
         write_core_namespace_owner_rule(temp.path());
-        write_target_adapter_manifest(temp.path(), "omnia");
-        let bad_manifest = temp.path().join("adapters/targets/omnia/adapter.yaml");
-        fs::write(&bad_manifest, "name: omnia\nversion: 1.0.0\naxis: target\n")
-            .expect("bad manifest");
+        // Under `docs/**` so the §F1 framework include set picks it up.
+        let bad_catalog = temp.path().join("docs/design-system/components.yaml");
+        fs::create_dir_all(bad_catalog.parent().expect("catalog parent")).expect("catalog dir");
+        // Missing the required `version` key -> CORE-001 schema finding.
+        fs::write(&bad_catalog, "components: {}\n").expect("bad catalog");
         write_codex_rule(
             temp.path(),
             "adapters/targets/omnia/prose/rules/frame-misplaced.md",
@@ -783,7 +734,7 @@ description: Synthetic target adapter for specify lint framework golden tests.
             .expect("normalized envelope carries findings array");
         assert!(
             findings.len() >= 2,
-            "expected at least two findings (CORE-001 adapter schema, CORE-009 namespace); got {}",
+            "expected at least two findings (CORE-001 catalog schema, CORE-009 namespace); got {}",
             findings.len(),
         );
         for finding_json in findings {
@@ -862,7 +813,6 @@ description: Synthetic target adapter for specify lint framework golden tests.
     fn text_output_renders_summary() {
         let temp = TempDir::new().expect("tempdir");
         write_scaffold(temp.path());
-        write_source_adapter_manifest(temp.path(), "documentation");
         write_codex_rule(
             temp.path(),
             "adapters/sources/documentation/prose/rules/src-001.md",

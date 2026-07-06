@@ -1,37 +1,39 @@
-//! Adapter manifest resolution.
+//! Adapter resolution (RFC-64: one component, no manifest).
 //!
-//! workflow §"Adapter implementation shape" / §"Resolver and cache".
-//! Source and target adapters share the `adapter.yaml` wire shape but
-//! split into [`SourceAdapter`] / [`TargetAdapter`] in memory, each
-//! carrying its closed operation set ([`SourceOperation`] /
-//! [`TargetOperation`]) derived from the closed WIT contract
-//! (`wit/specify.wit`). See [DECISIONS.md §"Operations typed at parse
-//! boundary"] for the rationale.
+//! An adapter is a single WebAssembly component. Identity lives in the
+//! wasm-pkg package reference (`augentic:<name>@<semver>`), axis in the
+//! exported world (`source` xor `target`), and the remaining metadata
+//! in the component's own deterministic `describe` answer, dispatched
+//! host-side at resolve time and cached against the component digest
+//! (see [`describe`]).
 //!
-//! Resolution is path-agnostic: each axis-specific loader probes
-//! `<project-cache>/manifests/{sources,targets}/<name>/`
-//! first (the agent-populated out-of-tree manifest cache) and then
-//! `<project_dir>/adapters/{sources,targets}/<name>/` (in-repo). The
-//! manifest cache mirrors the in-repo adapter tree so source and
-//! target adapters with colliding names disambiguate by axis. See
-//! [DECISIONS.md §"Cache layout"].
+//! Source and target adapters split into [`SourceAdapter`] /
+//! [`TargetAdapter`] in memory, each carrying its closed operation set
+//! ([`SourceOperation`] / [`TargetOperation`]) derived from the closed
+//! WIT contract (`wit/specify.wit`). See [DECISIONS.md §"Operations
+//! typed at parse boundary"] for the rationale.
 //!
-//! Brief bodies are read in-guest by each adapter's own workflow
-//! guest; the CLI never parses brief markdown.
+//! Resolution keys on the [`AdapterRef`] identity: a pinned
+//! `(name, version)` resolves the single-file global store entry at
+//! `<store-root>/<name>@<version>.wasm` (RFC-48 D5, verify-on-read
+//! included); a bare name resolves the development release build at
+//! `target/wasm32-wasip2/release/specify_<name>.wasm` under the project
+//! or the sibling `specify-adapters` checkout.
 //!
 //! [DECISIONS.md §"Operations typed at parse boundary"]: ../../../DECISIONS.md#operations-typed-at-parse-boundary
-//! [DECISIONS.md §"Cache layout"]: ../../../DECISIONS.md#cache-layout
 
 mod core;
+pub mod describe;
 pub(crate) mod operation;
 mod resolve;
-mod validate_manifest;
 
 pub use core::{
-    ADAPTER_FILENAME, ADAPTER_GUEST_FILENAME, ADAPTERS_DIR, AdapterLocation, AdapterRef, Axis,
-    BuildInputDeclaration, PlatformsCapability, PlatformsViolation, ResolvedTargetAdapter,
-    SourceAdapter, TargetAdapter, adapter_axis_dir, cache_axis_dir, cache_dir,
+    AdapterLocation, AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability,
+    PlatformsViolation, ResolvedSourceAdapter, ResolvedTargetAdapter, SourceAdapter, TargetAdapter,
+    dev_version,
 };
 
 pub use operation::{SourceOperation, TargetOperation};
-pub use validate_manifest::check_axis_unique_for_name;
+pub use resolve::{
+    component_cache_dir, component_cache_entry, dev_component_filename, dev_component_paths,
+};

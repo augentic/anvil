@@ -46,7 +46,7 @@ fn assert_golden(name: &str, actual: Value) {
 
 #[test]
 fn validate_good_slice_passes() {
-    let project = Project::init().with_schemas();
+    let project = Project::init();
     project.stage_slice("good-slice");
 
     let assert = specify_cmd()
@@ -71,7 +71,7 @@ fn validate_good_slice_passes() {
 
 #[test]
 fn validate_bad_slice_fails_with_exit_two() {
-    let project = Project::init().with_schemas();
+    let project = Project::init();
     project.stage_slice("bad-slice");
 
     let assert = specify_cmd()
@@ -98,7 +98,7 @@ fn validate_bad_slice_fails_with_exit_two() {
 
 #[test]
 fn task_progress_reports_counts_and_items() {
-    let project = Project::init().with_schemas();
+    let project = Project::init();
     project.stage_slice("good-slice");
 
     let assert = specify_cmd()
@@ -120,7 +120,7 @@ fn task_progress_reports_counts_and_items() {
 
 #[test]
 fn task_mark_is_idempotent() {
-    let project = Project::init().with_schemas();
+    let project = Project::init();
     project.stage_slice("good-slice");
     let tasks_path = project.root().join(".specify/slices/my-slice/tasks.md");
 

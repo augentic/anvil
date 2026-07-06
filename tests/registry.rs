@@ -7,7 +7,7 @@
 
 use std::fs;
 
-use common::{Project, init_workspace, omnia_schema_dir, parse_stderr, parse_stdout, specify_cmd};
+use common::{Project, init_workspace, omnia_component, parse_stderr, parse_stdout, specify_cmd};
 use serde_json::Value;
 use tempfile::tempdir;
 
@@ -321,7 +321,7 @@ fn remove_refuses_when_absent() {
     specify_cmd()
         .current_dir(tmp.path())
         .args(["init"])
-        .arg(omnia_schema_dir())
+        .arg(omnia_component())
         .args(["--name", "demo"])
         .assert()
         .success();

@@ -10,7 +10,6 @@
 //! surface here — the workflow guest drives the matching
 //! `specify_workflow::orchestrate` entry points.
 
-pub mod adapter;
 pub mod archive;
 pub mod journal;
 pub mod lint;
@@ -188,38 +187,34 @@ fn render_diagnostic_report(
 struct ResolveBody {
     axis: &'static str,
     name: String,
+    version: String,
     resolved_path: String,
     location: &'static str,
     operations: Vec<String>,
-    description: Option<String>,
 }
 
 fn write_resolve_text(w: &mut dyn Write, body: &ResolveBody) -> std::io::Result<()> {
     writeln!(w, "{}", body.resolved_path)?;
     writeln!(w, "  axis: {}", body.axis)?;
     writeln!(w, "  name: {}", body.name)?;
+    writeln!(w, "  version: {}", body.version)?;
     writeln!(w, "  location: {}", body.location)?;
     writeln!(w, "  operations: {}", body.operations.join(", "))?;
-    if let Some(desc) = &body.description {
-        writeln!(w, "  description: {desc}")?;
-    }
     Ok(())
 }
 
-/// Resolve a source- or target-adapter manifest by kebab name and emit
+/// Resolve a source- or target-adapter component by identity and emit
 /// the wire-stable [`ResolveBody`] envelope. Probe order matches the
-/// axis-specific resolver: agent-populated out-of-tree manifest cache at
-/// `<project-cache>/manifests/{sources,targets}/<name>/`
-/// first, then the in-repo `<project_dir>/adapters/{sources,targets}/<name>/`.
+/// axis-agnostic locator (RFC-64): the global single-file store entry
+/// for pinned identities, then the development release build for bare
+/// names.
 ///
-/// For [`Axis::Target`], `value` accepts either `<name>` or
-/// `<name>@<version>`; the `@version` suffix is treated as an opaque
-/// identifier and stripped to leave the kebab name for the lookup
-/// (workflow §CLI surface).
+/// `value` accepts either `<name>` or `<name>@<version>`; the semver
+/// `@version` suffix pins the identity to a store entry (workflow §CLI
+/// surface).
 fn resolve_adapter(format: Format, axis: Axis, value: &str, project_dir: &Path) -> Result<()> {
-    // Common envelope shape; only the per-axis resolver and the
-    // `@version` strip (target-only) differ.
-    let (name, resolved_path, location, operations, description) = match axis {
+    // Common envelope shape; only the per-axis resolver differs.
+    let (name, version, resolved_path, location, operations) = match axis {
         Axis::Source => {
             let resolved = SourceAdapter::resolve(&adapter_ref_from_value(value), project_dir)?;
             let operations = resolved.manifest.operations().map(ToString::to_string).collect();
@@ -227,10 +222,10 @@ fn resolve_adapter(format: Format, axis: Axis, value: &str, project_dir: &Path) 
             let location = resolved.location.label();
             (
                 resolved.manifest.name,
+                resolved.manifest.version.to_string(),
                 resolved_path,
                 location,
                 operations,
-                resolved.manifest.description,
             )
         }
         Axis::Target => {
@@ -240,20 +235,20 @@ fn resolve_adapter(format: Format, axis: Axis, value: &str, project_dir: &Path) 
             let location = resolved.location.label();
             (
                 resolved.manifest.name,
+                resolved.manifest.version.to_string(),
                 resolved_path,
                 location,
                 operations,
-                resolved.manifest.description,
             )
         }
     };
     let body = ResolveBody {
         axis: axis.dir_segment(),
         name,
+        version,
         resolved_path,
         location,
         operations,
-        description,
     };
     output::emit(&mut std::io::stdout().lock(), format, &body, write_resolve_text)?;
     Ok(())

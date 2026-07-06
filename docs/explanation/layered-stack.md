@@ -16,9 +16,8 @@ Layer 0 is the static project configuration plus the adapter manifests every hig
 The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
-- **`adapters/sources/<name>/adapter.yaml`** — source adapter manifest (`axis: source`; operations `survey` / `extract` derive from the WIT contract).
-- **`adapters/targets/<name>/adapter.yaml`** — target adapter manifest (`axis: target`; operations `guidance` / `build` / `merge` derive from the WIT contract).
-- **JSON Schemas** — the authoritative `source.schema.json`, `target.schema.json`, `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary, with sources in-tree under [`schemas/`](../../schemas); editors bind to them via remote URLs in [`.vscode/settings.json`](../../.vscode/settings.json).
+- **Adapter components** — each source / target adapter is a single WebAssembly component whose metadata is its own `describe` export (no manifest file; operations derive from the WIT contract per axis).
+- **JSON Schemas** — the authoritative `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary, with sources in-tree under [`schemas/`](../../schemas).
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:

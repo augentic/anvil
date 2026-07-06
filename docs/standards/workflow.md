@@ -4,21 +4,21 @@ The in-force contract this binary implements. Stable anchors that source code an
 
 ## Adapter vocabulary
 
-Two adapter roles — `source` (operations: `survey`, `extract`) and `target` (operations: `guidance`, `build`, `merge`; the Rust `TargetOperation` enum's wire spelling for the first operation remains `shape`). The shared on-disk shape is `adapter.yaml`; per-axis schemas refine it. See the parent repo's [`AGENTS.md` §"Vocabulary"](https://github.com/augentic/specify/blob/main/AGENTS.md#vocabulary).
+Two adapter roles — `source` (operations: `survey`, `extract`) and `target` (operations: `guidance`, `build`, `merge`; the Rust `TargetOperation` enum's wire spelling for the first operation remains `shape`). An adapter ships as a single WebAssembly component exporting its axis interface from the WIT contract (one component, no manifest). See the parent repo's [`AGENTS.md` §"Vocabulary"](https://github.com/augentic/specify/blob/main/AGENTS.md#vocabulary).
 
 ## Adapter implementation shape
 
-Per-adapter `adapter.yaml` carries `name`, `version`, `axis`, `description`, an optional `specify` compatibility floor, and (targets) an optional `platforms` capability and `inputs[]` list. The closed operation set derives from the manifest's `axis` per the WIT contract — manifests carry no `briefs` / `execution` / `extension` / `prepare` properties (deleted at S4; see [DECISIONS.md §"Old-stack deletion"](../../DECISIONS.md#old-stack-deletion-milestone-s4)). Operation behaviour lives in each adapter's committed `guest.wasm`. Implementation: [`crates/workflow/src/adapter/`](../../crates/workflow/src/adapter); per-axis schemas at [`schemas/adapter.schema.json`](../../schemas/adapter.schema.json), [`source.schema.json`](../../schemas/source.schema.json), [`target.schema.json`](../../schemas/target.schema.json).
+An adapter is one `.wasm` component. Identity (`name`, `version`) is carried by the artifact's location — the store entry filename for a pinned identity, the guest crate's `Cargo.toml` version at publish time. Non-identity metadata — an optional `specify` compatibility floor and (targets) an optional `platforms` capability and `inputs[]` list — is the WIT `manifest` record returned by the component's deterministic `describe` export, dispatched host-side at resolve time and cached against the component's digest. The closed operation set derives from the binding axis per the WIT contract; operation behaviour (prompts included) is compiled into the component. Implementation: [`crates/workflow/src/adapter/`](../../crates/workflow/src/adapter); the WIT contract at [`wit/specify.wit`](../../wit/specify.wit).
 
 ## Source adapter contract
 
-`axis: source`; the closed operation set `{extract, survey}` derives from the WIT contract. `survey` writes `## Lead inventory` blocks under `discovery.md` at plan time; `extract` writes one Evidence document per `(source, lead)` pair at slice time. See [`schemas/source.schema.json`](../../schemas/source.schema.json) and [`schemas/evidence.schema.json`](../../schemas/evidence.schema.json).
+The WIT `source` interface; the closed operation set `{extract, survey}` derives from the WIT contract. `survey` writes `## Lead inventory` blocks under `discovery.md` at plan time; `extract` writes one Evidence document per `(source, lead)` pair at slice time. See [`schemas/evidence.schema.json`](../../schemas/evidence.schema.json).
 
 `specify source survey <source> [--plan <name>]` and `specify source extract <source> <lead> --slice <slice>` are the guest-routed runners (`orchestrate::survey` / `orchestrate::extract`). `<source>` resolves against `plan.yaml.sources.<key>`, then the adapter from `SourceBinding.adapter`. Both validate before the write becomes visible (lead set against `schemas/discovery/lead.schema.json` then `discovery.md` merge; Evidence against `schemas/evidence.schema.json` then persist to `.specify/slices/<slice>/evidence/<source>.yaml`). Source operations are agent-only, collapsed into one guest orchestration each — the judgment leg runs against the adapter guest's compiled-in prompt. Value-bound sources (`intent`) carry `value-inline`; path bindings carry `source-path`. See [`DECISIONS.md` §"Source operations"](../../DECISIONS.md#source-operations).
 
 ## Target adapter contract
 
-`axis: target`; the closed operation set `{guidance, build, merge}` derives from the WIT contract. `guidance` is read by core synthesis; `build` and `merge` are agent-driven. The optional manifest `inputs[]` (a flat `{ path, required }` list, paths relative to the build request's `inputs.root`) declares the target-specific build inputs the CLI assembles into `inputs.artifacts.additional[]`. See [`schemas/target.schema.json`](../../schemas/target.schema.json).
+The WIT `target` interface; the closed operation set `{guidance, build, merge}` derives from the WIT contract. `guidance` is read by core synthesis; `build` and `merge` are agent-driven. The optional `inputs[]` in the target's `describe` answer (a flat `{ path, required }` list, paths relative to the build request's `inputs.root`) declares the target-specific build inputs the CLI assembles into `inputs.artifacts.additional[]`.
 
 `specify slice build <slice> [--format json]` is the guest-routed target build runner (`orchestrate::build`). It is the symmetric target-side twin of `specify source survey` / `extract`: the orchestrator owns request assembly, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate, while the bound target's `build` prompt (compiled into the adapter guest) owns only code generation. It resolves the target from the slice's bound project — `plan.yaml` stores the slice's `project`, not a resolved `target`. The orchestration assembles + schema-validates the request, writes `.specify/slices/<slice>/build/request.yaml`, emits `target.execution.agent`, drives the adapter guest's `build` judgment leg (any build prelude, e.g. vectis asset materialization, is in-guest adapter code), validates the resulting `build/report.yaml`, rejects a `success` report carrying a blocking finding, gates the `Refined → Built` transition, and journals `slice.build.succeeded` / `slice.build.failed`. See [`DECISIONS.md` §"Target build envelope (D6, D9 target side, D7 proof)"](../../DECISIONS.md#target-build-envelope-d6-d9-target-side-d7-proof).
 
@@ -28,24 +28,22 @@ Both build envelopes are closed-shape YAML, keyed on `(slice, target)`, schema-v
 
 ## Resolver and cache
 
-`SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` are the per-axis entry points. Probe order:
+`SourceAdapter::resolve(adapter_ref, project_dir)` and `TargetAdapter::resolve(adapter_ref, project_dir)` are the per-axis entry points; each resolves the identity to exactly one `.wasm` component. A pinned `(name, version)` resolves only the global single-file store entry `<store-root>/<name>@<version>.wasm` (D4 verify-on-read against the recorded byte digest). A bare name resolves the development probes, in order:
 
-1. `<project-cache>/manifests/{sources,targets}/<name>/` — agent-populated out-of-tree mirror.
-2. `<project_dir>/adapters/{sources,targets}/<name>/` — in-repo manifest.
+1. `<project-cache>/components/<name>.wasm` — the project component cache (an operator-supplied local component mirrored at init).
+2. `target/wasm32-wasip2/release/specify_<name>.wasm` under the project, then under the sibling `specify-adapters` checkout — live development release builds (`cargo make build-guests-release`).
 
-Resolution is project-local only; there is no environment-variable fallback to an out-of-tree framework checkout. When neither location matches, resolution fails with `adapter-not-found`.
+Resolution is project-local plus the global store; there is no environment-variable fallback to an out-of-tree framework checkout. When no probe matches, resolution fails with `adapter-not-found`, naming every probed path.
 
-In workspace mode, `specify workspace sync` provisions probe location 1 for each synced slot: it mirrors the workspace's adapter set (both axes) into the slot's manifest cache — per-name delete-then-copy, skipping any name the slot vendors under its own `adapters/` tree. Resolution semantics are unchanged. See [`DECISIONS.md` §"Slot adapter provisioning via workspace sync"](../../DECISIONS.md#slot-adapter-provisioning-via-workspace-sync).
+In workspace mode, `specify workspace sync` provisions probe location 1 for each synced slot: it mirrors the workspace's component cache (components plus the provenance sidecar) into the slot's component cache, per-file copy-over. See [`DECISIONS.md` §"Slot adapter provisioning via workspace sync"](../../DECISIONS.md#slot-adapter-provisioning-via-workspace-sync).
 
-The `{sources,targets}` segment is keyed by `Axis`. See [`DECISIONS.md` §"Adapter loader axis routing"](../../DECISIONS.md#adapter-loader-axis-routing) and [`DECISIONS.md` §"Cache layout"](../../DECISIONS.md#cache-layout).
+`specify init <adapter>` accepts a package reference (`augentic:<name>@<semver>` — installed into the store on fetch), the first-party **shorthand** (`omnia@1.0.0` is package-reference sugar; bare `omnia` resolves the development release build), or a local `.wasm` path. GitHub URLs are refused (`adapter-github-uri-unsupported`). See [`DECISIONS.md` §"One component, no manifest"](../../DECISIONS.md#one-component-no-manifest-milestone-r64-s).
 
-`specify init <adapter>` additionally accepts a first-party **shorthand** (`omnia`, `omnia@1.0.0`; a bare name resolves the single installed identity, a semver pin records the full `name@<semver>` adapter identity) that resolves to the published adapter on GitHub. See [`DECISIONS.md` §"First-party `<adapter>` shorthand at init"](../../DECISIONS.md#first-party-adapter-shorthand-at-init).
-
-The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `resolved-path`, `location`, `operations`, and `description`. It is diagnostic: operation prompts are compiled into each adapter's guest, so no engine code resolves prompt files at run time.
+The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `version`, `resolved-path`, `location` (`store` / `dev`), and `operations`. It is diagnostic: operation prompts are compiled into each adapter's component, so no engine code resolves prompt files at run time.
 
 ## Adapter name uniqueness
 
-A name appears under `adapters/sources/<name>/` xor `adapters/targets/<name>/`. Collisions surface as `adapter-name-axis-collision`. See [`DECISIONS.md` §"Adapter name uniqueness"](../../DECISIONS.md#adapter-name-uniqueness).
+Adapter names remain unique across axes — one component exports exactly one axis interface, and a name identifies one published package. A component bound on the wrong axis fails resolve with the typed `adapter-axis-mismatch` (the `describe` dispatch verifies the expected axis export before the call). See [`DECISIONS.md` §"Adapter name uniqueness"](../../DECISIONS.md#adapter-name-uniqueness).
 
 ## Discovery handshake
 
@@ -138,7 +136,7 @@ Newline-delimited JSON journal at `.specify/journal.jsonl`. The closed `EventKin
 
 ## Operations typed at parse boundary
 
-The closed `SourceOperation` / `TargetOperation` enums in [`crates/workflow/src/adapter/operation.rs`](../../crates/workflow/src/adapter/operation.rs) are the typed per-axis operation sets, derived from the manifest's `axis`. See [`DECISIONS.md` §"Operations typed at parse boundary"](../../DECISIONS.md#operations-typed-at-parse-boundary).
+The closed `SourceOperation` / `TargetOperation` enums in [`crates/workflow/src/adapter/operation.rs`](../../crates/workflow/src/adapter/operation.rs) are the typed per-axis operation sets, derived from the binding axis. See [`DECISIONS.md` §"Operations typed at parse boundary"](../../DECISIONS.md#operations-typed-at-parse-boundary).
 
 ## What was cut and why
 

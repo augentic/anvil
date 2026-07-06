@@ -1,474 +1,295 @@
-//! Integration tests for the the axis-aware adapter loader
+//! Integration tests for the RFC-64 adapter resolver
 //! (`specify_workflow::adapter`).
 //!
 //! Covers:
-//! - axis routing — `(source, foo)` and `(target, foo)` resolve to
-//!   distinct manifests even when the directory names collide.
-//! - cache-vs-local probe order — the agent-populated manifest cache
-//!   wins.
-//! - cache placement — a load of `(source, …)` populates the out-of-tree
-//!   `<project-cache>/manifests/sources/<name>/`; `(target, …)`
-//!   mirrors under `manifests/targets/`.
-//! - schema validation — both the shared shape and the axis-specific
-//!   refinements (axis literal, retired old-stack keys) reject
-//!   hand-rolled inputs.
+//! - pinned identities resolving the single-file store entry
+//!   (`<store-root>/<name>@<version>.wasm`), verify-on-read included.
+//! - bare names resolving the project component cache.
+//! - describe-driven metadata: floor gate, malformed floor, target
+//!   inputs + platforms, and the digest-keyed describe sidecar cache.
+//!
+//! Describe dispatch is stubbed with a registered runner that parses
+//! the component file's bytes as a JSON `DescribeAnswer` — each test
+//! controls its adapter's answer by writing the fixture component.
+//! (nextest runs each test in its own process, so the process-global
+//! runner registration is per-test.)
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use specify_error::Error;
+use specify_workflow::adapter::describe::describe_cache_path;
 use specify_workflow::adapter::{
-    AdapterLocation, AdapterRef, Axis, SourceAdapter, SourceOperation, TargetAdapter,
-    TargetOperation, cache_dir, check_axis_unique_for_name,
+    AdapterLocation, AdapterRef, SourceAdapter, SourceOperation, TargetAdapter, TargetOperation,
+    component_cache_entry,
 };
 
 use crate::common;
 
-fn fixtures_root() -> PathBuf {
-    // `crates/workflow/tests/` -> `tests/fixtures/plugins/`.
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/plugins")
+/// Register the shared JSON-body describe stub (see
+/// [`common::register_describe_stub`]): the fixture component's bytes
+/// are the JSON `DescribeAnswer` itself.
+fn register_stub() {
+    common::register_describe_stub();
 }
 
-/// Build a temporary project layout by copying the in-tree fixture
-/// directory into a fresh tempdir. The resulting `project_dir` carries
-/// `sources/` and `targets/` (local axis) but no manifest-cache
-/// entries — cache fixtures are populated by individual tests below.
-fn local_project() -> (tempfile::TempDir, PathBuf) {
+/// Stage a store entry for `(name, version)` whose bytes are `answer`
+/// (JSON), plus the verify-on-read sidecar over those bytes.
+fn stage_store_entry(name: &str, version: &str, answer: &str) -> std::path::PathBuf {
+    let entry = specify_schema::cache::adapter_store_entry(name, version);
+    fs::create_dir_all(entry.parent().expect("store root")).expect("create store root");
+    fs::write(&entry, answer).expect("write store component");
+    let digest = specify_schema::cache::file_content_digest(&entry);
+    specify_schema::cache::write_store_meta(name, version, &digest, None).expect("write sidecar");
+    entry
+}
+
+#[test]
+fn pinned_resolves_from_store() {
+    register_stub();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let project = tmp.path().to_path_buf();
-    common::copy_dir(&fixtures_root(), &project);
-    (tmp, project)
-}
+    let _store = common::scoped_store(&tmp.path().join("store"));
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
 
-#[test]
-fn resolves_source_from_local_dir() {
-    let (_tmp, project) = local_project();
-    let resolved = SourceAdapter::resolve(&AdapterRef::bare("typescript"), &project)
-        .expect("resolve source adapter from adapters/sources/<name>/adapter.yaml");
+    let version = semver::Version::new(2, 3, 4);
+    let entry = stage_store_entry("typescript", "2.3.4", "{}");
+
+    let resolved =
+        SourceAdapter::resolve(&AdapterRef::pinned("typescript", version.clone()), &project)
+            .expect("resolve pinned identity from the store");
     assert_eq!(resolved.manifest.name, "typescript");
-    assert_eq!(resolved.manifest.axis, Axis::Source);
-    assert_eq!(
-        resolved.manifest.operations().copied().collect::<Vec<_>>(),
-        vec![SourceOperation::Extract, SourceOperation::Survey]
-    );
-    assert!(matches!(resolved.location, AdapterLocation::Local(_)));
-    assert!(resolved.location.path().ends_with("adapters/sources/typescript"));
-}
-
-#[test]
-fn resolves_target_from_local_dir() {
-    let (_tmp, project) = local_project();
-    let resolved = TargetAdapter::resolve(&AdapterRef::bare("omnia"), &project)
-        .expect("resolve target adapter from adapters/targets/<name>/adapter.yaml");
-    assert_eq!(resolved.manifest.name, "omnia");
-    assert_eq!(resolved.manifest.axis, Axis::Target);
-    // `operations()` yields the closed WIT set in ascending kebab-name
-    // order: build < merge < shape.
-    assert_eq!(
-        resolved.manifest.operations().copied().collect::<Vec<_>>(),
-        vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape]
-    );
-    assert!(resolved.location.path().ends_with("adapters/targets/omnia"));
-}
-
-#[test]
-fn resolves_shrunk_source_manifest() {
-    // The post-cutover manifest carries only `name` / `version` /
-    // `axis` / `description`. It must resolve, and the operation set
-    // derives from the closed WIT contract.
-    let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("sources").join("shrunk");
-    fs::create_dir_all(&manifest_dir).expect("create shrunk source dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: shrunk
-version: 1.0.0
-axis: source
-description: Shrunk post-cutover source manifest.
-",
-    )
-    .expect("write shrunk source manifest");
-
-    let resolved = SourceAdapter::resolve(&AdapterRef::bare("shrunk"), &project)
-        .expect("shrunk source manifest resolves");
+    assert_eq!(resolved.manifest.version, version, "version comes from the package identity");
+    assert_eq!(resolved.manifest.requires_specify, None);
+    assert!(matches!(resolved.location, AdapterLocation::Store(_)));
+    assert_eq!(resolved.location.path(), &entry);
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![SourceOperation::Extract, SourceOperation::Survey],
         "operation set derives from the closed WIT contract"
     );
+
+    // The describe answer is cached against the component digest as a
+    // sidecar beside the entry.
+    assert!(describe_cache_path(&entry).is_file(), "describe sidecar recorded beside the entry");
 }
 
 #[test]
-fn resolves_shrunk_target_manifest() {
-    // Target-axis counterpart, keeping the optional `platforms`
-    // capability the shrunk vectis manifest retains.
-    let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("targets").join("shrunk-target");
-    fs::create_dir_all(&manifest_dir).expect("create shrunk target dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: shrunk-target
-version: 1.0.0
-axis: target
-description: Shrunk post-cutover target manifest.
-platforms:
-  required: true
-  allowed: [core, ios, android]
-  default: [core, ios, android]
-",
-    )
-    .expect("write shrunk target manifest");
+fn describe_cache_short_circuits() {
+    register_stub();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let _store = common::scoped_store(&tmp.path().join("store"));
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
 
-    let resolved = TargetAdapter::resolve(&AdapterRef::bare("shrunk-target"), &project)
-        .expect("shrunk target manifest resolves");
-    assert!(resolved.manifest.platforms.is_some(), "retained platforms capability survives");
+    let entry = stage_store_entry("typescript", "1.0.0", "{}");
+    let adapter_ref = AdapterRef::pinned("typescript", semver::Version::new(1, 0, 0));
+    SourceAdapter::resolve(&adapter_ref, &project).expect("first resolve dispatches");
+
+    // Rewrite the cached sidecar with a different answer under the same
+    // digest: a second resolve must return the sidecar answer without
+    // re-dispatching (the stub would have returned an empty answer).
+    let sidecar = describe_cache_path(&entry);
+    let digest = specify_schema::cache::file_content_digest(&entry);
+    fs::write(
+        &sidecar,
+        format!(r#"{{ "digest": "{digest}", "manifest": {{ "specify-floor": "0.1.0" }} }}"#),
+    )
+    .expect("rewrite sidecar");
+
+    let resolved = SourceAdapter::resolve(&adapter_ref, &project).expect("second resolve");
+    assert_eq!(
+        resolved.manifest.requires_specify,
+        Some(semver::Version::new(0, 1, 0)),
+        "digest-valid sidecar answer wins without a re-dispatch"
+    );
+}
+
+#[test]
+fn bare_resolves_from_component_cache() {
+    register_stub();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
+    let _cache = common::scoped_cache(tmp.path());
+
+    let entry = component_cache_entry(&project, "captures");
+    fs::create_dir_all(entry.parent().expect("cache dir")).expect("create component cache");
+    fs::write(&entry, "{}").expect("write cached component");
+
+    let resolved = SourceAdapter::resolve(&AdapterRef::bare("captures"), &project)
+        .expect("bare name resolves the project component cache");
+    assert_eq!(resolved.manifest.name, "captures");
+    assert_eq!(
+        resolved.manifest.version,
+        specify_workflow::adapter::dev_version(),
+        "a development artifact resolves as the 0.0.0 placeholder"
+    );
+    assert!(matches!(resolved.location, AdapterLocation::Dev(_)));
+    assert_eq!(resolved.location.path(), &entry);
+}
+
+#[test]
+fn missing_adapter_reports_not_found() {
+    register_stub();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let _store = common::scoped_store(&tmp.path().join("store"));
+    let _cache = common::scoped_cache(tmp.path());
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
+
+    for err in [
+        SourceAdapter::resolve(&AdapterRef::bare("nonexistent"), &project)
+            .expect_err("missing development artifact must fail"),
+        SourceAdapter::resolve(
+            &AdapterRef::pinned("nonexistent", semver::Version::new(1, 0, 0)),
+            &project,
+        )
+        .expect_err("missing store entry must fail"),
+    ] {
+        let detail = err.to_string();
+        assert!(
+            matches!(
+                err,
+                Error::Diag {
+                    code: "adapter-not-found",
+                    ..
+                }
+            ),
+            "{detail}"
+        );
+        assert!(detail.contains("nonexistent"), "error names the identity: {detail}");
+    }
+}
+
+#[test]
+fn store_entry_digest_mismatch_refused() {
+    register_stub();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let _store = common::scoped_store(&tmp.path().join("store"));
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
+
+    // Record the sidecar, then mutate the entry bytes underneath it:
+    // RFC-48 D4 verify-on-read must refuse the drifted artifact.
+    let entry = stage_store_entry("typescript", "1.0.0", "{}");
+    fs::write(&entry, r#"{"specify-floor":"0.1.0"}"#).expect("drift the entry");
+
+    let err = SourceAdapter::resolve(
+        &AdapterRef::pinned("typescript", semver::Version::new(1, 0, 0)),
+        &project,
+    )
+    .expect_err("drifted store entry must fail verify-on-read");
+    let detail = err.to_string();
+    assert!(
+        matches!(
+            err,
+            Error::Diag {
+                code: "adapter-digest-mismatch",
+                ..
+            }
+        ),
+        "{detail}"
+    );
+}
+
+#[test]
+fn floor_gate_from_describe_answer() {
+    register_stub();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let _store = common::scoped_store(&tmp.path().join("store"));
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
+
+    // A floor above the running binary aborts on the exit-3 path,
+    // naming the identity.
+    stage_store_entry("demo-target", "1.0.0", r#"{"specify-floor":"999.0.0"}"#);
+    let err = TargetAdapter::resolve(
+        &AdapterRef::pinned("demo-target", semver::Version::new(1, 0, 0)),
+        &project,
+    )
+    .expect_err("a binary below the adapter floor must be rejected");
+    assert_eq!(err.variant_str(), "adapter-cli-too-old");
+
+    // A non-semver floor is the typed `adapter-floor-malformed`.
+    stage_store_entry("bad-floor", "1.0.0", r#"{"specify-floor":"v1"}"#);
+    let err = TargetAdapter::resolve(
+        &AdapterRef::pinned("bad-floor", semver::Version::new(1, 0, 0)),
+        &project,
+    )
+    .expect_err("a non-semver floor must be rejected");
+    let Error::Validation { code, .. } = err else {
+        panic!("expected Error::Validation, got: {err:?}");
+    };
+    assert_eq!(code, "adapter-floor-malformed");
+}
+
+#[test]
+fn target_metadata_from_describe_answer() {
+    register_stub();
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let _store = common::scoped_store(&tmp.path().join("store"));
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).expect("project dir");
+
+    stage_store_entry(
+        "vectis",
+        "1.0.4",
+        r#"{
+            "inputs": [
+                { "path": "tokens.yaml", "required": true },
+                { "path": "assets.yaml", "required": false }
+            ],
+            "platforms": {
+                "required": true,
+                "allowed": ["core", "ios", "android"],
+                "default": ["core", "ios", "android"]
+            }
+        }"#,
+    );
+
+    let resolved = TargetAdapter::resolve(
+        &AdapterRef::pinned("vectis", semver::Version::new(1, 0, 4)),
+        &project,
+    )
+    .expect("target adapter resolves with describe metadata");
+    assert_eq!(resolved.manifest.inputs.len(), 2, "both declared inputs survive");
+    assert_eq!(resolved.manifest.inputs[0].path, "tokens.yaml");
+    assert!(resolved.manifest.inputs[0].required);
+    assert!(!resolved.manifest.inputs[1].required);
+    let platforms = resolved.manifest.platforms.as_ref().expect("platforms capability present");
+    assert!(platforms.required);
+    assert_eq!(platforms.allowed.len(), 3);
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![TargetOperation::Build, TargetOperation::Merge, TargetOperation::Shape],
         "operation set derives from the closed WIT contract"
     );
+
+    // A source answer never carries the target-only fields; a target
+    // resolve over an empty answer defaults them.
+    stage_store_entry("omnia", "1.0.0", "{}");
+    let resolved = TargetAdapter::resolve(
+        &AdapterRef::pinned("omnia", semver::Version::new(1, 0, 0)),
+        &project,
+    )
+    .expect("target adapter with empty describe answer resolves");
+    assert!(resolved.manifest.inputs.is_empty(), "absent inputs default to empty");
+    assert!(resolved.manifest.platforms.is_none(), "absent platforms default to None");
 }
 
 #[test]
-fn retired_manifest_keys_rejected_at_load() {
-    // The S4 schema close: the old-stack `briefs` / `execution` /
-    // `extension` / `prepare` / hook keys are no longer legal manifest
-    // properties on either axis.
-    let (_tmp, project) = local_project();
-    let source_cases = [
-        ("with-briefs", "briefs:\n  survey: briefs/survey.md\n  extract: briefs/extract.md"),
-        ("with-execution", "execution: agent"),
-        ("with-extension", "extension:\n  name: demo-tool"),
-    ];
-    for (name, block) in source_cases {
-        let manifest_dir = project.join("adapters").join("sources").join(name);
-        fs::create_dir_all(&manifest_dir).expect("create retired-key source dir");
-        fs::write(
-            manifest_dir.join("adapter.yaml"),
-            format!(
-                "name: {name}\nversion: 1.0.0\naxis: source\ndescription: Retired key.\n{block}\n"
-            ),
-        )
-        .expect("write retired-key source manifest");
-        let err = SourceAdapter::resolve(&AdapterRef::bare(name), &project)
-            .expect_err("a retired manifest key must fail");
-        let detail = err.to_string();
-        assert!(
-            detail.contains("adapter-schema-violation"),
-            "expected schema violation for `{name}`: {detail}"
-        );
-    }
-
-    let target_cases = [
-        ("with-prepare", "prepare:\n  argv: [prepare, build]"),
-        ("with-hooks", "host_prereq:\n  script: scripts/host-prereq.sh"),
-        ("with-catalog", "catalog:\n  infer: true"),
-    ];
-    for (name, block) in target_cases {
-        let manifest_dir = project.join("adapters").join("targets").join(name);
-        fs::create_dir_all(&manifest_dir).expect("create retired-key target dir");
-        fs::write(
-            manifest_dir.join("adapter.yaml"),
-            format!(
-                "name: {name}\nversion: 1.0.0\naxis: target\ndescription: Retired key.\n{block}\n"
-            ),
-        )
-        .expect("write retired-key target manifest");
-        let err = TargetAdapter::resolve(&AdapterRef::bare(name), &project)
-            .expect_err("a retired manifest key must fail");
-        let detail = err.to_string();
-        assert!(
-            detail.contains("adapter-schema-violation"),
-            "expected schema violation for `{name}`: {detail}"
-        );
-    }
-}
-
-#[test]
-fn axis_collision_rejected_at_resolve_time() {
-    // Both `adapters/sources/foo/` and `adapters/targets/foo/` exist
-    // in the fixture. Per DECISIONS.md §"Adapter name uniqueness"
-    // the loader must reject this configuration on either axis with
-    // the kebab-case `adapter-name-axis-collision` discriminant.
-    let (_tmp, project) = local_project();
-    for err in [
-        SourceAdapter::resolve(&AdapterRef::bare("foo"), &project)
-            .expect_err("source-axis resolve must reject the collision"),
-        TargetAdapter::resolve(&AdapterRef::bare("foo"), &project)
-            .expect_err("target-axis resolve must reject the collision"),
-    ] {
-        let Error::Validation { code, detail } = err else {
-            panic!("expected Error::Validation, got: {err:?}");
-        };
-        assert_eq!(code, "adapter-name-axis-collision");
-        assert!(
-            detail.contains("adapters/sources/") && detail.contains("adapters/targets/"),
-            "error body must name both axes, got: {detail}"
-        );
-    }
-}
-
-#[test]
-fn axis_unique_passes_distinct() {
-    // The fixture declares `typescript` only on the source axis
-    // and `omnia` only on the target axis. Installing each on its
-    // declared axis (or any brand-new name on either axis) must not
-    // collide.
-    let (_tmp, project) = local_project();
-    check_axis_unique_for_name(Axis::Source, "typescript", &project)
-        .expect("source-only adapter name is unique on the source axis");
-    check_axis_unique_for_name(Axis::Target, "omnia", &project)
-        .expect("target-only adapter name is unique on the target axis");
-    check_axis_unique_for_name(Axis::Source, "brand-new-name", &project)
-        .expect("absent adapter name is unique on the source axis");
-    check_axis_unique_for_name(Axis::Target, "brand-new-name", &project)
-        .expect("absent adapter name is unique on the target axis");
-}
-
-#[test]
-fn axis_unique_rejects_opposite_axis() {
-    // The init-time helper for the cross-axis uniqueness invariant.
-    // Asking to install `foo` on either axis must fail because the
-    // fixture already declares `foo` on both.
-    let (_tmp, project) = local_project();
-    for axis in [Axis::Source, Axis::Target] {
-        let err = check_axis_unique_for_name(axis, "foo", &project)
-            .expect_err("colliding adapter name must fail");
-        let Error::Validation { code, detail } = err else {
-            panic!("expected Error::Validation, got: {err:?}");
-        };
-        assert_eq!(code, "adapter-name-axis-collision");
-        assert!(
-            detail.contains("adapters/sources/") && detail.contains("adapters/targets/"),
-            "error body must name both axes, got: {detail}"
-        );
-    }
-}
-
-#[test]
-fn cache_dir_resolves_under_axis_segment() {
-    // The manifest mirror is regenerable state that lives out-of-tree
-    // under the per-project OS cache; `cache_dir` routes
-    // `manifests/<axis>/<name>` beneath that root.
-    let project = Path::new("/proj");
-    let base = specify_workflow::config::Layout::new(project).cache_dir();
+fn dev_component_paths_shape() {
+    // The development probe: `target/wasm32-wasip2/release/specify_<name>.wasm`
+    // under the project, then the sibling `specify-adapters` checkout.
+    let project = Path::new("/repos/consumer");
+    let paths = specify_workflow::adapter::dev_component_paths(project, "demo-target");
     assert_eq!(
-        cache_dir(project, Axis::Source, "documentation"),
-        base.join("manifests/sources/documentation"),
-        "per-axis manifest cache root for source adapters lives under <cache>/manifests/sources/",
+        paths[0],
+        Path::new("/repos/consumer/target/wasm32-wasip2/release/specify_demo_target.wasm")
     );
     assert_eq!(
-        cache_dir(project, Axis::Target, "omnia"),
-        base.join("manifests/targets/omnia"),
-        "per-axis manifest cache root for target adapters lives under <cache>/manifests/targets/",
-    );
-}
-
-#[test]
-fn cache_wins_over_local() {
-    // Stage a manifest under the out-of-tree `<project-cache>/manifests/sources/typescript/`
-    // alongside the in-tree `adapters/sources/typescript/`; assert the
-    // cached copy wins per workflow §Resolver and cache.
-    let (_tmp, project) = local_project();
-    let _cache = common::scoped_cache(&project);
-    let cached_root = cache_dir(&project, Axis::Source, "typescript");
-    fs::create_dir_all(&cached_root).expect("create cache dir");
-    fs::write(
-        cached_root.join("adapter.yaml"),
-        r"name: typescript
-version: 7.0.0
-axis: source
-description: Cached source adapter fixture.
-",
-    )
-    .expect("stage cache manifest");
-
-    let resolved = SourceAdapter::resolve(&AdapterRef::bare("typescript"), &project)
-        .expect("resolve from cache");
-    assert_eq!(resolved.manifest.version, semver::Version::new(7, 0, 0), "cache wins over local");
-    assert!(matches!(resolved.location, AdapterLocation::Cached(_)));
-}
-
-#[test]
-fn pinned_resolves_from_store() {
-    // RFC-48 D5: a pinned `(name, version)` resolves first against the
-    // global content-addressed store entry `<store-root>/<name>@<version>/`,
-    // ahead of both the manifest cache and the in-repo tree.
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let store_root = tmp.path().join("store");
-    fs::create_dir_all(&store_root).expect("create store root");
-    let _store = common::scoped_store(&store_root);
-
-    let version = semver::Version::new(2, 3, 4);
-    let entry = store_root.join(format!("typescript@{version}"));
-    fs::create_dir_all(&entry).expect("create store entry");
-    fs::write(
-        entry.join("adapter.yaml"),
-        r"name: typescript
-version: 2.3.4
-axis: source
-description: Store-resident source adapter fixture.
-",
-    )
-    .expect("stage store manifest");
-
-    let (_tmp, project) = local_project();
-    let resolved =
-        SourceAdapter::resolve(&AdapterRef::pinned("typescript", version.clone()), &project)
-            .expect("resolve from store");
-    assert_eq!(resolved.manifest.version, version, "pinned store entry wins over in-repo local");
-    assert!(matches!(resolved.location, AdapterLocation::Store(_)));
-}
-
-#[test]
-fn missing_adapter_reports_not_found() {
-    let (_tmp, project) = local_project();
-    let err = SourceAdapter::resolve(&AdapterRef::bare("nonexistent"), &project)
-        .expect_err("missing adapter must fail");
-    let detail = err.to_string();
-    assert!(detail.contains("adapter-not-found"), "{detail}");
-}
-
-#[test]
-fn resolves_captures_manifest() {
-    // workflow §Acceptance scenario #26-1 (release blocker, D1): pin
-    // the loader against the live `adapters/sources/captures/` adapter
-    // shape — the shrunk post-cutover manifest with a free-form
-    // `description:`.
-    let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("sources").join("captures");
-    fs::create_dir_all(&manifest_dir).expect("create captures adapter dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: captures
-version: 1.0.0
-axis: source
-description: >-
-  Runtime capture source adapter. Walks a read-only capture tree under
-  `$SOURCE_DIR` and emits one lead per observed handler entry point.
-",
-    )
-    .expect("write captures manifest");
-
-    let resolved = SourceAdapter::resolve(&AdapterRef::bare("captures"), &project)
-        .expect("captures adapter loads via SourceAdapter::resolve");
-    assert_eq!(resolved.manifest.name, "captures");
-    assert_eq!(resolved.manifest.axis, Axis::Source);
-    assert_eq!(
-        resolved.manifest.operations().copied().collect::<Vec<_>>(),
-        vec![SourceOperation::Extract, SourceOperation::Survey],
-        "captures serves survey + extract per workflow §Runtime source adapter"
-    );
-    assert!(
-        matches!(resolved.location, AdapterLocation::Local(_)),
-        "live manifest resolves under adapters/sources/<name>/ (local axis)"
-    );
-    assert!(
-        resolved.location.path().ends_with("adapters/sources/captures"),
-        "resolver root must land on the adapter directory, got: {}",
-        resolved.location.path().display()
-    );
-}
-
-#[test]
-fn resolves_target_adapter_with_inputs() {
-    // A target manifest declares the extra `build` inputs
-    // its operation consumes (paths relative to `inputs.root`, each
-    // flagged `required`). The flat list must round-trip through
-    // `TargetAdapter::resolve` with fields populated.
-    let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("targets").join("with-inputs");
-    fs::create_dir_all(&manifest_dir).expect("create target adapter dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: with-inputs
-version: 1.0.0
-axis: target
-inputs:
-  - path: tokens.yaml
-    required: true
-  - path: assets.yaml
-    required: false
-description: Target adapter declaring build inputs.
-",
-    )
-    .expect("write manifest with inputs");
-
-    let resolved = TargetAdapter::resolve(&AdapterRef::bare("with-inputs"), &project)
-        .expect("target adapter declaring inputs resolves");
-    assert_eq!(resolved.manifest.inputs.len(), 2, "both declared inputs survive the round-trip");
-    assert_eq!(resolved.manifest.inputs[0].path, "tokens.yaml");
-    assert!(resolved.manifest.inputs[0].required, "first input is required");
-    assert_eq!(resolved.manifest.inputs[1].path, "assets.yaml");
-    assert!(!resolved.manifest.inputs[1].required, "second input is optional");
-}
-
-#[test]
-fn target_adapter_inputs_default_empty() {
-    // The `inputs` field is optional; the in-tree `omnia` fixture omits
-    // it, so a resolved manifest must default to an empty list.
-    let (_tmp, project) = local_project();
-    let resolved = TargetAdapter::resolve(&AdapterRef::bare("omnia"), &project)
-        .expect("resolve target adapter without inputs");
-    assert!(
-        resolved.manifest.inputs.is_empty(),
-        "a manifest that omits `inputs` defaults to an empty list"
-    );
-}
-
-#[test]
-fn malformed_input_rejected_at_load() {
-    // An `inputs` entry missing the required `required` flag must fail
-    // the target-axis schema before the typed manifest materialises —
-    // confirming the new field flows through `TargetAdapter::resolve`.
-    let (_tmp, project) = local_project();
-    let manifest_dir = project.join("adapters").join("targets").join("bad-inputs");
-    fs::create_dir_all(&manifest_dir).expect("create target adapter dir");
-    fs::write(
-        manifest_dir.join("adapter.yaml"),
-        r"name: bad-inputs
-version: 1.0.0
-axis: target
-inputs:
-  - path: tokens.yaml
-description: Target adapter with a malformed input entry.
-",
-    )
-    .expect("write manifest with malformed input entry");
-
-    let err = TargetAdapter::resolve(&AdapterRef::bare("bad-inputs"), &project)
-        .expect_err("input entry omitting `required` must fail");
-    let detail = err.to_string();
-    assert!(
-        detail.contains("adapter-schema-violation")
-            || detail.contains("adapter-manifest-malformed"),
-        "expected schema violation, got: {detail}"
-    );
-}
-
-#[test]
-fn axis_mismatch_reports_diagnostic() {
-    // Adapter file lives under `adapters/sources/<name>/` but declares
-    // `axis: target` — should fall through to the source schema and
-    // ultimately the axis-mismatch check.
-    let (_tmp, project) = local_project();
-    let bad_root = project.join("adapters").join("sources").join("mislabeled");
-    fs::create_dir_all(&bad_root).expect("create dir");
-    fs::write(
-        bad_root.join("adapter.yaml"),
-        r"name: mislabeled
-version: 1.0.0
-axis: target
-description: Mislabeled fixture.
-",
-    )
-    .expect("write manifest");
-
-    let err = SourceAdapter::resolve(&AdapterRef::bare("mislabeled"), &project)
-        .expect_err("axis literal must match the requested axis");
-    let detail = err.to_string();
-    assert!(
-        detail.contains("adapter-schema-violation") || detail.contains("adapter-axis-mismatch"),
-        "expected axis diagnostic, got: {detail}"
+        paths[1],
+        Path::new("/repos/specify-adapters/target/wasm32-wasip2/release/specify_demo_target.wasm")
     );
 }

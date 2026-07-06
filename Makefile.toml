@@ -92,7 +92,7 @@ env = { RUSTFLAGS = "-Dwarnings" }
 # comes from rust-toolchain.toml.
 [tasks.build-guests]
 command = "cargo"
-args = ["build", "-p", "specify-echo-guest", "-p", "specify-workflow-guest", "--target", "wasm32-wasip2"]
+args = ["build", "-p", "specify-echo-guest", "-p", "specify-echo-target-guest", "-p", "specify-workflow-guest", "--target", "wasm32-wasip2"]
 
 # Dist guest
 #

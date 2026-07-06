@@ -8,7 +8,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 use specify_error::{Error, Result};
-use specify_workflow::adapter::{ADAPTER_FILENAME, AdapterLocation, ResolvedTargetAdapter};
+use specify_workflow::adapter::{AdapterLocation, ResolvedTargetAdapter};
 use specify_workflow::agents::{detect, fingerprint, render};
 use specify_workflow::config::{Layout, ProjectConfig};
 use specify_workflow::registry::{Registry, TopologyLock, TopologyProject};
@@ -33,7 +33,7 @@ pub(super) fn render_input(ctx: &Ctx) -> Result<RenderAssembly> {
         None
     } else {
         let resolved = ctx.resolve_target_adapter()?;
-        collect_adapter_inputs(&mut collector, &resolved, &ctx.project_dir)?;
+        collect_adapter_inputs(&mut collector, &resolved);
         Some(adapter_summary(&resolved))
     };
     let detection = if ctx.config.workspace {
@@ -67,48 +67,39 @@ pub(super) fn render_input(ctx: &Ctx) -> Result<RenderAssembly> {
     })
 }
 
+/// Record the adapter component file (RFC-64: the single `.wasm` *is*
+/// the adapter). Both resolution legs live at machine-specific absolute
+/// paths (the global store, a `target/wasm32-wasip2/release/` build
+/// tree), so the fingerprint keys on a stable logical id — the physical
+/// bytes still drive the digest.
 fn collect_adapter_inputs(
     collector: &mut fingerprint::InputCollector, adapter: &ResolvedTargetAdapter,
-    project_dir: &Path,
-) -> Result<()> {
-    let manifest = adapter.location.path().join(ADAPTER_FILENAME);
-    add_adapter_input(collector, project_dir, &adapter.location, &manifest)
-}
-
-/// Record one adapter input file. A project-local adapter is recorded
-/// by its in-tree path; a cache-resolved adapter lives out-of-tree, so
-/// it is recorded under a cache-relative `cache:...` token instead (the
-/// physical bytes still drive the digest).
-fn add_adapter_input(
-    collector: &mut fingerprint::InputCollector, project_dir: &Path, location: &AdapterLocation,
-    path: &Path,
-) -> Result<()> {
+) {
+    let path = adapter.location.path();
     if !path.is_file() {
-        return Ok(());
+        return;
     }
-    match location {
-        AdapterLocation::Local(_) => collector.add_file(path)?,
-        AdapterLocation::Cached(_) => {
-            let cache_dir = Layout::new(project_dir).cache_dir();
-            collector.add_file_as(&logical_path("cache", &cache_dir, path), path);
-        }
+    match &adapter.location {
         AdapterLocation::Store(_) => {
-            // The global store root is machine-specific; key the
-            // fingerprint on the stable `store:<name>@<version>/<rel>`
-            // logical path so the context lock is reproducible.
+            // `store:<name>@<version>.wasm` — reproducible across machines.
             let store_root = specify_schema::cache::adapter_store_root();
             collector.add_file_as(&logical_path("store", &store_root, path), path);
         }
+        AdapterLocation::Dev(_) => {
+            // A development build has no stable identity beyond its
+            // filename; the digest tracks the rebuilt bytes.
+            let file = path.file_name().map(|n| n.to_string_lossy().to_string());
+            let id = format!("dev:{}", file.unwrap_or_else(|| path.display().to_string()));
+            collector.add_file_as(&id, path);
+        }
     }
-    Ok(())
 }
 
 /// Machine-independent logical id for a file resolved beneath an
-/// out-of-tree `root` (the per-project manifest cache or the global
-/// adapter store). Strips `root` and joins the relative tail with `/`
-/// under a `<prefix>:` scheme so context-lock fingerprints stay stable
-/// across machines; falls back to the absolute path when `path` is not
-/// under `root`.
+/// out-of-tree `root` (the global adapter store). Strips `root` and
+/// joins the relative tail with `/` under a `<prefix>:` scheme so
+/// context-lock fingerprints stay stable across machines; falls back to
+/// the absolute path when `path` is not under `root`.
 fn logical_path(prefix: &str, root: &Path, path: &Path) -> String {
     path.strip_prefix(root).map_or_else(
         |_| format!("{prefix}:{}", path.display()),
@@ -127,7 +118,6 @@ fn adapter_summary(adapter: &ResolvedTargetAdapter) -> render::Adapter {
     render::Adapter {
         name: adapter.manifest.name.clone(),
         version: adapter.manifest.version.clone(),
-        description: adapter.manifest.description.clone().unwrap_or_default(),
     }
 }
 

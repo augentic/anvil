@@ -13,7 +13,7 @@ mod codex {
 
     use tempfile::tempdir;
 
-    use crate::common::{copy_dir, expected_cache_dir, omnia_schema_dir, parse_json, specify_cmd};
+    use crate::common::{expected_cache_dir, omnia_component, parse_json, specify_cmd};
 
     /// Write a schema-valid shared rule under
     /// `<root>/adapters/shared/prose/rules/universal/<id>.md`.
@@ -29,11 +29,15 @@ mod codex {
     .expect("write rule fixture");
     }
 
-    /// Assemble a synthetic framework source repo (omnia target adapter
-    /// plus a shared `universal/` pack) and return the adapter dir path.
+    /// Assemble a synthetic framework source repo (an `omnia.wasm`
+    /// target component plus a shared `universal/` pack) and return the
+    /// component path. Codex distribution walks the component's
+    /// ancestors for the shared rules tree, so the pack sits in the
+    /// same synthetic root.
     fn synthetic_source(root: &Path) -> PathBuf {
-        let omnia = root.join("adapters/targets/omnia");
-        copy_dir(&omnia_schema_dir(), &omnia);
+        let omnia = root.join("adapters/targets/omnia.wasm");
+        fs::create_dir_all(omnia.parent().expect("component parent")).expect("mkdir targets dir");
+        fs::copy(omnia_component(), &omnia).expect("stage synthetic omnia component");
         write_universal_rule(root, "UNI-901");
         omnia
     }

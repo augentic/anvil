@@ -34,7 +34,8 @@ pub const WASM_PKG_CONFIG_PATH: &str = ".specify/wasm-pkg.toml";
 pub const DEFAULT_WASM_PKG_CONFIG: &str = "default_registry = \"augentic.io\"\n\
                                            \n\
                                            [namespace_registries]\n\
-                                           specify = \"augentic.io\"\n";
+                                           specify = \"augentic.io\"\n\
+                                           augentic = \"augentic.io\"\n";
 
 /// One declared WASI tool.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -264,10 +265,10 @@ pub struct ExtensionManifest {
 /// Plugin axis discriminator per workflow §Adapter vocabulary.
 ///
 /// Source plugins (`extract` / `survey`) and target plugins
-/// (`shape` / `build` / `merge`) share the `adapter.yaml` shape and
-/// on-disk filename; `Axis` is what disambiguates them in
-/// [`ExtensionScope::Plugin`] and in the out-of-tree cache layout under
-/// `<project-cache>/manifests/{sources,targets}/<name>/`.
+/// (`shape` / `build` / `merge`) share the single-component adapter
+/// shape (RFC-64); `Axis` is what disambiguates them in
+/// [`ExtensionScope::Plugin`] and in prose-tree layouts
+/// (`{sources,targets}/<name>/`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -309,9 +310,9 @@ pub enum ExtensionScope {
     /// cache root exposed to guests as `$CAPABILITY_DIR` is
     /// `capability_dir`.
     Plugin {
-        /// Axis discriminator from the plugin manifest.
+        /// Axis discriminator from the plugin binding.
         axis: Axis,
-        /// Plugin slug from `adapter.yaml`.
+        /// Kebab-case plugin slug (the adapter name).
         plugin_slug: String,
         /// Resolved plugin directory used as `$CAPABILITY_DIR`.
         capability_dir: PathBuf,

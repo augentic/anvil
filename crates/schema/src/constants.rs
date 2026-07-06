@@ -6,16 +6,6 @@
 //! schema" for the standards-layer schemas; the workflow schemas are
 //! pinned by the workflow contract under `docs/standards/workflow.md`.
 
-/// Schema for the shared adapter manifest envelope (axis-agnostic
-/// `adapter.yaml` fields validated before the per-axis split).
-pub const ADAPTER_JSON_SCHEMA: &str = include_str!("../../../schemas/adapter.schema.json");
-
-/// Schema for a source-axis adapter manifest (`survey` / `extract`).
-pub const SOURCE_JSON_SCHEMA: &str = include_str!("../../../schemas/source.schema.json");
-
-/// Schema for a target-axis adapter manifest (`shape` / `build` / `merge`).
-pub const TARGET_JSON_SCHEMA: &str = include_str!("../../../schemas/target.schema.json");
-
 /// Schema for an adapter's declared WASI extension (`extension.schema.json`).
 pub const EXTENSION_JSON_SCHEMA: &str = include_str!("../../../schemas/extension.schema.json");
 
@@ -186,9 +176,6 @@ pub const REPORT_ANSWER_JSON_SCHEMA: &str =
 /// byte-match its on-disk source). Add new embedded constants here in
 /// the same change that declares them.
 pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
-    ("ADAPTER_JSON_SCHEMA", "schemas/adapter.schema.json", ADAPTER_JSON_SCHEMA),
-    ("SOURCE_JSON_SCHEMA", "schemas/source.schema.json", SOURCE_JSON_SCHEMA),
-    ("TARGET_JSON_SCHEMA", "schemas/target.schema.json", TARGET_JSON_SCHEMA),
     ("EXTENSION_JSON_SCHEMA", "schemas/extension.schema.json", EXTENSION_JSON_SCHEMA),
     (
         "EXTENSION_SIDECAR_JSON_SCHEMA",

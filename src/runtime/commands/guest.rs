@@ -11,9 +11,10 @@
 //! `run` consults, plus the deployment manifest the guest leg runs
 //! against: an `omnia.toml` at the project root wins wholesale; absent
 //! one, a transient manifest is assembled from the embedded workflow
-//! guest, the adapter guests resolved for the project's bound adapters
-//! (plus a directory scan for unbound ones), and the project root as
-//! the writable `"."` mount. See DECISIONS.md §"One `specify` binary".
+//! guest, the adapter components resolved for the project's bound
+//! adapters (plus a scan of the project component cache for unbound
+//! ones), and the project root as the writable `"."` mount. See
+//! DECISIONS.md §"One `specify` binary".
 
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
@@ -24,21 +25,13 @@ use specify_dispatch::commands::plan::cli::PlanAction;
 use specify_dispatch::commands::slice::cli::{SliceAction, SliceMergeAction};
 use specify_dispatch::commands::source::cli::SourceAction;
 use specify_error::Error;
-use specify_workflow::adapter::{
-    AdapterRef, Axis, SourceAdapter, TargetAdapter, adapter_axis_dir, cache_axis_dir,
-};
+use specify_workflow::adapter::{AdapterRef, Axis, SourceAdapter, TargetAdapter};
 use specify_workflow::change::Plan;
 use specify_workflow::config::{Layout, ProjectConfig};
 use specify_workflow::init::adapter_ref_from_value;
 
 use crate::runtime::cli::{Commands, Format};
 use crate::runtime::output::{Exit, report};
-
-/// Committed adapter guest component beside `adapter.yaml`.
-const GUEST_WASM_FILENAME: &str = "guest.wasm";
-
-/// Adapter manifest filename probed by the discovery scan.
-const ADAPTER_YAML_FILENAME: &str = "adapter.yaml";
 
 /// Operator-provided deployment manifest at the project root; when
 /// present it replaces the transient assembly wholesale.
@@ -184,7 +177,7 @@ struct AdapterGuest {
     wasm: PathBuf,
 }
 
-/// Discover adapter guests with the resolvers' precedence.
+/// Discover adapter components with the resolvers' precedence.
 ///
 /// Two legs, first hit per `(axis, name)` winning:
 ///
@@ -192,18 +185,16 @@ struct AdapterGuest {
 ///    in `project.yaml` (`adapter:`) and each source bound in
 ///    `plan.yaml` (`sources.<key>.adapter`) resolve through
 ///    [`TargetAdapter::resolve`] / [`SourceAdapter::resolve`] — the
-///    store → cache → in-repo probe, verify-on-read included — and the
-///    guest is `<resolved-dir>/guest.wasm`. This is the only leg that
-///    can reach the RFC-48 store: store entries key on the pinned
-///    `(name, version)` a binding carries.
-/// 2. **Directory scan for unbound adapters** (`plan author` runs
-///    before `plan.yaml` exists; vendored adapters may not be bound
-///    yet): the manifest cache then the in-repo `adapters/` tree, per
-///    axis — the same order those roots hold in the resolvers.
-///
-/// Either leg finding an adapter directory (an `adapter.yaml`) without
-/// a committed `guest.wasm` beside it is a typed error, not a silent
-/// omission.
+///    single-file store entry for a pinned identity (verify-on-read
+///    included), the project component cache or the development
+///    release build for a bare name. The resolved location *is* the
+///    component file.
+/// 2. **Component-cache scan for unbound adapters** (`plan author`
+///    runs before `plan.yaml` binds sources; a locally-initialized
+///    component may not be bound yet): every `*.wasm` in the project
+///    component cache, with the axis sniffed from the component's own
+///    exports ([`specify_runtime::describe::sniff_axis`]) — a file
+///    exporting neither axis interface is skipped, not an error.
 fn discover_adapters(project_dir: &Path) -> Result<Vec<AdapterGuest>, Error> {
     let mut guests = Vec::new();
     let mut seen: BTreeSet<(&'static str, String)> = BTreeSet::new();
@@ -212,7 +203,7 @@ fn discover_adapters(project_dir: &Path) -> Result<Vec<AdapterGuest>, Error> {
         if !seen.insert((axis.dir_segment(), adapter_ref.name.clone())) {
             continue;
         }
-        let root = match axis {
+        let wasm = match axis {
             Axis::Source => {
                 SourceAdapter::resolve(&adapter_ref, project_dir)?.location.path().clone()
             }
@@ -220,27 +211,20 @@ fn discover_adapters(project_dir: &Path) -> Result<Vec<AdapterGuest>, Error> {
                 TargetAdapter::resolve(&adapter_ref, project_dir)?.location.path().clone()
             }
         };
-        let wasm = root.join(GUEST_WASM_FILENAME);
-        if !wasm.is_file() {
-            return Err(missing_guest(axis, &adapter_ref.name, &root));
-        }
         guests.push(adapter_guest(axis, adapter_ref.name, wasm));
     }
 
-    for axis in [Axis::Source, Axis::Target] {
-        for root in [cache_axis_dir(project_dir, axis), adapter_axis_dir(project_dir, axis)] {
-            for (name, dir) in adapter_dirs(&root) {
-                if seen.contains(&(axis.dir_segment(), name.clone())) {
-                    continue;
-                }
-                let wasm = dir.join(GUEST_WASM_FILENAME);
-                if wasm.is_file() {
-                    seen.insert((axis.dir_segment(), name.clone()));
-                    guests.push(adapter_guest(axis, name, wasm));
-                } else if dir.join(ADAPTER_YAML_FILENAME).is_file() {
-                    return Err(missing_guest(axis, &name, &dir));
-                }
-            }
+    for (name, wasm) in cached_components(project_dir) {
+        let Ok(Some(axis)) = specify_runtime::describe::sniff_axis(&wasm).map(|sniffed| {
+            sniffed.map(|axis| match axis {
+                specify_runtime::describe::DescribeAxis::Source => Axis::Source,
+                specify_runtime::describe::DescribeAxis::Target => Axis::Target,
+            })
+        }) else {
+            continue;
+        };
+        if seen.insert((axis.dir_segment(), name.clone())) {
+            guests.push(adapter_guest(axis, name, wasm));
         }
     }
     Ok(guests)
@@ -284,27 +268,22 @@ fn adapter_guest(axis: Axis, name: String, wasm: PathBuf) -> AdapterGuest {
     }
 }
 
-fn missing_guest(axis: Axis, name: &str, dir: &Path) -> Error {
-    failed(format!(
-        "adapter `{name}` (axis `{axis}`) at {} has an `{ADAPTER_YAML_FILENAME}` but no committed \
-         `{GUEST_WASM_FILENAME}`; reinstall the adapter from a release that ships its guest \
-         component",
-        dir.display(),
-    ))
-}
-
-/// The `(name, dir)` pairs under one axis root, name-sorted for a
-/// deterministic manifest. An absent or unreadable root is simply
-/// empty — adapter guests are optional per verb.
-fn adapter_dirs(root: &Path) -> Vec<(String, PathBuf)> {
-    let Ok(entries) = fs::read_dir(root) else {
+/// The `(name, component)` pairs in the project component cache
+/// (`<project-cache>/components/<name>.wasm`), name-sorted for a
+/// deterministic manifest. An absent or unreadable cache is simply
+/// empty — adapter components are optional per verb.
+fn cached_components(project_dir: &Path) -> Vec<(String, PathBuf)> {
+    let root = specify_workflow::adapter::component_cache_dir(project_dir);
+    let Ok(entries) = fs::read_dir(&root) else {
         return Vec::new();
     };
     let mut found: Vec<(String, PathBuf)> = entries
         .filter_map(Result::ok)
         .filter_map(|entry| {
-            let name = entry.file_name().into_string().ok()?;
-            entry.path().is_dir().then(|| (name, entry.path()))
+            let path = entry.path();
+            let name = path.file_stem()?.to_str()?.to_owned();
+            (path.extension().is_some_and(|ext| ext == "wasm") && path.is_file())
+                .then_some((name, path))
         })
         .collect();
     found.sort();

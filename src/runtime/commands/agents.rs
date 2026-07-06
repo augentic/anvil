@@ -71,14 +71,43 @@ mod tests {
     use super::*;
     use crate::output::Format;
 
+    /// Restores the previous `SPECIFY_PROJECT_CACHE` value on drop.
+    struct CacheGuard(Option<std::ffi::OsString>);
+
+    impl Drop for CacheGuard {
+        #[expect(unsafe_code, reason = "restore the cache-root env var pinned for the test")]
+        fn drop(&mut self) {
+            // SAFETY: nextest runs each test in its own process, so no
+            // other thread observes the env mutation.
+            unsafe {
+                match self.0.take() {
+                    Some(prev) => std::env::set_var("SPECIFY_PROJECT_CACHE", prev),
+                    None => std::env::remove_var("SPECIFY_PROJECT_CACHE"),
+                }
+            }
+        }
+    }
+
+    #[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
+    fn scoped_cache(dir: &Path) -> CacheGuard {
+        let prev = std::env::var_os("SPECIFY_PROJECT_CACHE");
+        // SAFETY: see `CacheGuard::drop` — single-process test isolation.
+        unsafe { std::env::set_var("SPECIFY_PROJECT_CACHE", dir.join("project-cache")) };
+        CacheGuard(prev)
+    }
+
+    /// Stage a `mini` adapter component in the project component cache
+    /// and register a stub describe runner returning an empty answer
+    /// (RFC-64: the single `.wasm` is the adapter; metadata comes from
+    /// `describe`, stubbed here).
     fn write_minimal_adapter(project_dir: &Path) {
-        let adapter_dir = project_dir.join("adapters").join("targets").join("mini");
-        fs::create_dir_all(&adapter_dir).expect("create adapter dirs");
-        fs::write(
-            adapter_dir.join("adapter.yaml"),
-            "name: mini\nversion: 1.0.0\naxis: target\ndescription: Mini adapter\n",
-        )
-        .expect("write adapter");
+        specify_workflow::adapter::describe::register_describe_runner(|_request| {
+            Ok(specify_workflow::adapter::describe::DescribeAnswer::default())
+        });
+        let entry = specify_workflow::adapter::component_cache_entry(project_dir, "mini");
+        fs::create_dir_all(entry.parent().expect("component cache dir"))
+            .expect("create component cache");
+        fs::write(&entry, b"\0asm").expect("write component");
     }
 
     fn sample_config() -> ProjectConfig {
@@ -103,6 +132,7 @@ mod tests {
     #[test]
     fn render_input_assembles_per_mode() {
         let project = tempdir().expect("tempdir");
+        let _cache = scoped_cache(project.path());
         write_minimal_adapter(project.path());
         let slices_dir = Layout::new(project.path()).slices_dir();
         fs::create_dir_all(slices_dir.join("zeta")).expect("create zeta");
@@ -147,7 +177,7 @@ mod tests {
                 ".specify/project.yaml",
                 ".specify/slices/alpha/metadata.yaml",
                 ".specify/slices/zeta/metadata.yaml",
-                "adapters/targets/mini/adapter.yaml",
+                "dev:mini.wasm",
                 "registry.yaml",
             ]
         );

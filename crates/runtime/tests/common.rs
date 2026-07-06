@@ -87,8 +87,10 @@ fn target_dir() -> PathBuf {
         .to_path_buf()
 }
 
-/// The sibling `augentic/specify-adapters` checkout carrying the committed
-/// adapter `guest.wasm` artifacts the Milestone F deployment composes.
+/// The sibling `augentic/specify-adapters` checkout carrying the adapter
+/// guest sources the Milestone F deployment composes (release-built via
+/// `cargo make build-guests-release`; RFC-64 removed the committed
+/// `guest.wasm` artifacts).
 ///
 /// # Panics
 ///
@@ -108,27 +110,31 @@ pub fn adapters_root() -> PathBuf {
     root
 }
 
-/// The committed `guest.wasm` for one adapter, addressed by its manifest
-/// guest id (`source:intent`, `target:omnia`, …).
+/// The sibling checkout's release-built component for one adapter,
+/// addressed by its manifest guest id (`source:intent`, `target:omnia`,
+/// …), mirroring the checked-in repo-root `omnia.toml` paths. Locate-
+/// only: the one-time `cargo make build-guests-release` in the sibling
+/// checkout is a developer prerequisite (this repo's tests never drive
+/// a build in the sibling workspace).
 ///
 /// # Panics
 ///
-/// Panics when the id has no axis prefix or the committed artifact is
-/// absent from the sibling checkout.
-pub fn committed_adapter_wasm(id: &str) -> PathBuf {
-    let (axis, name) = id.split_once(':').expect("adapter guest id is `<axis>:<name>`");
-    let dir = match axis {
-        "source" => "sources",
-        "target" => "targets",
-        other => panic!("unknown adapter axis `{other}` in guest id `{id}`"),
-    };
-    let path = adapters_root().join(dir).join(name).join("guest.wasm");
-    assert!(path.exists(), "committed adapter guest not found at {path}", path = path.display());
+/// Panics when the id has no axis prefix or the artifact is absent.
+pub fn adapter_component_wasm(id: &str) -> PathBuf {
+    let (_axis, name) = id.split_once(':').expect("adapter guest id is `<axis>:<name>`");
+    let path =
+        adapters_root().join("target/wasm32-wasip2/release").join(format!("specify_{name}.wasm"));
+    assert!(
+        path.exists(),
+        "adapter component not found at {path}; run `cargo make build-guests-release` in the \
+         sibling specify-adapters checkout",
+        path = path.display()
+    );
     path
 }
 
 /// A Milestone F composed-deployment manifest: the workflow guest plus the
-/// given committed adapter guests (each with its `/mcp/<name>` route),
+/// given release-built adapter guests (each with its `/mcp/<name>` route),
 /// sharing one writable `"."` mount at `mount` — the shape of the
 /// checked-in repo-root `omnia.toml` over a test-owned project tree.
 ///
@@ -147,7 +153,7 @@ pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest
         workflow = workflow.display(),
     );
     for id in adapters {
-        let wasm = committed_adapter_wasm(id);
+        let wasm = adapter_component_wasm(id);
         writeln!(doc, "[[guest]]\nid = \"{id}\"\nsource.path = \"{}\"\n", wasm.display())?;
     }
     writeln!(doc, "[[mount]]\nname = \".\"\npath = \"{}\"\nwritable = true\n", mount.display())?;

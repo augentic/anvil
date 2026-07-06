@@ -453,7 +453,7 @@ The system lets a registered user request a password reset link by email.
 ";
 
 fn stage_slice_for_synthesis_journal() -> Project {
-    let project = Project::init().with_schemas();
+    let project = Project::init();
     project.stage_slice("good-slice");
     project.seed_plan(PLAN_WITH_LEGACY_MONOLITH);
     let spec_path = project.slices_dir().join("my-slice/specs/login/spec.md");

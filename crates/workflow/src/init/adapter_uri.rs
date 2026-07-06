@@ -1,56 +1,89 @@
-//! Parsing the `<adapter>` argument: first-party shorthand
-//! (`omnia`, `omnia@1.0.0`), package references
-//! (`specify:<name>@<semver>`), bare local paths, `file://` URIs, and
-//! `https://github.com/...` URIs (with optional `@ref` or
-//! `tree/<ref>` discriminators).
+//! Parsing the `<adapter>` argument (RFC-64: one component, no
+//! manifest): package references (`augentic:<name>@<semver>`,
+//! `specify:<name>@<semver>`), first-party shorthand (`omnia`,
+//! `omnia@1.0.0`), and local component paths (`./adapter.wasm`,
+//! `file://…/adapter.wasm`).
 //!
-//! First-party shorthand resolves a bare adapter name to the canonical
-//! published adapter on GitHub. The shorthand carries the RFC-47 semver
-//! identity (`omnia@1.0.0`); the git checkout ref is derived as
-//! `v<major>` while `project.yaml.adapter` records the full semver pin.
+//! A package reference (and the versioned first-party shorthand, its
+//! sugar) is the RFC-48 D2 registry locator: an *immutable*,
+//! content-addressed identity with a mandatory exact SemVer pin and no
+//! branch or tag defaulting. The root `specify init` layer installs
+//! the pinned component into the global content-addressed store
+//! ([`recognize_package`] → `registry::store::install_tofu`) before
+//! this flow runs, so a package reference resolves from the store
+//! entry ([`AdapterUri::from_package`]) as a local file.
 //!
-//! A package reference (`<namespace>:<name>@<semver>`, e.g.
-//! `specify:omnia@1.2.0`) is the RFC-48 D2 registry locator: an
-//! *immutable*, content-addressed identity with a mandatory exact
-//! SemVer pin and no branch or tag defaulting. The root `specify init`
-//! layer installs the pinned artifact into the global content-addressed
-//! store ([`recognize_package`] → `registry::store::install_tofu`) before
-//! this flow runs, so a package reference resolves from the store entry
-//! ([`AdapterUri::from_package`]) as a local source.
+//! A bare first-party name (`omnia`) is the development shorthand: it
+//! resolves the sibling/in-repo release build
+//! (`target/wasm32-wasip2/release/specify_<name>.wasm`, built by
+//! `cargo make build-guests-release`). GitHub URLs are refused — a
+//! source checkout no longer yields a usable adapter artifact.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use specify_error::Error;
 use specify_schema::cache::adapter_store_entry;
-use tempfile::TempDir;
 
-use crate::adapter::AdapterRef;
-use crate::init::git::sparse_checkout_github;
+use crate::adapter::{AdapterRef, dev_component_paths};
+
+/// Where a parsed `<adapter>` argument's component came from — decides
+/// whether init mirrors the file into the project component cache.
+///
+/// Store entries are read in place (version-pinned, globally shared);
+/// development release builds are read live so the RFC-62 dev loop
+/// never hits a stale mirror; only an operator's own [`Self::Local`]
+/// file is copied into `<project-cache>/components/<name>.wasm`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum AdapterOrigin {
+    /// Global content-addressed store entry (RFC-48 D5 package
+    /// reference).
+    Store,
+    /// Development release build resolved by the bare-name probe.
+    Dev,
+    /// Operator-supplied local `.wasm` component file.
+    Local,
+}
 
 #[derive(Debug)]
 pub(super) struct AdapterUri {
     pub(crate) adapter_value: String,
     pub(crate) adapter_name: String,
-    pub(crate) source_dir: PathBuf,
-    /// `true` when `source_dir` is a global content-addressed store entry
-    /// (RFC-48 D5 package reference). The init manifest-cache copy is
-    /// skipped for these: the resolver reads the store entry in place,
-    /// version-pinned, so there is nothing to mirror per project.
-    pub(crate) from_store: bool,
-    _checkout_guard: Option<TempDir>,
+    /// The resolved component file: a global store entry for package
+    /// references, a development release build for bare shorthand, or
+    /// the operator's own file for local paths.
+    pub(crate) component: PathBuf,
+    /// Which probe produced `component` (see [`AdapterOrigin`]).
+    pub(crate) origin: AdapterOrigin,
 }
 
 impl AdapterUri {
     pub(crate) fn parse(adapter: &str, project_dir: &Path) -> Result<Self, Error> {
         if is_github_url(adapter) {
-            return Self::from_github(adapter);
+            return Err(Error::Diag {
+                code: "adapter-github-uri-unsupported",
+                detail: format!(
+                    "GitHub adapter URIs are no longer supported (`{adapter}`): a source checkout \
+                     does not yield a usable adapter artifact (RFC-64). Pin a published component \
+                     (`augentic:<name>@<semver>`), point at a local `.wasm` component file, or \
+                     build the development sibling with `cargo make build-guests-release`"
+                ),
+            });
         }
         if let Some(package) = AdapterPackageRef::recognize(adapter) {
             return Self::from_package(&package?);
         }
         if let Some((name, version)) = parse_first_party_shorthand(adapter) {
-            return Self::from_shorthand(name, version.as_ref());
+            return version.map_or_else(
+                || Self::from_dev(name, project_dir),
+                |version| {
+                    Self::from_package(&AdapterPackageRef {
+                        namespace: FIRST_PARTY_NAMESPACE.to_string(),
+                        name: name.to_string(),
+                        version,
+                    })
+                },
+            );
         }
         Self::from_local(adapter, project_dir)
     }
@@ -58,166 +91,89 @@ impl AdapterUri {
     /// Resolve an immutable [`AdapterPackageRef`] registry locator from
     /// the global content-addressed adapter store (RFC-48 D5).
     ///
-    /// The artifact is installed into the store by the root `specify init`
-    /// layer (`registry::store::install_tofu`) before this workflow flow
-    /// runs, so the store entry for the pinned `(name, version)` is
-    /// already present and this resolves it as a local source. A missing
-    /// entry is `adapter-package-not-installed` — the install step did not
-    /// run or failed — rather than a silent fallback to a mutable
-    /// checkout.
+    /// The component is installed into the store by the root `specify
+    /// init` layer (`registry::store::install_tofu`) before this
+    /// workflow flow runs, so the store entry for the pinned
+    /// `(name, version)` is already present and this resolves it as a
+    /// local file. A missing entry is `adapter-package-not-installed` —
+    /// the install step did not run or failed — rather than a silent
+    /// fallback to a mutable checkout.
     fn from_package(package: &AdapterPackageRef) -> Result<Self, Error> {
         let version = package.version.to_string();
-        let source_dir = adapter_store_entry(&package.name, &version);
-        if !source_dir.join(crate::adapter::ADAPTER_FILENAME).is_file() {
+        let component = adapter_store_entry(&package.name, &version);
+        if !component.is_file() {
             return Err(Error::Diag {
                 code: "adapter-package-not-installed",
                 detail: format!(
-                    "adapter package `{}` is not installed in the global store at {}; `specify init` installs the artifact before scaffolding (RFC-48 D5)",
+                    "adapter package `{}` is not installed in the global store at {}; `specify init` installs the component before scaffolding (RFC-48 D5)",
                     package.wire_value(),
-                    source_dir.display()
+                    component.display()
                 ),
             });
         }
         Ok(Self {
             adapter_value: package.wire_value(),
             adapter_name: package.name.clone(),
-            source_dir,
-            from_store: true,
-            _checkout_guard: None,
+            component,
+            origin: AdapterOrigin::Store,
+        })
+    }
+
+    /// Resolve a bare first-party name to its development release
+    /// build (`target/wasm32-wasip2/release/specify_<name>.wasm` under
+    /// the project or the sibling `specify-adapters` checkout).
+    fn from_dev(name: &str, project_dir: &Path) -> Result<Self, Error> {
+        let candidates = dev_component_paths(project_dir, name);
+        let Some(component) = candidates.iter().find(|path| path.is_file()).cloned() else {
+            let probed = candidates
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(Error::Diag {
+                code: "adapter-not-found",
+                detail: format!(
+                    "bare adapter name `{name}` resolves the development release build, but no \
+                     component was found at {probed}; build it with `cargo make \
+                     build-guests-release` or pin a published version \
+                     (`augentic:{name}@<semver>`)"
+                ),
+            });
+        };
+        Ok(Self {
+            adapter_value: name.to_string(),
+            adapter_name: name.to_string(),
+            component,
+            origin: AdapterOrigin::Dev,
         })
     }
 
     fn from_local(adapter: &str, project_dir: &Path) -> Result<Self, Error> {
         let path =
             adapter.strip_prefix("file://").map_or_else(|| PathBuf::from(adapter), PathBuf::from);
-        let source_dir = if path.is_absolute() { path } else { project_dir.join(path) };
-        Self::from_resolved_dir(&source_dir, adapter)
-    }
-
-    /// Build an [`AdapterUri`] from an already-resolved local directory,
-    /// recording a `file://` `adapter_value`. Used by [`Self::from_local`]
-    /// for bare and `file://` paths.
-    fn from_resolved_dir(source_dir: &Path, original: &str) -> Result<Self, Error> {
-        ensure_adapter_dir(source_dir, original)?;
-        let canonical = fs::canonicalize(source_dir).map_err(|err| Error::Diag {
+        let component = if path.is_absolute() { path } else { project_dir.join(path) };
+        ensure_component_file(&component, adapter)?;
+        let canonical = fs::canonicalize(&component).map_err(|err| Error::Diag {
             code: "adapter-canonicalize-failed",
             detail: format!(
-                "failed to canonicalize local adapter `{original}` at {}: {err}",
-                source_dir.display()
+                "failed to canonicalize local adapter `{adapter}` at {}: {err}",
+                component.display()
             ),
         })?;
-        let adapter_name = adapter_name_from_dir(&canonical)?;
+        let adapter_name = adapter_name_from_component(&canonical)?;
         let adapter_value = format!("file://{}", canonical.display());
         Ok(Self {
             adapter_value,
             adapter_name,
-            source_dir: canonical,
-            from_store: false,
-            _checkout_guard: None,
-        })
-    }
-
-    /// Resolve a first-party shorthand (`omnia`, `omnia@1.0.0`) to the
-    /// canonical published adapter on GitHub. `init` is target-only, so
-    /// the shorthand resolves under `adapters/targets/<name>/`.
-    ///
-    /// The git checkout ref is derived from the pinned semver as
-    /// `v<major>` (defaulting to `v1` when no version is given), since
-    /// transport stays git-based until RFC-48. `adapter_value` records
-    /// the canonical `name@<semver>` identity (RFC-47), not the derived
-    /// checkout URL, so `project.yaml.adapter` carries the version pin.
-    fn from_shorthand(name: &str, version: Option<&semver::Version>) -> Result<Self, Error> {
-        let git_ref = version.map_or_else(|| "v1".to_string(), |v| format!("v{}", v.major));
-        let repo = first_party_repo(name);
-        let url = format!("https://github.com/augentic/{repo}/adapters/targets/{name}@{git_ref}");
-        let mut uri = Self::from_github(&url)?;
-        uri.adapter_value =
-            version.map_or_else(|| name.to_string(), |version| format!("{name}@{version}"));
-        Ok(uri)
-    }
-
-    fn from_github(adapter: &str) -> Result<Self, Error> {
-        let spec = GithubAdapterUri::parse(adapter)?;
-        let repo_url = format!("https://github.com/{}/{}.git", spec.owner, spec.repo);
-        let checkout =
-            sparse_checkout_github(&repo_url, spec.checkout_ref.as_deref(), &spec.adapter_path)?;
-        let source_dir = checkout.path().join(&spec.adapter_path);
-        ensure_adapter_dir(&source_dir, adapter)?;
-
-        Ok(Self {
-            adapter_value: adapter.to_string(),
-            adapter_name: spec.adapter_name,
-            source_dir,
-            from_store: false,
-            _checkout_guard: Some(checkout),
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct GithubAdapterUri {
-    owner: String,
-    repo: String,
-    checkout_ref: Option<String>,
-    adapter_path: String,
-    adapter_name: String,
-}
-
-impl GithubAdapterUri {
-    fn parse(adapter: &str) -> Result<Self, Error> {
-        let (without_suffix, suffix_ref) = split_ref_suffix(adapter);
-        let pathless =
-            without_suffix.strip_prefix("https://github.com/").ok_or_else(|| Error::Diag {
-                code: "adapter-github-uri-unsupported",
-                detail: format!("unsupported GitHub adapter URI `{adapter}`"),
-            })?;
-        let mut parts: Vec<&str> = pathless.split('/').filter(|part| !part.is_empty()).collect();
-        if parts.len() < 3 {
-            return Err(Error::Diag {
-                code: "adapter-github-uri-malformed",
-                detail: format!(
-                    "GitHub adapter URI `{adapter}` must include owner, repo, and adapter path"
-                ),
-            });
-        }
-        let owner = parts.remove(0).to_string();
-        let repo = parts.remove(0).to_string();
-
-        let (tree_ref, adapter_parts): (Option<&str>, Vec<&str>) = if parts.first() == Some(&"tree")
-        {
-            if parts.len() < 3 {
-                return Err(Error::Diag {
-                    code: "adapter-github-uri-malformed",
-                    detail: format!(
-                        "GitHub tree adapter URI `{adapter}` must include a ref and adapter path"
-                    ),
-                });
-            }
-            (Some(parts[1]), parts[2..].to_vec())
-        } else {
-            (None, parts)
-        };
-
-        let checkout_ref = suffix_ref.or(tree_ref).map(str::to_string);
-        let adapter_path = adapter_parts.join("/");
-        let adapter_name = adapter_parts.last().ok_or_else(|| Error::Diag {
-            code: "adapter-url-name-unresolved",
-            detail: format!("cannot derive a adapter name from `{adapter}`"),
-        })?;
-
-        Ok(Self {
-            owner,
-            repo,
-            checkout_ref,
-            adapter_path,
-            adapter_name: (*adapter_name).to_string(),
+            component: canonical,
+            origin: AdapterOrigin::Local,
         })
     }
 }
 
 /// An immutable, content-addressed adapter package reference of the
-/// form `<namespace>:<name>@<semver>` (e.g. `specify:omnia@1.2.0`) — the
-/// RFC-48 D2 registry locator.
+/// form `<namespace>:<name>@<semver>` (e.g. `augentic:omnia@1.0.0`) —
+/// the RFC-48 D2 registry locator.
 ///
 /// The exact SemVer pin is mandatory: there is no branch or tag
 /// defaulting, so a reference always names one immutable artifact. The
@@ -236,8 +192,8 @@ impl AdapterPackageRef {
     /// Returns `None` when `adapter` is not a package-ref shape — so
     /// URL schemes (`https://`, `file://`), Windows drive paths
     /// (`C:\…`), bare names, and local paths keep flowing through the
-    /// GitHub / shorthand / local branches. Returns `Some(Err(_))` when
-    /// the shape *is* a package reference but the version pin is missing
+    /// shorthand / local branches. Returns `Some(Err(_))` when the
+    /// shape *is* a package reference but the version pin is missing
     /// or not exact SemVer (RFC-48 D2 forbids branch/tag defaulting).
     fn recognize(adapter: &str) -> Option<Result<Self, Error>> {
         let (namespace, rest) = adapter.split_once(':')?;
@@ -288,13 +244,12 @@ impl AdapterPackageRef {
 /// Public projection of an adapter package reference for the root layer.
 ///
 /// Carries the `(namespace, name, version)` the root `specify init`
-/// install layer derives an OCI reference from
-/// (`registry::oci::adapter_reference`) and keys the global store entry by
+/// install layer keys the wasm-pkg pull and the global store entry by
 /// (`registry::store::install_tofu`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterPackage {
-    /// First-party package namespace (e.g. `specify`) — the OCI repo
-    /// path segment under the registry host.
+    /// First-party package namespace (e.g. `augentic`) — the wasm-pkg
+    /// namespace under the registry host.
     pub namespace: String,
     /// Kebab-case adapter name.
     pub name: String,
@@ -302,52 +257,52 @@ pub struct AdapterPackage {
     pub version: semver::Version,
 }
 
-/// Recognise a `<namespace>:<name>@<semver>` adapter package reference so
-/// the root install layer can fetch it before scaffolding.
+/// Recognise an adapter argument the root install layer must fetch
+/// before scaffolding.
 ///
-/// Returns `None` for non-package shapes (shorthand, paths, URLs), so
-/// those keep flowing through the git / local branches; `Some(Err(_))`
-/// when the shape *is* a package reference but the SemVer pin is missing
-/// or malformed (RFC-48 D2 forbids branch/tag defaulting).
+/// Matches a `<namespace>:<name>@<semver>` package reference, or the
+/// versioned first-party shorthand (`omnia@1.0.0` — sugar for
+/// `augentic:omnia@1.0.0`).
+///
+/// Returns `None` for non-package shapes (bare names, paths, URLs), so
+/// those keep flowing through the dev / local branches; `Some(Err(_))`
+/// when the shape *is* a package reference but the SemVer pin is
+/// missing or malformed (RFC-48 D2 forbids branch/tag defaulting).
 #[must_use]
 pub fn recognize_package(value: &str) -> Option<Result<AdapterPackage, Error>> {
-    AdapterPackageRef::recognize(value).map(|parsed| {
-        parsed.map(|package| AdapterPackage {
+    if let Some(parsed) = AdapterPackageRef::recognize(value) {
+        return Some(parsed.map(|package| AdapterPackage {
             namespace: package.namespace,
             name: package.name,
             version: package.version,
-        })
-    })
+        }));
+    }
+    match parse_first_party_shorthand(value) {
+        Some((name, Some(version))) => Some(Ok(AdapterPackage {
+            namespace: FIRST_PARTY_NAMESPACE.to_string(),
+            name: name.to_string(),
+            version,
+        })),
+        Some((_, None)) | None => None,
+    }
 }
 
 fn is_github_url(adapter: &str) -> bool {
     adapter.starts_with("https://github.com/")
 }
 
-/// The `augentic/<repo>` segment hosting a first-party adapter's
-/// sparse-checkout source.
-///
-/// Adapters that bundle a WASI extension have extracted to
-/// `augentic/specify-adapters` (RFC-48 D7/D10, RFC-49 T6); the remaining
-/// prose-only adapters still live in the platform repo until the rest of
-/// the topology migration lands. This git shorthand is itself
-/// transitional — the durable first-party resolution path is the RFC-48
-/// D2 registry locator (`specify:<name>@<semver>`), which retires the
-/// per-name routing once registry transport is wired.
-fn first_party_repo(name: &str) -> &'static str {
-    match name {
-        "contracts" | "vectis" => "specify-adapters",
-        _ => "specify",
-    }
-}
+/// The wasm-pkg namespace first-party adapters publish under
+/// (`augentic:<name>@<semver>` via `wkg publish` in the adapters repo).
+const FIRST_PARTY_NAMESPACE: &str = "augentic";
 
 /// Recognise a first-party adapter shorthand and split it into
-/// `(name, version)`. A bare `name` carries no pin (`None`); a
-/// `name@<semver>` carries the parsed [`semver::Version`] (RFC-47
-/// identity). Returns `None` for paths (`./foo`, `/abs`, `file://…`)
-/// and URLs (anything carrying `:` or `/`), and for a `@suffix` that is
-/// not exact semver — so those keep flowing through
-/// [`AdapterUri::from_local`] / [`AdapterUri::from_github`].
+/// `(name, version)`. A bare `name` carries no pin (`None`) and
+/// resolves the development release build; a `name@<semver>` carries
+/// the parsed [`semver::Version`] (RFC-47 identity) and is sugar for
+/// the `augentic:<name>@<semver>` package reference. Returns `None`
+/// for paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying
+/// `:` or `/`), and for a `@suffix` that is not exact semver — so
+/// those keep flowing through [`AdapterUri::from_local`].
 fn parse_first_party_shorthand(adapter: &str) -> Option<(&str, Option<semver::Version>)> {
     if adapter.contains('/') || adapter.contains(':') {
         return None;
@@ -372,54 +327,54 @@ fn is_first_party_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
-fn split_ref_suffix(adapter: &str) -> (&str, Option<&str>) {
-    let last_slash = adapter.rfind('/').unwrap_or(0);
-    if let Some(at) = adapter.rfind('@')
-        && at > last_slash
-        && at + 1 < adapter.len()
-    {
-        return (&adapter[..at], Some(&adapter[at + 1..]));
-    }
-    (adapter, None)
-}
-
-fn ensure_adapter_dir(path: &Path, original: &str) -> Result<(), Error> {
-    if path.join(crate::adapter::ADAPTER_FILENAME).is_file() {
+fn ensure_component_file(path: &Path, original: &str) -> Result<(), Error> {
+    if path.is_file() && path.extension().is_some_and(|ext| ext == "wasm") {
         return Ok(());
     }
     Err(Error::Diag {
-        code: "adapter-dir-missing-manifest",
+        code: "adapter-component-missing",
         detail: format!(
-            "adapter `{original}` did not resolve to a directory with `{}` at {}",
-            crate::adapter::ADAPTER_FILENAME,
+            "adapter `{original}` did not resolve to a `.wasm` component file at {} (RFC-64: an \
+             adapter is a single WebAssembly component)",
             path.display()
         ),
     })
 }
 
-fn adapter_name_from_dir(path: &Path) -> Result<String, Error> {
-    path.file_name().and_then(|name| name.to_str()).map(str::to_string).ok_or_else(|| Error::Diag {
+/// Derive the kebab-case adapter name from a component filename:
+/// `specify_intent.wasm` → `intent`, `my-adapter.wasm` → `my-adapter`
+/// (the cargo `specify_` artifact prefix is stripped and underscores
+/// fold to kebab dashes).
+fn adapter_name_from_component(path: &Path) -> Result<String, Error> {
+    let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| Error::Diag {
         code: "adapter-dir-name-unresolved",
         detail: format!("cannot derive adapter name from {}", path.display()),
-    })
+    })?;
+    let stem =
+        stem.strip_prefix("specify_").or_else(|| stem.strip_prefix("specify-")).unwrap_or(stem);
+    Ok(stem.replace('_', "-"))
 }
 
 /// Extract the kebab-case adapter name from a `project.yaml.adapter`
 /// value. Accepts:
 ///
 /// - bare kebab names (`omnia`) — returned unchanged,
-/// - package references (`specify:omnia@1.2.0`) — the `<name>` between
-///   `:` and `@`,
-/// - `file://` URIs — last path component,
-/// - `https://...` URIs — last path component (suffix `@ref` stripped),
-/// - bare local paths — last path component.
+/// - package references (`augentic:omnia@1.0.0`) — the `<name>`
+///   between `:` and `@`,
+/// - `file://` URIs — last path component, `.wasm` suffix and cargo
+///   artifact prefix stripped,
+/// - bare local paths — same treatment.
 #[must_use]
-pub fn adapter_name_from_value(value: &str) -> &str {
+pub fn adapter_name_from_value(value: &str) -> String {
     let stripped = strip_at_ref_suffix(value);
     let stripped = stripped.strip_prefix("file://").unwrap_or(stripped);
     let stripped = stripped.strip_suffix('/').unwrap_or(stripped);
     let stripped = package_ref_name(stripped).unwrap_or(stripped);
-    stripped.rsplit('/').next().unwrap_or(stripped)
+    let last = stripped.rsplit('/').next().unwrap_or(stripped);
+    let last = last.strip_suffix(".wasm").unwrap_or(last);
+    let last =
+        last.strip_prefix("specify_").or_else(|| last.strip_prefix("specify-")).unwrap_or(last);
+    last.replace('_', "-")
 }
 
 /// If `value` is a bare package reference `<namespace>:<name>` (kebab
@@ -435,12 +390,11 @@ fn package_ref_name(value: &str) -> Option<&str> {
 /// semver `version` recovered from the `@<suffix>` (RFC-47 D2).
 ///
 /// The version is `Some(_)` only when the `@suffix` parses as exact
-/// semver — a bare name, a `file://` path, or a GitHub URL carrying a
-/// non-semver git ref (e.g. `@v1`) all yield `version: None`, so
-/// resolution falls back to the single installed identity.
+/// semver — a bare name or a `file://` path yields `version: None`, so
+/// resolution falls back to the development artifact.
 #[must_use]
 pub fn adapter_ref_from_value(value: &str) -> AdapterRef {
-    let name = adapter_name_from_value(value).to_string();
+    let name = adapter_name_from_value(value);
     let version = at_ref_suffix(value).and_then(|suffix| semver::Version::parse(suffix).ok());
     AdapterRef { name, version }
 }

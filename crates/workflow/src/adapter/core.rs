@@ -1,24 +1,17 @@
-//! Axis-split adapter manifest model and post-load coherence gates.
+//! Axis-split adapter identity model and post-resolve coherence gates.
 //!
-//! Source adapters and target adapters share a manifest shape on the
-//! wire (`adapter.yaml`) but carry disjoint closed operation sets:
-//! [`SourceOperation`] (`extract | survey`) vs. [`TargetOperation`]
-//! (`shape | build | merge`). Post-cutover manifests carry no
-//! `briefs:` map — the operation set is the axis's closed WIT
-//! operation set (`wit/specify.wit`), surfaced by the typed
-//! `operations()` iterators.
+//! Post-RFC-64 an adapter is a single WebAssembly component: identity
+//! lives in the wasm-pkg package reference (`augentic:<name>@<semver>`),
+//! axis in the exported world (`source` xor `target`), and the
+//! remaining metadata (compatibility floor, build inputs, platforms
+//! capability) in the component's own deterministic `describe` answer
+//! (see [`super::describe`]). There is no on-disk manifest.
 //!
-//! Resolution lives in [`super::resolve`]; schema validation and the
-//! cross-axis collision probe in [`super::validate_manifest`]. This
-//! module owns the manifest types, the path helpers, and the post-load
-//! coherence gates ([`check_axis_and_name`] and friends).
-//!
-//! See [DECISIONS.md §"Operations typed at parse boundary"] for the
-//! rationale.
-//!
-//! [DECISIONS.md §"Operations typed at parse boundary"]: ../../../../DECISIONS.md#operations-typed-at-parse-boundary
+//! Resolution lives in [`super::resolve`]; this module owns the typed
+//! identity structs, the location enum, and the post-resolve floor
+//! gate ([`check_requires_specify`]).
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use specify_error::Error;
@@ -26,40 +19,13 @@ use specify_error::Error;
 use crate::Platform;
 use crate::adapter::operation::{SourceOperation, TargetOperation};
 
-/// Filename of an adapter manifest.
+/// Axis discriminator for an adapter component.
 ///
-/// Source and target adapters share the `adapter.yaml` filename per
-/// workflow §Adapter implementation shape; the directory's axis (under
-/// `adapters/sources/` or `adapters/targets/`) and the manifest's
-/// `axis:` field disambiguate.
-pub const ADAPTER_FILENAME: &str = "adapter.yaml";
-
-/// Committed workflow-guest component binary at an adapter's root
-/// (RFC-61): the per-adapter `guest.wasm` composed into the
-/// `augentic:specify` deployment.
-pub const ADAPTER_GUEST_FILENAME: &str = "guest.wasm";
-
-/// Parent directory for in-repo adapter trees.
-pub const ADAPTERS_DIR: &str = "adapters";
-
-/// Manifest-cache tenant segment under the out-of-tree project cache.
-///
-/// `<project-cache>/manifests/{sources,targets}/<name>/` mirrors the
-/// in-repo `adapters/{sources,targets}/<name>/` tree (see
-/// [DECISIONS.md §"Cache layout"]).
-///
-/// [DECISIONS.md §"Cache layout"]: ../../../DECISIONS.md#cache-layout
-pub const MANIFESTS_CACHE_DIR: &str = "manifests";
-
-/// Axis discriminator for an adapter manifest.
-///
-/// Source vs target — see workflow §Adapter vocabulary. The closed enum is
-/// used by the resolver dispatcher (`commands::resolve_adapter`) and
-/// the manifest-cache helpers ([`cache_dir`], `adapter_axis_dir`);
-/// the in-memory manifests themselves are axis-typed
+/// Source vs target — see workflow §Adapter vocabulary. The closed enum
+/// routes the resolver dispatcher (`commands::resolve_adapter`) and the
+/// describe dispatch; the in-memory adapters themselves are axis-typed
 /// ([`SourceAdapter`] / [`TargetAdapter`]) so internal call sites no
-/// longer carry the `axis` argument forward past the resolver
-/// boundary.
+/// longer carry the `axis` argument forward past the resolver boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -71,8 +37,8 @@ pub enum Axis {
 }
 
 impl Axis {
-    /// Axis segment under `ADAPTERS_DIR` — `"sources"` for source
-    /// adapters, `"targets"` for target adapters.
+    /// Axis segment used by deployment guest ids and prose trees —
+    /// `"sources"` for source adapters, `"targets"` for target adapters.
     #[must_use]
     pub const fn dir_segment(self) -> &'static str {
         match self {
@@ -81,49 +47,40 @@ impl Axis {
         }
     }
 
-    /// The complementary axis. Used by the cross-axis uniqueness
-    /// probe (see [DECISIONS.md §"Adapter name uniqueness"]) to
-    /// reject a name that resolves under both `adapters/sources/` and
-    /// `adapters/targets/`.
-    ///
-    /// [DECISIONS.md §"Adapter name uniqueness"]: ../../../../DECISIONS.md#adapter-name-uniqueness
+    /// The `augentic:specify` axis interface a component of this axis
+    /// exports — the instance name the describe dispatch invokes.
     #[must_use]
-    pub const fn opposite(self) -> Self {
+    pub const fn interface(self) -> &'static str {
         match self {
-            Self::Source => Self::Target,
-            Self::Target => Self::Source,
+            Self::Source => "augentic:specify/source@0.1.0",
+            Self::Target => "augentic:specify/target@0.1.0",
         }
     }
 }
 
-/// `<project_dir>/adapters/{sources,targets}/` for the given axis.
-#[must_use]
-pub fn adapter_axis_dir(project_dir: &Path, axis: Axis) -> PathBuf {
-    project_dir.join(ADAPTERS_DIR).join(axis.dir_segment())
-}
-
-/// One adapter-declared build input inside a target manifest.
+/// One adapter-declared build input from the target's `describe`
+/// answer.
 ///
 /// Each entry names a path the target's `build` operation consumes,
 /// relative to the build request's `inputs.root` (the slice tree). The
 /// CLI assembles the request's `inputs.artifacts.additional[]` from
-/// this list and (in a later change) raises `target-build-input-missing`
-/// when a `required` path is absent. v1 keeps the declaration a flat
-/// path list — globs and conditional inputs are deferred.
+/// this list and raises `target-build-input-missing` when a `required`
+/// path is absent. v1 keeps the declaration a flat path list — globs
+/// and conditional inputs are deferred.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct BuildInputDeclaration {
     /// Path relative to the build request's `inputs.root`.
     pub path: String,
     /// Whether `build` requires this input; a missing `required` path
-    /// is a build-time abort once the matching check lands.
+    /// is a build-time abort.
     pub required: bool,
 }
 
-/// Declarative platforms capability for a target adapter manifest.
+/// Declarative platforms capability from a target's `describe` answer.
 ///
-/// When a target declares `platforms` in its `adapter.yaml`, the CLI
-/// uses this to enforce platform requirements at `specify init` time
-/// and to scaffold defaults for greenfield workspace members.
+/// When a target declares `platforms`, the CLI uses this to enforce
+/// platform requirements at `specify init` time and to scaffold
+/// defaults for greenfield workspace members.
 ///
 /// - `required` — if true, `specify init` demands `--platforms`.
 /// - `allowed` — the closed set of [`Platform`] tokens the target
@@ -199,96 +156,61 @@ impl PlatformsCapability {
     }
 }
 
-/// Where an adapter manifest was located on disk.
+/// Where an adapter component was located on disk. The carried path is
+/// the single `.wasm` component file (RFC-64 — one component, no
+/// manifest).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterLocation {
-    /// Resolved from the global content-addressed adapter store entry at
-    /// `<store-root>/<name>@<version>/` (RFC-48 D5). The store is the
-    /// immutable, version-keyed install target resolved by
-    /// `specify_schema::cache::adapter_store_entry` and populated by the
-    /// registry transport. Probed first whenever the [`AdapterRef`]
-    /// carries a pinned version.
+    /// Resolved from the global content-addressed adapter store entry
+    /// at `<store-root>/<name>@<version>.wasm` (RFC-48 D5, single file
+    /// post-RFC-64). The store is the immutable, version-keyed install
+    /// target resolved by `specify_schema::cache::adapter_store_entry`
+    /// and populated by the wasm-pkg transport. Probed whenever the
+    /// [`AdapterRef`] carries a pinned version.
     Store(PathBuf),
-    /// Resolved from `<project_dir>/adapters/{sources,targets}/<name>/`.
-    Local(PathBuf),
-    /// Resolved from the out-of-tree manifest cache at
-    /// `<project-cache>/manifests/{sources,targets}/<name>/`.
-    /// The manifest cache mirrors the in-repo adapter tree
-    /// (`adapter.yaml` plus brief markdown) — see
-    /// [DECISIONS.md §"Cache layout"].
-    ///
-    /// [DECISIONS.md §"Cache layout"]: ../../../../DECISIONS.md#cache-layout
-    Cached(PathBuf),
+    /// Resolved from a development release build —
+    /// `target/wasm32-wasip2/release/specify_<name>.wasm` under the
+    /// project itself or the sibling `specify-adapters` checkout
+    /// (`cargo make build-guests-release`). Probed for bare-name
+    /// (unpinned) references.
+    Dev(PathBuf),
 }
 
 impl AdapterLocation {
-    /// Kebab-case label for JSON envelopes (`"store"` / `"local"` /
-    /// `"cached"`).
+    /// Kebab-case label for JSON envelopes (`"store"` / `"dev"`).
     #[must_use]
     pub const fn label(&self) -> &'static str {
         match self {
             Self::Store(_) => "store",
-            Self::Local(_) => "local",
-            Self::Cached(_) => "cached",
+            Self::Dev(_) => "dev",
         }
     }
 
-    /// Underlying filesystem path.
+    /// The component file path.
     #[must_use]
     pub const fn path(&self) -> &PathBuf {
         match self {
-            Self::Store(path) | Self::Local(path) | Self::Cached(path) => path,
+            Self::Store(path) | Self::Dev(path) => path,
         }
     }
-}
-
-/// Manifest cache root for an axis —
-/// `<project-cache>/manifests/{sources,targets}/`, resolved out-of-tree
-/// from the OS cache (see [`crate::config::Layout::cache_dir`]).
-///
-/// Path-only helper — the directory may or may not exist on disk.
-#[must_use]
-pub fn cache_axis_dir(project_dir: &Path, axis: Axis) -> PathBuf {
-    crate::config::Layout::new(project_dir)
-        .cache_dir()
-        .join(MANIFESTS_CACHE_DIR)
-        .join(axis.dir_segment())
-}
-
-/// Manifest cache root for `(axis, name)` —
-/// `<project-cache>/manifests/{sources,targets}/<name>/`.
-///
-/// This is the agent-populated mirror of `adapters/{sources,targets}/<name>/`
-/// — `adapter.yaml` plus the brief markdown files it references. See
-/// [DECISIONS.md §"Cache layout"].
-///
-/// Path-only helper — the directory may or may not exist on disk.
-///
-/// [DECISIONS.md §"Cache layout"]: ../../../../DECISIONS.md#cache-layout
-#[must_use]
-pub fn cache_dir(project_dir: &Path, axis: Axis, name: &str) -> PathBuf {
-    cache_axis_dir(project_dir, axis).join(name)
 }
 
 /// The identity an adapter resolves against: a kebab-case `name` plus
 /// an optional pinned semver `version` (RFC-47 D2).
 ///
-/// Resolution keys on `(name, version)`. `version: None` is the
-/// bare-name shorthand — it resolves the single installed identity for
-/// `name`, or raises `adapter-version-required` when a single identity
-/// cannot be picked. A `Some(_)` version is an exact pin: resolution
-/// matches it against the installed manifest by equality, and a pin
-/// that names no installed identity is `adapter-version-required` as
-/// well ("resolution cannot pick a single installed identity for the
-/// name"). Semver range resolution is deferred to RM-21; this value
-/// type is the seam those extensions widen without re-breaking the
-/// resolve call sites.
+/// Resolution keys on `(name, version)`. A `Some(_)` version is an
+/// exact pin resolved against the global store entry installed for
+/// that identity; `version: None` is the bare-name development
+/// shorthand resolved against the sibling/in-repo release build.
+/// Semver range resolution is deferred to RM-21; this value type is
+/// the seam those extensions widen without re-breaking the resolve
+/// call sites.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterRef {
     /// Kebab-case adapter name.
     pub name: String,
-    /// Optional exact semver pin; `None` selects the single installed
-    /// identity.
+    /// Optional exact semver pin; `None` selects the development
+    /// artifact.
     pub version: Option<semver::Version>,
 }
 
@@ -310,128 +232,104 @@ impl AdapterRef {
             version: Some(version),
         }
     }
+
+    /// The version this identity resolves as: the pin when present,
+    /// else the [`dev_version`] placeholder a development artifact
+    /// carries.
+    #[must_use]
+    pub fn resolved_version(&self) -> semver::Version {
+        self.version.clone().unwrap_or_else(dev_version)
+    }
 }
 
-/// In-memory representation of a source-adapter manifest
-/// (`adapters/sources/<name>/adapter.yaml`).
+/// The placeholder version a development (unpinned) adapter resolves as.
 ///
-/// Constructed by [`SourceAdapter::resolve`] after the wire YAML has
-/// been validated against `schemas/adapter.schema.json` +
-/// `schemas/source.schema.json`. The typed `briefs` map carries the
-/// closed [`SourceOperation`] set — unknown keys are rejected at
-/// serde-parse time before this struct is ever materialised.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
+/// Development components carry no package identity, so `0.0.0` is the
+/// honest "not a published release" marker in topology projections and
+/// envelopes.
+#[must_use]
+pub const fn dev_version() -> semver::Version {
+    semver::Version::new(0, 0, 0)
+}
+
+/// In-memory identity + metadata of a resolved source adapter.
+///
+/// Constructed by [`SourceAdapter::resolve`]: `name`/`version` from the
+/// [`AdapterRef`] identity, `requires_specify` from the component's
+/// cached `describe` answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceAdapter {
-    /// Kebab-case adapter name; must match the directory under
-    /// `adapters/sources/<name>/`.
+    /// Kebab-case adapter name from the resolved identity.
     pub name: String,
-    /// Semver adapter version. Resolution keys on this as identity
-    /// (see [`super::AdapterRef`]); the per-axis JSON Schema enforces
-    /// the semver `pattern` and `check_version` is the typed
-    /// belt-and-suspenders gate (`adapter-version-malformed`).
+    /// Semver adapter version: the pin for store-resolved identities,
+    /// [`dev_version`] for development artifacts.
     pub version: semver::Version,
-    /// Optional host-CLI compatibility floor (RFC-47 D3): the exact
-    /// minimum `specify` platform version this adapter needs,
-    /// deserialized from the `specify` manifest key. The loader compares
-    /// it against the running binary at resolve time
-    /// (`check_requires_specify`) and aborts with `adapter-cli-too-old`
-    /// (exit 3) when the binary is older. `None` means no floor — the
-    /// field is optional and back-compatible.
-    #[serde(default, rename = "specify", skip_serializing_if = "Option::is_none")]
+    /// Optional host-CLI compatibility floor (RFC-47 D3) from the
+    /// `describe` answer's `specify-floor`. The resolver compares it
+    /// against the running binary (`check_requires_specify`) and aborts
+    /// with `adapter-cli-too-old` (exit 3) when the binary is older.
     pub requires_specify: Option<semver::Version>,
-    /// Axis discriminator on the wire. Always [`Axis::Source`] after a
-    /// successful [`SourceAdapter::resolve`]; the field is retained
-    /// so YAML round-trips byte-for-byte through serde.
-    pub axis: Axis,
-    /// Optional human-readable summary.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
 }
 
-/// In-memory representation of a target-adapter manifest
-/// (`adapters/targets/<name>/adapter.yaml`).
+/// In-memory identity + metadata of a resolved target adapter.
 ///
-/// Constructed by [`TargetAdapter::resolve`] after the wire YAML has
-/// been validated against `schemas/adapter.schema.json` +
-/// `schemas/target.schema.json`. The typed `briefs` map carries the
-/// closed [`TargetOperation`] set — unknown keys are rejected at
-/// serde-parse time before this struct is ever materialised.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
+/// Constructed by [`TargetAdapter::resolve`]: `name`/`version` from the
+/// [`AdapterRef`] identity, the rest from the component's cached
+/// `describe` answer.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetAdapter {
-    /// Kebab-case adapter name; must match the directory under
-    /// `adapters/targets/<name>/`.
+    /// Kebab-case adapter name from the resolved identity.
     pub name: String,
-    /// Semver adapter version. Resolution keys on this as identity
-    /// (see [`super::AdapterRef`]); the per-axis JSON Schema enforces
-    /// the semver `pattern` and `check_version` is the typed
-    /// belt-and-suspenders gate (`adapter-version-malformed`).
+    /// Semver adapter version: the pin for store-resolved identities,
+    /// [`dev_version`] for development artifacts.
     pub version: semver::Version,
-    /// Optional host-CLI compatibility floor (RFC-47 D3): the exact
-    /// minimum `specify` platform version this adapter needs,
-    /// deserialized from the `specify` manifest key. The loader compares
-    /// it against the running binary at resolve time
-    /// (`check_requires_specify`) and aborts with `adapter-cli-too-old`
-    /// (exit 3) when the binary is older. `None` means no floor — the
-    /// field is optional and back-compatible.
-    #[serde(default, rename = "specify", skip_serializing_if = "Option::is_none")]
+    /// Optional host-CLI compatibility floor (RFC-47 D3) from the
+    /// `describe` answer's `specify-floor`. The resolver compares it
+    /// against the running binary (`check_requires_specify`) and aborts
+    /// with `adapter-cli-too-old` (exit 3) when the binary is older.
     pub requires_specify: Option<semver::Version>,
-    /// Axis discriminator on the wire. Always [`Axis::Target`] after
-    /// a successful [`TargetAdapter::resolve`]; the field is retained
-    /// so YAML round-trips byte-for-byte through serde.
-    pub axis: Axis,
-    /// Optional adapter-declared build inputs. Each entry is
-    /// a path relative to the build request's `inputs.root`, flagged
-    /// `required`; the guest build orchestrator assembles
-    /// `inputs.artifacts.additional[]` from this list. Defaults to an
-    /// empty list when omitted.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// Adapter-declared build inputs from the `describe` answer. Each
+    /// entry is a path relative to the build request's `inputs.root`,
+    /// flagged `required`; the guest build orchestrator assembles
+    /// `inputs.artifacts.additional[]` from this list.
     pub inputs: Vec<BuildInputDeclaration>,
-    /// Optional human-readable summary.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// Optional platforms capability. When present the target declares
-    /// the closed set of [`Platform`] tokens it accepts, whether
-    /// projects must declare platforms, and the default set for
-    /// greenfield scaffolding.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Optional platforms capability from the `describe` answer. When
+    /// present the target declares the closed set of [`Platform`]
+    /// tokens it accepts, whether projects must declare platforms, and
+    /// the default set for greenfield scaffolding.
     pub platforms: Option<PlatformsCapability>,
 }
 
-/// A parsed [`SourceAdapter`] paired with the [`AdapterLocation`] it
-/// loaded from (in-repo vs. agent-populated cache). The filesystem
-/// directory is reachable through [`AdapterLocation::path`].
+/// A resolved [`SourceAdapter`] paired with the [`AdapterLocation`] it
+/// loaded from (store entry vs. development build). The component file
+/// is reachable through [`AdapterLocation::path`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSourceAdapter {
-    /// Parsed manifest.
+    /// Identity + describe-derived metadata.
     pub manifest: SourceAdapter,
-    /// Whether the manifest came from the out-of-tree
-    /// `<project-cache>/manifests/sources/<name>/` or from
-    /// `<project_dir>/adapters/sources/<name>/`, and the directory
-    /// itself via [`AdapterLocation::path`].
+    /// Whether the component came from the global store or a
+    /// development release build, and the file itself via
+    /// [`AdapterLocation::path`].
     pub location: AdapterLocation,
 }
 
-/// A parsed [`TargetAdapter`] paired with the [`AdapterLocation`] it
-/// loaded from (in-repo vs. agent-populated cache). The filesystem
-/// directory is reachable through [`AdapterLocation::path`].
+/// A resolved [`TargetAdapter`] paired with the [`AdapterLocation`] it
+/// loaded from (store entry vs. development build). The component file
+/// is reachable through [`AdapterLocation::path`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedTargetAdapter {
-    /// Parsed manifest.
+    /// Identity + describe-derived metadata.
     pub manifest: TargetAdapter,
-    /// Whether the manifest came from the out-of-tree
-    /// `<project-cache>/manifests/targets/<name>/` or from
-    /// `<project_dir>/adapters/targets/<name>/`, and the directory
-    /// itself via [`AdapterLocation::path`].
+    /// Whether the component came from the global store or a
+    /// development release build, and the file itself via
+    /// [`AdapterLocation::path`].
     pub location: AdapterLocation,
 }
 
 impl SourceAdapter {
     /// Iterator over the source operations this adapter serves, in
-    /// ascending kebab-name order (`extract < survey`). Post-cutover
-    /// manifests carry no `briefs:` map, so the operation set is the
-    /// axis's closed WIT operation set (`wit/specify.wit`).
+    /// ascending kebab-name order (`extract < survey`) — the axis's
+    /// closed WIT operation set (`wit/specify.wit`).
     pub fn operations(&self) -> impl Iterator<Item = &SourceOperation> {
         const WIT_OPERATIONS: &[SourceOperation] =
             &[SourceOperation::Extract, SourceOperation::Survey];
@@ -441,10 +339,9 @@ impl SourceAdapter {
 
 impl TargetAdapter {
     /// Iterator over the target operations this adapter serves, in
-    /// ascending kebab-name order (`build < merge < shape`).
-    /// Post-cutover manifests carry no `briefs:` map, so the operation
-    /// set is the axis's closed WIT operation set (`wit/specify.wit`:
-    /// guidance/build/merge, with `shape` the manifest spelling of
+    /// ascending kebab-name order (`build < merge < shape`) — the
+    /// axis's closed WIT operation set (`wit/specify.wit`:
+    /// guidance/build/merge, with `shape` the historical spelling of
     /// `guidance`).
     pub fn operations(&self) -> impl Iterator<Item = &TargetOperation> {
         const WIT_OPERATIONS: &[TargetOperation] =
@@ -453,122 +350,41 @@ impl TargetAdapter {
     }
 }
 
-/// Post-load axis/name coherence gate, run by [`super::resolve`] after
-/// schema validation against the typed manifest fields.
-///
-/// Returns `Error::Diag` with `adapter-axis-mismatch` when the
-/// manifest's `axis:` disagrees with the resolver's axis, and
-/// `adapter-name-mismatch` when `name:` disagrees with the directory
-/// the manifest lives under.
-pub(super) fn check_axis_and_name(
-    expected_axis: Axis, expected_name: &str, manifest_axis: Axis, manifest_name: &str,
-    manifest_path: &Path,
-) -> Result<(), Error> {
-    if manifest_axis != expected_axis {
-        return Err(Error::Diag {
-            code: "adapter-axis-mismatch",
-            detail: format!(
-                "{} declares axis `{manifest_axis}`, but resolver was asked for axis `{expected_axis}`",
-                manifest_path.display(),
-            ),
-        });
-    }
-    if manifest_name != expected_name {
-        return Err(Error::Diag {
-            code: "adapter-name-mismatch",
-            detail: format!(
-                "{} declares name `{manifest_name}` but lives under `{expected_name}/`",
-                manifest_path.display(),
-            ),
-        });
-    }
-    Ok(())
-}
-
-/// Typed `version` gate, run on the raw manifest value before the
-/// typed deserialise so a malformed semver surfaces as the specific
-/// `adapter-version-malformed` finding rather than the free-form
-/// `adapter-manifest-malformed` serde error.
-///
-/// Mirrors `specify_extension`'s `tool.version-is-semver` rule:
-/// the per-axis JSON Schemas already mark `version` with the semver
-/// `pattern`, so this typed gate is the belt-and-suspenders for a
-/// manifest that reaches the loader through a path that bypassed
-/// schema validation.
+/// Parse a `describe` answer's `specify-floor` string into a typed
+/// semver, naming the identity and component path on failure.
 ///
 /// # Errors
 ///
 /// Returns [`Error::Validation`] with the kebab discriminant
-/// `adapter-version-malformed` when `version` is absent, non-string,
-/// or not parseable as an exact semver.
-pub(super) fn check_version(
-    raw_value: &serde_json::Value, manifest_path: &Path,
-) -> Result<(), Error> {
-    let raw_version = raw_value.get("version").and_then(serde_json::Value::as_str);
-    let Some(raw_version) = raw_version else {
-        return Err(Error::validation_failed(
-            "adapter-version-malformed",
-            "adapter manifest declares a semver `version` string",
-            format!("{} omits a string `version` field", manifest_path.display()),
-        ));
+/// `adapter-floor-malformed` when the floor is not exact semver.
+pub(super) fn parse_floor(
+    floor: Option<&str>, name: &str, component: &std::path::Path,
+) -> Result<Option<semver::Version>, Error> {
+    let Some(floor) = floor else {
+        return Ok(None);
     };
-    if let Err(err) = semver::Version::parse(raw_version) {
-        return Err(Error::validation_failed(
-            "adapter-version-malformed",
-            "adapter manifest declares a semver `version` string",
+    semver::Version::parse(floor).map(Some).map_err(|err| {
+        Error::validation_failed(
+            "adapter-floor-malformed",
+            "an adapter's describe answer declares a semver `specify-floor`",
             format!(
-                "{} declares `version: {raw_version}`, which is not an exact semver: {err}",
-                manifest_path.display(),
+                "adapter `{name}` ({}) declares `specify-floor: {floor}`, which is not an exact semver: {err}",
+                component.display(),
             ),
-        ));
-    }
-    Ok(())
-}
-
-/// Match the requested [`AdapterRef`] version against the single
-/// installed manifest identity (RFC-47 D2).
-///
-/// Resolution is project-local with exactly one installed identity per
-/// `name`, so a `None` pin always picks that identity. A `Some(_)` pin
-/// must equal the installed `version`; a pin that names a different
-/// version cannot be satisfied, so resolution "cannot pick a single
-/// installed identity for the name" — the `adapter-version-required`
-/// case. Exact pins only; semver range matching is deferred to RM-21.
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] with the kebab discriminant
-/// `adapter-version-required` when a pinned version does not match the
-/// installed identity.
-pub(super) fn check_requested_version(
-    requested: Option<&semver::Version>, name: &str, installed: &semver::Version,
-    manifest_path: &Path,
-) -> Result<(), Error> {
-    if let Some(requested) = requested
-        && requested != installed
-    {
-        return Err(Error::validation_failed(
-            "adapter-version-required",
-            "a version pin resolves a single installed adapter identity",
-            format!(
-                "{} requested `{name}@{requested}`, but the installed identity is `{name}@{installed}`",
-                manifest_path.display(),
-            ),
-        ));
-    }
-    Ok(())
+        )
+    })
 }
 
 /// Enforce an adapter's host-CLI compatibility floor (RFC-47 D3).
 ///
-/// `floor` is the adapter's optional `specify` minimum (already parsed
-/// into a typed `semver::Version`); `current` is the running binary's
-/// version (the resolve call sites pass `env!("CARGO_PKG_VERSION")`,
-/// the same source [`crate::config`] uses). When the binary is older
-/// than the floor the adapter cannot be honored, so resolution aborts
-/// with [`Error::AdapterCliTooOld`] on the exit-3 `EXIT_VERSION_TOO_OLD`
-/// path — the adapter-granularity analog of the `project.yaml`
-/// `specify` floor.
+/// `floor` is the adapter's optional `specify` minimum from its
+/// `describe` answer (already parsed into a typed `semver::Version`);
+/// `current` is the running binary's version (the resolve call sites
+/// pass `env!("CARGO_PKG_VERSION")`, the same source [`crate::config`]
+/// uses). When the binary is older than the floor the adapter cannot be
+/// honored, so resolution aborts with [`Error::AdapterCliTooOld`] on
+/// the exit-3 `EXIT_VERSION_TOO_OLD` path — the adapter-granularity
+/// analog of the `project.yaml` `specify` floor.
 ///
 /// `current` is parsed permissively: an unparseable running version is
 /// treated as "not older" rather than bricking resolution, mirroring
@@ -579,7 +395,7 @@ pub(super) fn check_requested_version(
 /// Returns [`Error::AdapterCliTooOld`] when `current` parses below
 /// `floor`.
 pub(super) fn check_requires_specify(
-    floor: Option<&semver::Version>, current: &str, name: &str, manifest_path: &Path,
+    floor: Option<&semver::Version>, current: &str, name: &str, component: &std::path::Path,
 ) -> Result<(), Error> {
     let Some(floor) = floor else {
         return Ok(());
@@ -589,7 +405,7 @@ pub(super) fn check_requires_specify(
     };
     if current_version < *floor {
         return Err(Error::AdapterCliTooOld {
-            adapter: format!("{name} ({})", manifest_path.display()),
+            adapter: format!("{name} ({})", component.display()),
             required: floor.to_string(),
             found: current.to_string(),
         });

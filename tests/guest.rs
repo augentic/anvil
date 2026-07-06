@@ -6,9 +6,9 @@
 //! any real invocation — the covered flows never legitimately reach a
 //! completion. The composed run itself is real: the embedded workflow
 //! guest is staged into a transient manifest, adapter guests resolve
-//! through the axis resolvers (bound adapters) or the directory scan
-//! (unbound), and the guest's exit code passes through to the process
-//! exit. See DECISIONS.md §"One `specify` binary".
+//! through the axis resolvers (bound adapters) or the component-cache
+//! scan (unbound), and the guest's exit code passes through to the
+//! process exit. See DECISIONS.md §"One `specify` binary".
 
 // The stub is a `sh` script; the covered behavior is identical across
 // unix hosts and no CI leg runs the suite on Windows.
@@ -101,14 +101,16 @@ fn guest_verb_exit_passthrough() {
 
 // The background HTTP trigger in command mode: with a discovered
 // adapter guest exporting `wasi:http` the trigger binds an ephemeral
-// port and logs its listening line while the CLI guest runs.
+// port and logs its listening line while the CLI guest runs. The echo
+// component is staged unbound in the project component cache, so this
+// also covers the sniff-axis discovery leg.
 #[test]
 fn guest_verb_http_trigger_background() {
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
-    let echo_dir = project.path().join("adapters").join("sources").join("echo");
-    fs::create_dir_all(&echo_dir).expect("adapter dir");
-    fs::copy(echo_guest_wasm(), echo_dir.join("guest.wasm")).expect("stage echo guest");
+    let cache = common::expected_cache_dir(project.path()).join("components");
+    fs::create_dir_all(&cache).expect("component cache dir");
+    fs::copy(echo_guest_wasm(), cache.join("echo.wasm")).expect("stage echo component");
 
     let output = specify_cmd()
         .current_dir(project.path())
@@ -207,33 +209,31 @@ fn plan_dir_refused_on_guest_leg() {
     assert_eq!(envelope["error"], "guest-runtime-failed");
 }
 
-// An adapter directory that resolves (has `adapter.yaml`) but carries no
-// committed `guest.wasm` is a typed host error, not a silent omission
-// from the deployment manifest.
+// A cache entry that is not a component (garbage bytes under a `.wasm`
+// name) is skipped by the sniff-axis discovery leg — unbound cache
+// contents never abort the deployment, the verb still reaches the
+// guest and fails there.
 #[test]
-fn adapter_without_guest_wasm_fails_loudly() {
+fn non_component_cache_entry_is_skipped() {
+    let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
-    let adapter_dir = project.path().join("adapters").join("sources").join("hollow");
-    fs::create_dir_all(&adapter_dir).expect("adapter dir");
-    fs::write(
-        adapter_dir.join("adapter.yaml"),
-        "name: hollow\nversion: 1.0.0\naxis: source\ndescription: No committed guest.\n",
-    )
-    .expect("write adapter.yaml");
+    let cache = common::expected_cache_dir(project.path()).join("components");
+    fs::create_dir_all(&cache).expect("component cache dir");
+    fs::write(cache.join("hollow.wasm"), b"not a component").expect("stage garbage entry");
 
     let output = specify_cmd()
         .current_dir(project.path())
+        .env("PATH", stub_path(stub.path()))
+        .env_remove("RUST_LOG")
         .args(["plan", "execute", "--format", "json"])
         .output()
         .expect("running specify");
 
     assert_eq!(output.status.code(), Some(1));
     let envelope = parse_json(&output.stderr);
-    assert_eq!(envelope["error"], "guest-runtime-failed");
-    let message = envelope["message"].as_str().unwrap_or_default();
-    assert!(
-        message.contains("hollow") && message.contains("guest.wasm"),
-        "the error must name the adapter and the missing component: {message}"
+    assert_eq!(
+        envelope["error"], "not-initialized",
+        "the garbage cache entry must be skipped and the verb fail inside the guest"
     );
 }
 
@@ -253,14 +253,11 @@ fn bound_adapter_resolves_from_store() {
     .expect("write plan.yaml");
 
     let store = tempdir().expect("adapter store root");
-    let entry = store.path().join("echo@1.0.0");
-    fs::create_dir_all(&entry).expect("store entry");
-    fs::write(
-        entry.join("adapter.yaml"),
-        "name: echo\nversion: 1.0.0\naxis: source\ndescription: Echo source adapter.\n",
-    )
-    .expect("write store manifest");
-    fs::copy(echo_guest_wasm(), entry.join("guest.wasm")).expect("stage store guest");
+    let entry = store.path().join("echo@1.0.0.wasm");
+    fs::copy(echo_guest_wasm(), &entry).expect("stage store component");
+    let digest = common::sha256_hex(&entry);
+    fs::write(store.path().join("echo@1.0.0.meta"), format!("tree_digest: sha256:{digest}\n"))
+        .expect("write store meta sidecar");
 
     let output = specify_cmd()
         .current_dir(project.path())

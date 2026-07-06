@@ -8,20 +8,20 @@
           "json_pointer": ""
         },
         "kind": "structured",
-        "summary": "\"description\" is a required property"
+        "summary": "\"version\" is a required property"
       },
-      "fingerprint": "sha256:222ecdfdea2abd7bce34963fa22ad1eb0a6e88eb943514d69a3d676c5c8e1d1f",
+      "fingerprint": "sha256:5e1ab7221c8695ef56b54ed5ec5af3d2e782ce66920edb1af965b9651ee85718",
       "id": "FIND-0001",
-      "impact": "An adapter manifest fails adapter.schema.json validation.",
+      "impact": "A component catalog fails components.schema.json validation.",
       "kind": "violation",
       "location": {
-        "path": "adapters/targets/omnia/adapter.yaml"
+        "path": "docs/design-system/components.yaml"
       },
-      "remediation": "See adapters/shared/prose/rules/core/CORE-001-adapter-schema.md",
+      "remediation": "See adapters/shared/prose/rules/core/CORE-001-catalog-schema.md",
       "rule-id": "CORE-001",
       "severity": "critical",
       "source": "deterministic",
-      "title": "Adapter Manifest Schema: schema validation failed"
+      "title": "Component Catalog Schema: schema validation failed"
     },
     {
       "artifact": "unknown",

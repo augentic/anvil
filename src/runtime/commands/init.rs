@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use jiff::Timestamp;
 use serde::Serialize;
 use specify_error::{Error, Result};
-use specify_registry::{oci, store};
+use specify_registry::store;
 use specify_workflow::config::{ProjectConfig, is_slot};
 use specify_workflow::init::{AdapterPackage, InitOptions, InitResult, init, recognize_package};
 use specify_workflow::platform::parse_platforms_csv;
@@ -44,7 +44,7 @@ pub(super) fn run(args: &Args<'_>) -> Result<()> {
         })?;
 
     if let Some(adapter) = args.adapter {
-        install_adapter_package(adapter)?;
+        install_adapter_package(adapter, &project_dir)?;
     }
 
     let opts = InitOptions {
@@ -72,25 +72,26 @@ pub(super) fn run(args: &Args<'_>) -> Result<()> {
 }
 
 /// Install a first-party adapter **package reference**
-/// (`<namespace>:<name>@<semver>`) into the global content-addressed
-/// store before the workflow init flow resolves it (RFC-48 D5
-/// install-on-fetch). A non-package `<adapter>` — first-party shorthand,
-/// a local path, or a GitHub URL — is recognised as such and left to the
-/// workflow flow, so this is a no-op for every non-registry form.
+/// (`<namespace>:<name>@<semver>`, or the versioned shorthand
+/// `<name>@<semver>` — sugar for `augentic:<name>@<semver>`) into the
+/// global content-addressed store before the workflow init flow
+/// resolves it (RFC-48 D5 install-on-fetch). A non-package `<adapter>`
+/// — a bare development name or a local component path — is recognised
+/// as such and left to the workflow flow, so this is a no-op for every
+/// non-registry form.
 ///
-/// Trust-on-first-use: the pulled artifact is materialized read-only and
-/// immutable, so its store presence is the read-integrity guarantee. The
-/// registry host derives from `$SPECIFY_REGISTRY` (else `augentic.io`),
-/// matching the publish-side reference.
-fn install_adapter_package(adapter: &str) -> Result<()> {
+/// Trust-on-first-use: the pulled component is materialized read-only
+/// and immutable, so its store presence is the read-integrity
+/// guarantee. The pull goes through the wasm-pkg transport (RFC-64),
+/// honouring the project's `.specify/wasm-pkg.toml` namespace mappings
+/// and the embedded first-party default.
+fn install_adapter_package(adapter: &str, project_dir: &Path) -> Result<()> {
     let Some(package) = recognize_package(adapter) else {
         return Ok(());
     };
     let package: AdapterPackage = package?;
     let version = package.version.to_string();
-    let reference = oci::adapter_reference(&package.namespace, &package.name, &version);
-    let auth = oci::registry_auth_from_env();
-    store::install_tofu(&package.name, &version, &reference, &auth)?;
+    store::install_tofu(&package.namespace, &package.name, &version, project_dir)?;
     Ok(())
 }
 

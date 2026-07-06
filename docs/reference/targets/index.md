@@ -1,6 +1,6 @@
 # Target Adapters
 
-> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) live at [`adapters/targets/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/targets). The source-side counterparts live at [`adapters/sources/<name>/`](https://github.com/augentic/specify/tree/main/adapters/sources).
+> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) are authored at [`targets/<name>/`](https://github.com/augentic/specify-adapters/tree/main/targets) in the adapters repo and published as `augentic:<name>@<semver>` components. The source-side counterparts are documented under [Source adapters](../sources/index.md).
 
 ## What is a target adapter?
 
@@ -12,31 +12,17 @@ A **target adapter** is the output role in the Specify plugin model. It describe
 
 Target adapters do not own `spec.md` or `design.md` synthesis — that is **core**'s responsibility. The plan-level `Slice.target` field selects the target; v1 supports one target per project.
 
-## Manifest shape
+## Identity and metadata
 
-Every target adapter ships a single `adapter.yaml` at `adapters/targets/<name>/`:
+There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name and the exact-semver `Cargo.toml` version, published as `augentic:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export:
 
-```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/schemas/target.schema.json
-name: omnia
-version: "1.0.0"
-axis: target
-description: Omnia Rust WASM target adapter.
-# optional: target-specific build inputs, paths relative to the build request's inputs.root
-inputs:
-  - { path: tokens.yaml, required: true }
-  - { path: assets.yaml, required: false }
-```
+| Field           | Required | Meaning |
+| --------------- | -------- | ------- |
+| `specify-floor` | no       | Exact-semver minimum host-CLI version; resolve aborts with `adapter-cli-too-old` (exit 3) when the running binary is older. |
+| `inputs`        | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `specify slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
+| `platforms`     | no       | `{ required, allowed, default }` platforms capability; see [Anatomy of an adapter](../../explanation/adapter-anatomy.md). |
 
-| Field         | Required | Meaning |
-| ------------- | -------- | ------- |
-| `name`        | yes      | Kebab-case target identifier. Must match the directory name under `adapters/targets/`. |
-| `version`     | yes      | Exact semver string (`x.y.z`, e.g. `"1.0.0"`). The adapter's identity; resolution keys on it and synthesized refs render `name@<semver>`. |
-| `axis`        | yes      | Must be `target`. |
-| `description` | yes      | Single-sentence summary of the target's outcome domain. |
-| `inputs`      | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `specify slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
-
-Deterministic helper behaviour is in-guest library code compiled into the adapter's committed `guest.wasm`; there is no separate extension declaration or host-dispatched helper. See [Tool declarations](../../explanation/tool-declarations.md).
+Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration or host-dispatched helper. See [Tool declarations](../../explanation/tool-declarations.md).
 
 ## How a target adapter participates in the loop
 
@@ -46,7 +32,7 @@ Deterministic helper behaviour is in-guest library code compiled into the adapte
 /spec:merge   →  drives target.merge     (validates and lands the slice)
 ```
 
-Core synthesis writes the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`) in a fixed substep order regardless of target. The `guidance` prompt is read into context as idiom guidance but never replaces synthesis output. The operation set is not declared in the manifest — it derives from the closed WIT contract (`wit/specify.wit`).
+Core synthesis writes the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`) in a fixed substep order regardless of target. The `guidance` prompt is read into context as idiom guidance but never replaces synthesis output. The operation set is not declared anywhere on the wire — it derives from the closed WIT contract (`wit/specify.wit`).
 
 ## Dependency direction
 
@@ -64,7 +50,7 @@ The invariant: **adapter resolution is a downstream concern**. Core owns the sli
 
 ## Distribution
 
-A target adapter ships a manifest plus the prompts that implement domain behaviour. Imperative behaviour (provider configuration, file generation, format validation, drift detection) lives in the prompts and in-guest library code. There is no second plugin runtime hidden behind `adapter.yaml`.
+A target adapter ships as one published component carrying the prompts that implement domain behaviour. Imperative behaviour (provider configuration, file generation, format validation, drift detection) lives in the prompts and in-guest library code. There is no second plugin runtime hidden behind the component.
 
 Shared material used by multiple adapters lives outside the adapter roots under `adapters/shared/`:
 
@@ -73,7 +59,7 @@ Shared material used by multiple adapters lives outside the adapter roots under 
 
 ## Validation
 
-The wire-level schema is `schemas/target.schema.json` (distributed with the binary). It enforces the field set and shape described above. `specify target resolve <value>` loads and validates the manifest on first use.
+The metadata shape is the WIT `manifest` record on the `target` interface (`wit/specify.wit`) — typed at the component boundary, so there is no wire schema to validate against. `specify target resolve <value>` locates the component and dispatches `describe` on first use.
 
 ## See also
 

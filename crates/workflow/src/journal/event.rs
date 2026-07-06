@@ -273,7 +273,7 @@ pub enum EventKind {
     SourceSurveyCompleted {
         /// Source key from `plan.yaml.sources.<key>`.
         source: String,
-        /// Adapter name (kebab-case; mirrors `adapter.yaml.name`).
+        /// Adapter name (kebab-case; the resolved adapter identity).
         adapter: String,
     },
     /// A source adapter ran one operation under agent execution
@@ -284,7 +284,7 @@ pub enum EventKind {
     SourceExecutionAgent {
         /// Source key from `plan.yaml.sources.<key>`.
         source: String,
-        /// Adapter name (kebab-case; mirrors `adapter.yaml.name`).
+        /// Adapter name (kebab-case; the resolved adapter identity).
         adapter: String,
         /// Which operation ran (`survey` at plan time, `extract` at
         /// slice time).

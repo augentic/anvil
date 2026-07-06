@@ -177,3 +177,41 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
     unsafe { std::env::set_var(STORE_ENV, dir) };
     StoreGuard(prev)
 }
+
+/// Register the JSON-body describe stub (idempotent; nextest gives each
+/// test its own process, so the process-global registration is
+/// per-test). The stub parses the component file's bytes as a JSON
+/// `DescribeAnswer`, so a test controls its adapter's metadata by
+/// writing the fixture component (`{}` for an empty answer).
+pub fn register_describe_stub() {
+    use specify_error::Error;
+    use specify_workflow::adapter::describe::{
+        DescribeAnswer, DescribeRequest, register_describe_runner,
+    };
+
+    fn stub(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
+        let raw = std::fs::read_to_string(request.component).map_err(|err| Error::Diag {
+            code: "adapter-describe-failed",
+            detail: format!("stub read {}: {err}", request.component.display()),
+        })?;
+        serde_json::from_str(&raw).map_err(|err| Error::Diag {
+            code: "adapter-describe-failed",
+            detail: format!("stub parse {}: {err}", request.component.display()),
+        })
+    }
+
+    register_describe_runner(stub);
+}
+
+/// Stage a stub adapter component for `name` at the resolver's in-repo
+/// development probe (`<root>/target/wasm32-wasip2/release/
+/// specify_<name>.wasm`) and register the JSON-body describe stub, so a
+/// bare-name resolve inside `root` succeeds with an empty
+/// `DescribeAnswer`.
+pub fn stage_dev_component(root: &std::path::Path, name: &str) {
+    register_describe_stub();
+    let dev_dir = root.join("target/wasm32-wasip2/release");
+    std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
+    std::fs::write(dev_dir.join(format!("specify_{name}.wasm")), "{}")
+        .expect("write stub component");
+}

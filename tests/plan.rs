@@ -25,8 +25,8 @@ mod support {
     pub use tempfile::{TempDir, tempdir};
 
     pub use crate::common::{
-        Project, assert_golden_at, copy_dir, expected_cache_dir, omnia_schema_dir, parse_stderr,
-        parse_stdout, repo_root, specify_cmd,
+        Project, assert_golden_at, omnia_component, parse_stderr, parse_stdout, repo_root,
+        specify_cmd, stage_store_component,
     };
 
     pub fn plan_fixtures() -> PathBuf {
@@ -305,7 +305,7 @@ mod validate {
         specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
@@ -441,11 +441,7 @@ mod validate {
             "name: alpha\nadapter: omnia@1.0.0\ndescription: Fresh description\n",
         )
         .unwrap();
-        copy_dir(
-            &omnia_schema_dir(),
-            &expected_cache_dir(&tmp.path().join("workspace/alpha"))
-                .join("manifests/targets/omnia"),
-        );
+        stage_store_component("omnia", "1.0.0");
 
         fs::write(
             tmp.path().join(".specify/topology.lock"),

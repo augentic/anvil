@@ -165,6 +165,24 @@ interface source {
     claims: list<claim>,
   }
 
+  /// The adapter's deterministic self-description (RFC-64) — the facts
+  /// the host consumes before dispatching an operation. Identity lives
+  /// in the wasm-pkg package reference and axis in the exported world,
+  /// so only the compatibility floor remains on the record.
+  record manifest {
+    /// Optional host-CLI compatibility floor: the exact minimum
+    /// `specify` platform version this adapter needs. The host compares
+    /// it against the running binary at resolve time and aborts when
+    /// the binary is older. Absent means no floor.
+    specify-floor: option<string>,
+  }
+
+  /// Deterministic self-description, read by the host at resolve time
+  /// and cached against the artifact digest. Metadata, not judgment:
+  /// effect-free and answerable from compiled-in constants — no model
+  /// call, no filesystem access.
+  describe: func(id: adapter-id) -> manifest;
+
   /// Lightly survey the source to create a map of its contents (decompose
   /// into leads). An `async func` like every judgment operation: the guest
   /// awaits the async `omnia:model/completion.create` import mid-call, and
@@ -281,6 +299,53 @@ interface target {
     /// Optional per-slice UI-surface signal; absent reports stay valid.
     ui-surface: option<ui-surface>,
   }
+
+  /// One adapter-declared build input: a path (relative to the slice
+  /// tree) the `build` operation consumes, flagged `required`.
+  record build-input {
+    /// Slice-tree-relative path of the input.
+    path: string,
+    /// Whether the build must abort when the path is absent.
+    required: bool,
+  }
+
+  /// Declarative platforms capability: when `required` is true,
+  /// projects using this target must declare a non-empty platform set
+  /// at init.
+  record platforms-capability {
+    /// Whether projects must declare a platform set.
+    required: bool,
+    /// The set of platforms this target accepts.
+    allowed: list<platform>,
+    /// The set assumed when the operator accepts the default.
+    default: list<platform>,
+  }
+
+  /// The adapter's deterministic self-description (RFC-64) — the facts
+  /// the host consumes before dispatching an operation. Identity lives
+  /// in the wasm-pkg package reference and axis in the exported world;
+  /// the record carries the compatibility floor plus the target's
+  /// declared build inputs and platform capability.
+  record manifest {
+    /// Optional host-CLI compatibility floor: the exact minimum
+    /// `specify` platform version this adapter needs. The host compares
+    /// it against the running binary at resolve time and aborts when
+    /// the binary is older. Absent means no floor.
+    specify-floor: option<string>,
+    /// Adapter-declared build inputs, each a slice-tree-relative path
+    /// the `build` operation consumes. Empty when the target declares
+    /// none.
+    inputs: list<build-input>,
+    /// Declarative platforms capability. Absent when the target is
+    /// platform-agnostic.
+    platforms: option<platforms-capability>,
+  }
+
+  /// Deterministic self-description, read by the host at resolve time
+  /// and cached against the artifact digest. Metadata, not judgment:
+  /// effect-free and answerable from compiled-in constants — no model
+  /// call, no filesystem access.
+  describe: func(id: adapter-id) -> manifest;
 
   /// Guidance on the expected build artifacts for this target, read by core
   /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary

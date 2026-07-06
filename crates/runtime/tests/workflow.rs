@@ -32,19 +32,15 @@ use tempfile::TempDir;
 
 use crate::common::{self, Quiet, StubBundle};
 
-// `copy_dir` from the workspace-shared helper file (see `tests/fs_git.rs`
-// at the engine root).
-#[path = "../../../tests/fs_git.rs"]
-mod fs_git;
-
 fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
 }
 
 /// A throw-away project tree the composed deployment mounts at `"."`:
-/// `.specify/project.yaml`, a vendored `omnia` target adapter (so target
-/// resolution works both natively and inside the guest), and a hermetic
-/// project cache pinned beneath the tempdir.
+/// `.specify/project.yaml`, the `omnia` adapter component staged at the
+/// in-repo development probe path (so target resolution works both
+/// natively and inside the guest), and a hermetic project cache pinned
+/// beneath the tempdir.
 struct Project {
     _tmp: TempDir,
     _cache: CacheGuard,
@@ -53,6 +49,13 @@ struct Project {
 
 impl Project {
     fn new() -> Self {
+        // Native seeding resolves the target in-process; register the
+        // stub describe dispatcher (first registration wins) so resolve
+        // never needs a nested wasmtime instantiation here — describe
+        // dispatch itself is covered by the engine's adapter suites.
+        specify_workflow::adapter::describe::register_describe_runner(|_request| {
+            Ok(specify_workflow::adapter::describe::DescribeAnswer::default())
+        });
         let tmp = TempDir::new().expect("tempdir");
         let root = tmp.path().to_path_buf();
         let cache = scoped_cache(&root);
@@ -61,13 +64,17 @@ impl Project {
         }
         fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: omnia\nrules: {}\n")
             .expect("write project.yaml");
-        // Vendor the omnia target adapter fixture the workflow crate's
-        // execute tests use, so `TargetAdapter::resolve` finds it in the
-        // project tree (the guest's cache probe degrades to a miss — no
-        // cache root is preopened).
-        let fixture = common::workspace_root()
-            .join("crates/workflow/tests/fixtures/plugins/adapters/targets/omnia");
-        fs_git::copy_dir(&fixture, &root.join("adapters/targets/omnia"));
+        // Stage the sibling checkout's release-built omnia component at
+        // the resolver's in-repo development probe
+        // (`<project>/target/wasm32-wasip2/release/specify_omnia.wasm`),
+        // which sits under the `"."` mount so the guest sees it too.
+        let dev_dir = root.join("target/wasm32-wasip2/release");
+        fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
+        fs::copy(
+            common::adapter_component_wasm("target:omnia"),
+            dev_dir.join("specify_omnia.wasm"),
+        )
+        .expect("stage omnia component");
         Self {
             _tmp: tmp,
             _cache: cache,

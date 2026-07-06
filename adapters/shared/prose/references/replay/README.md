@@ -1,6 +1,6 @@
 # Shared replay hook contract
 
-Cross-target, build-time `replay` rules under `adapters/shared/` — read by any target adapter that opts into the the capture-backed replay workflow hook during `/spec:build`. This directory is shared support material resolved outside `adapter.yaml`; it is not a target adapter and does not add a fourth operation.
+Cross-target, build-time `replay` rules under `adapters/shared/` — read by any target adapter that opts into the the capture-backed replay workflow hook during `/spec:build`. This directory is shared support material, not a target adapter, and does not add a fourth operation.
 
 ## Relationship to `captures`
 

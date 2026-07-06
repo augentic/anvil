@@ -12,7 +12,7 @@ use specify_error::Error;
 use crate::adapter::TargetAdapter;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_uri::adapter_ref_from_value;
-use crate::init::cache::{ManifestMeta, cache_adapter, cache_codex};
+use crate::init::cache::{ComponentMeta, cache_adapter, cache_codex};
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
     upsert_gitignore, validate_platforms,
@@ -94,7 +94,7 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
 
     upsert_gitignore(opts.project_dir)?;
 
-    let cache_present = ManifestMeta::path(opts.project_dir).exists();
+    let cache_present = ComponentMeta::path(opts.project_dir).exists();
 
     Ok(InitResult {
         config_path,

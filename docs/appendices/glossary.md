@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `guidance` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `describe` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -17,7 +17,7 @@ A machine-readable interface definition at `contracts/`. Uses three formats: JSO
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
-Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
+Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract`, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
 A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
@@ -157,7 +157,7 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `augentic:<name>@<semver>`; the guest crate lives at `adapters/sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
@@ -174,7 +174,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`.
+Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Published as `augentic:<name>@<semver>`; the guest crate lives at `adapters/targets/<name>/` in the adapters repo.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

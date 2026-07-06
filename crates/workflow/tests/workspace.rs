@@ -355,17 +355,13 @@ fn c02_sync_preserves_gitignore_once() {
 
 // ---------- adapter mirror (slot adapter provisioning) ---------
 
-/// Stage an adapter dir (`adapter.yaml` + optional extra files) under
-/// `root/<rel>/`.
-fn stage_adapter_at(root: &Path, rel: &str, body: &str, extra: &[(&str, &str)]) {
-    let dir = root.join(rel);
+/// Stage a file in the workspace's project component cache
+/// (`<ws-cache>/components/<name>`) — the only workspace-owned state
+/// the RFC-64 mirror copies into slot caches.
+fn stage_workspace_component(project_dir: &Path, name: &str, body: &str) {
+    let dir = expected_cache_dir(project_dir).join("components");
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("adapter.yaml"), body).unwrap();
-    for (name, contents) in extra {
-        let path = dir.join(name);
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path, contents).unwrap();
-    }
+    fs::write(dir.join(name), body).unwrap();
 }
 
 /// A workspace with one local symlink peer (`./peer`) that is itself a
@@ -387,54 +383,51 @@ fn sync_all(project_dir: &Path) {
 }
 
 #[test]
-fn mirror_covers_target_axis_and_sidecars() {
-    // The binary mirror pins only exercise the source axis with a bare
-    // `adapter.yaml`; target-axis coverage and sidecar files riding the
-    // mirror are pinned here.
+fn mirror_covers_components_and_meta() {
+    // The binary mirror pins cover the foreign-entry and self-slot
+    // edges; the component + provenance-sidecar copy itself is pinned
+    // here.
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
     let _cache = scoped_cache(project_dir);
     let peer = workspace_with_specify_peer(project_dir);
-    stage_adapter_at(
-        project_dir,
-        "adapters/targets/vectis",
-        "name: vectis\n",
-        &[("tools.yaml", "tools: []\n")],
-    );
+    stage_workspace_component(project_dir, "vectis.wasm", "component bytes\n");
+    stage_workspace_component(project_dir, "component-meta.yaml", "source: file:///x\n");
 
     sync_all(project_dir);
 
-    let mirrored = expected_cache_dir(&peer).join("manifests/targets/vectis");
-    assert!(mirrored.join("adapter.yaml").is_file(), "target axis must be mirrored");
+    let mirrored = expected_cache_dir(&peer).join("components");
     assert_eq!(
-        fs::read_to_string(mirrored.join("tools.yaml")).expect("mirrored tools.yaml"),
-        "tools: []\n",
-        "tool sidecars must ride the mirror"
+        fs::read_to_string(mirrored.join("vectis.wasm")).expect("mirrored component"),
+        "component bytes\n",
+        "workspace components must be mirrored into the slot cache"
+    );
+    assert_eq!(
+        fs::read_to_string(mirrored.join("component-meta.yaml")).expect("mirrored meta"),
+        "source: file:///x\n",
+        "the provenance sidecar must ride the mirror"
     );
 }
 
 #[test]
-fn mirror_skips_slot_vendored_name() {
-    // The loader probes the cache before the vendored tree, so the
-    // mirror must skip a name the slot vendors itself — otherwise the
-    // mirrored twin would shadow the slot's copy.
+fn mirror_overwrites_same_name_slot_entry() {
+    // Per-file copy-over: a same-name component already in the slot
+    // cache is refreshed with the workspace copy on sync.
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
     let _cache = scoped_cache(project_dir);
     let peer = workspace_with_specify_peer(project_dir);
-    stage_adapter_at(project_dir, "adapters/sources/documentation", "workspace copy\n", &[]);
-    stage_adapter_at(&peer, "adapters/sources/documentation", "slot copy\n", &[]);
+    stage_workspace_component(project_dir, "documentation.wasm", "workspace copy\n");
+    let slot_cache = expected_cache_dir(&peer).join("components");
+    fs::create_dir_all(&slot_cache).unwrap();
+    fs::write(slot_cache.join("documentation.wasm"), "slot copy\n").unwrap();
 
     sync_all(project_dir);
 
-    assert!(
-        !expected_cache_dir(&peer).join("manifests/sources/documentation").exists(),
-        "a slot-vendored name must not be shadowed by a mirrored cache copy"
-    );
     assert_eq!(
-        fs::read_to_string(peer.join("adapters/sources/documentation/adapter.yaml")).unwrap(),
-        "slot copy\n",
-        "the slot's vendored copy must be untouched"
+        fs::read_to_string(slot_cache.join("documentation.wasm")).unwrap(),
+        "workspace copy\n",
+        "the workspace copy must refresh the slot cache entry"
     );
 }
 
@@ -442,6 +435,7 @@ fn mirror_skips_slot_vendored_name() {
 fn mirror_skips_non_specify_peer() {
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
+    let _cache = scoped_cache(project_dir);
     let peer = project_dir.join("peer");
     fs::create_dir_all(&peer).unwrap();
     fs::write(
@@ -449,13 +443,17 @@ fn mirror_skips_non_specify_peer() {
         "version: 1\nprojects:\n  - name: peer\n    url: ./peer\n    adapter: omnia@1.0.0\n",
     )
     .unwrap();
-    stage_adapter_at(project_dir, "adapters/sources/documentation", "name: documentation\n", &[]);
+    stage_workspace_component(project_dir, "documentation.wasm", "workspace copy\n");
 
     sync_all(project_dir);
 
     assert!(
         !peer.join(".specify").exists(),
         "the mirror must not manufacture `.specify/` in a non-Specify peer"
+    );
+    assert!(
+        !expected_cache_dir(&peer).join("components").exists(),
+        "a non-Specify peer's slot cache must stay untouched"
     );
 }
 
@@ -704,18 +702,22 @@ fn c07_push_wrong_branch_no_checkout() {
 
 /// Stage a materialised slot with a resolvable omnia adapter and the
 /// given `project.yaml` body under `workspace/<name>/`.
+///
+/// The slot pins `omnia@1.0.0`, which resolves the single-file global
+/// store entry (the caller pins `SPECIFY_ADAPTER_CACHE` via
+/// `common::scoped_store`); the describe answer is stubbed through the
+/// JSON-body runner registered by `common::register_describe_stub`.
 fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {
     let slot = project_dir.join("workspace").join(name);
     let slot_specify = slot.join(".specify");
     fs::create_dir_all(&slot_specify).unwrap();
     fs::write(slot_specify.join("project.yaml"), project_yaml).unwrap();
-    // The slot resolves its target adapter from the out-of-tree manifest
-    // cache keyed by the slot path (the env is pinned by the caller).
-    let omnia_manifest = expected_cache_dir(&slot).join("manifests/targets/omnia");
-    fs::create_dir_all(&omnia_manifest).unwrap();
-    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/plugins/adapters/targets/omnia/adapter.yaml");
-    fs::copy(fixture, omnia_manifest.join("adapter.yaml")).unwrap();
+    crate::common::register_describe_stub();
+    let entry = specify_schema::cache::adapter_store_entry("omnia", "1.0.0");
+    fs::create_dir_all(entry.parent().unwrap()).unwrap();
+    fs::write(&entry, "{}").unwrap();
+    let digest = specify_schema::cache::file_content_digest(&entry);
+    specify_schema::cache::write_store_meta("omnia", "1.0.0", &digest, None).unwrap();
 }
 
 #[test]
@@ -726,6 +728,7 @@ fn topology_lock_projects_baseline() {
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
     let _cache = scoped_cache(project_dir);
+    let _store = crate::common::scoped_store(&project_dir.join("adapter-store"));
     // A stale `capabilities:` key is silently ignored; routing
     // identity is derived from the slot's baseline, not re-authored.
     stage_topology_slot(
@@ -799,6 +802,7 @@ fn topology_lock_projects_decisions() {
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
     let _cache = scoped_cache(project_dir);
+    let _store = crate::common::scoped_store(&project_dir.join("adapter-store"));
     stage_topology_slot(
         project_dir,
         "alpha",

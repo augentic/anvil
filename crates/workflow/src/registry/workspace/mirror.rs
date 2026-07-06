@@ -1,97 +1,47 @@
-//! Slot adapter provisioning: mirror the workspace's adapter
-//! set into a synced slot's manifest cache so slot-side resolution
-//! stays project-local (workflow §"Resolver and cache"). See
+//! Slot adapter provisioning: mirror the workspace's project component
+//! cache into a synced slot's component cache so slot-side bare-name
+//! resolution stays project-local (workflow §"Resolver and cache"). See
 //! [DECISIONS.md §"Slot adapter provisioning via workspace sync"].
+//!
+//! Post-RFC-64 an adapter is one `.wasm` component: pinned identities
+//! resolve from the *global* content-addressed store (shared across
+//! projects, nothing to mirror) and development bare names resolve the
+//! release build live. The only workspace-owned state a slot cannot
+//! reach on its own is the workspace's mirrored local components at
+//! `<ws-cache>/components/*.wasm`, so that is all the mirror copies.
 //!
 //! [DECISIONS.md §"Slot adapter provisioning via workspace sync"]: ../../../../../DECISIONS.md#slot-adapter-provisioning-via-workspace-sync
 
-use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use specify_error::Error;
+use specify_schema::cache::project_cache_dir;
 
-use crate::adapter::{ADAPTER_FILENAME, Axis, adapter_axis_dir, cache_axis_dir, cache_dir};
-
-/// Mirror the workspace's adapters — both axes, vendored tree and
-/// manifest-cache mirror alike, `tools.yaml` sidecars included — into
-/// `slot`'s out-of-tree manifest cache at
-/// `<slot-cache>/manifests/{sources,targets}/` (keyed by the slot path).
+/// Mirror the workspace's component cache into `slot`'s component
+/// cache (keyed by the slot path, out-of-tree).
 ///
-/// Per-name delete-then-copy: every workspace-owned name is refreshed
-/// on re-sync; cache entries the workspace does not own (e.g. an
-/// init-time greenfield adapter seed) are never pruned. A name the
-/// slot vendors under its own `adapters/` tree — on either axis — is
-/// skipped, so the slot copy keeps winning resolution (the loader
-/// probes the cache first) and the mirror can never manufacture an
-/// `adapter-name-axis-collision` in a previously healthy slot.
+/// Per-file copy-over: every workspace-owned component is refreshed on
+/// re-sync; slot cache entries the workspace does not own are never
+/// pruned. A no-op when the workspace has no component cache.
 ///
 /// # Errors
 ///
 /// `workspace-adapter-mirror-failed` on any filesystem failure.
 pub(super) fn mirror_adapters(workspace_dir: &Path, slot: &Path) -> Result<(), Error> {
-    for axis in [Axis::Source, Axis::Target] {
-        for (name, source) in workspace_adapters(workspace_dir, axis) {
-            if slot_vendors(slot, &name) {
-                continue;
-            }
-            replace_dir(&source, &cache_dir(slot, axis, &name))?;
-        }
-    }
-    Ok(())
-}
-
-/// The workspace's adapter set for one axis, name → source directory.
-///
-/// A name present in both probe locations copies from the manifest
-/// cache, matching the loader's cache-over-vendored probe order. A
-/// bare directory without `adapter.yaml` is not an adapter (same rule
-/// as `adapter::validate_manifest`).
-fn workspace_adapters(workspace_dir: &Path, axis: Axis) -> BTreeMap<String, PathBuf> {
-    let mut adapters = BTreeMap::new();
-    for root in [adapter_axis_dir(workspace_dir, axis), cache_axis_dir(workspace_dir, axis)] {
-        let Ok(entries) = std::fs::read_dir(&root) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let dir = entry.path();
-            if !dir.join(ADAPTER_FILENAME).is_file() {
-                continue;
-            }
-            if let Some(name) = entry.file_name().to_str() {
-                adapters.insert(name.to_string(), dir);
-            }
-        }
-    }
-    adapters
-}
-
-fn slot_vendors(slot: &Path, name: &str) -> bool {
-    [Axis::Source, Axis::Target]
-        .into_iter()
-        .any(|axis| adapter_axis_dir(slot, axis).join(name).join(ADAPTER_FILENAME).is_file())
-}
-
-fn replace_dir(source: &Path, dest: &Path) -> Result<(), Error> {
-    if dest.exists() {
-        std::fs::remove_dir_all(dest).map_err(|err| mirror_error("remove", dest, &err))?;
-    }
-    copy_dir(source, dest)
-}
-
-fn copy_dir(source: &Path, dest: &Path) -> Result<(), Error> {
-    std::fs::create_dir_all(dest).map_err(|err| mirror_error("create", dest, &err))?;
-    let entries = std::fs::read_dir(source).map_err(|err| mirror_error("read", source, &err))?;
+    let source = project_cache_dir(workspace_dir).join("components");
+    let Ok(entries) = std::fs::read_dir(&source) else {
+        return Ok(());
+    };
+    let dest = project_cache_dir(slot).join("components");
+    std::fs::create_dir_all(&dest).map_err(|err| mirror_error("create", &dest, &err))?;
     for entry in entries {
-        let entry = entry.map_err(|err| mirror_error("read", source, &err))?;
+        let entry = entry.map_err(|err| mirror_error("read", &source, &err))?;
         let from = entry.path();
-        let to = dest.join(entry.file_name());
-        if from.is_dir() {
-            copy_dir(&from, &to)?;
-        } else {
-            // Follows symlinks: a brief symlinked at the workspace
-            // lands as a regular file in the slot cache.
-            std::fs::copy(&from, &to).map_err(|err| mirror_error("copy", &from, &err))?;
+        if !from.is_file() {
+            continue;
         }
+        let to = dest.join(entry.file_name());
+        std::fs::copy(&from, &to).map_err(|err| mirror_error("copy", &from, &err))?;
     }
     Ok(())
 }

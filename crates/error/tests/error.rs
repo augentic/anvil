@@ -29,7 +29,7 @@ fn adapter_cli_too_old_discriminant_display() {
     // RFC-47 D3: the adapter floor reuses the exit-3 family but carries
     // a distinct discriminant naming the adapter that outran the binary.
     let err = Error::AdapterCliTooOld {
-        adapter: "omnia (adapter.yaml)".to_string(),
+        adapter: "omnia (omnia@1.0.0.wasm)".to_string(),
         required: "2.0.0".to_string(),
         found: "1.0.0".to_string(),
     };

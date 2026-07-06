@@ -5,9 +5,9 @@
 //! the native-only handlers below own everything that needs
 //! subprocesses, Wasmtime, or the network (init, lint, workspace, …).
 
-pub mod adapter;
 pub mod agents;
 pub mod archive;
+pub mod describe;
 pub mod guest;
 mod init;
 pub mod lint;
@@ -18,7 +18,6 @@ mod upgrade;
 pub mod workspace;
 
 use clap::CommandFactory;
-use specify_dispatch::commands::adapter::cli::AdapterAction;
 use specify_dispatch::commands::lint::cli::LintAction;
 use specify_dispatch::commands::rules::cli::RulesAction;
 use specify_dispatch::commands::workspace::cli::WorkspaceAction;
@@ -55,7 +54,6 @@ pub fn run(cli: Cli) -> Exit {
         }),
         Commands::Source { action } => dispatch_source(format, plan_dir, action),
         Commands::Target { action } => dispatch_target(format, action),
-        Commands::Adapter { action } => dispatch_adapter(format, action),
         Commands::Rules { action } => match action {
             RulesAction::Export(args) => dispatch(format, || rules::export::run(format, &args)),
             RulesAction::Sync(args) => scoped(format, plan_dir, |ctx| rules::sync::run(ctx, &args)),
@@ -97,19 +95,6 @@ pub fn run(cli: Cli) -> Exit {
                 scoped(format, plan_dir, |ctx| workspace::push(ctx, &projects, dry_run))
             }
         },
-    }
-}
-
-/// Dispatch the `specify adapter {build, publish}` family.
-///
-/// Factored out of [`run`] so the top-level dispatcher stays under the
-/// per-function line budget (RFC-48 D6/D10).
-fn dispatch_adapter(format: Format, action: AdapterAction) -> Exit {
-    match action {
-        AdapterAction::Build { path } => dispatch(format, || adapter::build(format, &path)),
-        AdapterAction::Publish { path, reference } => {
-            dispatch(format, || adapter::publish(format, &path, &reference))
-        }
     }
 }
 

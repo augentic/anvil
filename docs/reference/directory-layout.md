@@ -76,13 +76,10 @@ The regenerable **cache** lives outside the working tree, in a per-project direc
 
 ```text
 $XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
-├── manifests/sources/<name>/                     # Source adapter manifest mirror
-│   ├── adapter.yaml
-│   └── prose/prompts/{survey,extract}.md
-├── manifests/targets/<name>/                     # Target adapter manifest mirror
-│   ├── adapter.yaml
-│   └── prose/prompts/{guidance,build,merge}.md
-├── manifests/manifest-meta.yaml                  # Manifest mirror provenance stamp
+├── components/                                   # Project component cache
+│   ├── <name>.wasm                               # Local adapter component mirrored at init
+│   ├── <name>.wasm.describe.json                 # Digest-keyed describe answer sidecar
+│   └── component-meta.yaml                       # Component mirror provenance stamp
 └── codex/                                        # Distributed shared-rules codex (+ codex-meta.yaml)
 
 $XDG_CACHE_HOME/specify/mirrors/<url-id>.git      # Persistent bare mirror per remote peer URL
@@ -108,7 +105,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### Cache (out-of-tree)
 
-The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
+The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `components/` is the project component cache — an operator-supplied local adapter component mirrored at `specify init` (`<name>.wasm`, with provenance stamped at `components/component-meta.yaml`); pinned identities resolve from the global store and development builds resolve live, so neither is mirrored here. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 

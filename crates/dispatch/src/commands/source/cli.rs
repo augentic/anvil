@@ -8,13 +8,12 @@ use clap::Subcommand;
 /// Verbs under `specify source`.
 #[derive(Debug, Subcommand)]
 pub enum SourceAction {
-    /// Resolve a source-adapter manifest by kebab name.
+    /// Resolve a source adapter by kebab name.
     ///
-    /// Probe order: `<project-cache>/manifests/sources/<name>/adapter.yaml`
-    /// (agent-populated out-of-tree manifest cache), then
-    /// `<project-dir>/adapters/sources/<name>/adapter.yaml`
-    /// (in-repo). Emits the resolved directory path plus the
-    /// manifest's declared operations.
+    /// Resolves the single `.wasm` component (RFC-64): the global
+    /// store entry for a pinned identity, else the project component
+    /// cache / development release build for a bare name. Emits the
+    /// resolved component path plus the axis's closed operation set.
     Resolve {
         /// Kebab-case source-adapter name (e.g. `intent`,
         /// `documentation`, `typescript`, `screenshots`).

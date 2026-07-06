@@ -7,7 +7,7 @@
 
 ## Operations
 
-The Contracts target implements exactly three operations — `guidance`, `build`, `merge` — matching its [`adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/adapter.yaml). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them.
+The Contracts target implements exactly three operations — `guidance`, `build`, `merge` — the closed WIT target contract implemented by its [guest crate](https://github.com/augentic/specify-adapters/tree/main/targets/contracts). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them.
 
 ### guidance
 
@@ -68,4 +68,4 @@ The Contracts adapter's prompts and references carry domain context about:
 
 ## Adapter framework
 
-For general adapter concepts -- directory structure, manifest field reference for `adapter.yaml`, adapter resolution, and pipeline declarations -- see the [Adapters overview](index.md).
+For general adapter concepts -- directory structure, identity and metadata, adapter resolution, and pipeline declarations -- see the [Adapters overview](index.md).

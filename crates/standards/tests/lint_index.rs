@@ -17,8 +17,8 @@ mod framework_indexer {
     //!    [`WORKSPACE_MODEL_JSON_SCHEMA`] under the framework profile —
     //!    every new framework-only entity family round-trips through the
     //!    schema.
-    //! 2. Every framework extractor (`skill`, `adapter`, `marketplace`)
-    //!    emits at least one fact against the
+    //! 2. Every framework extractor (`skill`, `marketplace`) emits at
+    //!    least one fact against the
     //!    minimal fixture, and the followed `agent-teams.md` symlink
     //!    surfaces both endpoints plus a SHA-256 of the resolved target's
     //!    bytes per the standards-layer contract §F1.

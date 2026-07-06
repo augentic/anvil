@@ -71,6 +71,7 @@ members = [
     "crates/extension",
     "crates/workflow",
     "crates/echo-guest",
+    "crates/echo-target-guest",
     "crates/workflow-guest",
     "crates/runtime",
 ]
@@ -184,7 +185,6 @@ globset = "0.4"
 ignore = "0.4"
 jiff = { version = "0.2", default-features = false, features = ["serde", "std"] }
 jsonschema = { version = "0.46", default-features = false }
-oci-client = { version = "0.16", default-features = false, features = ["rustls-tls"] }
 omnia = "0.35.0"
 # Spawned cursor-agent model backend (unpublished). Temporarily supplied
 # from the sibling augentic/backends checkout, matching the omnia local-path
@@ -221,7 +221,6 @@ specify-registry = { path = "crates/registry" }
 specify-runtime = { path = "crates/runtime" }
 specify-extension = { path = "crates/extension" }
 strum = { version = "0.28", features = ["derive"] }
-tar = "0.4"
 tempfile = "3"
 thiserror = "2"
 toml = "1"
@@ -229,8 +228,10 @@ tokio = { version = "1", features = ["fs", "io-util", "rt"] }
 ureq = { version = "3", features = ["json"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wasm-pkg-client = "0.15"
+# Component export sniffing for guest-leg axis discovery (RFC-64); held to
+# the wasmtime 46 line's wasmparser so one copy serves both.
+wasmparser = "0.251.0"
 wit-bindgen = { version = "0.58.0", features = ["async-spawn"] }
-zstd = "0.13"
 wasmtime = { version = "45.0.3", default-features = false, features = ["cache", "component-model", "cranelift", "runtime"] }
 wasmtime-wasi = { version = "45.0.3", default-features = false, features = ["p2"] }
 

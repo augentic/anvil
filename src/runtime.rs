@@ -23,6 +23,7 @@ pub(crate) use specify_dispatch::{cli, context};
 /// today's handlers. See `DECISIONS.md` §"One `specify` binary".
 #[must_use]
 pub fn run() -> ExitCode {
+    commands::describe::register();
     let cli = cli::Cli::parse();
     if commands::guest::owned(&cli.command) {
         return commands::guest::run(cli.format, cli.plan_dir.as_deref()).into();

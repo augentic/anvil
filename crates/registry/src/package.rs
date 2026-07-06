@@ -12,7 +12,10 @@ use crate::error::ExtensionError;
 use crate::manifest::{PackageRequest, WASM_PKG_CONFIG_PATH};
 
 const MAX_PACKAGE_BYTES: u64 = 64 * 1024 * 1024;
-const FIRST_PARTY_NAMESPACE: &str = "specify";
+/// First-party wasm-pkg namespaces routed to [`FIRST_PARTY_REGISTRY`]
+/// when no explicit mapping is configured: `specify` (tools) and
+/// `augentic` (adapter components, RFC-64).
+const FIRST_PARTY_NAMESPACES: &[&str] = &["specify", "augentic"];
 const FIRST_PARTY_REGISTRY: &str = "augentic.io";
 
 /// Informational package metadata recorded in `meta.yaml`.
@@ -198,7 +201,7 @@ async fn load_config(
         config.merge(override_config);
     }
 
-    if package.namespace().to_string() == FIRST_PARTY_NAMESPACE
+    if FIRST_PARTY_NAMESPACES.contains(&package.namespace().to_string().as_str())
         && config.namespace_registry(package.namespace()).is_none()
     {
         let registry = first_party_registry(package)?;

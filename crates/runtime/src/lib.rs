@@ -13,6 +13,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+pub mod describe;
+
 use std::path::Path;
 
 use anyhow::Result;

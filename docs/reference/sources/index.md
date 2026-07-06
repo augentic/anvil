@@ -1,6 +1,6 @@
 # Source Adapters
 
-> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) live at [`adapters/sources/<name>/adapter.yaml`](https://github.com/augentic/specify/tree/main/adapters/sources). The output-side counterparts are documented under [Target adapters](../targets/index.md).
+> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) are authored at [`sources/<name>/`](https://github.com/augentic/specify-adapters/tree/main/sources) in the adapters repo and published as `augentic:<name>@<semver>` components. The output-side counterparts are documented under [Target adapters](../targets/index.md).
 
 ## What is a source adapter?
 
@@ -23,28 +23,13 @@ You bind sources per change at plan time (`/spec:plan <name> source docs=./desig
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
 | `captures` | A runtime capture tree (from `/capture:wiretapper`) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
-Authority is set on the **Evidence document** during `extract`, not in `adapter.yaml`; the table above lists the default each adapter's extract prompt emits. Operators can override authority per slice at Gate 1 with `specify plan amend <entry> --authority-override`.
+Authority is set on the **Evidence document** during `extract`; the table above lists the default each adapter's extract prompt emits. Operators can override authority per slice at Gate 1 with `specify plan amend <entry> --authority-override`.
 
-## Manifest shape
+## Identity and metadata
 
-Every source adapter ships a single `adapter.yaml` at `adapters/sources/<name>/`:
+There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name (unique across both axes) and the exact-semver `Cargo.toml` version, published as `augentic:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export; for sources it carries only the optional `specify-floor` host-CLI compatibility floor.
 
-```yaml
-# yaml-language-server: $schema=https://github.com/augentic/specify/raw/main/schemas/source.schema.json
-name: typescript
-version: "1.0.0"
-axis: source
-description: TypeScript / JavaScript legacy-code source adapter.
-```
-
-| Field | Required | Meaning |
-| ----- | -------- | ------- |
-| `name` | yes | Kebab-case source identifier. Must match the directory name under `adapters/sources/` and be unique across both axes. |
-| `version` | yes | Exact semver string (`x.y.z`, e.g. `"1.0.0"`). The adapter's identity; resolution keys on it. |
-| `axis` | yes | Must be `source`. |
-| `description` | yes | Single-sentence summary of what the source reads and emits. |
-
-The operation set is not declared in the manifest — it derives from the closed WIT contract (`wit/specify.wit`: `survey`, `extract`), and the prompts are compiled into the adapter guest.
+The operation set is not declared anywhere on the wire — it derives from the closed WIT contract (`wit/specify.wit`: `survey`, `extract`), and the prompts are compiled into the adapter component.
 
 ## How a source adapter participates in the loop
 
@@ -57,7 +42,7 @@ Both operations run sandboxed under the WASI Preview 2 posture — directory pre
 
 ## Validation
 
-The wire-level schema is `schemas/source.schema.json` (distributed with the binary). It enforces the field set above. `specify source resolve <name>` loads and validates the manifest on first use; `specify source survey` / `specify source extract` run the bound operation as one guest orchestration each.
+The metadata shape is the WIT `manifest` record on the `source` interface (`wit/specify.wit`) — typed at the component boundary, so there is no wire schema to validate against. `specify source resolve <name>` locates the component and dispatches `describe` on first use; `specify source survey` / `specify source extract` run the bound operation as one guest orchestration each.
 
 ## See also
 

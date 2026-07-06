@@ -14,7 +14,7 @@ mod base {
 
     use tempfile::tempdir;
 
-    use crate::common::{help_verbs, omnia_schema_dir, specify_cmd};
+    use crate::common::{help_verbs, omnia_component, specify_cmd};
 
     #[test]
     fn help_exits_zero_and_prints_usage() {
@@ -38,7 +38,7 @@ mod base {
         specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
@@ -74,7 +74,7 @@ mod base {
         specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
@@ -155,7 +155,7 @@ mod errors {
             (
                 "adapter-cli-too-old",
                 Error::AdapterCliTooOld {
-                    adapter: "omnia (adapter.yaml)".to_string(),
+                    adapter: "omnia (omnia@1.0.0.wasm)".to_string(),
                     required: "2.0.0".to_string(),
                     found: "1.0.0".to_string(),
                 },

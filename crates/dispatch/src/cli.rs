@@ -8,7 +8,6 @@ use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use specify_model::evidence::ClaimKind;
 
-use crate::commands::adapter::cli::AdapterAction;
 use crate::commands::archive::cli::ArchiveAction;
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::lint::cli::LintAction;
@@ -115,35 +114,24 @@ pub enum Commands {
         upgrade: bool,
     },
 
-    /// Source adapter operations (workflow contract). Source adapters provide
-    /// `extract` + `survey` capabilities and are resolved against
-    /// `adapters/sources/<name>/adapter.yaml` (in-repo) or
-    /// `<project-cache>/manifests/sources/<name>/` (out-of-tree agent manifest cache).
+    /// Source adapter operations (workflow contract). Source adapters
+    /// provide `extract` + `survey` capabilities and resolve to a single
+    /// `.wasm` component: the global store entry for pinned identities,
+    /// the development release build for bare names (RFC-64).
     Source {
         /// Nested action for this verb family.
         #[command(subcommand)]
         action: SourceAction,
     },
 
-    /// Target adapter operations (workflow contract). Target adapters provide
-    /// `shape` + `build` + `merge` capabilities and are resolved
-    /// against `adapters/targets/<name>/adapter.yaml` (in-repo) or
-    /// `<project-cache>/manifests/targets/<name>/` (out-of-tree agent manifest cache).
+    /// Target adapter operations (workflow contract). Target adapters
+    /// provide `shape` + `build` + `merge` capabilities and resolve to a
+    /// single `.wasm` component: the global store entry for pinned
+    /// identities, the development release build for bare names (RFC-64).
     Target {
         /// Nested action for this verb family.
         #[command(subcommand)]
         action: TargetAction,
-    },
-
-    /// Adapter packaging operations (RFC-48). `build` packs an adapter
-    /// directory into a self-contained, byte-deterministic layer
-    /// (dereferencing shared symlinks, excluding the `extension/`
-    /// source); `publish` pushes it as an immutable, content-addressed
-    /// OCI artifact and verifies the recorded digest on pull-back.
-    Adapter {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: AdapterAction,
     },
 
     /// Rules resolution operations. Read-only: no

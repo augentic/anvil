@@ -6,8 +6,6 @@ pub mod cache;
 pub mod error;
 pub mod host;
 pub mod load;
-pub mod oci;
-pub mod pack;
 mod package;
 pub mod permissions;
 pub mod resolver;

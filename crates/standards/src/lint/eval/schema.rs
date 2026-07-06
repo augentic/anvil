@@ -30,10 +30,10 @@ use jsonschema::Validator;
 use serde_json::Value;
 use specify_diagnostics::{Diagnostic, FindingEvidence, FindingLocation};
 use specify_schema::{
-    ADAPTER_JSON_SCHEMA, COMPONENTS_JSON_SCHEMA, DIAGNOSTIC_JSON_SCHEMA,
-    DIAGNOSTIC_REPORT_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, PLAN_JSON_SCHEMA, PROVENANCE_JSON_SCHEMA,
-    RESOLVED_RULES_JSON_SCHEMA, RULE_JSON_SCHEMA, SCENARIO_JSON_SCHEMA, SKILL_JSON_SCHEMA,
-    WORKSPACE_MODEL_JSON_SCHEMA, compile_schema,
+    COMPONENTS_JSON_SCHEMA, DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA,
+    EVIDENCE_JSON_SCHEMA, PLAN_JSON_SCHEMA, PROVENANCE_JSON_SCHEMA, RESOLVED_RULES_JSON_SCHEMA,
+    RULE_JSON_SCHEMA, SCENARIO_JSON_SCHEMA, SKILL_JSON_SCHEMA, WORKSPACE_MODEL_JSON_SCHEMA,
+    compile_schema,
 };
 
 use super::{HintError, make_finding};
@@ -42,7 +42,6 @@ use crate::rules::{ResolvedRule, RuleHint};
 
 static REGISTERED_SCHEMAS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
     HashMap::from([
-        ("adapter", ADAPTER_JSON_SCHEMA),
         ("rule", RULE_JSON_SCHEMA),
         ("skill", SKILL_JSON_SCHEMA),
         ("resolved-rules", RESOLVED_RULES_JSON_SCHEMA),

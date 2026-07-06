@@ -160,7 +160,7 @@ specify execute resume <run-id>
 #### RM-21: Adapter ecosystem operating model
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
-**Reframed by [RFC-61](rfc-61-omnia-migration.md):** an adapter is a wasm component implementing one axis of the versioned `augentic:specify` WIT contract, so compatibility becomes WIT-package versioning rather than the `adapter.yaml` brief-path machinery (vestigial after the migration). Guests currently ship by path as committed `adapter.wasm` — Omnia parses but rejects OCI guest sources at load, so OCI distribution is a runtime capability to unlock, not something already in place.
+**Reframed by [RFC-61](rfc-61-omnia-migration.md):** an adapter is a wasm component implementing one axis of the versioned `augentic:specify` WIT contract, so compatibility becomes WIT-package versioning rather than manifest brief-path machinery (deleted at RFC-64). Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
 **Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, reference shelves) beyond the first-party Omnia/Vectis/contracts set.
 
 #### RM-22: Hosted observability dashboards

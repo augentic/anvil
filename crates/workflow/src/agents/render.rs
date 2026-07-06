@@ -27,7 +27,6 @@ pub struct Input {
 pub struct Adapter {
     pub name: String,
     pub version: semver::Version,
-    pub description: String,
 }
 
 /// One `project.yaml.rules` override.
@@ -135,12 +134,7 @@ fn conventions_bullets(input: &Input) -> Vec<String> {
         bullets.push(format!("project description: {description}."));
     }
     if let Some(adapter) = &input.adapter {
-        bullets.push(format!(
-            "adapter `{}` {}: {}.",
-            one_line(&adapter.name),
-            adapter.version,
-            one_line(&adapter.description)
-        ));
+        bullets.push(format!("adapter `{}` {}.", one_line(&adapter.name), adapter.version));
     }
     for rule in &input.rule_overrides {
         bullets.push(format!(
@@ -231,7 +225,6 @@ mod tests {
             adapter: Some(Adapter {
                 name: "demo-target".to_string(),
                 version: semver::Version::new(1, 0, 0),
-                description: "Demo target workflow".to_string(),
             }),
             rule_overrides: vec![Rule {
                 brief_id: "proposal".to_string(),

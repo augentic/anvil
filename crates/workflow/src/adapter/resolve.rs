@@ -1,77 +1,58 @@
 //! Per-axis adapter resolver entry points.
 //!
-//! [`SourceAdapter::resolve`] / [`TargetAdapter::resolve`] probe the
-//! manifest cache then the in-repo tree (workflow §Resolver and cache),
-//! schema-validate via [`super::validate_manifest`], and run the
-//! post-load coherence gates in [`super::core`].
+//! [`SourceAdapter::resolve`] / [`TargetAdapter::resolve`] locate the
+//! single `.wasm` component for an [`AdapterRef`] identity (RFC-64),
+//! obtain the cached `describe` answer ([`super::describe`]), and run
+//! the post-resolve floor gate in [`super::core`].
 
 use std::path::{Path, PathBuf};
 
 use specify_error::Error;
 
 use super::core::{
-    ADAPTER_FILENAME, AdapterLocation, AdapterRef, Axis, ResolvedSourceAdapter,
-    ResolvedTargetAdapter, SourceAdapter, TargetAdapter, adapter_axis_dir, cache_dir,
-    check_axis_and_name, check_requested_version, check_requires_specify, check_version,
+    AdapterLocation, AdapterRef, Axis, ResolvedSourceAdapter, ResolvedTargetAdapter, SourceAdapter,
+    TargetAdapter, check_requires_specify, parse_floor,
 };
-use super::validate_manifest::{axis_collision_error, sibling_manifest_path, validate_schema};
+use super::describe;
 
 impl SourceAdapter {
     /// Resolve a source adapter by its [`AdapterRef`] identity
     /// (`(name, version)`).
     ///
-    /// Probe order, per workflow §Resolver and cache:
-    ///
-    /// 1. `<store-root>/<name>@<version>/adapter.yaml` — the global
-    ///    content-addressed adapter store (RFC-48 D5), probed only when
-    ///    `adapter_ref.version` carries a pin.
-    /// 2. `<project-cache>/manifests/sources/<name>/adapter.yaml`
-    ///    (agent-populated out-of-tree manifest cache).
-    /// 3. `<project_dir>/adapters/sources/<name>/adapter.yaml` (in-repo).
-    ///
-    /// The probe keys on `adapter_ref.name` (and, for the store entry,
-    /// the pinned version); a `Some(_)` version pin is matched against
-    /// the installed manifest by equality after load (RFC-47 D2).
+    /// A pinned identity resolves the single-file store entry at
+    /// `<store-root>/<name>@<version>.wasm` (verify-on-read included);
+    /// a bare name resolves the development release build at
+    /// `target/wasm32-wasip2/release/specify_<name>.wasm` under the
+    /// project or the sibling `specify-adapters` checkout. Metadata
+    /// comes from the component's cached `describe` answer.
     ///
     /// # Errors
     ///
-    /// Returns `Error::Diag` with one of the following codes:
-    /// - `adapter-not-found` — neither cache nor local directory exists.
-    /// - `adapter-manifest-missing` — directory exists but no `adapter.yaml`.
-    /// - `adapter-manifest-read-failed` — manifest exists but cannot be read.
-    /// - `adapter-manifest-malformed` — manifest parses as something
-    ///   other than the [`SourceAdapter`] shape.
-    /// - `adapter-axis-mismatch` — manifest's `axis:` does not match
-    ///   [`Axis::Source`].
-    /// - `adapter-name-mismatch` — manifest's `name:` does not match
-    ///   `adapter_ref.name`.
-    /// - `adapter-schema-violation` — manifest fails the source-axis
-    ///   JSON Schema.
-    /// - `adapter-version-malformed` — manifest `version` is not semver.
-    /// - `adapter-version-required` — a version pin does not match the
-    ///   installed identity.
+    /// - `adapter-not-found` — no store entry / development artifact.
+    /// - `adapter-digest-mismatch` — the store entry failed
+    ///   verify-on-read.
+    /// - `adapter-describe-unavailable` / `adapter-describe-failed` /
+    ///   `adapter-axis-mismatch` — the describe dispatch failed.
+    /// - `adapter-floor-malformed` — the describe answer's
+    ///   `specify-floor` is not exact semver.
     /// - `adapter-cli-too-old` — the running binary is older than the
-    ///   adapter's declared `specify` floor (RFC-47 D3, exit 3).
+    ///   adapter's declared floor (RFC-47 D3, exit 3).
     pub fn resolve(
         adapter_ref: &AdapterRef, project_dir: &Path,
     ) -> Result<ResolvedSourceAdapter, Error> {
         let name = adapter_ref.name.as_str();
-        let (manifest, location, manifest_path) =
-            resolve_typed::<Self>(Axis::Source, adapter_ref, project_dir)?;
-        check_axis_and_name(Axis::Source, name, manifest.axis, &manifest.name, &manifest_path)?;
-        check_requested_version(
-            adapter_ref.version.as_ref(),
-            name,
-            &manifest.version,
-            &manifest_path,
-        )?;
-        check_requires_specify(
-            manifest.requires_specify.as_ref(),
-            env!("CARGO_PKG_VERSION"),
-            name,
-            &manifest_path,
-        )?;
-        Ok(ResolvedSourceAdapter { manifest, location })
+        let location = locate(Axis::Source, adapter_ref, project_dir)?;
+        let answer = describe::describe(&location, Axis::Source, name)?;
+        let floor = parse_floor(answer.specify_floor.as_deref(), name, location.path())?;
+        check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, location.path())?;
+        Ok(ResolvedSourceAdapter {
+            manifest: Self {
+                name: name.to_string(),
+                version: adapter_ref.resolved_version(),
+                requires_specify: floor,
+            },
+            location,
+        })
     }
 }
 
@@ -79,181 +60,136 @@ impl TargetAdapter {
     /// Resolve a target adapter by its [`AdapterRef`] identity
     /// (`(name, version)`).
     ///
-    /// Probe order, per workflow §Resolver and cache:
-    ///
-    /// 1. `<store-root>/<name>@<version>/adapter.yaml` — the global
-    ///    content-addressed adapter store (RFC-48 D5), probed only when
-    ///    `adapter_ref.version` carries a pin.
-    /// 2. `<project-cache>/manifests/targets/<name>/adapter.yaml`
-    ///    (agent-populated out-of-tree manifest cache).
-    /// 3. `<project_dir>/adapters/targets/<name>/adapter.yaml` (in-repo).
-    ///
-    /// The probe keys on `adapter_ref.name` (and, for the store entry,
-    /// the pinned version); a `Some(_)` version pin is matched against
-    /// the installed manifest by equality after load (RFC-47 D2).
+    /// Same probe and describe pipeline as [`SourceAdapter::resolve`],
+    /// additionally carrying the target's declared build inputs and
+    /// platforms capability from the `describe` answer.
     ///
     /// # Errors
     ///
-    /// Returns `Error::Diag` with one of the following codes:
-    /// - `adapter-not-found` — neither cache nor local directory exists.
-    /// - `adapter-manifest-missing` — directory exists but no `adapter.yaml`.
-    /// - `adapter-manifest-read-failed` — manifest exists but cannot be read.
-    /// - `adapter-manifest-malformed` — manifest parses as something
-    ///   other than the [`TargetAdapter`] shape.
-    /// - `adapter-axis-mismatch` — manifest's `axis:` does not match
-    ///   [`Axis::Target`].
-    /// - `adapter-name-mismatch` — manifest's `name:` does not match
-    ///   `adapter_ref.name`.
-    /// - `adapter-schema-violation` — manifest fails the target-axis
-    ///   JSON Schema.
-    /// - `adapter-version-malformed` — manifest `version` is not semver.
-    /// - `adapter-version-required` — a version pin does not match the
-    ///   installed identity.
-    /// - `adapter-cli-too-old` — the running binary is older than the
-    ///   adapter's declared `specify` floor (RFC-47 D3, exit 3).
+    /// Same families as [`SourceAdapter::resolve`].
     pub fn resolve(
         adapter_ref: &AdapterRef, project_dir: &Path,
     ) -> Result<ResolvedTargetAdapter, Error> {
         let name = adapter_ref.name.as_str();
-        let (manifest, location, manifest_path) =
-            resolve_typed::<Self>(Axis::Target, adapter_ref, project_dir)?;
-        check_axis_and_name(Axis::Target, name, manifest.axis, &manifest.name, &manifest_path)?;
-        check_requested_version(
-            adapter_ref.version.as_ref(),
-            name,
-            &manifest.version,
-            &manifest_path,
-        )?;
-        check_requires_specify(
-            manifest.requires_specify.as_ref(),
-            env!("CARGO_PKG_VERSION"),
-            name,
-            &manifest_path,
-        )?;
-        Ok(ResolvedTargetAdapter { manifest, location })
+        let location = locate(Axis::Target, adapter_ref, project_dir)?;
+        let answer = describe::describe(&location, Axis::Target, name)?;
+        let floor = parse_floor(answer.specify_floor.as_deref(), name, location.path())?;
+        check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, location.path())?;
+        Ok(ResolvedTargetAdapter {
+            manifest: Self {
+                name: name.to_string(),
+                version: adapter_ref.resolved_version(),
+                requires_specify: floor,
+                inputs: answer.inputs,
+                platforms: answer.platforms,
+            },
+            location,
+        })
     }
 }
 
-/// Locate, schema-validate, and typed-deserialise an adapter manifest
-/// of the axis-specific shape `M`.
+/// The project component cache directory —
+/// `<project-cache>/components/`.
 ///
-/// Wraps [`load_validated`] with the `serde_json::from_value` step that
-/// was duplicated byte-for-byte between [`SourceAdapter::resolve`] and
-/// [`TargetAdapter::resolve`]. Returns the parsed manifest, its
-/// [`AdapterLocation`], and the canonical manifest path; callers run the
-/// axis/name coherence check ([`check_axis_and_name`]) against the
-/// typed manifest fields and wrap the result into the matching
-/// `Resolved*Adapter`.
-fn resolve_typed<M: serde::de::DeserializeOwned>(
-    axis: Axis, adapter_ref: &AdapterRef, project_dir: &Path,
-) -> Result<(M, AdapterLocation, PathBuf), Error> {
-    let (location, manifest_path, raw_value) = load_validated(axis, adapter_ref, project_dir)?;
-    let manifest: M = serde_json::from_value(raw_value).map_err(|err| Error::Diag {
-        code: "adapter-manifest-malformed",
-        detail: format!("failed to deserialize {}: {err}", manifest_path.display()),
-    })?;
-    Ok((manifest, location, manifest_path))
+/// The project-local probe leg for bare-name identities: `specify init`
+/// mirrors an operator-supplied local `.wasm` component here so later
+/// resolution stays project-local without re-reading the original path.
+#[must_use]
+pub fn component_cache_dir(project_dir: &Path) -> PathBuf {
+    specify_schema::cache::project_cache_dir(project_dir).join("components")
 }
 
-/// Shared load + schema-validate pipeline used by both axis-specific
-/// resolvers.
+/// Absolute path to the project component cache entry for `name` —
+/// `<project-cache>/components/<name>.wasm`.
+#[must_use]
+pub fn component_cache_entry(project_dir: &Path, name: &str) -> PathBuf {
+    component_cache_dir(project_dir).join(format!("{name}.wasm"))
+}
+
+/// The development release-build candidates for a bare-name identity.
 ///
-/// Returns the [`AdapterLocation`] tag (whose [`AdapterLocation::path`]
-/// is the root directory), the canonical manifest path (for error
-/// messages), and the schema-validated `serde_json::Value` ready for
-/// typed deserialisation by [`resolve_typed`].
-fn load_validated(
-    axis: Axis, adapter_ref: &AdapterRef, project_dir: &Path,
-) -> Result<(AdapterLocation, PathBuf, serde_json::Value), Error> {
-    let location = locate_axis(axis, adapter_ref, project_dir)?;
-    let root_dir = location.path();
-    let manifest_path = root_dir.join(ADAPTER_FILENAME);
-    if !manifest_path.is_file() {
-        return Err(Error::Diag {
-            code: "adapter-manifest-missing",
-            detail: format!("no `adapter.yaml` at {}", root_dir.display()),
-        });
+/// `target/wasm32-wasip2/release/specify_<name>.wasm` under the project
+/// itself, then under the sibling `specify-adapters` checkout. Built by
+/// `cargo make build-guests-release` in the owning repo.
+#[must_use]
+pub fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
+    let file = dev_component_filename(name);
+    let release = Path::new("target").join("wasm32-wasip2").join("release");
+    let mut candidates = vec![project_dir.join(&release).join(&file)];
+    if let Some(parent) = project_dir.parent() {
+        candidates.push(parent.join("specify-adapters").join(&release).join(&file));
     }
-    let raw = std::fs::read_to_string(&manifest_path).map_err(|err| Error::Diag {
-        code: "adapter-manifest-read-failed",
-        detail: format!("failed to read adapter manifest {}: {err}", manifest_path.display()),
-    })?;
-
-    // Validate against the schema first so a more specific error
-    // bubbles up than serde's free-form parse failure.
-    let raw_value: serde_json::Value = serde_saphyr::from_str(&raw).map_err(|err| Error::Diag {
-        code: "adapter-manifest-malformed",
-        detail: format!("failed to parse {}: {err}", manifest_path.display()),
-    })?;
-    validate_schema(axis, &manifest_path, &raw_value)?;
-    check_version(&raw_value, &manifest_path)?;
-
-    Ok((location, manifest_path, raw_value))
+    candidates
 }
 
-fn locate_axis(
+/// The cargo artifact filename for an adapter guest crate named
+/// `specify-<name>` — `specify_<name>.wasm` with kebab dashes folded to
+/// underscores.
+#[must_use]
+pub fn dev_component_filename(name: &str) -> String {
+    format!("specify_{}.wasm", name.replace('-', "_"))
+}
+
+/// Locate the single component file for an identity.
+///
+/// A pinned `(name, version)` resolves only the global store entry —
+/// the immutable install target the wasm-pkg transport populates —
+/// with RFC-48 D4 verify-on-read against the recorded file digest. A
+/// bare name resolves only the development release-build candidates.
+fn locate(
     axis: Axis, adapter_ref: &AdapterRef, project_dir: &Path,
 ) -> Result<AdapterLocation, Error> {
     let name = adapter_ref.name.as_str();
-    // RFC-48 D5: a pinned `(name, version)` resolves first against the
-    // global content-addressed adapter store, the immutable install
-    // target the registry transport populates. The store is keyed by
-    // version, so it is only probed when the ref carries one.
-    let store_version = adapter_ref.version.as_ref().map(ToString::to_string);
-    let store = store_version
-        .as_ref()
-        .map(|version| specify_schema::cache::adapter_store_entry(name, version));
-    let cached = cache_dir(project_dir, axis, name);
-    let local = adapter_axis_dir(project_dir, axis).join(name);
-    // Probe order: global store entry (pinned only) → out-of-tree
-    // manifest cache → in-repo `adapters/{sources,targets}/<name>/`.
-    // The manifest cache owns its own out-of-tree root
-    // (`<project-cache>/manifests/{sources,targets}/<name>/`) — see
-    // [DECISIONS.md §"Cache layout"].
-    let location = if let Some(entry) = store.as_ref().filter(|entry| entry.is_dir()) {
-        // RFC-48 D4 verify-on-read: a store entry's recorded tree digest
-        // must still match its current content, else the immutable
-        // artifact has drifted (a moved tag, a corrupted store entry). A
-        // missing sidecar fails open. `Cached` / `Local` are
-        // verify-exempt — only the content-addressed store is gated.
-        if let Some(version) = store_version.as_deref()
-            && let Err(mismatch) = specify_schema::cache::verify_store_entry(name, version)
-        {
+    if let Some(version) = adapter_ref.version.as_ref() {
+        let version = version.to_string();
+        let entry = specify_schema::cache::adapter_store_entry(name, &version);
+        if !entry.is_file() {
+            return Err(Error::Diag {
+                code: "adapter-not-found",
+                detail: format!(
+                    "adapter `{name}@{version}` (axis `{axis}`) is not installed in the global \
+                     store at {}; `specify init augentic:{name}@{version}` installs the published \
+                     component",
+                    entry.display(),
+                ),
+            });
+        }
+        // RFC-48 D4 verify-on-read: the store entry's recorded file
+        // digest must still match its current bytes, else the immutable
+        // artifact has drifted (a moved tag, a corrupted store entry).
+        // A missing sidecar fails open. Dev artifacts are verify-exempt
+        // — only the content-addressed store is gated.
+        if let Err(mismatch) = specify_schema::cache::verify_store_entry(name, &version) {
             return Err(Error::Diag {
                 code: "adapter-digest-mismatch",
                 detail: format!(
-                    "adapter `{name}` (axis `{axis}`) store entry at {} failed verify-on-read: recorded tree digest {} but recomputed {}",
+                    "adapter `{name}@{version}` (axis `{axis}`) store entry at {} failed \
+                     verify-on-read: recorded digest {} but recomputed {}",
                     entry.display(),
                     mismatch.recorded,
                     mismatch.actual,
                 ),
             });
         }
-        AdapterLocation::Store(entry.clone())
-    } else if cached.is_dir() {
-        AdapterLocation::Cached(cached)
-    } else if local.is_dir() {
-        AdapterLocation::Local(local)
-    } else {
-        let store_hint =
-            store.as_ref().map_or_else(String::new, |entry| format!("{}, ", entry.display()));
-        return Err(Error::Diag {
-            code: "adapter-not-found",
-            detail: format!(
-                "adapter `{name}` (axis `{axis}`) not found at {store_hint}{} or {}",
-                cached.display(),
-                local.display(),
-            ),
-        });
-    };
-    // Cross-axis uniqueness invariant — see DECISIONS.md
-    // §"Adapter name uniqueness". `specify` is fork-and-exit, so the
-    // pair of `is_file` probes below is cheaper than memoising them
-    // behind process-global state; `init` / `init --workspace` and the
-    // manifest-cache write boundary call [`super::check_axis_unique_for_name`]
-    // eagerly on the same invariant.
-    if let Some(sibling) = sibling_manifest_path(axis.opposite(), name, project_dir) {
-        return Err(axis_collision_error(name, axis, location.path(), &sibling));
+        return Ok(AdapterLocation::Store(entry));
     }
-    Ok(location)
+
+    // Bare-name probe order: the project component cache (a local
+    // component mirrored at init) wins over the live development
+    // release builds, so an explicit init-time choice stays pinned.
+    let mut candidates = vec![component_cache_entry(project_dir, name)];
+    candidates.extend(dev_component_paths(project_dir, name));
+    if let Some(hit) = candidates.iter().find(|path| path.is_file()) {
+        return Ok(AdapterLocation::Dev(hit.clone()));
+    }
+    let probed =
+        candidates.iter().map(|path| path.display().to_string()).collect::<Vec<_>>().join(", ");
+    Err(Error::Diag {
+        code: "adapter-not-found",
+        detail: format!(
+            "adapter `{name}` (axis `{axis}`) has no development artifact at {probed}; build it \
+             with `cargo make build-guests-release` or pin a published version \
+             (`augentic:{name}@<semver>`)",
+        ),
+    })
 }

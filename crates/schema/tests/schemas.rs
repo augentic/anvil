@@ -17,7 +17,7 @@ use specify_schema::{
 /// moment it is registered there. The three envelope schemas whose
 /// relative `$ref`s cannot resolve standalone compile through their
 /// registry-backed validators instead. The two on-disk-only schemas
-/// (`manifest-meta`, `context-lock`) are appended explicitly — they
+/// (`component-meta`, `context-lock`) are appended explicitly — they
 /// ship without an embedded constant.
 #[test]
 fn every_schema_compiles() {
@@ -34,7 +34,7 @@ fn every_schema_compiles() {
     let _build_report = build_report_validator();
 
     let on_disk_only = [
-        ("manifest-meta", include_str!("../../../schemas/manifest-meta.schema.json")),
+        ("component-meta", include_str!("../../../schemas/component-meta.schema.json")),
         ("context-lock", include_str!("../../../schemas/context-lock.schema.json")),
     ];
     for (name, source) in on_disk_only {

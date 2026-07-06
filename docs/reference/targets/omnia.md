@@ -7,7 +7,7 @@
 
 ## Operations
 
-The Omnia target implements exactly three operations — `guidance`, `build`, `merge` — matching its [`adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/adapter.yaml). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them.
+The Omnia target implements exactly three operations — `guidance`, `build`, `merge` — the closed WIT target contract implemented by its [guest crate](https://github.com/augentic/specify-adapters/tree/main/targets/omnia). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them.
 
 ### guidance
 

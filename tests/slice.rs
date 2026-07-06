@@ -94,7 +94,7 @@ claims:
     /// lives elsewhere. Callers either seed a project-root plan
     /// ([`stage_synthesizable_slice`]-style) or point `--plan-dir` at one.
     pub fn stage_synthesizable_slice_without_plan() -> Project {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])
@@ -114,7 +114,7 @@ claims:
     /// against. Returns the project handle so the caller can drive
     /// `specify slice validate` on it.
     pub fn stage_slice_with_spec(spec_md: &str, plan_yaml: Option<&str>) -> Project {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])
@@ -184,7 +184,10 @@ mod create {
         assert_eq!(value["status"], "refining");
         let target = value["target"].as_str().expect("target string");
         assert!(target.starts_with("file://"));
-        assert!(target.ends_with("/adapters/targets/omnia"));
+        assert!(
+            target.ends_with("/omnia.wasm"),
+            "target should be the component URI, got: {target}"
+        );
         assert_eq!(value["created"], true);
         assert_eq!(value["restarted"], false);
 
@@ -193,7 +196,7 @@ mod create {
         assert!(slice_dir.join("specs").is_dir(), "specs/ must exist");
         let meta = fs::read_to_string(slice_dir.join("metadata.yaml")).expect("read metadata");
         assert!(meta.contains("status: refining"));
-        assert!(meta.contains("file://") && meta.contains("targets/omnia"));
+        assert!(meta.contains("file://") && meta.contains("omnia.wasm"));
         assert!(meta.contains("created-at:"));
     }
 
@@ -282,7 +285,7 @@ mod decisions {
     /// Stage `my-slice` with the given `decisions/<file>` entries and
     /// optional promoted baseline records under `.specify/decisions/`.
     fn stage(decisions: &[(&str, String)], baseline: &[(&str, String)]) -> Project {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])
@@ -497,7 +500,7 @@ slices:
     fn drift_stage(
         model: &str, evidence: &[(&str, &str)], specs: &[(&str, &str)], plan: Option<&str>,
     ) -> Project {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])
@@ -888,7 +891,7 @@ mod merge {
 
     #[test]
     fn preview_reports_operations() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         let slice_dir = project.stage_slice("merge-two-spec-slice");
 
         let assert = specify_cmd()
@@ -938,7 +941,7 @@ mod merge {
 
     #[test]
     fn preview_doesnt_require_built_status() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         // `slice merge run` refuses a non-`built` slice but `slice merge
         // preview` must accept one. Reach `refined` through the real verbs
         // rather than rewriting `metadata.yaml` by hand.
@@ -953,7 +956,7 @@ mod merge {
 
     #[test]
     fn preview_emits_readable_text() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         project.stage_slice("merge-two-spec-slice");
 
         let assert = specify_cmd()
@@ -976,7 +979,7 @@ mod merge {
 
     #[test]
     fn conflict_check_no_conflicts_unmodified() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         project.stage_slice("merge-two-spec-slice");
 
         let assert = specify_cmd()
@@ -991,7 +994,7 @@ mod merge {
 
     #[test]
     fn conflict_check_flags_modified_newer() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         let slice_dir = project.stage_slice("merge-two-spec-slice");
 
         // Seed a baseline file under .specify/specs/login/spec.md then rewrite
@@ -1029,7 +1032,7 @@ mod merge {
 
     #[test]
     fn conflict_check_no_drift_when_older() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         let slice_dir = project.stage_slice("merge-two-spec-slice");
 
         // Set defined_at to the far future so nothing is "newer".
@@ -1065,7 +1068,7 @@ mod merge {
 
     #[test]
     fn conflict_check_detects_drift_when_newer() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         let slice_dir = project.stage_slice("merge-two-spec-slice");
 
         // defined_at in the deep past — any real file mtime will be newer.
@@ -1102,7 +1105,7 @@ mod merge {
 
     #[test]
     fn conflict_check_no_drift_for_new_files() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         let slice_dir = project.stage_slice("merge-two-spec-slice");
 
         let metadata_path = slice_dir.join("metadata.yaml");
@@ -1132,7 +1135,7 @@ mod merge {
 
     #[test]
     fn conflict_check_no_drift_no_contracts() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         let slice_dir = project.stage_slice("merge-two-spec-slice");
 
         let metadata_path = slice_dir.join("metadata.yaml");
@@ -1212,7 +1215,7 @@ mod merge {
         // if a file already exists at the baseline path, it is not a drift
         // conflict in the mtime-vs-defined_at sense, just a different kind
         // of integrity issue the caller should handle separately.
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         project.stage_slice("merge-two-spec-slice");
         let baseline = project.root().join(".specify/specs/login/spec.md");
         fs::create_dir_all(baseline.parent().unwrap()).unwrap();
@@ -2037,7 +2040,7 @@ slices:
     fn stage_slice_with_catalog(
         evidence: &str, catalog: Option<&str>, plan: Option<&str>,
     ) -> Project {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])
@@ -2172,7 +2175,7 @@ mod validate_file_location {
 
     #[test]
     fn root_spec_without_canonical() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])
@@ -2225,7 +2228,7 @@ mod validate_file_location {
 
     #[test]
     fn skipped_when_no_root_spec() {
-        let project = Project::init().with_schemas();
+        let project = Project::init();
         specify_cmd()
             .current_dir(project.root())
             .args(["slice", "create", "my-slice"])

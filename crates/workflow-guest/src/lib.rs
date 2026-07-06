@@ -36,9 +36,11 @@ mod bindings {
     wit_bindgen::generate!({
         world: "workflow",
         path: "../../wit",
-        // The seam operations are `async func`s (judgment legs await the
-        // async `omnia:model` import mid-call), so the imports async-lower.
-        async: true,
+        // Asyncness follows the WIT declarations: the judgment operations
+        // are `async func`s (judgment legs await the async `omnia:model`
+        // import mid-call) and async-lower; `describe` is a plain `func`
+        // (RFC-64) and sync-lowers.
+        generate_all,
     });
 }
 

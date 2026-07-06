@@ -27,29 +27,18 @@ Specify has two adapter roles with a shared shape. **Source adapters** turn exte
 | `source` | input        | `survey`, `extract`      | `intent`, `documentation`, `typescript`, `screenshots` | `adapters/sources/<name>/`        |
 | `target` | output       | `guidance`, `build`, `merge` | `omnia`, `vectis`, `contracts`                   | `adapters/targets/<name>/`        |
 
-Both ship `adapter.yaml` validated by an axis-specific schema (`schemas/source.schema.json` or `schemas/target.schema.json` distributed with the CLI). The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same manifest fields, same prose layout. The axis decides the operations, which derive from the closed WIT contract (`wit/specify.wit`) rather than being declared on the wire.
+Both ship as a single WebAssembly component exporting the matching axis interface from the closed WIT contract (`wit/specify.wit`) — one component, no manifest file. The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same component contract, same prose layout in the authoring repo. The axis decides the operations, which derive from the WIT contract rather than being declared on the wire.
 
 Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class they emit (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice via `specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>` and then re-run `/spec:refine`; the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). See [Authority resolution](#authority-resolution).
 
-## Manifest shape
+## Identity and metadata
 
-```yaml
-# adapters/sources/<name>/adapter.yaml
-name: typescript
-version: "1.0.0"
-axis: source
-description: Legacy TypeScript survey + extract.
-```
+There is no manifest file. Identity and metadata split:
 
-```yaml
-# adapters/targets/<name>/adapter.yaml
-name: omnia
-version: "1.0.0"
-axis: target
-description: Omnia Rust WASM workflow.
-```
+- **Identity** — the `(name, version)` pair. The kebab-case `name` is unique per axis; the exact-semver `version` is the guest crate's `Cargo.toml` version, published as `augentic:<name>@<semver>` (`wkg publish`). Resolution keys on the identity, and synthesized refs render `name@<semver>`.
+- **Metadata** — the WIT `manifest` record returned by the component's deterministic `describe` export: an optional `specify` host-CLI compatibility floor (an exact-semver minimum platform version, enforced at resolve time and aborting with `adapter-cli-too-old` on exit 3 when the running binary is older; absent means no floor) plus, for targets, the optional `inputs[]` and `platforms` capability. The host dispatches `describe` at resolve time and caches the answer against the component's digest.
 
-Shared rules: kebab-case `name` unique per axis; required `version` exact-semver string that is the adapter's identity (resolution keys on it, and synthesized refs render `name@<semver>`); optional `specify` host-CLI compatibility floor (an exact-semver minimum platform version the adapter needs, enforced at resolve time and aborting with `adapter-cli-too-old` on exit 3 when the running binary is older; absent means no floor); required `description`. The operation set is **not** declared on the wire — it derives from the closed WIT contract (`wit/specify.wit`) per axis: sources expose `survey` / `extract`, targets expose `guidance` / `build` / `merge`. Each operation's prompt body and any deterministic helper behaviour ship compiled into the adapter's committed `guest.wasm` (there is no separate extension declaration or host-dispatched WASI helper); the prompt markdown stays authored under `prose/prompts/` in the adapter tree. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
+The operation set is **not** declared on the wire — it derives from the closed WIT contract (`wit/specify.wit`) per axis: sources expose `survey` / `extract`, targets expose `guidance` / `build` / `merge`. Each operation's prompt body and any deterministic helper behaviour ship compiled into the component; the prompt markdown stays authored under `prose/prompts/` in the adapter's guest crate. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
 
 ## Source adapter contract
 
@@ -85,7 +74,7 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 | Root              | Mode       | Contents                                                                            |
 | ----------------- | ---------- | ----------------------------------------------------------------------------------- |
 | `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
-| `$CAPABILITY_DIR` | read-only  | `<project-cache>/manifests/sources/<adapter>/` (out-of-tree) — adapter manifest cache (mirrored `adapter.yaml` + prose). |
+| `$CAPABILITY_DIR` | read-only  | The adapter's capability shelf (out-of-tree, when present) — reference material distributed beside the component. |
 | `$SCRATCH_DIR`    | write-only | Per-operation scratch lane under the transient working-state root, structurally outside the cache tree: `extract` → `.specify/scratch/<adapter>/<slice>/`; `survey` (plan-time, no slice) → `.specify/scratch/<adapter>/survey/`. Recreated empty at `prepare` time — only what this run writes can be finalized. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
 
@@ -101,7 +90,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis. They contribute t
 - **`build`** — implementation drive: consume **only** the build request's `inputs` manifest (the rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. `specify slice build` owns request assembly, report validation, and the `built` transition gate; the target's build prompts own only code generation.
 - **`merge`** — landing gate: requires lifecycle `built`, re-runs the target's validators, surfaces conflicts, and drives verification commands (e.g. `cargo build --target wasm32-wasip2 --release`). v1 adds **no** merge report — `specify slice merge` is the writer and `slice.merge.*` events fire on its validator outcome.
 
-A target adapter MAY declare an optional `inputs[]` field — a flat list of `{ path, required }` entries naming the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into the request's `inputs.artifacts.additional[]`, and a missing `required` path aborts the build with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. See the [target adapter reference](../reference/targets/index.md#manifest-shape) and [`specify slice build`](../reference/cli/slice.md#specify-slice-build).
+A target adapter MAY declare an optional `inputs[]` in its `describe` answer — a flat list of `{ path, required }` entries naming the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into the request's `inputs.artifacts.additional[]`, and a missing `required` path aborts the build with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. See the [target adapter reference](../reference/targets/index.md#manifest-shape) and [`specify slice build`](../reference/cli/slice.md#specify-slice-build).
 
 Target-specific structured outputs are produced by `build` alongside the code they accompany; they are not Specify artifacts and do not need a fourth capability. Each slice binds a `project` in `plan.yaml`; the target adapter is resolved on demand from that project (it is not stored per slice). v1 supports one target per project.
 
@@ -114,9 +103,9 @@ Target-specific structured outputs are produced by `build` alongside the code th
 <p class="pipeline-caption">Sources survey/extract into evidence; core synthesis reads target guidance; target build/merge lands code.</p>
 </div>
 
-The adapter loader (`crates/workflow/src/adapter/`) routes by axis. There is no `if name == "intent"` branch in core — the first-party adapters ship as in-repo manifests under `adapters/sources/intent/`, `adapters/sources/documentation/`, `adapters/sources/typescript/`, `adapters/sources/screenshots/`, `adapters/targets/omnia/`, `adapters/targets/vectis/`, `adapters/targets/contracts/`, and resolve through the same code path as a third-party adapter. Removing a manifest takes the adapter out of the resolver's set.
+The adapter resolver (`crates/workflow/src/adapter/`) routes by binding axis. There is no `if name == "intent"` branch in core — the first-party adapters are published components (`augentic:intent`, `augentic:documentation`, `augentic:typescript`, `augentic:screenshots`, `augentic:captures`, `augentic:omnia`, `augentic:vectis`, `augentic:contracts`) that resolve through the same code path as a third-party adapter: a pinned identity resolves the global single-file store entry (`<store-root>/<name>@<version>.wasm`, verify-on-read), a bare name resolves the project component cache then the sibling/in-repo development release build (`target/wasm32-wasip2/release/specify_<name>.wasm`).
 
-CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` load and validate the manifest on first use. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and the reconcile leg inside `specify plan author` write slice bindings into `plan.yaml`.
+CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` locate the component and report its resolved path, location, and version. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and the reconcile leg inside `specify plan author` write slice bindings into `plan.yaml`.
 
 ## Authority resolution
 
@@ -167,17 +156,17 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 ## Authoring checklist
 
 1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
-2. **Create the directory.** `adapters/sources/<name>/` or `adapters/targets/<name>/` with `adapter.yaml` and a `prose/prompts/` subdirectory (plus `prose/references/` and, where needed, `prose/rules/`).
+2. **Create the guest crate.** `adapters/sources/<name>/` or `adapters/targets/<name>/` in the adapters repo: a `Cargo.toml` (its `version` is the adapter identity) and a `prose/prompts/` subdirectory (plus `prose/references/` and, where needed, `prose/rules/`).
 3. **Implement the operations.** The operation set is closed per axis by the WIT contract — sources implement `survey` / `extract`, targets implement `guidance` / `build` / `merge`.
 4. **Write the prompts.** Each operation prompt is a markdown file compiled into the adapter guest. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `guidance` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
-5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's committed `guest.wasm`; there is no separate extension declaration.
-6. **Validate.** `specify source resolve <name>` / `specify target resolve <name>` exercises manifest loading; `make lint` runs the documentation predicates and the schema validators.
+5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration.
+6. **Validate.** Build with `cargo make build-guests-release`, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `make lint` runs the documentation predicates.
 
 ## Adapter manifests vs Cursor plugin manifests
 
-Cursor and `specify` are different runtimes. The repo's adapter directories happen to double as Cursor plugin roots, but the two manifest systems are independent — they share no fields, no loader, and no discovery path.
+Cursor and `specify` are different runtimes. The authoring repo's adapter directories happen to double as Cursor plugin roots, but the two systems are independent — they share no fields, no loader, and no discovery path.
 
 - **`.cursor-plugin/plugin.json`** is read by Cursor itself to register IDE surface area: skills, rules, and slash commands. It is invisible to the `specify` CLI.
-- **`adapter.yaml`** is read by the `specify` CLI through `SourceAdapter::resolve(name, project_dir)` and `TargetAdapter::resolve(name, project_dir)` (the post-Task-E typed entry points). Cursor never consults it.
+- **The adapter component** is resolved by the `specify` CLI through `SourceAdapter::resolve(adapter_ref, project_dir)` and `TargetAdapter::resolve(adapter_ref, project_dir)`; its metadata is the component's own `describe` answer. Cursor never consults it.
 
-Neither manifest references the other, neither loader probes for the other, and neither cache is shared. If you are answering "is there a JSON config for adapters?": no — `adapter.yaml` is the only manifest the CLI consumes; `plugin.json` is Cursor's, not Specify's.
+Neither system references the other, neither loader probes for the other, and neither cache is shared. If you are answering "is there a JSON config for adapters?": no — adapters have no manifest file at all; `plugin.json` is Cursor's, not Specify's.

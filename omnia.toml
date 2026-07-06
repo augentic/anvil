@@ -9,14 +9,14 @@
 # routed at /mcp/<name>, over one writable "." mount.
 #
 # Paths resolve relative to this file. The workflow guest is built in-tree
-# (`cargo make build-guests`); the adapter guests are the committed
-# `guest.wasm` artifacts in the sibling augentic/specify-adapters checkout —
-# the same sibling posture as the omnia [patch.crates-io] path pins in
-# Cargo.toml, re-pointed at published artifacts before this branch
-# finalizes. The `specify` binary's guest leg honors a project-root
-# omnia.toml like this one over its transient assembly (DECISIONS.md
-# §"One `specify` binary"); the replay sibling drives the manifest
-# without `cursor-agent` (args after `--` become the guest's argv):
+# (`cargo make build-guests`); the adapter guests are RFC-64 single-file
+# components release-built in the sibling augentic/specify-adapters
+# checkout — run `cargo make build-guests-release` there once (and after
+# any adapter change) to populate its `target/wasm32-wasip2/release/`.
+# The `specify` binary's guest leg honors a project-root omnia.toml like
+# this one over its transient assembly (DECISIONS.md §"One `specify`
+# binary"); the replay sibling drives the manifest without
+# `cursor-agent` (args after `--` become the guest's argv):
 #   cargo run -p specify-runtime-replay -- run --config omnia.toml -- --version
 
 [[guest]]
@@ -28,35 +28,35 @@ link = ["augentic:specify/source@0.1.0", "augentic:specify/target@0.1.0"]
 
 [[guest]]
 id = "source:intent"
-source.path = "../specify-adapters/sources/intent/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_intent.wasm"
 
 [[guest]]
 id = "source:documentation"
-source.path = "../specify-adapters/sources/documentation/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_documentation.wasm"
 
 [[guest]]
 id = "source:typescript"
-source.path = "../specify-adapters/sources/typescript/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_typescript.wasm"
 
 [[guest]]
 id = "source:screenshots"
-source.path = "../specify-adapters/sources/screenshots/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_screenshots.wasm"
 
 [[guest]]
 id = "source:captures"
-source.path = "../specify-adapters/sources/captures/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_captures.wasm"
 
 [[guest]]
 id = "target:contracts"
-source.path = "../specify-adapters/targets/contracts/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_contracts.wasm"
 
 [[guest]]
 id = "target:omnia"
-source.path = "../specify-adapters/targets/omnia/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_omnia.wasm"
 
 [[guest]]
 id = "target:vectis"
-source.path = "../specify-adapters/targets/vectis/guest.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_vectis.wasm"
 
 [[mount]]
 name = "."

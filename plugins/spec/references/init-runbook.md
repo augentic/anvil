@@ -171,7 +171,7 @@ Store the result as `$PROFILE`. Do not pre-populate the out-of-tree per-project 
 
 ### 4b. Elicit platforms *(regular only — skip in workspace mode)*
 
-When the target adapter declares `platforms.required` (e.g. vectis), prompt the operator for the platform set before invoking `specify init`. The adapter manifest's `default` and `allowed` sets are available from the adapter's published `adapter.yaml` (or from the `--format json` output of a dry-run resolve).
+When the target adapter declares `platforms.required` (e.g. vectis), prompt the operator for the platform set before invoking `specify init`. The `default` and `allowed` sets come from the adapter's `describe` answer (available from the `--format json` output of a dry-run resolve).
 
 Use the **AskQuestion tool** to elicit the set:
 
@@ -226,7 +226,7 @@ For a **regular** init, tell the user:
 - "Specify initialized. Config written to `.specify/project.yaml`."
 - "Generated starter context at `AGENTS.md`; inspect the file directly for later review."
 - "Edit the `description` field to describe your project's tech stack, architecture, and testing approach."
-- "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in the out-of-tree per-project cache at `<project-cache>/manifests/targets/<adapter>/adapter.yaml`."
+- "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the target adapter's reference material in the adapters repo."
 
 For a **workspace** init, tell the user:
 

@@ -14,13 +14,7 @@ mod base {
     use specify_workflow::config::ProjectConfig;
     use tempfile::tempdir;
 
-    use crate::common::{copy_dir, omnia_schema_dir, repo_root, snapshot_tree, specify_cmd};
-
-    /// In-repo vectis stub target adapter that declares
-    /// `platforms: { required: true, allowed: [core, ios, android, web, desktop] }`.
-    fn vectis_stub_dir() -> PathBuf {
-        repo_root().join("tests/fixtures/adapters/targets/vectis-stub")
-    }
+    use crate::common::{fixture_component, omnia_component, snapshot_tree, specify_cmd};
 
     #[test]
     fn init_text_format_succeeds() {
@@ -28,7 +22,7 @@ mod base {
         let assert = specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
@@ -48,7 +42,7 @@ mod base {
         let assert = specify_cmd()
             .current_dir(tmp.path())
             .args(["--format", "json", "init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
@@ -72,26 +66,35 @@ mod base {
     }
 
     #[test]
-    #[ignore = "networked GitHub fetch smoke test"]
-    fn init_github_directory_uri_succeeds() {
+    fn init_github_uri_refused_honestly() {
+        // RFC-64: a GitHub source checkout no longer yields a usable
+        // adapter artifact, so the URI form fails fast with the typed
+        // `adapter-github-uri-unsupported` discriminant instead of
+        // fetching a tree it cannot use.
         let tmp = tempdir().unwrap();
-        specify_cmd()
+        let assert = specify_cmd()
             .current_dir(tmp.path())
             .args([
+                "--format",
+                "json",
                 "init",
-                "https://github.com/augentic/specify/adapters/targets/omnia",
+                "https://github.com/augentic/specify-adapters",
                 "--name",
                 "demo",
             ])
             .assert()
-            .success();
+            .failure();
+        let envelope: serde_json::Value = serde_json::from_slice(&assert.get_output().stderr)
+            .expect("stderr is the JSON envelope");
+        assert_eq!(envelope["error"], "adapter-github-uri-unsupported");
     }
 
     #[test]
-    #[ignore = "networked GitHub fetch smoke test"]
-    fn init_shorthand_resolves_via_github() {
-        // `specify init omnia@1.0.0` resolves the first-party shorthand to the
-        // published adapter on GitHub (sparse checkout). Networked.
+    #[ignore = "networked wasm-pkg registry fetch smoke test"]
+    fn init_shorthand_resolves_via_registry() {
+        // `specify init omnia@1.0.0` resolves the first-party shorthand
+        // to the published `augentic:omnia@1.0.0` component via wasm-pkg.
+        // Networked.
         let tmp = tempdir().unwrap();
         specify_cmd()
             .current_dir(tmp.path())
@@ -110,7 +113,7 @@ mod base {
         specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
@@ -152,13 +155,10 @@ mod base {
         // `project.yaml.platforms`. Init does not scaffold shell trees — the
         // declared set is the contract the later bootstrap-slice flow reads.
         let tmp = tempdir().unwrap();
-        let adapter = tmp.path().join("adapters/targets/vectis-stub");
-        copy_dir(&vectis_stub_dir(), &adapter);
-
         specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(&adapter)
+            .arg(fixture_component("vectis-platforms"))
             .args(["--name", "platform-app", "--platforms", "core,ios,android"])
             .assert()
             .success();
@@ -178,18 +178,12 @@ mod base {
         // with the `project-platforms-not-allowed` validation discriminant
         // (exit 2) and never scaffolds the project.
         let tmp = tempdir().unwrap();
-        let adapter = tmp.path().join("adapters/targets/adapter-limited");
-        fs::create_dir_all(&adapter).unwrap();
-        fs::write(
-        adapter.join("adapter.yaml"),
-        "name: adapter-limited\nversion: 1.0.0\naxis: target\ndescription: Stub adapter that only allows core + ios\nplatforms:\n  required: true\n  allowed: [core, ios]\n  default: [core, ios]\n",
-    )
-    .unwrap();
-
+        // The echo target guest's `describe` answers the `…limited…` id
+        // with `platforms: { required: true, allowed: [core, ios] }`.
         let assert = specify_cmd()
             .current_dir(tmp.path())
             .args(["--format", "json", "init"])
-            .arg(&adapter)
+            .arg(fixture_component("adapter-limited"))
             .args(["--name", "demo", "--platforms", "core,ios,android"])
             .assert()
             .failure();
@@ -222,7 +216,7 @@ mod base {
         specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "fenced-proj"])
             .assert()
             .success();
@@ -260,7 +254,7 @@ mod base {
         let created = specify_cmd()
             .current_dir(tmp.path())
             .args(["--format", "json", "init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "fenced-proj"])
             .assert()
             .success();
@@ -336,7 +330,7 @@ mod base {
         let assert = specify_cmd()
             .current_dir(tmp.path())
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .arg("--workspace")
             .assert()
             .failure();
@@ -660,7 +654,7 @@ mod shapes {
     use specify_workflow::config::ProjectConfig;
     use tempfile::tempdir;
 
-    use crate::common::{omnia_schema_dir, parse_json, specify_cmd};
+    use crate::common::{omnia_component, parse_json, specify_cmd};
 
     /// Version this binary stamps into the `specify:` pin (the `specify`
     /// crate and this test crate share the workspace version).
@@ -674,7 +668,7 @@ mod shapes {
         let assert = specify_cmd()
             .current_dir(tmp.path())
             .args(["--format", "json", "init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "greenfield-proj"])
             .assert()
             .success();

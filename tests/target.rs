@@ -4,33 +4,15 @@
 //! `crates/workflow/src/adapter/`. The CLI verb is a thin
 //! `TargetAdapter::resolve(adapter_ref, project_dir)` wrapper.
 
-use std::fs;
-use std::path::PathBuf;
-
-use common::{Project, copy_dir, expected_cache_dir, parse_stdout, repo_root, specify_cmd};
+use common::{Project, expected_cache_dir, parse_stdout, specify_cmd, stage_store_component};
 
 use crate::common;
 
-fn plugin_fixtures_root() -> PathBuf {
-    repo_root().join("crates/workflow/tests/fixtures/plugins")
-}
-
-fn stage_target_fixture(project: &Project, name: &str) {
-    let src = plugin_fixtures_root().join("adapters").join("targets").join(name);
-    let dst = project.root().join("adapters").join("targets").join(name);
-    copy_dir(&src, &dst);
-}
-
 #[test]
-fn resolve_local_returns_manifest() {
+fn resolve_bare_returns_component() {
+    // `Project::init()` mirrors the local `omnia.wasm` component into
+    // the project component cache; the bare name resolves it there.
     let project = Project::init();
-    // `Project::init()` seeds the out-of-tree manifest cache with
-    // `manifests/targets/omnia/`; remove it so the local probe wins.
-    let cached = expected_cache_dir(project.root()).join("manifests/targets/omnia");
-    if cached.exists() {
-        fs::remove_dir_all(&cached).expect("clear cached omnia");
-    }
-    stage_target_fixture(&project, "omnia");
 
     let assert = specify_cmd()
         .current_dir(project.root())
@@ -43,7 +25,7 @@ fn resolve_local_returns_manifest() {
     let actual = parse_stdout(&assert.get_output().stdout, project.root());
     assert_eq!(actual["axis"], "targets");
     assert_eq!(actual["name"], "omnia");
-    assert_eq!(actual["location"], "local");
+    assert_eq!(actual["location"], "dev");
     let ops: Vec<&str> =
         actual["operations"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
     // The envelope derives operations from the closed WIT contract, in
@@ -51,24 +33,21 @@ fn resolve_local_returns_manifest() {
     assert_eq!(ops, vec!["build", "merge", "shape"]);
     let resolved = actual["resolved-path"].as_str().expect("resolved-path str");
     assert!(
-        resolved.ends_with("adapters/targets/omnia"),
-        "resolved-path {resolved} must end with targets/omnia"
+        resolved.ends_with("components/omnia.wasm"),
+        "resolved-path {resolved} must end with the cached component file"
     );
-    assert!(
-        actual.get("briefs-dir").is_none(),
-        "briefs-dir left the envelope with the compiled-in briefs cutover"
-    );
+    let expected = expected_cache_dir(project.root()).join("components/omnia.wasm");
+    assert!(expected.is_file(), "init must have mirrored the component into the cache");
 }
 
 #[test]
 fn resolve_accepts_version_suffix() {
     // workflow §CLI surface: `specify target resolve <value>` takes
-    // either `<name>` or `<name>@<semver>` (RFC-47). The semver pin is
-    // matched against the installed identity; the omnia fixture is
-    // `1.0.0`, so the matching pin resolves and the envelope reports the
-    // bare kebab name.
+    // either `<name>` or `<name>@<semver>` (RFC-47). The semver pin
+    // resolves the single-file global store entry
+    // (`<store>/<name>@<version>.wasm`), not the development probes.
     let project = Project::init();
-    stage_target_fixture(&project, "omnia");
+    stage_store_component("omnia", "1.0.0");
 
     let assert = specify_cmd()
         .current_dir(project.root())
@@ -80,28 +59,23 @@ fn resolve_accepts_version_suffix() {
 
     let actual = parse_stdout(&assert.get_output().stdout, project.root());
     assert_eq!(actual["name"], "omnia");
-}
-
-#[test]
-fn adapter_group_exposes_build_and_publish() {
-    // `specify adapter` is un-retired at RFC-48 as the packaging group
-    // (`build` + `publish`). `--help` must exit 0 and list both verbs.
-    let verbs = common::help_verbs(&["adapter"]);
-    for verb in ["build", "publish"] {
-        assert!(verbs.iter().any(|v| v == verb), "adapter must declare `{verb}`, got: {verbs:?}");
-    }
-}
-
-#[test]
-fn retired_adapter_resolve_rejected() {
-    // The old `specify adapter resolve` is gone (resolution moved to
-    // `source`/`target`); clap rejects the unknown subcommand with 2.
-    let assert = specify_cmd().arg("adapter").arg("resolve").arg("omnia").assert().failure();
-    let code = assert.get_output().status.code().expect("exit code");
-    assert_eq!(
-        code, 2,
-        "clap must reject the removed `adapter resolve` verb with exit 2, got {code}"
+    assert_eq!(actual["version"], "1.0.0");
+    assert_eq!(actual["location"], "store");
+    let resolved = actual["resolved-path"].as_str().expect("resolved-path str");
+    assert!(
+        resolved.ends_with("omnia@1.0.0.wasm"),
+        "resolved-path {resolved} must be the single-file store entry"
     );
+}
+
+#[test]
+fn retired_adapter_group_rejected() {
+    // The `specify adapter {build,publish}` packaging group retired
+    // with RFC-64 (publishing is `wkg publish` in the adapters repo);
+    // clap rejects the unknown command with exit 2.
+    let assert = specify_cmd().arg("adapter").arg("build").assert().failure();
+    let code = assert.get_output().status.code().expect("exit code");
+    assert_eq!(code, 2, "clap must reject the retired `adapter` group with exit 2, got {code}");
 }
 
 #[test]

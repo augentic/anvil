@@ -9,9 +9,6 @@ description = "WASI tool manifest, cache, resolver, and runner support for Speci
 categories = ["development-tools", "wasm"]
 keywords = ["specify", "tools", "wasi", "wasmtime"]
 readme = "../../README.md"
-# Integration tests compile to the single `it` binary (one binary per crate);
-# the per-area files are pulled in via tests/it.rs `#[path]` includes.
-autotests = false
 
 [lints]
 workspace = true
@@ -19,7 +16,6 @@ workspace = true
 [dependencies]
 futures-util.workspace = true
 jiff.workspace = true
-oci-client.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
@@ -27,7 +23,6 @@ specify-error.workspace = true
 specify-schema.workspace = true
 specify-extension.workspace = true
 strum.workspace = true
-tar.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
@@ -35,11 +30,6 @@ ureq.workspace = true
 wasm-pkg-client.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-zstd.workspace = true
 
 [dev-dependencies]
 jsonschema.workspace = true
-
-[[test]]
-name = "it"
-path = "tests/it.rs"

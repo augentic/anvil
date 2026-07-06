@@ -27,9 +27,9 @@ fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
 }
 
-/// A throw-away project with `.specify/project.yaml`, a vendored
-/// `omnia` target adapter (so topology / target resolution works), and
-/// a hermetic project cache.
+/// A throw-away project with `.specify/project.yaml`, a stub `omnia`
+/// adapter component at the development probe (so topology / target
+/// resolution works), and a hermetic project cache.
 struct Project {
     _tmp: TempDir,
     _cache: common::CacheGuard,
@@ -46,12 +46,10 @@ impl Project {
         }
         fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: omnia\nrules: {}\n")
             .expect("write project.yaml");
-        // Vendor the omnia target adapter fixture so
-        // `TargetAdapter::resolve` (topology / plan-next target
-        // resolution) succeeds locally.
-        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/plugins/adapters/targets/omnia");
-        common::copy_dir(&fixture, &root.join("adapters/targets/omnia"));
+        // Stage the omnia adapter component at the in-repo development
+        // probe so `TargetAdapter::resolve` (topology / plan-next
+        // target resolution) succeeds locally.
+        common::stage_dev_component(&root, "omnia");
         Self {
             _tmp: tmp,
             _cache: cache,
@@ -459,7 +457,9 @@ async fn refine_breakout_skips_entry_claim() {
         specify_workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
             .expect("slice metadata");
     assert_eq!(metadata.status, specify_workflow::slice::LifecycleStatus::Refined);
-    assert_eq!(metadata.target, "omnia@1.0.0", "target resolved from the bound topology");
+    // Development (unpinned) components resolve as the honest `0.0.0`
+    // placeholder — there is no published package identity to record.
+    assert_eq!(metadata.target, "omnia@0.0.0", "target resolved from the bound topology");
     let plan = project.plan();
     let entry = plan.entries.iter().find(|e| e.name == "feature-x").expect("entry");
     assert_eq!(entry.status, Status::Pending, "the breakout never advances per-entry status");

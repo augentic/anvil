@@ -39,10 +39,91 @@ pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-/// Convenience pointer to the in-repo Omnia adapter fixture used as
-/// the canonical positional argument for `specify init`.
-pub fn omnia_schema_dir() -> PathBuf {
-    repo_root().join("tests").join("fixtures").join("adapters").join("targets").join("omnia")
+/// Convenience pointer to the staged `omnia.wasm` fixture component
+/// used as the canonical positional argument for `specify init`
+/// (RFC-64: an adapter is one component file). The bytes are the echo
+/// target-adapter guest; the `omnia` filename gives the project its
+/// canonical target name.
+pub fn omnia_component() -> PathBuf {
+    fixture_component("omnia")
+}
+
+/// Stage the echo target-adapter guest under
+/// `target/test-components/<name>.wasm` and return the path. The
+/// filename carries the adapter identity (`specify init` derives the
+/// adapter name from the component file stem), and the echo guest's
+/// `describe` branches on the routed id, so one binary stands in for
+/// several fixture adapters (`omnia`, `vectis-platforms`,
+/// `adapter-limited`, …).
+///
+/// # Panics
+///
+/// Panics when the guest build or the staging copy fails.
+pub fn fixture_component(name: &str) -> PathBuf {
+    stage_named_component(name, &echo_target_guest_wasm())
+}
+
+/// Source-axis twin of [`fixture_component`]: stages the echo
+/// source-adapter guest bytes under the given adapter name.
+pub fn fixture_source_component(name: &str) -> PathBuf {
+    stage_named_component(name, &echo_source_guest_wasm())
+}
+
+fn stage_named_component(name: &str, built: &Path) -> PathBuf {
+    let staged_dir = cargo_target_dir().join("test-components");
+    let staged = staged_dir.join(format!("{name}.wasm"));
+    let bytes = fs::read(built).expect("read built echo guest");
+    if fs::read(&staged).is_ok_and(|current| current == bytes) {
+        return staged;
+    }
+    fs::create_dir_all(&staged_dir).expect("create test-components dir");
+    // Atomic temp-then-rename: concurrent test processes may stage the
+    // same fixture, and a reader must never observe a half-written file.
+    let tmp = staged_dir.join(format!(".{name}.{}.tmp", std::process::id()));
+    fs::write(&tmp, &bytes).expect("write staged component");
+    fs::rename(&tmp, &staged).expect("publish staged component");
+    staged
+}
+
+/// Build (once per test process) the echo target-adapter guest and
+/// return the artifact path. Cargo's own build lock serializes
+/// concurrent invocations across test binaries.
+fn echo_target_guest_wasm() -> PathBuf {
+    use std::sync::OnceLock;
+    static BUILT: OnceLock<PathBuf> = OnceLock::new();
+    BUILT
+        .get_or_init(|| build_echo_guest("specify-echo-target-guest", "specify_echo_target_guest"))
+        .clone()
+}
+
+/// Build (once per test process) the echo source-adapter guest and
+/// return the artifact path.
+fn echo_source_guest_wasm() -> PathBuf {
+    use std::sync::OnceLock;
+    static BUILT: OnceLock<PathBuf> = OnceLock::new();
+    BUILT.get_or_init(|| build_echo_guest("specify-echo-guest", "specify_echo_guest")).clone()
+}
+
+fn build_echo_guest(package: &str, artifact_stem: &str) -> PathBuf {
+    let status = std::process::Command::new("cargo")
+        .env("CARGO_TARGET_DIR", cargo_target_dir())
+        .args(["build", "-p", package, "--target", "wasm32-wasip2"])
+        .current_dir(repo_root())
+        .status()
+        .expect("spawning echo guest build");
+    assert!(status.success(), "echo guest build failed with status {status}");
+    cargo_target_dir().join("wasm32-wasip2").join("debug").join(format!("{artifact_stem}.wasm"))
+}
+
+/// The cargo target dir this test binary was built into (the test exe
+/// sits at `<target>/<profile>/deps/<exe>`).
+fn cargo_target_dir() -> PathBuf {
+    let test_exe = std::env::current_exe().expect("test executable has a path");
+    test_exe
+        .ancestors()
+        .nth(3)
+        .expect("test exe sits at <target>/<profile>/deps/<exe>")
+        .to_path_buf()
 }
 
 /// Build a fresh `assert_cmd::Command` for the locally-built `specify`
@@ -65,7 +146,40 @@ pub fn specify_cmd() -> Command {
     // remote-peer materialisation never touches the developer's real OS
     // cache and mirror reuse is observable across invocations in one test.
     cmd.env("SPECIFY_MIRROR_CACHE", isolated_mirror_root());
+    // Pin the global adapter store into a per-process temp root so
+    // pinned-identity resolution never reads (or writes) the
+    // developer's real content-addressed store.
+    cmd.env("SPECIFY_ADAPTER_CACHE", isolated_adapter_store_root());
     cmd
+}
+
+/// Per-process out-of-tree global adapter-store root, matching the
+/// `SPECIFY_ADAPTER_CACHE` override [`specify_cmd`] pins.
+pub fn isolated_adapter_store_root() -> &'static Path {
+    use std::sync::OnceLock;
+    static ROOT: OnceLock<PathBuf> = OnceLock::new();
+    ROOT.get_or_init(|| {
+        let dir =
+            std::env::temp_dir().join(format!("specify-adapter-store-{}", std::process::id()));
+        fs::create_dir_all(&dir).expect("create isolated adapter store root");
+        dir
+    })
+}
+
+/// Stage the echo target guest as a verified global-store entry
+/// `<store>/<name>@<version>.wasm` (bytes + digest sidecar) inside the
+/// isolated store root, so pinned identities (`<name>@<version>`)
+/// resolve in tests.
+pub fn stage_store_component(name: &str, version: &str) -> PathBuf {
+    let entry = isolated_adapter_store_root().join(format!("{name}@{version}.wasm"));
+    fs::copy(fixture_component(name), &entry).expect("stage store component");
+    let digest = specify_schema::digest::sha256_hex(&fs::read(&entry).expect("read store entry"));
+    fs::write(
+        isolated_adapter_store_root().join(format!("{name}@{version}.meta")),
+        format!("tree_digest: sha256:{digest}\n"),
+    )
+    .expect("write store meta sidecar");
+    entry
 }
 
 /// Per-process out-of-tree Git-mirror root. One temp directory per test
@@ -360,7 +474,7 @@ fn parse_json_stream(label: &str, bytes: &[u8], root: &Path) -> Value {
 /// Hoisted from the per-test-file `struct Project` harnesses
 /// (`tests/slice.rs`, `tests/slice_merge.rs`, `tests/e2e.rs`,
 /// `tests/adapter.rs`, `tests/workflow/`) so the same
-/// `Project::init()` / `.with_schemas()` / `.stage_slice()` shape works
+/// `Project::init()` / `.stage_slice()` shape works
 /// across every integration suite. Each test binary uses a different
 /// subset; the module-level `#![expect(dead_code, ...)]` covers helpers
 /// that any particular binary doesn't reach.
@@ -370,57 +484,22 @@ pub struct Project {
 }
 
 impl Project {
-    /// Build a fresh tempdir and run `specify init <repo>/targets/omnia`
-    /// with a default `--name`. The resulting project sits at the
-    /// tempdir root.
+    /// Build a fresh tempdir and run `specify init <omnia.wasm>` with a
+    /// default `--name`. The resulting project sits at the tempdir
+    /// root; init mirrors the component into the project component
+    /// cache, so subsequent invocations resolve the `omnia` target from
+    /// there.
     pub fn init() -> Self {
         let tmp = tempdir().expect("tempdir");
         let root = tmp.path().to_path_buf();
         specify_cmd()
             .current_dir(&root)
             .args(["init"])
-            .arg(omnia_schema_dir())
+            .arg(omnia_component())
             .args(["--name", "test-proj"])
             .assert()
             .success();
         Self { _tmp: tmp, root }
-    }
-
-    /// Initialise a project backed by a local fixture adapter dir.
-    /// The fixture is mirrored into `<tmp>/adapters/targets/<name>/` so that
-    /// subsequent `specify` invocations resolve it via the usual
-    /// `adapters/targets/<name>/` probe.
-    pub fn init_from_fixture(name: &str, fixture_dir: &Path) -> Self {
-        let tmp = tempdir().expect("tempdir");
-        let root = tmp.path().to_path_buf();
-        copy_dir(fixture_dir, &root.join("adapters").join("targets").join(name));
-        specify_cmd()
-            .current_dir(&root)
-            .args(["init"])
-            .arg(root.join("adapters").join("targets").join(name))
-            .args(["--name", "test-proj"])
-            .assert()
-            .success();
-        Self { _tmp: tmp, root }
-    }
-
-    /// Mirror the in-repo `targets/omnia` tree into the project so any
-    /// subcommand that resolves the target adapter can find it under
-    /// the project's own `adapters/targets/` dir.
-    #[must_use]
-    pub fn with_schemas(self) -> Self {
-        copy_dir(&omnia_schema_dir(), &self.root.join("adapters").join("targets").join("omnia"));
-        self
-    }
-
-    /// Populate the cache instead of the local `targets/` tree so
-    /// `TargetAdapter::resolve` picks the `AdapterLocation::Cached`
-    /// branch.
-    #[must_use]
-    pub fn with_cached_schema(self) -> Self {
-        let cached = expected_cache_dir(&self.root).join("manifests/targets/omnia");
-        copy_dir(&omnia_schema_dir(), &cached);
-        self
     }
 
     /// Copy a fixture subtree under `tests/fixtures/e2e/<fixture>` into

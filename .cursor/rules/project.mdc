@@ -57,13 +57,13 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /adapters/
-  ├── sources/            # Source adapters: adapter.yaml + prose/prompts/{survey,extract}.md
+  ├── sources/            # Source adapters: guest crate + prose/prompts/{survey,extract}.md
   │   ├── intent/             # operator brief; degenerate N=1 entry point
   │   ├── documentation/      # operator-provided written intent
   │   ├── typescript/    # legacy TypeScript survey + extract
   │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
   │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
-  ├── targets/              # Target adapters: adapter.yaml + prose/prompts/{guidance,build,merge}.md
+  ├── targets/              # Target adapters: guest crate + prose/prompts/{guidance,build,merge}.md
   │   ├── omnia/
   │   ├── vectis/
   │   └── contracts/

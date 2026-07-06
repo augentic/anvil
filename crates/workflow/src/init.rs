@@ -4,7 +4,6 @@
 
 mod adapter_uri;
 mod cache;
-mod git;
 mod regular;
 mod upgrade;
 mod workspace;
@@ -14,7 +13,7 @@ use std::path::{Path, PathBuf};
 pub use adapter_uri::{
     AdapterPackage, adapter_name_from_value, adapter_ref_from_value, recognize_package,
 };
-pub use cache::{CodexMeta, codex_cache_root};
+pub use cache::{CodexMeta, ComponentMeta, codex_cache_root};
 use jiff::Timestamp;
 use specify_error::Error;
 use specify_extension::{DEFAULT_WASM_PKG_CONFIG, WASM_PKG_CONFIG_FILENAME};
@@ -89,7 +88,7 @@ pub struct InitResult {
     /// this is the literal `"workspace"` so the JSON envelope stays stable
     /// for downstream consumers.
     pub adapter_name: String,
-    /// Whether `manifests/manifest-meta.yaml` exists in the per-project cache.
+    /// Whether `components/component-meta.yaml` exists in the per-project cache.
     pub cache_present: bool,
     /// Whether the shared codex was distributed into the out-of-tree
     /// `<project-cache>/codex/` during this run. `false` when the
@@ -133,7 +132,7 @@ pub struct InitResult {
 /// When [`InitOptions::workspace`] is `true`, dispatches to the private
 /// workspace runner for the workspace on-disk shape.
 ///
-/// `now` records the `manifest-meta.yaml::fetched_at` stamp; the dispatcher
+/// `now` records the `component-meta.yaml::fetched_at` stamp; the dispatcher
 /// passes `Timestamp::now` and tests pin a deterministic value.
 ///
 /// # Errors
