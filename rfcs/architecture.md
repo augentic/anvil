@@ -202,7 +202,7 @@ Because "Specify is Omnia compiled with Specify-specific backends," there is no 
 
 ## The incremental path
 
-The migration is sequenced by [RFC-61](rfc-61-omnia-migration.md): the runtime binary and a walking skeleton, one real adapter guest (contracts) as the pattern-setter, the remaining adapters, the workflow guest, and finally the retirement of the bespoke host — coexisting in place with the native CLI over the same `.specify/` state until the last cutover. The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring; the Omnia runtime, the `wasi-model` host (`create`), and the cursor / genai / replay model backends landed in a changed shape, so those RFCs have been removed from the tree (recoverable from git history). [RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) remain deferred, not superseded.
+The migration was sequenced by RFC-61 (completed and removed from the tree; recoverable from git history): the runtime binary and a walking skeleton, one real adapter guest (contracts) as the pattern-setter, the remaining adapters, the workflow guest, and finally the retirement of the bespoke host — coexisting in place with the native CLI over the same `.specify/` state until the last cutover. The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring; the Omnia runtime, the `wasi-model` host (`create`), and the cursor / genai / replay model backends landed in a changed shape, so those RFCs were likewise removed. [RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) remain deferred, not superseded.
 
 ## Key trade-offs
 
