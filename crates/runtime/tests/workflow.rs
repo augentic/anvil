@@ -30,7 +30,7 @@ use specify_workflow::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, Wor
 use specify_workflow::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 use tempfile::TempDir;
 
-use crate::common::{self, Quiet, StubBundle};
+use crate::common::{self, CacheGuard, Quiet, StubBundle, scoped_cache};
 
 fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
@@ -338,34 +338,4 @@ async fn adapter_shelves() -> Result<()> {
         );
     }
     Ok(())
-}
-
-const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";
-
-/// Restores the previous `SPECIFY_PROJECT_CACHE` value on drop.
-struct CacheGuard(Option<std::ffi::OsString>);
-
-impl Drop for CacheGuard {
-    #[expect(unsafe_code, reason = "restore the cache-root env var pinned for the test")]
-    fn drop(&mut self) {
-        // SAFETY: nextest runs each test in its own process, so no other
-        // thread observes the env mutation for the guard's lifetime.
-        unsafe {
-            match self.0.take() {
-                Some(prev) => std::env::set_var(CACHE_ENV, prev),
-                None => std::env::remove_var(CACHE_ENV),
-            }
-        }
-    }
-}
-
-/// Pin the out-of-tree project cache root inside `dir` so adapter cache
-/// writes from the native seeding are hermetic and auto-cleaned with the
-/// tempdir.
-#[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
-fn scoped_cache(dir: &Path) -> CacheGuard {
-    let prev = std::env::var_os(CACHE_ENV);
-    // SAFETY: see `CacheGuard::drop` — single-process test isolation.
-    unsafe { std::env::set_var(CACHE_ENV, dir.join("project-cache")) };
-    CacheGuard(prev)
 }

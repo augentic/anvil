@@ -1,25 +1,25 @@
 //! Native `specify` dispatcher. Pure workflow verbs (`plan`, `slice`,
-//! `source`, `target`, `journal`) route to the shared handlers in
-//! `specify-dispatch`; guest-owned orchestrator verbs are peeled off
-//! by the triage layer (`commands::guest::owned`) before this table;
-//! the native-only handlers below own everything that needs
-//! subprocesses, Wasmtime, or the network (init, lint, workspace, …).
+//! `source`, `target`, `journal`, `registry`, `archive`,
+//! `rules export`, `completions`, init's scaffold leg) route to the
+//! shared handlers in `specify-dispatch`; guest-owned orchestrator
+//! verbs are peeled off by the triage layer (`commands::guest::owned`)
+//! before this table; the native-only handlers below own everything
+//! that needs subprocesses, Wasmtime, or the network (init's
+//! provisioning half, adapters sync, lint, workspace, upgrade,
+//! plugins).
 
 mod adapters;
 pub mod agents;
-pub mod archive;
 mod deploy;
 pub mod describe;
 pub mod guest;
 mod init;
 pub mod lint;
 pub mod plugins;
-pub mod registry;
 pub mod rules;
 mod upgrade;
 pub mod workspace;
 
-use clap::CommandFactory;
 use specify_dispatch::commands::adapters::cli::AdaptersAction;
 use specify_dispatch::commands::lint::cli::LintAction;
 use specify_dispatch::commands::rules::cli::RulesAction;
@@ -43,7 +43,26 @@ pub fn run(cli: Cli) -> Exit {
             include_framework,
             platforms,
             upgrade,
+            scaffold_only,
         } => dispatch(format, || {
+            // The hidden `--scaffold-only` form runs exactly the
+            // shared scaffold leg the guest routes (RFC-65 move 1) —
+            // no hydration, no manifest generation, no context
+            // generation — so the two sides stay envelope-identical.
+            if scaffold_only {
+                return specify_dispatch::commands::init::scaffold(
+                    std::path::Path::new("."),
+                    &specify_dispatch::commands::init::ScaffoldArgs {
+                        format,
+                        adapter: adapter.as_deref(),
+                        name: name.as_deref(),
+                        description: description.as_deref(),
+                        workspace,
+                        include_framework,
+                        platforms: platforms.as_deref(),
+                    },
+                );
+            }
             init::run(&init::Args {
                 format,
                 adapter: adapter.as_deref(),
@@ -63,7 +82,9 @@ pub fn run(cli: Cli) -> Exit {
         Commands::Source { action } => dispatch_source(format, plan_dir, action),
         Commands::Target { action } => dispatch_target(format, action),
         Commands::Rules { action } => match action {
-            RulesAction::Export(args) => dispatch(format, || rules::export::run(format, &args)),
+            RulesAction::Export(args) => {
+                dispatch(format, || specify_dispatch::commands::rules::export::run(format, &args))
+            }
             RulesAction::Sync(args) => scoped(format, plan_dir, |ctx| rules::sync::run(ctx, args)),
         },
         Commands::Lint { action } => dispatch_lint(format, action),
@@ -71,16 +92,16 @@ pub fn run(cli: Cli) -> Exit {
         Commands::Slice { action } => {
             scoped(format, plan_dir, |ctx| specify_dispatch::commands::slice::run(ctx, action))
         }
-        Commands::Archive { action } => scoped(format, plan_dir, |ctx| archive::run(ctx, &action)),
+        Commands::Archive { action } => {
+            scoped(format, plan_dir, |ctx| specify_dispatch::commands::archive::run(ctx, &action))
+        }
         Commands::Plan { action } => {
             scoped(format, plan_dir, |ctx| specify_dispatch::commands::plan::run(ctx, action))
         }
-        Commands::Registry { action } => scoped(format, plan_dir, |ctx| registry::run(ctx, action)),
-        Commands::Completions { shell } => {
-            let mut cmd = Cli::command();
-            clap_complete::generate(shell, &mut cmd, "specify", &mut std::io::stdout());
-            Exit::Success
+        Commands::Registry { action } => {
+            scoped(format, plan_dir, |ctx| specify_dispatch::commands::registry::run(ctx, action))
         }
+        Commands::Completions { shell } => specify_dispatch::commands::completions(shell),
         Commands::Upgrade {
             channel,
             yes,

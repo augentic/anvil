@@ -12,6 +12,7 @@
 
 pub mod adapters;
 pub mod archive;
+pub mod init;
 pub mod journal;
 pub mod lint;
 pub mod plan;
@@ -80,6 +81,15 @@ pub fn dispatch_target(format: Format, action: TargetAction) -> Exit {
             dispatch(format, || resolve_adapter(format, Axis::Target, &value, &project_dir))
         }
     }
+}
+
+/// Print the shell-completion script for `shell` to stdout — pure
+/// stdout from the shared clap grammar, so the output is byte-identical
+/// on both sides of the seam (native and in-guest, RFC-65 move 1).
+pub fn completions(shell: clap_complete::Shell) -> Exit {
+    let mut cmd = <crate::cli::Cli as clap::CommandFactory>::command();
+    clap_complete::generate(shell, &mut cmd, "specify", &mut std::io::stdout());
+    Exit::Success
 }
 
 /// Dispatch the `specify journal {emit, show}` family.

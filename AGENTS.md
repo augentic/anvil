@@ -169,7 +169,7 @@ specify-workflow                 # workflow layer — depends on specify-{error,
 specify-dispatch                 # wasm-clean dispatch boundary — clap grammar, envelopes, exit contract, pure verb handlers; consumed by the root binary and the workflow guest shim
 specify-workflow-guest           # wasm32 wasi:cli/run shim over specify-dispatch + specify-workflow (release artifact committed at crates/workflow-guest/guest.wasm and embedded by specify-runtime)
 specify-echo-guest               # wasm32 skeleton source-adapter guest for the composed runtime tests
-specify-runtime                  # composed-deployment host surface (CursorBundle, Hooks, drive, the embedded workflow guest); also builds the specify-runtime-replay test binary
+specify-runtime                  # composed-deployment host seam (drive — spawns the generic macro-generated specify-host binary, the externalized host layer — plus the embedded workflow guest and describe dispatch); also builds the specify-host and specify-runtime-replay binaries
 specify (root crate)             # the one binary: triage main — native verbs in-process, guest-owned verbs through specify-runtime::drive (DECISIONS.md §"One `specify` binary")
 ```
 

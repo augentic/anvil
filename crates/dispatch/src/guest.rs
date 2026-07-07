@@ -9,8 +9,10 @@
 //! but *dispatched* in the shim, where the WIT-provided seam lives:
 //! [`route`] returns the [`Orchestration`] descriptor and the shim
 //! drives the matching `specify_workflow::orchestrate` entry point
-//! against its providers. Native-only verbs (init, lint, workspace, …)
-//! have no guest handler and fail with `Error::Argument` (exit 2).
+//! against its providers. Provisioning and native-residue verbs
+//! (`init` without `--scaffold-only`, `adapters sync`, `rules sync`,
+//! `lint`, `workspace *`, `upgrade`, `plugins`) have no guest handler
+//! and fail with `Error::Argument` (exit 2).
 //!
 //! Project-scoped guest verbs anchor [`Ctx`] at `"."` — the mount
 //! preopen that carries the project root — instead of walking from the
@@ -25,8 +27,10 @@ use specify_error::{Error, Result};
 use specify_workflow::change::SourceBinding;
 
 use crate::cli::{Cli, Commands, Format, SourceArg};
+use crate::commands::init::ScaffoldArgs;
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::plan::cli::PlanAction;
+use crate::commands::rules::cli::RulesAction;
 use crate::commands::slice::cli::{SliceAction, SliceMergeAction};
 use crate::commands::source::cli::SourceAction;
 use crate::commands::{self, journal};
@@ -231,17 +235,75 @@ pub fn route(cli: Cli) -> Route {
                 Route::Handled(scoped(format, plan_dir, |ctx| commands::slice::run(ctx, action)))
             }
         },
+        // The scaffold leg is the guest-invocable half of `init`
+        // (RFC-65 move 1): project-scoped writes only, anchored at
+        // the `"."` mount preopen. The provisioning half (`init`
+        // without the flag — hydration, manifest generation) stays
+        // native by construction.
+        Commands::Init {
+            adapter,
+            name,
+            description,
+            workspace,
+            include_framework,
+            platforms,
+            scaffold_only: true,
+            ..
+        } => Route::Handled(scaffold(
+            format,
+            adapter.as_deref(),
+            name.as_deref(),
+            description.as_deref(),
+            workspace,
+            include_framework,
+            platforms.as_deref(),
+        )),
         Commands::Init { .. } => Route::Handled(unsupported(format, "init")),
         Commands::Adapters { .. } => Route::Handled(unsupported(format, "adapters")),
-        Commands::Rules { .. } => Route::Handled(unsupported(format, "rules")),
+        Commands::Rules { action } => Route::Handled(match action {
+            RulesAction::Export(args) => {
+                commands::dispatch(format, || commands::rules::export::run(format, &args))
+            }
+            // `rules sync` writes the codex cache too, but it retires
+            // into `adapters sync` (RFC-66); keep it native residue
+            // rather than widening a verb slated for deletion.
+            RulesAction::Sync(_) => unsupported(format, "rules sync"),
+        }),
         Commands::Lint { .. } => Route::Handled(unsupported(format, "lint")),
-        Commands::Archive { .. } => Route::Handled(unsupported(format, "archive")),
-        Commands::Registry { .. } => Route::Handled(unsupported(format, "registry")),
+        Commands::Archive { action } => {
+            Route::Handled(scoped(format, plan_dir, |ctx| commands::archive::run(ctx, &action)))
+        }
+        Commands::Registry { action } => {
+            Route::Handled(scoped(format, plan_dir, |ctx| commands::registry::run(ctx, action)))
+        }
         Commands::Workspace { .. } => Route::Handled(unsupported(format, "workspace")),
-        Commands::Completions { .. } => Route::Handled(unsupported(format, "completions")),
+        Commands::Completions { shell } => Route::Handled(commands::completions(shell)),
         Commands::Upgrade { .. } => Route::Handled(unsupported(format, "upgrade")),
         Commands::Plugins { .. } => Route::Handled(unsupported(format, "plugins")),
     }
+}
+
+/// Run the init scaffold leg against the `"."` mount preopen — the
+/// clap-to-[`ScaffoldArgs`] adaptor split out of [`route`] to keep the
+/// router a flat table.
+fn scaffold(
+    format: Format, adapter: Option<&str>, name: Option<&str>, description: Option<&str>,
+    workspace: bool, include_framework: bool, platforms: Option<&str>,
+) -> Exit {
+    commands::dispatch(format, || {
+        commands::init::scaffold(
+            Path::new("."),
+            &ScaffoldArgs {
+                format,
+                adapter,
+                name,
+                description,
+                workspace,
+                include_framework,
+                platforms,
+            },
+        )
+    })
 }
 
 /// The guest counterpart of [`commands::scoped`]: load [`Ctx`]

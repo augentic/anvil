@@ -15,5 +15,7 @@ mod common;
 mod composed;
 #[path = "mcp.rs"]
 mod mcp;
+#[path = "widened.rs"]
+mod widened;
 #[path = "workflow.rs"]
 mod workflow;

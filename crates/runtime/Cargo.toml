@@ -31,11 +31,15 @@ wasmparser.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 assert_cmd.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
 jiff.workspace = true
 omnia-testkit.workspace = true
 serde_json.workspace = true
+specify-dispatch.workspace = true
 specify-guest-model.workspace = true
 specify-model.workspace = true
+specify-schema.workspace = true
 specify-workflow = { workspace = true, features = ["native"] }
 tempfile.workspace = true
 
@@ -46,12 +50,20 @@ workspace = true
 name = "it"
 path = "tests/it.rs"
 
+# The generic Omnia host layer (RFC-65 move 2): the macro-generated
+# command-mode runtime over the cursor-bound backends, spawned by the
+# root `specify` binary's guest leg (`specify_runtime::drive`) as
+# `specify-host run --config <manifest> -- <argv>`. Carries no Specify
+# vocabulary; must ship beside `specify` in release layouts.
+[[bin]]
+name = "specify-host"
+path = "src/bin/host.rs"
+
 # The replay sibling over the same manifest surface: `WasiModel:
 # ModelDefault` instead of the cursor backend, for component-level tests
 # and examples (RFC-61 §target shape — not an operational mode). The
-# cursor-bound binary is the root `specify` itself: its triage main drives
-# guest-owned verbs through this crate's `drive` (DECISIONS.md §"One
-# `specify` binary").
+# cursor-bound host is the `specify-host` binary above (DECISIONS.md
+# §"One `specify` binary").
 [[bin]]
 name = "specify-runtime-replay"
 path = "src/bin/replay.rs"

@@ -1915,20 +1915,22 @@ slices:
         // the workflow guest; the triage main routes it to the
         // composed-deployment leg instead of the native handler table
         // (DECISIONS.md §"One `specify` binary"). With no `cursor-agent`
-        // on PATH the leg fails deterministically at backend connect —
-        // the host-side `guest-runtime-failed` envelope, not the old
-        // native `argument` refusal.
+        // on PATH the spawned `specify-host` fails deterministically at
+        // backend connect — its stderr names the missing agent and its
+        // exit 1 passes through, not the old native `argument` refusal.
+        crate::common::ensure_host_binary();
         let empty_path = tempdir().expect("empty PATH dir");
         let project = Project::init();
         let assert = specify_cmd()
             .current_dir(project.root())
             .env("PATH", empty_path.path())
+            .env_remove("RUST_LOG")
             .args(["--format", "json", "plan", "execute"])
             .assert()
             .failure();
         assert_eq!(assert.get_output().status.code(), Some(1));
-        let stderr = parse_stderr(&assert.get_output().stderr, project.root());
-        assert_eq!(stderr["error"], "guest-runtime-failed");
+        let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+        assert!(stderr.contains("cursor-agent"), "the drive must reach the host spawn:\n{stderr}");
     }
 
     // -- plan author (guest-owned verb: triage routes it to the guest leg) --------------------
@@ -1937,17 +1939,19 @@ slices:
     fn plan_author_routes_to_guest_leg() {
         // `plan author` (the collapsed /spec:plan flow, RFC-61 S1) —
         // the same triage posture as `plan execute`.
+        crate::common::ensure_host_binary();
         let empty_path = tempdir().expect("empty PATH dir");
         let project = Project::init();
         let assert = specify_cmd()
             .current_dir(project.root())
             .env("PATH", empty_path.path())
+            .env_remove("RUST_LOG")
             .args(["--format", "json", "plan", "author", "fresh", "--intent", "Fix the typo."])
             .assert()
             .failure();
         assert_eq!(assert.get_output().status.code(), Some(1));
-        let stderr = parse_stderr(&assert.get_output().stderr, project.root());
-        assert_eq!(stderr["error"], "guest-runtime-failed");
+        let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+        assert!(stderr.contains("cursor-agent"), "the drive must reach the host spawn:\n{stderr}");
         assert!(!project.plan_path().exists(), "a failed author must not write plan.yaml");
     }
 

@@ -1,16 +1,20 @@
 //! Triage-main integration tests: guest-owned verbs route through the
 //! composed deployment, native verbs stay in-process.
 //!
-//! The guest leg needs `cursor-agent` on `PATH` at backend connect, so
-//! these tests stage a stub script that answers `--version` and fails
-//! any real invocation — the covered flows never legitimately reach a
-//! completion. The composed run itself is real: the deployment
-//! manifest is regenerated into the per-project cache (RFC-65) with
-//! the embedded workflow guest staged beside it, adapter guests
-//! resolve through the axis resolvers (bound adapters) or the
+//! The guest leg spawns the generic `specify-host` binary (RFC-65
+//! move 2), whose cursor backend needs `cursor-agent` on `PATH` at
+//! connect, so these tests stage a stub script that answers
+//! `--version` and fails any real invocation — the covered flows never
+//! legitimately reach a completion. The composed run itself is real:
+//! the deployment manifest is regenerated into the per-project cache
+//! (RFC-65) with the embedded workflow guest staged beside it, adapter
+//! guests resolve through the axis resolvers (bound adapters) or the
 //! component-cache scan (unbound), and the guest's exit code passes
-//! through to the process exit. See DECISIONS.md §"One `specify`
-//! binary".
+//! through to the process exit. A failure *inside* the host —
+//! deployment assembly, backend connect — surfaces as the host's own
+//! stderr text with its exit code passed through; only a failure
+//! around the spawn itself renders the `guest-runtime-failed`
+//! envelope. See DECISIONS.md §"One `specify` binary".
 
 // The stub is a `sh` script; the covered behavior is identical across
 // unix hosts and no CI leg runs the suite on Windows.
@@ -22,7 +26,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use std::sync::OnceLock;
 
-use common::{parse_json, repo_root, specify_cmd};
+use common::{ensure_host_binary, parse_json, repo_root, specify_cmd};
 use tempfile::{TempDir, tempdir};
 
 use crate::common;
@@ -85,6 +89,7 @@ fn free_port() -> u16 {
 // assembly), staging the embedded workflow guest beside it.
 #[test]
 fn guest_verb_exit_passthrough() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
 
@@ -116,12 +121,13 @@ fn guest_verb_exit_passthrough() {
 
 // The developer posture is untouched: a project-root omnia.toml wins
 // wholesale over the generated manifest. The staged file is garbage,
-// so the deployment build fails host-side (`guest-runtime-failed`) —
-// proving the committed manifest was consumed rather than a
-// regenerated one (which would reach the guest and fail
-// `not-initialized`).
+// so the deployment build fails *inside* the spawned host — its own
+// stderr text, exit 1 passed through — proving the committed manifest
+// was consumed rather than a regenerated one (which would reach the
+// guest and fail `not-initialized`).
 #[test]
 fn project_root_manifest_wins() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     fs::write(project.path().join("omnia.toml"), "this is not a manifest").expect("write garbage");
@@ -135,10 +141,10 @@ fn project_root_manifest_wins() {
         .expect("running specify");
 
     assert_eq!(output.status.code(), Some(1));
-    let envelope = parse_json(&output.stderr);
-    assert_eq!(
-        envelope["error"], "guest-runtime-failed",
-        "the committed manifest must be driven wholesale: {envelope}"
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("building runtime"),
+        "the committed manifest must be driven wholesale and fail the host's deployment build:\n{stderr}"
     );
 }
 
@@ -183,6 +189,7 @@ fn pinned_store_miss_is_not_installed() {
 // also covers the sniff-axis discovery leg.
 #[test]
 fn guest_verb_http_trigger_background() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     let cache = common::expected_cache_dir(project.path()).join("components");
@@ -212,11 +219,13 @@ fn guest_verb_http_trigger_background() {
 }
 
 // Triage routing for the full guest-owned set: with no `cursor-agent`
-// on PATH each verb fails at backend connect with the host-side
-// `guest-runtime-failed` envelope — reaching the composed-deployment
-// leg at all distinguishes it from the native `argument` refusal.
+// on PATH each verb fails at backend connect *inside* the spawned host
+// (its stderr names the missing agent; exit 1 passes through) —
+// reaching the composed-deployment leg at all distinguishes it from
+// the native `argument` refusal.
 #[test]
 fn guest_owned_verbs_route_to_guest_leg() {
+    ensure_host_binary();
     let empty = tempdir().expect("empty PATH dir");
     let project = tempdir().expect("project dir");
     for argv in [
@@ -239,10 +248,11 @@ fn guest_owned_verbs_route_to_guest_leg() {
             .expect("running specify");
 
         assert_eq!(output.status.code(), Some(1), "host-side connect failure exits 1: {argv:?}");
-        let envelope = parse_json(&output.stderr);
-        assert_eq!(
-            envelope["error"], "guest-runtime-failed",
-            "verb {argv:?} must route to the composed-deployment leg"
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("cursor-agent"),
+            "verb {argv:?} must route to the composed-deployment leg and fail at the host's \
+             backend connect:\n{stderr}"
         );
     }
 }
@@ -253,6 +263,7 @@ fn guest_owned_verbs_route_to_guest_leg() {
 // instead of being silently ignored (Step 4 parity ledger).
 #[test]
 fn plan_dir_refused_on_guest_leg() {
+    ensure_host_binary();
     let project = tempdir().expect("project dir");
     let elsewhere = tempdir().expect("other plan root");
 
@@ -270,7 +281,8 @@ fn plan_dir_refused_on_guest_leg() {
 
     // A value resolving to the working directory itself is a no-op and
     // passes through to the composed-deployment leg (which then fails
-    // at backend connect on the empty PATH — proving triage proceeded).
+    // at the host's backend connect on the empty PATH — proving triage
+    // proceeded).
     let empty = tempdir().expect("empty PATH dir");
     let output = specify_cmd()
         .current_dir(project.path())
@@ -282,8 +294,8 @@ fn plan_dir_refused_on_guest_leg() {
         .expect("running specify");
 
     assert_eq!(output.status.code(), Some(1));
-    let envelope = parse_json(&output.stderr);
-    assert_eq!(envelope["error"], "guest-runtime-failed");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("cursor-agent"), "the drive must reach the host spawn:\n{stderr}");
 }
 
 // A cache entry that is not a component (garbage bytes under a `.wasm`
@@ -292,6 +304,7 @@ fn plan_dir_refused_on_guest_leg() {
 // guest and fails there.
 #[test]
 fn non_component_cache_entry_is_skipped() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     let cache = common::expected_cache_dir(project.path()).join("components");
@@ -322,6 +335,7 @@ fn non_component_cache_entry_is_skipped() {
 // silently thinner deployment).
 #[test]
 fn bound_adapter_resolves_from_store() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     fs::write(
@@ -385,6 +399,7 @@ fn bound_adapter_resolves_from_store() {
 // the actual digest, the same drive proceeds into the guest.
 #[test]
 fn committed_lock_gates_drive() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     fs::write(
@@ -460,6 +475,7 @@ fn committed_lock_gates_drive() {
 // deployment manifest and the verb fails *inside* the guest.
 #[test]
 fn manifest_escapes_hostile_paths() {
+    ensure_host_binary();
     let stub = stub_cursor_agent();
     let tmp = tempdir().expect("parent dir");
     let project = tmp.path().join("we\"ird\\dir");

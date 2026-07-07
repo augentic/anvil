@@ -39,6 +39,28 @@ pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
+/// Ensure the `specify-host` binary — the generic Omnia host layer the
+/// guest leg spawns (RFC-65 move 2) — is built beside the `specify`
+/// binary, so guest-routed tests work under a bare
+/// `cargo nextest run -p specify`. Self-building mirrors the echo-guest
+/// helper in `tests/guest.rs`; a full `cargo make test` has already
+/// built it.
+pub fn ensure_host_binary() {
+    use std::sync::OnceLock;
+    static BUILT: OnceLock<()> = OnceLock::new();
+    BUILT.get_or_init(|| {
+        // No CARGO_TARGET_DIR override: the inherited environment
+        // reproduces the outer test build, so the host lands beside the
+        // `specify` binary `cargo_bin` resolves.
+        let status = std::process::Command::new("cargo")
+            .args(["build", "-p", "specify-runtime", "--bin", "specify-host"])
+            .current_dir(repo_root())
+            .status()
+            .expect("spawning specify-host build");
+        assert!(status.success(), "specify-host build failed with status {status}");
+    });
+}
+
 /// Convenience pointer to the staged `omnia.wasm` fixture component
 /// used as the canonical positional argument for `specify init`
 /// (RFC-64: an adapter is one component file). The bytes are the echo

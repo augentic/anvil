@@ -101,6 +101,52 @@ fn binary_stdout() -> Result<()> {
     Ok(())
 }
 
+// The bare host form (RFC-65 move 2): the generic `specify-host`
+// binary — the macro-generated command-mode runtime over the
+// cursor-bound backends — drives a manifest directly as
+// `specify-host run --config <manifest> -- --version`. A stub
+// `cursor-agent` satisfies the backend's connect probe; argv reaches
+// the workflow guest and exit 0 passes through with the version line
+// on stdout.
+#[cfg(unix)]
+#[test]
+fn host_binary_stdout() -> Result<()> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let manifest = common::skeleton_manifest("source:echo")?;
+
+    let stub_dir = tempfile::tempdir()?;
+    let stub = stub_dir.path().join("cursor-agent");
+    std::fs::write(
+        &stub,
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"cursor-agent 0.0.0-stub\"; exit 0; fi\nexit 1\n",
+    )?;
+    std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755))?;
+    let path =
+        format!("{}:{}", stub_dir.path().display(), std::env::var("PATH").unwrap_or_default());
+
+    let port = free_port()?;
+    let output = assert_cmd::Command::cargo_bin("specify-host")?
+        .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
+        .env("PATH", path)
+        .env_remove("RUST_LOG")
+        .args(["run", "--config"])
+        .arg(manifest.path())
+        .args(["--", "--version"])
+        .output()?;
+
+    assert!(
+        output.status.success(),
+        "host exited {:?}; stderr:\n{}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version_line = format!("specify {}", env!("CARGO_PKG_VERSION"));
+    assert!(stdout.contains(&version_line), "stdout did not carry `{version_line}`:\n{stdout}");
+    Ok(())
+}
+
 // A port the OS just handed out and released — free at bind time with high
 // probability.
 fn free_port() -> Result<u16> {

@@ -69,6 +69,17 @@ fn mirrors_root() -> PathBuf {
     env::temp_dir().join("specify").join("mirrors")
 }
 
+/// Guest-visible preopen name of the per-project derived cache inside
+/// the workflow guest's WASI sandbox.
+///
+/// The generated deployment manifest mounts the host's
+/// [`project_cache_dir`] under this name (RFC-65 move 1: the guest
+/// runs `rules export` and init's scaffold leg, both of which read or
+/// write cache tenants), and the wasm32 build of [`project_cache_dir`]
+/// resolves to it directly — one project per deployment, so no
+/// project-id keying is needed in-guest.
+pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
+
 /// Absolute path to the out-of-tree cache directory for `project_dir` —
 /// `<projects-root>/<project-id>/`.
 ///
@@ -81,8 +92,16 @@ fn mirrors_root() -> PathBuf {
 /// standards layers are infallible, and a regenerable cache must never
 /// fall back into the working tree. When no environment anchor is
 /// available the OS temp directory is used as a last resort.
+///
+/// On wasm32 (the workflow guest) the cache is the
+/// [`GUEST_CACHE_MOUNT`] preopen the deployment manifest grants; a
+/// deployment without the mount simply misses every cache probe, the
+/// same degradation as an unpopulated cache natively.
 #[must_use]
 pub fn project_cache_dir(project_dir: &Path) -> PathBuf {
+    if cfg!(target_arch = "wasm32") {
+        return PathBuf::from(GUEST_CACHE_MOUNT);
+    }
     project_cache_dir_in(&projects_root(), project_dir)
 }
 

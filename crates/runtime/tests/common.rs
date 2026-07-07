@@ -2,8 +2,14 @@
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
 //! `omnia_testkit::find_guest`, pointed at the `specify-*-guest` crates), the
-//! `wasi:http`-backed store bundle the host binary's `runtime!` macro would
-//! generate, and the walking-skeleton manifest the tests deploy.
+//! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
+//! macros generate, and the walking-skeleton manifest the tests deploy.
+//!
+//! **Test-only in-process harness.** The product path is the spawned
+//! `specify-host` binary (`specify_runtime::drive`, RFC-65 move 2); these
+//! bundles exist because omnia's telemetry `OnceLock` allows only one
+//! `omnia::run` per process, so multi-assertion suites drive the deployment
+//! in-process over stubbed backends instead of through the host binary.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -136,7 +142,9 @@ pub fn adapter_component_wasm(id: &str) -> PathBuf {
 /// A Milestone F composed-deployment manifest: the workflow guest plus the
 /// given release-built adapter guests (each with its `/mcp/<name>` route),
 /// sharing one writable `"."` mount at `mount` — the shape of the
-/// checked-in repo-root `omnia.toml` over a test-owned project tree.
+/// checked-in repo-root `omnia.toml` over a test-owned project tree —
+/// plus the per-project derived cache mounted at the guest cache
+/// preopen (RFC-65 move 1), mirroring the generated manifest.
 ///
 /// # Errors
 ///
@@ -157,6 +165,16 @@ pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest
         writeln!(doc, "[[guest]]\nid = \"{id}\"\nsource.path = \"{}\"\n", wasm.display())?;
     }
     writeln!(doc, "[[mount]]\nname = \".\"\npath = \"{}\"\nwritable = true\n", mount.display())?;
+    // The mount registry opens every mount at deployment build, so the
+    // cache dir must exist even when a test never touches it.
+    let cache = specify_schema::cache::project_cache_dir(mount);
+    std::fs::create_dir_all(&cache)?;
+    writeln!(
+        doc,
+        "[[mount]]\nname = \"{name}\"\npath = \"{path}\"\nwritable = true\n",
+        name = specify_schema::cache::GUEST_CACHE_MOUNT,
+        path = cache.display(),
+    )?;
     for id in adapters {
         let name = id.split_once(':').expect("guest id is `<axis>:<name>`").1;
         writeln!(doc, "[[route.http]]\nprefix = \"/mcp/{name}\"\nguest = \"{id}\"\n")?;
@@ -230,6 +248,36 @@ pub fn skeleton_manifest(echo_id: &str) -> Result<TempManifest> {
         echo = echo.display(),
         mount = mount.display(),
     ))
+}
+
+const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";
+
+/// Restores the previous `SPECIFY_PROJECT_CACHE` value on drop.
+pub struct CacheGuard(Option<std::ffi::OsString>);
+
+impl Drop for CacheGuard {
+    #[expect(unsafe_code, reason = "restore the cache-root env var pinned for the test")]
+    fn drop(&mut self) {
+        // SAFETY: nextest runs each test in its own process, so no other
+        // thread observes the env mutation for the guard's lifetime.
+        unsafe {
+            match self.0.take() {
+                Some(prev) => std::env::set_var(CACHE_ENV, prev),
+                None => std::env::remove_var(CACHE_ENV),
+            }
+        }
+    }
+}
+
+/// Pin the out-of-tree project cache root inside `dir` so cache writes
+/// (native seeding and the guest's cache mount alike) are hermetic and
+/// auto-cleaned with the tempdir.
+#[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
+pub fn scoped_cache(dir: &Path) -> CacheGuard {
+    let prev = std::env::var_os(CACHE_ENV);
+    // SAFETY: see `CacheGuard::drop` — single-process test isolation.
+    unsafe { std::env::set_var(CACHE_ENV, dir.join("project-cache")) };
+    CacheGuard(prev)
 }
 
 /// The backend bundle the host binary's `runtime!` macro generates for

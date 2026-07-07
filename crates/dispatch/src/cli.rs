@@ -113,6 +113,14 @@ pub enum Commands {
             conflicts_with_all = ["adapter", "workspace", "name", "description", "include_framework"]
         )]
         upgrade: bool,
+        /// Run only the project-scoped scaffold leg (`.specify/`,
+        /// `project.yaml`, workspace `registry.yaml`) — no hydration,
+        /// no deployment-manifest generation, no `AGENTS.md` context
+        /// generation. The guest-invocable half of `init` (RFC-65
+        /// move 1): the provisioning front calls it through the host
+        /// form after hydration. Hidden — not an operator-facing verb.
+        #[arg(long, hide = true, conflicts_with = "upgrade")]
+        scaffold_only: bool,
     },
 
     /// Global adapter-store provisioning (RFC-65). `sync` is the

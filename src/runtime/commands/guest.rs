@@ -4,9 +4,10 @@
 //! execute`, `plan author`, `slice refine`, `slice build`,
 //! `slice merge run`, `source survey`, `source extract`) run in the
 //! workflow guest against the composed deployment — workflow guest + adapter guests +
-//! the spawning `cursor-agent` model backend — awaited through
-//! `specify_runtime::drive` in command mode with the HTTP trigger in
-//! the background and the guest exit code passed through to the
+//! the spawning `cursor-agent` model backend — through
+//! `specify_runtime::drive`, which spawns the generic host layer
+//! (`specify-host run --config <manifest> -- <argv>`, RFC-65 move 2)
+//! with inherited stdio and the exit code passed through to the
 //! process exit. This module owns the triage predicate the top-level
 //! `run` consults, plus the manifest choice the guest leg runs
 //! against: an `omnia.toml` at the project root wins wholesale (the
@@ -31,12 +32,14 @@ use crate::runtime::output::{Exit, report};
 /// present it replaces the generated manifest wholesale.
 const MANIFEST_FILENAME: &str = "omnia.toml";
 
-/// Wire code for a composed-deployment failure ahead of or around the
-/// guest run: deployment assembly or backend connect (`cursor-agent`
-/// missing from `PATH`). A failure *inside* the guest is not this —
-/// the guest renders its own envelope and its exit code passes
-/// through. Adapter-resolution failures during manifest regeneration
-/// keep their own typed codes (`adapter-not-found`,
+/// Wire code for a failure ahead of or around the host spawn: the
+/// `specify-host` binary missing beside the executable, the spawn
+/// itself failing, or the host dying to a signal. A failure *inside*
+/// the spawned host — deployment assembly, backend connect
+/// (`cursor-agent` missing from `PATH`) — surfaces on the host's own
+/// stderr and its exit code passes through, exactly like a failure
+/// inside the guest. Adapter-resolution failures during manifest
+/// regeneration keep their own typed codes (`adapter-not-found`,
 /// `adapter-not-installed`, `adapter-digest-mismatch`, …) so the
 /// operator sees the same diagnostics the native resolvers raise.
 const GUEST_RUNTIME_FAILED: &str = "guest-runtime-failed";
