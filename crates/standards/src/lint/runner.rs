@@ -1,16 +1,16 @@
 //! Shared lint pipeline runner.
 //!
-//! Both lint surfaces (`specify lint project` and `specify lint framework`) compose the
-//! identical sequence: resolve the codex, index the workspace, evaluate
-//! the declarative deterministic hints, dedupe by fingerprint, apply the
-//! ignore-directive pass, and assemble the [`DiagnosticReport`] envelope.
-//! This module owns that sequence so the two handlers stay thin and
+//! One sequence for every lint surface (today `specify lint framework`):
+//! resolve the codex, index the workspace, evaluate the declarative
+//! deterministic hints, dedupe by fingerprint, apply the
+//! ignore-directive pass, and assemble the [`DiagnosticReport`]
+//! envelope. This module owns that sequence so handlers stay thin and
 //! cannot drift.
 //!
-//! The surfaces differ only in configuration — scan profile and tool
+//! Surfaces differ only in configuration — scan profile and tool
 //! runner — which [`PipelineConfig`] captures. Handler-specific concerns
 //! (artifact scope composition, fallback-envelope emission,
-//! `lint-completed` journalling, exit-code mapping) stay in the handlers.
+//! journalling, exit-code mapping) stay in the handlers.
 //!
 //! Codex resolution is always fatal: a resolver failure (missing rules
 //! root, duplicate rule id, parse error) aborts the run and surfaces the
@@ -37,8 +37,8 @@ use crate::rules::{ResolveInputs, build_resolved_rules, map_resolve_error};
 
 /// Configuration for one [`run`] of the shared lint pipeline.
 pub struct PipelineConfig<'a> {
-    /// Indexer profile (`Project` for `specify lint project`, `Framework` for
-    /// `specify lint framework`).
+    /// Indexer profile (`Framework` for `specify lint framework`;
+    /// `Project` is the project-rooted walk shape, verb-less today).
     pub profile: ScanProfile,
     /// When set, emit the indexed `WorkspaceModel` and stop before the
     /// evaluator pass.

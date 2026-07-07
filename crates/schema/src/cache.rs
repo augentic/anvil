@@ -142,6 +142,17 @@ fn projects_root() -> PathBuf {
 /// sandboxes and tests.
 const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 
+/// Guest-visible preopen name of the global adapter store inside the
+/// workflow guest's WASI sandbox.
+///
+/// The generated deployment manifest mounts the host's
+/// [`adapter_store_root`] under this name **read-only**: forwarded
+/// workflow verbs resolve pinned identities (store probe, D4
+/// verify-on-read against the `.meta` sidecar) in-guest, while the
+/// no-fetch / no-store-write fence stays intact — hydration remains a
+/// provisioning-surface capability.
+pub const GUEST_STORE_MOUNT: &str = "/specify-store";
+
 /// Absolute path to the global adapter store entry for an immutable
 /// `(name, version)` identity — the single component file
 /// `<store>/<name>@<version>.wasm` (RFC-48 D5, RFC-64 one-component
@@ -167,8 +178,15 @@ pub fn adapter_store_entry(name: &str, version: &str) -> PathBuf {
 /// error, mirroring `projects_root`; without a usable `$HOME` the OS
 /// temp directory anchors a last-resort root, keeping the helper
 /// infallible.
+///
+/// On wasm32 (the workflow guest) the store is the read-only
+/// [`GUEST_STORE_MOUNT`] preopen the deployment manifest grants — the
+/// env override is host-side relocation and never crosses the seam.
 #[must_use]
 pub fn adapter_store_root() -> PathBuf {
+    if cfg!(target_arch = "wasm32") {
+        return PathBuf::from(GUEST_STORE_MOUNT);
+    }
     if let Some(root) = env::var_os(ADAPTER_STORE_ENV).and_then(absolute) {
         return root;
     }

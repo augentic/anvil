@@ -1,9 +1,9 @@
-//! The shared lint output tail: [`run_lint`] is the one kernel both
-//! lint handlers call — [`emit_lint_report`] renders one envelope and
-//! the internal `finish_lint` turns the outcome into the handler's
-//! terminal `Result<()>` so both lint surfaces differ only in pipeline
-//! config, not output/exit plumbing. The shared [`Format`] and `emit`
-//! entry point live in `specify_dispatch::output` (re-exported here).
+//! The lint output tail for the surviving `lint framework` surface:
+//! [`run_lint`] drives one pipeline run — [`emit_lint_report`] renders
+//! one envelope and the internal `finish_lint` turns the outcome into
+//! the handler's terminal `Result<()>`. The shared [`Format`] and
+//! `emit` entry point live in `specify_dispatch::output` (re-exported
+//! here).
 
 use std::time::Instant;
 
@@ -39,11 +39,9 @@ pub struct LintEmit<'a> {
     pub now: Timestamp,
     /// Scope facets recorded on the `lint-completed` event.
     pub scope: LintScope,
-    /// Whether to append a `lint-completed` journal event. `specify lint
-    /// project` journals (runtime observability); `specify lint framework`
-    /// does not — framework self-lint is a development surface and the
-    /// `lint-completed` contract is scoped to `lint project` (DECISIONS.md
-    /// §"Journal event names").
+    /// Whether to append a `lint-completed` journal event. `specify
+    /// lint framework` never journals — framework self-lint is a
+    /// development surface (DECISIONS.md §"Journal event names").
     pub journal: bool,
     /// Command label prefixed onto best-effort journal failures.
     pub command_label: &'static str,
@@ -94,9 +92,8 @@ pub fn emit_diagnostic_report(emit: LintEmit<'_>) -> Result<bool, RenderError> {
 }
 
 /// Everything [`emit_lint_report`] needs to run one lint pipeline and
-/// render its envelope. The two lint surfaces (`specify lint project`,
-/// `specify lint framework`) differ only in the inputs and config they assemble
-/// here — the render → journal → blocking-decision tail is shared.
+/// render its envelope — the render → journal → blocking-decision tail
+/// in one place.
 pub struct LintRun<'a> {
     /// Resolver inputs (project dir, rules root, adapters, filters).
     pub inputs: &'a ResolveInputs<'a>,
@@ -160,10 +157,8 @@ pub fn emit_lint_report(run: LintRun<'_>) -> Result<Option<DiagnosticReport>> {
 
 /// Drive one lint surface end to end: run the caller's pipeline
 /// assembly + emit closure, then collapse its outcome into the
-/// terminal `Result<()>`. This is the single kernel both lint handlers
-/// (`specify lint project`, `specify lint framework`) call, so the build → emit →
-/// finish → blocking-gate sequence lives in one place; the handlers
-/// differ only in the `PipelineConfig` their `build` closure assembles.
+/// terminal `Result<()>`, so the build → emit → finish → blocking-gate
+/// sequence lives in one place.
 ///
 /// `build` owns every pre-emit `?` abort (scope composition, tool
 /// runner construction, framework-root load) plus the

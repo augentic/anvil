@@ -124,6 +124,10 @@ pub fn generate(
         }
         return Err(dangling_component(adapter));
     }
+    // The manifest mounts the store root read-only; a not-yet-hydrated
+    // machine has no store directory, so materialise the (empty) root
+    // rather than hand Omnia a dangling preopen path.
+    std::fs::create_dir_all(specify_schema::cache::adapter_store_root()).map_err(Error::Io)?;
     let path = manifest_path(project_dir);
     bytes_write(&path, document(core, project_dir, adapters).as_bytes())?;
     Ok(path)
@@ -137,8 +141,8 @@ fn dangling_component(adapter: &DeployGuest) -> Error {
         || Error::Diag {
             code: "adapter-not-found",
             detail: format!(
-                "adapter `{}` has no component at {}; rebuild it with `cargo make \
-                 build-guests-release` or pin a published version",
+                "adapter `{}` has no component at {}; rebuild it with `cargo make release` in \
+                 the adapters repo or pin a published version",
                 adapter.name,
                 adapter.component.display()
             ),
@@ -153,7 +157,10 @@ fn dangling_component(adapter: &DeployGuest) -> Error {
 /// cache mounted at [`specify_schema::cache::GUEST_CACHE_MOUNT`]
 /// (RFC-65 move 1: the guest's `rules export` reads the codex tenant
 /// and init's scaffold leg writes the component and codex tenants),
-/// and the in-process transport default — the same shape the in-tree
+/// the global adapter store mounted **read-only** at
+/// [`specify_schema::cache::GUEST_STORE_MOUNT`] (forwarded verbs
+/// resolve pinned identities in-guest; hydration stays native), and
+/// the in-process transport default — the same shape the in-tree
 /// developer manifest models.
 fn document(core: &Path, mount: &Path, adapters: &[DeployGuest]) -> String {
     let mut doc = format!(
@@ -178,6 +185,12 @@ fn document(core: &Path, mount: &Path, adapters: &[DeployGuest]) -> String {
         "[[mount]]\nname = \"{name}\"\npath = {path}\nwritable = true\n",
         name = specify_schema::cache::GUEST_CACHE_MOUNT,
         path = toml_string(&project_cache_dir(mount)),
+    );
+    let _ = writeln!(
+        doc,
+        "[[mount]]\nname = \"{name}\"\npath = {path}\nwritable = false\n",
+        name = specify_schema::cache::GUEST_STORE_MOUNT,
+        path = toml_string(&specify_schema::cache::adapter_store_root()),
     );
     for adapter in adapters {
         let _ = writeln!(

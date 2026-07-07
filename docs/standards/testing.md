@@ -90,4 +90,3 @@ The end-to-end fan-in-twice / fan-out-once path now runs through the guest orche
 ## Test-side gotchas
 
 - Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or `stamp_slice_outcome` in `tests/common.rs` when a test needs a stamped phase outcome. The tests in `tests/slice.rs` are the canonical patterns.
-- The WASI fixture components used by the `specify lint project` declared-tool path test (`tests/lint.rs`) are rebuilt via `scripts/regen-wasm-fixtures.sh`. Checked-in outputs live under `tests/fixtures/tools-test-project/wasm/`; only re-run when a fixture source changes.

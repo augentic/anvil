@@ -3,10 +3,9 @@
 //! envelope.
 //!
 //! The shared pipeline lives in [`specify_standards::lint::runner`] and
-//! the shared output/journal/exit tail in [`crate::output`]; this
-//! handler is thin and obeys the same `Result<()>` contract as the
-//! project `lint project` handler, differing only in the framework-surface
-//! config it assembles:
+//! the output/journal/exit tail in [`crate::output`]; this handler is
+//! thin and obeys the standard `Result<()>` handler contract,
+//! assembling only the framework-surface config:
 //!
 //! 1. Resolve and canonicalise the framework root (every `rules.*`
 //!    check runs through the in-process `rules` checker, so no
@@ -20,9 +19,8 @@
 //!    (via [`crate::output::emit_lint_report`]), which renders the
 //!    envelope, decides the blocking exit, and owns the JSON fallback on
 //!    abort. This surface sets `journal: false`: framework self-lint is a
-//!    development surface and the `lint-completed` journal contract is
-//!    scoped to `specify lint project` (DECISIONS.md §"Journal event
-//!    names").
+//!    development surface and never journals (DECISIONS.md §"Journal
+//!    event names").
 
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -104,9 +102,8 @@ fn build_report(
         layout: Layout::new(&project_dir),
         now: Timestamp::now(),
         scope,
-        // Framework self-lint is a development surface; the `lint-completed`
-        // journal contract is scoped to `specify lint project` (DECISIONS.md
-        // §"Journal event names"), so this surface never journals.
+        // Framework self-lint is a development surface and never
+        // journals (DECISIONS.md §"Journal event names").
         journal: false,
         command_label: "specify lint framework",
         started_at,

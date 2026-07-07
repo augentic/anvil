@@ -126,6 +126,14 @@ impl CodexMeta {
     pub fn path(project_dir: &Path) -> PathBuf {
         codex_cache_root(project_dir).join("codex-meta.yaml")
     }
+
+    /// The recorded stamp, or `None` when the codex was never
+    /// materialized (or the stamp is unreadable — the next
+    /// materialization rewrites it).
+    #[must_use]
+    pub fn load(project_dir: &Path) -> Option<Self> {
+        read_codex_meta(project_dir)
+    }
 }
 
 /// Shared codex packs compiled into the binary: sorted

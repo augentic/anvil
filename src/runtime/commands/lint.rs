@@ -1,4 +1,6 @@
-//! `specify lint *` dispatcher umbrella per the standards-layer contract.
+//! `specify lint framework` dispatcher umbrella per the
+//! standards-layer contract — framework CI tooling, hidden on the
+//! native provisioning grammar.
 //!
 //! Composes the standards-layer pipeline that lives in `specify-standards`
 //! (`lint::index::build` → `lint::eval::evaluate_rules` →
@@ -8,5 +10,3 @@
 
 pub use specify_dispatch::commands::lint::cli;
 pub mod framework;
-pub mod project;
-pub mod tools;

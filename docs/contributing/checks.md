@@ -30,7 +30,7 @@ Framework and consumer validation are intentionally separate. See [Standards lay
 | Surface                   | Command                                | Audience                           | Enforces                                                        |
 | ------------------------- | -------------------------------------- | ---------------------------------- | --------------------------------------------------------------- |
 | **Authoring standards**   | `specify lint framework` (`make lint`) | `augentic/specify` contributors    | Skill frontmatter, rule *shape*, links, marketplace consistency |
-| **Engineering standards** | `specify lint project`                 | Consumer projects with `.specify/` | Applicable rules with `rule_hints`; structured findings for CI  |
+| **Engineering standards** | `specify rules export`                 | Consumer projects with `.specify/` | Resolved rule packs exported into the consumer's agent context  |
 | **Build-time judgment**   | Target `build/review.md` briefs        | Active slice during `/spec:build`  | Model-assisted codex policy → `REVIEW.md`                       |
 
 Rule *content* lives under `codex/rules/` here and per-adapter `prose/rules/` overlays in specify-adapters (engineering standards). `docs/standards/` is **authoring** house style only.

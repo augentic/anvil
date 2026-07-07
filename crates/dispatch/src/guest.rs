@@ -10,9 +10,9 @@
 //! [`route`] returns the [`Orchestration`] descriptor and the shim
 //! drives the matching `specify_workflow::orchestrate` entry point
 //! against its providers. Provisioning and native-residue verbs
-//! (`init` without `--scaffold-only`, `adapters sync`, `rules sync`,
-//! `lint`, `workspace *`, `upgrade`, `plugins`) have no guest handler
-//! and fail with `Error::Argument` (exit 2).
+//! (`init` without `--scaffold-only`, `adapters sync`, `workspace *`,
+//! `upgrade`, `plugins`) have no guest handler and fail with
+//! `Error::Argument` (exit 2).
 //!
 //! Project-scoped guest verbs anchor [`Ctx`] at `"."` — the mount
 //! preopen that carries the project root — instead of walking from the
@@ -135,9 +135,18 @@ fn author_bindings(
 
 /// Parse guest argv through the shared grammar.
 ///
-/// This is the exact clap tree the native binary parses, so `--help`,
-/// error text, and usage exits match verbatim. `argv` is passed as the
-/// host provides it, `argv[0]` (the program name) included.
+/// This is the exact clap tree the operator's `specify` invocation
+/// forwards into, so `--help`, error text, and usage exits match a
+/// native parse verbatim. The host supplies `argv[0]` as the
+/// deployment's guest id, so it is replaced with the binary name
+/// before parsing — clap renders `argv[0]` into every usage line, and
+/// the operator typed `specify`, not `workflow`.
+///
+/// The parse is `try_parse` on purpose: `clap::Error::exit_code()`
+/// travels back as an [`Exit`] the shim hands to the p3
+/// `wasi:cli/exit`. `parse()`'s internal `process::exit` would land on
+/// the p2 exit, which carries only success/failure and would collapse
+/// clap's usage-error code `2` to `1`.
 ///
 /// # Errors
 ///
@@ -147,7 +156,8 @@ fn author_bindings(
 /// an [`Exit`] for passthrough — the same codes the native binary
 /// exits with.
 pub fn parse(argv: impl IntoIterator<Item = String>) -> Result<Cli, Exit> {
-    Cli::try_parse_from(argv).map_err(|err| {
+    let forwarded = std::iter::once("specify".to_string()).chain(argv.into_iter().skip(1));
+    Cli::try_parse_from(forwarded).map_err(|err| {
         // clap's own printer keeps help on stdout and errors on
         // stderr; a sink failure leaves nothing better to do than
         // carry the exit code through.
@@ -240,36 +250,22 @@ pub fn route(cli: Cli) -> Route {
         // the `"."` mount preopen. The provisioning half (`init`
         // without the flag — hydration, manifest generation) stays
         // native by construction.
-        Commands::Init {
-            adapter,
-            name,
-            description,
-            workspace,
-            include_framework,
-            platforms,
-            scaffold_only: true,
-            ..
-        } => Route::Handled(scaffold(
+        Commands::Init(args) if args.scaffold_only => Route::Handled(scaffold(
             format,
-            adapter.as_deref(),
-            name.as_deref(),
-            description.as_deref(),
-            workspace,
-            include_framework,
-            platforms.as_deref(),
+            args.adapter.as_deref(),
+            args.name.as_deref(),
+            args.description.as_deref(),
+            args.workspace,
+            args.include_framework,
+            args.platforms.as_deref(),
         )),
-        Commands::Init { .. } => Route::Handled(unsupported(format, "init")),
+        Commands::Init(_) => Route::Handled(unsupported(format, "init")),
         Commands::Adapters { .. } => Route::Handled(unsupported(format, "adapters")),
         Commands::Rules { action } => Route::Handled(match action {
             RulesAction::Export(args) => {
                 commands::dispatch(format, || commands::rules::export::run(format, &args))
             }
-            // `rules sync` writes the codex cache too, but it retires
-            // into `adapters sync` (RFC-66); keep it native residue
-            // rather than widening a verb slated for deletion.
-            RulesAction::Sync(_) => unsupported(format, "rules sync"),
         }),
-        Commands::Lint { .. } => Route::Handled(unsupported(format, "lint")),
         Commands::Archive { action } => {
             Route::Handled(scoped(format, plan_dir, |ctx| commands::archive::run(ctx, &action)))
         }
@@ -278,7 +274,7 @@ pub fn route(cli: Cli) -> Route {
         }
         Commands::Workspace { .. } => Route::Handled(unsupported(format, "workspace")),
         Commands::Completions { shell } => Route::Handled(commands::completions(shell)),
-        Commands::Upgrade { .. } => Route::Handled(unsupported(format, "upgrade")),
+        Commands::Upgrade(_) => Route::Handled(unsupported(format, "upgrade")),
         Commands::Plugins { .. } => Route::Handled(unsupported(format, "plugins")),
     }
 }

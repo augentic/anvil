@@ -1,15 +1,16 @@
 //! Deployment assembly for the generated manifest (RFC-65).
 //!
 //! Shared by the two provisioning triggers (`specify init`, `specify
-//! adapters sync`) and the guest leg: [`regenerate`] discovers the
-//! full deployment set — bound adapters through the axis resolvers,
-//! `project.yaml.adapters:` prefetch pins against the global store,
-//! and the component-cache scan for unbound local components — stages
-//! the embedded workflow guest into the deployment tenant, and hands
-//! the set to the pure generator in `specify_workflow::deploy`. No
-//! leg here fetches: a pinned identity absent from the store is the
-//! typed `adapter-not-installed` naming the identity and the literal
-//! sync command (the guest never hydrates).
+//! adapters sync`) and the forwarding leg: [`regenerate`] discovers
+//! the full deployment set — bound adapters through the axis
+//! resolvers, `project.yaml.adapters:` prefetch pins against the
+//! global store, and the component-cache scan for unbound local
+//! components — stages the embedded workflow guest into the
+//! deployment tenant, and hands the set to the pure generator in
+//! `specify_workflow::deploy`. No leg here fetches: a pinned identity
+//! absent from the store is the typed `adapter-not-installed` naming
+//! the identity and the literal sync command (the guest never
+//! hydrates).
 //!
 //! Every pinned entry the discovery admits is digest-verified twice:
 //! RFC-48 D4 verify-on-read against the store sidecar, then RFC-65
@@ -32,36 +33,32 @@ use specify_workflow::deploy::{self, DeployGuest};
 use specify_workflow::hydrate::{self, AdaptersLock};
 use specify_workflow::init::adapter_ref_from_value;
 
-/// What a bare-name adapter that resolves nowhere does to the
-/// regeneration.
-///
-/// The provisioning triggers skip it — bare names are the development
-/// posture, hydration never fetches them, and the guest leg
-/// regenerates strictly before every drive anyway. The guest leg
-/// fails loudly: a bound adapter missing at drive time must surface
-/// as the resolver's typed diagnostic, never a silently thinner
-/// deployment. Pinned identities are strict in both modes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BareMiss {
-    /// Skip the unresolvable bare name (provisioning triggers).
-    Skip,
-    /// Propagate the resolver's `adapter-not-found` (the guest leg).
-    Fail,
-}
-
 /// Regenerate the deployment manifest for `project_dir` and return its
 /// path (`<project-cache>/deployment/omnia.toml`).
 ///
 /// Runs the full discovery, stages the embedded workflow guest into
 /// the deployment tenant (skipping the write when the staged bytes
 /// already match), and generates the manifest atomically.
-pub fn regenerate(project_dir: &Path, bare_miss: BareMiss) -> Result<PathBuf, Error> {
+pub fn regenerate(project_dir: &Path) -> Result<PathBuf, Error> {
     // The manifest lives out-of-tree, so every path it carries must be
     // absolute — including the mount, which callers may pass as ".".
     let project_dir = fs::canonicalize(project_dir).map_err(Error::Io)?;
-    let adapters = discover(&project_dir, bare_miss)?;
+    let adapters = discover(&project_dir)?;
     let core = stage_core(&project_dir)?;
     deploy::generate(&project_dir, &core, &adapters)
+}
+
+/// Regenerate a core-only manifest — no adapter guests.
+///
+/// The grammar fallback for `--help` / `--version` / `completions`
+/// when the full discovery fails: rendering the clap tree needs only
+/// the workflow guest, so a degraded deployment (an evicted store
+/// entry, lock drift) must not block operator help. The next
+/// successful full regeneration overwrites this manifest.
+pub fn regenerate_core_only(project_dir: &Path) -> Result<PathBuf, Error> {
+    let project_dir = fs::canonicalize(project_dir).map_err(Error::Io)?;
+    let core = stage_core(&project_dir)?;
+    deploy::generate(&project_dir, &core, &[])
 }
 
 /// Materialise the embedded workflow guest at the deployment tenant's
@@ -88,7 +85,12 @@ fn stage_core(project_dir: &Path) -> Result<PathBuf, Error> {
 ///    [`TargetAdapter::resolve`] / [`SourceAdapter::resolve`]. A
 ///    pinned identity is pre-probed against the global store so a
 ///    miss is the typed `adapter-not-installed` (never a fetch); a
-///    bare name that resolves nowhere follows `bare_miss`.
+///    bare name that resolves nowhere is skipped — bare names are the
+///    development posture, hydration never fetches them, and every
+///    project-scoped verb forwards through this regeneration, so a
+///    verb that never dispatches to the unresolved adapter must not
+///    abort on it. An orchestration that *does* dispatch to a skipped
+///    adapter fails inside the deployment at the seam call.
 /// 2. **`project.yaml.adapters:` prefetch pins** against their store
 ///    entries, with the axis sniffed from the component's exports —
 ///    prefetched identities are declared but unbound, so there is no
@@ -102,7 +104,7 @@ fn stage_core(project_dir: &Path) -> Result<PathBuf, Error> {
 /// verification pair from the hydration kernel — D4 verify-on-read
 /// plus the committed-lock gate (RFC-65 AC8) — before it can reach the
 /// manifest.
-fn discover(project_dir: &Path, bare_miss: BareMiss) -> Result<Vec<DeployGuest>, Error> {
+fn discover(project_dir: &Path) -> Result<Vec<DeployGuest>, Error> {
     let mut guests = Vec::new();
     let mut seen: BTreeSet<(&'static str, String)> = BTreeSet::new();
     let config = load_config(project_dir)?;
@@ -131,7 +133,7 @@ fn discover(project_dir: &Path, bare_miss: BareMiss) -> Result<Vec<DeployGuest>,
             Err(Error::Diag {
                 code: "adapter-not-found",
                 ..
-            }) if bare_miss == BareMiss::Skip && adapter_ref.version.is_none() => continue,
+            }) if adapter_ref.version.is_none() => continue,
             Err(err) => return Err(err),
         };
         if let Some(version) = adapter_ref.version.as_ref() {

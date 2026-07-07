@@ -40,15 +40,21 @@ pub fn repo_root() -> PathBuf {
 }
 
 /// Ensure the `specify-host` binary — the generic Omnia host layer the
-/// guest leg spawns (RFC-65 move 2) — is built beside the `specify`
-/// binary, so guest-routed tests work under a bare
+/// forwarding leg spawns (RFC-65 move 2) — is built beside the
+/// `specify` binary, so forwarded verbs work under a bare
 /// `cargo nextest run -p specify`. Self-building mirrors the echo-guest
 /// helper in `tests/guest.rs`; a full `cargo make test` has already
-/// built it.
+/// built it, and a present binary short-circuits the (per-test-process)
+/// cargo probe entirely.
 pub fn ensure_host_binary() {
     use std::sync::OnceLock;
     static BUILT: OnceLock<()> = OnceLock::new();
     BUILT.get_or_init(|| {
+        let exe = std::env::current_exe().expect("test executable has a path");
+        let profile_dir = exe.ancestors().nth(2).expect("test exe sits under <profile>/deps");
+        if profile_dir.join(format!("specify-host{}", std::env::consts::EXE_SUFFIX)).is_file() {
+            return;
+        }
         // No CARGO_TARGET_DIR override: the inherited environment
         // reproduces the outer test build, so the host lands beside the
         // `specify` binary `cargo_bin` resolves.
@@ -59,6 +65,31 @@ pub fn ensure_host_binary() {
             .expect("spawning specify-host build");
         assert!(status.success(), "specify-host build failed with status {status}");
     });
+}
+
+/// One `cursor-agent` stub on its own `PATH` dir, staged once per test
+/// process: answers `--version` (the model backend's connect probe)
+/// and fails any real invocation. Forwarded verbs spawn the composed
+/// host, whose cursor backend connects eagerly — pure workflow verbs
+/// never call the model, so the stub keeps every test hermetic without
+/// a real `cursor-agent` install.
+#[cfg(unix)]
+pub fn stub_cursor_agent_dir() -> &'static Path {
+    use std::os::unix::fs::PermissionsExt as _;
+    use std::sync::OnceLock;
+    static DIR: OnceLock<PathBuf> = OnceLock::new();
+    DIR.get_or_init(|| {
+        let dir = std::env::temp_dir().join(format!("specify-cursor-stub-{}", std::process::id()));
+        fs::create_dir_all(&dir).expect("create stub dir");
+        let stub = dir.join("cursor-agent");
+        fs::write(
+            &stub,
+            "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo \"cursor-agent 0.0.0-stub\"; exit 0; fi\nexit 1\n",
+        )
+        .expect("write stub");
+        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).expect("chmod stub");
+        dir
+    })
 }
 
 /// Convenience pointer to the staged `omnia.wasm` fixture component
@@ -156,9 +187,25 @@ fn cargo_target_dir() -> PathBuf {
 /// per test, which would otherwise defeat compiled-component reuse and
 /// make every WASI-dispatching test pay the full Cranelift compile.
 pub fn specify_cmd() -> Command {
+    // Any non-provisioning verb forwards to the workflow guest, which
+    // needs the `specify-host` binary beside the executable and a
+    // connectable model backend — the hermetic stub below.
+    ensure_host_binary();
     let mut cmd = Command::cargo_bin("specify").expect("cargo_bin(specify)");
     cmd.env_remove("SPECIFY_PLAN_DIR");
     cmd.env_remove("SPECIFY_FORMAT");
+    #[cfg(unix)]
+    {
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        let mut parts = vec![stub_cursor_agent_dir().to_path_buf()];
+        parts.extend(std::env::split_paths(&path));
+        cmd.env("PATH", std::env::join_paths(parts).expect("join PATH"))
+    };
+    // Forwarded verbs spawn one composed host each; the host's
+    // background HTTP trigger must bind an ephemeral port or parallel
+    // tests collide on the default address (the loser pollutes stdout
+    // with the bind error ahead of the JSON envelope).
+    cmd.env("HTTP_ADDR", "127.0.0.1:0");
     cmd.env("SPECIFY_WASMTIME_CACHE", repo_root().join("target").join("wasmtime-cache"));
     // Pin the out-of-tree adapter/codex cache into a per-process temp
     // root so the developer's real OS cache is never touched and the
@@ -266,9 +313,19 @@ pub fn stamp_slice_outcome(
 /// Subcommand names beneath the given command path (empty slice for
 /// the top level), parsed from the `Commands:` section of clap's
 /// `--help` output. The verb inventory help tests assert against
-/// instead of exact clap description wording.
+/// instead of exact clap description wording. Runs from a per-process
+/// scratch dir: top-level `--help` forwards to the workflow guest, and
+/// the repo root's committed `omnia.toml` must not hijack the
+/// generated-manifest path the operator posture exercises.
 pub fn help_verbs(path: &[&str]) -> Vec<String> {
-    let assert = specify_cmd().args(path).arg("--help").assert().success();
+    use std::sync::OnceLock;
+    static SCRATCH: OnceLock<PathBuf> = OnceLock::new();
+    let scratch = SCRATCH.get_or_init(|| {
+        let dir = std::env::temp_dir().join(format!("specify-help-scratch-{}", std::process::id()));
+        fs::create_dir_all(&dir).expect("create help scratch dir");
+        dir
+    });
+    let assert = specify_cmd().current_dir(scratch).args(path).arg("--help").assert().success();
     let help = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8 help output");
     let mut verbs = Vec::new();
     let mut in_commands = false;

@@ -11,7 +11,7 @@
 # Paths resolve relative to this file. The workflow guest is built in-tree
 # (`cargo make build-guests`); the adapter guests are RFC-64 single-file
 # components release-built in the sibling augentic/specify-adapters
-# checkout — run `cargo make build-guests-release` there once (and after
+# checkout — run `cargo make release` there once (and after
 # any adapter change) to populate its `target/wasm32-wasip2/release/`.
 # The `specify` binary's guest leg honors a project-root omnia.toml like
 # this one over its transient assembly (DECISIONS.md §"One `specify`
@@ -28,35 +28,35 @@ link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]
 
 [[guest]]
 id = "source:intent"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_intent.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/intent.wasm"
 
 [[guest]]
 id = "source:documentation"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_documentation.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/documentation.wasm"
 
 [[guest]]
 id = "source:typescript"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_typescript.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/typescript.wasm"
 
 [[guest]]
 id = "source:screenshots"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_screenshots.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/screenshots.wasm"
 
 [[guest]]
 id = "source:captures"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_captures.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/captures.wasm"
 
 [[guest]]
 id = "target:contracts"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_contracts.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/contracts.wasm"
 
 [[guest]]
 id = "target:omnia"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_omnia.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/omnia.wasm"
 
 [[guest]]
 id = "target:vectis"
-source.path = "../specify-adapters/target/wasm32-wasip2/release/specify_vectis.wasm"
+source.path = "../specify-adapters/target/wasm32-wasip2/release/vectis.wasm"
 
 [[mount]]
 name = "."

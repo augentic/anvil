@@ -72,8 +72,12 @@ fn resolve_accepts_version_suffix() {
 fn retired_adapter_group_rejected() {
     // The `specify adapter {build,publish}` packaging group retired
     // with RFC-64 (publishing is `wkg publish` in the adapters repo);
-    // clap rejects the unknown command with exit 2.
-    let assert = specify_cmd().arg("adapter").arg("build").assert().failure();
+    // the forwarded argv is rejected by the guest's clap tree with exit
+    // 2. A neutral cwd keeps the repo's dev omnia.toml out of the
+    // forward path.
+    let cwd = tempfile::tempdir().expect("neutral cwd");
+    let assert =
+        specify_cmd().current_dir(cwd.path()).arg("adapter").arg("build").assert().failure();
     let code = assert.get_output().status.code().expect("exit code");
     assert_eq!(code, 2, "clap must reject the retired `adapter` group with exit 2, got {code}");
 }
@@ -81,7 +85,14 @@ fn retired_adapter_group_rejected() {
 #[test]
 fn retired_change_verb_rejected_by_clap() {
     // `specify change *` retires at 2.0 (workflow §What was cut and why).
-    let assert = specify_cmd().arg("change").arg("draft").arg("demo").assert().failure();
+    let cwd = tempfile::tempdir().expect("neutral cwd");
+    let assert = specify_cmd()
+        .current_dir(cwd.path())
+        .arg("change")
+        .arg("draft")
+        .arg("demo")
+        .assert()
+        .failure();
     let code = assert.get_output().status.code().expect("exit code");
     assert_eq!(code, 2, "clap must reject the retired `change` verb with exit 2, got {code}");
 }

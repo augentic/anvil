@@ -22,7 +22,7 @@ impl SourceAdapter {
     /// A pinned identity resolves the single-file store entry at
     /// `<store-root>/<name>@<version>.wasm` (verify-on-read included);
     /// a bare name resolves the development release build at
-    /// `target/wasm32-wasip2/release/specify_<name>.wasm` under the
+    /// `target/wasm32-wasip2/release/<name>.wasm` under the
     /// project or the sibling `specify-adapters` checkout. Metadata
     /// comes from the component's cached `describe` answer.
     ///
@@ -108,9 +108,9 @@ pub fn component_cache_entry(project_dir: &Path, name: &str) -> PathBuf {
 
 /// The development release-build candidates for a bare-name identity.
 ///
-/// `target/wasm32-wasip2/release/specify_<name>.wasm` under the project
+/// `target/wasm32-wasip2/release/<name>.wasm` under the project
 /// itself, then under the sibling `specify-adapters` checkout. Built by
-/// `cargo make build-guests-release` in the owning repo.
+/// `cargo make release` in the owning repo.
 #[must_use]
 pub fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
     let file = dev_component_filename(name);
@@ -123,11 +123,10 @@ pub fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
 }
 
 /// The cargo artifact filename for an adapter guest crate named
-/// `specify-<name>` — `specify_<name>.wasm` with kebab dashes folded to
-/// underscores.
+/// `<name>` — `<name>.wasm` with kebab dashes folded to underscores.
 #[must_use]
 pub fn dev_component_filename(name: &str) -> String {
-    format!("specify_{}.wasm", name.replace('-', "_"))
+    format!("{}.wasm", name.replace('-', "_"))
 }
 
 /// Locate the single component file for an identity.
@@ -188,7 +187,7 @@ fn locate(
         code: "adapter-not-found",
         detail: format!(
             "adapter `{name}` (axis `{axis}`) has no development artifact at {probed}; build it \
-             with `cargo make build-guests-release` or pin a published version \
+             with `cargo make release` in the adapters repo or pin a published version \
              (`specify:{name}@<semver>`)",
         ),
     })

@@ -13,8 +13,7 @@ use specify_workflow::registry::Registry;
 use specify_workflow::registry::workspace::{regenerate_topology_lock, sync_projects};
 
 use crate::runtime::cli::Format;
-use crate::runtime::commands::agents;
-use crate::runtime::commands::deploy::{self, BareMiss};
+use crate::runtime::commands::{agents, deploy};
 use crate::runtime::context::Ctx;
 use crate::runtime::output;
 
@@ -61,7 +60,7 @@ pub(super) fn run(args: &Args<'_>) -> Result<()> {
     let result = init(opts, Timestamp::now())?;
     // Regenerate the deployment manifest from the freshly hydrated +
     // scaffolded declared set (RFC-65: init is a manifest trigger).
-    deploy::regenerate(&project_dir, BareMiss::Skip)?;
+    deploy::regenerate(&project_dir)?;
     let current_dir = std::env::current_dir().map_err(Error::Io)?;
     let context_skip_reason = generate_initial_context(args.format, &current_dir)?;
 

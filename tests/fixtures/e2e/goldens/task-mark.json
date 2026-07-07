@@ -1,5 +1,5 @@
 {
   "idempotent": true,
   "marked": "1.1",
-  "new-content-path": "<TEMPDIR>/.specify/slices/my-slice/tasks.md"
+  "new-content-path": "./.specify/slices/my-slice/tasks.md"
 }

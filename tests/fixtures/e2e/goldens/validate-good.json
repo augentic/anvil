@@ -27,12 +27,12 @@
         "kind": "snippet",
         "value": "Semantic check — requires agent judgment"
       },
-      "fingerprint": "sha256:a3c693e96432be9ea84df255ba442430f4ef6d675bc54882e17ce68e06fe8bd6",
+      "fingerprint": "sha256:2f9c7db1bcae864d7af7a12fdd9bb114a9fad91290e8560a75bcc060ed5826a9",
       "id": "DIAG-0002",
       "impact": "Semantic check — requires agent judgment",
       "kind": "review",
       "location": {
-        "path": "specs/login/spec.md"
+        "path": ".specify/slices/my-slice/specs/login/spec.md"
       },
       "remediation": "Uses SHALL/MUST language for normative requirements",
       "rule-id": "specs.uses-normative-language",

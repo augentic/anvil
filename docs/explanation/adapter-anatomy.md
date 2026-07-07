@@ -103,7 +103,7 @@ Target-specific structured outputs are produced by `build` alongside the code th
 <p class="pipeline-caption">Sources survey/extract into evidence; core synthesis reads target guidance; target build/merge lands code.</p>
 </div>
 
-The adapter resolver (`crates/workflow/src/adapter/`) routes by binding axis. There is no `if name == "intent"` branch in core — the first-party adapters are published components (`specify:intent`, `specify:documentation`, `specify:typescript`, `specify:screenshots`, `specify:captures`, `specify:omnia`, `specify:vectis`, `specify:contracts`) that resolve through the same code path as a third-party adapter: a pinned identity resolves the global single-file store entry (`<store-root>/<name>@<version>.wasm`, verify-on-read), a bare name resolves the project component cache then the sibling/in-repo development release build (`target/wasm32-wasip2/release/specify_<name>.wasm`).
+The adapter resolver (`crates/workflow/src/adapter/`) routes by binding axis. There is no `if name == "intent"` branch in core — the first-party adapters are published components (`specify:intent`, `specify:documentation`, `specify:typescript`, `specify:screenshots`, `specify:captures`, `specify:omnia`, `specify:vectis`, `specify:contracts`) that resolve through the same code path as a third-party adapter: a pinned identity resolves the global single-file store entry (`<store-root>/<name>@<version>.wasm`, verify-on-read), a bare name resolves the project component cache then the sibling/in-repo development release build (`target/wasm32-wasip2/release/<name>.wasm`).
 
 CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` locate the component and report its resolved path, location, and version. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and the reconcile leg inside `specify plan author` write slice bindings into `plan.yaml`.
 
@@ -160,7 +160,7 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 3. **Implement the operations.** The operation set is closed per axis by the WIT contract — sources implement `survey` / `extract`, targets implement `guidance` / `build` / `merge`.
 4. **Write the prompts.** Each operation prompt is a markdown file compiled into the adapter guest. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `guidance` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration.
-6. **Validate.** Build with `cargo make build-guests-release`, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `make lint` runs the documentation predicates.
+6. **Validate.** Build with `cargo make release` in the adapters repo, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `make lint` runs the documentation predicates.
 
 ## Adapter manifests vs Cursor plugin manifests
 

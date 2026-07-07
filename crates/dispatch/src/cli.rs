@@ -4,14 +4,13 @@
 
 use std::str::FromStr;
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use specify_model::evidence::ClaimKind;
 
 use crate::commands::adapters::cli::AdaptersAction;
 use crate::commands::archive::cli::ArchiveAction;
 use crate::commands::journal::cli::JournalAction;
-use crate::commands::lint::cli::LintAction;
 use crate::commands::plan::cli::PlanAction;
 use crate::commands::plugins::cli::PluginsAction;
 use crate::commands::registry::cli::RegistryAction;
@@ -22,13 +21,14 @@ use crate::commands::target::cli::TargetAction;
 use crate::commands::workspace::cli::WorkspaceAction;
 pub use crate::output::Format;
 
+/// The one-line `about` string shared by the full grammar here and the
+/// native provisioning grammar in the `specify` binary, so `--help`
+/// reads identically on both sides of the seam.
+pub const ABOUT: &str = "Deterministic primitives for spec-driven development";
+
 /// Parsed `specify` invocation: the subcommand plus the global flags.
 #[derive(Debug, Parser)]
-#[command(
-    name = "specify",
-    version,
-    about = "Deterministic primitives for spec-driven development"
-)]
+#[command(name = "specify", version, about = ABOUT)]
 pub struct Cli {
     /// The verb to run.
     #[command(subcommand)]
@@ -51,9 +51,14 @@ pub struct Cli {
     pub plan_dir: Option<std::path::PathBuf>,
 }
 
-/// The full `specify` verb tree — every family, native-only ones
-/// included, so `--help` and shell completions see one grammar
-/// wherever the parse runs.
+/// The full `specify` operational verb tree.
+///
+/// The provisioning families are included, so `--help` and shell
+/// completions see one grammar wherever the parse runs. Provisioning
+/// verbs are *executed* natively only: the guest router refuses them,
+/// and the binary's first-token triage never forwards them. `lint
+/// framework` (framework CI tooling) lives only on the native
+/// provisioning grammar, off this operational surface.
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Initialize .specify/ in a project.
@@ -63,65 +68,7 @@ pub enum Commands {
     /// workspace. The two are mutually exclusive — clap enforces the
     /// `<adapter>` xor `--workspace` shape and exits `2` with its
     /// standard parse-error diagnostic when the invariant is violated.
-    Init {
-        /// Adapter identifier. First-party shorthand (`omnia`,
-        /// `omnia@1.0.0` — bare name resolves the single installed
-        /// identity, a semver pin records the full `name@<semver>`)
-        /// resolves to the published adapter on GitHub. Also accepts a
-        /// local path
-        /// (`./adapters/targets/omnia`, `file://…`) or a full
-        /// `https://github.com/<owner>/<repo>/adapters/targets/<name>`
-        /// URL. Required unless `--workspace` or `--upgrade` is set;
-        /// mutually exclusive with `--workspace`.
-        #[arg(
-            conflicts_with = "workspace",
-            required_unless_present_any = ["workspace", "upgrade"]
-        )]
-        adapter: Option<String>,
-        /// Project name (defaults to the project directory name)
-        #[arg(long)]
-        name: Option<String>,
-        /// Project description (tech stack, architecture, testing)
-        #[arg(long)]
-        description: Option<String>,
-        /// Scaffold a registry-only workspace instead of a regular
-        /// project. Refuses to run when `.specify/` already exists.
-        #[arg(long)]
-        workspace: bool,
-        /// Also distribute the framework `core/` pack
-        /// (`codex/rules/core/`) into the project codex cache
-        /// alongside the shared `universal/` pack. Default off —
-        /// consumer projects carry only `UNI-*` rules. Ignored with
-        /// `--workspace`.
-        #[arg(long, conflicts_with = "workspace")]
-        include_framework: bool,
-        /// Comma-separated target platforms (e.g. core,ios,android).
-        /// Required when the target adapter declares platforms as mandatory.
-        /// Run `specify init <adapter>` without --platforms to see the
-        /// target's allowed and default sets.
-        #[arg(long, conflicts_with = "workspace")]
-        platforms: Option<String>,
-        /// Re-entry version bump: over an already-populated `.specify/`,
-        /// rewrite `project.yaml.specify` to this binary's
-        /// version (preserving every other field) and regenerate
-        /// `AGENTS.md` only when absent — scaffolding nothing else and
-        /// never re-fetching the adapter cache. A project already at the
-        /// running version is a no-op. Mutually exclusive with every
-        /// other `init` argument except `--platforms`.
-        #[arg(
-            long,
-            conflicts_with_all = ["adapter", "workspace", "name", "description", "include_framework"]
-        )]
-        upgrade: bool,
-        /// Run only the project-scoped scaffold leg (`.specify/`,
-        /// `project.yaml`, workspace `registry.yaml`) — no hydration,
-        /// no deployment-manifest generation, no `AGENTS.md` context
-        /// generation. The guest-invocable half of `init` (RFC-65
-        /// move 1): the provisioning front calls it through the host
-        /// form after hydration. Hidden — not an operator-facing verb.
-        #[arg(long, hide = true, conflicts_with = "upgrade")]
-        scaffold_only: bool,
-    },
+    Init(InitArgs),
 
     /// Global adapter-store provisioning (RFC-65). `sync` is the
     /// explicit hydration trigger: it hydrates every pinned identity
@@ -162,19 +109,6 @@ pub enum Commands {
         /// Nested action for this verb family.
         #[command(subcommand)]
         action: RulesAction,
-    },
-
-    /// Deterministic lint (`specify lint` v1). Resolves applicable codex
-    /// rules, builds a `WorkspaceModel`, evaluates deterministic hints,
-    /// and emits the `DiagnosticReport` envelope. Read-only.
-    ///
-    /// Requires an explicit subcommand: `project` (downstream consumer
-    /// scan) or `framework` (authoring scan over `augentic/specify`).
-    #[command(subcommand_required = true)]
-    Lint {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: LintAction,
     },
 
     /// Slice lifecycle operations — one `refine → build → merge` loop.
@@ -246,21 +180,7 @@ pub enum Commands {
     /// reports the detected channel, the target version, and the exact
     /// command(s) that would run without changing anything; applying
     /// requires `--yes` (the verb never prompts).
-    Upgrade {
-        /// Install channel to upgrade. `auto` detects it from the
-        /// running binary's path; `cargo` / `brew` / `binary` force a
-        /// specific strategy.
-        #[arg(long, value_enum, default_value = "auto")]
-        channel: ChannelArg,
-        /// Apply the upgrade. Required to mutate the binary; the verb
-        /// never prompts interactively.
-        #[arg(long)]
-        yes: bool,
-        /// Report the detected channel, target version, and the
-        /// command(s) that would run without changing anything.
-        #[arg(long)]
-        dry_run: bool,
-    },
+    Upgrade(UpgradeArgs),
 
     /// Inspect and invalidate the Cursor plugin cache.
     ///
@@ -274,6 +194,97 @@ pub enum Commands {
         #[command(subcommand)]
         action: PluginsAction,
     },
+}
+
+/// Flag surface for `specify init`.
+///
+/// One shared struct so the full grammar here and the native
+/// provisioning grammar in the `specify` binary parse byte-identical
+/// argv (the binary executes the verb; this grammar carries it for
+/// `--help` and completions, with the guest refusing everything but
+/// the hidden `--scaffold-only` leg).
+#[derive(Debug, Args)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "clap flag surface: each bool is an independent operator-facing CLI flag, not state"
+)]
+pub struct InitArgs {
+    /// Adapter identifier. First-party shorthand (`omnia`,
+    /// `omnia@1.0.0` — bare name resolves the single installed
+    /// identity, a semver pin records the full `name@<semver>`)
+    /// resolves to the published adapter on GitHub. Also accepts a
+    /// local path
+    /// (`./adapters/targets/omnia`, `file://…`) or a full
+    /// `https://github.com/<owner>/<repo>/adapters/targets/<name>`
+    /// URL. Required unless `--workspace` or `--upgrade` is set;
+    /// mutually exclusive with `--workspace`.
+    #[arg(
+        conflicts_with = "workspace",
+        required_unless_present_any = ["workspace", "upgrade"]
+    )]
+    pub adapter: Option<String>,
+    /// Project name (defaults to the project directory name)
+    #[arg(long)]
+    pub name: Option<String>,
+    /// Project description (tech stack, architecture, testing)
+    #[arg(long)]
+    pub description: Option<String>,
+    /// Scaffold a registry-only workspace instead of a regular
+    /// project. Refuses to run when `.specify/` already exists.
+    #[arg(long)]
+    pub workspace: bool,
+    /// Also distribute the framework `core/` pack
+    /// (`codex/rules/core/`) into the project codex cache
+    /// alongside the shared `universal/` pack. Default off —
+    /// consumer projects carry only `UNI-*` rules. Ignored with
+    /// `--workspace`.
+    #[arg(long, conflicts_with = "workspace")]
+    pub include_framework: bool,
+    /// Comma-separated target platforms (e.g. core,ios,android).
+    /// Required when the target adapter declares platforms as mandatory.
+    /// Run `specify init <adapter>` without --platforms to see the
+    /// target's allowed and default sets.
+    #[arg(long, conflicts_with = "workspace")]
+    pub platforms: Option<String>,
+    /// Re-entry version bump: over an already-populated `.specify/`,
+    /// rewrite `project.yaml.specify` to this binary's
+    /// version (preserving every other field) and regenerate
+    /// `AGENTS.md` only when absent — scaffolding nothing else and
+    /// never re-fetching the adapter cache. A project already at the
+    /// running version is a no-op. Mutually exclusive with every
+    /// other `init` argument except `--platforms`.
+    #[arg(
+        long,
+        conflicts_with_all = ["adapter", "workspace", "name", "description", "include_framework"]
+    )]
+    pub upgrade: bool,
+    /// Run only the project-scoped scaffold leg (`.specify/`,
+    /// `project.yaml`, workspace `registry.yaml`) — no hydration,
+    /// no deployment-manifest generation, no `AGENTS.md` context
+    /// generation. The guest-invocable half of `init`: the
+    /// provisioning front calls it through the host form after
+    /// hydration. Hidden — not an operator-facing verb.
+    #[arg(long, hide = true, conflicts_with = "upgrade")]
+    pub scaffold_only: bool,
+}
+
+/// Flag surface for `specify upgrade` — shared with the native
+/// provisioning grammar exactly like [`InitArgs`].
+#[derive(Debug, Clone, Copy, Args)]
+pub struct UpgradeArgs {
+    /// Install channel to upgrade. `auto` detects it from the
+    /// running binary's path; `cargo` / `brew` / `binary` force a
+    /// specific strategy.
+    #[arg(long, value_enum, default_value = "auto")]
+    pub channel: ChannelArg,
+    /// Apply the upgrade. Required to mutate the binary; the verb
+    /// never prompts interactively.
+    #[arg(long)]
+    pub yes: bool,
+    /// Report the detected channel, target version, and the
+    /// command(s) that would run without changing anything.
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 /// `specify upgrade --channel` value.

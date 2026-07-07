@@ -31,7 +31,7 @@ Both build envelopes are closed-shape YAML, keyed on `(slice, target)`, schema-v
 `SourceAdapter::resolve(adapter_ref, project_dir)` and `TargetAdapter::resolve(adapter_ref, project_dir)` are the per-axis entry points; each resolves the identity to exactly one `.wasm` component. A pinned `(name, version)` resolves only the global single-file store entry `<store-root>/<name>@<version>.wasm` (D4 verify-on-read against the recorded byte digest). A bare name resolves the development probes, in order:
 
 1. `<project-cache>/components/<name>.wasm` — the project component cache (an operator-supplied local component mirrored at init).
-2. `target/wasm32-wasip2/release/specify_<name>.wasm` under the project, then under the sibling `specify-adapters` checkout — live development release builds (`cargo make build-guests-release`).
+2. `target/wasm32-wasip2/release/<name>.wasm` under the project, then under the sibling `specify-adapters` checkout — live development release builds (`cargo make release` in the adapters repo).
 
 Resolution is project-local plus the global store; there is no environment-variable fallback to an out-of-tree framework checkout. When no probe matches, resolution fails with `adapter-not-found`, naming every probed path.
 
@@ -116,7 +116,7 @@ Kebab-case discriminants on the JSON envelope; `snake_case` Rust variants bridge
 
 ## Sandboxing
 
-The surviving WASI tool runner (project-scope `tools[]` behind `specify lint project`) pre-opens `$PROJECT_DIR` per the tool's declared `permissions`. No host environment leaks. See [`DECISIONS.md` §"`$CAPABILITY_DIR` replaces `$ADAPTER_DIR`"](../../DECISIONS.md#capability_dir-replaces-adapter_dir). Source-operation sandboxing is guest-owned: the composed runtime's adapter guests see only the preopens the host wiring grants them.
+The surviving WASI tool runner (project-scope `tools[]`; orphaned by the `lint project` retirement, kept until the declared-tool surface's fate is decided) pre-opens `$PROJECT_DIR` per the tool's declared `permissions`. No host environment leaks. See [`DECISIONS.md` §"`$CAPABILITY_DIR` replaces `$ADAPTER_DIR`"](../../DECISIONS.md#capability_dir-replaces-adapter_dir). Source-operation sandboxing is guest-owned: the composed runtime's adapter guests see only the preopens the host wiring grants them.
 
 ## CLI surface
 

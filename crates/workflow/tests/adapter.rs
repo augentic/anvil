@@ -280,16 +280,16 @@ fn target_metadata_from_describe_answer() {
 
 #[test]
 fn dev_component_paths_shape() {
-    // The development probe: `target/wasm32-wasip2/release/specify_<name>.wasm`
+    // The development probe: `target/wasm32-wasip2/release/<name>.wasm`
     // under the project, then the sibling `specify-adapters` checkout.
     let project = Path::new("/repos/consumer");
     let paths = specify_workflow::adapter::dev_component_paths(project, "demo-target");
     assert_eq!(
         paths[0],
-        Path::new("/repos/consumer/target/wasm32-wasip2/release/specify_demo_target.wasm")
+        Path::new("/repos/consumer/target/wasm32-wasip2/release/demo_target.wasm")
     );
     assert_eq!(
         paths[1],
-        Path::new("/repos/specify-adapters/target/wasm32-wasip2/release/specify_demo_target.wasm")
+        Path::new("/repos/specify-adapters/target/wasm32-wasip2/release/demo_target.wasm")
     );
 }

@@ -1,5 +1,6 @@
-//! Triage-main integration tests: guest-owned verbs route through the
-//! composed deployment, native verbs stay in-process.
+//! Forwarding-front integration tests: every non-provisioning verb
+//! forwards unparsed through the composed deployment, native
+//! provisioning verbs stay in-process (RFC-65 move 5, AC3).
 //!
 //! The guest leg spawns the generic `specify-host` binary (RFC-65
 //! move 2), whose cursor backend needs `cursor-agent` on `PATH` at
@@ -79,8 +80,8 @@ fn free_port() -> u16 {
     listener.local_addr().expect("local addr").port()
 }
 
-// The guest leg end to end: `plan execute` (refused natively with
-// `argument`/exit 2) reaches the workflow guest inside the composed
+// The forwarding leg end to end: `plan execute` (not on the native
+// provisioning grammar) reaches the workflow guest inside the composed
 // deployment, fails there against the empty mount, and the guest's
 // envelope and exit code pass through — proving triage routing, the
 // generated-manifest assembly, and the exit-code passthrough at once.
@@ -182,6 +183,34 @@ fn pinned_store_miss_is_not_installed() {
     );
 }
 
+// Operator help stays whole on a degraded deployment: with the same
+// dangling pin, `--help` falls back to a core-only manifest and the
+// guest's clap tree renders the grammar (exit 0) instead of the
+// discovery failure.
+#[test]
+fn help_survives_pinned_store_miss() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    let specify_dir = project.path().join(".specify");
+    fs::create_dir_all(&specify_dir).expect("mkdir .specify");
+    fs::write(
+        specify_dir.join("project.yaml"),
+        "name: demo\nadapter: demo-missing@9.9.9\nspecify: 0.1.0\n",
+    )
+    .expect("write project.yaml");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("PATH", stub_path(stub.path()))
+        .arg("--help")
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(0), "--help renders on a core-only fallback");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Usage:"), "the guest clap tree renders help:\n{stdout}");
+}
+
 // The background HTTP trigger in command mode: with a discovered
 // adapter guest exporting `wasi:http` the trigger binds an ephemeral
 // port and logs its listening line while the CLI guest runs. The echo
@@ -218,24 +247,28 @@ fn guest_verb_http_trigger_background() {
     assert!(combined.contains("not-initialized"), "the guest envelope must reach stderr");
 }
 
-// Triage routing for the full guest-owned set: with no `cursor-agent`
-// on PATH each verb fails at backend connect *inside* the spawned host
-// (its stderr names the missing agent; exit 1 passes through) —
-// reaching the composed-deployment leg at all distinguishes it from
-// the native `argument` refusal.
+// AC3, forwarding half: workflow verbs are NOT on the native
+// provisioning grammar and forward to the composed-deployment leg.
+// With no `cursor-agent` on PATH each verb fails at backend connect
+// *inside* the spawned host (its stderr names the missing agent; exit 1
+// passes through) — reaching the composed-deployment leg at all proves
+// no native envelope served the verb.
 #[test]
-fn guest_owned_verbs_route_to_guest_leg() {
+fn workflow_verbs_forward_to_guest_leg() {
     ensure_host_binary();
     let empty = tempdir().expect("empty PATH dir");
     let project = tempdir().expect("project dir");
     for argv in [
         vec!["plan", "execute"],
+        vec!["plan", "status"],
         vec!["plan", "author", "demo-change", "--intent", "demo"],
         vec!["slice", "refine", "demo-slice"],
         vec!["slice", "build", "demo-slice"],
         vec!["slice", "merge", "run", "demo-slice"],
         vec!["source", "survey", "demo-source"],
         vec!["source", "extract", "demo-source", "demo-lead", "--slice", "demo-slice"],
+        vec!["journal", "show"],
+        vec!["registry", "validate"],
     ] {
         let output = specify_cmd()
             .current_dir(project.path())
@@ -497,8 +530,10 @@ fn manifest_escapes_hostile_paths() {
     );
 }
 
-// Native residue is untouched by triage: a non-guest verb dispatches
-// in-process and needs no `cursor-agent`, no guests, no deployment.
+// AC3, native half: a provisioning verb dispatches in-process and
+// needs no `cursor-agent`, no guests, no deployment — with an empty
+// PATH the native envelope still renders (a forwarded verb would die
+// at the host's backend connect naming `cursor-agent`).
 #[test]
 fn native_verbs_stay_in_process() {
     let empty = tempdir().expect("empty PATH dir");
@@ -507,11 +542,92 @@ fn native_verbs_stay_in_process() {
     let output = specify_cmd()
         .current_dir(project.path())
         .env("PATH", empty.path())
-        .args(["plan", "status", "--format", "json"])
+        .args(["--format", "json", "adapters", "sync"])
         .output()
         .expect("running specify");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(1), "output: {output:?}");
     let envelope = parse_json(&output.stderr);
     assert_eq!(envelope["error"], "not-initialized", "native dispatch must run in-process");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("cursor-agent"),
+        "a native verb must never reach the composed-deployment leg:\n{stderr}"
+    );
+}
+
+// AC3, grammar half: the native provisioning grammar carries exactly
+// the closed provisioning set — the four capability-fenced verbs, the
+// acknowledged workspace residue, and the hidden `lint framework` dev
+// tool — and the triage constant matches it verb for verb.
+#[test]
+fn native_grammar_is_the_provisioning_set() {
+    use clap::CommandFactory as _;
+
+    let command = specify::runtime::cli::Cli::command();
+    let mut verbs: Vec<String> =
+        command.get_subcommands().map(|sub| sub.get_name().to_string()).collect();
+    verbs.sort();
+    assert_eq!(
+        verbs,
+        ["adapters", "init", "lint", "plugins", "upgrade", "workspace"],
+        "the native grammar must carry exactly the provisioning set"
+    );
+
+    let lint = command.get_subcommands().find(|sub| sub.get_name() == "lint").expect("lint arm");
+    assert!(lint.is_hide_set(), "`lint framework` is dev tooling, hidden from operator help");
+
+    let mut triage: Vec<&str> = specify::runtime::cli::NATIVE_VERBS.to_vec();
+    triage.sort_unstable();
+    assert_eq!(
+        triage,
+        ["adapters", "init", "lint", "plugins", "upgrade", "workspace"],
+        "the first-token triage set must match the native grammar"
+    );
+}
+
+// Usage-error passthrough: a malformed *forwarded* invocation parses in
+// the guest, whose `try_parse` maps clap's usage error onto exit 2
+// through the p3 `wasi:cli/exit` seam — the code and the usage text
+// both travel back verbatim.
+#[test]
+fn forwarded_usage_error_exits_2() {
+    ensure_host_binary();
+    let project = tempdir().expect("project dir");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env_remove("RUST_LOG")
+        .args(["plan", "definitely-not-a-subcommand"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(2), "clap usage errors must exit 2: {output:?}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Usage:") && stderr.contains("specify plan"),
+        "the guest's clap usage text must pass through (with the `specify` bin name):\n{stderr}"
+    );
+}
+
+// `--version` forwards like any other non-provisioning argv: the guest
+// grammar answers with the shared crate version on stdout and exit 0.
+#[test]
+fn version_forwards_to_guest() {
+    ensure_host_binary();
+    let project = tempdir().expect("project dir");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env_remove("RUST_LOG")
+        .arg("--version")
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(0), "output: {output:?}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.trim() == format!("specify {}", env!("CARGO_PKG_VERSION")),
+        "--version must serve the shared grammar's version line:\n{stdout}"
+    );
 }

@@ -277,11 +277,11 @@ async fn scaffold_regular() -> Result<()> {
     // metadata the guest cannot dispatch for.
     let dev_dir = project.root.join("target/wasm32-wasip2/release");
     fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-    let component = dev_dir.join("specify_demo.wasm");
+    let component = dev_dir.join("demo.wasm");
     fs::write(&component, b"\0asm-component").expect("stage component");
     let digest = specify_schema::cache::file_content_digest(&component);
     fs::write(
-        dev_dir.join("specify_demo.wasm.describe.json"),
+        dev_dir.join("demo.wasm.describe.json"),
         format!("{{ \"digest\": \"{digest}\", \"manifest\": {{}} }}"),
     )
     .expect("stage describe sidecar");

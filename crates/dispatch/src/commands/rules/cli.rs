@@ -25,29 +25,6 @@ pub enum RulesAction {
     /// at the `Cli` level surfaces as an explicit argument error so
     /// the closed JSON-only contract stays visible.
     Export(ExportArgs),
-
-    /// Materialize (or refresh) the shared codex into the out-of-tree
-    /// project codex cache `<project-cache>/codex/`, pinned to this
-    /// binary's version (codex root resolution, RM-07).
-    ///
-    /// Writes `codex/rules/universal/` (and, with
-    /// `--include-framework`, `core/`) from the packs embedded in the
-    /// binary so the resolver's rules-root probe finds shared `UNI-*`
-    /// rules without `--rules-root`. Requires an initialised
-    /// `.specify/`; writes only under the out-of-tree
-    /// `<project-cache>/codex/`.
-    Sync(SyncArgs),
-}
-
-/// Flag surface for `specify rules sync`.
-#[derive(Debug, Clone, Copy, Args)]
-pub struct SyncArgs {
-    /// Also materialize the framework `core/` pack
-    /// (`codex/rules/core/`) alongside the always-materialized
-    /// `universal/` pack. Default off — consumer projects carry only
-    /// `UNI-*` rules.
-    #[arg(long)]
-    pub include_framework: bool,
 }
 
 /// Flag surface for `specify rules export`. Grouped into one struct so
@@ -60,7 +37,7 @@ pub struct ExportArgs {
     /// resolver probes the project-local monorepo
     /// `codex/rules/universal/` tree, then the distributed
     /// out-of-tree codex cache `<project-cache>/codex/` (populated by `specify init`
-    /// / `specify rules sync`); failing both, exits with
+    /// / `specify adapters sync`); failing both, exits with
     /// `rules-root-required`.
     #[arg(long)]
     pub rules_root: Option<PathBuf>,

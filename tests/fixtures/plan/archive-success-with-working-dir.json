@@ -1,6 +1,6 @@
 {
-  "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
-  "archived-plans-dir": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>",
+  "archived": "./.specify/archive/plans/demo-<YYYYMMDD>.yaml",
+  "archived-plans-dir": "./.specify/archive/plans/demo-<YYYYMMDD>",
   "plan": {
     "name": "demo"
   }

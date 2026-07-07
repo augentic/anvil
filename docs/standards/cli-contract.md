@@ -46,7 +46,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Source / target adapters and declared tools
 
 - `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates a manifest and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence (the two-phase `--phase` envelope and the isolated `source preview` verb retired at the cutover).
-- Declared WASI tools — a project declares tools in `.specify/project.yaml` (project scope, a `tools[]` array); `specify lint project` resolves and runs them when a `kind: tool` rule hint names one. Permissions are directory preopens with `$PROJECT_DIR`; the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Object declarations may pin `sha256`. The `extension` verb family and adapter-scope declarations retired at the cutover — adapter helpers are in-guest library code.
+- Declared WASI tools — a project declares tools in `.specify/project.yaml` (project scope, a `tools[]` array). The one runner (`specify lint project`) retired from the operational surface, so no verb resolves or runs declared tools today; the declaration shape and the `specify-registry` runner survive only until the `tools[]` surface's fate is decided. Permissions are directory preopens with `$PROJECT_DIR`; the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Object declarations may pin `sha256`. The `extension` verb family and adapter-scope declarations retired at the cutover — adapter helpers are in-guest library code.
 
 ### Journal
 

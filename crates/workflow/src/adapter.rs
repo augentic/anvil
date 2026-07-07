@@ -17,7 +17,7 @@
 //! `(name, version)` resolves the single-file global store entry at
 //! `<store-root>/<name>@<version>.wasm` (RFC-48 D5, verify-on-read
 //! included); a bare name resolves the development release build at
-//! `target/wasm32-wasip2/release/specify_<name>.wasm` under the project
+//! `target/wasm32-wasip2/release/<name>.wasm` under the project
 //! or the sibling `specify-adapters` checkout.
 //!
 //! [DECISIONS.md §"Operations typed at parse boundary"]: ../../../DECISIONS.md#operations-typed-at-parse-boundary

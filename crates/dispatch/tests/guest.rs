@@ -196,7 +196,6 @@ fn native_only_verbs_refused_exit_two() {
     // argument-error envelope (wire code `argument`) and exits 2.
     for argv in [
         vec!["specify", "init", "omnia"],
-        vec!["specify", "lint", "framework"],
         vec!["specify", "workspace", "sync"],
         vec!["specify", "upgrade"],
     ] {
@@ -206,6 +205,12 @@ fn native_only_verbs_refused_exit_two() {
         };
         assert_eq!(exit, Exit::ArgumentError, "{argv:?} must refuse with the argument error code");
     }
+    // `lint framework` lives only on the native provisioning grammar,
+    // so the shared operational grammar refuses it at parse (clap
+    // unknown-command, exit 2) rather than at the route table.
+    let exit = parse(["specify", "lint", "framework"].map(String::from))
+        .expect_err("lint is off the operational grammar");
+    assert_eq!(exit.code(), 2, "unknown command exits 2 through the guest seam");
 }
 
 #[test]

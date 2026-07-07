@@ -26,7 +26,10 @@
 use std::future::Future;
 
 use specify_diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use specify_error::Error;
 use specify_model::evidence::AuthorityClass;
+use specify_workflow::adapter::describe::{DescribeAnswer, DescribeRequest};
+use specify_workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
 use specify_workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
 use specify_workflow::slice::build::wire::BUILD_VERSION;
 use specify_workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
@@ -88,6 +91,59 @@ impl TargetSeam for Provider {
             Ok(widen_report(&id, slice, report))
         }
     }
+}
+
+/// In-guest describe dispatch: the resolver's [`DescribeRequest`]
+/// routed through this world's `source` / `target` imports by the
+/// request's `adapter-id` (Omnia's host-mediated dispatch reaches the
+/// deployment guest exporting that id). Registered by the guest shim
+/// at startup, so `SourceAdapter::resolve` / `TargetAdapter::resolve`
+/// work for forwarded verbs against the read-only store and cache
+/// mounts.
+///
+/// Routing is by name, not by file: the answer comes from the
+/// *deployed* component with the request's id. Drive-time deployment
+/// assembly uses the same resolvers with the same precedence, so the
+/// deployed component and the resolver-located file agree for every
+/// bound or cached adapter; an unbound pin resolved diagnostically
+/// answers from its deployed namesake (same adapter family — the
+/// identity fields never come from describe).
+///
+/// # Errors
+///
+/// Infallible today: WIT `describe` carries no error channel, so a
+/// dispatch to an id absent from the deployment fails at the Omnia
+/// seam, not here.
+pub fn describe_runner(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
+    Ok(match request.axis {
+        Axis::Source => {
+            let manifest = source::describe(request.adapter_id);
+            DescribeAnswer {
+                specify_floor: manifest.specify_floor,
+                inputs: Vec::new(),
+                platforms: None,
+            }
+        }
+        Axis::Target => {
+            let manifest = target::describe(request.adapter_id);
+            DescribeAnswer {
+                specify_floor: manifest.specify_floor,
+                inputs: manifest
+                    .inputs
+                    .into_iter()
+                    .map(|input| BuildInputDeclaration {
+                        path: input.path,
+                        required: input.required,
+                    })
+                    .collect(),
+                platforms: manifest.platforms.map(|capability| PlatformsCapability {
+                    required: capability.required,
+                    allowed: capability.allowed.into_iter().map(map_platform).collect(),
+                    default: capability.default.into_iter().map(map_platform).collect(),
+                }),
+            }
+        }
+    })
 }
 
 /// WIT `types.error` → the seam's typed failure. Shared by both axes:

@@ -66,15 +66,12 @@ impl Project {
             .expect("write project.yaml");
         // Stage the sibling checkout's release-built omnia component at
         // the resolver's in-repo development probe
-        // (`<project>/target/wasm32-wasip2/release/specify_omnia.wasm`),
+        // (`<project>/target/wasm32-wasip2/release/omnia.wasm`),
         // which sits under the `"."` mount so the guest sees it too.
         let dev_dir = root.join("target/wasm32-wasip2/release");
         fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-        fs::copy(
-            common::adapter_component_wasm("target:omnia"),
-            dev_dir.join("specify_omnia.wasm"),
-        )
-        .expect("stage omnia component");
+        fs::copy(common::adapter_component_wasm("target:omnia"), dev_dir.join("omnia.wasm"))
+            .expect("stage omnia component");
         Self {
             _tmp: tmp,
             _cache: cache,
@@ -332,10 +329,7 @@ async fn adapter_shelves() -> Result<()> {
         )
         .await?;
         let name = init["result"]["serverInfo"]["name"].as_str().unwrap_or_default();
-        assert!(
-            name.contains(&format!("specify-{adapter}")),
-            "{route} identifies the {adapter} shelf: {init}"
-        );
+        assert!(name.starts_with(adapter), "{route} identifies the {adapter} shelf: {init}");
     }
     Ok(())
 }

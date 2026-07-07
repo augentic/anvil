@@ -14,9 +14,9 @@
 //!
 //! A bare first-party name (`omnia`) is the development shorthand: it
 //! resolves the sibling/in-repo release build
-//! (`target/wasm32-wasip2/release/specify_<name>.wasm`, built by
-//! `cargo make build-guests-release`). GitHub URLs are refused — a
-//! source checkout no longer yields a usable adapter artifact.
+//! (`target/wasm32-wasip2/release/<name>.wasm`, built by
+//! `cargo make release` in the adapters repo). GitHub URLs are refused —
+//! a source checkout no longer yields a usable adapter artifact.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -65,7 +65,7 @@ impl AdapterUri {
                     "GitHub adapter URIs are no longer supported (`{adapter}`): a source checkout \
                      does not yield a usable adapter artifact (RFC-64). Pin a published component \
                      (`specify:<name>@<semver>`), point at a local `.wasm` component file, or \
-                     build the development sibling with `cargo make build-guests-release`"
+                     build the development sibling with `cargo make release`"
                 ),
             });
         }
@@ -119,7 +119,7 @@ impl AdapterUri {
     }
 
     /// Resolve a bare first-party name to its development release
-    /// build (`target/wasm32-wasip2/release/specify_<name>.wasm` under
+    /// build (`target/wasm32-wasip2/release/<name>.wasm` under
     /// the project or the sibling `specify-adapters` checkout).
     fn from_dev(name: &str, project_dir: &Path) -> Result<Self, Error> {
         let candidates = dev_component_paths(project_dir, name);
@@ -133,9 +133,8 @@ impl AdapterUri {
                 code: "adapter-not-found",
                 detail: format!(
                     "bare adapter name `{name}` resolves the development release build, but no \
-                     component was found at {probed}; build it with `cargo make \
-                     build-guests-release` or pin a published version \
-                     (`specify:{name}@<semver>`)"
+                     component was found at {probed}; build it with `cargo make release` in the \
+                     adapters repo or pin a published version (`specify:{name}@<semver>`)"
                 ),
             });
         };

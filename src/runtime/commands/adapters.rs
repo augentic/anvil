@@ -17,10 +17,10 @@ use serde::Serialize;
 use specify_error::{Error, Result};
 use specify_registry::store;
 use specify_workflow::hydrate::{self, ResolvedAdapter};
-use specify_workflow::init::AdapterPackage;
+use specify_workflow::init::{AdapterPackage, CodexMeta, sync_codex};
 use specify_workflow::journal::{self, Event, EventKind};
 
-use crate::runtime::commands::deploy::{self, BareMiss};
+use crate::runtime::commands::deploy;
 use crate::runtime::context::Ctx;
 
 pub(super) fn sync(ctx: &Ctx, frozen: bool) -> Result<()> {
@@ -33,7 +33,14 @@ pub(super) fn sync(ctx: &Ctx, frozen: bool) -> Result<()> {
             .map_err(Error::from)
     };
     let resolved = hydrate::hydrate(&ctx.project_dir, &refs, frozen, &fetch)?;
-    let manifest = deploy::regenerate(&ctx.project_dir, BareMiss::Skip)?;
+    // The absorbed `rules sync` leg: re-materialize the embedded codex
+    // packs into the per-project cache, preserving the recorded
+    // `--include-framework` choice (a warm, version-matched cache is a
+    // no-op probe).
+    let include_framework =
+        CodexMeta::load(&ctx.project_dir).is_some_and(|meta| meta.include_framework);
+    sync_codex(&ctx.project_dir, include_framework, ctx.now())?;
+    let manifest = deploy::regenerate(&ctx.project_dir)?;
 
     let fetched = fetched.get();
     if !resolved.is_empty() {

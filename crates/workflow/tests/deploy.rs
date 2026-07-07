@@ -84,7 +84,11 @@ fn generates_manifest_into_project_cache() {
     assert_eq!(guests[2]["source"]["path"].as_str(), Some(intent.display().to_string().as_str()));
 
     let mounts = doc["mount"].as_array().expect("mount array");
-    assert_eq!(mounts.len(), 2, "the project mount plus the derived-cache mount");
+    assert_eq!(
+        mounts.len(),
+        3,
+        "the project mount, the derived-cache mount, and the read-only store mount"
+    );
     assert_eq!(mounts[0]["name"].as_str(), Some("."));
     assert_eq!(mounts[0]["path"].as_str(), Some(project.display().to_string().as_str()));
     assert_eq!(mounts[0]["writable"].as_bool(), Some(true));
@@ -96,6 +100,15 @@ fn generates_manifest_into_project_cache() {
         Some(specify_schema::cache::project_cache_dir(&project).display().to_string().as_str())
     );
     assert_eq!(mounts[1]["writable"].as_bool(), Some(true));
+    // RFC-65 widening: the global adapter store is mounted read-only so
+    // forwarded verbs resolve pinned identities in-guest (hydration
+    // stays native).
+    assert_eq!(mounts[2]["name"].as_str(), Some(specify_schema::cache::GUEST_STORE_MOUNT));
+    assert_eq!(
+        mounts[2]["path"].as_str(),
+        Some(specify_schema::cache::adapter_store_root().display().to_string().as_str())
+    );
+    assert_eq!(mounts[2]["writable"].as_bool(), Some(false));
 
     let routes = doc["route"]["http"].as_array().expect("http routes");
     let prefixes: Vec<(&str, &str)> = routes

@@ -205,13 +205,13 @@ pub fn register_describe_stub() {
 
 /// Stage a stub adapter component for `name` at the resolver's in-repo
 /// development probe (`<root>/target/wasm32-wasip2/release/
-/// specify_<name>.wasm`) and register the JSON-body describe stub, so a
+/// <name>.wasm`) and register the JSON-body describe stub, so a
 /// bare-name resolve inside `root` succeeds with an empty
 /// `DescribeAnswer`.
 pub fn stage_dev_component(root: &std::path::Path, name: &str) {
     register_describe_stub();
     let dev_dir = root.join("target/wasm32-wasip2/release");
     std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-    std::fs::write(dev_dir.join(format!("specify_{name}.wasm")), "{}")
+    std::fs::write(dev_dir.join(format!("{}.wasm", name.replace('-', "_"))), "{}")
         .expect("write stub component");
 }

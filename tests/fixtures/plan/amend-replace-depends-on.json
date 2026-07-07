@@ -13,6 +13,6 @@
   },
   "plan": {
     "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
+    "path": "./plan.yaml"
   }
 }

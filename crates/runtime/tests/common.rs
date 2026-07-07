@@ -95,7 +95,7 @@ fn target_dir() -> PathBuf {
 
 /// The sibling `augentic/specify-adapters` checkout carrying the adapter
 /// guest sources the Milestone F deployment composes (release-built via
-/// `cargo make build-guests-release`; RFC-64 removed the committed
+/// `cargo make release` there; RFC-64 removed the committed
 /// `guest.wasm` artifacts).
 ///
 /// # Panics
@@ -119,21 +119,22 @@ pub fn adapters_root() -> PathBuf {
 /// The sibling checkout's release-built component for one adapter,
 /// addressed by its manifest guest id (`source:intent`, `target:omnia`,
 /// …), mirroring the checked-in repo-root `omnia.toml` paths. Locate-
-/// only: the one-time `cargo make build-guests-release` in the sibling
-/// checkout is a developer prerequisite (this repo's tests never drive
-/// a build in the sibling workspace).
+/// only: the one-time `cargo make release` in the sibling checkout is a
+/// developer prerequisite (this repo's tests never drive a build in the
+/// sibling workspace).
 ///
 /// # Panics
 ///
 /// Panics when the id has no axis prefix or the artifact is absent.
 pub fn adapter_component_wasm(id: &str) -> PathBuf {
     let (_axis, name) = id.split_once(':').expect("adapter guest id is `<axis>:<name>`");
-    let path =
-        adapters_root().join("target/wasm32-wasip2/release").join(format!("specify_{name}.wasm"));
+    let path = adapters_root()
+        .join("target/wasm32-wasip2/release")
+        .join(format!("{}.wasm", name.replace('-', "_")));
     assert!(
         path.exists(),
-        "adapter component not found at {path}; run `cargo make build-guests-release` in the \
-         sibling specify-adapters checkout",
+        "adapter component not found at {path}; run `cargo make release` in the sibling \
+         specify-adapters checkout",
         path = path.display()
     );
     path

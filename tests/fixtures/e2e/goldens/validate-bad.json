@@ -45,12 +45,12 @@
         "kind": "snippet",
         "value": "one or more requirements have no scenarios"
       },
-      "fingerprint": "sha256:d7f4a4b5831429184ac09a8d2388c1478e5e17cd4a4606ea718dfcde1afc8eb5",
+      "fingerprint": "sha256:2f0d0a6b39e5eac4372afdcb670b50e0e0181994bddd78f0f5349923bdd8cc0d",
       "id": "DIAG-0003",
       "impact": "one or more requirements have no scenarios",
       "kind": "violation",
       "location": {
-        "path": "specs/login/spec.md"
+        "path": ".specify/slices/my-slice/specs/login/spec.md"
       },
       "remediation": "Every requirement has at least one scenario",
       "rule-id": "specs.requirements-have-scenarios",
@@ -64,12 +64,12 @@
         "kind": "snippet",
         "value": "one or more requirement IDs do not match `^REQ-[0-9]{3}$`"
       },
-      "fingerprint": "sha256:a2e95674f838eb042eba78e16239f32199def3ca976e29499f8275beb30225e4",
+      "fingerprint": "sha256:0548ea6a7bff4135aea5cb39f0ab8ad7d7f6db9fff6bdbc4ea983ccc4dcbaa94",
       "id": "DIAG-0004",
       "impact": "one or more requirement IDs do not match `^REQ-[0-9]{3}$`",
       "kind": "violation",
       "location": {
-        "path": "specs/login/spec.md"
+        "path": ".specify/slices/my-slice/specs/login/spec.md"
       },
       "remediation": "IDs use the `REQ-[0-9]{3}` format",
       "rule-id": "specs.ids-match-pattern",
@@ -84,12 +84,12 @@
         "kind": "snippet",
         "value": "Semantic check — requires agent judgment"
       },
-      "fingerprint": "sha256:a3c693e96432be9ea84df255ba442430f4ef6d675bc54882e17ce68e06fe8bd6",
+      "fingerprint": "sha256:2f9c7db1bcae864d7af7a12fdd9bb114a9fad91290e8560a75bcc060ed5826a9",
       "id": "DIAG-0005",
       "impact": "Semantic check — requires agent judgment",
       "kind": "review",
       "location": {
-        "path": "specs/login/spec.md"
+        "path": ".specify/slices/my-slice/specs/login/spec.md"
       },
       "remediation": "Uses SHALL/MUST language for normative requirements",
       "rule-id": "specs.uses-normative-language",

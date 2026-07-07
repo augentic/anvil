@@ -1,5 +1,7 @@
-//! Integration tests for the `specify rules` surface (`export` and the
-//! shared codex distribution). Shared helpers live in [`common`].
+//! Integration tests for the `specify rules export` surface and the
+//! shared codex distribution. Shared helpers live in [`common`].
+//! `rules sync` retired into the provisioning `adapters sync` verb,
+//! which re-materializes the codex on every run.
 
 mod codex {
     //! Integration tests for shared codex materialization (RM-07 /
@@ -7,10 +9,10 @@ mod codex {
     //! binary").
     //!
     //! Cover `specify init` materializing the binary-embedded packs into
-    //! the project codex cache, `specify rules sync` refreshing them
-    //! (version re-pin, `--include-framework`), and `specify rules
-    //! export` resolving the materialized shared rules without a
-    //! `--rules-root` flag.
+    //! the project codex cache, `specify adapters sync` refreshing them
+    //! (version re-pin, preserving the recorded `--include-framework`
+    //! choice), and `specify rules export` resolving the materialized
+    //! shared rules without a `--rules-root` flag.
 
     use std::fs;
     use std::path::Path;
@@ -71,48 +73,51 @@ mod codex {
     }
 
     #[test]
-    fn rules_sync_refreshes_codex_cache() {
+    fn adapters_sync_refreshes_codex_cache() {
         let project = tempdir().unwrap();
         init_project(project.path());
 
-        // Drop the materialized cache, then refresh it via `rules sync`
-        // (adapter-independent: the packs come from the binary).
+        // Drop the materialized cache, then refresh it via the absorbed
+        // `adapters sync` codex leg (adapter-independent: the packs come
+        // from the binary).
         fs::remove_dir_all(expected_cache_dir(project.path()).join("codex"))
             .expect("rm codex cache");
 
         let assert = specify_cmd()
             .current_dir(project.path())
-            .args(["--format", "json", "rules", "sync"])
+            .args(["--format", "json", "adapters", "sync"])
             .assert()
             .success();
         let value = parse_json(&assert.get_output().stdout);
-        assert_eq!(value["distributed"], true, "sync must rematerialize, got:\n{value:#}");
-        assert_eq!(
-            value["source"],
-            env!("CARGO_PKG_VERSION"),
-            "sync must pin the binary version, got:\n{value:#}"
-        );
+        assert_eq!(value["version"], 1, "adapters sync envelope, got:\n{value:#}");
 
         let cached = expected_cache_dir(project.path()).join(EMBEDDED_RULE_REL);
-        assert!(cached.is_file(), "rules sync must repopulate the codex cache");
+        assert!(cached.is_file(), "adapters sync must repopulate the codex cache");
+        let meta =
+            fs::read_to_string(expected_cache_dir(project.path()).join("codex/codex-meta.yaml"))
+                .expect("codex meta");
+        assert!(
+            meta.contains(env!("CARGO_PKG_VERSION")),
+            "the refreshed stamp must pin the binary version, got:\n{meta}"
+        );
     }
 
     #[test]
-    fn rules_sync_rematerializes_on_drift() {
+    fn adapters_sync_rematerializes_on_drift() {
         let project = tempdir().unwrap();
-        init_project(project.path());
-        let cache = expected_cache_dir(project.path());
-
-        // `--include-framework` differs from the recorded stamp, so sync
-        // rewrites the cache and adds the core pack.
+        // Record the framework choice at init: `adapters sync` preserves
+        // it on every refresh.
         specify_cmd()
             .current_dir(project.path())
-            .args(["rules", "sync", "--include-framework"])
+            .args(["init"])
+            .arg(omnia_component())
+            .args(["--name", "demo", "--include-framework"])
             .assert()
             .success();
+        let cache = expected_cache_dir(project.path());
         assert!(
             cache.join("codex/codex/rules/core").is_dir(),
-            "--include-framework must materialize the core pack"
+            "--include-framework at init must materialize the core pack"
         );
 
         // A stamp from an older binary re-materializes: simulate one by
@@ -124,15 +129,19 @@ mod codex {
         fs::write(&meta_path, stale).expect("write stale meta");
         fs::remove_file(cache.join(EMBEDDED_RULE_REL)).expect("rm embedded rule");
 
-        specify_cmd().current_dir(project.path()).args(["rules", "sync"]).assert().success();
+        specify_cmd().current_dir(project.path()).args(["adapters", "sync"]).assert().success();
         assert!(
             cache.join(EMBEDDED_RULE_REL).is_file(),
             "a stale binary-version stamp must trigger re-materialization"
         );
+        assert!(
+            cache.join("codex/codex/rules/core").is_dir(),
+            "the refresh must preserve the recorded --include-framework choice"
+        );
     }
 
     #[test]
-    fn rules_sync_on_workspace() {
+    fn adapters_sync_on_workspace() {
         let tmp = tempdir().unwrap();
         specify_cmd()
             .current_dir(tmp.path())
@@ -140,12 +149,16 @@ mod codex {
             .assert()
             .success();
 
-        // Adapter-independent materialization works on adapter-less
-        // workspace projects too.
-        specify_cmd().current_dir(tmp.path()).args(["rules", "sync"]).assert().success();
+        // Drop the init-materialized cache: adapter-independent
+        // re-materialization works on adapter-less workspace projects too.
+        let codex = expected_cache_dir(tmp.path()).join("codex");
+        if codex.exists() {
+            fs::remove_dir_all(&codex).expect("rm codex cache");
+        }
+        specify_cmd().current_dir(tmp.path()).args(["adapters", "sync"]).assert().success();
         assert!(
             expected_cache_dir(tmp.path()).join(EMBEDDED_RULE_REL).is_file(),
-            "workspace `rules sync` must materialize the embedded codex"
+            "workspace `adapters sync` must materialize the embedded codex"
         );
     }
 }
@@ -168,7 +181,6 @@ mod export {
     use std::fs;
     use std::path::Path;
 
-    use assert_cmd::Command;
     use serde_json::Value;
     use specify_standards::{Origin, ResolveInputs, ResolvedRules, build_resolved_rules};
     use tempfile::tempdir;
@@ -404,27 +416,32 @@ mod export {
     /// CLI smoke test: a hand-built rules-root tree with
     /// a `CORE-*` rule under `codex/rules/core/` excludes that
     /// rule from `specify rules export` by default and includes it under
-    /// `--include-core`. Uses `assert_cmd` so the closed CLI plumbing
-    /// (clap struct → handler → resolver) is exercised end-to-end.
+    /// `--include-core`. Drives the forwarded binary surface end-to-end
+    /// (clap struct → guest handler → resolver); both trees sit under one
+    /// working directory and travel as relative flags, because the
+    /// forwarded verb runs against the guest's `"."` mount where absolute
+    /// host paths do not resolve.
     #[test]
     fn include_core_flag_toggles_core_rules() {
-        let rules_root = tempdir().expect("rules root tempdir");
-        let project = tempdir().expect("project tempdir");
+        let root = tempdir().expect("scratch tempdir");
+        let rules_root = root.path().join("rules");
+        let project = root.path().join("project");
+        fs::create_dir_all(&project).expect("mkdir project");
 
         write_rule_fixture(
-            &rules_root.path().join("codex/rules/universal/uni-001.md"),
+            &rules_root.join("codex/rules/universal/uni-001.md"),
             "UNI-001",
             "Universal anchor",
         );
         // This fixture uses a high out-of-the-way id (`CORE-999`) so the
         // test never collides with a first-party core rule.
         write_rule_fixture(
-            &rules_root.path().join("codex/rules/core/CORE-fixture.md"),
+            &rules_root.join("codex/rules/core/CORE-fixture.md"),
             "CORE-999",
             "Core fixture",
         );
 
-        let off = export_via_cli(rules_root.path(), project.path(), false);
+        let off = export_via_cli(root.path(), false);
         let off_rules =
             off.pointer("/rules").and_then(Value::as_array).expect("rules array on default export");
         assert!(
@@ -436,7 +453,7 @@ mod export {
             "UNI-001 must still appear without --include-core; got: {off_rules:#?}",
         );
 
-        let on = export_via_cli(rules_root.path(), project.path(), true);
+        let on = export_via_cli(root.path(), true);
         let on_rules = on
             .pointer("/rules")
             .and_then(Value::as_array)
@@ -465,14 +482,17 @@ mod export {
         fs::write(path, body).expect("write rule fixture");
     }
 
-    /// Invoke `specify rules export` against an explicit rules root and
-    /// parse the JSON envelope on stdout. `include_core` toggles the
-    /// closed `--include-core` flag.
-    fn export_via_cli(rules_root: &Path, project: &Path, include_core: bool) -> Value {
-        let mut cmd = Command::cargo_bin("specify").expect("cargo_bin(specify)");
-        cmd.args(["--format", "json", "rules", "export", "--target", "omnia"])
-            .args(["--rules-root".as_ref(), rules_root.as_os_str()])
-            .args(["--project-dir".as_ref(), project.as_os_str()]);
+    /// Invoke the forwarded `specify rules export` from `root` (which
+    /// carries `rules/` and `project/` subtrees) and parse the JSON
+    /// envelope on stdout. `include_core` toggles the closed
+    /// `--include-core` flag. Paths are relative so they resolve against
+    /// the guest's `"."` mount.
+    fn export_via_cli(root: &Path, include_core: bool) -> Value {
+        let mut cmd = crate::common::specify_cmd();
+        cmd.current_dir(root)
+            .args(["--format", "json", "rules", "export", "--target", "omnia"])
+            .args(["--rules-root", "rules"])
+            .args(["--project-dir", "project"]);
         if include_core {
             cmd.arg("--include-core");
         }
@@ -502,10 +522,9 @@ mod export {
     fn negative_text_format_rejected() {
         let project = tempdir().expect("project tempdir");
 
-        let output = Command::cargo_bin("specify")
-            .expect("cargo_bin(specify)")
+        let output = crate::common::specify_cmd()
+            .current_dir(project.path())
             .args(["--format", "text", "rules", "export", "--target", "omnia"])
-            .args(["--project-dir".as_ref(), project.path().as_os_str()])
             .output()
             .expect("specify invocation");
 
@@ -532,10 +551,9 @@ mod export {
     fn negative_rules_root_required() {
         let project = tempdir().expect("project tempdir");
 
-        let output = Command::cargo_bin("specify")
-            .expect("cargo_bin(specify)")
+        let output = crate::common::specify_cmd()
+            .current_dir(project.path())
             .args(["--format", "json", "rules", "export", "--target", "omnia"])
-            .args(["--project-dir".as_ref(), project.path().as_os_str()])
             .output()
             .expect("specify invocation");
 

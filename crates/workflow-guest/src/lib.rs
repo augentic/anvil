@@ -55,6 +55,10 @@ wasip3::cli::command::export!(CliGuest);
 
 impl wasip3::exports::cli::run::Guest for CliGuest {
     async fn run() -> Result<(), ()> {
+        // Adapter describe dispatch routes through this world's WIT
+        // imports, so the resolvers work in-guest against the
+        // read-only store and cache mounts.
+        specify_workflow::adapter::describe::register_describe_runner(provider::describe_runner);
         // argv verbatim as the host provides it, argv[0] included —
         // the shared grammar sees exactly what native clap sees.
         let argv = wasip3::cli::environment::get_arguments();

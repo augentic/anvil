@@ -1,5 +1,7 @@
-//! Clap action-enum surface for the native-only `specify lint` verb
-//! family. The handlers live in the binary crate; only the grammar is
-//! carried here so the full `Commands` tree parses everywhere.
+//! Clap action-enum surface for `specify lint framework`.
+//!
+//! Framework CI tooling off the operational grammar. Only the native
+//! provisioning grammar in the `specify` binary mounts [`cli::LintAction`]
+//! (hidden); the handler lives in the binary crate.
 
 pub mod cli;
