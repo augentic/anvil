@@ -3,7 +3,8 @@
 
 mod codex {
     //! Integration tests for shared codex materialization (RM-07 /
-    //! RFC-66 §"Codex ownership becomes real").
+    //! DECISIONS.md §"Codex ownership flip: shared packs embed in the
+    //! binary").
     //!
     //! Cover `specify init` materializing the binary-embedded packs into
     //! the project codex cache, `specify rules sync` refreshing them

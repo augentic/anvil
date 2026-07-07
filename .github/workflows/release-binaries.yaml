@@ -5,7 +5,8 @@ name: Release binaries
 # the GitHub Release (curated notes) and this workflow attaches the
 # built binary archives to it. The Cargo workspace lives at the repo root.
 #
-# The same tag also publishes the wasm-shaped artifacts (RFC-66): the
+# The same tag also publishes the wasm-shaped artifacts (DECISIONS.md
+# §"Publishing and distribution: one transport, idempotent legs"): the
 # core guest as `specify:core@<version>` and the WIT contract as
 # `specify:adapter@<wit version>`, each through an idempotent
 # `cargo make publish-*` task — this workflow is a thin caller. Keeping
@@ -123,7 +124,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # Publish the core guest as `specify:core@<VERSION>` (RFC-66). The
+  # Publish the core guest as `specify:core@<VERSION>`. The
   # publish leg lives in `cargo make publish-core`; this job only
   # supplies toolchain, credentials, and the tag↔VERSION guard. The
   # task's probe-first idempotency makes re-running this workflow
@@ -174,8 +175,8 @@ jobs:
           fi
 
       # `wkg` resolves the `specify` namespace through this config.
-      # Auth is GITHUB_TOKEN only (RFC-66 retires the registry
-      # username/password secrets): `permissions: packages: write`
+      # Auth is GITHUB_TOKEN only (the registry username/password
+      # secrets are retired): `permissions: packages: write`
       # above is the whole credential story.
       - name: Write wkg config
         shell: bash
@@ -193,8 +194,8 @@ jobs:
       - name: Publish core guest
         run: cargo make publish-core
 
-  # Publish the WIT contract as `specify:adapter@<wit version>`
-  # (RFC-66). The skip-if-present probe inside `cargo make publish-wit`
+  # Publish the WIT contract as `specify:adapter@<wit version>`.
+  # The skip-if-present probe inside `cargo make publish-wit`
   # is the version-changed guard: a tag that did not bump the WIT
   # `package` declaration finds the version already published and
   # no-ops. No wasm32 Rust target needed — `wkg wit build` encodes the
@@ -245,8 +246,9 @@ jobs:
 
   release:
     name: Attach binaries to release
-    # The binary↔core-guest lockstep is a release invariant (RFC-66
-    # §"Risks and invariants"): a binary version whose `specify:core`
+    # The binary↔core-guest lockstep is a release invariant
+    # (DECISIONS.md §"Publishing and distribution: one transport,
+    # idempotent legs"): a binary version whose `specify:core`
     # publish failed is a broken release, so the binaries are never
     # attached until publish-core succeeds. publish-wit deliberately
     # does NOT gate the release — the WIT contract versions

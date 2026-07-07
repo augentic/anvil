@@ -22,8 +22,8 @@ const CORPUS: &[(&str, &str)] = &[
 ];
 
 /// The shared codex packs embedded for init-time materialization
-/// (RFC-66 §"Codex ownership becomes real"), rooted at the repo's
-/// `codex/rules/`.
+/// (DECISIONS.md §"Codex ownership flip: shared packs embed in the
+/// binary"), rooted at the repo's `codex/rules/`.
 const CODEX_PACKS: &[&str] = &["universal", "core"];
 
 fn main() {

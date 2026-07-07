@@ -172,7 +172,7 @@ args = ["publish", "--registry=augentic", "--allow-dirty", "--dry-run"]
 
 # Publish core guest
 #
-# RFC-66: publish the release-built workflow-guest component as
+# Publish the release-built workflow-guest component as
 # `specify:core@<version>`, where <version> is the VERSION file — the
 # published identity IS the binary version, one knob (VERSION and the
 # workspace Cargo.toml version move together via release.yaml). Lands
@@ -197,7 +197,7 @@ scripts/wkg-publish-idempotent.sh "specify:core@${version}" \
 
 # Publish WIT contract
 #
-# RFC-66: publish wit/specify.wit as `specify:adapter@<ver>`, parsing
+# Publish wit/specify.wit as `specify:adapter@<ver>`, parsing
 # <ver> from the WIT `package` declaration — the single version
 # declaration for the contract. The skip-if-present probe in
 # scripts/wkg-publish-idempotent.sh IS the version-changed guard: a tag
