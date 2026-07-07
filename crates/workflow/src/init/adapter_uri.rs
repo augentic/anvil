@@ -31,7 +31,7 @@ use crate::adapter::{AdapterRef, dev_component_paths};
 /// whether init mirrors the file into the project component cache.
 ///
 /// Store entries are read in place (version-pinned, globally shared);
-/// development release builds are read live so the RFC-62 dev loop
+/// development release builds are read live so the adapter dev loop
 /// never hits a stale mirror; only an operator's own [`Self::Local`]
 /// file is copied into `<project-cache>/components/<name>.wasm`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

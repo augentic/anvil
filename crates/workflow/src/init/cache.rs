@@ -57,7 +57,7 @@ impl ComponentMeta {
 ///
 /// Store entries (package references) resolve from the global
 /// content-addressed store in place; development release builds resolve
-/// live from `target/wasm32-wasip2/release/` so the RFC-62 dev loop
+/// live from `target/wasm32-wasip2/release/` so the adapter dev loop
 /// (rebuild, re-run) never reads a stale mirror. Only an operator's own
 /// local `.wasm` file is copied — into
 /// `<project-cache>/components/<name>.wasm`, the project-local probe leg
