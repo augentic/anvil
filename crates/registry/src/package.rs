@@ -13,9 +13,10 @@ use crate::manifest::{PackageRequest, WASM_PKG_CONFIG_PATH};
 
 const MAX_PACKAGE_BYTES: u64 = 64 * 1024 * 1024;
 /// First-party wasm-pkg namespaces routed to [`FIRST_PARTY_REGISTRY`]
-/// when no explicit mapping is configured: `specify` (tools) and
-/// `augentic` (adapter components, RFC-64).
-const FIRST_PARTY_NAMESPACES: &[&str] = &["specify", "augentic"];
+/// when no explicit mapping is configured: `specify` carries both the
+/// tools and the adapter components (RFC-65 naming cut — `augentic:`
+/// is reserved for future org-wide contracts, not routed).
+const FIRST_PARTY_NAMESPACES: &[&str] = &["specify"];
 const FIRST_PARTY_REGISTRY: &str = "augentic.io";
 
 /// Informational package metadata recorded in `meta.yaml`.
@@ -238,6 +239,10 @@ mod tests {
         "ba:demo".parse().expect("parse third-party package ref")
     }
 
+    fn retired_namespace_ref() -> PackageRef {
+        "augentic:demo".parse().expect("parse retired-namespace package ref")
+    }
+
     /// Point `HOME` and `XDG_CONFIG_HOME` at a fresh scratch dir so
     /// `Config::global_defaults` cannot pull in a developer's personal
     /// `~/.config/wasm-pkg/config.toml` and surprise the assertions.
@@ -252,10 +257,11 @@ mod tests {
 
     // `load_config` is the private wasm-pkg config layering funnel; the CLI
     // never exposes its per-layer precedence, only the resolved fetch. The
-    // five layering cases — embedded first-party inject, non-`specify`
-    // skip, project-local override, WKG_CONFIG-over-project, and missing
-    // project config — collapse into one matrix that holds the env lock
-    // once and re-scopes the HOME / WKG_CONFIG guards per case.
+    // layering cases — embedded first-party inject, non-`specify` skip,
+    // retired `augentic:` namespace skip, project-local override,
+    // WKG_CONFIG-over-project, and missing project config — collapse into
+    // one matrix that holds the env lock once and re-scopes the HOME /
+    // WKG_CONFIG guards per case.
     #[test]
     fn load_config_layering_matrix() {
         let _guard = env_lock();
@@ -286,6 +292,13 @@ mod tests {
         // non-`specify` namespace.
         assert_ne!(
             resolve("package-embedded-other", &third_party_ref(), None, None).as_deref(),
+            Some(FIRST_PARTY_REGISTRY)
+        );
+
+        // RFC-65 naming cut: the retired `augentic:` namespace gets no
+        // first-party routing — it is reserved, not mapped.
+        assert_ne!(
+            resolve("package-embedded-retired", &retired_namespace_ref(), None, None).as_deref(),
             Some(FIRST_PARTY_REGISTRY)
         );
 

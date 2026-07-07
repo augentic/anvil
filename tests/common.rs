@@ -149,12 +149,12 @@ pub fn specify_cmd() -> Command {
     // Pin the global adapter store into a per-process temp root so
     // pinned-identity resolution never reads (or writes) the
     // developer's real content-addressed store.
-    cmd.env("SPECIFY_ADAPTER_CACHE", isolated_adapter_store_root());
+    cmd.env("SPECIFY_ADAPTER_STORE", isolated_adapter_store_root());
     cmd
 }
 
 /// Per-process out-of-tree global adapter-store root, matching the
-/// `SPECIFY_ADAPTER_CACHE` override [`specify_cmd`] pins.
+/// `SPECIFY_ADAPTER_STORE` override [`specify_cmd`] pins.
 pub fn isolated_adapter_store_root() -> &'static Path {
     use std::sync::OnceLock;
     static ROOT: OnceLock<PathBuf> = OnceLock::new();

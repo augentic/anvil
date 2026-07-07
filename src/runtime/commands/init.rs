@@ -6,6 +6,7 @@ use serde::Serialize;
 use specify_error::{Error, Result};
 use specify_registry::store;
 use specify_workflow::config::{ProjectConfig, is_slot};
+use specify_workflow::hydrate;
 use specify_workflow::init::{AdapterPackage, InitOptions, InitResult, init, recognize_package};
 use specify_workflow::platform::parse_platforms_csv;
 use specify_workflow::registry::Registry;
@@ -13,6 +14,7 @@ use specify_workflow::registry::workspace::{regenerate_topology_lock, sync_proje
 
 use crate::runtime::cli::Format;
 use crate::runtime::commands::agents;
+use crate::runtime::commands::deploy::{self, BareMiss};
 use crate::runtime::context::Ctx;
 use crate::runtime::output;
 
@@ -43,9 +45,7 @@ pub(super) fn run(args: &Args<'_>) -> Result<()> {
             detail: e,
         })?;
 
-    if let Some(adapter) = args.adapter {
-        install_adapter_package(adapter, &project_dir)?;
-    }
+    hydrate_declared(args.adapter, &project_dir)?;
 
     let opts = InitOptions {
         project_dir: &project_dir,
@@ -59,6 +59,9 @@ pub(super) fn run(args: &Args<'_>) -> Result<()> {
     };
 
     let result = init(opts, Timestamp::now())?;
+    // Regenerate the deployment manifest from the freshly hydrated +
+    // scaffolded declared set (RFC-65: init is a manifest trigger).
+    deploy::regenerate(&project_dir, BareMiss::Skip)?;
     let current_dir = std::env::current_dir().map_err(Error::Io)?;
     let context_skip_reason = generate_initial_context(args.format, &current_dir)?;
 
@@ -71,27 +74,38 @@ pub(super) fn run(args: &Args<'_>) -> Result<()> {
     emit_init_result(args.format, &result, context_skip_reason, workspace_sync_message)
 }
 
-/// Install a first-party adapter **package reference**
-/// (`<namespace>:<name>@<semver>`, or the versioned shorthand
-/// `<name>@<semver>` — sugar for `augentic:<name>@<semver>`) into the
-/// global content-addressed store before the workflow init flow
-/// resolves it (RFC-48 D5 install-on-fetch). A non-package `<adapter>`
-/// — a bare development name or a local component path — is recognised
-/// as such and left to the workflow flow, so this is a no-op for every
-/// non-registry form.
+/// Run the RFC-65 hydration kernel over the project's declared pinned
+/// identities before the workflow init flow resolves them: the
+/// positional `<adapter>` when it is a package reference (or the
+/// versioned `<name>@<semver>` shorthand), plus — on re-entry, when
+/// `.specify/project.yaml` already exists — the recorded `adapter:`
+/// pin and the `project.yaml.adapters:` prefetch list. Non-package
+/// forms (bare development names, local component paths) are left to
+/// the workflow flow, so this is a no-op for a purely local project.
 ///
-/// Trust-on-first-use: the pulled component is materialized read-only
-/// and immutable, so its store presence is the read-integrity
-/// guarantee. The pull goes through the wasm-pkg transport (RFC-64),
-/// honouring the project's `.specify/wasm-pkg.toml` namespace mappings
-/// and the embedded first-party default.
-fn install_adapter_package(adapter: &str, project_dir: &Path) -> Result<()> {
-    let Some(package) = recognize_package(adapter) else {
-        return Ok(());
+/// The fetch leg is `store::install_tofu` (trust-on-first-use through
+/// the wasm-pkg transport, honouring `.specify/wasm-pkg.toml`); a warm
+/// store makes the whole call a no-op probe per identity. Each resolved
+/// entry is pinned in (and verified against) the committed
+/// `.specify/adapters.lock` by the kernel.
+fn hydrate_declared(adapter: Option<&str>, project_dir: &Path) -> Result<()> {
+    let mut refs: Vec<AdapterPackage> = Vec::new();
+    if let Some(adapter) = adapter
+        && let Some(package) = recognize_package(adapter)
+    {
+        refs.push(package?);
+    }
+    match ProjectConfig::load(project_dir) {
+        Ok(config) => refs.extend(hydrate::config_refs(&config)?),
+        Err(Error::NotInitialized) => {}
+        Err(err) => return Err(err),
+    }
+    let fetch = |package: &AdapterPackage| {
+        let version = package.version.to_string();
+        store::install_tofu(&package.namespace, &package.name, &version, project_dir)
+            .map_err(Error::from)
     };
-    let package: AdapterPackage = package?;
-    let version = package.version.to_string();
-    store::install_tofu(&package.namespace, &package.name, &version, project_dir)?;
+    hydrate::hydrate(project_dir, &refs, false, &fetch)?;
     Ok(())
 }
 
@@ -120,9 +134,9 @@ struct Body {
     /// renderers dispatch on this value).
     adapter_name: String,
     cache_present: bool,
-    /// `true` when the shared codex was distributed into the out-of-tree
-    /// `<project-cache>/codex/` (RM-07). `false` when the adapter source
-    /// carries no shared pack, and always `false` for workspace init.
+    /// `true` when the shared codex is materialized in the out-of-tree
+    /// `<project-cache>/codex/` (RM-07) — always, for regular init, the
+    /// packs being embedded in the binary; `false` for workspace init.
     codex_present: bool,
     directories_created: Vec<String>,
     scaffolded_rule_keys: Vec<String>,

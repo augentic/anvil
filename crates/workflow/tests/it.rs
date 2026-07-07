@@ -18,12 +18,16 @@ mod agents_lock;
 mod author;
 #[path = "decisions.rs"]
 mod decisions;
+#[path = "deploy.rs"]
+mod deploy;
 #[path = "design_system_parts.rs"]
 mod design_system_parts;
 #[path = "execute.rs"]
 mod execute;
 #[path = "goldens.rs"]
 mod goldens;
+#[path = "hydrate.rs"]
+mod hydrate;
 #[path = "judgment.rs"]
 mod judgment;
 #[path = "merge_composition.rs"]

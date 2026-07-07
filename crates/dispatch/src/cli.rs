@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use specify_model::evidence::ClaimKind;
 
+use crate::commands::adapters::cli::AdaptersAction;
 use crate::commands::archive::cli::ArchiveAction;
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::lint::cli::LintAction;
@@ -112,6 +113,17 @@ pub enum Commands {
             conflicts_with_all = ["adapter", "workspace", "name", "description", "include_framework"]
         )]
         upgrade: bool,
+    },
+
+    /// Global adapter-store provisioning (RFC-65). `sync` is the
+    /// explicit hydration trigger: it hydrates every pinned identity
+    /// the project declares (`project.yaml` plus `plan.yaml` source
+    /// pins) into the global store and prints the resolved set. Native
+    /// provisioning verb — never runs in the workflow guest.
+    Adapters {
+        /// Nested action for this verb family.
+        #[command(subcommand)]
+        action: AdaptersAction,
     },
 
     /// Source adapter operations (workflow contract). Source adapters

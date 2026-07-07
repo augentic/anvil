@@ -4,11 +4,13 @@
 //! The guest leg needs `cursor-agent` on `PATH` at backend connect, so
 //! these tests stage a stub script that answers `--version` and fails
 //! any real invocation — the covered flows never legitimately reach a
-//! completion. The composed run itself is real: the embedded workflow
-//! guest is staged into a transient manifest, adapter guests resolve
-//! through the axis resolvers (bound adapters) or the component-cache
-//! scan (unbound), and the guest's exit code passes through to the
-//! process exit. See DECISIONS.md §"One `specify` binary".
+//! completion. The composed run itself is real: the deployment
+//! manifest is regenerated into the per-project cache (RFC-65) with
+//! the embedded workflow guest staged beside it, adapter guests
+//! resolve through the axis resolvers (bound adapters) or the
+//! component-cache scan (unbound), and the guest's exit code passes
+//! through to the process exit. See DECISIONS.md §"One `specify`
+//! binary".
 
 // The stub is a `sh` script; the covered behavior is identical across
 // unix hosts and no CI leg runs the suite on Windows.
@@ -77,7 +79,10 @@ fn free_port() -> u16 {
 // `argument`/exit 2) reaches the workflow guest inside the composed
 // deployment, fails there against the empty mount, and the guest's
 // envelope and exit code pass through — proving triage routing, the
-// transient-manifest assembly, and the exit-code passthrough at once.
+// generated-manifest assembly, and the exit-code passthrough at once.
+// The drive regenerates the deployment manifest into the per-project
+// cache (RFC-65: one manifest-producing code path, no transient
+// assembly), staging the embedded workflow guest beside it.
 #[test]
 fn guest_verb_exit_passthrough() {
     let stub = stub_cursor_agent();
@@ -96,6 +101,78 @@ fn guest_verb_exit_passthrough() {
     assert_eq!(
         envelope["error"], "not-initialized",
         "the verb must fail inside the guest (native dispatch refuses it as `argument`)"
+    );
+
+    let deployment = common::expected_cache_dir(project.path()).join("deployment");
+    assert!(
+        deployment.join("omnia.toml").is_file(),
+        "the drive must regenerate the deployment manifest in the project cache"
+    );
+    assert!(
+        deployment.join("workflow.wasm").is_file(),
+        "the embedded workflow guest must be staged in the deployment tenant"
+    );
+}
+
+// The developer posture is untouched: a project-root omnia.toml wins
+// wholesale over the generated manifest. The staged file is garbage,
+// so the deployment build fails host-side (`guest-runtime-failed`) —
+// proving the committed manifest was consumed rather than a
+// regenerated one (which would reach the guest and fail
+// `not-initialized`).
+#[test]
+fn project_root_manifest_wins() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    fs::write(project.path().join("omnia.toml"), "this is not a manifest").expect("write garbage");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("PATH", stub_path(stub.path()))
+        .env_remove("RUST_LOG")
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1));
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(
+        envelope["error"], "guest-runtime-failed",
+        "the committed manifest must be driven wholesale: {envelope}"
+    );
+}
+
+// AC7 posture on the guest leg: a `project.yaml.adapter` pin absent
+// from the global store fails ahead of the deployment with the typed
+// `adapter-not-installed` (exit 2), naming the identity and the
+// literal sync command — the guest never hydrates.
+#[test]
+fn pinned_store_miss_is_not_installed() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    let specify_dir = project.path().join(".specify");
+    fs::create_dir_all(&specify_dir).expect("mkdir .specify");
+    fs::write(
+        specify_dir.join("project.yaml"),
+        "name: demo\nadapter: demo-missing@9.9.9\nspecify: 0.1.0\n",
+    )
+    .expect("write project.yaml");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("PATH", stub_path(stub.path()))
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(2), "a store miss is a validation failure");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "adapter-not-installed");
+    let message = envelope["message"].as_str().expect("message");
+    assert!(message.contains("demo-missing@9.9.9"), "error names the identity: {message}");
+    assert!(
+        message.contains("specify adapters sync"),
+        "error names the literal sync command: {message}"
     );
 }
 
@@ -240,8 +317,9 @@ fn non_component_cache_entry_is_skipped() {
 // Bound adapters resolve with the resolvers' precedence: a `plan.yaml`
 // source binding pinned to `(name, version)` reaches the RFC-48 store —
 // which the old name-only directory scan could never probe — and a
-// missing install surfaces the resolver's own typed `adapter-not-found`
-// instead of a silently thinner deployment.
+// missing install surfaces the typed `adapter-not-installed` (RFC-65
+// AC7: name the identity and the sync command; never fetch, never a
+// silently thinner deployment).
 #[test]
 fn bound_adapter_resolves_from_store() {
     let stub = stub_cursor_agent();
@@ -262,7 +340,7 @@ fn bound_adapter_resolves_from_store() {
     let output = specify_cmd()
         .current_dir(project.path())
         .env("PATH", stub_path(stub.path()))
-        .env("SPECIFY_ADAPTER_CACHE", store.path())
+        .env("SPECIFY_ADAPTER_STORE", store.path())
         .env_remove("RUST_LOG")
         .args(["plan", "execute", "--format", "json"])
         .output()
@@ -276,19 +354,105 @@ fn bound_adapter_resolves_from_store() {
     );
 
     // Without the store entry the binding cannot resolve anywhere, and
-    // the resolver's typed diagnostic surfaces host-side.
+    // the typed store-miss diagnostic surfaces host-side with the
+    // literal sync remedy.
     let empty_store = tempdir().expect("empty store root");
     let output = specify_cmd()
         .current_dir(project.path())
         .env("PATH", stub_path(stub.path()))
-        .env("SPECIFY_ADAPTER_CACHE", empty_store.path())
+        .env("SPECIFY_ADAPTER_STORE", empty_store.path())
         .args(["plan", "execute", "--format", "json"])
         .output()
         .expect("running specify");
 
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     let envelope = parse_json(&output.stderr);
-    assert_eq!(envelope["error"], "adapter-not-found");
+    assert_eq!(envelope["error"], "adapter-not-installed");
+    let message = envelope["message"].as_str().expect("message");
+    assert!(message.contains("echo@1.0.0"), "error names the identity: {message}");
+    assert!(
+        message.contains("specify adapters sync"),
+        "error names the literal sync command: {message}"
+    );
+}
+
+// RFC-65 AC8 on the guest leg: drive-time manifest regeneration
+// verifies every pinned entry against the committed
+// `.specify/adapters.lock`. A warm-but-divergent store (populated by
+// another project or machine) aborts with the typed
+// `adapter-digest-mismatch` naming the identity and both digests —
+// before any manifest is written or guest driven; once the lock pins
+// the actual digest, the same drive proceeds into the guest.
+#[test]
+fn committed_lock_gates_drive() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    fs::write(
+        project.path().join("plan.yaml"),
+        "name: lock-gate\nsources:\n  echo:\n    adapter: echo\n    version: 1.0.0\n    path: ./x\nslices: []\n",
+    )
+    .expect("write plan.yaml");
+
+    let store = tempdir().expect("adapter store root");
+    let entry = store.path().join("echo@1.0.0.wasm");
+    fs::copy(echo_guest_wasm(), &entry).expect("stage store component");
+    let digest = common::sha256_hex(&entry);
+    fs::write(store.path().join("echo@1.0.0.meta"), format!("tree_digest: sha256:{digest}\n"))
+        .expect("write store meta sidecar");
+
+    let specify_dir = project.path().join(".specify");
+    fs::create_dir_all(&specify_dir).expect("mkdir .specify");
+    let divergent = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    fs::write(
+        specify_dir.join("adapters.lock"),
+        format!("version: 1\nadapters:\n  echo@1.0.0: {divergent}\n"),
+    )
+    .expect("write divergent lock");
+
+    let drive = || {
+        specify_cmd()
+            .current_dir(project.path())
+            .env("PATH", stub_path(stub.path()))
+            .env("SPECIFY_ADAPTER_STORE", store.path())
+            .env_remove("RUST_LOG")
+            .args(["plan", "execute", "--format", "json"])
+            .output()
+            .expect("running specify")
+    };
+
+    let output = drive();
+    // `adapter-digest-mismatch` is Diag-routed (generic failure, exit
+    // 1) — the same posture as the resolver's D4 verify-on-read.
+    assert_eq!(output.status.code(), Some(1), "lock drift must abort the drive: {output:?}");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "adapter-digest-mismatch");
+    let message = envelope["message"].as_str().expect("message");
+    assert!(message.contains("echo@1.0.0"), "error names the identity: {message}");
+    assert!(message.contains(divergent), "error names the locked digest: {message}");
+    assert!(
+        message.contains(&format!("sha256:{digest}")),
+        "error names the actual digest: {message}"
+    );
+    let deployment = common::expected_cache_dir(project.path()).join("deployment");
+    assert!(
+        !deployment.join("omnia.toml").is_file(),
+        "no manifest may be written when the lock gate refuses"
+    );
+
+    // A lock-clean warm store drives fine: the verb reaches the guest
+    // and fails there (`not-initialized` against the bare mount).
+    fs::write(
+        specify_dir.join("adapters.lock"),
+        format!("version: 1\nadapters:\n  echo@1.0.0: sha256:{digest}\n"),
+    )
+    .expect("write clean lock");
+    let output = drive();
+    assert_eq!(output.status.code(), Some(1), "the verb must reach the guest: {output:?}");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(
+        envelope["error"], "not-initialized",
+        "a lock-clean warm store must drive the deployment"
+    );
 }
 
 // Manifest hygiene: host paths are emitted as escaped TOML strings, so

@@ -2,65 +2,59 @@
 //! shared codex distribution). Shared helpers live in [`common`].
 
 mod codex {
-    //! Integration tests for shared codex distribution (RM-07).
+    //! Integration tests for shared codex materialization (RM-07 /
+    //! RFC-66 §"Codex ownership becomes real").
     //!
-    //! Cover `specify init` populating the project codex cache, `specify
-    //! rules sync` refreshing it, and `specify rules export` resolving the
-    //! distributed shared rules without a `--rules-root` flag.
+    //! Cover `specify init` materializing the binary-embedded packs into
+    //! the project codex cache, `specify rules sync` refreshing them
+    //! (version re-pin, `--include-framework`), and `specify rules
+    //! export` resolving the materialized shared rules without a
+    //! `--rules-root` flag.
 
     use std::fs;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
     use tempfile::tempdir;
 
     use crate::common::{expected_cache_dir, omnia_component, parse_json, specify_cmd};
 
-    /// Write a schema-valid shared rule under
-    /// `<root>/codex/rules/universal/<id>.md`.
-    fn write_universal_rule(root: &Path, id: &str) {
-        let path = root.join(format!("codex/rules/universal/{id}.md"));
-        fs::create_dir_all(path.parent().expect("rule parent")).expect("mkdir rule dir");
-        fs::write(
-        &path,
-        format!(
-            "---\nid: {id}\ntitle: {id} fixture\nseverity: important\ntrigger: Synthetic codex distribution integration fixture trigger sentence.\n---\n\n## Rule\n\nBody for {id}.\n"
-        ),
-    )
-    .expect("write rule fixture");
-    }
+    /// A shared rule id known to ship in the embedded `universal/`
+    /// pack (`codex/rules/universal/dead-code.md`).
+    const EMBEDDED_RULE_ID: &str = "UNI-013";
+    /// Cache-relative path of that rule after materialization.
+    const EMBEDDED_RULE_REL: &str = "codex/codex/rules/universal/dead-code.md";
 
-    /// Assemble a synthetic framework source repo (an `omnia.wasm`
-    /// target component plus a shared `universal/` pack) and return the
-    /// component path. Codex distribution walks the component's
-    /// ancestors for the shared rules tree, so the pack sits in the
-    /// same synthetic root.
-    fn synthetic_source(root: &Path) -> PathBuf {
-        let omnia = root.join("targets/omnia.wasm");
-        fs::create_dir_all(omnia.parent().expect("component parent")).expect("mkdir targets dir");
-        fs::copy(omnia_component(), &omnia).expect("stage synthetic omnia component");
-        write_universal_rule(root, "UNI-901");
-        omnia
-    }
-
-    #[test]
-    fn codex_cache_export_no_rules_root() {
-        let src = tempdir().unwrap();
-        let omnia = synthetic_source(src.path());
-        let project = tempdir().unwrap();
-
+    fn init_project(project: &Path) {
         specify_cmd()
-            .current_dir(project.path())
+            .current_dir(project)
             .args(["init"])
-            .arg(&omnia)
+            .arg(omnia_component())
             .args(["--name", "demo"])
             .assert()
             .success();
+    }
 
-        let cached =
-            expected_cache_dir(project.path()).join("codex/codex/rules/universal/UNI-901.md");
-        assert!(cached.is_file(), "init must distribute the shared codex into the cache");
+    #[test]
+    fn init_materializes_embedded_codex() {
+        let project = tempdir().unwrap();
+        init_project(project.path());
 
-        // `rules export` resolves the distributed shared rule with NO
+        let cache = expected_cache_dir(project.path());
+        assert!(
+            cache.join(EMBEDDED_RULE_REL).is_file(),
+            "init must materialize the embedded shared codex into the cache"
+        );
+        assert!(
+            !cache.join("codex/codex/rules/core").exists(),
+            "the framework core pack must not materialize without --include-framework"
+        );
+        let meta = fs::read_to_string(cache.join("codex/codex-meta.yaml")).expect("codex meta");
+        assert!(
+            meta.contains(env!("CARGO_PKG_VERSION")),
+            "codex-meta.yaml must pin the binary version, got:\n{meta}"
+        );
+
+        // `rules export` resolves the materialized shared rule with NO
         // `--rules-root`: the resolver picks up the codex cache rung.
         let assert = specify_cmd()
             .current_dir(project.path())
@@ -70,27 +64,18 @@ mod codex {
         let value = parse_json(&assert.get_output().stdout);
         let rules = value["rules"].as_array().expect("rules array in export envelope");
         assert!(
-            rules.iter().any(|r| r["rule-id"] == "UNI-901"),
-            "exported codex must carry the distributed UNI-901 rule, got:\n{value:#}"
+            rules.iter().any(|r| r["rule-id"] == EMBEDDED_RULE_ID),
+            "exported codex must carry the embedded {EMBEDDED_RULE_ID} rule, got:\n{value:#}"
         );
     }
 
     #[test]
     fn rules_sync_refreshes_codex_cache() {
-        let src = tempdir().unwrap();
-        let omnia = synthetic_source(src.path());
         let project = tempdir().unwrap();
+        init_project(project.path());
 
-        specify_cmd()
-            .current_dir(project.path())
-            .args(["init"])
-            .arg(&omnia)
-            .args(["--name", "demo"])
-            .assert()
-            .success();
-
-        // Drop the distributed cache, then refresh it via `rules sync`
-        // (which re-resolves the recorded adapter source).
+        // Drop the materialized cache, then refresh it via `rules sync`
+        // (adapter-independent: the packs come from the binary).
         fs::remove_dir_all(expected_cache_dir(project.path()).join("codex"))
             .expect("rm codex cache");
 
@@ -100,15 +85,53 @@ mod codex {
             .assert()
             .success();
         let value = parse_json(&assert.get_output().stdout);
-        assert_eq!(value["distributed"], true, "sync must redistribute, got:\n{value:#}");
+        assert_eq!(value["distributed"], true, "sync must rematerialize, got:\n{value:#}");
+        assert_eq!(
+            value["source"],
+            env!("CARGO_PKG_VERSION"),
+            "sync must pin the binary version, got:\n{value:#}"
+        );
 
-        let cached =
-            expected_cache_dir(project.path()).join("codex/codex/rules/universal/UNI-901.md");
+        let cached = expected_cache_dir(project.path()).join(EMBEDDED_RULE_REL);
         assert!(cached.is_file(), "rules sync must repopulate the codex cache");
     }
 
     #[test]
-    fn rules_sync_on_hub_without_source_errors() {
+    fn rules_sync_rematerializes_on_drift() {
+        let project = tempdir().unwrap();
+        init_project(project.path());
+        let cache = expected_cache_dir(project.path());
+
+        // `--include-framework` differs from the recorded stamp, so sync
+        // rewrites the cache and adds the core pack.
+        specify_cmd()
+            .current_dir(project.path())
+            .args(["rules", "sync", "--include-framework"])
+            .assert()
+            .success();
+        assert!(
+            cache.join("codex/codex/rules/core").is_dir(),
+            "--include-framework must materialize the core pack"
+        );
+
+        // A stamp from an older binary re-materializes: simulate one by
+        // rewriting the recorded version, then deleting a rule file.
+        let meta_path = cache.join("codex/codex-meta.yaml");
+        let stale = fs::read_to_string(&meta_path)
+            .expect("codex meta")
+            .replace(env!("CARGO_PKG_VERSION"), "0.0.0");
+        fs::write(&meta_path, stale).expect("write stale meta");
+        fs::remove_file(cache.join(EMBEDDED_RULE_REL)).expect("rm embedded rule");
+
+        specify_cmd().current_dir(project.path()).args(["rules", "sync"]).assert().success();
+        assert!(
+            cache.join(EMBEDDED_RULE_REL).is_file(),
+            "a stale binary-version stamp must trigger re-materialization"
+        );
+    }
+
+    #[test]
+    fn rules_sync_on_workspace() {
         let tmp = tempdir().unwrap();
         specify_cmd()
             .current_dir(tmp.path())
@@ -116,12 +139,12 @@ mod codex {
             .assert()
             .success();
 
-        let assert =
-            specify_cmd().current_dir(tmp.path()).args(["rules", "sync"]).assert().failure();
-        let stderr = String::from_utf8(assert.get_output().stderr.clone()).expect("utf8");
+        // Adapter-independent materialization works on adapter-less
+        // workspace projects too.
+        specify_cmd().current_dir(tmp.path()).args(["rules", "sync"]).assert().success();
         assert!(
-            stderr.contains("declares no adapter") || stderr.contains("rules-sync-no-adapter"),
-            "workspace `rules sync` must explain the missing adapter, got stderr:\n{stderr}"
+            expected_cache_dir(tmp.path()).join(EMBEDDED_RULE_REL).is_file(),
+            "workspace `rules sync` must materialize the embedded codex"
         );
     }
 }

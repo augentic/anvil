@@ -52,7 +52,7 @@ fn install_tofu_returns_present_entry() {
 
     let _lock = env_lock();
     let store = TempDir::new().expect("store root");
-    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_CACHE", Some(store.path()));
+    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_STORE", Some(store.path()));
 
     // Seed the immutable entry at the resolved store location, then assert
     // TOFU install short-circuits to it without touching the network
@@ -72,7 +72,7 @@ fn record_store_meta_writes_sidecar() {
 
     let _lock = env_lock();
     let store = TempDir::new().expect("store root");
-    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_CACHE", Some(store.path()));
+    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_STORE", Some(store.path()));
 
     // The record-on-install half of RFC-48 D4: a freshly installed entry
     // gains a verify-on-read sidecar that the resolver later re-checks.
@@ -96,7 +96,7 @@ fn verify_store_entry_detects_corruption() {
 
     let _lock = env_lock();
     let store = TempDir::new().expect("store root");
-    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_CACHE", Some(store.path()));
+    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_STORE", Some(store.path()));
 
     let entry = adapter_store_entry("demo", "1.0.0");
     let staged = stage_component(store.path(), b"\0asm-demo");
@@ -125,7 +125,7 @@ fn verify_store_entry_fails_open() {
 
     let _lock = env_lock();
     let store = TempDir::new().expect("store root");
-    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_CACHE", Some(store.path()));
+    let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_STORE", Some(store.path()));
 
     // A legacy / foreign entry installed before sidecars existed carries
     // no `.meta`, so verify-on-read is a pass — the entry's read-only

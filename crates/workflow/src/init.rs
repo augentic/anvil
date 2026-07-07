@@ -49,11 +49,11 @@ pub struct InitOptions<'a> {
     /// under `.specify/`. Workspace init refuses to run when `.specify/`
     /// already exists so it never clobbers a regular single-repo project.
     pub workspace: bool,
-    /// When `true`, also distribute the framework `core/` pack
+    /// When `true`, also materialize the framework `core/` pack
     /// (`codex/rules/core/`) into the project codex cache
-    /// alongside the always-distributed `universal/` pack. Default off:
+    /// alongside the always-materialized `universal/` pack. Default off:
     /// consumer projects carry only `UNI-*` rules. Ignored for workspace
-    /// init (workspaces resolve no adapter and so distribute no codex).
+    /// init (workspaces distribute no codex at init time).
     pub include_framework: bool,
     /// Target platforms to declare in `project.yaml`. Parsed from the
     /// `--platforms` CLI flag (comma-separated). `None` means the
@@ -90,11 +90,10 @@ pub struct InitResult {
     pub adapter_name: String,
     /// Whether `components/component-meta.yaml` exists in the per-project cache.
     pub cache_present: bool,
-    /// Whether the shared codex was distributed into the out-of-tree
-    /// `<project-cache>/codex/` during this run. `false` when the
-    /// adapter source tree carries no `codex/rules/universal/`
-    /// pack (the consumer then relies on `--rules-root` or a monorepo
-    /// checkout) and for workspace init.
+    /// Whether the shared codex is materialized in the out-of-tree
+    /// `<project-cache>/codex/`. Always `true` for regular init (the
+    /// packs are embedded in the binary, so materialization cannot
+    /// miss); `false` for workspace init, which distributes no codex.
     pub codex_present: bool,
     /// Directories that were newly created (empty on re-init).
     pub directories_created: Vec<PathBuf>,
@@ -153,30 +152,27 @@ pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> 
     regular::run(opts, now)
 }
 
-/// Distribute (or refresh) the shared codex for an initialised project.
+/// Materialize (or refresh) the shared codex for a project from the
+/// packs embedded in this binary.
 ///
-/// Pinned to `adapter_value` — the project's recorded `adapter:`
-/// source/ref (or an operator override). Resolves the adapter source
-/// the same way `init` does (local copy or git sparse checkout), then
-/// mirrors `codex/rules/universal/` (and, when
-/// `include_framework`, `core/`) into the out-of-tree `<project-cache>/codex/`.
+/// Writes `codex/rules/universal/` (and, when `include_framework`,
+/// `core/`) into the out-of-tree `<project-cache>/codex/`, pinned to
+/// the binary version. A cache already stamped by this version with the
+/// same pack set is a no-op; a stale stamp re-materializes.
 ///
-/// This is the engine behind `specify rules sync`. `init` distributes
+/// This is the engine behind `specify rules sync`. `init` materializes
 /// the codex inline via the private `cache::cache_codex` path; this
 /// entry point lets a refresh run stand alone without re-running init.
-///
-/// Returns `Ok(true)` when the codex was distributed, `Ok(false)` when
-/// the adapter source carries no `codex/rules/universal/`
-/// pack (fail-soft). `now` stamps [`CodexMeta::fetched_at`].
+/// Returns the stamped [`CodexMeta`]; `now` stamps
+/// [`CodexMeta::fetched_at`] on a rewrite.
 ///
 /// # Errors
 ///
-/// Bubbles up adapter-resolution (clone/copy) and filesystem errors.
+/// Bubbles up filesystem errors from writing the cache.
 pub fn sync_codex(
-    project_dir: &Path, adapter_value: &str, include_framework: bool, now: Timestamp,
-) -> Result<bool, Error> {
-    let source = adapter_uri::AdapterUri::parse(adapter_value, project_dir)?;
-    cache::cache_codex(project_dir, &source, include_framework, now)
+    project_dir: &Path, include_framework: bool, now: Timestamp,
+) -> Result<CodexMeta, Error> {
+    cache::cache_codex(project_dir, include_framework, now)
 }
 
 pub(crate) fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {

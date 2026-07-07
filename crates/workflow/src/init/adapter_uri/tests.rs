@@ -16,7 +16,7 @@ fn value_identity() {
     // `adapter_name_from_value` extracts the kebab name across every shape.
     assert_eq!(adapter_name_from_value("demo-target"), "demo-target");
     assert_eq!(adapter_name_from_value("specify:demo-target@1.2.0"), "demo-target");
-    assert_eq!(adapter_name_from_value("augentic:demo-target@1.2.0"), "demo-target");
+    assert_eq!(adapter_name_from_value("acme:demo-target@1.2.0"), "demo-target");
     assert_eq!(adapter_name_from_value("file:///abs/components/demo-target.wasm"), "demo-target");
     assert_eq!(
         adapter_name_from_value("file:///abs/release/specify_demo_target.wasm"),
@@ -126,12 +126,12 @@ fn package_refs() {
     assert!(recognize_package("./local.wasm").is_none());
     recognize_package("specify:demo-target").expect("package shape").unwrap_err();
 
-    // The versioned first-party shorthand is sugar for the `augentic:`
-    // package reference.
+    // The versioned first-party shorthand is sugar for the `specify:`
+    // package reference (RFC-65 naming cut).
     let sugar = recognize_package("demo-target@1.0.0")
         .expect("versioned shorthand is a package shape")
         .expect("valid shorthand");
-    assert_eq!(sugar.namespace, "augentic");
+    assert_eq!(sugar.namespace, "specify");
     assert_eq!(sugar.name, "demo-target");
     assert_eq!(sugar.version, semver::Version::new(1, 0, 0));
 }

@@ -83,6 +83,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         name,
         description: opts.description.map(str::to_string),
         adapter: None,
+        adapters: Vec::new(),
         specify_version: Some(specify_version.clone()),
         rules: BTreeMap::new(),
         tools: Vec::new(),

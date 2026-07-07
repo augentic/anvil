@@ -37,7 +37,7 @@ Resolution is project-local plus the global store; there is no environment-varia
 
 In workspace mode, `specify workspace sync` provisions probe location 1 for each synced slot: it mirrors the workspace's component cache (components plus the provenance sidecar) into the slot's component cache, per-file copy-over. See [`DECISIONS.md` §"Slot adapter provisioning via workspace sync"](../../DECISIONS.md#slot-adapter-provisioning-via-workspace-sync).
 
-`specify init <adapter>` accepts a package reference (`augentic:<name>@<semver>` — installed into the store on fetch), the first-party **shorthand** (`omnia@1.0.0` is package-reference sugar; bare `omnia` resolves the development release build), or a local `.wasm` path. GitHub URLs are refused (`adapter-github-uri-unsupported`). See [`DECISIONS.md` §"One component, no manifest"](../../DECISIONS.md#one-component-no-manifest-milestone-r64-s).
+`specify init <adapter>` accepts a package reference (`specify:<name>@<semver>` — installed into the store on fetch), the first-party **shorthand** (`omnia@1.0.0` is package-reference sugar; bare `omnia` resolves the development release build), or a local `.wasm` path. GitHub URLs are refused (`adapter-github-uri-unsupported`). See [`DECISIONS.md` §"One component, no manifest"](../../DECISIONS.md#one-component-no-manifest-milestone-r64-s).
 
 The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `version`, `resolved-path`, `location` (`store` / `dev`), and `operations`. It is diagnostic: operation prompts are compiled into each adapter's component, so no engine code resolves prompt files at run time.
 

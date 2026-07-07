@@ -148,9 +148,9 @@ pub fn expected_cache_dir(project_dir: &std::path::Path) -> PathBuf {
     specify_schema::cache::project_cache_dir(project_dir)
 }
 
-const STORE_ENV: &str = "SPECIFY_ADAPTER_CACHE";
+const STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 
-/// Restores the previous `SPECIFY_ADAPTER_CACHE` value on drop.
+/// Restores the previous `SPECIFY_ADAPTER_STORE` value on drop.
 pub struct StoreGuard(Option<std::ffi::OsString>);
 
 impl Drop for StoreGuard {

@@ -1,8 +1,7 @@
 //! Parsing the `<adapter>` argument (RFC-64: one component, no
-//! manifest): package references (`augentic:<name>@<semver>`,
-//! `specify:<name>@<semver>`), first-party shorthand (`omnia`,
-//! `omnia@1.0.0`), and local component paths (`./adapter.wasm`,
-//! `file://…/adapter.wasm`).
+//! manifest): package references (`specify:<name>@<semver>`),
+//! first-party shorthand (`omnia`, `omnia@1.0.0`), and local component
+//! paths (`./adapter.wasm`, `file://…/adapter.wasm`).
 //!
 //! A package reference (and the versioned first-party shorthand, its
 //! sugar) is the RFC-48 D2 registry locator: an *immutable*,
@@ -65,7 +64,7 @@ impl AdapterUri {
                 detail: format!(
                     "GitHub adapter URIs are no longer supported (`{adapter}`): a source checkout \
                      does not yield a usable adapter artifact (RFC-64). Pin a published component \
-                     (`augentic:<name>@<semver>`), point at a local `.wasm` component file, or \
+                     (`specify:<name>@<semver>`), point at a local `.wasm` component file, or \
                      build the development sibling with `cargo make build-guests-release`"
                 ),
             });
@@ -136,7 +135,7 @@ impl AdapterUri {
                     "bare adapter name `{name}` resolves the development release build, but no \
                      component was found at {probed}; build it with `cargo make \
                      build-guests-release` or pin a published version \
-                     (`augentic:{name}@<semver>`)"
+                     (`specify:{name}@<semver>`)"
                 ),
             });
         };
@@ -172,7 +171,7 @@ impl AdapterUri {
 }
 
 /// An immutable, content-addressed adapter package reference of the
-/// form `<namespace>:<name>@<semver>` (e.g. `augentic:omnia@1.0.0`) —
+/// form `<namespace>:<name>@<semver>` (e.g. `specify:omnia@1.0.0`) —
 /// the RFC-48 D2 registry locator.
 ///
 /// The exact SemVer pin is mandatory: there is no branch or tag
@@ -248,7 +247,7 @@ impl AdapterPackageRef {
 /// (`registry::store::install_tofu`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterPackage {
-    /// First-party package namespace (e.g. `augentic`) — the wasm-pkg
+    /// First-party package namespace (e.g. `specify`) — the wasm-pkg
     /// namespace under the registry host.
     pub namespace: String,
     /// Kebab-case adapter name.
@@ -257,12 +256,27 @@ pub struct AdapterPackage {
     pub version: semver::Version,
 }
 
+impl AdapterPackage {
+    /// A first-party pinned identity — the namespace sugar the
+    /// versioned shorthand (`<name>@<semver>`) expands to. Used by the
+    /// hydration ref collector to key `plan.yaml` source pins, which
+    /// carry only the bare adapter name.
+    #[must_use]
+    pub fn first_party(name: impl Into<String>, version: semver::Version) -> Self {
+        Self {
+            namespace: FIRST_PARTY_NAMESPACE.to_string(),
+            name: name.into(),
+            version,
+        }
+    }
+}
+
 /// Recognise an adapter argument the root install layer must fetch
 /// before scaffolding.
 ///
 /// Matches a `<namespace>:<name>@<semver>` package reference, or the
 /// versioned first-party shorthand (`omnia@1.0.0` — sugar for
-/// `augentic:omnia@1.0.0`).
+/// `specify:omnia@1.0.0`).
 ///
 /// Returns `None` for non-package shapes (bare names, paths, URLs), so
 /// those keep flowing through the dev / local branches; `Some(Err(_))`
@@ -292,14 +306,15 @@ fn is_github_url(adapter: &str) -> bool {
 }
 
 /// The wasm-pkg namespace first-party adapters publish under
-/// (`augentic:<name>@<semver>` via `wkg publish` in the adapters repo).
-const FIRST_PARTY_NAMESPACE: &str = "augentic";
+/// (`specify:<name>@<semver>` via `wkg publish` in the adapters repo;
+/// RFC-65 naming cut — `augentic:` is reserved, not routed).
+const FIRST_PARTY_NAMESPACE: &str = "specify";
 
 /// Recognise a first-party adapter shorthand and split it into
 /// `(name, version)`. A bare `name` carries no pin (`None`) and
 /// resolves the development release build; a `name@<semver>` carries
 /// the parsed [`semver::Version`] (RFC-47 identity) and is sugar for
-/// the `augentic:<name>@<semver>` package reference. Returns `None`
+/// the `specify:<name>@<semver>` package reference. Returns `None`
 /// for paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying
 /// `:` or `/`), and for a `@suffix` that is not exact semver — so
 /// those keep flowing through [`AdapterUri::from_local`].
@@ -359,7 +374,7 @@ fn adapter_name_from_component(path: &Path) -> Result<String, Error> {
 /// value. Accepts:
 ///
 /// - bare kebab names (`omnia`) — returned unchanged,
-/// - package references (`augentic:omnia@1.0.0`) — the `<name>`
+/// - package references (`specify:omnia@1.0.0`) — the `<name>`
 ///   between `:` and `@`,
 /// - `file://` URIs — last path component, `.wasm` suffix and cargo
 ///   artifact prefix stripped,

@@ -1,7 +1,7 @@
 //! Adapter resolution (RFC-64: one component, no manifest).
 //!
 //! An adapter is a single WebAssembly component. Identity lives in the
-//! wasm-pkg package reference (`augentic:<name>@<semver>`), axis in the
+//! wasm-pkg package reference (`specify:<name>@<semver>`), axis in the
 //! exported world (`source` xor `target`), and the remaining metadata
 //! in the component's own deterministic `describe` answer, dispatched
 //! host-side at resolve time and cached against the component digest

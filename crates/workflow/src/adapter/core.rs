@@ -1,7 +1,7 @@
 //! Axis-split adapter identity model and post-resolve coherence gates.
 //!
 //! Post-RFC-64 an adapter is a single WebAssembly component: identity
-//! lives in the wasm-pkg package reference (`augentic:<name>@<semver>`),
+//! lives in the wasm-pkg package reference (`specify:<name>@<semver>`),
 //! axis in the exported world (`source` xor `target`), and the
 //! remaining metadata (compatibility floor, build inputs, platforms
 //! capability) in the component's own deterministic `describe` answer

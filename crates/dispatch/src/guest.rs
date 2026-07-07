@@ -232,6 +232,7 @@ pub fn route(cli: Cli) -> Route {
             }
         },
         Commands::Init { .. } => Route::Handled(unsupported(format, "init")),
+        Commands::Adapters { .. } => Route::Handled(unsupported(format, "adapters")),
         Commands::Rules { .. } => Route::Handled(unsupported(format, "rules")),
         Commands::Lint { .. } => Route::Handled(unsupported(format, "lint")),
         Commands::Archive { .. } => Route::Handled(unsupported(format, "archive")),

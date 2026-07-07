@@ -1,6 +1,6 @@
 # Source Adapters
 
-> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) are authored at [`sources/<name>/`](https://github.com/augentic/specify-adapters/tree/main/sources) in the adapters repo and published as `augentic:<name>@<semver>` components. The output-side counterparts are documented under [Target adapters](../targets/index.md).
+> Source adapters declare the input side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`) are authored at [`sources/<name>/`](https://github.com/augentic/specify-adapters/tree/main/sources) in the adapters repo and published as `specify:<name>@<semver>` components. The output-side counterparts are documented under [Target adapters](../targets/index.md).
 
 ## What is a source adapter?
 
@@ -27,7 +27,7 @@ Authority is set on the **Evidence document** during `extract`; the table above 
 
 ## Identity and metadata
 
-There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name (unique across both axes) and the exact-semver `Cargo.toml` version, published as `augentic:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export; for sources it carries only the optional `specify-floor` host-CLI compatibility floor.
+There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name (unique across both axes) and the exact-semver `Cargo.toml` version, published as `specify:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export; for sources it carries only the optional `specify-floor` host-CLI compatibility floor.
 
 The operation set is not declared anywhere on the wire — it derives from the closed WIT contract (`wit/specify.wit`: `survey`, `extract`), and the prompts are compiled into the adapter component.
 

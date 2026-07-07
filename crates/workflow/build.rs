@@ -1,8 +1,10 @@
-//! Embed-time judgment-prose corpus: inline each markdown source into
-//! `OUT_DIR/prose/` and link-check it — a dangling relative reference
-//! fails the build instead of surfacing as a lint finding (RFC-61
-//! Step 5, embed-time link resolution).
+//! Embed-time markdown corpora: inline the judgment-prose corpus into
+//! `OUT_DIR/prose/` (link-checked — a dangling relative reference
+//! fails the build instead of surfacing as a lint finding) and the
+//! shared codex packs (`codex/rules/{universal,core}/`) into
+//! `OUT_DIR/codex_packs.rs` for init-time materialization.
 
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
@@ -19,10 +21,16 @@ const CORPUS: &[(&str, &str)] = &[
     ("spec-format.md", "../../plugins/spec/references/spec-format.md"),
 ];
 
+/// The shared codex packs embedded for init-time materialization
+/// (RFC-66 §"Codex ownership becomes real"), rooted at the repo's
+/// `codex/rules/`.
+const CODEX_PACKS: &[&str] = &["universal", "core"];
+
 fn main() {
     let manifest_dir =
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set"));
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR is set")).join("prose");
+    let out_root = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR is set"));
+    let out_dir = out_root.join("prose");
     fs::create_dir_all(&out_dir).expect("create OUT_DIR/prose");
 
     for (name, relative) in CORPUS {
@@ -33,6 +41,56 @@ fn main() {
         check_links(&source, &body);
         fs::write(out_dir.join(name), body)
             .unwrap_or_else(|err| panic!("write embedded prose {name}: {err}"));
+    }
+
+    embed_codex(&manifest_dir, &out_root);
+}
+
+/// Generate `OUT_DIR/codex_packs.rs`: a sorted static slice expression
+/// of `(cache-relative path, include_str!)` entries covering every
+/// `.md` file under `codex/rules/{universal,core}/` at the repo root.
+/// The materializer in `src/init/cache.rs` `include!`s it.
+fn embed_codex(manifest_dir: &Path, out_root: &Path) {
+    let rules_root = manifest_dir.join("../../codex/rules");
+    let mut entries: Vec<(String, PathBuf)> = Vec::new();
+    for pack in CODEX_PACKS {
+        let dir = rules_root.join(pack);
+        // Directory-level rerun catches file adds/removes; the per-file
+        // entries below catch content edits.
+        println!("cargo:rerun-if-changed={}", dir.display());
+        collect_markdown(&dir, &format!("codex/rules/{pack}"), &mut entries);
+    }
+    entries.sort();
+
+    let mut table = String::from("&[\n");
+    for (rel, path) in &entries {
+        println!("cargo:rerun-if-changed={}", path.display());
+        let absolute = path
+            .canonicalize()
+            .unwrap_or_else(|err| panic!("canonicalize codex file {}: {err}", path.display()));
+        let literal = absolute.to_str().expect("codex file path is UTF-8");
+        writeln!(table, "    ({rel:?}, include_str!({literal:?})),")
+            .expect("write to in-memory codex table");
+    }
+    table.push_str("]\n");
+    fs::write(out_root.join("codex_packs.rs"), table).expect("write OUT_DIR/codex_packs.rs");
+}
+
+/// Recursively collect every `.md` file under `dir` as
+/// `(prefix-relative path with `/` separators, absolute path)`.
+fn collect_markdown(dir: &Path, prefix: &str, out: &mut Vec<(String, PathBuf)>) {
+    let entries = fs::read_dir(dir)
+        .unwrap_or_else(|err| panic!("read codex pack directory {}: {err}", dir.display()));
+    for entry in entries {
+        let entry = entry.expect("read codex pack directory entry");
+        let path = entry.path();
+        let name = entry.file_name();
+        let name = name.to_str().expect("codex file name is UTF-8");
+        if path.is_dir() {
+            collect_markdown(&path, &format!("{prefix}/{name}"), out);
+        } else if name.to_ascii_lowercase().ends_with(".md") {
+            out.push((format!("{prefix}/{name}"), path));
+        }
     }
 }
 

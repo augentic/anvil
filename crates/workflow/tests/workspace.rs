@@ -704,7 +704,7 @@ fn c07_push_wrong_branch_no_checkout() {
 /// given `project.yaml` body under `workspace/<name>/`.
 ///
 /// The slot pins `omnia@1.0.0`, which resolves the single-file global
-/// store entry (the caller pins `SPECIFY_ADAPTER_CACHE` via
+/// store entry (the caller pins `SPECIFY_ADAPTER_STORE` via
 /// `common::scoped_store`); the describe answer is stubbed through the
 /// JSON-body runner registered by `common::register_describe_stub`.
 fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {

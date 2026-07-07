@@ -30,11 +30,9 @@ cargo install --git https://github.com/augentic/specify
 For manual setup, install via one of the following methods:
 
 ```bash
-# macOS + Linux (primary)
-brew install augentic/tap/specify
-
-# Any platform with a Rust toolchain
-cargo install specify
+# GitHub Release archive: download for your platform, verify against the
+# companion .sha256 file, and place `specify` on PATH
+# https://github.com/augentic/specify/releases
 
 # Pre-built binary, any POSIX shell
 curl -sSfL https://specify.sh/install.sh | sh
@@ -42,6 +40,8 @@ curl -sSfL https://specify.sh/install.sh | sh
 # Local checkout of this repo
 make install-cli
 ```
+
+A Homebrew tap (`brew install augentic/tap/specify`) is planned but not yet published.
 
 Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` command, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
 

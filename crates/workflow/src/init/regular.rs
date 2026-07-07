@@ -55,11 +55,9 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
     }
 
     let source = cache_adapter(adapter, opts.project_dir, now)?;
-    // Distribute the shared codex from the same resolved checkout
-    // (pinned to the adapter source/ref) before the checkout guard in
-    // `source` drops. Fail-soft: a source tree without the shared pack
-    // leaves `codex_present` false.
-    let codex_present = cache_codex(opts.project_dir, &source, opts.include_framework, now)?;
+    // Materialize the shared codex from the packs embedded in this
+    // binary (RFC-66); a cache stamped by an older binary re-materializes.
+    cache_codex(opts.project_dir, opts.include_framework, now)?;
     let adapter_value = source.adapter_value;
     let adapter_ref = adapter_ref_from_value(&adapter_value);
     let resolved = TargetAdapter::resolve(&adapter_ref, opts.project_dir)?;
@@ -79,6 +77,7 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
         name,
         description: opts.description.map(str::to_string),
         adapter: Some(adapter_value),
+        adapters: Vec::new(),
         specify_version: Some(specify_version.clone()),
         rules,
         tools: Vec::new(),
@@ -100,7 +99,7 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
         config_path,
         adapter_name,
         cache_present,
-        codex_present,
+        codex_present: true,
         directories_created,
         scaffolded_rule_keys,
         specify_version,

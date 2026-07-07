@@ -58,10 +58,10 @@ Two lifecycle nouns — **slice** and **change** — appear constantly in this c
 The `specify` binary backs every workflow skill. `/spec:init` can bootstrap a missing CLI after confirmation; for manual setup use:
 
 ```bash
-brew install augentic/tap/specify
-
-# cargo install --git https://github.com/augentic/specify   # from source
+cargo install --git https://github.com/augentic/specify   # from source
 ```
+
+or download the platform archive from the [GitHub Releases page](https://github.com/augentic/specify/releases) and verify it against its `.sha256` companion (see [docs/release.md](docs/release.md)). A Homebrew tap is planned but not yet published.
 
 Once installed, keep the binary current with `specify upgrade`. It detects its install channel (`cargo` / `brew` / `binary`), resolves the latest release, and self-updates after `--yes` (or previews with `--dry-run`).
 

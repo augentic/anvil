@@ -14,7 +14,9 @@ mod base {
     use specify_workflow::config::ProjectConfig;
     use tempfile::tempdir;
 
-    use crate::common::{fixture_component, omnia_component, snapshot_tree, specify_cmd};
+    use crate::common::{
+        expected_cache_dir, fixture_component, omnia_component, snapshot_tree, specify_cmd,
+    };
 
     #[test]
     fn init_text_format_succeeds() {
@@ -34,6 +36,13 @@ mod base {
 
         let config_path = tmp.path().join(".specify/project.yaml");
         assert!(config_path.is_file(), "project.yaml must exist");
+
+        // Init is an RFC-65 manifest trigger: the deployment manifest
+        // is generated into the per-project cache, covering the
+        // mirrored local component as a bare-name adapter guest.
+        let manifest = expected_cache_dir(tmp.path()).join("deployment").join("omnia.toml");
+        let doc = fs::read_to_string(&manifest).expect("generated deployment manifest");
+        assert!(doc.contains("id = \"target:omnia\""), "the mirrored component deploys: {doc}");
     }
 
     #[test]
@@ -93,7 +102,7 @@ mod base {
     #[ignore = "networked wasm-pkg registry fetch smoke test"]
     fn init_shorthand_resolves_via_registry() {
         // `specify init omnia@1.0.0` resolves the first-party shorthand
-        // to the published `augentic:omnia@1.0.0` component via wasm-pkg.
+        // to the published `specify:omnia@1.0.0` component via wasm-pkg.
         // Networked.
         let tmp = tempdir().unwrap();
         specify_cmd()
@@ -828,5 +837,107 @@ mod shapes {
             "second --upgrade must be a no-op",
         );
         assert_eq!(snapshot(root), before, "second --upgrade must leave the tree byte-identical");
+    }
+}
+
+mod hydration {
+    //! RFC-65 init-trigger wiring for the hydration kernel: `specify
+    //! init --upgrade` re-runs hydration over the declared set — the
+    //! `project.yaml.adapter` pin plus the `adapters:` prefetch list —
+    //! against the global store. Warm-store probes only; the networked
+    //! fetch leg stays behind the existing `#[ignore]` registry smoke
+    //! tests.
+
+    use std::fs;
+    use std::path::Path;
+
+    use tempfile::tempdir;
+
+    use crate::common::{specify_cmd, stage_store_component};
+
+    /// Seed a minimal initialised project whose `project.yaml` declares
+    /// the given `adapters:` prefetch entries.
+    fn seed_project_with_prefetch(root: &Path, entries: &[&str]) {
+        let specify = root.join(".specify");
+        fs::create_dir_all(&specify).expect("mkdir .specify");
+        let list = entries.iter().fold(String::new(), |mut acc, entry| {
+            acc.push_str("- ");
+            acc.push_str(entry);
+            acc.push('\n');
+            acc
+        });
+        fs::write(
+            specify.join("project.yaml"),
+            format!("name: demo\nadapter: omnia\nspecify: 0.1.0\nadapters:\n{list}"),
+        )
+        .expect("write project.yaml");
+        // Sentinel: keeps upgrade off the context-generation leg (which
+        // would resolve the bare `omnia` dev adapter this seed lacks).
+        fs::write(root.join("AGENTS.md"), "# Sentinel AGENTS.md — operator authored\n")
+            .expect("write AGENTS.md");
+    }
+
+    #[test]
+    fn upgrade_hydrates_warm_prefetch_list() {
+        // A warm store makes upgrade-time hydration a no-op probe: the
+        // staged entry satisfies the prefetch pin without any fetch (a
+        // registry pull would fail in this sandbox), and the entry
+        // survives byte-identical.
+        let tmp = tempdir().unwrap();
+        let entry = stage_store_component("demo-target", "1.0.0");
+        let bytes_before = fs::read(&entry).expect("read staged entry");
+        seed_project_with_prefetch(tmp.path(), &["demo-target@1.0.0"]);
+
+        specify_cmd().current_dir(tmp.path()).args(["init", "--upgrade"]).assert().success();
+        assert_eq!(
+            fs::read(&entry).expect("re-read staged entry"),
+            bytes_before,
+            "warm-store hydration must leave the entry untouched"
+        );
+    }
+
+    #[test]
+    fn upgrade_refuses_unpinned_prefetch_entry() {
+        // A bare prefetch name is refused with the typed
+        // `adapter-prefetch-unpinned` before anything is fetched.
+        let tmp = tempdir().unwrap();
+        seed_project_with_prefetch(tmp.path(), &["demo-target"]);
+
+        let assert = specify_cmd()
+            .current_dir(tmp.path())
+            .args(["--format", "json", "init", "--upgrade"])
+            .assert()
+            .failure();
+        let envelope: serde_json::Value = serde_json::from_slice(&assert.get_output().stderr)
+            .expect("stderr is the JSON envelope");
+        assert_eq!(envelope["error"], "adapter-prefetch-unpinned");
+        assert!(
+            envelope["message"].as_str().is_some_and(|m| m.contains("demo-target")),
+            "error names the offending entry: {envelope}"
+        );
+    }
+
+    #[test]
+    fn upgrade_refuses_drifted_prefetch_entry() {
+        // RFC-48 D4 verify-on-read holds on the hydration path: a store
+        // entry whose bytes drifted from the recorded sidecar digest
+        // aborts the upgrade with `adapter-digest-mismatch`.
+        let tmp = tempdir().unwrap();
+        let entry = stage_store_component("demo-target", "1.0.0");
+        fs::write(&entry, b"\0asm-drifted").expect("drift the entry");
+        seed_project_with_prefetch(tmp.path(), &["demo-target@1.0.0"]);
+
+        let assert = specify_cmd()
+            .current_dir(tmp.path())
+            .args(["--format", "json", "init", "--upgrade"])
+            .assert()
+            .failure();
+        let envelope: serde_json::Value = serde_json::from_slice(&assert.get_output().stderr)
+            .expect("stderr is the JSON envelope");
+        assert_eq!(envelope["error"], "adapter-digest-mismatch");
+        assert!(
+            envelope["message"].as_str().is_some_and(|m| m.contains("demo-target@1.0.0")),
+            "error names the identity: {envelope}"
+        );
     }
 }

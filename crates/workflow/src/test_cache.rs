@@ -1,6 +1,6 @@
 //! Test-only helpers for pinning the out-of-tree adapter store.
 //!
-//! The global adapter store lives in an OS cache resolved by
+//! The global adapter store lives in the per-user home resolved by
 //! `specify_schema::cache`. Tests that drive adapter install/resolve
 //! must redirect that store into a temp directory so reads are
 //! hermetic and never touch the developer's real store.
@@ -8,9 +8,9 @@
 use std::ffi::OsString;
 use std::path::Path;
 
-const STORE_ENV: &str = "SPECIFY_ADAPTER_CACHE";
+const STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 
-/// Restores the previous `SPECIFY_ADAPTER_CACHE` value on drop.
+/// Restores the previous `SPECIFY_ADAPTER_STORE` value on drop.
 pub struct StoreGuard(Option<OsString>);
 
 impl Drop for StoreGuard {

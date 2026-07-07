@@ -50,7 +50,7 @@ The cache root resolution order is `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`,
 
 ## Package Sources and SHA-256 Pins
 
-A package-backed project-scope `source:` resolves through wasm-pkg registry metadata (e.g. `augentic.io`) to OCI artifacts in GHCR; operators do not install `wkg`.
+A package-backed project-scope `source:` resolves through wasm-pkg registry metadata (e.g. `augentic.io`'s well-known file) to OCI artifacts in the backing registry; operators do not install `wkg`.
 
 `sha256` pins object-declared component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose cached digest no longer matches the live declaration.
 

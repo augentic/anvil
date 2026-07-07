@@ -10,6 +10,7 @@
 //! surface here — the workflow guest drives the matching
 //! `specify_workflow::orchestrate` entry points.
 
+pub mod adapters;
 pub mod archive;
 pub mod journal;
 pub mod lint;

@@ -173,6 +173,9 @@ impl Error {
                 "context-fenced-content-modified" => Some(
                     "reconcile the edits or rerun with --force to replace the generated block.",
                 ),
+                "adapter-prefetch-unpinned" => Some(
+                    "pin each `project.yaml.adapters:` entry to an exact version: `<name>@<semver>` or `<namespace>:<name>@<semver>`.",
+                ),
                 _ => None,
             },
             _ => None,

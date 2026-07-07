@@ -4,6 +4,13 @@ name: Release binaries
 # that publish.yaml pushes on a merged release PR; publish.yaml creates
 # the GitHub Release (curated notes) and this workflow attaches the
 # built binary archives to it. The Cargo workspace lives at the repo root.
+#
+# The same tag also publishes the wasm-shaped artifacts (RFC-66): the
+# core guest as `specify:core@<version>` and the WIT contract as
+# `specify:adapter@<wit version>`, each through an idempotent
+# `cargo make publish-*` task — this workflow is a thin caller. Keeping
+# the publish jobs inside this workflow (not a separate one) is what
+# lets job dependencies enforce the binary↔core-guest lockstep below.
 
 on:
   push:
@@ -16,6 +23,16 @@ concurrency:
 
 permissions:
   contents: write
+
+env:
+  # Canonical first-party registry host: `wkg` resolves it through
+  # https://augentic.io/.well-known/wasm-pkg/registry.json to the OCI
+  # backend. Must match the `specify` namespace mapping the engine
+  # resolves `specify:<name>@<ver>` references against
+  # (crates/registry/src/package.rs). Override via repository variable
+  # for a mirror.
+  REGISTRY: ${{ vars.SPECIFY_REGISTRY || 'augentic.io' }}
+  REGISTRY_NAMESPACE: specify
 
 jobs:
   build:
@@ -106,9 +123,137 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # Publish the core guest as `specify:core@<VERSION>` (RFC-66). The
+  # publish leg lives in `cargo make publish-core`; this job only
+  # supplies toolchain, credentials, and the tag↔VERSION guard. The
+  # task's probe-first idempotency makes re-running this workflow
+  # against an already-published tag a safe no-op.
+  publish-core:
+    name: Publish specify:core
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: publish-core
+
+      - name: Install cargo-make
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make
+
+      - name: Install wkg
+        run: cargo install wkg@0.15.0 --locked # pinned: the idempotency probe fingerprints are validated against this version
+
+      # The published core identity always equals the binary version:
+      # the tag being released must match the VERSION file the
+      # publish-core task reads, or the lockstep below would pin the
+      # binaries to a core that was never published under their version.
+      - name: Verify VERSION matches tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF#refs/tags/}"
+          tag_version="${tag_version#v}"
+          file_version="$(tr -d '[:space:]' < VERSION)"
+          if [ "${tag_version}" != "${file_version}" ]; then
+            echo "::error::tag version ${tag_version} does not match VERSION file ${file_version}"
+            exit 1
+          fi
+
+      # `wkg` resolves the `specify` namespace through this config.
+      # Auth is GITHUB_TOKEN only (RFC-66 retires the registry
+      # username/password secrets): `permissions: packages: write`
+      # above is the whole credential story.
+      - name: Write wkg config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/wasm-pkg"
+          cat > "${XDG_CONFIG_HOME:-$HOME/.config}/wasm-pkg/config.toml" <<EOF
+          [namespace_registries]
+          ${REGISTRY_NAMESPACE} = "${REGISTRY}"
+
+          [registry."${REGISTRY}".oci]
+          auth = { username = "${{ github.actor }}", password = "${{ secrets.GITHUB_TOKEN }}" }
+          EOF
+
+      - name: Publish core guest
+        run: cargo make publish-core
+
+  # Publish the WIT contract as `specify:adapter@<wit version>`
+  # (RFC-66). The skip-if-present probe inside `cargo make publish-wit`
+  # is the version-changed guard: a tag that did not bump the WIT
+  # `package` declaration finds the version already published and
+  # no-ops. No wasm32 Rust target needed — `wkg wit build` encodes the
+  # WIT directory directly.
+  publish-wit:
+    name: Publish specify:adapter (WIT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: publish-wit
+
+      - name: Install cargo-make
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make
+
+      - name: Install wkg
+        run: cargo install wkg@0.15.0 --locked # pinned: the idempotency probe fingerprints are validated against this version
+
+      # Same GITHUB_TOKEN-only credential story as publish-core.
+      - name: Write wkg config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/wasm-pkg"
+          cat > "${XDG_CONFIG_HOME:-$HOME/.config}/wasm-pkg/config.toml" <<EOF
+          [namespace_registries]
+          ${REGISTRY_NAMESPACE} = "${REGISTRY}"
+
+          [registry."${REGISTRY}".oci]
+          auth = { username = "${{ github.actor }}", password = "${{ secrets.GITHUB_TOKEN }}" }
+          EOF
+
+      - name: Publish WIT contract
+        run: cargo make publish-wit
+
   release:
     name: Attach binaries to release
-    needs: [build]
+    # The binary↔core-guest lockstep is a release invariant (RFC-66
+    # §"Risks and invariants"): a binary version whose `specify:core`
+    # publish failed is a broken release, so the binaries are never
+    # attached until publish-core succeeds. publish-wit deliberately
+    # does NOT gate the release — the WIT contract versions
+    # independently of the binary, and most tags no-op that leg; a WIT
+    # publish failure is visible on the workflow run without holding
+    # the binaries hostage.
+    needs: [build, publish-core]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

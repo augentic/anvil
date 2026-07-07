@@ -1,6 +1,6 @@
 # Target Adapters
 
-> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) are authored at [`targets/<name>/`](https://github.com/augentic/specify-adapters/tree/main/targets) in the adapters repo and published as `augentic:<name>@<semver>` components. The source-side counterparts are documented under [Source adapters](../sources/index.md).
+> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) are authored at [`targets/<name>/`](https://github.com/augentic/specify-adapters/tree/main/targets) in the adapters repo and published as `specify:<name>@<semver>` components. The source-side counterparts are documented under [Source adapters](../sources/index.md).
 
 ## What is a target adapter?
 
@@ -14,7 +14,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis — that is **core
 
 ## Identity and metadata
 
-There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name and the exact-semver `Cargo.toml` version, published as `augentic:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export:
+There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name and the exact-semver `Cargo.toml` version, published as `specify:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export:
 
 | Field           | Required | Meaning |
 | --------------- | -------- | ------- |

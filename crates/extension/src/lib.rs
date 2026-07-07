@@ -34,8 +34,7 @@ pub const WASM_PKG_CONFIG_PATH: &str = ".specify/wasm-pkg.toml";
 pub const DEFAULT_WASM_PKG_CONFIG: &str = "default_registry = \"augentic.io\"\n\
                                            \n\
                                            [namespace_registries]\n\
-                                           specify = \"augentic.io\"\n\
-                                           augentic = \"augentic.io\"\n";
+                                           specify = \"augentic.io\"\n";
 
 /// One declared WASI tool.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -5,8 +5,10 @@
 //! the native-only handlers below own everything that needs
 //! subprocesses, Wasmtime, or the network (init, lint, workspace, …).
 
+mod adapters;
 pub mod agents;
 pub mod archive;
+mod deploy;
 pub mod describe;
 pub mod guest;
 mod init;
@@ -18,6 +20,7 @@ mod upgrade;
 pub mod workspace;
 
 use clap::CommandFactory;
+use specify_dispatch::commands::adapters::cli::AdaptersAction;
 use specify_dispatch::commands::lint::cli::LintAction;
 use specify_dispatch::commands::rules::cli::RulesAction;
 use specify_dispatch::commands::workspace::cli::WorkspaceAction;
@@ -52,11 +55,16 @@ pub fn run(cli: Cli) -> Exit {
                 upgrade,
             })
         }),
+        Commands::Adapters { action } => match action {
+            AdaptersAction::Sync { frozen } => {
+                scoped(format, plan_dir, |ctx| adapters::sync(ctx, frozen))
+            }
+        },
         Commands::Source { action } => dispatch_source(format, plan_dir, action),
         Commands::Target { action } => dispatch_target(format, action),
         Commands::Rules { action } => match action {
             RulesAction::Export(args) => dispatch(format, || rules::export::run(format, &args)),
-            RulesAction::Sync(args) => scoped(format, plan_dir, |ctx| rules::sync::run(ctx, &args)),
+            RulesAction::Sync(args) => scoped(format, plan_dir, |ctx| rules::sync::run(ctx, args)),
         },
         Commands::Lint { action } => dispatch_lint(format, action),
         Commands::Journal { action } => dispatch_journal(format, plan_dir, action),

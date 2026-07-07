@@ -1,6 +1,6 @@
 # RFC-66: Publishing and Distribution — One Transport, Two Axes
 
-> Status: Proposed · Depends: RFC-64 (one-component artifact, wasm-pkg publish — landed in `specify-adapters`), [RFC-65](rfc-65-standalone-deployment.md) (the hydration kernel, store root, and `adapters.lock`; the `specify:` naming cut; the binary-versioned core guest) · Owns: how every Specify artifact is published by developers and acquired by operators, across both repos
+> Status: Implemented (2026-07) — with three deferrals: **tap automation** (§"Tap automation", acceptance criterion 7 — install stays GitHub Release archives + `cargo install --git` until the tap lands); **overlay extraction into the manifest-cache rung** (components now embed their `prose/rules/` packs, but the pinned WIT has no docs-enumeration export and the MCP shelf needs a composed deployment, so extraction rides RFC-65's `adapters sync` / MCP-shelf path); and the **`specify:core` consume side** (the publish leg lands inert; RFC-65 Stage D flips the binary to hydrate it and deletes the committed guest) · Depends: RFC-64 (one-component artifact, wasm-pkg publish — landed in `specify-adapters`), [RFC-65](rfc-65-standalone-deployment.md) (the hydration kernel, store root, and `adapters.lock`; the `specify:` naming cut; the binary-versioned core guest) · Owns: how every Specify artifact is published by developers and acquired by operators, across both repos
 
 ## Abstract
 

@@ -26,8 +26,8 @@
   <text x="622" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">build</text>
   <rect x="740" y="192" width="120" height="48" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
   <text x="752" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">merge</text>
-  <text x="480" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">augentic:&lt;name&gt;@&lt;semver&gt; (source component)</text>
-  <text x="480" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">augentic:&lt;name&gt;@&lt;semver&gt; (target component)</text>
+  <text x="480" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">specify:&lt;name&gt;@&lt;semver&gt; (source component)</text>
+  <text x="480" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">specify:&lt;name&gt;@&lt;semver&gt; (target component)</text>
   <text x="40" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">&lt;store-root&gt;/&lt;name&gt;@&lt;version&gt;.wasm (global store)</text>
   <text x="40" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">&lt;project-cache&gt;/components/&lt;name&gt;.wasm (out-of-tree)</text>
 </svg>

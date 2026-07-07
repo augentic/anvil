@@ -148,7 +148,7 @@ fn locate(
                 code: "adapter-not-found",
                 detail: format!(
                     "adapter `{name}@{version}` (axis `{axis}`) is not installed in the global \
-                     store at {}; `specify init augentic:{name}@{version}` installs the published \
+                     store at {}; `specify init specify:{name}@{version}` installs the published \
                      component",
                     entry.display(),
                 ),
@@ -189,7 +189,7 @@ fn locate(
         detail: format!(
             "adapter `{name}` (axis `{axis}`) has no development artifact at {probed}; build it \
              with `cargo make build-guests-release` or pin a published version \
-             (`augentic:{name}@<semver>`)",
+             (`specify:{name}@<semver>`)",
         ),
     })
 }

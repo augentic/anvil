@@ -6,12 +6,16 @@ Judgment is an Omnia host effect, not part of this package: Omnia's `wasi-model`
 
 This repo owns and publishes `specify:adapter`; [`specify-adapters`](https://github.com/augentic/specify-adapters) consumes it as a pinned dependency.
 
-## Prerequisites
+## Publish
 
-Install [wkg](https://github.com/bytecodealliance/wasm-pkg-tools).
+The package publishes on each `v*` release tag: the `publish-wit` job in [`release-binaries.yaml`](../.github/workflows/release-binaries.yaml) runs `cargo make publish-wit`, which parses the version from this file's `package specify:adapter@<ver>;` declaration and pushes through the probe-first idempotent helper ([`scripts/wkg-publish-idempotent.sh`](../scripts/wkg-publish-idempotent.sh)). A tag that did not bump the declaration finds the version already published and no-ops — bumping the `package` version here is the whole release action for a contract change. See [`docs/release.md`](../docs/release.md).
 
 ## Consume
 
+Map the `specify:` namespace to `augentic.io` in your [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) config (`[namespace_registries]` → `specify = "augentic.io"`); the host's `/.well-known/wasm-pkg/registry.json` resolves the rest, and pulls are anonymous:
+
 ```bash
-wkg get specify:adapter@<semver> --config .wkg-config.toml --output ./wit/deps/specify.wit
+wkg get specify:adapter@<semver> --format wit --output specify.wit
 ```
+
+`specify-adapters` vendors the pinned version at `wit/deps/specify/specify.wit` via its `cargo make wit-vendor` task (with a `wit-vendor-sibling` dev override pointing at this checkout while a contract change iterates before publish).

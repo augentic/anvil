@@ -412,6 +412,21 @@ pub enum EventKind {
         /// the deletion.
         marketplace: String,
     },
+    /// `specify adapters sync` hydrated the project's declared pinned
+    /// identities against the global adapter store (RFC-65's explicit
+    /// hydration trigger). Fires once per successful sync that
+    /// resolved at least one identity; a project with no pinned
+    /// declarations emits nothing. `resolved` counts the
+    /// digest-verified identities in the resolved set; `fetched`
+    /// counts the store misses pulled through the transport (`0` on a
+    /// warm-store no-op probe, always `0` under `--frozen`).
+    #[serde(rename = "adapters.synced", rename_all = "kebab-case")]
+    AdaptersSynced {
+        /// Identities resolved and digest-verified by this sync.
+        resolved: usize,
+        /// Identities pulled into the store on a miss.
+        fetched: usize,
+    },
     /// `specify workspace sync` materialised the selected workspace
     /// slots and regenerated `topology.lock`. Fires once per
     /// successful sync; the registry-less no-op path emits nothing.
@@ -508,6 +523,7 @@ pub struct LintCounts {
 /// per variant to prove the table matches the serde renames; adding a
 /// variant without updating this table fails that test.
 pub const WIRE_EVENT_IDS: &[&str] = &[
+    "adapters.synced",
     "cli.upgraded",
     "lint-completed",
     "plan.amend.authority-override",

@@ -7,10 +7,10 @@
 //! events, no lifecycle transitions, no on-disk writes — the handler
 //! streams a `ResolvedRules` JSON envelope to stdout and exits.
 //!
-//! `sync` distributes the shared codex into the out-of-tree `<project-cache>/codex/`
-//! pinned to the project's adapter source/ref (RM-07), so consumer
-//! projects resolve shared `UNI-*` rules without a co-located framework
-//! checkout or a manual `--rules-root`.
+//! `sync` materializes the shared codex packs embedded in this binary
+//! into the out-of-tree `<project-cache>/codex/`, pinned to the binary
+//! version (RM-07), so consumer projects resolve shared `UNI-*` rules
+//! without a co-located framework checkout or a manual `--rules-root`.
 
 pub use specify_dispatch::commands::rules::cli;
 pub mod export;

@@ -157,7 +157,7 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `augentic:<name>@<semver>`; the guest crate lives at `adapters/sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `specify:<name>@<semver>`; the guest crate lives at `adapters/sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
@@ -174,7 +174,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Published as `augentic:<name>@<semver>`; the guest crate lives at `adapters/targets/<name>/` in the adapters repo.
+Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Published as `specify:<name>@<semver>`; the guest crate lives at `adapters/targets/<name>/` in the adapters repo.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).

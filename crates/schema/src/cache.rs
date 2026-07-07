@@ -13,6 +13,12 @@
 //! populates the cache at init/sync) and `specify-standards` (which
 //! reads it during rule resolution) resolve the same root without a
 //! cross-layer dependency.
+//!
+//! The global adapter store also resolves here, but it is an install
+//! store, not an evictable cache: entries are immutable,
+//! digest-verified, and load-bearing at runtime, so the store lives in
+//! Specify's per-user home (`$HOME/.specify/adapters`) rather than the
+//! OS cache.
 
 use std::env;
 use std::ffi::OsString;
@@ -113,8 +119,9 @@ fn projects_root() -> PathBuf {
 
 /// Environment override for the global adapter store root (RFC-48 D5).
 /// When set to an absolute path, store entries are created directly
-/// beneath it (the `specify/adapters` suffix is *not* appended).
-const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_CACHE";
+/// beneath it (no suffix is appended) — the relocation lever for
+/// sandboxes and tests.
+const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 
 /// Absolute path to the global adapter store entry for an immutable
 /// `(name, version)` identity — the single component file
@@ -135,21 +142,19 @@ pub fn adapter_store_entry(name: &str, version: &str) -> PathBuf {
 /// Resolve the parent directory that holds every adapter's
 /// content-addressed store entry.
 ///
-/// Precedence: `$SPECIFY_ADAPTER_CACHE`, then
-/// `$XDG_CACHE_HOME/specify/adapters`, then
-/// `$HOME/.cache/specify/adapters`, then `<temp>/specify/adapters`.
-/// Empty or relative overrides are skipped rather than treated as an
-/// error, mirroring `projects_root`.
+/// Precedence: `$SPECIFY_ADAPTER_STORE`, then `$HOME/.specify/adapters`
+/// — the store lives in Specify's per-user home, not the OS cache.
+/// Empty or relative values are skipped rather than treated as an
+/// error, mirroring `projects_root`; without a usable `$HOME` the OS
+/// temp directory anchors a last-resort root, keeping the helper
+/// infallible.
 #[must_use]
 pub fn adapter_store_root() -> PathBuf {
     if let Some(root) = env::var_os(ADAPTER_STORE_ENV).and_then(absolute) {
         return root;
     }
-    if let Some(root) = env::var_os("XDG_CACHE_HOME").and_then(absolute) {
-        return root.join("specify").join("adapters");
-    }
     if let Some(home) = env::var_os("HOME").and_then(absolute) {
-        return home.join(".cache").join("specify").join("adapters");
+        return home.join(".specify").join("adapters");
     }
     env::temp_dir().join("specify").join("adapters")
 }
@@ -287,8 +292,8 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        adapter_store_entry, adapter_store_root, file_content_digest, project_cache_dir,
-        store_meta_path,
+        ADAPTER_STORE_ENV, adapter_store_entry, adapter_store_root, file_content_digest,
+        project_cache_dir, store_meta_path,
     };
 
     // `project_cache_dir` is keyed by the canonicalised project path:
@@ -303,13 +308,23 @@ mod tests {
         assert_eq!(a, project_cache_dir(Path::new("/some/project/a")), "stable across calls");
     }
 
-    // The adapter store is keyed by the immutable `(name, version)`
-    // identity: the entry is the single component file
+    // The adapter store root resolves `$SPECIFY_ADAPTER_STORE`, else
+    // `$HOME/.specify/adapters`. Entries are keyed by the immutable
+    // `(name, version)` identity: the entry is the single component file
     // `<root>/<name>@<version>.wasm` (RFC-64), distinct versions never
     // collide, the same identity is stable, and the verify-on-read
     // sidecar (RFC-48 D4) is a `.meta` sibling of the entry.
     #[test]
-    fn store_entry_and_meta_paths() {
+    #[expect(unsafe_code, reason = "pin the store-root env vars for the resolution-chain checks")]
+    fn store_root_and_entry_paths() {
+        let prev_store = std::env::var_os(ADAPTER_STORE_ENV);
+        let prev_home = std::env::var_os("HOME");
+        let store = tempfile::tempdir().expect("store root");
+        // SAFETY: nextest runs each test in its own process, so no other
+        // thread observes the env mutations for the test's lifetime.
+        unsafe { std::env::set_var(ADAPTER_STORE_ENV, store.path()) };
+        assert_eq!(adapter_store_root(), store.path(), "the env override wins");
+
         let entry = adapter_store_entry("demo-target", "1.2.0");
         assert_eq!(entry.file_name().unwrap(), "demo-target@1.2.0.wasm");
         assert_eq!(entry.parent().unwrap(), adapter_store_root());
@@ -319,6 +334,32 @@ mod tests {
         let meta = store_meta_path("demo-target", "1.2.0");
         assert_eq!(meta.parent(), entry.parent(), "the sidecar is a sibling of the entry");
         assert_eq!(meta.file_name().expect("sidecar file name"), "demo-target@1.2.0.meta");
+
+        let home = tempfile::tempdir().expect("home dir");
+        // SAFETY: see above — per-process test isolation.
+        unsafe { std::env::remove_var(ADAPTER_STORE_ENV) };
+        // SAFETY: see above — per-process test isolation.
+        unsafe { std::env::set_var("HOME", home.path()) };
+        assert_eq!(
+            adapter_store_root(),
+            home.path().join(".specify").join("adapters"),
+            "without the override the store lives in the per-user home"
+        );
+
+        // SAFETY: see above — restore the ambient values.
+        unsafe {
+            match prev_store {
+                Some(value) => std::env::set_var(ADAPTER_STORE_ENV, value),
+                None => std::env::remove_var(ADAPTER_STORE_ENV),
+            }
+        }
+        // SAFETY: see above — restore the ambient values.
+        unsafe {
+            match prev_home {
+                Some(value) => std::env::set_var("HOME", value),
+                None => std::env::remove_var("HOME"),
+            }
+        }
     }
 
     #[test]
