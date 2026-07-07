@@ -1,6 +1,6 @@
 # RFC-62: The Adapter Development Loop
 
-> Status: Proposed · Depends: RFC-61 (landed; removed from the tree — the adapter guests and the live eval harness in `specify-adapters` this RFC tightens) and RFC-64 (one component, no manifest — landed) · Owns: the prose-edit → live-model round trip for adapter authors
+> Status: Implemented (2026-07) · Depends: RFC-61 (landed; removed from the tree — the adapter guests and the live eval harness in `specify-adapters` this RFC tightens) and RFC-64 (one component, no manifest — landed) · Owns: the prose-edit → live-model round trip for adapter authors
 
 ## Abstract
 
@@ -45,9 +45,9 @@ The eval guest's argv grows an operation selector. Today it accepts `<adapter-id
 
 ## Scope
 
-- The `prose-overlay` feature in the `adapter` crate (registry + shelf read paths) and the runner support that seeds and enables it, including symlink-resolving overlay seeding and the overlay-active skip of the runner's cargo legs.
-- The operation selector on the eval guest.
-- The driver-level model override and the watch task. (Prebuilt-driver invocation and the wiring-smoke generalization landed with the `evals/live.rs` test runner: each live test spawns the built `eval-driver` example binary, and the non-ignored `wiring` tests smoke every scenario model-free.)
+- The `prose-overlay` feature in the `adapter` crate (registry + shelf read paths) and the runner support that seeds and enables it, including symlink-resolving overlay seeding and the overlay-active skip of the runner's cargo legs. (Landed.)
+- The operation selector on the eval guest. (Landed.)
+- The driver-level model override and the watch task. (Landed: `SPECIFY_EVAL_MODEL` in the eval driver, the `eval-watch` cargo-make task. Prebuilt-driver invocation and the wiring-smoke generalization landed with the `evals/live.rs` test runner: each live test spawns the built `eval-driver` example binary, and the non-ignored `wiring` tests smoke every scenario model-free.)
 
 ## Out of scope
 
