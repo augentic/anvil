@@ -1,6 +1,6 @@
 # RFC-65: The Standalone Deployment — Specify as a Guest of a Generic Omnia Host
 
-> Status: Proposed · Depends: RFC-61 (the in-place migration — landed; this RFC amends its decisions D-bin (triage main) and D-dist (embedded workflow guest)), RFC-64 (one-component adapter artifact, wasm-pkg transport — landed) · Related: [RFC-66](rfc-66-publishing-and-distribution.md) (the publish/acquire plumbing for the core guest, the adapters, the WIT contract, and the binary), and an Omnia-side generic guest-embed option on `runtime!` (an optional acceleration move 4 adopts when available — never a dependency of the cut) · Absorbs: RFC-63 (adapter hydration and the central store — now §"The provisioning half") · Owns: how a project's declared component identities become a fully provisioned, runnable deployment — locally and in the cloud — and the operational surface after the embedded host retires
+> Status: Proposed · Depends: RFC-61 (the in-place migration — landed; this RFC amends its decisions D-bin (triage main) and D-dist (embedded workflow guest)), RFC-64 (one-component adapter artifact, wasm-pkg transport — landed) · Related: RFC-66 (the publish/acquire plumbing for the core guest, the adapters, the WIT contract, and the binary — landed; removed from the tree, decisions recorded in DECISIONS.md §"Publishing and distribution: one transport, idempotent legs"), and an Omnia-side generic guest-embed option on `runtime!` (an optional acceleration move 4 adopts when available — never a dependency of the cut) · Absorbs: RFC-63 (adapter hydration and the central store — now §"The provisioning half") · Owns: how a project's declared component identities become a fully provisioned, runnable deployment — locally and in the cloud — and the operational surface after the embedded host retires
 
 ## Abstract
 
@@ -163,7 +163,7 @@ A ground-zero spike — macro host plus hand-written manifest over locally built
 ## Out of scope
 
 - **Omnia OCI guest sources, version ranges, and a release index** — hydration requires exact pins; RM-21 owns ranges, floors, and the compatibility matrix.
-- **Registry backing and publish workflows** — the well-known file, GHCR packages, idempotent publish loops, and the `specify:core` publish job are [RFC-66](rfc-66-publishing-and-distribution.md)'s.
+- **Registry backing and publish workflows** — the well-known file, GHCR packages, idempotent publish loops, and the `specify:core` publish job are RFC-66's (landed).
 - **Third-party adapter namespaces** — the first-party `specify:` posture is unchanged.
 - **Store garbage collection** — entries are immutable and shared across projects; a retention policy over unreferenced identities is a follow-up, not a blocker (the store grows by one file per `(name, version)` ever used).
 - **Requiring the Omnia embed option** — it is an opt-in acceleration; the cut lands and ships on the pulled `specify:core` baseline whether or not the option ever exists.
