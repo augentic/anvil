@@ -2,8 +2,8 @@
 //! forwards unparsed through the composed deployment, native
 //! provisioning verbs stay in-process (RFC-65 move 5, AC3).
 //!
-//! The guest leg spawns the generic `specify-host` binary (RFC-65
-//! move 2), whose cursor backend needs `cursor-agent` on `PATH` at
+//! The guest leg mounts the generic host layer in-process (RFC-65
+//! move 2), and its cursor backend needs `cursor-agent` on `PATH` at
 //! connect, so these tests stage a stub script that answers
 //! `--version` and fails any real invocation — the covered flows never
 //! legitimately reach a completion. The composed run itself is real:
@@ -11,11 +11,11 @@
 //! (RFC-65) with the embedded workflow guest staged beside it, adapter
 //! guests resolve through the axis resolvers (bound adapters) or the
 //! component-cache scan (unbound), and the guest's exit code passes
-//! through to the process exit. A failure *inside* the host —
-//! deployment assembly, backend connect — surfaces as the host's own
-//! stderr text with its exit code passed through; only a failure
-//! around the spawn itself renders the `guest-runtime-failed`
-//! envelope. See DECISIONS.md §"One `specify` binary".
+//! through to the process exit. A failure ahead of the guest run —
+//! deployment assembly, backend connect — renders the
+//! `guest-runtime-failed` envelope carrying the runtime's error chain;
+//! a failure *inside* the guest is the guest's own envelope with its
+//! exit code passed through. See DECISIONS.md §"One `specify` binary".
 
 // The stub is a `sh` script; the covered behavior is identical across
 // unix hosts and no CI leg runs the suite on Windows.
@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use std::sync::OnceLock;
 
-use common::{ensure_host_binary, parse_json, repo_root, specify_cmd};
+use common::{parse_json, repo_root, specify_cmd};
 use tempfile::{TempDir, tempdir};
 
 use crate::common;
@@ -90,7 +90,6 @@ fn free_port() -> u16 {
 // assembly), staging the embedded workflow guest beside it.
 #[test]
 fn guest_verb_exit_passthrough() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
 
@@ -122,13 +121,13 @@ fn guest_verb_exit_passthrough() {
 
 // The developer posture is untouched: a project-root omnia.toml wins
 // wholesale over the generated manifest. The staged file is garbage,
-// so the deployment build fails *inside* the spawned host — its own
-// stderr text, exit 1 passed through — proving the committed manifest
-// was consumed rather than a regenerated one (which would reach the
-// guest and fail `not-initialized`).
+// so the in-process deployment build fails — the `guest-runtime-failed`
+// envelope carries the runtime's `building runtime: …` context, exit 1
+// — proving the committed manifest was consumed rather than a
+// regenerated one (which would reach the guest and fail
+// `not-initialized`).
 #[test]
 fn project_root_manifest_wins() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     fs::write(project.path().join("omnia.toml"), "this is not a manifest").expect("write garbage");
@@ -218,7 +217,6 @@ fn help_survives_pinned_store_miss() {
 // also covers the sniff-axis discovery leg.
 #[test]
 fn guest_verb_http_trigger_background() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     let cache = common::expected_cache_dir(project.path()).join("components");
@@ -249,13 +247,12 @@ fn guest_verb_http_trigger_background() {
 
 // AC3, forwarding half: workflow verbs are NOT on the native
 // provisioning grammar and forward to the composed-deployment leg.
-// With no `cursor-agent` on PATH each verb fails at backend connect
-// *inside* the spawned host (its stderr names the missing agent; exit 1
-// passes through) — reaching the composed-deployment leg at all proves
-// no native envelope served the verb.
+// With no `cursor-agent` on PATH each verb fails at the in-process
+// runtime's backend connect (the envelope names the missing agent;
+// exit 1) — reaching the composed-deployment leg at all proves no
+// native envelope served the verb.
 #[test]
 fn workflow_verbs_forward_to_guest_leg() {
-    ensure_host_binary();
     let empty = tempdir().expect("empty PATH dir");
     let project = tempdir().expect("project dir");
     for argv in [
@@ -296,7 +293,6 @@ fn workflow_verbs_forward_to_guest_leg() {
 // instead of being silently ignored (Step 4 parity ledger).
 #[test]
 fn plan_dir_refused_on_guest_leg() {
-    ensure_host_binary();
     let project = tempdir().expect("project dir");
     let elsewhere = tempdir().expect("other plan root");
 
@@ -328,7 +324,10 @@ fn plan_dir_refused_on_guest_leg() {
 
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("cursor-agent"), "the drive must reach the host spawn:\n{stderr}");
+    assert!(
+        stderr.contains("cursor-agent"),
+        "the drive must reach the runtime's backend connect:\n{stderr}"
+    );
 }
 
 // A cache entry that is not a component (garbage bytes under a `.wasm`
@@ -337,7 +336,6 @@ fn plan_dir_refused_on_guest_leg() {
 // guest and fails there.
 #[test]
 fn non_component_cache_entry_is_skipped() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     let cache = common::expected_cache_dir(project.path()).join("components");
@@ -368,7 +366,6 @@ fn non_component_cache_entry_is_skipped() {
 // silently thinner deployment).
 #[test]
 fn bound_adapter_resolves_from_store() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     fs::write(
@@ -432,7 +429,6 @@ fn bound_adapter_resolves_from_store() {
 // the actual digest, the same drive proceeds into the guest.
 #[test]
 fn committed_lock_gates_drive() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let project = tempdir().expect("project dir");
     fs::write(
@@ -508,7 +504,6 @@ fn committed_lock_gates_drive() {
 // deployment manifest and the verb fails *inside* the guest.
 #[test]
 fn manifest_escapes_hostile_paths() {
-    ensure_host_binary();
     let stub = stub_cursor_agent();
     let tmp = tempdir().expect("parent dir");
     let project = tmp.path().join("we\"ird\\dir");
@@ -592,7 +587,6 @@ fn native_grammar_is_the_provisioning_set() {
 // both travel back verbatim.
 #[test]
 fn forwarded_usage_error_exits_2() {
-    ensure_host_binary();
     let project = tempdir().expect("project dir");
 
     let output = specify_cmd()
@@ -614,7 +608,6 @@ fn forwarded_usage_error_exits_2() {
 // grammar answers with the shared crate version on stdout and exit 0.
 #[test]
 fn version_forwards_to_guest() {
-    ensure_host_binary();
     let project = tempdir().expect("project dir");
 
     let output = specify_cmd()

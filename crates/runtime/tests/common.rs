@@ -5,11 +5,12 @@
 //! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
 //! macros generate, and the walking-skeleton manifest the tests deploy.
 //!
-//! **Test-only in-process harness.** The product path is the spawned
-//! `specify-host` binary (`specify_runtime::drive`, RFC-65 move 2); these
-//! bundles exist because omnia's telemetry `OnceLock` allows only one
-//! `omnia::run` per process, so multi-assertion suites drive the deployment
-//! in-process over stubbed backends instead of through the host binary.
+//! **Test-only in-process harness.** The product path is the in-process
+//! host mount (`specify_runtime::drive` over the cursor-bound `host`
+//! module, RFC-65 move 2); these bundles exist because omnia's telemetry
+//! `OnceLock` allows only one `omnia::run` per process, so multi-assertion
+//! suites drive the deployment in-process over stubbed backends instead
+//! of through the product seam.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -281,7 +282,7 @@ pub fn scoped_cache(dir: &Path) -> CacheGuard {
     CacheGuard(prev)
 }
 
-/// The backend bundle the host binary's `runtime!` macro generates for
+/// The backend bundle the `runtime!` macro generates for
 /// `hosts: { WasiHttp: HttpDefault, WasiModel: ModelDefault }`.
 #[derive(Clone)]
 pub struct Bundle {

@@ -5,10 +5,11 @@
 //! `--help`, `--version`, bare invocations — and runs in the workflow
 //! guest against the composed deployment (workflow guest + adapter
 //! guests + the spawning `cursor-agent` model backend) through
-//! `specify_runtime::drive`, which spawns the generic host layer
-//! (`specify-host run --config <manifest> -- <argv>`, RFC-65 move 2)
-//! with inherited stdio and the exit code passed through to the
-//! process exit. The guest's clap tree owns parsing, help, version,
+//! `specify_runtime::drive`, which mounts the generic host layer —
+//! the macro-generated command-mode runtime (RFC-65 move 2) —
+//! in-process, on the process's own stdio, with the guest exit code
+//! passed through to the process exit. The guest's clap tree owns
+//! parsing, help, version,
 //! and usage errors (exit 2 travels back verbatim). This module owns
 //! only the manifest choice the guest leg runs against — an
 //! `omnia.toml` at the project root wins wholesale (the developer
@@ -32,13 +33,13 @@ use crate::runtime::output::{Exit, report};
 /// present it replaces the generated manifest wholesale.
 const MANIFEST_FILENAME: &str = "omnia.toml";
 
-/// Wire code for a failure ahead of or around the host spawn: the
-/// `specify-host` binary missing beside the executable, the spawn
-/// itself failing, or the host dying to a signal. A failure *inside*
-/// the spawned host — deployment assembly, backend connect
-/// (`cursor-agent` missing from `PATH`) — surfaces on the host's own
-/// stderr and its exit code passes through, exactly like a failure
-/// inside the guest. Adapter-resolution failures during manifest
+/// Wire code for a failure ahead of the guest run inside the
+/// in-process host layer: deployment assembly (`building runtime: …`)
+/// or backend connect (`cursor-agent` missing from `PATH`). These come
+/// back as `anyhow` errors from `specify_runtime::drive` and render
+/// here with the full context chain; a failure *inside* the guest is
+/// never wrapped — the guest renders its own envelope and its exit
+/// code passes through. Adapter-resolution failures during manifest
 /// regeneration keep their own typed codes (`adapter-not-found`,
 /// `adapter-not-installed`, `adapter-digest-mismatch`, …) so the
 /// operator sees the same diagnostics the native resolvers raise.

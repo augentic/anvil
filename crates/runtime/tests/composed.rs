@@ -101,16 +101,19 @@ fn binary_stdout() -> Result<()> {
     Ok(())
 }
 
-// The bare host form (RFC-65 move 2): the generic `specify-host`
-// binary — the macro-generated command-mode runtime over the
-// cursor-bound backends — drives a manifest directly as
-// `specify-host run --config <manifest> -- --version`. A stub
-// `cursor-agent` satisfies the backend's connect probe; argv reaches
-// the workflow guest and exit 0 passes through with the version line
-// on stdout.
+// The in-process host mount (RFC-65 move 2): `specify_runtime::drive`
+// blocks on the macro-generated command-mode runtime over the
+// cursor-bound backends inside the calling process — no host binary is
+// spawned. A stub `cursor-agent` on `PATH` satisfies the backend's
+// connect probe; argv reaches the workflow guest and exit 0 returns
+// for process passthrough. Guest stdout is the process's own here, so
+// the version-line *text* is pinned by the root `tests/guest.rs`
+// subprocess suite (`version_forwards_to_guest`), which drives this
+// same seam through the `specify` binary.
 #[cfg(unix)]
 #[test]
-fn host_binary_stdout() -> Result<()> {
+#[expect(unsafe_code, reason = "pin PATH and HTTP_ADDR for the in-process runtime")]
+fn drive_in_process() -> Result<()> {
     use std::os::unix::fs::PermissionsExt as _;
 
     let manifest = common::skeleton_manifest("source:echo")?;
@@ -125,25 +128,16 @@ fn host_binary_stdout() -> Result<()> {
     let path =
         format!("{}:{}", stub_dir.path().display(), std::env::var("PATH").unwrap_or_default());
 
-    let port = free_port()?;
-    let output = assert_cmd::Command::cargo_bin("specify-host")?
-        .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
-        .env("PATH", path)
-        .env_remove("RUST_LOG")
-        .args(["run", "--config"])
-        .arg(manifest.path())
-        .args(["--", "--version"])
-        .output()?;
+    // SAFETY: nextest runs each test in its own process, so no other
+    // thread observes the env mutations; the runtime reads all three.
+    unsafe { std::env::set_var("PATH", path) };
+    // SAFETY: as above.
+    unsafe { std::env::set_var("HTTP_ADDR", format!("127.0.0.1:{}", free_port()?)) };
+    // SAFETY: as above.
+    unsafe { std::env::remove_var("RUST_LOG") };
 
-    assert!(
-        output.status.success(),
-        "host exited {:?}; stderr:\n{}",
-        output.status.code(),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let version_line = format!("specify {}", env!("CARGO_PKG_VERSION"));
-    assert!(stdout.contains(&version_line), "stdout did not carry `{version_line}`:\n{stdout}");
+    let code = specify_runtime::drive(manifest.path(), vec!["--version".to_string()])?;
+    assert_eq!(code, 0, "`--version` must exit 0 through the in-process mount");
     Ok(())
 }
 

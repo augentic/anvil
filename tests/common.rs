@@ -39,40 +39,12 @@ pub fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-/// Ensure the `specify-host` binary — the generic Omnia host layer the
-/// forwarding leg spawns (RFC-65 move 2) — is built beside the
-/// `specify` binary, so forwarded verbs work under a bare
-/// `cargo nextest run -p specify`. Self-building mirrors the echo-guest
-/// helper in `tests/guest.rs`; a full `cargo make test` has already
-/// built it, and a present binary short-circuits the (per-test-process)
-/// cargo probe entirely.
-pub fn ensure_host_binary() {
-    use std::sync::OnceLock;
-    static BUILT: OnceLock<()> = OnceLock::new();
-    BUILT.get_or_init(|| {
-        let exe = std::env::current_exe().expect("test executable has a path");
-        let profile_dir = exe.ancestors().nth(2).expect("test exe sits under <profile>/deps");
-        if profile_dir.join(format!("specify-host{}", std::env::consts::EXE_SUFFIX)).is_file() {
-            return;
-        }
-        // No CARGO_TARGET_DIR override: the inherited environment
-        // reproduces the outer test build, so the host lands beside the
-        // `specify` binary `cargo_bin` resolves.
-        let status = std::process::Command::new("cargo")
-            .args(["build", "-p", "specify-runtime", "--bin", "specify-host"])
-            .current_dir(repo_root())
-            .status()
-            .expect("spawning specify-host build");
-        assert!(status.success(), "specify-host build failed with status {status}");
-    });
-}
-
 /// One `cursor-agent` stub on its own `PATH` dir, staged once per test
 /// process: answers `--version` (the model backend's connect probe)
-/// and fails any real invocation. Forwarded verbs spawn the composed
-/// host, whose cursor backend connects eagerly — pure workflow verbs
-/// never call the model, so the stub keeps every test hermetic without
-/// a real `cursor-agent` install.
+/// and fails any real invocation. Forwarded verbs mount the composed
+/// runtime in-process, and its cursor backend connects eagerly — pure
+/// workflow verbs never call the model, so the stub keeps every test
+/// hermetic without a real `cursor-agent` install.
 #[cfg(unix)]
 pub fn stub_cursor_agent_dir() -> &'static Path {
     use std::os::unix::fs::PermissionsExt as _;
@@ -187,10 +159,9 @@ fn cargo_target_dir() -> PathBuf {
 /// per test, which would otherwise defeat compiled-component reuse and
 /// make every WASI-dispatching test pay the full Cranelift compile.
 pub fn specify_cmd() -> Command {
-    // Any non-provisioning verb forwards to the workflow guest, which
-    // needs the `specify-host` binary beside the executable and a
-    // connectable model backend — the hermetic stub below.
-    ensure_host_binary();
+    // Any non-provisioning verb forwards to the workflow guest through
+    // the in-process runtime, whose model backend must connect — the
+    // hermetic stub below.
     let mut cmd = Command::cargo_bin("specify").expect("cargo_bin(specify)");
     cmd.env_remove("SPECIFY_PLAN_DIR");
     cmd.env_remove("SPECIFY_FORMAT");
@@ -201,7 +172,7 @@ pub fn specify_cmd() -> Command {
         parts.extend(std::env::split_paths(&path));
         cmd.env("PATH", std::env::join_paths(parts).expect("join PATH"))
     };
-    // Forwarded verbs spawn one composed host each; the host's
+    // Each forwarded verb mounts one composed runtime in-process; its
     // background HTTP trigger must bind an ephemeral port or parallel
     // tests collide on the default address (the loser pollutes stdout
     // with the bind error ahead of the JSON envelope).
