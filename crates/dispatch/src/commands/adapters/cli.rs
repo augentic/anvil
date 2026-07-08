@@ -7,7 +7,7 @@ use clap::Subcommand;
 #[derive(Debug, Clone, Copy, Subcommand)]
 pub enum AdaptersAction {
     /// Hydrate every declared pinned adapter identity into the global
-    /// store (the explicit RFC-65 hydration trigger).
+    /// store (the explicit hydration trigger).
     ///
     /// Reads `project.yaml` (the `adapter:` pin plus the `adapters:`
     /// prefetch list) and `plan.yaml` source pins when a plan is

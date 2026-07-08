@@ -1,4 +1,4 @@
-//! Describe-driven adapter metadata (RFC-64).
+//! Describe-driven adapter metadata.
 //!
 //! An adapter's non-identity metadata — the host-CLI compatibility
 //! floor, a target's declared build inputs and platforms capability —

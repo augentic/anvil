@@ -32,7 +32,7 @@ pub struct ProposeOutcome {
     /// Slice names, in the agent's `slices[]` response order — the same
     /// order the kernel wrote `plan.yaml.slices[]`.
     pub slice_names: Vec<String>,
-    /// RFC-46 D3 advisory `lead-decision-topic-overlap` review findings:
+    /// Advisory `lead-decision-topic-overlap` review findings:
     /// one per `(lead, decision)` pair whose `topics[]` intersect on the
     /// slice's bound project. Non-blocking — they surface a lead whose
     /// topic is already governed by an accepted decision so the agent can
@@ -86,9 +86,9 @@ impl Plan {
         let names = slice_names(slices)?;
         check_name_collisions(&names)?;
 
-        // RFC-46 D3: advisory topic-overlap review findings, computed
-        // before `build_entries` consumes the response slices. Latent
-        // (empty) until both leads and decisions carry topics.
+        // Advisory topic-overlap review findings, computed before
+        // `build_entries` consumes the response slices. Latent (empty)
+        // until both leads and decisions carry topics.
         let topic_overlaps = topic_overlaps(slices, discovery, &bound);
 
         let new_entries = build_entries(response.slices, &names, &bound);
@@ -120,7 +120,7 @@ impl Plan {
     }
 }
 
-/// RFC-46 D3 — join each slice's lead `topics[]` against its bound
+/// Join each slice's lead `topics[]` against its bound
 /// project's accepted-decision `topics[]`, emitting an advisory
 /// `lead-decision-topic-overlap` review finding per intersecting
 /// `(lead, decision)` pair.

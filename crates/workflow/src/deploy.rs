@@ -1,4 +1,4 @@
-//! RFC-65 deployment-manifest generation.
+//! deployment-manifest generation.
 //!
 //! After hydration, the provisioning surface generates the deployment
 //! manifest the composed runtime reads: one `[[guest]]` per resolved
@@ -16,8 +16,8 @@
 //! entry is the typed `adapter-not-installed` (naming the identity and
 //! the literal sync command), never a generated-then-broken manifest.
 //!
-//! The core guest arrives as a plain `core` path parameter (RFC-65
-//! move 4): the binary resolves it by its own version — a development
+//! The core guest arrives as a plain `core` path parameter (core
+//! versioned by the binary): the binary resolves it by its own version — a development
 //! override, else the hydrated `specify:core@<binary version>` store
 //! entry — so this generator never knows how the core was obtained.
 
@@ -40,7 +40,7 @@ const MANIFEST_FILENAME: &str = "omnia.toml";
 /// pins: a pinned identity (`version: Some`) points at its immutable
 /// global-store entry, while a bare development name (`version: None`)
 /// points at its project-local component (the component cache or the
-/// sibling release build) — RFC-65 keeps that resolution order
+/// sibling release build) — that resolution order holds
 /// unchanged.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeployGuest {
@@ -142,7 +142,7 @@ fn dangling_component(adapter: &DeployGuest) -> Error {
 /// adapter-contract link allow-list, one `[[guest]]` + `[[route.http]]`
 /// per adapter, the writable `"."` mount, the per-project derived
 /// cache mounted at [`specify_schema::cache::GUEST_CACHE_MOUNT`]
-/// (RFC-65 move 1: the guest's `rules export` reads the codex tenant
+/// (guest routing: the guest's `rules export` reads the codex tenant
 /// and init's scaffold leg writes the component and codex tenants),
 /// the global adapter store mounted **read-only** at
 /// [`specify_schema::cache::GUEST_STORE_MOUNT`] (forwarded verbs

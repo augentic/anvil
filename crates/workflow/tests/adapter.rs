@@ -1,4 +1,4 @@
-//! Integration tests for the RFC-64 adapter resolver
+//! Integration tests for the adapter resolver
 //! (`specify_workflow::adapter`).
 //!
 //! Covers:
@@ -171,7 +171,7 @@ fn store_entry_digest_mismatch_refused() {
     fs::create_dir_all(&project).expect("project dir");
 
     // Record the sidecar, then mutate the entry bytes underneath it:
-    // RFC-48 D4 verify-on-read must refuse the drifted artifact.
+    // Verify-on-read must refuse the drifted artifact.
     let entry = stage_store_entry("typescript", "1.0.0", "{}");
     fs::write(&entry, r#"{"specify-floor":"0.1.0"}"#).expect("drift the entry");
 

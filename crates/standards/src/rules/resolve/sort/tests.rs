@@ -1,7 +1,7 @@
 use super::*;
 use crate::rules::{Deprecated, Origin, PathRoot, Severity};
 
-// The `build_resolved_rules` envelope test is re-homed to the crate's public
+// The `build_resolved_rules` envelope test lives in the crate's public
 // API in `crates/standards/tests/resolve_sort.rs`; the path-anchoring and
 // byte-stability properties are asserted end-to-end by
 // `tests/rules.rs::export::{paths_anchored_not_absolute,

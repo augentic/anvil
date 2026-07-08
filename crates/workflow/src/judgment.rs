@@ -1,14 +1,10 @@
-//! The workflow guest's judgment kernel (RFC-61 Step 4).
+//! The workflow guest's judgment kernel.
 //!
 //! Each leg is one schema-gated `Model::create` bracketed by
-//! deterministic tails — the same schema gates and projection kernels
-//! the retired native two-phase envelope verbs ran — inside a bounded repair
-//! loop: a tail failure re-prompts with the findings inlined, up to
-//! [`MAX_REPAIRS`] times, per the contracts target's verify-repair
-//! precedent. The native envelope verbs (`plan propose --dry-run |
-//! --from`, `slice synthesize --dry-run | --from`) were deleted at Step
-//! 5 Milestone S4; these legs are the sole judgment path, driven by the
-//! guest orchestrators.
+//! deterministic tails (schema gate, parse, projection kernel) inside a
+//! bounded repair loop: a tail failure re-prompts with the findings
+//! inlined, up to [`MAX_REPAIRS`] times. These legs are the sole
+//! judgment path, driven by the guest orchestrators.
 
 pub mod propose;
 pub mod prose;

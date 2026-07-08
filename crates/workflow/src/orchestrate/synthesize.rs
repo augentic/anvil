@@ -11,11 +11,8 @@ use crate::seam::TargetSeam;
 use crate::slice::{BaselineDomainDetail, SynthesisSourceInput, build_synthesis_inputs};
 
 /// The caller-assembled inputs to [`synthesize`], minus the guidance
-/// guidance the orchestrator fetches through the seam.
-///
-/// Mirrors what the retired native `slice synthesize` verb distilled
-/// before it assembled the inputs envelope: the per-source Evidence
-/// contributions and the baseline context.
+/// brief the orchestrator fetches through the seam: the per-source
+/// Evidence contributions and the baseline context.
 #[derive(Debug)]
 pub struct SynthesizeRequest<'a> {
     /// Slice name the leg synthesises.
@@ -34,12 +31,11 @@ pub struct SynthesizeRequest<'a> {
 /// Run the synthesis judgment leg with the guidance brief read
 /// through `seam.guidance(target)`.
 ///
-/// Identical to the native assembly up to the inputs envelope
-/// ([`build_synthesis_inputs`] then the Milestone B
-/// [`judgment::synthesize::synthesize`] leg); per the judgment-leg
+/// Assembles the inputs envelope ([`build_synthesis_inputs`]) and runs
+/// the [`judgment::synthesize::synthesize`] leg; per the judgment-leg
 /// contract, the caller still owns staging and persisting the
 /// synthesized artifacts and the `slice.synthesize.*` journal bracket
-/// (the Milestone E refine loop's concern).
+/// (the refine loop's concern).
 ///
 /// # Errors
 ///

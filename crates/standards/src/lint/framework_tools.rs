@@ -1,5 +1,4 @@
-//! In-process Road B framework checkers (see DECISIONS.md §"Framework
-//! lint engine: generic dispatcher (Road A / Road B)").
+//! In-process Road B framework checkers.
 //!
 //! Framework runs have no `project.yaml` to populate a tool inventory,
 //! so the first-party framework checkers are declared here as a closed
@@ -91,8 +90,8 @@ mod tests {
         for name in ["scenarios", "links-registry", "marketplace", "prose", "rules"] {
             assert!(is_framework_checker(name), "{name} must be declared");
         }
-        assert!(!is_framework_checker("skill-body"), "skill-body retired with CORE-040/046/048");
-        assert!(!is_framework_checker("extension"), "extension retired with CORE-061");
+        assert!(!is_framework_checker("skill-body"), "skill-body is not an in-process checker");
+        assert!(!is_framework_checker("extension"), "extension is not an in-process checker");
         assert!(!is_framework_checker("contract"), "adapter tools stay WASI-resolved");
     }
 

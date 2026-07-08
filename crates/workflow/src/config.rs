@@ -39,7 +39,7 @@ pub struct ProjectConfig {
 
     /// Optional prefetch list of pinned adapter identities hydrated at
     /// the provisioning triggers (`specify init`, `specify adapters
-    /// sync` — RFC-65). Each entry is a package reference
+    /// sync` — ). Each entry is a package reference
     /// (`<namespace>:<name>@<semver>`) or first-party `name@<semver>`
     /// shorthand; an unpinned entry is refused at hydration with
     /// `adapter-prefetch-unpinned`. Both axes are legal — a project
@@ -228,7 +228,7 @@ impl<'a> Layout<'a> {
 
     /// Absolute path to `<project_dir>/.specify/adapters.lock` — the
     /// committed cross-machine digest pin over hydrated adapter
-    /// identities (RFC-65), written by the hydration kernel.
+    /// identities, written by the hydration kernel.
     /// Machine-written; never hand-edited.
     #[must_use]
     pub fn adapters_lock_path(&self) -> PathBuf {
@@ -281,10 +281,9 @@ impl<'a> Layout<'a> {
     }
 
     /// Absolute path to `<plan-root>/.specify/guest.lock` — the guest
-    /// execute loop's create-exclusive advisory marker (RFC-61 D1,
-    /// [`crate::orchestrate::GuestMarker`]). Guest-vs-guest breakout
-    /// refusal: the only concurrency fence left after the retired
-    /// native plan lock (D-planlock).
+    /// execute loop's create-exclusive advisory marker
+    /// ([`crate::orchestrate::GuestMarker`]), the guest-vs-guest
+    /// breakout refusal fence.
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {
         self.plan_dir().join(".specify").join("guest.lock")

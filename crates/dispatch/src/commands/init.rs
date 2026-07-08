@@ -1,5 +1,5 @@
 //! `specify init --scaffold-only` — the guest-invocable scaffold leg
-//! (RFC-65 move 1).
+//! (guest routing).
 //!
 //! The scaffold writes project-scoped state only — `.specify/`,
 //! `project.yaml`, `registry.yaml` (workspace mode), `.gitignore`

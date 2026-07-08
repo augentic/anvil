@@ -1,5 +1,4 @@
-//! The workflow guest: the deployment's only `wasi:cli/run` exporter
-//! (RFC-61 Step 4, Milestone D).
+//! The workflow guest: the deployment's only `wasi:cli/run` exporter.
 //!
 //! Argv arrives through wasip3 and parses through the shared
 //! `specify-dispatch` grammar — the exact clap tree the native binary
@@ -39,7 +38,7 @@ mod bindings {
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s (judgment legs await the async `omnia:model`
         // import mid-call) and async-lower; `describe` is a plain `func`
-        // (RFC-64) and sync-lowers.
+        // and sync-lowers.
         generate_all,
     });
 }

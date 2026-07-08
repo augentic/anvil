@@ -352,7 +352,7 @@ pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
     out
 }
 
-/// Structural divergence consistency (RFC-46 D4). The agent owns the
+/// Structural divergence consistency. The agent owns the
 /// *materiality* judgment; the CLI only checks that the flag and the
 /// recorded values agree:
 ///

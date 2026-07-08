@@ -9,7 +9,7 @@ use super::*;
 // Pure parse/identity matrices for the `<adapter>` argument shapes
 // (package references, first-party shorthand, value identity), plus the
 // store-resolve branches driven against a real content-addressed store.
-// GitHub URIs are a refusal branch post-RFC-64, covered inline.
+// GitHub URIs are a refusal branch, covered inline.
 
 #[test]
 fn value_identity() {
@@ -44,7 +44,7 @@ fn value_identity() {
     );
 
     // GitHub URIs are refused with a typed error: a source checkout no
-    // longer yields a usable adapter artifact (RFC-64).
+    // longer yields a usable adapter artifact.
     let err = AdapterUri::parse(
         "https://github.com/augentic/specify/adapters/targets/demo-target",
         Path::new("/tmp"),
@@ -75,7 +75,7 @@ fn package_refs() {
     );
     assert_eq!(parsed.wire_value(), "specify:demo-target@1.2.0");
 
-    // RFC-48 D2: an immutable locator pins an exact SemVer version — a missing
+    // An immutable locator pins an exact SemVer version — a missing
     // version, a git-style tag, and `latest` are all rejected.
     for malformed in [
         "specify:demo-target",
@@ -127,7 +127,7 @@ fn package_refs() {
     recognize_package("specify:demo-target").expect("package shape").unwrap_err();
 
     // The versioned first-party shorthand is sugar for the `specify:`
-    // package reference (RFC-65 naming cut).
+    // package reference (specify: naming cut).
     let sugar = recognize_package("demo-target@1.0.0")
         .expect("versioned shorthand is a package shape")
         .expect("valid shorthand");
@@ -139,7 +139,7 @@ fn package_refs() {
 #[test]
 fn first_party_shorthand() {
     // A bare name carries no pin (resolves the development release build); a
-    // `name@<semver>` carries the RFC-47 version pin.
+    // `name@<semver>` carries the version pin.
     assert_eq!(parse_first_party_shorthand("demo-target"), Some(("demo-target", None)));
     assert_eq!(
         parse_first_party_shorthand("demo-target@1.0.0"),

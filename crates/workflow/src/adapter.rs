@@ -1,4 +1,4 @@
-//! Adapter resolution (RFC-64: one component, no manifest).
+//! Adapter resolution: one component, no manifest.
 //!
 //! An adapter is a single WebAssembly component. Identity lives in the
 //! wasm-pkg package reference (`specify:<name>@<semver>`), axis in the
@@ -15,7 +15,7 @@
 //!
 //! Resolution keys on the [`AdapterRef`] identity: a pinned
 //! `(name, version)` resolves the single-file global store entry at
-//! `<store-root>/<name>@<version>.wasm` (RFC-48 D5, verify-on-read
+//! `<store-root>/<name>@<version>.wasm` (verify-on-read
 //! included); a bare name resolves the development release build at
 //! `target/wasm32-wasip2/release/<name>.wasm` under the project
 //! or the sibling `specify-adapters` checkout.

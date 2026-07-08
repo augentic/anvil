@@ -1,4 +1,4 @@
-//! Integration tests for the RFC-65 hydration kernel
+//! Integration tests for the hydration kernel
 //! (`specify_workflow::hydrate`).
 //!
 //! Covers pinned-ref collection over `project.yaml` (the `adapter:`
@@ -136,7 +136,7 @@ fn unpinned_prefetch_entry_refused() {
 fn warm_store_is_noop_probe() {
     // A warm store hydrates without touching the fetch leg, returning
     // the resolved set (entry path + recorded sidecar digest) — the
-    // RFC-65 idempotency property.
+    // idempotency property.
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let entry = stage_store_entry("typescript", "1.2.3", "\0asm-ts");
@@ -194,7 +194,7 @@ fn frozen_miss_is_typed_and_fetch_free() {
 
 #[test]
 fn drifted_entry_refused() {
-    // RFC-48 D4 verify-on-read: a store entry whose bytes no longer
+    // Verify-on-read: a store entry whose bytes no longer
     // match the recorded sidecar digest is `adapter-digest-mismatch`.
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));

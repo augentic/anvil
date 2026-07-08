@@ -1,5 +1,5 @@
 //! `.specify/adapters.lock` — the committed cross-machine digest pin
-//! (RFC-65 §"Cloud posture").
+//! (§"Cloud posture").
 //!
 //! Maps each hydrated identity (`<name>@<version>`) to its
 //! component-byte digest (`sha256:<hex>` — the same digest the store's

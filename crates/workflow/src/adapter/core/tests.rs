@@ -6,7 +6,7 @@ use super::*;
 use crate::Platform;
 
 // These tests exercise the `pub(super)` post-resolve gates that cannot
-// re-home to an integration suite (RFC-64: identity comes from the
+// move to an integration suite (identity comes from the
 // package reference, metadata from the component's `describe` answer —
 // there is no manifest to parse). Adapter-specific invariants belong in
 // the adapter's own suite under `specify-adapters`.
@@ -41,7 +41,7 @@ fn axis_routing() {
         vec![TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge]
     );
 
-    // RFC-64 identity: a pin resolves as itself, a bare name as the
+    // Identity: a pin resolves as itself, a bare name as the
     // `0.0.0` development placeholder.
     assert_eq!(
         AdapterRef::pinned("demo", semver::Version::new(1, 2, 3)).resolved_version(),
@@ -69,7 +69,7 @@ fn typed_gates() {
     };
     assert_eq!(code, "adapter-floor-malformed");
 
-    // RFC-47 D3: an absent floor never gates; a binary at/above the floor
+    // An absent floor never gates; a binary at/above the floor
     // passes; below the floor aborts on the exit-3 path; an unparseable
     // current version is permissive (mirrors config::version_is_older).
     check_requires_specify(None, "0.1.0", "demo-source", component)

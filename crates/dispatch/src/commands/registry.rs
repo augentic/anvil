@@ -2,7 +2,7 @@
 //!
 //! Validated edits to `registry.yaml` inside the project root. Pure
 //! filesystem, so the handlers run on both sides of the seam (native
-//! and in-guest, RFC-65 move 1). Per-subcommand handlers live in
+//! and in-guest, guest routing). Per-subcommand handlers live in
 //! sibling modules; shared response DTOs live in `registry/dto.rs`.
 
 mod add;

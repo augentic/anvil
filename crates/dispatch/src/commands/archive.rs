@@ -2,7 +2,7 @@
 //!
 //! Owns the `archive prune` retention GC over `.specify/archive/` —
 //! pure filesystem inside the project root, so the handler runs on
-//! both sides of the seam (native and in-guest, RFC-65 move 1).
+//! both sides of the seam (native and in-guest, guest routing).
 
 use std::io::Write;
 

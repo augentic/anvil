@@ -1,5 +1,4 @@
-//! Plan-authoring orchestrator integration tests (RFC-61 Step 5,
-//! Milestone S1).
+//! Plan-authoring orchestrator integration tests.
 //!
 //! Scripted end-to-end walks of `specify_workflow::orchestrate::author`
 //! against mocked Model + source seam: scaffold → survey fan-out →

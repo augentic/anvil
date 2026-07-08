@@ -168,7 +168,7 @@ fn validate_project_contracts<'a>(
     Ok(())
 }
 
-/// RFC-46 D6 — enforce that every `greenfield_seed.domains[]` entry is a
+/// Enforce that every `greenfield_seed.domains[]` entry is a
 /// non-empty kebab-case slug. Domains project into `surface[]` domain
 /// directory slugs, so they share the surface's kebab grammar.
 fn validate_greenfield_seed(project: &RegistryProject, idx: usize) -> Result<(), Error> {

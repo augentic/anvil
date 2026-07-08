@@ -1,5 +1,5 @@
 //! The plan-authoring orchestrator: the guest collapse of the
-//! `/spec:plan` critical path (RFC-61 Step 5, Milestone S1).
+//! `/spec:plan` critical path.
 //!
 //! One call composes what the skill drives as a CLI sequence: `plan
 //! create` scaffolding (same name gate, same overwrite refusal), the
@@ -118,8 +118,7 @@ pub async fn author<P: Model, S: SourceSeam>(
         plan.propose_from(response, &discovery, &topology)
     })?;
 
-    // Only after the write commits: emit the reconcile event (the
-    // retired native verb's cadence).
+    // Only after the write commits: emit the reconcile event.
     let event = Event::new(
         now,
         EventKind::PlanReconcileCompleted {
@@ -195,8 +194,7 @@ fn scaffold(
     plan.save(&plan_path)
 }
 
-/// Resolve the project topology the request embeds — the same
-/// projection the retired native `plan propose` handler ran, minus the
+/// Resolve the project topology the request embeds, minus the
 /// operator-facing `greenfield-seed-shadowed` advisories (the seed
 /// projection itself still applies).
 fn load_topology(layout: Layout<'_>) -> Result<Vec<ProjectRef>, Error> {

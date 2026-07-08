@@ -5,9 +5,8 @@
 //! skill schema and the `docs/standards/skill-authoring.md` prose. The
 //! cap *values* arrive in the rule's forwarded `config:`.
 //!
-//! Unlike the retired WASI tool — which substring-scanned its embedded
-//! schema copy for the cap digits — the schema side here parses the
-//! canonical [`specify_schema::SKILL_JSON_SCHEMA`] and compares
+//! The schema side parses the canonical
+//! [`specify_schema::SKILL_JSON_SCHEMA`] and compares
 //! `properties.description.maxLength` numerically.
 
 use std::path::Path;
@@ -51,7 +50,7 @@ fn caps(config: Option<&JsonValue>) -> Option<(u64, u64)> {
 fn check_numeric_caps(project_dir: &Path, description_cap: u64, body_cap: u64) -> Vec<ToolFinding> {
     let standards_path = project_dir.join(STANDARDS_REL);
     // The standards document is a plugins-repo authoring artifact; an
-    // adapters-only framework root (RFC-48 H1) legitimately omits it, so
+    // adapters-only framework root legitimately omits it, so
     // an absent doc is a skip — distinct from a present-but-unreadable
     // doc, which still flags below.
     if !standards_path.exists() {
@@ -129,13 +128,12 @@ mod tests {
         std::fs::write(path, body).expect("write");
     }
 
-    // The absent-standards-doc skip (an adapters-only RFC-48 H1 root carries no
+    // The absent-standards-doc skip (an adapters-only root carries no
     // `docs/standards/skill-authoring.md`) is asserted end-to-end by
-    // `tests/lint.rs::framework_adapters::adapters_only_root_lints_clean`,
-    // so that unit duplicate was deleted. The cap-drift matrix below — caps in
-    // sync, a body-cap missing from prose, and a description cap that disagrees
-    // with the schema `maxLength` — has no CLI fixture and collapses into one
-    // test. Every former input is preserved.
+    // `tests/lint.rs::framework_adapters::adapters_only_root_lints_clean`.
+    // The cap-drift matrix below — caps in sync, a body-cap missing from
+    // prose, and a description cap that disagrees with the schema
+    // `maxLength` — has no CLI fixture and collapses into one test.
     #[test]
     fn numeric_cap_matrix() {
         // Caps that match the schema (512) and appear in the prose are silent.

@@ -1,12 +1,10 @@
 //! Enforce the repo-local Rust-quality predicates.
 //!
 //! Run with `cargo test --test rust_quality`. Hard gates: any
-//! `rust.test-fn-name-too-long`, `rust.workflow-clock-read`, or
-//! `rust.allow-without-reason` finding fails CI. The archaeology
-//! predicate (`rust.archaeology-in-doc-comment`) is advisory only —
-//! its markers over-fire on the canonical contract vocabulary the
-//! codebase and AGENTS.md use, so it is not gated. The predicates
-//! live in [`checks`], dev-only beside this gate.
+//! `rust.test-fn-name-too-long`, `rust.workflow-clock-read`,
+//! `rust.allow-without-reason`, or `rust.archaeology-in-doc-comment`
+//! finding fails CI. The predicates live in [`checks`], dev-only
+//! beside this gate.
 
 mod checks {
     //! Repo-local Rust-quality predicates, dev-only.
@@ -27,8 +25,7 @@ mod checks {
 
     /// Rule id for sentence-length test fn names.
     pub const RULE_TEST_FN_NAME: &str = "rust.test-fn-name-too-long";
-    /// Rule id for archaeology markers in doc comments (advisory only,
-    /// not gated).
+    /// Rule id for archaeology markers in doc comments.
     pub const RULE_ARCHAEOLOGY: &str = "rust.archaeology-in-doc-comment";
     /// Rule id for `#[allow]` without a `reason`.
     pub const RULE_ALLOW_NO_REASON: &str = "rust.allow-without-reason";
@@ -42,13 +39,16 @@ mod checks {
 
     /// Forward-slash prefix marking `specify-workflow` library sources. Time
     /// injection (architecture §Time injection) forbids `Timestamp::now()`
-    /// here; the clock is read once in `src/runtime/commands/**` handlers and
+    /// here; the clock is read once at the dispatch boundary and
     /// threaded down.
     const WORKFLOW_SRC_PREFIX: &str = "crates/workflow/src/";
 
     const ARCHAEOLOGY_MARKERS: &[&str] = &[
         "RFC-",
-        "Phase ",
+        "Milestone ",
+        "retired ",
+        "re-homed",
+        "old stack",
         "formerly ",
         "previously lived",
         "old contract",
@@ -219,7 +219,7 @@ mod checks {
                 findings.push(Finding {
                 rule: RULE_WORKFLOW_CLOCK,
                 message: format!(
-                    "`Timestamp::now()` at {rel}:{line_no} — specify-workflow must accept an injected `now`; read the clock once in a `src/runtime/commands/**` handler and thread it down (architecture §Time injection)"
+                    "`Timestamp::now()` at {rel}:{line_no} — specify-workflow must accept an injected `now`; read the clock once at the dispatch boundary and thread it down (architecture §Time injection)"
                 ),
             });
             }
@@ -343,11 +343,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use checks::{
-    RULE_ADAPTER_NAME_LITERAL, RULE_ALLOW_NO_REASON, RULE_TEST_FN_NAME, RULE_WORKFLOW_CLOCK,
+    RULE_ADAPTER_NAME_LITERAL, RULE_ALLOW_NO_REASON, RULE_ARCHAEOLOGY, RULE_TEST_FN_NAME,
+    RULE_WORKFLOW_CLOCK,
 };
 
 /// The gated rules and the standards-doc pointer rendered when one fires.
-const GATED_RULES: [(&str, &str); 4] = [
+const GATED_RULES: [(&str, &str); 5] = [
     (RULE_TEST_FN_NAME, "test fn names must be <= 40 chars (see docs/standards/testing.md)"),
     (
         // Time injection (architecture §Time injection): `specify-workflow`
@@ -366,6 +367,10 @@ const GATED_RULES: [(&str, &str); 4] = [
     (
         RULE_ADAPTER_NAME_LITERAL,
         "runtime dispatch must not hardcode first-party adapter names (the contract stays adapter-agnostic)",
+    ),
+    (
+        RULE_ARCHAEOLOGY,
+        "doc comments describe what the code does today; history belongs in DECISIONS.md (see docs/standards/style.md)",
     ),
 ];
 

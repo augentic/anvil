@@ -1,20 +1,11 @@
 //! Review surface for the deterministic lint layer.
 //!
-//! Cross-references: the standards-layer split lives in
-//! [DECISIONS.md § Standards layer split into `specify-standards` and `specify-schema`](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema);
-//! the `WorkspaceModel` envelope is pinned by
-//! `schemas/lint/workspace-model.schema.json` (`WORKSPACE_MODEL_JSON_SCHEMA`).
-//!
 //! Sibling umbrella to [`crate::rules`]: this module owns the
-//! `specify lint` deterministic review pipeline — `WorkspaceModel` DTOs,
-//! the consumer / framework indexer, the hint interpreter, and the
-//! diagnostic formatters that `specify lint` and (later)
-//! `specify lint framework --format json` share.
-//!
-//! The submodule shape mirrors the the standards-layer dependency invariant sketch.
-//! v1 ships the [`model`] DTO layer; [`index`], [`eval`], and
-//! [`diagnostics`] are placeholders filled in by later standards-layer
-//! implementation slices.
+//! `specify lint` deterministic review pipeline — the `WorkspaceModel`
+//! DTOs ([`model`], pinned by
+//! `schemas/lint/workspace-model.schema.json`), the consumer /
+//! framework indexer ([`index`]), the hint interpreter ([`eval`]), and
+//! the diagnostic formatters ([`diagnostics`]).
 //!
 //! Only the [`model`] surface is re-exported at the umbrella root.
 //! [`index`], [`eval`], and [`diagnostics`] stay reachable only by

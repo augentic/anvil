@@ -1,4 +1,4 @@
-//! Guest orchestrator integration tests (RFC-61 Step 4, Milestone C).
+//! Guest orchestrator integration tests.
 //!
 //! Each test builds a throw-away project under `tempfile::TempDir` and
 //! drives the `specify_workflow::orchestrate` functions against the

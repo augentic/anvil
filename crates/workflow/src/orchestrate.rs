@@ -1,24 +1,13 @@
-//! Guest workflow orchestrators (RFC-61 Step 4, Milestone C).
+//! Guest workflow orchestrators: one entry point per phase, each
+//! dispatching across the [`crate::seam`] capability traits and owning
+//! its validate-before-visible tail.
 //!
-//! Each function collapses one of the old stack's two-phase CLI handoff
-//! surfaces into a single call that dispatches across the
-//! [`crate::seam`] capability traits and then runs the retired native
-//! verb's validate-before-visible tail: survey fan-out feeds
-//! `Discovery::merge_survey`, extract persists schema-gated Evidence,
-//! build keeps the finalize tail (report schema gate, `enforce_report_*`,
-//! the `built` transition, the `slice.build.*` bracket), and merge stays
-//! deterministic-only per RFC-61 decision D2. Since Step 5 Milestone S4
-//! these are the *only* code paths — the native two-phase envelope verbs
-//! were deleted and `specify source survey/extract`, `specify slice
-//! build`, and `specify slice merge run` route here through the guest.
-//!
-//! Three deliberate drops from the native build surface, per the step-3
-//! precedent: no `prepare.argv` extension hook (targets own their
-//! prelude in-guest) and no `host_prereq` / `finalize_verify` shell
-//! hooks (verification moves agent-side into target prompts). The
-//! guest merge additionally skips the workspace-clone git commit leg
-//! with an explicit `slice.merge.commit-skipped` journal event —
-//! lifecycle authority is `.specify/` state, so `done` still stamps.
+//! Survey fan-out feeds `Discovery::merge_survey`, extract persists
+//! schema-gated Evidence, build runs the finalize tail (report schema
+//! gate, `enforce_report_*`, the `built` transition, the
+//! `slice.build.*` bracket), and merge is deterministic-only. `specify
+//! source survey/extract`, `specify slice build`, and `specify slice
+//! merge run` route here through the guest.
 //!
 //! Time is injected: every orchestrator takes the caller's `now`
 //! (architecture.md §"Time injection"); library code never reads the

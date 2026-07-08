@@ -6,9 +6,8 @@
 //! at `refining` resumes), the per-binding `source extract` fan-out
 //! (via [`super::extract`]), the synthesis judgment leg with seam
 //! guidance (via [`super::synthesize`]), the persist tail
-//! ([`persist_synthesized`] — the same pipeline the retired `slice
-//! synthesize --from` ran), `slice validate`'s gate sweep + adapter rules, and
-//! the `refined` transition.
+//! ([`persist_synthesized`]), `slice validate`'s gate sweep + adapter
+//! rules, and the `refined` transition.
 //!
 //! Journal cadence composes the native verbs': extract events from
 //! [`super::extract`], then `slice.synthesize.agent` (the handoff is a
@@ -92,8 +91,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
         extracted.push((source, lead));
     }
 
-    // Assemble the kernel context the judgment leg projects against —
-    // the same inputs the retired `slice synthesize --from` distilled.
+    // Assemble the kernel context the judgment leg projects against.
     let source_inputs = read_source_inputs(&slice_dir, &entry)?;
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
@@ -184,7 +182,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
 }
 
 /// Refine one named plan entry outside the execute loop — the guest
-/// breakout of `/spec:refine` (RFC-61 S1, parity gap 2).
+/// breakout of `/spec:refine`.
 ///
 /// Claim semantics mirror the standalone `slice build <name>` posture:
 /// the verb acts on the named slice directly against a `pending` or
@@ -325,7 +323,7 @@ fn resolve_baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
         .map_or_else(|| layout.specify_dir().join("specs"), |class| class.baseline_dir.clone())
 }
 
-/// RFC-46 D5 — the slice's bound-project baseline surface for the
+/// The slice's bound-project baseline surface for the
 /// synthesis inputs envelope. Baseline is advisory context, so any
 /// topology resolution miss degrades to an empty surface (the native
 /// handler's posture).

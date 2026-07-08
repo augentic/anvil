@@ -73,7 +73,7 @@ fn mirrors_root() -> PathBuf {
 /// the workflow guest's WASI sandbox.
 ///
 /// The generated deployment manifest mounts the host's
-/// [`project_cache_dir`] under this name (RFC-65 move 1: the guest
+/// [`project_cache_dir`] under this name (guest routing: the guest
 /// runs `rules export` and init's scaffold leg, both of which read or
 /// write cache tenants), and the wasm32 build of [`project_cache_dir`]
 /// resolves to it directly — one project per deployment, so no
@@ -136,7 +136,7 @@ fn projects_root() -> PathBuf {
     env::temp_dir().join("specify").join("projects")
 }
 
-/// Environment override for the global adapter store root (RFC-48 D5).
+/// Environment override for the global adapter store root.
 /// When set to an absolute path, store entries are created directly
 /// beneath it (no suffix is appended) — the relocation lever for
 /// sandboxes and tests.
@@ -147,7 +147,7 @@ const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 ///
 /// The generated deployment manifest mounts the host's
 /// [`adapter_store_root`] under this name **read-only**: forwarded
-/// workflow verbs resolve pinned identities (store probe, D4
+/// workflow verbs resolve pinned identities (store probe,
 /// verify-on-read against the `.meta` sidecar) in-guest, while the
 /// no-fetch / no-store-write fence stays intact — hydration remains a
 /// provisioning-surface capability.
@@ -155,8 +155,7 @@ pub const GUEST_STORE_MOUNT: &str = "/specify-store";
 
 /// Absolute path to the global adapter store entry for an immutable
 /// `(name, version)` identity — the single component file
-/// `<store>/<name>@<version>.wasm` (RFC-48 D5, RFC-64 one-component
-/// artifact).
+/// `<store>/<name>@<version>.wasm`.
 ///
 /// The store is keyed by the pinned identity, not the project, so two
 /// projects pinning the same `(name, version)` resolve to one shared,
@@ -196,8 +195,8 @@ pub fn adapter_store_root() -> PathBuf {
     env::temp_dir().join("specify").join("adapters")
 }
 
-/// Absolute path to the verify-on-read sidecar for a store entry
-/// (RFC-48 D4) — `<store>/<name>@<version>.meta`.
+/// Absolute path to the verify-on-read sidecar for a store entry —
+/// `<store>/<name>@<version>.meta`.
 ///
 /// A *sibling* of [`adapter_store_entry`], never the entry itself: the
 /// sidecar is a writable provenance record that must not perturb the
@@ -207,9 +206,9 @@ pub fn store_meta_path(name: &str, version: &str) -> PathBuf {
     adapter_store_root().join(format!("{name}@{version}.meta"))
 }
 
-/// Deterministic content digest of one file, in the `sha256:<hex>` form
-/// (RFC-48 D4). Post-RFC-64 a store entry is a single component file,
-/// so the entry digest is the file's byte digest.
+/// Deterministic content digest of one file, in the `sha256:<hex>`
+/// form. A store entry is a single component file, so the entry digest
+/// is the file's byte digest.
 ///
 /// Infallible by design, mirroring the other cache helpers — an
 /// unreadable file digests as empty rather than poisoning the caller,
@@ -222,7 +221,7 @@ pub fn file_content_digest(file: &Path) -> String {
     format!("sha256:{}", hasher.finalize_hex())
 }
 
-/// Verify-on-read sidecar contents (RFC-48 D4). Registry-internal YAML;
+/// Verify-on-read sidecar contents. Registry-internal YAML;
 /// deliberately *not* an embedded JSON Schema artifact.
 #[derive(Debug, Serialize, Deserialize)]
 struct StoreMeta {
@@ -248,7 +247,7 @@ pub struct DigestMismatch {
 }
 
 /// Write the verify-on-read sidecar beside the store entry for
-/// `(name, version)` (RFC-48 D4 record-on-install).
+/// `(name, version)`, at install time.
 ///
 /// `tree_digest` is the [`file_content_digest`] of the freshly
 /// installed component; `layer_digest` is the registry content digest,
@@ -285,8 +284,7 @@ pub fn read_store_meta(name: &str, version: &str) -> Option<String> {
     Some(meta.tree_digest)
 }
 
-/// Verify a store entry against its recorded digest (RFC-48 D4
-/// verify-on-read).
+/// Verify a store entry against its recorded digest (verify-on-read).
 ///
 /// Reads the recorded digest from the sidecar, recomputes
 /// [`file_content_digest`] over the component file, and reports a
@@ -348,9 +346,9 @@ mod tests {
     // The adapter store root resolves `$SPECIFY_ADAPTER_STORE`, else
     // `$HOME/.specify/adapters`. Entries are keyed by the immutable
     // `(name, version)` identity: the entry is the single component file
-    // `<root>/<name>@<version>.wasm` (RFC-64), distinct versions never
+    // `<root>/<name>@<version>.wasm`, distinct versions never
     // collide, the same identity is stable, and the verify-on-read
-    // sidecar (RFC-48 D4) is a `.meta` sibling of the entry.
+    // sidecar is a `.meta` sibling of the entry.
     #[test]
     #[expect(unsafe_code, reason = "pin the store-root env vars for the resolution-chain checks")]
     fn store_root_and_entry_paths() {
@@ -405,7 +403,7 @@ mod tests {
 
         // The digest commits to the file bytes deterministically: the
         // same bytes hash identically across calls, and changing the
-        // bytes changes the digest (RFC-48 D4 verify-on-read).
+        // bytes changes the digest (verify-on-read).
         let dir = tempfile::tempdir().expect("tempdir");
         let entry = dir.path().join("demo-target@1.0.0.wasm");
         fs::write(&entry, b"\0asm-component").expect("write component");

@@ -89,7 +89,7 @@ pub struct DecisionRecord {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub related: Vec<String>,
     /// Optional kebab-case topic slugs naming the domains this decision
-    /// governs (RFC-46 D3). The plan-time `propose` join key against
+    /// governs. The plan-time `propose` join key against
     /// surveyed lead `topics[]`; absent means the decision joins nothing
     /// and never blocks. Slice-authored.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

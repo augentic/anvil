@@ -140,8 +140,8 @@ pub struct ProposalResponse {
     /// The agent's slices, in response order — the kernel writes
     /// `plan.yaml.slices[]` in this order.
     pub slices: Vec<ResponseSlice>,
-    /// Gate 1 review prose authored alongside the grouping (RFC-61
-    /// S1). Canonically optional; the derived judgment-answer schema
+    /// Gate 1 review prose authored alongside the grouping.
+    /// Canonically optional; the derived judgment-answer schema
     /// requires it, and the collapsed `plan author` orchestration
     /// persists it into `change.md` / `discovery.md`. The projection
     /// kernel ignores it.

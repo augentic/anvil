@@ -1,22 +1,14 @@
 //! The adapter seam: capability traits over the `specify:adapter`
-//! guest-to-guest contract (RFC-61 Step 4, Milestone C).
+//! guest-to-guest contract.
 //!
 //! [`SourceSeam`] and [`TargetSeam`] mirror the WIT `source` / `target`
 //! interfaces the workflow guest imports; the DTOs below mirror the WIT
 //! records minus what the caller already knows (a survey's leads carry
-//! no `source` — the orchestrator attributes them; a build's report
-//! reuses the canonical [`BuildReport`] wire shape, which the Milestone
-//! D shim widens the compact WIT `report` into). Orchestrators in
+//! no `source` — the orchestrator attributes them). Orchestrators in
 //! [`crate::orchestrate`] take `&impl SourceSeam` / `&impl TargetSeam`
 //! bounds, so the crate stays wasm-free: the `wit-bindgen`-backed
-//! providers arrive with the guest shim (Milestone D), and native tests
-//! bind the scripted [`MockSourceSeam`] / [`MockTargetSeam`].
-//!
-//! The trait shape follows `specify-guest-model`'s `Model`: bare
-//! `impl Future + Send` method signatures and a typed [`Error`]
-//! mirroring the WIT `types.error` variant. Unlike `Model` there is no
-//! `wasm32` default body — the WIT binding is the Milestone D shim's
-//! concern — so a single declaration serves every target.
+//! providers live in the guest shim, and native tests bind the scripted
+//! [`MockSourceSeam`] / [`MockTargetSeam`].
 
 #[cfg(not(target_arch = "wasm32"))]
 mod mock;
@@ -130,9 +122,8 @@ pub trait SourceSeam: Send + Sync {
 /// `target:omnia`).
 ///
 /// Deliberately no `merge` method: the WIT contract carries one, but
-/// native never dispatches a target merge brief today, and the guest
-/// merge orchestrator stays deterministic-only to match (RFC-61 Step 4
-/// decision D2).
+/// the merge orchestrator is deterministic-only and never dispatches a
+/// target merge brief.
 pub trait TargetSeam: Send + Sync {
     /// Guidance on the expected build artifacts for this target, read
     /// by synthesis as the guidance brief.
@@ -140,9 +131,8 @@ pub trait TargetSeam: Send + Sync {
 
     /// Build `slice` against the shared project mount. The report is
     /// the canonical [`BuildReport`] wire shape (envelope keys
-    /// included); the Milestone D shim widens the compact WIT `report`
-    /// into it, so the orchestrator's finalize tail runs the same
-    /// schema gate and enforcement the native verb does.
+    /// included), so the orchestrator's finalize tail runs the full
+    /// schema gate and enforcement.
     fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;

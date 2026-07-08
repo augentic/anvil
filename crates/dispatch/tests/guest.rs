@@ -106,7 +106,7 @@ fn plan_execute_routes_to_orchestrator() {
 
 #[test]
 fn plan_author_routes_with_bindings() {
-    // `plan author` is guest-only argv (RFC-61 S1): the route desugars
+    // `plan author` is guest-only argv: the route desugars
     // `--source` / `--intent` into the structured binding map the
     // orchestrator hands `Plan::init`.
     let cli = parse_ok(&[
@@ -158,7 +158,7 @@ fn plan_author_duplicate_binding_refused() {
 
 #[test]
 fn slice_refine_routes_to_orchestrator() {
-    // The `/spec:refine` breakout is guest-only argv (RFC-61 S1
+    // The `/spec:refine` breakout is guest-only argv (native
     // parity gap 2); natively the shared verb table refuses it.
     let cli = parse_ok(&["specify", "slice", "refine", "billing"]);
     let Route::Orchestrate(Orchestration { verb, .. }) = route(cli) else {
@@ -174,12 +174,17 @@ fn slice_refine_routes_to_orchestrator() {
 
 #[test]
 fn global_flags_thread_to_orchestration() {
+    // `--plan-dir` is guarded to the project root (the guest's `"."`
+    // mount preopen), so thread the CWD through and assert it survives
+    // onto the orchestration descriptor.
+    let cwd = std::env::current_dir().expect("cwd");
+    let plan_dir = cwd.to_str().expect("utf-8 cwd");
     let cli = parse_ok(&[
         "specify",
         "--format",
         "json",
         "--plan-dir",
-        "/tmp/plan-root",
+        plan_dir,
         "slice",
         "build",
         "billing",
@@ -187,7 +192,18 @@ fn global_flags_thread_to_orchestration() {
     let Route::Orchestrate(orchestration) = route(cli) else {
         panic!("slice build must route to the shim's orchestrator dispatch");
     };
-    assert_eq!(orchestration.plan_dir.as_deref(), Some(std::path::Path::new("/tmp/plan-root")));
+    assert_eq!(orchestration.plan_dir.as_deref(), Some(cwd.as_path()));
+}
+
+#[test]
+fn plan_dir_outside_project_root_refused() {
+    // Plan artifacts anchor at the `"."` preopen, so any other plan
+    // root would be silently ignored; the route refuses it instead.
+    let cli = parse_ok(&["specify", "--plan-dir", "/tmp/plan-root", "slice", "build", "billing"]);
+    let Route::Handled(exit) = route(cli) else {
+        panic!("a foreign --plan-dir must be refused in-process, not orchestrated");
+    };
+    assert_eq!(exit, Exit::ArgumentError, "foreign --plan-dir refuses with the argument exit");
 }
 
 #[test]
@@ -205,12 +221,11 @@ fn native_only_verbs_refused_exit_two() {
         };
         assert_eq!(exit, Exit::ArgumentError, "{argv:?} must refuse with the argument error code");
     }
-    // `lint framework` lives only on the native provisioning grammar,
-    // so the shared operational grammar refuses it at parse (clap
-    // unknown-command, exit 2) rather than at the route table.
-    let exit = parse(["specify", "lint", "framework"].map(String::from))
-        .expect_err("lint is off the operational grammar");
-    assert_eq!(exit.code(), 2, "unknown command exits 2 through the guest seam");
+    // `lint framework` moved in-guest with the native provisioning
+    // surface's retirement: it parses on the shared grammar (hidden
+    // from help) rather than being refused. Parse-only here — routing
+    // it would walk the framework root for real.
+    parse_ok(&["specify", "lint", "framework"]);
 }
 
 #[test]

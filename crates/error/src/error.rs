@@ -70,7 +70,7 @@ pub enum Error {
     },
 
     /// The installed CLI version is older than an adapter's declared
-    /// host-CLI compatibility floor (RFC-47 D3, the `specify` manifest
+    /// host-CLI compatibility floor (the `specify-floor` describe
     /// key). Routes to exit 3 (`Exit::VersionTooOld`) like
     /// [`Self::CliTooOld`] but carries the distinct `adapter-cli-too-old`
     /// discriminant so the operator sees which adapter outran the binary.

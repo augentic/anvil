@@ -40,7 +40,7 @@ fn check_marketplace_drift(project_dir: &Path) -> Vec<ToolFinding> {
     let manifest_path = project_dir.join(".cursor-plugin").join("marketplace.json");
     let manifest_rel = relative_display(project_dir, &manifest_path);
 
-    // An adapters-only framework root (RFC-48 H1) carries no plugin
+    // An adapters-only framework root carries no plugin
     // marketplace, so an absent manifest is a legitimate skip — distinct
     // from a present-but-unreadable manifest, which still flags below.
     if !manifest_path.exists() {
@@ -219,13 +219,12 @@ mod tests {
         write(root, &format!("plugins/{source}/.cursor-plugin/plugin.json"), "{\"name\":\"x\"}");
     }
 
-    // The absent-manifest skip (an adapters-only RFC-48 H1 root has no
+    // The absent-manifest skip (an adapters-only root has no
     // marketplace.json) is asserted end-to-end by
-    // `tests/lint.rs::framework_adapters::adapters_only_root_lints_clean`,
-    // so that unit duplicate was deleted. The remaining drift matrix — clean
-    // tree, undeclared plugin, schema violation, declared-but-missing-skills —
-    // has no CLI fixture and collapses into one table-style test below. Every
-    // former input is preserved.
+    // `tests/lint.rs::framework_adapters::adapters_only_root_lints_clean`.
+    // The remaining drift matrix — clean tree, undeclared plugin, schema
+    // violation, declared-but-missing-skills — has no CLI fixture and
+    // collapses into one table-style test below.
     #[test]
     fn marketplace_drift_matrix() {
         // A valid manifest matching the on-disk plugin layout is silent.

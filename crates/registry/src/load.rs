@@ -1,9 +1,7 @@
 //! Loaders for project-scope tool declarations.
 //!
 //! Project-scope tools are declared in `project.yaml` `tools[]` and
-//! consumed by the `specify lint project` WASI path. The plugin-scope
-//! loaders and the project-wins merge died with the `specify extension
-//! run` surface (RFC-61 Step 5).
+//! consumed by the `specify lint project` WASI path.
 
 use crate::manifest::{Extension, ExtensionScope};
 

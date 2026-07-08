@@ -1,4 +1,4 @@
-//! Deterministic guest merge orchestrator (RFC-61 Step 4, decision D2).
+//! Deterministic guest merge orchestrator.
 
 use std::path::PathBuf;
 
@@ -25,8 +25,8 @@ pub struct MergeOutcome {
 /// `done`.
 ///
 /// The guest collapse of `specify slice merge run`, deterministic-only
-/// per RFC-61 decision D2 (native never dispatches a target merge
-/// brief, so there is no `seam.merge`): the `slice.merge.*` pair
+/// (no target merge brief is ever dispatched, so there is no
+/// `seam.merge`): the `slice.merge.*` pair
 /// brackets [`slice_merge::commit`], the workspace-clone git commit
 /// leg is skipped with an explicit `slice.merge.commit-skipped` event
 /// (the guest owns no git surface; lifecycle authority is `.specify/`

@@ -5,8 +5,7 @@
 //! a wasm-free core: the `grants.workspace` descriptor lend. A core asks
 //! for the lend with the plain [`Request::lend_workspace`] flag, and the
 //! `wasm32` default body resolves it against the guest's own `"."` preopen
-//! at the call site — a host call from the adapter's own instance, exactly
-//! where RFC-61 says the descriptor belongs.
+//! at the call site — a host call from the adapter's own instance.
 
 use std::future::Future;
 

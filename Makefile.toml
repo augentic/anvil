@@ -159,7 +159,7 @@ args = ["publish", "--registry=augentic", "--allow-dirty", "--dry-run"]
 # `specify:core@<version>`, where <version> is the VERSION file — the
 # published identity IS the binary version, one knob (VERSION and the
 # workspace Cargo.toml version move together via release.yaml). This
-# leg is load-bearing (RFC-65 Stage D): a released binary resolves its
+# leg is load-bearing (standalone deployment): a released binary resolves its
 # core from the store entry `specify init` / `specify adapters sync`
 # hydrate from exactly this published identity. The probe-first
 # idempotency (skip-if-present, abort when absent-vs-unreachable is

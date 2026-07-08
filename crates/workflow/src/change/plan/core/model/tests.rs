@@ -183,7 +183,7 @@ fn serde_shapes() {
     assert_eq!(structured.lead("ignored-slice-name"), "user-reg");
     assert!(structured.lead.is_some());
 
-    // RFC-47 D2: an optional `sources.<key>.version` pin round-trips.
+    // An optional `sources.<key>.version` pin round-trips.
     let plan: Plan = serde_saphyr::from_str(
         "name: pinned\nsources:\n  pinned-src:\n    adapter: demo-source\n    version: 2.3.1\n    path: /repo\n  bare-src:\n    adapter: demo-source\n    value: do the thing\nslices: []\n",
     )
@@ -209,7 +209,7 @@ fn serde_shapes() {
     assert_eq!(value_bound.value.as_deref(), Some("do the thing"));
     assert!(value_bound.path.is_none() && value_bound.version.is_none());
 
-    // RFC-47 D1: `name@<semver>` parses; the legacy `name@vN` form is rejected.
+    // `name@<semver>` parses; the `name@vN` form is rejected.
     assert_eq!(
         TargetRef::parse("demo-target@1.0.0").expect("semver target").to_string(),
         "demo-target@1.0.0"

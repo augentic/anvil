@@ -138,7 +138,7 @@ pub struct SynthesisInputs {
     /// The resolved target guidance body. Resolved and read by C8 —
     /// never by this module.
     pub guidance_brief: String,
-    /// RFC-46 D5 — the slice's bound project baseline surface (one entry
+    /// The slice's bound project baseline surface (one entry
     /// per `.specify/specs/<domain>/spec.md`), so synthesis reconciles
     /// against existing requirements instead of duplicating them. Read
     /// from the project topology at assembly time; empty (greenfield, or

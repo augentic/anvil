@@ -17,9 +17,21 @@ ci:
 	cargo make ci
 	$(MAKE) lint
 
-# Framework lint over the prose surface, built from the in-tree binary.
+# Cargo target directory, honouring an exported CARGO_TARGET_DIR.
+TARGET_DIR := $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),target)
+
+# Framework lint over the prose surface. The lint runs in the workflow
+# guest like every other verb: build the guest, then drive it through
+# the replay runtime (ModelDefault — no cursor-agent needed) with the
+# repo mounted writable at ".". The adapter-contract links resolve the
+# guest's imports; lint never dispatches them.
 lint:
-	cargo run -q -p specify -- lint framework --framework-root .
+	cargo build -q -p specify-workflow-guest --target wasm32-wasip2
+	HTTP_ADDR=127.0.0.1:0 cargo run -q -p specify-runtime --bin specify-runtime-replay -- run \
+		"$(TARGET_DIR)/wasm32-wasip2/debug/specify_workflow_guest.wasm" \
+		--mount path=.,writable \
+		--link specify:adapter/source@0.1.0 --link specify:adapter/target@0.1.0 \
+		-- lint framework --framework-root .
 
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:
@@ -42,10 +54,12 @@ use-local-plugins:
 	done; \
 	echo "Restart Cursor to pick up local plugin changes."
 
-# Clear the augentic plugin cache via the in-tree binary's own verb
-# (journaled, marketplace-scoped). Cursor refetches on restart.
+# Clear the augentic plugin cache so Cursor refetches on restart.
+# (`specify plugins refresh` retired with the native provisioning
+# surface; the cache clear is a plain rm until it lands in-guest.)
 use-team-plugins:
-	cargo run -q -p specify -- plugins refresh --project-dir . --yes
+	rm -rf "$(CURSOR_HOME)/plugins/cache/$(MARKETPLACE)"
+	@echo "Cleared $(MARKETPLACE) plugin cache; restart Cursor to refetch."
 
 # Any other target passes through to cargo make (Makefile.toml), so the
 # engine convention `make test` / `make fmt` / `make check` keeps working

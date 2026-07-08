@@ -167,7 +167,7 @@ impl Drop for StoreGuard {
     }
 }
 
-/// Pin the global content-addressed adapter store root (RFC-48 D5)
+/// Pin the global content-addressed adapter store root
 /// directly at `dir` so install / resolve probes are hermetic and
 /// auto-cleaned with the tempdir.
 #[expect(unsafe_code, reason = "pin the store-root env var into the test tempdir")]

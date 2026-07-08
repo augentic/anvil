@@ -138,7 +138,7 @@ fn validate_rejects_duplicate_names() {
 
 // The embedded EXTENSION_JSON_SCHEMA is the first gate every `tools:` block
 // passes; it must reject malformed shapes (bad name / version / source /
-// sha256 / permissions / duplicates / unknown keys and the retired scalar
+// sha256 / permissions / duplicates / unknown keys and the unsupported scalar
 // shorthand) and accept project-root writes, the object package form, and
 // template sources. Compile once, drive accept and reject case lists.
 #[test]
@@ -163,7 +163,7 @@ fn schema_validation_matrix() {
             { "name": "bad", "version": "1.0.0", "source": "/tmp/a.wasm" }
         ] }),
         json!({ "tools": [{ "name": "bad", "version": "1.0.0", "source": "/tmp/a.wasm", "permissions": { "read": [], "exec": [] } }] }),
-        // The retired scalar first-party shorthand no longer validates.
+        // The scalar first-party shorthand does not validate.
         json!({ "tools": ["specify:contract@1.2.3"] }),
     ];
     for case in &rejected {

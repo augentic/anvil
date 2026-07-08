@@ -1,7 +1,7 @@
 //! Per-axis adapter resolver entry points.
 //!
 //! [`SourceAdapter::resolve`] / [`TargetAdapter::resolve`] locate the
-//! single `.wasm` component for an [`AdapterRef`] identity (RFC-64),
+//! single `.wasm` component for an [`AdapterRef`] identity,
 //! obtain the cached `describe` answer ([`super::describe`]), and run
 //! the post-resolve floor gate in [`super::core`].
 
@@ -36,7 +36,7 @@ impl SourceAdapter {
     /// - `adapter-floor-malformed` — the describe answer's
     ///   `specify-floor` is not exact semver.
     /// - `adapter-cli-too-old` — the running binary is older than the
-    ///   adapter's declared floor (RFC-47 D3, exit 3).
+    ///   adapter's declared floor (exit 3).
     pub fn resolve(
         adapter_ref: &AdapterRef, project_dir: &Path,
     ) -> Result<ResolvedSourceAdapter, Error> {
@@ -133,7 +133,7 @@ pub fn dev_component_filename(name: &str) -> String {
 ///
 /// A pinned `(name, version)` resolves only the global store entry —
 /// the immutable install target the wasm-pkg transport populates —
-/// with RFC-48 D4 verify-on-read against the recorded file digest. A
+/// with verify-on-read against the recorded file digest. A
 /// bare name resolves only the development release-build candidates.
 fn locate(
     axis: Axis, adapter_ref: &AdapterRef, project_dir: &Path,
@@ -153,9 +153,9 @@ fn locate(
                 ),
             });
         }
-        // RFC-48 D4 verify-on-read: the store entry's recorded file
-        // digest must still match its current bytes, else the immutable
-        // artifact has drifted (a moved tag, a corrupted store entry).
+        // Verify-on-read: the store entry's recorded file digest must
+        // still match its current bytes, else the immutable artifact
+        // has drifted (a moved tag, a corrupted store entry).
         // A missing sidecar fails open. Dev artifacts are verify-exempt
         // — only the content-addressed store is gated.
         if let Err(mismatch) = specify_schema::cache::verify_store_entry(name, &version) {

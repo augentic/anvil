@@ -1,13 +1,12 @@
-//! Guest execute-loop integration tests (RFC-61 Step 4, Milestone E).
+//! Guest execute-loop integration tests.
 //!
 //! Scripted end-to-end walk of `specify_workflow::orchestrate::execute`
 //! against mocked Model + seams: plan approved → claim → refine (extract
 //! fan-out, synthesis judgment, persist, validate, `refined`) → build →
 //! merge, per entry, to `drained`. Plus the typed stop paths (Gate 1
-//! refusal, a failing build), the D1 create-exclusive guest-marker
+//! refusal, a failing build), the create-exclusive guest-marker
 //! posture, and the standalone `slice refine <name>` breakout
-//! (`orchestrate::refine_breakout`, RFC-61 S1 parity gap 2), which
-//! shares this harness.
+//! (`orchestrate::refine_breakout`), which shares this harness.
 
 use std::fs;
 use std::path::PathBuf;

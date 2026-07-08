@@ -1,4 +1,4 @@
-//! Echo target-adapter guest component (RFC-64 fixture).
+//! Echo target-adapter guest component (test fixture).
 //!
 //! Exports the `specify:adapter` `target-adapter` world with trivial,
 //! model-free operations plus `wasi:http/incoming-handler` serving a
@@ -30,7 +30,7 @@ mod bindings {
         path: "../../wit",
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s and async-lift; `describe` is a plain `func`
-        // (RFC-64: deterministic, effect-free) and sync-lifts — forcing it
+        // (deterministic, effect-free) and sync-lifts — forcing it
         // async would fail component validation at load.
         generate_all,
     });

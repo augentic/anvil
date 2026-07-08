@@ -13,8 +13,8 @@
 //! Two caller-resolved build parameters mirror what the native
 //! prepare phase owns: the manifest-declared build-inputs list comes
 //! from the project's bound target adapter, and the working tree names
-//! the live shared mount (`base: "live"` — snapshot identity is the
-//! RFC-55 forward hook; today's deployments share one live tree).
+//! the live shared mount (`base: "live"`; deployments share one live
+//! tree).
 
 use std::path::PathBuf;
 

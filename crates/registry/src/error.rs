@@ -200,7 +200,7 @@ impl ExtensionError {
     }
 
     /// Build an `adapter-store-failed` diagnostic for the single-file
-    /// adapter store's install path (RFC-48 D5, RFC-64 one component):
+    /// adapter store's install path:
     /// store-root creation, lock, stage, atomic rename, sidecar write.
     pub(crate) fn store_io(detail: impl Into<String>) -> Self {
         Self::Diag {

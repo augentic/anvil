@@ -11,9 +11,9 @@ pub mod permissions;
 pub mod resolver;
 pub mod store;
 // The manifest DTOs and structural validation live in the wasmtime-free
-// `specify-extension` leaf; re-export them under their historical
-// module paths so `specify_registry::manifest::Extension` and
-// `specify_registry::validate` keep resolving.
+// `specify-extension` leaf, re-exported so
+// `specify_registry::manifest::Extension` and
+// `specify_registry::validate` resolve.
 pub use package::PackageMetadata;
 pub use specify_extension as manifest;
 pub use specify_extension::{DEFAULT_WASM_PKG_CONFIG, WASM_PKG_CONFIG_FILENAME, validate};

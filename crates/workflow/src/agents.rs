@@ -7,24 +7,13 @@
 //! command assembles a [`render::Input`] from its `Ctx` and drives these
 //! modules; everything here is `Ctx`-free so it can carry its own unit tests
 //! (per `docs/standards/testing.md`).
-//!
-//! ## Lint posture
-//!
-//! This code originated in the binary crate
-//! (`src/runtime/commands/agents`), where exported-item lints never applied —
-//! a binary exports no public API, so `missing_docs` on `pub` fields,
-//! `must_use_candidate`, `missing_panics_doc`, and similar `pedantic` /
-//! `nursery` checks never fired. It moved verbatim to host its unit
-//! tests; the module-scoped allow preserves that pre-move posture rather than
-//! churning ~30 field-doc comments and `#[must_use]` / `# Panics` attributes
-//! onto relocated internals.
 #![allow(
     missing_docs,
     missing_debug_implementations,
     missing_copy_implementations,
     clippy::pedantic,
     clippy::nursery,
-    reason = "relocated binary-internal context-fence code retains its pre-move lint posture; a binary exports nothing, so exported-item lints never applied. See module docs."
+    reason = "binary-internal context-fence code consumed only by the `agents` command; documenting ~30 internal fields and `#[must_use]` / `# Panics` attributes adds noise, not API surface"
 )]
 
 pub mod detect;

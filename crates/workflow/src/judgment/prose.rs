@@ -3,10 +3,10 @@
 //! Markdown stays the authoring source of truth: the prompt bodies and
 //! the synthesis playbook references are inlined and link-checked by
 //! this crate's `build.rs` (a dangling relative reference fails the
-//! build — RFC-61 embed-time link resolution) and embedded from
+//! build) and embedded from
 //! `OUT_DIR/prose/`. The corpus is small (about 50 kilobytes), so it is
 //! pasted into the system prompt rather than shelved behind an MCP
-//! route (decision D8).
+//! route.
 
 /// System prompt body for the propose reconciliation leg.
 pub const PROPOSE: &str = include_str!(concat!(env!("OUT_DIR"), "/prose/propose.md"));

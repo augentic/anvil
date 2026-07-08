@@ -46,7 +46,7 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
 )
 specify="$root/target/debug/specify"
 workflow_wasm="$root/target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
-# Pin the freshly built guest as the core (RFC-65 development override)
+# Pin the freshly built guest as the core (development override)
 # so init never hydrates `specify:core` from the registry — the loop
 # under test is the branch head, not a published core.
 export SPECIFY_CORE_PATH="$workflow_wasm"

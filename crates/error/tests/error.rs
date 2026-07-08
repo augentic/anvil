@@ -26,7 +26,7 @@ fn cli_too_old_discriminant_display() {
 
 #[test]
 fn adapter_cli_too_old_discriminant_display() {
-    // RFC-47 D3: the adapter floor reuses the exit-3 family but carries
+    // The adapter floor reuses the exit-3 family but carries
     // a distinct discriminant naming the adapter that outran the binary.
     let err = Error::AdapterCliTooOld {
         adapter: "omnia (omnia@1.0.0.wasm)".to_string(),

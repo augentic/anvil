@@ -77,11 +77,10 @@ fn diagnostic(index: usize, row: &ToolFinding) -> Diagnostic {
 /// path (the rule's own sentinel file), or `None` when the candidate
 /// does not name a recognised rule.
 ///
-/// Deliberately stricter than the retired WASI tools'
-/// any-arg-substring scan: only the first positional arg (the candidate
+/// Deliberately strict: only the first positional arg (the candidate
 /// path the evaluator always passes first) is consulted, and only its
 /// file name — a forwarded `config:` JSON that happens to mention
-/// another `CORE-NNN` can no longer mis-scope the invocation.
+/// another `CORE-NNN` cannot mis-scope the invocation.
 pub fn requested_rule(args: &[String], rules: &[&'static str]) -> Option<&'static str> {
     let candidate = args.first()?;
     let file_name = candidate.rsplit(['/', '\\']).next().unwrap_or(candidate);
@@ -102,9 +101,7 @@ pub fn relative_display(root: &std::path::Path, path: &std::path::Path) -> Strin
     path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")
 }
 
-/// Recursive file collector that never follows or records symlinks,
-/// matching the retired tools' `follow_links(false)` + symlink-skip
-/// discovery posture.
+/// Recursive file collector that never follows or records symlinks.
 pub fn walk_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;

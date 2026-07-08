@@ -68,16 +68,17 @@ async fn usage_error_passthrough() -> Result<()> {
 #[test]
 fn binary_stdout() -> Result<()> {
     let engine = common::workspace_root();
-    common::guest_wasm(WORKFLOW_WASM);
-    // omnia.toml resolves guest paths relative to itself, so the built
-    // workflow artifact must sit under the repo-root target/ (the default target
-    // dir) and the release-built adapter components in the sibling checkout.
+    let built = common::guest_wasm(WORKFLOW_WASM);
+    // omnia.toml resolves guest paths relative to itself, expecting the
+    // workflow artifact under the repo-root target/ (the default target
+    // dir) and the release-built adapter components in the sibling
+    // checkout. Mirror the built guest there when CARGO_TARGET_DIR
+    // redirects the build elsewhere.
     let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(WORKFLOW_WASM);
-    assert!(
-        expected.exists(),
-        "omnia.toml expects {expected}; run `cargo make build-guests` from the repo root",
-        expected = expected.display()
-    );
+    if built != expected {
+        std::fs::create_dir_all(expected.parent().expect("artifact dir has a parent"))?;
+        std::fs::copy(&built, &expected)?;
+    }
     common::adapters_root();
 
     // An ephemeral port keeps the background HTTP trigger from colliding with
@@ -101,19 +102,14 @@ fn binary_stdout() -> Result<()> {
     Ok(())
 }
 
-// The in-process host mount (RFC-65 move 2): `specify_runtime::drive`
-// blocks on the macro-generated command-mode runtime over the
-// cursor-bound backends inside the calling process — no host binary is
-// spawned. A stub `cursor-agent` on `PATH` satisfies the backend's
-// connect probe; argv reaches the workflow guest and exit 0 returns
-// for process passthrough. Guest stdout is the process's own here, so
-// the version-line *text* is pinned by the root `tests/guest.rs`
-// subprocess suite (`version_forwards_to_guest`), which drives this
-// same seam through the `specify` binary.
+// The `specify` binary itself: the same macro-generated command-mode
+// runtime over the cursor-bound backends, driven through omnia's `run`
+// grammar. A stub `cursor-agent` on `PATH` satisfies the backend's
+// connect probe; argv after `--` reaches the workflow guest and the
+// version line comes back on stdout with exit 0.
 #[cfg(unix)]
 #[test]
-#[expect(unsafe_code, reason = "pin PATH and HTTP_ADDR for the in-process runtime")]
-fn drive_in_process() -> Result<()> {
+fn binary_cursor_bound() -> Result<()> {
     use std::os::unix::fs::PermissionsExt as _;
 
     let manifest = common::skeleton_manifest("source:echo")?;
@@ -128,16 +124,24 @@ fn drive_in_process() -> Result<()> {
     let path =
         format!("{}:{}", stub_dir.path().display(), std::env::var("PATH").unwrap_or_default());
 
-    // SAFETY: nextest runs each test in its own process, so no other
-    // thread observes the env mutations; the runtime reads all three.
-    unsafe { std::env::set_var("PATH", path) };
-    // SAFETY: as above.
-    unsafe { std::env::set_var("HTTP_ADDR", format!("127.0.0.1:{}", free_port()?)) };
-    // SAFETY: as above.
-    unsafe { std::env::remove_var("RUST_LOG") };
+    let output = assert_cmd::Command::cargo_bin("specify")?
+        .env("PATH", path)
+        .env("HTTP_ADDR", format!("127.0.0.1:{}", free_port()?))
+        .env_remove("RUST_LOG")
+        .args(["run", "--config"])
+        .arg(manifest.path())
+        .args(["--", "--version"])
+        .output()?;
 
-    let code = specify_runtime::drive(manifest.path(), vec!["--version".to_string()])?;
-    assert_eq!(code, 0, "`--version` must exit 0 through the in-process mount");
+    assert!(
+        output.status.success(),
+        "runtime exited {:?}; stderr:\n{}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version_line = format!("specify {}", env!("CARGO_PKG_VERSION"));
+    assert!(stdout.contains(&version_line), "stdout did not carry `{version_line}`:\n{stdout}");
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 //! Axis-split adapter identity model and post-resolve coherence gates.
 //!
-//! Post-RFC-64 an adapter is a single WebAssembly component: identity
+//! An adapter is a single WebAssembly component: identity
 //! lives in the wasm-pkg package reference (`specify:<name>@<semver>`),
 //! axis in the exported world (`source` xor `target`), and the
 //! remaining metadata (compatibility floor, build inputs, platforms
@@ -157,16 +157,15 @@ impl PlatformsCapability {
 }
 
 /// Where an adapter component was located on disk. The carried path is
-/// the single `.wasm` component file (RFC-64 — one component, no
-/// manifest).
+/// the single `.wasm` component file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterLocation {
     /// Resolved from the global content-addressed adapter store entry
-    /// at `<store-root>/<name>@<version>.wasm` (RFC-48 D5, single file
-    /// post-RFC-64). The store is the immutable, version-keyed install
-    /// target resolved by `specify_schema::cache::adapter_store_entry`
-    /// and populated by the wasm-pkg transport. Probed whenever the
-    /// [`AdapterRef`] carries a pinned version.
+    /// at `<store-root>/<name>@<version>.wasm` — the immutable,
+    /// version-keyed install target resolved by
+    /// `specify_schema::cache::adapter_store_entry` and populated by
+    /// the wasm-pkg transport. Probed whenever the [`AdapterRef`]
+    /// carries a pinned version.
     Store(PathBuf),
     /// Resolved from a development release build —
     /// `target/wasm32-wasip2/release/<name>.wasm` under the
@@ -196,15 +195,12 @@ impl AdapterLocation {
 }
 
 /// The identity an adapter resolves against: a kebab-case `name` plus
-/// an optional pinned semver `version` (RFC-47 D2).
+/// an optional pinned semver `version`.
 ///
 /// Resolution keys on `(name, version)`. A `Some(_)` version is an
 /// exact pin resolved against the global store entry installed for
 /// that identity; `version: None` is the bare-name development
 /// shorthand resolved against the sibling/in-repo release build.
-/// Semver range resolution is deferred to RM-21; this value type is
-/// the seam those extensions widen without re-breaking the resolve
-/// call sites.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterRef {
     /// Kebab-case adapter name.
@@ -264,10 +260,10 @@ pub struct SourceAdapter {
     /// Semver adapter version: the pin for store-resolved identities,
     /// [`dev_version`] for development artifacts.
     pub version: semver::Version,
-    /// Optional host-CLI compatibility floor (RFC-47 D3) from the
-    /// `describe` answer's `specify-floor`. The resolver compares it
-    /// against the running binary (`check_requires_specify`) and aborts
-    /// with `adapter-cli-too-old` (exit 3) when the binary is older.
+    /// Optional host-CLI compatibility floor from the `describe`
+    /// answer's `specify-floor`. The resolver compares it against the
+    /// running binary (`check_requires_specify`) and aborts with
+    /// `adapter-cli-too-old` (exit 3) when the binary is older.
     pub requires_specify: Option<semver::Version>,
 }
 
@@ -283,10 +279,10 @@ pub struct TargetAdapter {
     /// Semver adapter version: the pin for store-resolved identities,
     /// [`dev_version`] for development artifacts.
     pub version: semver::Version,
-    /// Optional host-CLI compatibility floor (RFC-47 D3) from the
-    /// `describe` answer's `specify-floor`. The resolver compares it
-    /// against the running binary (`check_requires_specify`) and aborts
-    /// with `adapter-cli-too-old` (exit 3) when the binary is older.
+    /// Optional host-CLI compatibility floor from the `describe`
+    /// answer's `specify-floor`. The resolver compares it against the
+    /// running binary (`check_requires_specify`) and aborts with
+    /// `adapter-cli-too-old` (exit 3) when the binary is older.
     pub requires_specify: Option<semver::Version>,
     /// Adapter-declared build inputs from the `describe` answer. Each
     /// entry is a path relative to the build request's `inputs.root`,
@@ -374,7 +370,7 @@ pub(super) fn parse_floor(
     })
 }
 
-/// Enforce an adapter's host-CLI compatibility floor (RFC-47 D3).
+/// Enforce an adapter's host-CLI compatibility floor.
 ///
 /// `floor` is the adapter's optional `specify` minimum from its
 /// `describe` answer (already parsed into a typed `semver::Version`);

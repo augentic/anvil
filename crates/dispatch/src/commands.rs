@@ -1,14 +1,14 @@
 //! Shared verb handlers and dispatch plumbing.
 //!
-//! The native binary's dispatcher calls the per-family `dispatch_*`
-//! entry points here for every pure workflow verb; native-only verbs
-//! (init, lint, workspace, …) keep their handlers in the binary crate
-//! and only their clap action enums live here (under each family's
-//! `cli` module) so the grammar stays whole. Guest-owned orchestrator
-//! verbs (`source survey`/`extract`, `slice refine`/`build`,
-//! `slice merge run`, `plan author`/`execute`) carry only their clap
-//! surface here — the workflow guest drives the matching
-//! `specify_workflow::orchestrate` entry points.
+//! The guest router calls the per-family `dispatch_*` entry points
+//! here for every pure workflow verb; provisioning verbs
+//! (init's hydration half, adapters, workspace, upgrade, plugins)
+//! keep only their clap action enums here (under each family's `cli`
+//! module) so the grammar stays whole while the guest refuses them.
+//! Guest-owned orchestrator verbs (`source survey`/`extract`,
+//! `slice refine`/`build`, `slice merge run`, `plan author`/`execute`)
+//! carry only their clap surface here — the workflow guest drives the
+//! matching `specify_workflow::orchestrate` entry points.
 
 pub mod adapters;
 pub mod archive;
@@ -85,7 +85,7 @@ pub fn dispatch_target(format: Format, action: TargetAction) -> Exit {
 
 /// Print the shell-completion script for `shell` to stdout — pure
 /// stdout from the shared clap grammar, so the output is byte-identical
-/// on both sides of the seam (native and in-guest, RFC-65 move 1).
+/// on both sides of the seam (native and in-guest, guest routing).
 pub fn completions(shell: clap_complete::Shell) -> Exit {
     let mut cmd = <crate::cli::Cli as clap::CommandFactory>::command();
     clap_complete::generate(shell, &mut cmd, "specify", &mut std::io::stdout());
@@ -216,8 +216,8 @@ fn write_resolve_text(w: &mut dyn Write, body: &ResolveBody) -> std::io::Result<
 
 /// Resolve a source- or target-adapter component by identity and emit
 /// the wire-stable [`ResolveBody`] envelope. Probe order matches the
-/// axis-agnostic locator (RFC-64): the global single-file store entry
-/// for pinned identities, then the development release build for bare
+/// axis-agnostic locator: the global single-file store entry for
+/// pinned identities, then the development release build for bare
 /// names.
 ///
 /// `value` accepts either `<name>` or `<name>@<version>`; the semver

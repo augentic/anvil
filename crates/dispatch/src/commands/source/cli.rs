@@ -10,7 +10,7 @@ use clap::Subcommand;
 pub enum SourceAction {
     /// Resolve a source adapter by kebab name.
     ///
-    /// Resolves the single `.wasm` component (RFC-64): the global
+    /// Resolves the single `.wasm` component: the global
     /// store entry for a pinned identity, else the project component
     /// cache / development release build for a bare name. Emits the
     /// resolved component path plus the axis's closed operation set.

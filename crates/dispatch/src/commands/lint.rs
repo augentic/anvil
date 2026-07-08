@@ -1,7 +1,6 @@
-//! Clap action-enum surface for `specify lint framework`.
-//!
-//! Framework CI tooling off the operational grammar. Only the native
-//! provisioning grammar in the `specify` binary mounts [`cli::LintAction`]
-//! (hidden); the handler lives in the binary crate.
+//! `specify lint framework` — framework CI tooling (`make lint`),
+//! hidden from operator help. Runs in the workflow guest like every
+//! other verb, walking the framework repo through the `"."` mount.
 
 pub mod cli;
+pub mod framework;

@@ -4,7 +4,7 @@ Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>
 
 ## Workspace layout
 
-Binary crate (`name = "specify"`) at the repo root. [`src/main.rs`](../../src/main.rs) is a thin `ExitCode` shim over `specify::runtime::run` in [`src/lib.rs`](../../src/lib.rs); hosting dispatch in a library module keeps the binary entry point minimal and supports doc tests. The whole CLI lives under [`src/runtime/`](../../src/runtime/) — the native provisioning surface plus the hidden `lint framework` dev tool (`lint project` retired from the operational surface; engineering standards reach consumer projects through `specify rules export`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
+Binary crate (`name = "specify"`) at the repo root. [`src/main.rs`](../../src/main.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb, including the hidden `lint framework` dev tool, runs in the workflow guest (`crates/workflow-guest`) through the shared dispatch grammar (`crates/dispatch`); `lint project` retired from the operational surface, and engineering standards reach consumer projects through `specify rules export`. Workspace member crates live under `crates/`; the dependency direction is leaf → root:
 
 ```text
 specify-error                    # leaf — thiserror + serde-saphyr only
@@ -32,7 +32,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default. See [DECISIONS.md §"New workspace crates"](../../DECISIONS.md#new-workspace-crates) for the bar a new crate must clear.
 
-The root `specify` crate exposes `src/lib.rs` (crate root) and `src/runtime.rs` + `src/runtime/` (the whole `specify` dispatch tree, including `src/runtime/commands/lint/framework.rs` for `specify lint framework`). Clap introspection for shell completions lives in [`src/runtime/commands.rs`](../../src/runtime/commands.rs) via `Cli::command()`.
+The root `specify` crate is a binary-only package (`src/main.rs`, the `omnia::runtime!` invocation). The whole `specify` dispatch tree — including `commands/lint/framework.rs` for `specify lint framework` — lives in `crates/dispatch`; clap introspection for shell completions lives in [`crates/dispatch/src/commands.rs`](../../crates/dispatch/src/commands.rs) via `Cli::command()`.
 
 ## standards layer modules
 

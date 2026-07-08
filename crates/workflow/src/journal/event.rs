@@ -256,7 +256,7 @@ pub enum EventKind {
     },
     /// The guest merge orchestrator skipped the workspace-clone git
     /// commit leg — the workflow guest owns no git surface, so the
-    /// merge lands on `.specify/` state only (RFC-61 Step 4). Explicit
+    /// merge lands on `.specify/` state only. Explicit
     /// so a journal reader can tell a guest merge (no `merge-sha` on
     /// its `slice.archive.created`) from a native merge that simply ran
     /// outside a clone. Native `specify slice merge` never emits this.
@@ -413,7 +413,7 @@ pub enum EventKind {
         marketplace: String,
     },
     /// `specify adapters sync` hydrated the project's declared pinned
-    /// identities against the global adapter store (RFC-65's explicit
+    /// identities against the global adapter store (explicit
     /// hydration trigger). Fires once per successful sync that
     /// resolved at least one identity; a project with no pinned
     /// declarations emits nothing. `resolved` counts the

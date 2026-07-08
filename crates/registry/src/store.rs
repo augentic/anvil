@@ -1,21 +1,18 @@
-//! Global content-addressed adapter store (RFC-48 D5, RFC-64 one
-//! component).
+//! Global content-addressed adapter store.
 //!
 //! Adapters resolve from a single global store keyed by the immutable
-//! `(name, version)` identity — the Cargo `~/.cargo/registry` model.
-//! Post-RFC-64 a store entry is one file,
-//! `<store-root>/<name>@<version>.wasm`: the published WebAssembly
-//! component pulled through the **wasm-pkg** transport
-//! (the crate-private `package` module, the same client the `tools[]`
-//! resolver uses).
-//! [`install_tofu`] pulls the component once (trust-on-first-use),
-//! stages it beside the entry, makes it read-only, renames it into
-//! place atomically, and records a verify-on-read sidecar (RFC-48 D4):
-//! the component's byte digest. A file lock around the stage-rename
-//! window makes concurrent installs of one identity idempotent. The
-//! store path resolver and the sidecar helpers live on the
-//! `specify-schema` leaf ([`specify_schema::cache::adapter_store_entry`],
-//! [`specify_schema::cache::verify_store_entry`]) so this install path
+//! `(name, version)` identity — the Cargo `~/.cargo/registry` model. A
+//! store entry is one file, `<store-root>/<name>@<version>.wasm`: the
+//! published WebAssembly component pulled through the wasm-pkg
+//! transport. [`install_tofu`] pulls the component once
+//! (trust-on-first-use), stages it beside the entry, makes it
+//! read-only, renames it into place atomically, and records a
+//! verify-on-read sidecar carrying the component's byte digest. A file
+//! lock around the stage-rename window makes concurrent installs of one
+//! identity idempotent. The store path resolver and the sidecar helpers
+//! live on the `specify-schema` leaf
+//! ([`specify_schema::cache::adapter_store_entry`],
+//! [`specify_schema::cache::verify_store_entry`]) so the install path
 //! and the offline resolve/verify path agree on one location and one
 //! digest.
 
@@ -34,7 +31,7 @@ use crate::package;
 /// transport (honouring the project's `.specify/wasm-pkg.toml`
 /// namespace mappings when `project_dir` is set), materializes the
 /// component at the immutable store entry for `(name, version)`, and
-/// records the verify-on-read sidecar (RFC-48 D4/D5 install-on-fetch).
+/// records the verify-on-read sidecar.
 ///
 /// The store entry is content-addressed, read-only, and immutable once
 /// installed, so its presence is the read-integrity guarantee; the
@@ -68,7 +65,7 @@ pub fn install_tofu(
     Ok(entry)
 }
 
-/// Record the RFC-48 D4 verify-on-read sidecar beside a freshly
+/// Record the verify-on-read sidecar beside a freshly
 /// installed store entry: the component's deterministic byte digest the
 /// resolver re-checks, doubling as the registry content digest (the
 /// wasm-pkg release content is the component bytes themselves).

@@ -195,10 +195,9 @@ impl TryFrom<String> for ExtensionSource {
     }
 }
 
-/// The full object form of a declared tool. The scalar first-party
-/// shorthand (`specify:<name>@<ver>`) and its embedded permissions
-/// catalog are retired (RFC-48 D10): every declaration spells out its
-/// own `source` and `permissions`.
+/// The full object form of a declared tool: every declaration spells
+/// out its own `source` and `permissions` (there is no scalar
+/// shorthand).
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ToolObject {
@@ -265,7 +264,7 @@ pub struct ExtensionManifest {
 ///
 /// Source plugins (`extract` / `survey`) and target plugins
 /// (`guidance` / `build` / `merge`) share the single-component adapter
-/// shape (RFC-64); `Axis` is what disambiguates them in
+/// shape; `Axis` is what disambiguates them in
 /// [`ExtensionScope::Plugin`] and in prose-tree layouts
 /// (`{sources,targets}/<name>/`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
@@ -402,8 +401,8 @@ mod tests {
     }
 
     // serde rejects both a tool whose `source:` is an unsupported wire
-    // string (the `TryFrom` error propagates) and the retired top-level
-    // scalar shorthand (RFC-48 D10: a tool is always a full object with its
+    // string (the `TryFrom` error propagates) and the unsupported top-level
+    // scalar shorthand (a tool is always a full object with its
     // own `source` and `permissions`). Both rejection arms collapse here.
     #[test]
     fn manifest_serde_rejects() {
@@ -420,7 +419,7 @@ mod tests {
         }
     }
 
-    // The retired top-level scalar shorthand aside, a package or template
+    // The unsupported top-level scalar shorthand aside, a package or template
     // `source:` string inside the object form still parses to its own
     // variant and serializes back to the same wire string. Both extra
     // source forms collapse into one round-trip matrix.

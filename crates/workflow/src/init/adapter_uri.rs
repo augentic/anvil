@@ -1,10 +1,10 @@
-//! Parsing the `<adapter>` argument (RFC-64: one component, no
-//! manifest): package references (`specify:<name>@<semver>`),
-//! first-party shorthand (`omnia`, `omnia@1.0.0`), and local component
-//! paths (`./adapter.wasm`, `file://…/adapter.wasm`).
+//! Parsing the `<adapter>` argument: package references
+//! (`specify:<name>@<semver>`), first-party shorthand (`omnia`,
+//! `omnia@1.0.0`), and local component paths (`./adapter.wasm`,
+//! `file://…/adapter.wasm`).
 //!
 //! A package reference (and the versioned first-party shorthand, its
-//! sugar) is the RFC-48 D2 registry locator: an *immutable*,
+//! sugar) is an *immutable*,
 //! content-addressed identity with a mandatory exact SemVer pin and no
 //! branch or tag defaulting. The root `specify init` layer installs
 //! the pinned component into the global content-addressed store
@@ -35,8 +35,7 @@ use crate::adapter::{AdapterRef, dev_component_paths};
 /// file is copied into `<project-cache>/components/<name>.wasm`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AdapterOrigin {
-    /// Global content-addressed store entry (RFC-48 D5 package
-    /// reference).
+    /// Global content-addressed store entry (package reference).
     Store,
     /// Development release build resolved by the bare-name probe.
     Dev,
@@ -62,8 +61,8 @@ impl AdapterUri {
             return Err(Error::Diag {
                 code: "adapter-github-uri-unsupported",
                 detail: format!(
-                    "GitHub adapter URIs are no longer supported (`{adapter}`): a source checkout \
-                     does not yield a usable adapter artifact (RFC-64). Pin a published component \
+                    "GitHub adapter URIs are not supported (`{adapter}`): a source checkout \
+                     does not yield a usable adapter artifact. Pin a published component \
                      (`specify:<name>@<semver>`), point at a local `.wasm` component file, or \
                      build the development sibling with `cargo make release`"
                 ),
@@ -88,7 +87,7 @@ impl AdapterUri {
     }
 
     /// Resolve an immutable [`AdapterPackageRef`] registry locator from
-    /// the global content-addressed adapter store (RFC-48 D5).
+    /// the global content-addressed adapter store.
     ///
     /// The component is installed into the store by the root `specify
     /// init` layer (`registry::store::install_tofu`) before this
@@ -104,7 +103,7 @@ impl AdapterUri {
             return Err(Error::Diag {
                 code: "adapter-package-not-installed",
                 detail: format!(
-                    "adapter package `{}` is not installed in the global store at {}; `specify init` installs the component before scaffolding (RFC-48 D5)",
+                    "adapter package `{}` is not installed in the global store at {}; `specify init` installs the component before scaffolding",
                     package.wire_value(),
                     component.display()
                 ),
@@ -170,12 +169,11 @@ impl AdapterUri {
 }
 
 /// An immutable, content-addressed adapter package reference of the
-/// form `<namespace>:<name>@<semver>` (e.g. `specify:omnia@1.0.0`) —
-/// the RFC-48 D2 registry locator.
+/// form `<namespace>:<name>@<semver>` (e.g. `specify:omnia@1.0.0`).
 ///
 /// The exact SemVer pin is mandatory: there is no branch or tag
 /// defaulting, so a reference always names one immutable artifact. The
-/// recorded registry content digest (RFC-48 D4) backstops a moved tag
+/// recorded registry content digest backstops a moved tag
 /// as `adapter-digest-mismatch` at read time.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct AdapterPackageRef {
@@ -192,7 +190,7 @@ impl AdapterPackageRef {
     /// (`C:\…`), bare names, and local paths keep flowing through the
     /// shorthand / local branches. Returns `Some(Err(_))` when the
     /// shape *is* a package reference but the version pin is missing
-    /// or not exact SemVer (RFC-48 D2 forbids branch/tag defaulting).
+    /// or not exact SemVer.
     fn recognize(adapter: &str) -> Option<Result<Self, Error>> {
         let (namespace, rest) = adapter.split_once(':')?;
         // `//` after the colon is a URL authority (`https://`,
@@ -251,7 +249,7 @@ pub struct AdapterPackage {
     pub namespace: String,
     /// Kebab-case adapter name.
     pub name: String,
-    /// Mandatory exact-SemVer pin (RFC-48 D2).
+    /// Mandatory exact-SemVer pin.
     pub version: semver::Version,
 }
 
@@ -280,7 +278,7 @@ impl AdapterPackage {
 /// Returns `None` for non-package shapes (bare names, paths, URLs), so
 /// those keep flowing through the dev / local branches; `Some(Err(_))`
 /// when the shape *is* a package reference but the SemVer pin is
-/// missing or malformed (RFC-48 D2 forbids branch/tag defaulting).
+/// missing or malformed.
 #[must_use]
 pub fn recognize_package(value: &str) -> Option<Result<AdapterPackage, Error>> {
     if let Some(parsed) = AdapterPackageRef::recognize(value) {
@@ -306,13 +304,13 @@ fn is_github_url(adapter: &str) -> bool {
 
 /// The wasm-pkg namespace first-party adapters publish under
 /// (`specify:<name>@<semver>` via `wkg publish` in the adapters repo;
-/// RFC-65 naming cut — `augentic:` is reserved, not routed).
+/// specify: naming cut — `augentic:` is reserved, not routed).
 const FIRST_PARTY_NAMESPACE: &str = "specify";
 
 /// Recognise a first-party adapter shorthand and split it into
 /// `(name, version)`. A bare `name` carries no pin (`None`) and
 /// resolves the development release build; a `name@<semver>` carries
-/// the parsed [`semver::Version`] (RFC-47 identity) and is sugar for
+/// the parsed [`semver::Version`] and is sugar for
 /// the `specify:<name>@<semver>` package reference. Returns `None`
 /// for paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying
 /// `:` or `/`), and for a `@suffix` that is not exact semver — so
@@ -348,7 +346,7 @@ fn ensure_component_file(path: &Path, original: &str) -> Result<(), Error> {
     Err(Error::Diag {
         code: "adapter-component-missing",
         detail: format!(
-            "adapter `{original}` did not resolve to a `.wasm` component file at {} (RFC-64: an \
+            "adapter `{original}` did not resolve to a `.wasm` component file at {} (an \
              adapter is a single WebAssembly component)",
             path.display()
         ),
@@ -401,7 +399,7 @@ fn package_ref_name(value: &str) -> Option<&str> {
 
 /// Build an [`AdapterRef`] identity from a `project.yaml.adapter` (or
 /// slice `target`) value: the kebab `name` plus an optional pinned
-/// semver `version` recovered from the `@<suffix>` (RFC-47 D2).
+/// semver `version` recovered from the `@<suffix>`.
 ///
 /// The version is `Some(_)` only when the `@suffix` parses as exact
 /// semver — a bare name or a `file://` path yields `version: None`, so

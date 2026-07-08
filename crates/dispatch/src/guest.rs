@@ -1,25 +1,26 @@
-//! Guest-side verb routing (RFC-61 Step 4, Milestone D).
+//! Guest-side verb routing — the whole operational surface.
 //!
 //! The workflow guest shim parses argv through the shared grammar and
 //! hands the parsed [`crate::cli::Cli`] here. Pure workflow verbs run
-//! in-process through the same handlers the native binary uses, so the
-//! guest surface is argv- and envelope-compatible with native for
-//! every shared verb. The four collapsed orchestrator verbs — the ones
-//! whose native shape is a two-phase agent handoff — are *parsed* here
-//! but *dispatched* in the shim, where the WIT-provided seam lives:
+//! in-process. The four collapsed orchestrator verbs — the ones whose
+//! shape is a two-phase agent handoff — are *parsed* here but
+//! *dispatched* in the shim, where the WIT-provided seam lives:
 //! [`route`] returns the [`Orchestration`] descriptor and the shim
 //! drives the matching `specify_workflow::orchestrate` entry point
-//! against its providers. Provisioning and native-residue verbs
-//! (`init` without `--scaffold-only`, `adapters sync`, `workspace *`,
-//! `upgrade`, `plugins`) have no guest handler and fail with
+//! against its providers. Retired provisioning verbs (`init` without
+//! `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`,
+//! `plugins`) have no guest handler yet and fail with
 //! `Error::Argument` (exit 2).
 //!
 //! Project-scoped guest verbs anchor [`Ctx`] at `"."` — the mount
 //! preopen that carries the project root — instead of walking from the
 //! process CWD, which WASI does not model the way a native process
-//! does.
+//! does. The `--plan-dir` global is guarded here for the same reason:
+//! plan artifacts anchor at the `"."` preopen, so any other plan root
+//! would be silently ignored and is refused instead.
 
 use std::collections::BTreeMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
@@ -88,9 +89,8 @@ pub enum Verb {
         slice: String,
     },
     /// `specify slice merge run <name>` → `orchestrate::merge`
-    /// (deterministic-only per RFC-61 decision D2; routed through the
-    /// shim so every guest-vs-native behavioural divergence lives in
-    /// one place).
+    /// (deterministic-only; routed through the shim so every
+    /// guest-vs-native behavioural divergence lives in one place).
     Merge {
         /// Slice name (under `.specify/slices/`).
         slice: String,
@@ -168,11 +168,14 @@ pub fn parse(argv: impl IntoIterator<Item = String>) -> Result<Cli, Exit> {
 
 /// Route one parsed invocation for the guest: run pure verbs
 /// in-process, describe orchestrator verbs for the shim, refuse
-/// native-only verbs.
+/// provisioning verbs that have no guest implementation.
 #[must_use]
 pub fn route(cli: Cli) -> Route {
     let format = cli.format;
     let plan_dir = cli.plan_dir;
+    if let Err(err) = check_plan_dir(plan_dir.as_deref()) {
+        return Route::Handled(report(format, &err));
+    }
     let orchestrate = |verb: Verb| {
         Route::Orchestrate(Orchestration {
             format,
@@ -203,14 +206,10 @@ pub fn route(cli: Cli) -> Route {
             }
         }),
         Commands::Plan { action } => match action {
-            // The drained execute loop is the guest's flagship
-            // orchestration (Milestone E); native routes it to the
-            // guest leg.
             PlanAction::Execute => orchestrate(Verb::Execute),
-            // The collapsed plan-authoring flow (Milestone S1); native
-            // refuses it in the shared table. Binding desugar failures
-            // (duplicate keys) surface on the standard error envelope
-            // before any orchestration is described.
+            // Binding desugar failures (duplicate keys) surface on the
+            // standard error envelope before any orchestration is
+            // described.
             PlanAction::Author {
                 name,
                 sources,
@@ -228,8 +227,6 @@ pub fn route(cli: Cli) -> Route {
         },
         Commands::Slice { action } => match action {
             SliceAction::Build { name } => orchestrate(Verb::Build { slice: name }),
-            // The refine breakout (Milestone S1, parity gap 2); native
-            // routes it to the guest leg.
             SliceAction::Refine { name } => orchestrate(Verb::Refine { slice: name }),
             SliceAction::Merge {
                 action:
@@ -245,11 +242,11 @@ pub fn route(cli: Cli) -> Route {
                 Route::Handled(scoped(format, plan_dir, |ctx| commands::slice::run(ctx, action)))
             }
         },
-        // The scaffold leg is the guest-invocable half of `init`
-        // (RFC-65 move 1): project-scoped writes only, anchored at
-        // the `"."` mount preopen. The provisioning half (`init`
-        // without the flag — hydration, manifest generation) stays
-        // native by construction.
+        // The scaffold leg is the guest-invocable half of `init`:
+        // project-scoped writes only, anchored at the `"."` mount
+        // preopen. The provisioning half (`init` without the flag —
+        // hydration, manifest generation) has no guest implementation
+        // and refuses below.
         Commands::Init(args) if args.scaffold_only => Route::Handled(scaffold(
             format,
             args.adapter.as_deref(),
@@ -276,7 +273,37 @@ pub fn route(cli: Cli) -> Route {
         Commands::Completions { shell } => Route::Handled(commands::completions(shell)),
         Commands::Upgrade(_) => Route::Handled(unsupported(format, "upgrade")),
         Commands::Plugins { .. } => Route::Handled(unsupported(format, "plugins")),
+        Commands::Lint { action } => Route::Handled(match action {
+            commands::lint::cli::LintAction::Framework(args) => {
+                commands::dispatch(format, || commands::lint::framework::run(format, &args))
+            }
+        }),
     }
+}
+
+/// Refuse a `--plan-dir` (or `SPECIFY_PLAN_DIR`) pointing anywhere but
+/// the project root: the guest anchors plan artifacts at the `"."`
+/// mount preopen, so any other plan root would be silently ignored. A
+/// value that resolves to the preopen itself is a no-op and passes.
+fn check_plan_dir(plan_dir: Option<&Path>) -> Result<()> {
+    let Some(dir) = plan_dir else {
+        return Ok(());
+    };
+    let same = dir == Path::new(".")
+        || fs::canonicalize(dir)
+            .and_then(|requested| fs::canonicalize(".").map(|root| requested == root))
+            .unwrap_or(false);
+    if same {
+        return Ok(());
+    }
+    Err(Error::Argument {
+        flag: "--plan-dir",
+        detail: format!(
+            "`--plan-dir` must be the project root: plan artifacts anchor at the working \
+             directory, so {} would be ignored; run from the plan root instead",
+            dir.display()
+        ),
+    })
 }
 
 /// Run the init scaffold leg against the `"."` mount preopen — the
@@ -322,18 +349,15 @@ where
     }
 }
 
-/// Refuse a native-only verb on the standard argument-error surface
-/// (wire code `argument`, exit 2) — no new wire code, and the guest's
-/// stderr envelope matches the native binary's failure shape.
+/// Refuse a provisioning verb on the standard argument-error surface
+/// (wire code `argument`, exit 2) — no new wire code. These verbs have
+/// no in-guest implementation yet.
 fn unsupported(format: Format, verb: &'static str) -> Exit {
     report(
         format,
         &Error::Argument {
             flag: "<command>",
-            detail: format!(
-                "`specify {verb}` is not available in the workflow guest; run it through the \
-                 native binary"
-            ),
+            detail: format!("`specify {verb}` has no guest implementation yet"),
         },
     )
 }

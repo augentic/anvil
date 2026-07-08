@@ -28,7 +28,7 @@ impl Drop for StoreGuard {
 }
 
 /// Pin the global adapter store root at `root` for the test's lifetime so
-/// store reads resolve into a hermetic temp directory (RFC-48 D5).
+/// store reads resolve into a hermetic temp directory.
 #[expect(unsafe_code, reason = "pin the store-root env var into the test tempdir")]
 pub fn scoped_store(root: &Path) -> StoreGuard {
     let prev = std::env::var_os(STORE_ENV);

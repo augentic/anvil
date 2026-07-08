@@ -70,7 +70,7 @@ impl Discovery {
     /// # Errors
     ///
     /// Returns [`Error::Diag`] (`discovery-parse-failed`) on a
-    /// structural defect — duplicate `lead:` bullets, retired
+    /// structural defect — duplicate `lead:` bullets, unsupported
     /// `aliases:` bullets, missing required bullets.
     pub fn parse(text: &str) -> Result<Self> {
         Parser::new(text).run()

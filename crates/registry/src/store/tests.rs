@@ -74,7 +74,7 @@ fn record_store_meta_writes_sidecar() {
     let store = TempDir::new().expect("store root");
     let _guard = EnvGuard::scoped("SPECIFY_ADAPTER_STORE", Some(store.path()));
 
-    // The record-on-install half of RFC-48 D4: a freshly installed entry
+    // Record-on-install: a freshly installed entry
     // gains a verify-on-read sidecar that the resolver later re-checks.
     let entry = adapter_store_entry("demo", "1.0.0");
     let staged = stage_component(store.path(), b"\0asm-demo");
@@ -129,7 +129,7 @@ fn verify_store_entry_fails_open() {
 
     // A legacy / foreign entry installed before sidecars existed carries
     // no `.meta`, so verify-on-read is a pass — the entry's read-only
-    // immutability remains the baseline guarantee (RFC-48 D4 fail-open).
+    // immutability remains the baseline guarantee (fail-open).
     let entry = adapter_store_entry("demo", "1.0.0");
     let staged = stage_component(store.path(), b"\0asm-demo");
     install_component(&entry, &staged).expect("install");

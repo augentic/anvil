@@ -28,7 +28,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      # The framework lint runs in the workflow guest (wasm32-wasip2)
+      # driven by the replay runtime, so the guest target is required.
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
 
       - uses: Swatinem/rust-cache@v2
         with:

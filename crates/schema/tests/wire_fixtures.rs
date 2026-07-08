@@ -139,14 +139,14 @@ synopsis: Bad id.
 const LEAD_INVALID_TENTATIVE_REMOVED: &str = r"
 lead: user-registration
 source: legacy-monolith
-synopsis: A lead carrying the retired tentative field.
+synopsis: A lead carrying the unsupported tentative field.
 tentative: true
 ";
 
 const LEAD_INVALID_ALIASES_REMOVED: &str = r"
 lead: user-registration
 source: legacy-monolith
-synopsis: A lead carrying the retired aliases field.
+synopsis: A lead carrying the unsupported aliases field.
 aliases:
   - account-registration
 ";

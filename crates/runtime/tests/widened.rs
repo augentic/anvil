@@ -1,5 +1,5 @@
-//! Composed-runtime coverage for the widened guest surface (RFC-65
-//! move 1): every project-scoped pure verb runs in the workflow guest
+//! Composed-runtime coverage for the widened guest surface (guest
+//! routing): every project-scoped pure verb runs in the workflow guest
 //! against a mounted project tree — `registry {validate,add,remove}`,
 //! `archive prune`, `rules export`, `completions`, and init's scaffold
 //! leg (`init --scaffold-only`).

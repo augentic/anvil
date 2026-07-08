@@ -5,12 +5,12 @@
 //! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
 //! macros generate, and the skeleton manifest the tests deploy.
 //!
-//! **Test-only in-process harness.** The product path is the in-process
-//! host mount (`specify_runtime::drive` over the cursor-bound `host`
-//! module, RFC-65 move 2); these bundles exist because omnia's telemetry
-//! `OnceLock` allows only one `omnia::run` per process, so multi-assertion
-//! suites drive the deployment in-process over stubbed backends instead
-//! of through the product seam.
+//! **Test-only in-process harness.** The product path is the `specify`
+//! binary — one `omnia::runtime!` invocation over the cursor-bound
+//! backends; these bundles exist because omnia's telemetry `OnceLock`
+//! allows only one `omnia::run` per process, so multi-assertion suites
+//! drive the deployment in-process over stubbed backends instead of
+//! through the product binary.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -146,7 +146,7 @@ pub fn adapter_component_wasm(id: &str) -> PathBuf {
 /// sharing one writable `"."` mount at `mount` — the shape of the
 /// checked-in repo-root `omnia.toml` over a test-owned project tree —
 /// plus the per-project derived cache mounted at the guest cache
-/// preopen (RFC-65 move 1), mirroring the generated manifest.
+/// preopen (guest routing), mirroring the generated manifest.
 ///
 /// # Errors
 ///

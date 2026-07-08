@@ -1,33 +1,23 @@
-//! The drained execute loop: the retired `/spec:execute` skill's body
-//! as guest control flow behind the guest-routed `specify plan execute`.
+//! The drained execute loop behind the guest-routed `specify plan
+//! execute`.
 //!
-//! [`execute`] takes the [`GuestMarker`] (D1), then loops
+//! [`execute`] takes the [`GuestMarker`], then loops
 //! [`plan_status_body`] → claim via the core `plan next` projection →
 //! dispatch the projected phase ([`super::refine`], [`super::build`],
 //! [`super::merge`]) until the plan projects `drained` or a stop. Every
 //! stop — Gate 1 unstamped, a failed phase, a stuck queue — returns as
-//! a typed [`ExecuteOutcome::Stopped`] carrying the status
-//! projection's closed [`StopReason`] plus its operator hint, so the
-//! shim renders the same stop-conditions surface the skill does.
+//! a typed [`ExecuteOutcome::Stopped`] carrying the closed
+//! [`StopReason`] plus its operator hint.
 //!
-//! **Locking posture.** The loop claims entries through
-//! [`plan_next_body`] directly — the lock-free core the native handler
-//! wraps — because the native `require_held` flock gate fences
-//! separate OS processes racing the plan, and the guest collapses
-//! every breakout in-process (the loop is a structural single driver;
-//! the native gate itself is untouched). Guest-vs-guest dual-driving
-//! is refused by the D1 marker instead: a create-exclusive
-//! `<plan-root>/.specify/guest.lock` held for the run. **No
-//! cross-stack interlock is claimed** — a native skill-driven session
-//! does not see the marker and the guest does not probe the native
-//! flock; non-concurrent stack use is the documented coexistence rule.
+//! Concurrency: entries are claimed lock-free in-process through
+//! [`plan_next_body`]; guest-vs-guest dual-driving is refused by the
+//! create-exclusive `<plan-root>/.specify/guest.lock` marker held for
+//! the run. No cross-stack interlock exists — non-concurrent stack use
+//! is the documented coexistence rule.
 //!
-//! **Journal posture.** No `plan.execute.*` events exist — the loop
-//! composes the per-phase cadence its verbs already emit
-//! (`plan.entry.advanced` on each fresh claim, the `slice.synthesize.*`
-//! / `slice.build.*` / `slice.merge.*` brackets, the transitions), so
-//! a journal reader cannot tell one drained execute run from the same
-//! phases driven one breakout at a time.
+//! No `plan.execute.*` journal events exist — the loop composes the
+//! per-phase cadence its verbs already emit, so a journal reader cannot
+//! tell one drained run from the same phases driven breakout-by-breakout.
 
 use std::io::Write as _;
 use std::path::PathBuf;
@@ -300,8 +290,7 @@ fn claim_next(layout: Layout<'_>, now: Timestamp) -> Result<Option<Claim>, Error
 /// No pid-liveness probe: WASI gives the guest no process table to
 /// check a recorded pid against, so self-healing would be a guess.
 ///
-/// This marker is the only execute-run interlock: the retired native
-/// stack's flock-based `plan lock` wrapper is gone with the old stack.
+/// This marker is the only execute-run interlock.
 #[derive(Debug)]
 pub struct GuestMarker {
     path: PathBuf,

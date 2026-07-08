@@ -181,11 +181,10 @@ pub fn proposal() -> Value {
     );
 
     let body = response.as_object_mut().expect("response def is an object");
-    // Gate 1 prose is optional on the canonical envelope (the retired
-    // native verb accepted responses without it) but
-    // mandatory on the judgment answer: the collapsed `plan author`
-    // orchestration persists the prose into `change.md` /
-    // `discovery.md`, so an answer without it is incomplete.
+    // Gate 1 prose is optional on the canonical envelope but mandatory
+    // on the judgment answer: the collapsed `plan author` orchestration
+    // persists the prose into `change.md` / `discovery.md`, so an
+    // answer without it is incomplete.
     let required = body.get_mut("required").and_then(Value::as_array_mut).expect("required array");
     assert!(!required.iter().any(|entry| entry == "gate"), "gate must be canonically optional");
     required.push(json!("gate"));

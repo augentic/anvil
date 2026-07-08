@@ -234,9 +234,8 @@ fn build_framework(
     // canonical-path copy resolves relative `[label](target)` links
     // correctly; the symlink-traversed copy joins them against the
     // wrong parent and would surface spurious `reference-resolves`
-    // failures (CORE-002 et al.). Drop the symlink-traversed copies
-    // so reference resolution matches the retired imperative
-    // `links.unresolved` predicate's `follow_links(false)` behaviour.
+    // failures (CORE-002 et al.), so the symlink-traversed copies are
+    // dropped.
     drop_symlink_traversed_links(&mut links_out, &symlinks_facts);
 
     let known_paths: std::collections::HashSet<String> =

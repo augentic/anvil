@@ -34,25 +34,21 @@ pub struct BuildOutcome {
     pub findings: usize,
 }
 
-/// Build one slice through the seam and run the native finalize tail.
+/// Build one slice through the seam and run the finalize tail.
 ///
-/// The guest collapse of the retired two-phase `slice build`
-/// (prepare + finalize): assembles, schema-gates, and persists
-/// `build/request.yaml` (parity with the native prepare), journals
-/// `target.execution.agent`, then brackets the dispatch + finalize tail
-/// with `slice.build.started` / `slice.build.succeeded` /
-/// `slice.build.failed`. The tail is the native one verbatim — report
-/// schema gate, slice-name match, [`enforce_report_no_blocking_on_success`],
+/// Assembles, schema-gates, and persists `build/request.yaml`,
+/// journals `target.execution.agent`, then brackets the dispatch +
+/// finalize tail with `slice.build.started` / `slice.build.succeeded`
+/// / `slice.build.failed`. The tail is the report schema gate,
+/// slice-name match, [`enforce_report_no_blocking_on_success`],
 /// [`enforce_report_outputs_exist`], failure-status rejection, and the
-/// `Refined → Built` transition — minus the three dropped shell hooks
-/// (`prepare.argv`, `host_prereq`, `finalize_verify`; see
-/// [`crate::orchestrate`]). The UI-surface coherence judgement lives
-/// in the target adapter's own guest (the vectis core's report gate).
+/// `Refined → Built` transition. The UI-surface coherence judgement
+/// lives in the target adapter's own guest.
 ///
 /// `manifest_inputs` is the bound target's declared build-inputs list
 /// (empty when the target declares none); `tree` names the snapshot
-/// the build applies against — both are caller-resolved, the Milestone
-/// D shim's concern.
+/// the build applies against — both are caller-resolved by the guest
+/// shim.
 ///
 /// # Errors
 ///

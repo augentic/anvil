@@ -1,11 +1,7 @@
 //! Hint interpreter umbrella per the executable hint-kind contract
 //! and §"Evaluation algorithm".
 //!
-//! v1 (Phase 2) ships the four executable hint kinds the contract lists
-//! ([`HintKind::PathPattern`], [`HintKind::Schema`], [`HintKind::Regex`],
-//! [`HintKind::Tool`]). The framework-convergence
-//! family adds [`HintKind::ReferenceResolves`], [`HintKind::Unique`], and
-//! [`HintKind::ConstantEq`] in the same family. Each rule's
+//! Each rule's
 //! hints are partitioned by kind and evaluated in the fixed order
 //! `path-pattern → schema → reference-resolves → unique → constant-eq → fenced-block → presence → field-grammar → regex → tool`
 //! so the cheap filters narrow the candidate file set before the

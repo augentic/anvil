@@ -1,4 +1,4 @@
-//! Echo source-adapter guest component for the RFC-61 migration.
+//! Echo source-adapter guest component (test fixture).
 //!
 //! Exports the `specify:adapter` `source-adapter` world — `survey` returns one
 //! hardcoded lead echoing the `adapter-id` argument and `extract` returns one
@@ -28,7 +28,7 @@ mod bindings {
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s (judgment legs await the async `omnia:model`
         // import mid-call) and async-lift; `describe` is a plain `func`
-        // (RFC-64: deterministic, effect-free) and sync-lifts — forcing it
+        // (deterministic, effect-free) and sync-lifts — forcing it
         // async would fail component validation at load.
         generate_all,
     });

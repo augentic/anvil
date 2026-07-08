@@ -1,4 +1,4 @@
-//! RFC-65 hydration kernel.
+//! hydration kernel.
 //!
 //! Pinned-ref collection over `project.yaml` and `plan.yaml`, plus the
 //! surface-agnostic [`hydrate`] driver that probes the global adapter
@@ -17,9 +17,9 @@
 //! identity's digest and writes the lock back atomically (never in
 //! `frozen` mode, which is strictly read-only). The verification half
 //! ([`verify_resolved`] + [`verify_locked`]) is shared with the
-//! binary's drive-time deployment discovery, so RFC-65 AC8 ("drift
-//! aborts before any guest loads") holds on every manifest-producing
-//! path, not just the provisioning triggers.
+//! binary's drive-time deployment discovery, so digest drift aborts before
+//! any guest loads on every manifest-producing path, not just the
+//! provisioning triggers.
 
 pub mod lock;
 
@@ -52,7 +52,7 @@ pub type Fetch<'a> = &'a dyn Fn(&AdapterPackage) -> Result<PathBuf, Error>;
 pub struct ResolvedAdapter {
     /// Kebab-case adapter name.
     pub name: String,
-    /// Exact semver pin (RFC-48 D2 — hydration takes exact pins only).
+    /// Exact semver pin (hydration takes exact pins only).
     pub version: semver::Version,
     /// The single-file store entry `<store-root>/<name>@<version>.wasm`.
     pub path: PathBuf,
@@ -95,8 +95,8 @@ pub fn collect_refs(project_dir: &Path) -> Result<Vec<AdapterPackage>, Error> {
 /// entry. This is the set `specify init` hydrates — plan pins join
 /// through [`collect_refs`] at the explicit sync trigger.
 ///
-/// The core guest (`specify:core@<the binary's own version>`, RFC-65
-/// move 4) is *not* collected here: the binary's provisioning triggers
+/// The core guest (`specify:core@<the binary's own version>`, core
+/// versioned by the binary) is *not* collected here: the binary's provisioning triggers
 /// append it themselves, because only the binary knows its own version
 /// and its development-override state — the kernel stays version-
 /// agnostic.
@@ -149,7 +149,7 @@ fn plan_refs(project_dir: &Path) -> Result<Vec<AdapterPackage>, Error> {
         .collect())
 }
 
-/// Hydrate every pinned ref against the global store (RFC-65).
+/// Hydrate every pinned ref against the global store.
 ///
 /// Per identity: probe the store entry, pull on miss through `fetch`
 /// (never when `frozen`), verify the recorded digest, then verify the
@@ -176,7 +176,7 @@ fn plan_refs(project_dir: &Path) -> Result<Vec<AdapterPackage>, Error> {
 ///   miss in `frozen` mode; names the identity and the literal
 ///   `specify adapters sync` command.
 /// - `adapter-digest-mismatch` — the entry failed verify-on-read
-///   against its recorded sidecar digest (RFC-48 D4), or drifted from
+///   against its recorded sidecar digest, or drifted from
 ///   the digest committed in `.specify/adapters.lock`; names the
 ///   identity and both digests.
 /// - `adapters-lock-malformed` / `adapters-lock-version-too-new` —
@@ -233,7 +233,7 @@ pub fn hydrate(
 /// Verify one resolved entry against the digest committed in
 /// `.specify/adapters.lock` when the lock carries its identity.
 ///
-/// The RFC-65 AC8 gate, shared by the hydration kernel and the
+/// The committed-lock gate, shared by the hydration kernel and the
 /// binary's drive-time deployment discovery. Read-only: pinning a
 /// first-install identity is the [`hydrate`] kernel's own concern, so
 /// drive-time callers never write the lock.
@@ -272,7 +272,7 @@ fn pin_locked(lock: &mut AdaptersLock, adapter: &ResolvedAdapter) -> bool {
 /// Verify one store entry against its recorded sidecar digest and
 /// project it into the resolved set.
 ///
-/// RFC-48 D4 verify-on-read (a missing sidecar fails open), carrying
+/// Verify-on-read (a missing sidecar fails open), carrying
 /// the trustworthy digest [`verify_locked`] compares against the
 /// committed pin. Shared with the binary's drive-time deployment
 /// discovery, which runs the same projection over each pinned entry

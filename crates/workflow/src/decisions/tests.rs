@@ -1,7 +1,7 @@
 use super::*;
 
 // The `promote` kernel's behaviour (id assignment, supersede flips, the
-// orphan abort) is re-homed to `crates/workflow/tests/decisions.rs`, which
+// orphan abort) lives in `crates/workflow/tests/decisions.rs`, which
 // drives the public entry point over a real tree. Only the private
 // `dec_number` / `is_dec_ref` parser stays here — no public input reaches it.
 

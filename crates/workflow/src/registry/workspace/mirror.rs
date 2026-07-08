@@ -3,7 +3,7 @@
 //! resolution stays project-local (workflow §"Resolver and cache"). See
 //! [DECISIONS.md §"Slot adapter provisioning via workspace sync"].
 //!
-//! Post-RFC-64 an adapter is one `.wasm` component: pinned identities
+//! An adapter is one `.wasm` component: pinned identities
 //! resolve from the *global* content-addressed store (shared across
 //! projects, nothing to mirror) and development bare names resolve the
 //! release build live. The only workspace-owned state a slot cannot

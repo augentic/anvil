@@ -58,7 +58,7 @@ pub fn resolve_topology(config: &ProjectConfig, project_dir: &Path) -> Result<Ve
     }
 }
 
-/// RFC-46 D6 — project greenfield-seed domains into seedless surfaces.
+/// Project greenfield-seed domains into seedless surfaces.
 ///
 /// For each topology project that names a `registry.yaml` entry carrying a
 /// non-empty `greenfield_seed.domains[]`, returning advisory

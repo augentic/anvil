@@ -28,7 +28,7 @@ SPECIFY_BIN="${SPECIFY_BIN:-}"
 
 # ensure_binary : build the branch-head `specify` binary and workflow guest
 # once, point SPECIFY_BIN at the build, and pin the guest as the core via
-# SPECIFY_CORE_PATH (RFC-65 development override) so nothing hydrates
+# SPECIFY_CORE_PATH (development override) so nothing hydrates
 # `specify:core` from the registry. Honors a pre-set SPECIFY_BIN /
 # SPECIFY_CORE_PATH to replay against a different build.
 ensure_binary() {

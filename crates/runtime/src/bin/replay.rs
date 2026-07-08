@@ -1,11 +1,11 @@
-//! `specify-runtime-replay` — the replay sibling of the Specify runtime
-//! binary (RFC-61 §target shape).
+//! `specify-runtime-replay` — the replay sibling of the `specify`
+//! binary.
 //!
-//! Binds `WasiModel: ModelDefault` (recorded answers from
-//! `MODEL_REPLAY_DIR`) over the same deployment manifest the `specify`
-//! binary's guest leg drives (`specify_runtime::drive`), so
-//! component-level tests and examples run without `cursor-agent` on
-//! `PATH`. Not an operational mode.
+//! The same `omnia::runtime!` command-mode macro, binding `WasiModel:
+//! ModelDefault` (recorded answers from `MODEL_REPLAY_DIR`) instead of
+//! the spawning cursor backend, so component-level tests, `make lint`,
+//! and CI run without `cursor-agent` on `PATH`. Not an operational
+//! mode.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {

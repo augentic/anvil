@@ -14,7 +14,7 @@ use crate::manifest::{PackageRequest, WASM_PKG_CONFIG_PATH};
 const MAX_PACKAGE_BYTES: u64 = 64 * 1024 * 1024;
 /// First-party wasm-pkg namespaces routed to [`FIRST_PARTY_REGISTRY`]
 /// when no explicit mapping is configured: `specify` carries both the
-/// tools and the adapter components (RFC-65 naming cut — `augentic:`
+/// tools and the adapter components (specify: naming cut — `augentic:`
 /// is reserved for future org-wide contracts, not routed).
 const FIRST_PARTY_NAMESPACES: &[&str] = &["specify"];
 const FIRST_PARTY_REGISTRY: &str = "augentic.io";
@@ -258,7 +258,7 @@ mod tests {
     // `load_config` is the private wasm-pkg config layering funnel; the CLI
     // never exposes its per-layer precedence, only the resolved fetch. The
     // layering cases — embedded first-party inject, non-`specify` skip,
-    // retired `augentic:` namespace skip, project-local override,
+    // reserved `augentic:` namespace skip, project-local override,
     // WKG_CONFIG-over-project, and missing project config — collapse into
     // one matrix that holds the env lock once and re-scopes the HOME /
     // WKG_CONFIG guards per case.
@@ -295,7 +295,7 @@ mod tests {
             Some(FIRST_PARTY_REGISTRY)
         );
 
-        // RFC-65 naming cut: the retired `augentic:` namespace gets no
+        // The reserved `augentic:` namespace gets no
         // first-party routing — it is reserved, not mapped.
         assert_ne!(
             resolve("package-embedded-retired", &retired_namespace_ref(), None, None).as_deref(),

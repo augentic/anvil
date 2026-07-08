@@ -1,4 +1,4 @@
-//! Integration tests for the RFC-65 deployment-manifest generator
+//! Integration tests for the deployment-manifest generator
 //! (`specify_workflow::deploy`).
 //!
 //! Covers the generated document shape (guests, mount, routes,
@@ -92,7 +92,7 @@ fn generates_manifest_into_project_cache() {
     assert_eq!(mounts[0]["name"].as_str(), Some("."));
     assert_eq!(mounts[0]["path"].as_str(), Some(project.display().to_string().as_str()));
     assert_eq!(mounts[0]["writable"].as_bool(), Some(true));
-    // RFC-65 move 1: the per-project derived cache is mounted so the
+    // guest routing: the per-project derived cache is mounted so the
     // guest's `rules export` / scaffold leg reach the cache tenants.
     assert_eq!(mounts[1]["name"].as_str(), Some(specify_schema::cache::GUEST_CACHE_MOUNT));
     assert_eq!(
@@ -100,7 +100,7 @@ fn generates_manifest_into_project_cache() {
         Some(specify_schema::cache::project_cache_dir(&project).display().to_string().as_str())
     );
     assert_eq!(mounts[1]["writable"].as_bool(), Some(true));
-    // RFC-65 widening: the global adapter store is mounted read-only so
+    // global store mount: the global adapter store is mounted read-only so
     // forwarded verbs resolve pinned identities in-guest (hydration
     // stays native).
     assert_eq!(mounts[2]["name"].as_str(), Some(specify_schema::cache::GUEST_STORE_MOUNT));

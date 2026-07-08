@@ -290,10 +290,8 @@ pub struct SourceBinding {
     /// Kebab-case source-adapter name (e.g. `intent`, `documentation`,
     /// `typescript`, `screenshots`).
     pub adapter: String,
-    /// Optional exact semver pin for the bound source adapter (RFC-47
-    /// D2). Additive: an omitted `version` keeps the `None`-means-the
-    /// -single-installed-identity semantics, so existing `plan.yaml`
-    /// source binds parse unchanged.
+    /// Optional exact semver pin for the bound source adapter; an
+    /// omitted `version` means the single installed identity.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<semver::Version>,
     /// Filesystem path or repo location the adapter binds against.
@@ -343,7 +341,7 @@ impl SourceBinding {
 ///
 /// Wire form is the single kebab string `name@<semver>` (e.g.
 /// `omnia@1.0.0`), with `name` matching `^[a-z][a-z0-9-]*$` and the
-/// version an exact semver (RFC-47 identity). Deserialisation goes
+/// version an exact semver. Deserialisation goes
 /// through [`TargetRef::parse`] so any payload that survives serde
 /// already has the `@<semver>` suffix in valid form. Components are
 /// private so every `TargetRef` value satisfies the wire regex by

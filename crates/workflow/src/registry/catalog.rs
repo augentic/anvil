@@ -57,7 +57,7 @@ pub struct RegistryProject {
     /// Optional contract role declarations for this project.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub contracts: Option<ContractRoles>,
-    /// RFC-46 D6 — optional greenfield identity seed. Carries the
+    /// Optional greenfield identity seed. Carries the
     /// project's intended domain slugs so a fresh project with no
     /// baseline (`.specify/specs/` absent) still routes leads at plan
     /// time — the greenfield analog of the projected `surface[]` domain
@@ -68,7 +68,7 @@ pub struct RegistryProject {
     pub greenfield_seed: Option<GreenfieldSeed>,
 }
 
-/// RFC-46 D6 greenfield identity seed — see
+/// Greenfield identity seed — see
 /// [`RegistryProject::greenfield_seed`].
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

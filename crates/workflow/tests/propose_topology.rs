@@ -1,8 +1,6 @@
-//! Integration coverage for the RFC-46 D6 greenfield-seed projection
-//! (`specify_workflow::change::apply_greenfield_seed`). Re-homed from the
-//! former `change/plan/core/propose/topology.rs` unit module: every input is
-//! driven through the crate's public API (seed → empty greenfield surface,
-//! seed shadowed by a baseline, absent seed no-op).
+//! Integration coverage for the greenfield-seed projection
+//! (`specify_workflow::change::apply_greenfield_seed`): seed → empty
+//! greenfield surface, seed shadowed by a baseline, absent seed no-op.
 
 use specify_workflow::change::{ProjectRef, apply_greenfield_seed};
 use specify_workflow::registry::catalog::{GreenfieldSeed, Registry, RegistryProject};

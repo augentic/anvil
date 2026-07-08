@@ -1,12 +1,11 @@
 //! The slice synthesis judgment leg.
 //!
-//! One schema-gated `create` over the same inputs envelope the retired
-//! `slice synthesize --dry-run` emitted, with the same deterministic
-//! tail `slice synthesize --from` ran — raw-bytes schema gate, typed parse,
-//! and the projection kernel ([`crate::slice::project`]) — inside the
-//! shared repair loop, so an answer the kernel would reject (unanchored
-//! claim, cross-ref orphan, id-grammar violation) is repaired in-loop.
-//! The caller owns the surrounding IO: reading Evidence, staging and
+//! One schema-gated `create` over the synthesis inputs envelope, with a
+//! deterministic tail — raw-bytes schema gate, typed parse, and the
+//! projection kernel ([`crate::slice::project`]) — inside the shared
+//! repair loop, so an answer the kernel would reject (unanchored claim,
+//! cross-ref orphan, id-grammar violation) is repaired in-loop. The
+//! caller owns the surrounding IO: reading Evidence, staging and
 //! persisting artifacts, and the journal bracket.
 
 use std::collections::BTreeMap;
@@ -22,9 +21,7 @@ use crate::slice::{
 };
 
 /// The deterministic projection context the kernel runs against inside
-/// the repair loop — the same inputs the retired `slice synthesize
-/// --from` distilled
-/// from the plan entry and on-disk Evidence.
+/// the repair loop, distilled from the plan entry and on-disk Evidence.
 #[derive(Debug)]
 pub struct Kernel<'a> {
     /// The `version` / `slice` / `project` header stamped on projection.

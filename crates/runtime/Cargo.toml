@@ -1,6 +1,6 @@
 [package]
 name = "specify-runtime"
-description = "Omnia composed-deployment host surface for Specify WASI components"
+description = "Replay runtime and composed-deployment test surface for Specify WASI components"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,22 +12,19 @@ publish = false
 autotests = false
 
 # The target guard in src/bin/replay.rs needs cfg-if on every target; a
-# stray wasm32 build of the whole workspace then compiles to an empty main
-# (the lib guards itself with a crate-level #![cfg]).
+# stray wasm32 build of the whole workspace then compiles to an empty main.
 [dependencies]
 cfg-if.workspace = true
 
-# Host-only: the runtime surface never compiles for the guest wasm32 targets,
+# Host-only: the replay runtime never compiles for the guest wasm32 targets,
 # so its dependencies live under the same target gate omnia itself uses.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 omnia.workspace = true
-omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-wasmparser.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 assert_cmd.workspace = true
@@ -50,11 +47,9 @@ workspace = true
 name = "it"
 path = "tests/it.rs"
 
-# The replay sibling over the same manifest surface: `WasiModel:
-# ModelDefault` instead of the cursor backend, for component-level tests
-# and examples (RFC-61 §target shape — not an operational mode). The
-# cursor-bound host layer is the in-process `host` module of the library
-# (DECISIONS.md §"One `specify` binary").
+# The replay sibling of the `specify` binary: the same `omnia::runtime!`
+# macro over `WasiModel: ModelDefault` instead of the cursor backend, for
+# component-level tests, `make lint`, and CI — not an operational mode.
 [[bin]]
 name = "specify-runtime-replay"
 path = "src/bin/replay.rs"

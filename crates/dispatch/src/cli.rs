@@ -11,6 +11,7 @@ use specify_model::evidence::ClaimKind;
 use crate::commands::adapters::cli::AdaptersAction;
 use crate::commands::archive::cli::ArchiveAction;
 use crate::commands::journal::cli::JournalAction;
+use crate::commands::lint::cli::LintAction;
 use crate::commands::plan::cli::PlanAction;
 use crate::commands::plugins::cli::PluginsAction;
 use crate::commands::registry::cli::RegistryAction;
@@ -72,7 +73,7 @@ pub enum Commands {
     /// everywhere else.
     Init(InitArgs),
 
-    /// Global adapter-store provisioning (RFC-65). `sync` is the
+    /// Global adapter-store provisioning. `sync` is the
     /// explicit hydration trigger: it hydrates every pinned identity
     /// the project declares (`project.yaml` plus `plan.yaml` source
     /// pins) into the global store and prints the resolved set. Native
@@ -86,7 +87,7 @@ pub enum Commands {
     /// Source adapter operations (workflow contract). Source adapters
     /// provide `extract` + `survey` capabilities and resolve to a single
     /// `.wasm` component: the global store entry for pinned identities,
-    /// the development release build for bare names (RFC-64).
+    /// the development release build for bare names.
     Source {
         /// Nested action for this verb family.
         #[command(subcommand)]
@@ -96,7 +97,7 @@ pub enum Commands {
     /// Target adapter operations (workflow contract). Target adapters
     /// provide `guidance` + `build` + `merge` capabilities and resolve to a
     /// single `.wasm` component: the global store entry for pinned
-    /// identities, the development release build for bare names (RFC-64).
+    /// identities, the development release build for bare names.
     Target {
         /// Nested action for this verb family.
         #[command(subcommand)]
@@ -195,6 +196,15 @@ pub enum Commands {
         /// Nested action for this verb family.
         #[command(subcommand)]
         action: PluginsAction,
+    },
+
+    /// Framework-repo CI lint (`make lint`). Dev tooling, not an
+    /// operational verb — hidden from operator help.
+    #[command(hide = true, subcommand_required = true)]
+    Lint {
+        /// Nested action for this verb family.
+        #[command(subcommand)]
+        action: LintAction,
     },
 }
 

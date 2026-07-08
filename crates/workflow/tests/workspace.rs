@@ -357,7 +357,7 @@ fn c02_sync_preserves_gitignore_once() {
 
 /// Stage a file in the workspace's project component cache
 /// (`<ws-cache>/components/<name>`) — the only workspace-owned state
-/// the RFC-64 mirror copies into slot caches.
+/// the workspace mirror copies into slot caches.
 fn stage_workspace_component(project_dir: &Path, name: &str, body: &str) {
     let dir = expected_cache_dir(project_dir).join("components");
     fs::create_dir_all(&dir).unwrap();

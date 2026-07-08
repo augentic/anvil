@@ -21,7 +21,7 @@ use strum::EnumString;
 /// Source adapters serve exactly these two operations per
 /// workflow §Source adapter contract — the closed WIT operation set
 /// carried by [`crate::adapter::SourceAdapter`] (derived from the
-/// axis, not declared on disk; RFC-64 adapters have no manifest).
+/// axis, not declared on disk; adapters have no manifest).
 ///
 /// Variants declared in kebab-alphabetical order so `BTreeMap`
 /// iteration matches the wire envelope.
@@ -65,7 +65,7 @@ impl SourceOperation {
 /// Target adapters serve exactly these three operations per
 /// workflow §Target adapter contract — the closed WIT operation set
 /// carried by [`crate::adapter::TargetAdapter`] (derived from the
-/// axis, not declared on disk; RFC-64 adapters have no manifest) and
+/// axis, not declared on disk; adapters have no manifest) and
 /// the discriminant stamped into per-slice outcomes
 /// (`<slice_dir>/metadata.yaml.outcome.phase`).
 ///
