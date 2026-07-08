@@ -110,7 +110,7 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice replay | `slice.replay.completed` | the replay target hook |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent` | `specify source survey` / `extract`, the `slice build` request-assembly leg |
 | Workspace | `workspace.sync.completed`, `workspace.push.completed` | `specify workspace sync` / `push` |
-| Bootstrap and standards | `cli.upgraded`, `plugins.refreshed`, `adapters.synced`, `lint-completed` | `specify upgrade`, `specify plugins refresh`, `specify adapters sync`, `specify lint` |
+| Bootstrap | `cli.upgraded`, `plugins.refreshed`, `adapters.synced` | `specify upgrade`, `specify plugins refresh`, `specify adapters sync` |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills append only through `specify journal emit`, never by writing the file. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `specify journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`specify plan status`'s stop classification); nothing re-parses the JSONL by hand.
 

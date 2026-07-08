@@ -20,7 +20,7 @@ Filled run-summaries for eval scenario runs. Run records are the audit trail; th
 
 ## Record contract
 
-Flipping a catalog status (`passed` / `failed` / `deferred`) **requires** the matching committed record at `evals/runs/<id>.<result>.md` — the record is the contract behind the status, and `specify lint framework` enforces the agreement both ways (a status-bearing row without its record, a record disagreeing with its row, more than one record per id, or a record against a `pending` row are all drift). Keep at most one record per scenario id: a re-run replaces the old record in the same change that flips the status.
+Flipping a catalog status (`passed` / `failed` / `deferred`) **requires** the matching committed record at `evals/runs/<id>.<result>.md` — the record is the contract behind the status, and the catalog↔runs check in `tests/framework_quality/scenarios.rs` enforces the agreement both ways (a status-bearing row without its record, a record disagreeing with its row, more than one record per id, or a record against a `pending` row are all drift). Keep at most one record per scenario id: a re-run replaces the old record in the same change that flips the status.
 
 The fully-local allowance survives for **triage and practice runs only**: keep the filled summary with the run evidence and leave the catalog row untouched. The status flip happens when the record is committed.
 

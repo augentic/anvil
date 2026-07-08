@@ -48,12 +48,6 @@ pub struct InitOptions<'a> {
     /// under `.specify/`. Workspace init refuses to run when `.specify/`
     /// already exists so it never clobbers a regular single-repo project.
     pub workspace: bool,
-    /// When `true`, also materialize the framework `core/` pack
-    /// (`codex/rules/core/`) into the project codex cache
-    /// alongside the always-materialized `universal/` pack. Default off:
-    /// consumer projects carry only `UNI-*` rules. Ignored for workspace
-    /// init (workspaces distribute no codex at init time).
-    pub include_framework: bool,
     /// Target platforms to declare in `project.yaml`. Parsed from the
     /// `--platforms` CLI flag (comma-separated). `None` means the
     /// operator did not pass `--platforms`. When the resolved target
@@ -67,9 +61,8 @@ pub struct InitOptions<'a> {
     /// `registry.yaml`, `.specify/design-system/*`, the adapter cache).
     /// `AGENTS.md` is regenerated only when absent (handled at the
     /// command layer). Mutually exclusive with the `<adapter>`
-    /// positional, `--workspace`, `--name`, `--description`, and
-    /// `--include-framework` at the clap surface. `--platforms` is
-    /// legal alongside `--upgrade`.
+    /// positional, `--workspace`, `--name`, and `--description` at the
+    /// clap surface. `--platforms` is legal alongside `--upgrade`.
     pub upgrade: bool,
 }
 
@@ -153,12 +146,12 @@ pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> 
 }
 
 /// Materialize (or refresh) the shared codex for a project from the
-/// packs embedded in this binary.
+/// pack embedded in this binary.
 ///
-/// Writes `codex/rules/universal/` (and, when `include_framework`,
-/// `core/`) into the out-of-tree `<project-cache>/codex/`, pinned to
-/// the binary version. A cache already stamped by this version with the
-/// same pack set is a no-op; a stale stamp re-materializes.
+/// Writes `codex/rules/universal/` into the out-of-tree
+/// `<project-cache>/codex/`, pinned to the binary version. A cache
+/// already stamped by this version is a no-op; a stale stamp
+/// re-materializes.
 ///
 /// This is the engine behind `specify rules sync`. `init` materializes
 /// the codex inline via the private `cache::cache_codex` path; this
@@ -169,10 +162,8 @@ pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> 
 /// # Errors
 ///
 /// Bubbles up filesystem errors from writing the cache.
-pub fn sync_codex(
-    project_dir: &Path, include_framework: bool, now: Timestamp,
-) -> Result<CodexMeta, Error> {
-    cache::cache_codex(project_dir, include_framework, now)
+pub fn sync_codex(project_dir: &Path, now: Timestamp) -> Result<CodexMeta, Error> {
+    cache::cache_codex(project_dir, now)
 }
 
 pub(crate) fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {

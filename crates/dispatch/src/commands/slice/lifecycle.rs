@@ -5,7 +5,9 @@ use std::io::Write;
 use jiff::Timestamp;
 use serde::Serialize;
 use specify_error::{Error, Result};
-use specify_workflow_lib::slice::{CreateIfExists, Created, LifecycleStatus, actions as slice_actions};
+use specify_workflow_lib::slice::{
+    CreateIfExists, Created, LifecycleStatus, actions as slice_actions,
+};
 
 use crate::context::Ctx;
 

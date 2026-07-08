@@ -38,7 +38,6 @@ fn run_build(rules_root: &Path, project_dir: &Path) -> ResolvedRules {
         languages: &[],
         include_deprecated: false,
         include_unmatched: false,
-        include_core: false,
     };
     build_resolved_rules(&inputs).expect("build_resolved_rules succeeds")
 }

@@ -41,7 +41,7 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 2. A build's tree re-materializes on a different node from values alone (revision + object store), with no shared mount.
 3. A dependent slice builds against a base `revision` layered with an un-merged producer `changeset`.
 4. `local-path` is present on nodes with a real checkout and `none` elsewhere, gating agent-driven operations.
-5. The Specify runtime binary (RFC-61) binds this backend behind `wasi:filesystem`; `make lint` and `cargo make ci` stay green.
+5. The Specify runtime binary (RFC-61) binds this backend behind `wasi:filesystem`; `cargo make ci` stays green.
 
 ## Risks and invariants
 

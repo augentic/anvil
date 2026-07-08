@@ -1,9 +1,9 @@
 //! The neutral [`Diagnostic`] currency and its closed attribute enums.
 //!
 //! A [`Diagnostic`] is the single structured finding shape shared by
-//! both Specify surfaces: the advisory `lint` surface (`specify lint`,
-//! `specify lint framework`, target-adapter review briefs, model-assisted
-//! scorers, CI annotations) and the workflow-gating `validate`
+//! both Specify surfaces: the advisory review surface (target-adapter
+//! review briefs, model-assisted scorers, CI annotations) and the
+//! workflow-gating `validate`
 //! surface (slice/plan structural invariants). The two surfaces stay
 //! conceptually distinct — they differ in gate policy, not in
 //! currency — so the substrate is named neutrally rather than after

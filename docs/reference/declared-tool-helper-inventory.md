@@ -37,4 +37,4 @@ Future migrations should update this inventory first, then land the behaviour as
 
 ## Enforcement
 
-`make lint` includes the rule `skill.invokes-host-binary-with-declared-tool-equivalent`. The check scans active adapter prompts and plugin skills for retired first-party helper invocations when an in-guest equivalent exists. Historical RFCs and explanatory migration docs may still mention retired commands when the prose clearly describes them as retired.
+Review-time convention: active adapter prompts and plugin skills must not invoke retired first-party helper binaries when an in-guest equivalent exists. Historical RFCs and explanatory migration docs may still mention retired commands when the prose clearly describes them as retired.

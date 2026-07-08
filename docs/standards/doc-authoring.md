@@ -321,7 +321,7 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 
 ## RFC citations
 
-User-facing docs must not cite RFC numbers in visible prose except in [`../contributing/`](../contributing/). Link targets to RFC paths are fine when the link text does not name the RFC. Enforced by `checkNoRfcCitationsInDocs` in `make lint`.
+User-facing docs must not cite RFC numbers in visible prose except in [`../contributing/`](../contributing/). Link targets to RFC paths are fine when the link text does not name the RFC. Enforced by the history-citation check in [`tests/framework_quality/prose.rs`](../../tests/framework_quality/prose.rs).
 
 ## Building locally
 

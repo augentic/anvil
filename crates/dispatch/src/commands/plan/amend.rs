@@ -94,10 +94,9 @@ pub(super) fn amend(ctx: &Ctx, args: AmendArgs) -> Result<()> {
             reject_orphan_overrides(plan)?;
 
             validate_plan(plan)?;
-            let amended =
-                plan.entries.iter().find(|c| c.name == name).ok_or_else(|| {
-                    specify_workflow_lib::change::unknown_slice_err(&plan_name, &name)
-                })?;
+            let amended = plan.entries.iter().find(|c| c.name == name).ok_or_else(|| {
+                specify_workflow_lib::change::unknown_slice_err(&plan_name, &name)
+            })?;
 
             let mut journal_events: Vec<journal::Event> = Vec::new();
             if let Some(to) = divergence {

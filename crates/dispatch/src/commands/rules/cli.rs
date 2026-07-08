@@ -72,13 +72,6 @@ pub struct ExportArgs {
     #[arg(long)]
     pub include_unmatched: bool,
 
-    /// Include `CORE-*` rules resolved from
-    /// `codex/rules/core/`.
-    /// Default off — consumer-project exports never carry
-    /// framework-only `CORE-*` rules unless the caller opts in.
-    #[arg(long)]
-    pub include_core: bool,
-
     /// Project directory used as the resolver's `project_dir`
     /// (defaults to the current directory). Does not require
     /// an initialised `.specify/`.

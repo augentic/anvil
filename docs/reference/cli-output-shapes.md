@@ -179,7 +179,7 @@ A stopped plan carries the classification block:
 
 ### `specify plan validate`
 
-Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate` and `specify lint`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
+Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
 
 ```json
 {
@@ -326,7 +326,7 @@ One envelope shape inside the guest-routed orchestration: the request is assembl
 
 ### `specify slice validate`
 
-Runs the slice-shape and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specify lint`, `specify lint framework`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
+Runs the slice-shape and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`plan validate`, `slice validate`, build reports). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
 
 Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
 

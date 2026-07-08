@@ -3,10 +3,9 @@
 //! Splits a rule markdown file into YAML frontmatter +
 //! verbatim body, validates the frontmatter against the embedded
 //! `schemas/rules/rule.schema.json`, lifts the `snake_case`
-//! authoring keys (`lint_mode`, `rule_hints`,
-//! `replaced_by`) to the kebab-case wire shape carried by
-//! [`Rule`], and returns the typed rule with `body` set to the
-//! exact post-delimiter bytes.
+//! authoring keys (`replaced_by`) to the kebab-case wire shape
+//! carried by [`Rule`], and returns the typed rule with `body` set
+//! to the exact post-delimiter bytes.
 //!
 //! # Body fidelity
 //!
@@ -31,10 +30,8 @@
 //!
 //! # Out of scope
 //!
-//! No regex compilation — the resolver never compiles a regex it never
-//! executes; hint execution belongs to `specify lint`. Applicability
-//! and deprecation filtering, and stable ordering, live in the
-//! `resolve` module.
+//! Applicability and deprecation filtering, and stable ordering, live
+//! in the `resolve` module.
 
 use std::path::Path;
 use std::{fs, io};
@@ -178,8 +175,8 @@ fn split_frontmatter(content: &str) -> Result<(&str, &str), ParseError> {
 /// kebab-case.
 ///
 /// Rule frontmatter keys never contain `_` for any reason
-/// other than the `snake_case` authoring convention (`lint_mode`,
-/// `rule_hints`, `replaced_by`), so a blind `_` -> `-`
+/// other than the `snake_case` authoring convention (`replaced_by`),
+/// so a blind `_` -> `-`
 /// rewrite is safe. String VALUES (e.g. adapter names like
 /// `typescript`) are untouched — only keys are transformed.
 fn snake_to_kebab_keys(value: JsonValue) -> JsonValue {

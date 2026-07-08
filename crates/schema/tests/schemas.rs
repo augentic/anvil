@@ -9,7 +9,7 @@ use specify_schema::{
     BUILD_REPORT_JSON_SCHEMA, BUILD_REQUEST_JSON_SCHEMA, DECISION_JSON_SCHEMA,
     DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA, EMBEDDED_SCHEMAS, PARTS_JSON_SCHEMA,
     RESOLVED_RULES_JSON_SCHEMA, RULE_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA,
-    ValidationStatus, WORKSPACE_MODEL_JSON_SCHEMA, compile_schema, validate_value,
+    ValidationStatus, compile_schema, validate_value,
 };
 
 /// Every embedded schema compiles, table-driven over the canonical
@@ -265,33 +265,6 @@ fn decision_accepts_baseline_form() {
     );
 }
 
-#[test]
-fn workspace_model_accepts_minimal() {
-    let instance = json!({
-        "version": 1,
-        "project_dir": ".",
-        "scan_profile": "project",
-        "artifact_paths": [],
-        "languages": [],
-        "files": [],
-        "frontmatter": [],
-        "markdown_sections": [],
-        "markdown_links": [],
-        "symlinks": [],
-        "skills": []
-    });
-    let summaries = validate_value(
-        &instance,
-        WORKSPACE_MODEL_JSON_SCHEMA,
-        "workspace-model",
-        "workspace-model minimal envelope",
-    );
-    assert!(
-        summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
-        "minimal envelope must validate; got {summaries:?}"
-    );
-}
-
 /// Compile the diagnostic-report envelope through a registry that pins
 /// the finding schema under the directory its relative
 /// `diagnostic.schema.json` `$ref` resolves to — the standalone
@@ -538,31 +511,36 @@ fn build_report_failure_with_findings() {
     assert!(errors.is_empty(), "failure-with-findings report must validate; errors: {errors:?}");
 }
 
-/// Every declared hint kind is shape-validated by this schema with no
-/// execution semantics. A minimal codex-rule frontmatter that declares
-/// each kind must round-trip cleanly so rules exporters accept files
-/// regardless of evaluator behavior.
+/// A minimal codex-rule frontmatter validates cleanly, and the retired
+/// `rule_hints` key is rejected — the schema is closed over the
+/// prose-only rule shape.
 #[test]
-fn codex_rule_accepts_declared_kinds() {
-    let declared = ["unique", "reference-resolves", "presence", "field-grammar", "constant-eq"];
-    for kind in declared {
-        let instance = json!({
-            "id": "UNI-014",
-            "title": "Reserved-kind smoke fixture",
-            "severity": "important",
-            "trigger": "Reserved hint kind smoke fixture.",
-            "rule_hints": [{
-                "kind": kind,
-                "value": "placeholder"
-            }]
-        });
-        let summaries =
-            validate_value(&instance, RULE_JSON_SCHEMA, "rule", "rule fixture per reserved kind");
-        assert!(
-            summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
-            "kind {kind} must validate; got {summaries:?}"
-        );
-    }
+fn codex_rule_minimal_shape() {
+    let instance = json!({
+        "id": "UNI-014",
+        "title": "Minimal rule fixture",
+        "severity": "important",
+        "trigger": "Minimal rule shape smoke fixture."
+    });
+    let summaries = validate_value(&instance, RULE_JSON_SCHEMA, "rule", "minimal rule fixture");
+    assert!(
+        summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
+        "minimal rule must validate; got {summaries:?}"
+    );
+
+    let with_hints = json!({
+        "id": "UNI-014",
+        "title": "Retired hints fixture",
+        "severity": "important",
+        "trigger": "Retired rule_hints key must be rejected.",
+        "rule_hints": [{ "kind": "regex", "value": "placeholder" }]
+    });
+    let summaries =
+        validate_value(&with_hints, RULE_JSON_SCHEMA, "rule", "retired rule_hints fixture");
+    assert!(
+        summaries.iter().any(|s| !matches!(s.status, ValidationStatus::Pass)),
+        "rule_hints must be rejected by the closed schema; got {summaries:?}"
+    );
 }
 
 /// The `UNI-014` example for the `ResolvedRules` export validates
@@ -579,7 +557,6 @@ fn resolved_codex_accepts_example() {
                 "title": "Hardcoded Configuration",
                 "severity": "important",
                 "trigger": "Generated code embeds environment-specific configuration instead of routing it through declared configuration.",
-                "lint-mode": "hybrid",
                 "origin": "shared",
                 "path-root": "rules-root",
                 "path": "codex/rules/universal/hardcoded-configuration.md",
@@ -588,13 +565,6 @@ fn resolved_codex_accepts_example() {
                     "languages": ["rust"],
                     "artifacts": ["code"]
                 },
-                "rule-hints": [
-                    {
-                        "kind": "regex",
-                        "value": "https?://",
-                        "description": "Literal URL in generated code."
-                    }
-                ],
                 "references": [
                     {
                         "label": "Omnia guardrails",

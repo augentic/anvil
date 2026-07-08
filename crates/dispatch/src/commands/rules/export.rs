@@ -41,7 +41,6 @@ pub fn run(format: Format, args: &ExportArgs) -> Result<()> {
         languages: &args.languages,
         include_deprecated: args.include_deprecated,
         include_unmatched: args.include_unmatched,
-        include_core: args.include_core,
     };
 
     let resolved = build_resolved_rules(&inputs).map_err(map_resolve_error)?;

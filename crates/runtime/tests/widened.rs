@@ -221,7 +221,7 @@ async fn archive_prune_requires_bound() -> Result<()> {
 async fn rules_export_reads_cache_mount() -> Result<()> {
     let project = Project::initialised();
     let now = "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses");
-    specify_workflow_lib::init::sync_codex(&project.root, false, now).expect("sync codex");
+    specify_workflow_lib::init::sync_codex(&project.root, now).expect("sync codex");
 
     let status =
         run(&project.root, &["rules", "export", "--target", "demo", "--format", "json"]).await?;

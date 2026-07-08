@@ -14,31 +14,13 @@ MARKETPLACE := augentic
 ADAPTERS_ROOT ?= $(firstword $(wildcard $(CURDIR)/../specify-adapters) $(wildcard $(CURDIR)/specify-adapters))
 export SPECIFY_ADAPTERS := $(ADAPTERS_ROOT)
 
-.PHONY: ci lint install-cli use-local-plugins use-team-plugins
+.PHONY: ci install-cli use-local-plugins use-team-plugins
 
 # Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the
-# repo root), then the framework lint over the in-tree prose
-# (plugins/, docs/, codex/).
+# repo root). Framework prose invariants run as plain cargo tests
+# (tests/framework_quality/) inside the same gate.
 ci:
 	cargo make ci
-	$(MAKE) lint
-
-# Cargo target directory, honouring an exported CARGO_TARGET_DIR.
-TARGET_DIR := $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),target)
-
-# Framework lint over the prose surface. The lint runs in the workflow
-# guest like every other verb: build the guest, then drive it through
-# the replay runtime (ModelDefault — no cursor-agent needed) with the
-# repo mounted writable at ".". The adapter-contract links resolve the
-# guest's imports; lint never dispatches them.
-lint:
-	@test -n "$(SPECIFY_ADAPTERS)" && test -d "$(SPECIFY_ADAPTERS)/codex/rules/universal" || (echo "missing cross-target codex: clone augentic/specify-adapters as a sibling or set SPECIFY_ADAPTERS" >&2; exit 1)
-	cargo build -q -p specify-workflow --target wasm32-wasip2
-	HTTP_ADDR=127.0.0.1:0 cargo run -q -p specify-runtime --bin specify-runtime-replay -- run \
-		"$(TARGET_DIR)/wasm32-wasip2/debug/specify_workflow.wasm" \
-		--mount path=.,writable \
-		--link specify:adapter/source@0.1.0 --link specify:adapter/target@0.1.0 \
-		-- lint framework --framework-root .
 
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:

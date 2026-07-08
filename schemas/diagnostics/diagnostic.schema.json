@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
   "title": "Specify Diagnostic",
-  "description": "Wire shape for a single structured diagnostic — the neutral currency shared by both Specify check surfaces. Shared by deterministic scanners (`specify lint`), the workflow-gating validate surface (`specify slice validate`), framework JSON export (`specify lint framework --format json`), target-adapter review briefs, model-assisted scorers, CI annotations, and dashboards. Field names are kebab-case at every nesting level. Producer-local `id` is distinct from the codex `rule-id` — `id` is a stable per-run handle (e.g. `FIND-0001`) and `rule-id` is the durable codex citation (e.g. `UNI-014`). Conditional requirements that JSON Schema cannot express (e.g. `confidence` required for `source: model-assisted`) are enforced producer-side.",
+  "description": "Wire shape for a single structured diagnostic — the neutral currency shared by every Specify check surface: the workflow-gating validate surface (`specify slice validate`), plan validation, target-adapter review briefs, model-assisted scorers, CI annotations, and dashboards. Field names are kebab-case at every nesting level. Producer-local `id` is distinct from the codex `rule-id` — `id` is a stable per-run handle (e.g. `FIND-0001`) and `rule-id` is the durable codex citation (e.g. `UNI-014`). Conditional requirements that JSON Schema cannot express (e.g. `confidence` required for `source: model-assisted`) are enforced producer-side.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -129,8 +129,8 @@
     },
     "ruleId": {
       "type": "string",
-      "pattern": "^((UNI|SRC|FRAME|CORE|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}|[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)$",
-      "description": "Two namespaces share this field. The codex family (`UNI-014`, `CORE-003`, …) mirrors `codex/resolved.schema.json#/$defs/ruleId` and `schemas/rules/rule.schema.json#/$defs/ruleId`. The dot-/kebab-namespaced runtime-validation family (`spec.requirement-id-missing`, `merge.no-duplicate-ids`, `slice-model-source-orphan`) carries the structural workflow invariant ids that `validate` surfaces emit as diagnostics."
+      "pattern": "^((UNI|SRC|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}|[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)$",
+      "description": "Two namespaces share this field. The codex family (`UNI-014`, `OMNIA-021`, …) mirrors `codex/resolved.schema.json#/$defs/ruleId` and `schemas/rules/rule.schema.json#/$defs/ruleId`. The dot-/kebab-namespaced runtime-validation family (`spec.requirement-id-missing`, `merge.no-duplicate-ids`, `slice-model-source-orphan`) carries the structural workflow invariant ids that `validate` surfaces emit as diagnostics."
     },
     "adapterRef": {
       "type": "string",

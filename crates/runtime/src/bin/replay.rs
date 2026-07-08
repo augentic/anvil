@@ -3,9 +3,8 @@
 //!
 //! The same `omnia::runtime!` command-mode macro, binding `WasiModel:
 //! ModelDefault` (recorded answers from `MODEL_REPLAY_DIR`) instead of
-//! the spawning cursor backend, so component-level tests, `make lint`,
-//! and CI run without `cursor-agent` on `PATH`. Not an operational
-//! mode.
+//! the spawning cursor backend, so component-level tests and CI run
+//! without `cursor-agent` on `PATH`. Not an operational mode.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {

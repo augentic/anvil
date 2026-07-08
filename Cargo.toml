@@ -27,12 +27,22 @@ omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
+regex.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+specify-schema.workspace = true
 tempfile.workspace = true
 
 # `rust_quality` is the standalone dev-only Rust-quality gate.
 [[test]]
 name = "rust_quality"
 path = "tests/rust_quality.rs"
+
+# `framework_quality` gates the prose/manifest surfaces (links, skills,
+# scenarios, plugins, docs) — the rehomed framework checks.
+[[test]]
+name = "framework_quality"
+path = "tests/framework_quality/main.rs"
 
 [lints]
 workspace = true

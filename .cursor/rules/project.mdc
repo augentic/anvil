@@ -56,21 +56,22 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop) + shared references/
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/codex/                   # Shared codex rule packs (adapter trees live in augentic/specify-adapters)
-  ├── rules/universal/    # Shared UNI-* engineering rules read by per-target review prompts
-  └── rules/core/         # Framework CORE-* rules driving specify lint framework
+/tests/framework_quality/ # Prose/manifest framework checks as cargo tests
 /scripts/                 # Validation and plugin management
 ```
+
+Shared codex rule packs (`codex/rules/universal/`, the `UNI-*` engineering rules) live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) alongside the adapter trees.
 
 Source and target adapter trees (guest crates + `prose/prompts/`, per-adapter `prose/rules/` overlays, and the `codex/references/` prose embedded into components) live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters).
 
 ## Validation
 
 ```bash
-make lint   # builds the in-tree binary and runs specify lint framework
+cargo test --test framework_quality   # the prose/manifest framework checks
+make ci                               # the full Rust workspace gate (cargo make ci)
 ```
 
-`make lint` builds the in-tree `specify` binary (the Rust workspace at the repo root) and runs `specify lint framework --framework-root .` — only a Rust toolchain is required. The runtime is in-tree, so there is no source pin or sibling checkout to resolve; `make ci` runs the full Rust workspace gate (`cargo make ci` from the repo root) plus `make lint`.
+The framework checks are plain cargo tests at `tests/framework_quality/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
 
@@ -129,7 +130,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../codex/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are plain cargo tests at [`tests/framework_quality/`](../../tests/framework_quality/), with policy as constants in each test module. The authoritative JSON Schemas are embedded in the `specify` binary and consumed by the same tests. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 

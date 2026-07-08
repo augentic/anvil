@@ -35,7 +35,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Engineering standards
 
-- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and `specify lint` exit semantics.
+- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar and status taxonomy.
 
 ## Finding what you need
 

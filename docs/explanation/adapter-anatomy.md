@@ -160,7 +160,7 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 3. **Implement the operations.** The operation set is closed per axis by the WIT contract — sources implement `survey` / `extract`, targets implement `guidance` / `build` / `merge`.
 4. **Write the prompts.** Each operation prompt is a markdown file compiled into the adapter guest. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `guidance` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration.
-6. **Validate.** Build with `cargo make release` in the adapters repo, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `make lint` runs the documentation predicates.
+6. **Validate.** Build with `cargo make release` in the adapters repo, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `cargo test --test framework_quality` runs the documentation predicates.
 
 ## Adapter manifests vs Cursor plugin manifests
 

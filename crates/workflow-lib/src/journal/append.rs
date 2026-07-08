@@ -67,8 +67,8 @@ pub fn append_batch(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
 }
 
 /// Surface a dropped journal [`Event`] so the best-effort swallow in
-/// [`super::emit_best_effort`] / [`super::emit_lint_completed`] is
-/// observable and recoverable rather than silent.
+/// [`super::emit_best_effort`] is observable and recoverable rather
+/// than silent.
 ///
 /// Emits an operator-visible `warning:` line to stderr — matching the
 /// repo's established best-effort warning idiom — and attempts to append

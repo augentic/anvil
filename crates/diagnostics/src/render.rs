@@ -3,8 +3,8 @@
 //! Ships the four formatters of the closed set
 //! ([`Format::Json`], [`Format::Pretty`], [`Format::Github`],
 //! [`Format::Compact`]). Rendering lives in this crate so every
-//! surface that emits a [`DiagnosticReport`] (`specify lint`, `specify
-//! lint framework`, the slice/plan validate gates) cannot drift.
+//! surface that emits a [`DiagnosticReport`] (the slice/plan validate
+//! gates, build reports) cannot drift.
 //!
 //! Only the [`Format::Json`] formatter validates against
 //! [`specify_schema::DIAGNOSTIC_REPORT_JSON_SCHEMA`] before emit; the other

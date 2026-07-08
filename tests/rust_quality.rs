@@ -11,10 +11,9 @@ mod checks {
     //!
     //! These scan the in-tree workspace tree (`crates/` + `src/`,
     //! skipping `target/`) and back the
-    //! `cargo test --test rust_quality` gate. They are deliberately not a
-    //! lint producer: `specify lint framework` runs entirely through
-    //! declarative hints and WASI tools, so this code lives with its only
-    //! consumer instead of in `specify-standards`.
+    //! `cargo test --test rust_quality` gate. Repo-local policy lives
+    //! with its only consumer instead of in `specify-standards`; the
+    //! prose-surface siblings live in `tests/framework_quality/`.
 
     use std::collections::BTreeMap;
     use std::fs;

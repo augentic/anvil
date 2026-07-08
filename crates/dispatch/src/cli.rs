@@ -11,7 +11,6 @@ use specify_model::evidence::ClaimKind;
 use crate::commands::adapters::cli::AdaptersAction;
 use crate::commands::archive::cli::ArchiveAction;
 use crate::commands::journal::cli::JournalAction;
-use crate::commands::lint::cli::LintAction;
 use crate::commands::plan::cli::PlanAction;
 use crate::commands::plugins::cli::PluginsAction;
 use crate::commands::registry::cli::RegistryAction;
@@ -57,9 +56,7 @@ pub struct Cli {
 /// The provisioning families are included, so `--help` and shell
 /// completions see one grammar wherever the parse runs. Provisioning
 /// verbs are *executed* natively only: the guest router refuses them,
-/// and the binary's first-token triage never forwards them. `lint
-/// framework` (framework CI tooling) lives only on the native
-/// provisioning grammar, off this operational surface.
+/// and the binary's first-token triage never forwards them.
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Initialize .specify/ in a project.
@@ -197,15 +194,6 @@ pub enum Commands {
         #[command(subcommand)]
         action: PluginsAction,
     },
-
-    /// Framework-repo CI lint (`make lint`). Dev tooling, not an
-    /// operational verb — hidden from operator help.
-    #[command(hide = true, subcommand_required = true)]
-    Lint {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: LintAction,
-    },
 }
 
 /// Flag surface for `specify init`.
@@ -216,10 +204,6 @@ pub enum Commands {
 /// `--help` and completions, with the guest refusing everything but
 /// the hidden `--scaffold-only` leg).
 #[derive(Debug, Args)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "clap flag surface: each bool is an independent operator-facing CLI flag, not state"
-)]
 pub struct InitArgs {
     /// Adapter identifier. A package reference
     /// (`specify:omnia@1.0.0`) or the first-party shorthand
@@ -245,13 +229,6 @@ pub struct InitArgs {
     /// project. Refuses to run when `.specify/` already exists.
     #[arg(long)]
     pub workspace: bool,
-    /// Also distribute the framework `core/` pack
-    /// (`codex/rules/core/`) into the project codex cache
-    /// alongside the shared `universal/` pack. Default off —
-    /// consumer projects carry only `UNI-*` rules. Ignored with
-    /// `--workspace`.
-    #[arg(long, conflicts_with = "workspace")]
-    pub include_framework: bool,
     /// Comma-separated target platforms (e.g. core,ios,android).
     /// Required when the target adapter declares platforms as mandatory.
     /// Run `specify init <adapter>` without --platforms to see the
@@ -265,10 +242,7 @@ pub struct InitArgs {
     /// never re-fetching the adapter cache. A project already at the
     /// running version is a no-op. Mutually exclusive with every
     /// other `init` argument except `--platforms`.
-    #[arg(
-        long,
-        conflicts_with_all = ["adapter", "workspace", "name", "description", "include_framework"]
-    )]
+    #[arg(long, conflicts_with_all = ["adapter", "workspace", "name", "description"])]
     pub upgrade: bool,
     /// Run only the project-scoped scaffold leg (`.specify/`,
     /// `project.yaml`, workspace `registry.yaml`) — no hydration,

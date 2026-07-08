@@ -56,7 +56,7 @@ An Augentic product: a cross-platform application framework (Rust core, native i
 ## D
 
 **Diagnostic**
-The neutral finding currency every check surface emits (`specify slice validate`, `specify lint`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
+The neutral finding currency every check surface emits (`specify slice validate`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
 **Discovery**
 The plan-time discovery artifact at `discovery.md` in the project root (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/spec:plan` through CLI helpers.
@@ -166,7 +166,7 @@ An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chose
 A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
-The single CLI binary produced by the in-tree `cli/` workspace that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, consumer-project linting (`specify lint`), and framework **authoring** checks for contributors to the `augentic/specify` repo (`specify lint framework`, invoked locally as `make lint`). See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
+The single CLI binary produced by the Rust workspace at the repo root that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Framework **authoring** checks for contributors to the `augentic/specify` repo run as plain cargo tests (`tests/framework_quality/`), not as a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **Survey**
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.

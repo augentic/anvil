@@ -68,11 +68,11 @@ The `cargo` and `brew` executors are fully wired; the `binary`-channel in-proces
 
 ### Contributing to the repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `specify`. The CLI is an in-tree Cargo workspace, so the framework checks build it from source:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `specify`. The framework checks are cargo tests inside the same workspace:
 
 ```bash
-make lint        # build the in-tree binary and run specify lint framework over the prose tree
-make ci          # the full Rust workspace gate, then make lint
+cargo test --test framework_quality  # the prose/manifest invariants only
+make ci          # the full Rust workspace gate (cargo make ci)
 make install-cli # build target/release/specify and symlink it onto your PATH
 ```
 

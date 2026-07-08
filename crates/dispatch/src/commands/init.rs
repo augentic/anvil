@@ -38,8 +38,6 @@ pub struct ScaffoldArgs<'a> {
     pub description: Option<&'a str>,
     /// Scaffold a registry-only workspace.
     pub workspace: bool,
-    /// Also materialize the framework `core/` codex pack.
-    pub include_framework: bool,
     /// Raw `--platforms` CSV.
     pub platforms: Option<&'a str>,
 }
@@ -65,7 +63,6 @@ pub fn scaffold(project_dir: &Path, args: &ScaffoldArgs<'_>) -> Result<()> {
         name: args.name,
         description: args.description,
         workspace: args.workspace,
-        include_framework: args.include_framework,
         platforms: parsed_platforms.as_deref(),
         upgrade: false,
     };

@@ -49,7 +49,7 @@ path = "tests/it.rs"
 
 # The replay sibling of the `specify` binary: the same `omnia::runtime!`
 # macro over `WasiModel: ModelDefault` instead of the cursor backend, for
-# component-level tests, `make lint`, and CI — not an operational mode.
+# component-level tests and CI — not an operational mode.
 [[bin]]
 name = "specify-runtime-replay"
 path = "src/bin/replay.rs"

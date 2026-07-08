@@ -448,72 +448,6 @@ pub enum EventKind {
         /// Registry project names the push covered, in selection order.
         projects: Vec<String>,
     },
-    /// `specify lint` finished a scan. The payload carries the scan
-    /// scope, wall-clock duration, per-status counts, and the
-    /// CLI exit code the scan resolved to. Emission is
-    /// wired in the scanner; this variant exists so the taxonomy is
-    /// closed even before the emitter ships.
-    ///
-    /// Field names on the wire are `snake_case` to match the journal
-    /// payload example verbatim (`duration_ms`, `false_positive`,
-    /// `exit_code`); this is the one variant in the
-    /// taxonomy that does not project through `rename_all =
-    /// "kebab-case"`, because that payload shape is the wire contract
-    /// consumers will read.
-    #[serde(rename = "lint-completed")]
-    LintCompleted(LintCompletedPayload),
-}
-
-/// Payload for [`EventKind::LintCompleted`]. The journal event
-/// contract pins the field set and the `snake_case` wire names.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LintCompletedPayload {
-    /// Scope of the scan — which target, slice, or artifact the run
-    /// was narrowed to. All three sub-fields are optional; a
-    /// project-wide scan leaves them `null`.
-    pub scope: LintScope,
-    /// Wall-clock duration of the scan in milliseconds.
-    pub duration_ms: u64,
-    /// Per-status counts. The scanner emits `open`, `ignored`, and
-    /// `false_positive`.
-    pub counts: LintCounts,
-    /// CLI exit code the scan resolved to (status-aware severity per
-    /// the exit and presentation semantics). `0` on clean
-    /// scans, `2` when an `open` finding of `important` or `critical`
-    /// severity remains.
-    pub exit_code: i32,
-}
-
-/// Scan-scope sub-object on [`LintCompletedPayload`]. Each field is
-/// optional and serialised as `null` when absent so the wire shape
-/// matches the payload example verbatim.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LintScope {
-    /// Target name (`omnia`, `vectis`, …) when the scan was narrowed
-    /// to a single target; `None` for project-wide scans.
-    pub target: Option<String>,
-    /// Slice id from `plan.yaml.slices[].name` when the scan was
-    /// narrowed to one slice (e.g. `specify lint project --slice <name>`).
-    pub slice: Option<String>,
-    /// Artifact path (relative to project root) when the scan was
-    /// narrowed to a single artifact; `None` otherwise.
-    pub artifact: Option<String>,
-}
-
-/// Per-status finding counts on [`LintCompletedPayload`]. Current
-/// emitters fill the three buckets named here.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LintCounts {
-    /// `status: open` count — findings that block CI by default when
-    /// they also carry `severity: critical` or `severity: important`.
-    pub open: u32,
-    /// `status: ignored` count — findings demoted by a matching
-    /// `specify-ignore` directive.
-    pub ignored: u32,
-    /// `status: false-positive` count — findings demoted by a
-    /// `specify-ignore` directive whose rationale begins with
-    /// `false-positive:`.
-    pub false_positive: u32,
 }
 
 /// Every wire event id in the closed [`EventKind`] taxonomy, sorted.
@@ -525,7 +459,6 @@ pub struct LintCounts {
 pub const WIRE_EVENT_IDS: &[&str] = &[
     "adapters.synced",
     "cli.upgraded",
-    "lint-completed",
     "plan.amend.authority-override",
     "plan.amend.divergence",
     "plan.entry.advanced",

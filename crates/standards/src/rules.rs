@@ -3,11 +3,11 @@
 //! Provides the typed Rust shapes that round-trip cleanly through the
 //! schemas embedded under `schemas/rules/` and `schemas/diagnostics/`:
 //!
-//! - [`Rule`] / [`Deprecated`] / [`Applicability`] /
-//!   [`RuleHint`] / [`Reference`] are the parsed-frontmatter
+//! - [`Rule`] / [`Deprecated`] / [`Applicability`] / [`Reference`]
+//!   are the parsed-frontmatter
 //!   shape used by the frontmatter parser. Field names are
-//!   kebab-case at every nesting level (`lint-mode`,
-//!   `rule-hints`, `replaced-by`); the parser performs the
+//!   kebab-case at every nesting level (`replaced-by`); the parser
+//!   performs the
 //!   `snake_case -> kebab-case` lift on the raw markdown side so the
 //!   in-memory shape matches the wire shape.
 //! - [`ResolvedRules`] / [`ResolvedRule`] are the export envelope
@@ -44,7 +44,7 @@ use specify_diagnostics::Severity;
 /// Resolver origin tier per `ResolvedRules` export contract.
 ///
 /// Variants are declared in the documented sort order (`target`,
-/// `source`, `shared`, `core`, `unknown`) so the derived [`Ord`]
+/// `source`, `shared`, `unknown`) so the derived [`Ord`]
 /// yields the contract-defined comparator. Wire spelling uses
 /// kebab-case rendered from the variant identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -56,12 +56,8 @@ pub enum Origin {
     Source,
     /// Shared rules (`codex/rules/...`).
     Shared,
-    /// Core pack overlay (`codex/rules/core/`). Excluded
-    /// from consumer exports unless `--include-core` is set.
-    Core,
-    /// Indexer fallback: cache rule files whose path does not match
-    /// the closed adapter-shape probe in `infer_origin` under
-    /// [`crate::lint::index`].
+    /// Fallback: cache rule files whose path does not match the closed
+    /// adapter-shape probe.
     Unknown,
 }
 
@@ -78,66 +74,6 @@ pub enum PathRoot {
     /// Path is relative to the out-of-tree project cache root
     /// (`<project-cache>/`); cached adapter-rule overlays.
     Cache,
-}
-
-/// How a rule is expected to be reviewed. Wire spelling is
-/// kebab-case (`deterministic`, `model-assisted`, `hybrid`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum LintMode {
-    /// Rule is fully expressed as deterministic hints.
-    Deterministic,
-    /// Rule needs an SLM/LLM scorer.
-    ModelAssisted,
-    /// Mix of deterministic + model-assisted signals.
-    Hybrid,
-}
-
-/// Closed v1 deterministic-hint kind enum.
-///
-/// Every kind is executable: `path-pattern`, `regex`, `schema`,
-/// `tool`, `reference-resolves`, `unique`, `constant-eq`,
-/// `fenced-block`, `presence`, and `field-grammar`.
-/// No kind is reserved. (Whole-tree namespace-ownership runs through the
-/// `rules` checker via `kind: tool`, not a dedicated hint kind.)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum HintKind {
-    /// Glob pattern matched against artifact paths.
-    PathPattern,
-    /// Regular expression matched against artifact bytes.
-    Regex,
-    /// Validate against an embedded JSON Schema.
-    Schema,
-    /// Invoke a declared WASI tool.
-    Tool,
-    /// Assert that some field across a candidate set is unique
-    /// (v1 fact-family selector: `skill`; field in `config: { field }`).
-    Unique,
-    /// Every reference resolves (v1 source discriminator: `markdown-link`).
-    ReferenceResolves,
-    /// Assert that an extracted field on a candidate fact equals a
-    /// configured constant (v1 source discriminator:
-    /// `skill-name-plugin-prefix`; the value rides `config`).
-    ConstantEq,
-    /// Fence-aware body predicate over [`crate::lint::FencedBlock`] facts
-    /// (`fenced-body-contains`).
-    FencedBlock,
-    /// Assert that a required artifact is present (v1 mechanism
-    /// selectors: `frontmatter` — candidate files absent from the
-    /// frontmatter fact family; `file` — a single required path in
-    /// `config: { path }`; `directory-index` —
-    /// directories matching a `config: { roots }` glob with at least
-    /// `config: { min-files }` files beneath them but no
-    /// `config: { index }` file inside them).
-    Presence,
-    /// Assert that a candidate's named frontmatter field obeys a
-    /// token / first-word grammar (v1 mechanism modes: `field-tokens` —
-    /// every whitespace token of `config: { field }` matches the
-    /// `config: { token-pattern }` regex; `field-first-word` — the first
-    /// alphabetic word of `config: { field }` is in the
-    /// `config: { allowed }` list).
-    FieldGrammar,
 }
 
 /// Inclusive narrowing filter — all populated dimensions match (AND).
@@ -160,22 +96,6 @@ pub struct Applicability {
     /// Project-relative path globs this rule applies to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub paths: Option<Vec<String>>,
-}
-
-/// One rule-hint entry on a rule (executable by the deterministic hint interpreter).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct RuleHint {
-    /// Hint kind discriminator.
-    pub kind: HintKind,
-    /// Hint payload, interpreted by a future validator or review tool.
-    pub value: String,
-    /// Optional human explanation.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// Optional per-kind configuration (schema-validated; interpreted by the matching eval arm).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config: Option<serde_json::Value>,
 }
 
 /// One reference entry on a rule. Schema requires `label` plus
@@ -227,15 +147,9 @@ pub struct Rule {
     pub severity: Severity,
     /// One-sentence trigger condition.
     pub trigger: String,
-    /// How the rule is expected to be reviewed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lint_mode: Option<LintMode>,
     /// Inclusive narrowing filter.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub applicability: Option<Applicability>,
-    /// Optional deterministic-hint list.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rule_hints: Option<Vec<RuleHint>>,
     /// Optional reference list.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<Reference>>,
@@ -285,15 +199,9 @@ pub struct ResolvedRule {
     pub severity: Severity,
     /// One-sentence trigger condition.
     pub trigger: String,
-    /// How the rule is expected to be reviewed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub lint_mode: Option<LintMode>,
     /// Inclusive narrowing filter.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub applicability: Option<Applicability>,
-    /// Optional deterministic-hint list.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rule_hints: Option<Vec<RuleHint>>,
     /// Optional reference list.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<Reference>>,

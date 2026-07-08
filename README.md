@@ -76,10 +76,10 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-make lint
+cargo test --test framework_quality
 ```
 
-This builds the in-tree `specify` binary (the Rust workspace at the repo root) and runs `lint framework` over the prose. Only a Rust toolchain is required. The runtime lives in-tree, so there is no source pin or sibling checkout to resolve. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
+The framework checks are plain cargo tests over the prose and manifest surfaces. Only a Rust toolchain is required; the same tests run inside the full `cargo make ci` gate. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
 
 ### Local plugin development
 

@@ -1,8 +1,10 @@
 //! Embed-time markdown corpora: inline the judgment-prose corpus into
 //! `OUT_DIR/prose/` (link-checked — a dangling relative reference
-//! fails the build instead of surfacing as a lint finding) and the
-//! shared codex packs (`codex/rules/{universal,core}/`) into
-//! `OUT_DIR/codex_packs.rs` for init-time materialization.
+//! fails the build instead of surfacing at runtime) and the
+//! cross-target `codex/rules/universal/` pack — authored in the
+//! sibling `augentic/specify-adapters` checkout (`SPECIFY_ADAPTERS`
+//! override) — into `OUT_DIR/codex_packs.rs` for init-time
+//! materialization.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -20,11 +22,6 @@ const CORPUS: &[(&str, &str)] = &[
     ("tags.md", "../../plugins/spec/references/synthesis/tags.md"),
     ("spec-format.md", "../../plugins/spec/references/spec-format.md"),
 ];
-
-/// The shared codex packs embedded for init-time materialization
-/// (DECISIONS.md §"Codex ownership flip: shared packs embed in the
-/// binary"), rooted at the repo's `codex/rules/`.
-const CODEX_PACKS: &[&str] = &["universal", "core"];
 
 fn main() {
     let manifest_dir =
@@ -46,20 +43,33 @@ fn main() {
     embed_codex(&manifest_dir, &out_root);
 }
 
+/// Resolve the adapters checkout that owns `codex/rules/universal/`.
+fn adapters_checkout(manifest_dir: &Path) -> PathBuf {
+    println!("cargo:rerun-if-env-changed=SPECIFY_ADAPTERS");
+    if let Ok(path) = env::var("SPECIFY_ADAPTERS") {
+        return PathBuf::from(path);
+    }
+    manifest_dir.join("../../../specify-adapters")
+}
+
 /// Generate `OUT_DIR/codex_packs.rs`: a sorted static slice expression
 /// of `(cache-relative path, include_str!)` entries covering every
-/// `.md` file under `codex/rules/{universal,core}/` at the repo root.
+/// `.md` file under the cross-target universal pack (adapters repo).
 /// The materializer in `src/init/cache.rs` `include!`s it.
 fn embed_codex(manifest_dir: &Path, out_root: &Path) {
-    let rules_root = manifest_dir.join("../../codex/rules");
+    let universal_dir = adapters_checkout(manifest_dir).join("codex/rules/universal");
+    assert!(
+        universal_dir.is_dir(),
+        "missing cross-target codex pack at {}: clone \
+         github.com/augentic/specify-adapters as a sibling of this repo \
+         or set SPECIFY_ADAPTERS to that checkout",
+        universal_dir.display()
+    );
+    // Directory-level rerun catches file adds/removes; the per-file
+    // entries below catch content edits.
+    println!("cargo:rerun-if-changed={}", universal_dir.display());
     let mut entries: Vec<(String, PathBuf)> = Vec::new();
-    for pack in CODEX_PACKS {
-        let dir = rules_root.join(pack);
-        // Directory-level rerun catches file adds/removes; the per-file
-        // entries below catch content edits.
-        println!("cargo:rerun-if-changed={}", dir.display());
-        collect_markdown(&dir, &format!("codex/rules/{pack}"), &mut entries);
-    }
+    collect_markdown(&universal_dir, "codex/rules/universal", &mut entries);
     entries.sort();
 
     let mut table = String::from("&[\n");

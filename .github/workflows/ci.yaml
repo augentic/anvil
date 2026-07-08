@@ -35,38 +35,3 @@ jobs:
         env:
           SPECIFY_ADAPTERS: ${{ github.workspace }}/specify-adapters
         run: cargo make ci
-
-  # Repo-specific prose gate: the framework lint over the in-tree prose
-  # surface (plugins/, docs/, codex/), built from the in-tree binary.
-  # Not part of the generic Rust workspace CI, so it stays a
-  # first-class job here.
-  framework-lint:
-    name: Framework lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
-      - uses: actions/checkout@v6
-        with:
-          repository: augentic/specify-adapters
-          path: specify-adapters
-          fetch-depth: 1
-
-      # The framework lint runs in the workflow guest (wasm32-wasip2)
-      # driven by the replay runtime, so the guest target is required.
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-wasip2
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: true
-
-      - name: Verify framework
-        env:
-          SPECIFY_ADAPTERS: ${{ github.workspace }}/specify-adapters
-        run: make lint

@@ -94,19 +94,11 @@ pub const RULE_JSON_SCHEMA: &str = include_str!("../../../schemas/rules/rule.sch
 pub const DIAGNOSTIC_JSON_SCHEMA: &str =
     include_str!("../../../schemas/diagnostics/diagnostic.schema.json");
 
-/// Schema for the v1 `WorkspaceModel` envelope produced once per
-/// `specify lint` invocation.
-///
-/// See the `WorkspaceModel` schema and schema-location contract; the
-/// `version: 1` discriminant pins the v1 shape defined here.
-pub const WORKSPACE_MODEL_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/lint/workspace-model.schema.json");
-
 /// Schema for the `DiagnosticReport` envelope (`{ version, summary, findings }`).
 ///
-/// Validated before stdout emit by every diagnostic surface
-/// (`specify lint --format json` and the workflow-gating validate
-/// surface alike). The `findings[]` element shape lives in
+/// Validated before stdout emit by every diagnostic surface (the
+/// workflow-gating validate surface and build reports). The
+/// `findings[]` element shape lives in
 /// [`DIAGNOSTIC_JSON_SCHEMA`] and is wired via a relative
 /// `diagnostic.schema.json` `$ref`.
 pub const DIAGNOSTIC_REPORT_JSON_SCHEMA: &str =
@@ -198,11 +190,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         "DIAGNOSTIC_REPORT_JSON_SCHEMA",
         "schemas/diagnostics/diagnostic-report.schema.json",
         DIAGNOSTIC_REPORT_JSON_SCHEMA,
-    ),
-    (
-        "WORKSPACE_MODEL_JSON_SCHEMA",
-        "schemas/lint/workspace-model.schema.json",
-        WORKSPACE_MODEL_JSON_SCHEMA,
     ),
     ("SKILL_JSON_SCHEMA", "schemas/authoring/skill.schema.json", SKILL_JSON_SCHEMA),
     ("SCENARIO_JSON_SCHEMA", "schemas/authoring/scenario.schema.json", SCENARIO_JSON_SCHEMA),

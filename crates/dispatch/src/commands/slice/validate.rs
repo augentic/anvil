@@ -12,7 +12,9 @@
 use specify_diagnostics::{Diagnostic, blocking_present};
 use specify_error::{Error, Result};
 use specify_model::validate::validate_slice;
-use specify_workflow_lib::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
+use specify_workflow_lib::slice::validate::{
+    PreAdapter, append_synthesis_journal, pre_adapter_gates,
+};
 
 use crate::context::Ctx;
 

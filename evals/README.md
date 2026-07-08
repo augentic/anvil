@@ -51,7 +51,7 @@ The agent runs this for you as runbook step 1; run it directly only when you wan
 
 ```bash
 # build the in-tree specify binary and symlink it onto
-# ~/.local/bin (run `make lint` separately for the static checks)
+# ~/.local/bin (the static checks run as cargo tests via `cargo make ci`)
 make install-cli
 ```
 

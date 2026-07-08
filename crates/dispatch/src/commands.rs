@@ -14,7 +14,6 @@ pub mod adapters;
 pub mod archive;
 pub mod init;
 pub mod journal;
-pub mod lint;
 pub mod plan;
 pub mod plugins;
 pub mod registry;
@@ -118,26 +117,6 @@ where
     F: FnOnce(&Ctx) -> Result<()>,
 {
     let ctx = match Ctx::load(format, plan_dir) {
-        Ok(ctx) => ctx,
-        Err(err) => return report(format, &err),
-    };
-    match f(&ctx) {
-        Ok(()) => Exit::Success,
-        Err(err) => report(format, &err),
-    }
-}
-
-/// Variant of [`scoped`] that loads `Ctx` against an explicit
-/// project directory instead of the process CWD.
-///
-/// Used by handlers that take a `--project-dir` flag (e.g.
-/// `specify lint`), none of which read plan artifacts — so no
-/// plan-root override is threaded.
-pub fn scoped_at<F>(format: Format, project_dir: &Path, f: F) -> Exit
-where
-    F: FnOnce(&Ctx) -> Result<()>,
-{
-    let ctx = match Ctx::load_at(format, None, project_dir) {
         Ok(ctx) => ctx,
         Err(err) => return report(format, &err),
     };

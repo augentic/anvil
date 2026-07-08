@@ -154,7 +154,10 @@ pub(super) fn transition(
                     actor,
                 },
             );
-            specify_workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
+            specify_workflow_lib::journal::append_batch(
+                ctx.layout(),
+                std::slice::from_ref(&event),
+            )?;
         }
         (TransitionKind::Undo, true) => {
             let pair = body.undo.ok_or_else(|| Error::Diag {
@@ -170,7 +173,10 @@ pub(super) fn transition(
                     to: pair.to,
                 },
             );
-            specify_workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
+            specify_workflow_lib::journal::append_batch(
+                ctx.layout(),
+                std::slice::from_ref(&event),
+            )?;
         }
         _ => {}
     }

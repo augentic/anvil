@@ -1,5 +1,5 @@
 use super::*;
-use crate::rules::{HintKind, LintMode, Severity};
+use crate::rules::Severity;
 
 const HARDCODED_CONFIGURATION: &str =
     include_str!("../../../tests/fixtures/rules/hardcoded-configuration.md");
@@ -12,10 +12,6 @@ const DOCUMENTATION_VERBATIM_PRESERVATION: &str =
 // success matrix and one error matrix, each preserving every former input; the
 // private `snake_to_kebab_keys` helper test stays on its own.
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "collapsed parse-success matrix: one block per former test"
-)]
 #[test]
 fn parse_success_matrix() {
     // Real shared UNI-014 fixture: typed frontmatter fields land and the body
@@ -56,11 +52,6 @@ id: UNI-014
 title: Sample
 severity: important
 trigger: A short trigger sentence covering the rule context.
-lint_mode: hybrid
-rule_hints:
-  - kind: regex
-    value: 'https?://'
-    description: Literal URL.
 deprecated:
   reason: superseded by SEC-001
   replaced_by: SEC-001
@@ -70,20 +61,11 @@ deprecated:
 Body.
 ";
     let rule = parse_rule(content).expect("parses");
-    assert_eq!(rule.lint_mode, Some(LintMode::Hybrid));
-    let hints = rule.rule_hints.as_ref().expect("hints present");
-    assert_eq!(hints.len(), 1);
-    assert_eq!(hints[0].kind, HintKind::Regex);
-    assert_eq!(hints[0].value, "https?://");
     let deprecated = rule.deprecated.as_ref().expect("deprecated present");
     assert_eq!(deprecated.reason, "superseded by SEC-001");
     assert_eq!(deprecated.replaced_by.as_deref(), Some("SEC-001"));
     let json = serde_json::to_string(&rule).expect("serialize");
-    assert!(json.contains("\"lint-mode\""));
-    assert!(json.contains("\"rule-hints\""));
     assert!(json.contains("\"replaced-by\""));
-    assert!(!json.contains("\"lint_mode\""));
-    assert!(!json.contains("\"rule_hints\""));
     assert!(!json.contains("\"replaced_by\""));
 
     // Body bytes are preserved verbatim, including fenced blocks with inner
@@ -124,45 +106,6 @@ Trailing line.\n";
     let content = "---\r\nid: UNI-014\r\ntitle: CRLF\r\nseverity: optional\r\ntrigger: CRLF body fidelity covering Windows-style line endings end-to-end.\r\n---\r\n## Rule\r\n\r\nLine one.\r\nLine two.\r\n";
     let rule = parse_rule(content).expect("parses");
     assert_eq!(rule.body, "## Rule\r\n\r\nLine one.\r\nLine two.\r\n");
-
-    // A hint with an unparseable regex value still parses — regex compilation
-    // belongs to the evaluator, not the parser.
-    let content = r"---
-id: UNI-014
-title: Broken regex tolerated
-severity: optional
-trigger: Parser must not compile regex hint values; that belongs to hint execution.
-rule_hints:
-  - kind: regex
-    value: '[invalid regex)('
----
-## Rule
-";
-    let rule = parse_rule(content).expect("parses despite broken regex value");
-    let hints = rule.rule_hints.expect("hints present");
-    assert_eq!(hints.len(), 1);
-    assert_eq!(hints[0].kind, HintKind::Regex);
-    assert_eq!(hints[0].value, "[invalid regex)(");
-
-    // Every declared hint kind shape-validates without execution semantics.
-    let content = r"---
-id: UNI-014
-title: Declared hint kinds
-severity: optional
-trigger: Declared hint kinds must shape-validate without execution semantics.
-rule_hints:
-  - kind: presence
-    value: 'file'
-  - kind: constant-eq
-    value: 'UNI'
----
-## Rule
-";
-    let rule = parse_rule(content).expect("parses");
-    let hints = rule.rule_hints.expect("hints present");
-    assert_eq!(hints.len(), 2);
-    assert_eq!(hints[0].kind, HintKind::Presence);
-    assert_eq!(hints[1].kind, HintKind::ConstantEq);
 
     // Framework-side applicability.artifacts tokens compose with consumer-side
     // tokens in the closed schema enum.
@@ -232,16 +175,15 @@ fn parse_error_matrix() {
 #[test]
 fn snake_to_kebab_only_touches_keys() {
     let input = serde_json::json!({
-        "lint_mode": "hybrid",
         "applicability": {
             "adapters": ["demo-source", "demo-docs"],
         },
-        "rule_hints": [
-            {"kind": "regex", "value": "snake_in_value_stays"},
-        ],
+        "deprecated": {
+            "reason": "superseded",
+            "replaced_by": "snake_in_value_stays",
+        },
     });
     let lifted = snake_to_kebab_keys(input);
-    assert_eq!(lifted["lint-mode"], "hybrid");
     assert_eq!(lifted["applicability"]["adapters"][0], "demo-source");
-    assert_eq!(lifted["rule-hints"][0]["value"], "snake_in_value_stays");
+    assert_eq!(lifted["deprecated"]["replaced-by"], "snake_in_value_stays");
 }

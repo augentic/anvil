@@ -30,7 +30,9 @@ use specify_error::Error;
 use specify_model::evidence::AuthorityClass;
 use specify_workflow_lib::adapter::describe::{DescribeAnswer, DescribeRequest};
 use specify_workflow_lib::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
-use specify_workflow_lib::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
+use specify_workflow_lib::seam::{
+    self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree,
+};
 use specify_workflow_lib::slice::build::wire::BUILD_VERSION;
 use specify_workflow_lib::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 

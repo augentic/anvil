@@ -78,10 +78,12 @@ mod propose_leg {
         let model = MockModel::answering([Box::leak(answer.into_boxed_str()) as &'static str]);
         let sources = BTreeMap::from([(
             "legacy".to_string(),
-            serde_json::from_value::<specify_workflow_lib::change::SourceBinding>(serde_json::json!({
-                "adapter": "typescript",
-                "path": "./vendor/legacy"
-            }))
+            serde_json::from_value::<specify_workflow_lib::change::SourceBinding>(
+                serde_json::json!({
+                    "adapter": "typescript",
+                    "path": "./vendor/legacy"
+                }),
+            )
             .expect("binding fixture parses"),
         )]);
         let context = propose::GateContext {

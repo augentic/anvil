@@ -1,6 +1,6 @@
 # Ignore directives
 
-Operators tolerate a single legitimate exception to an engineering-standards finding by writing an in-source `specify-ignore` directive next to the offending line. The directive carries the rule id and a non-empty rationale; the scanner picks it up unconditionally and demotes the matching finding's status to `ignored` (or `false-positive` for prefixed rationale) on the next lint run. The consumer-project scanner (`specify lint project`) retired from the operational surface; the directive grammar below is the durable contract any lint surface — today `specify lint framework`, and the consumer scanner if it earns its way back as developer tooling — honours.
+Operators tolerate a single legitimate exception to an engineering-standards finding by writing an in-source `specify-ignore` directive next to the offending line. The directive carries the rule id and a non-empty rationale; a scanner picks it up unconditionally and demotes the matching finding's status to `ignored` (or `false-positive` for prefixed rationale) on the next run. The consumer-project scanner (`specify lint project`) retired from the operational surface; the directive grammar below is the durable contract any future scanning surface honours.
 
 This page is the single durable reference for the directive grammar, scope rules, status taxonomy, and exit-code semantics. The grammar is identical across every supported language family — the only thing that changes is the comment delimiter the directive lives inside.
 
@@ -102,4 +102,4 @@ Lint uses **status-aware severity** when deciding the process exit:
 
 - [Engineering standards layer](../explanation/standards-layer.md) — how standards enforcement fits next to workflow and artifacts
 - [Shared `UNI-*` codex inventory](https://github.com/augentic/specify-adapters/blob/main/codex/rules/universal/README.md) — every shared rule, including `UNI-022` and `UNI-023`
-- [Consistency checks](../contributing/checks.md) — the `specify lint framework` authoring surface
+- [Consistency checks](../contributing/checks.md) — the framework-repo authoring checks

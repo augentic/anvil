@@ -253,7 +253,6 @@ pub fn route(cli: Cli) -> Route {
             args.name.as_deref(),
             args.description.as_deref(),
             args.workspace,
-            args.include_framework,
             args.platforms.as_deref(),
         )),
         Commands::Init(_) => Route::Handled(unsupported(format, "init")),
@@ -273,11 +272,6 @@ pub fn route(cli: Cli) -> Route {
         Commands::Completions { shell } => Route::Handled(commands::completions(shell)),
         Commands::Upgrade(_) => Route::Handled(unsupported(format, "upgrade")),
         Commands::Plugins { .. } => Route::Handled(unsupported(format, "plugins")),
-        Commands::Lint { action } => Route::Handled(match action {
-            commands::lint::cli::LintAction::Framework(args) => {
-                commands::dispatch(format, || commands::lint::framework::run(format, &args))
-            }
-        }),
     }
 }
 
@@ -311,7 +305,7 @@ fn check_plan_dir(plan_dir: Option<&Path>) -> Result<()> {
 /// router a flat table.
 fn scaffold(
     format: Format, adapter: Option<&str>, name: Option<&str>, description: Option<&str>,
-    workspace: bool, include_framework: bool, platforms: Option<&str>,
+    workspace: bool, platforms: Option<&str>,
 ) -> Exit {
     commands::dispatch(format, || {
         commands::init::scaffold(
@@ -322,7 +316,6 @@ fn scaffold(
                 name,
                 description,
                 workspace,
-                include_framework,
                 platforms,
             },
         )

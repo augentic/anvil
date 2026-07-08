@@ -1,8 +1,0 @@
-Specify review — 2 finding(s)
-[IMPORTANT] UNI-014 UNI-014 test rule: matched `https?://` (app.rs:2:25)
-  impact: <prose>
-  remediation: <prose>
-[IMPORTANT] UNI-023 specify-ignore directive does not match any finding (app.rs:1)
-  impact: <prose>
-  remediation: <prose>
-Summary: 0 critical, 2 important, 0 suggestion, 0 optional

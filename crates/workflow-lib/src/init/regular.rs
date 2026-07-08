@@ -55,9 +55,9 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
     }
 
     let source = cache_adapter(adapter, opts.project_dir, now)?;
-    // Materialize the shared codex from the packs embedded in this
+    // Materialize the shared codex from the pack embedded in this
     // binary; a cache stamped by an older binary re-materializes.
-    cache_codex(opts.project_dir, opts.include_framework, now)?;
+    cache_codex(opts.project_dir, now)?;
     let adapter_value = source.adapter_value;
     let adapter_ref = adapter_ref_from_value(&adapter_value);
     let resolved = TargetAdapter::resolve(&adapter_ref, opts.project_dir)?;

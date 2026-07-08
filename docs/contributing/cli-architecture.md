@@ -6,7 +6,7 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 The shipped binary is two strictly separated layers:
 
-- **A native provisioning front** — the closed verb set that must run natively (`init`, `adapters sync`, `upgrade`, `plugins`, plus the acknowledged `workspace` residue and the hidden framework-repo `lint framework`). These are the only verbs the binary parses; the grammar lives in `src/runtime/cli.rs`.
+- **A native provisioning front** — the closed verb set that must run natively (`init`, `adapters sync`, `upgrade`, `plugins`, plus the acknowledged `workspace` residue). These are the only verbs the binary parses; the grammar lives in `src/runtime/cli.rs`.
 - **Blind forwarding** — every other argv forwards **unparsed** to the workflow (core) guest through `specify_runtime::drive` and the generated deployment manifest, `--help` / `--version` included. Envelopes and exit codes pass through verbatim.
 
 The core guest resolves from the global adapter store by the binary's own version (`specify:core@<binary version>`), with a `SPECIFY_CORE_PATH` / in-repo dev-build override for core-guest iteration.

@@ -1,10 +1,9 @@
-//! Best-effort journal emit and the `lint-completed` projection.
+//! Best-effort journal emit.
 
 use jiff::Timestamp;
-use specify_diagnostics::{Diagnostic, FindingStatus, count_status};
 
 use super::append::{append_batch, record_dropped};
-use super::{Event, EventKind, LintCompletedPayload, LintCounts, LintScope};
+use super::{Event, EventKind};
 use crate::config::Layout;
 
 /// Best-effort append of a single lifecycle [`Event`] carrying `kind`.
@@ -28,32 +27,5 @@ pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, sco
     let event = Event::new(now, kind);
     if let Err(err) = append_batch(layout, std::slice::from_ref(&event)) {
         record_dropped(layout, scope, &event, &err);
-    }
-}
-
-/// Append a `lint-completed` event to `<project_dir>/.specify/journal.jsonl`.
-///
-/// Best-effort: a serialise/IO failure is intentionally swallowed so it
-/// never overrides the scan's exit code. The swallow is not silent —
-/// `record_dropped` warns on stderr under `command_label` and records
-/// the dropped event in the `.specify/journal.dropped` sidecar.
-pub fn emit_lint_completed(
-    layout: Layout<'_>, now: Timestamp, scope: LintScope, findings: &[Diagnostic],
-    duration_ms: u128, exit_code: i32, command_label: &str,
-) {
-    let counts = LintCounts {
-        open: count_status(findings, None),
-        ignored: count_status(findings, Some(FindingStatus::Ignored)),
-        false_positive: count_status(findings, Some(FindingStatus::FalsePositive)),
-    };
-    let payload = LintCompletedPayload {
-        scope,
-        duration_ms: u64::try_from(duration_ms).unwrap_or(u64::MAX),
-        counts,
-        exit_code,
-    };
-    let event = Event::new(now, EventKind::LintCompleted(payload));
-    if let Err(err) = append_batch(layout, std::slice::from_ref(&event)) {
-        record_dropped(layout, command_label, &event, &err);
     }
 }

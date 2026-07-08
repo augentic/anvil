@@ -221,11 +221,6 @@ fn native_only_verbs_refused_exit_two() {
         };
         assert_eq!(exit, Exit::ArgumentError, "{argv:?} must refuse with the argument error code");
     }
-    // `lint framework` moved in-guest with the native provisioning
-    // surface's retirement: it parses on the shared grammar (hidden
-    // from help) rather than being refused. Parse-only here — routing
-    // it would walk the framework root for real.
-    parse_ok(&["specify", "lint", "framework"]);
 }
 
 #[test]

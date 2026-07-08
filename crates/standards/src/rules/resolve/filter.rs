@@ -1,8 +1,7 @@
 //! Applicability and deprecation filters over the resolver's rule pool.
 //!
-//! [`filter`] runs three passes in fixed order: origin (`core` rules
-//! drop unless `--include-core`), deprecation (drops unless
-//! `--include-deprecated`), then applicability — a rule with no
+//! [`filter`] runs two passes in fixed order: deprecation (drops
+//! unless `--include-deprecated`), then applicability — a rule with no
 //! `applicability` block always passes; one with a block must match
 //! **every populated dimension** (AND semantics). A dimension the rule
 //! populates but the caller supplied no input for excludes the rule
@@ -19,7 +18,7 @@ use std::path::{Path, PathBuf};
 use glob::{MatchOptions, Pattern};
 
 use super::{ResolveInputs, ResolvedRuleEntry};
-use crate::rules::{Origin, Rule};
+use crate::rules::Rule;
 
 /// Rule path-glob semantics (`applicability.paths`): case-sensitive,
 /// `/` is the only separator, leading dots match literally.
@@ -29,32 +28,21 @@ const PATH_MATCH_OPTIONS: MatchOptions = MatchOptions {
     require_literal_leading_dot: false,
 };
 
-/// Apply origin + deprecation + applicability filters to a
-/// [`super::resolve`] result.
+/// Apply deprecation + applicability filters to a [`super::resolve`]
+/// result.
 ///
-/// Origin (`core`) runs first; deprecation runs against those
-/// survivors; applicability runs against the survivors of both. See
-/// the module docs for the closed precedence rules and per-dimension
-/// matching semantics.
+/// Deprecation runs first; applicability runs against its survivors.
+/// See the module docs for the closed precedence rules and
+/// per-dimension matching semantics.
 #[must_use]
 pub fn filter(
     entries: Vec<ResolvedRuleEntry>, inputs: &ResolveInputs<'_>,
 ) -> Vec<ResolvedRuleEntry> {
     entries
         .into_iter()
-        .filter(|entry| keeps_core(entry.origin, inputs.include_core))
         .filter(|entry| keeps_deprecated(&entry.rule, inputs.include_deprecated))
         .filter(|entry| applicability_matches(&entry.rule, inputs))
         .collect()
-}
-
-/// `true` when the entry survives the consumer-export `core` filter.
-///
-/// Rules resolved from `codex/rules/core/`
-/// (i.e. [`Origin::Core`]) are excluded from the export by default; the
-/// caller opts in via `--include-core`.
-const fn keeps_core(origin: Origin, include_core: bool) -> bool {
-    !matches!(origin, Origin::Core) || include_core
 }
 
 /// `true` when the rule survives the deprecation filter.
@@ -145,7 +133,7 @@ const fn artifact_dimension_matches(
 /// when any caller path matches any compiled rule pattern via
 /// [`Pattern::matches_path_with`]. Patterns that fail to compile are
 /// treated as non-matching rather than aborting the resolver —
-/// `specify lint framework` catches pattern authoring bugs.
+/// the adapters repo's rule-shape tests catch pattern authoring bugs.
 fn paths_dimension_matches(
     rule_paths: Option<&[String]>, caller_paths: &[PathBuf], include_unmatched: bool,
 ) -> bool {

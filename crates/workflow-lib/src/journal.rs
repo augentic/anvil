@@ -26,11 +26,8 @@ use serde_json::Value;
 use specify_error::Error;
 
 pub use self::append::append_batch;
-pub use self::emit::{emit_best_effort, emit_lint_completed};
-pub use self::event::{
-    Actor, AuthorityOverrideAction, Event, EventKind, LintCompletedPayload, LintCounts, LintScope,
-    WIRE_EVENT_IDS,
-};
+pub use self::emit::emit_best_effort;
+pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind, WIRE_EVENT_IDS};
 use crate::config::Layout;
 
 /// Project-relative path the journal lives at.

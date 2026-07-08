@@ -1,9 +1,8 @@
 //! The project-scope `tools[]` declaration shape on `project.yaml`.
 //!
-//! Serde DTOs only: no verb resolves or runs declared tools today (the
-//! Wasmtime runner retired with the native provisioning surface), so
+//! Serde DTOs only: no verb resolves or runs declared tools today, so
 //! the shape is kept parse-clean until the `tools[]` surface's fate is
-//! decided. Absorbed from the deleted `specify-extension` leaf.
+//! decided.
 
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};

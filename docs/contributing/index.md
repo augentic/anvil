@@ -9,7 +9,7 @@ The platform lives in one repository, [`augentic/specify`](https://github.com/au
 | Path | Contents | Language |
 |------|----------|----------|
 | `plugins/`, `adapters/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/` | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
-| `src/`, `crates/`, `tests/` (the Cargo workspace at the repo root) | The `specify` binary (workflow runtime + `specify lint framework`) and workspace crates | Rust |
+| `src/`, `crates/`, `tests/` (the Cargo workspace at the repo root) | The `specify` binary (workflow runtime), workspace crates, and the framework-quality cargo tests | Rust |
 
 The prose defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace at the repo root implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
@@ -24,7 +24,7 @@ Two audiences share this repository:
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
 | **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work in `src/` and `crates/` |
 
-Every contributor runs `make lint` locally with only a Rust toolchain: it builds the in-tree `specify` binary and runs the framework checks (see [Consistency Checks](checks.md)). Tooling contributors additionally run `cargo make test` to exercise the `specify-standards` framework predicate suite before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
+Every contributor runs `cargo test --test framework_quality` locally with only a Rust toolchain: the framework checks are plain cargo tests over the prose and manifest surfaces (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
 
 ## Development environment
 
@@ -35,7 +35,7 @@ Every contributor runs `make lint` locally with only a Rust toolchain: it builds
 
 **For tooling and CLI work** (the Rust workspace at the repo root):
 
-- Rust stable toolchain — `make lint` and `cargo build` use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
+- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
 - [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the root `Makefile` forwards unknown targets to `Makefile.toml`
 - [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks
@@ -45,7 +45,7 @@ Every contributor runs `make lint` locally with only a Rust toolchain: it builds
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `make lint` over the prose (works for every contributor). `cargo make ci` for CLI work, or `make ci` for the full Rust + prose gate. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `cargo test --test framework_quality` over the prose (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
@@ -56,7 +56,7 @@ Every contributor runs `make lint` locally with only a Rust toolchain: it builds
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what `specify lint framework` enforces and how to extend it
+- [Consistency Checks](checks.md) -- what the framework-quality cargo tests enforce and how to extend them
 
 ## Example Patterns
 

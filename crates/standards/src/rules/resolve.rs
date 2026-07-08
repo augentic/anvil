@@ -39,8 +39,8 @@ use super::{Origin, PathRoot, Rule};
 ///
 /// [`resolve`] consumes `project_dir`, `rules_root`, `target_adapter`,
 /// and `source_adapters`; [`filter`] additionally consumes
-/// `artifact_paths`, `languages`, `include_deprecated`,
-/// `include_unmatched`, and `include_core`. Callers compose [`resolve`]
+/// `artifact_paths`, `languages`, `include_deprecated`, and
+/// `include_unmatched`. Callers compose [`resolve`]
 /// then [`filter`] when they need the narrowed pool;
 /// [`build_resolved_rules`] is the export entry point.
 #[derive(Debug, Clone)]
@@ -67,10 +67,6 @@ pub struct ResolveInputs<'a> {
     /// Whether rules with populated applicability dimensions the
     /// caller did not satisfy are included.
     pub include_unmatched: bool,
-    /// Whether rules with [`super::Origin::Core`] appear in the
-    /// export. Default off (consumer-export filtering): consumer-project
-    /// review runs never evaluate `CORE-*` hints by accident.
-    pub include_core: bool,
 }
 
 /// Pre-sort intermediate emitted by [`resolve`].
@@ -168,7 +164,6 @@ pub fn map_resolve_error(err: ResolveError) -> Error {
 }
 
 const SHARED_REL: &str = "codex/rules/universal";
-const CORE_REL: &str = "codex/rules/core";
 /// Cache-relative provenance prefix recorded for cache-resolved adapter
 /// rules.
 ///
@@ -217,20 +212,6 @@ pub fn resolve(inputs: &ResolveInputs<'_>) -> Result<Vec<ResolvedRuleEntry>, Res
             entries.push(ResolvedRuleEntry {
                 rule,
                 origin: Origin::Shared,
-                path_root: PathRoot::RulesRoot,
-                path: rel,
-            });
-        }
-    }
-
-    let core_dir = rules_root.join(CORE_REL);
-    if core_dir.is_dir() {
-        for path in list_rule_files(&core_dir)? {
-            let rel = relative_path(&rules_root, &path);
-            let rule = parse(&path)?;
-            entries.push(ResolvedRuleEntry {
-                rule,
-                origin: Origin::Core,
                 path_root: PathRoot::RulesRoot,
                 path: rel,
             });

@@ -11,9 +11,7 @@ fn make_rule(
         title: format!("{id} fixture"),
         severity: Severity::Important,
         trigger: "Synthetic filter fixture trigger sentence long enough for schema.".into(),
-        lint_mode: None,
         applicability,
-        rule_hints: None,
         references: None,
         deprecated,
         body: format!("## Rule\n\nBody for {id}.\n"),
@@ -63,25 +61,14 @@ fn make_inputs<'a>(
         languages,
         include_deprecated,
         include_unmatched,
-        include_core: false,
-    }
-}
-
-fn core_entry(id: &str) -> ResolvedRuleEntry {
-    ResolvedRuleEntry {
-        rule: make_rule(id, None, None),
-        origin: Origin::Core,
-        path_root: PathRoot::RulesRoot,
-        path: format!("codex/rules/core/{id}.md"),
     }
 }
 
 /// One single-entry `filter` case: the entry survives (`pass: true` →
 /// one entry out) or is dropped. `applicability_and_path_matrix` drives
-/// every single-entry case below; the deprecation-flag and
-/// `--include-core` interactions keep their own matrices because they
-/// need flags, multi-entry input, or `Origin::Core` entries this table
-/// does not model.
+/// every single-entry case below; the deprecation-flag interactions
+/// keep their own matrix because they need flags the table does not
+/// model.
 struct Case {
     name: &'static str,
     applicability: Option<Applicability>,
@@ -349,58 +336,4 @@ fn deprecation_matrix() {
     assert!(filter(vec![entry.clone()], &inputs).is_empty());
     let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
     assert!(filter(vec![entry], &inputs).is_empty());
-}
-
-/// `--include-core` interactions — these need `Origin::Core` entries,
-/// the `include_core` flag, and multi-entry input the single-entry
-/// `Case` table does not model.
-#[test]
-fn core_origin_matrix() {
-    // A core entry is dropped on a default consumer export (flag off).
-    let entry = core_entry("CORE-001");
-    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
-    assert!(
-        filter(vec![entry], &inputs).is_empty(),
-        "core rules must not appear without --include-core"
-    );
-
-    // With the flag set, the core entry passes and keeps its origin.
-    let entry = core_entry("CORE-001");
-    let mut inputs = make_inputs("demo-target", &[], &[], &[], false, false);
-    inputs.include_core = true;
-    let out = filter(vec![entry], &inputs);
-    assert_eq!(out.len(), 1);
-    assert_eq!(out[0].origin, Origin::Core);
-    assert_eq!(out[0].rule.id, "CORE-001");
-
-    // The flag is orthogonal to other origins: a shared entry flows through
-    // regardless; toggling the flag only adds the core entry.
-    let shared = make_entry("UNI-001", None, None);
-    let core = core_entry("CORE-001");
-    let inputs = make_inputs("demo-target", &[], &[], &[], false, false);
-    let out = filter(vec![shared.clone(), core.clone()], &inputs);
-    assert_eq!(out.len(), 1);
-    assert_eq!(out[0].rule.id, "UNI-001");
-    let mut inputs = make_inputs("demo-target", &[], &[], &[], false, false);
-    inputs.include_core = true;
-    let out = filter(vec![shared, core], &inputs);
-    assert_eq!(out.len(), 2);
-    assert!(out.iter().any(|e| e.rule.id == "UNI-001"));
-    assert!(out.iter().any(|e| e.rule.id == "CORE-001"));
-
-    // Origin runs before deprecation: a deprecated core rule with
-    // `--include-deprecated` set still falls out when `--include-core` is off.
-    let entry = ResolvedRuleEntry {
-        rule: make_rule("CORE-DEP", None, Some(deprecation_meta())),
-        origin: Origin::Core,
-        path_root: PathRoot::RulesRoot,
-        path: "codex/rules/core/CORE-DEP.md".to_string(),
-    };
-    let inputs = make_inputs("demo-target", &[], &[], &[], true, false);
-    assert!(filter(vec![entry.clone()], &inputs).is_empty());
-    let mut inputs = make_inputs("demo-target", &[], &[], &[], true, false);
-    inputs.include_core = true;
-    let out = filter(vec![entry], &inputs);
-    assert_eq!(out.len(), 1);
-    assert_eq!(out[0].origin, Origin::Core);
 }
