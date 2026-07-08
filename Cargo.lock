@@ -5776,7 +5776,7 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 [[package]]
 name = "wrpc-introspect"
 version = "0.7.0"
-source = "git+https://github.com/bytecodealliance/wrpc?rev=b347c61db52dea9fe515a349ac9a91ba11cfe4f9#b347c61db52dea9fe515a349ac9a91ba11cfe4f9"
+source = "git+https://github.com/bytecodealliance/wrpc#5a92c5c29e47d918ff15fb76455427fbcbddd423"
 dependencies = [
  "wit-parser",
 ]
@@ -5784,7 +5784,7 @@ dependencies = [
 [[package]]
 name = "wrpc-transport"
 version = "0.29.0"
-source = "git+https://github.com/bytecodealliance/wrpc?rev=b347c61db52dea9fe515a349ac9a91ba11cfe4f9#b347c61db52dea9fe515a349ac9a91ba11cfe4f9"
+source = "git+https://github.com/bytecodealliance/wrpc#5a92c5c29e47d918ff15fb76455427fbcbddd423"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5801,7 +5801,7 @@ dependencies = [
 [[package]]
 name = "wrpc-wasmtime"
 version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wrpc?rev=b347c61db52dea9fe515a349ac9a91ba11cfe4f9#b347c61db52dea9fe515a349ac9a91ba11cfe4f9"
+source = "git+https://github.com/bytecodealliance/wrpc#5a92c5c29e47d918ff15fb76455427fbcbddd423"
 dependencies = [
  "anyhow",
  "bytes",

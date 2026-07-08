@@ -28,9 +28,9 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 regex.workspace = true
+schema.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
-schema.workspace = true
 tempfile.workspace = true
 
 # `rust_quality` is the standalone dev-only Rust-quality gate.
@@ -151,13 +151,8 @@ verbose_file_reads = "warn"
 
 # Recommended-but-skipped restriction lints with rationale:
 # - `tests_outside_test_module`: fires on every integration test in `tests/*.rs`
-#   (by construction, integration tests are top-level fns in their own crate
-#   and cannot be inside `#[cfg(test)] mod tests`).
-# - `str_to_string` / `string_to_string`: opinionated against `.to_string()` on
-#   `&str`; `string_to_string` was also removed from clippy in 1.95 in favour of
-#   `clippy::implicit_clone`.
-# - `field_scoped_visibility_modifiers`: the workspace deliberately uses
-#   `pub(crate)` / `pub(super)` on struct fields throughout.
+# - `str_to_string`: opinionated against `.to_string()` on `&str`;
+# - `field_scoped_visibility_modifiers`
 
 [workspace.dependencies]
 anyhow = "1"
@@ -167,72 +162,61 @@ cfg-if = "1"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 glob = "0.3"
-globset = "0.4"
-ignore = "0.4"
 jiff = { version = "0.2", default-features = false, features = ["serde", "std"] }
 jsonschema = { version = "0.46", default-features = false }
-omnia = "0.35.0"
-# Spawned cursor-agent model backend (unpublished). Temporarily supplied
-# from the sibling augentic/backends checkout, matching the omnia local-path
-# posture below; re-pin to a pushed rev before this branch finalizes
-# (specify-adapters pins the same crate by git rev).
-omnia-cursor = { path = "../backends/crates/cursor" }
-omnia-guest = "0.35.0"
-# Test-only scaffolding; unpublished, supplied by [patch.crates-io] below.
-omnia-testkit = "0.35.0"
-omnia-wasi-http = "0.35.0"
-omnia-wasi-model = "0.35.0"
-omnia-wasi-otel = "0.35.0"
+
+artifacts = { path = "crates/artifacts" }
+diagnostics = { path = "crates/diagnostics" }
+dispatch = { path = "crates/dispatch" }
+guest-model = { path = "crates/guest-model" }
 petgraph = "0.8"
 proptest = "1.11.0"
-rayon = "1"
 regex = "1"
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.26"
 serde_json = "1"
 sha2 = "0.11"
-diagnostics = { path = "crates/diagnostics" }
-dispatch = { path = "crates/dispatch" }
-guest-model = { path = "crates/guest-model" }
 standards = { path = "crates/standards" }
-artifacts = { path = "crates/artifacts" }
-# `default-features = false` at the workspace level so wasm32-facing
-# members (dispatch) stay off the `native` feature; the root
-# binary re-enables it explicitly.
-workflow-lib = { path = "crates/workflow-lib", default-features = false }
 error = { path = "crates/error" }
 schema = { path = "crates/schema" }
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"
-toml = "1"
 tokio = { version = "1", features = ["fs", "io-util", "rt"] }
+toml = "1"
 ureq = { version = "3", features = ["json"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.58.0", features = ["async-spawn"] }
+workflow-lib = { path = "crates/workflow-lib", default-features = false }
+
+omnia = "0.35.0"
+omnia-guest = "0.35.0"
+omnia-guest-macros = "0.35.0"
+omnia-host-macros = "0.35.0"
+omnia-testkit = "0.35.0"
+omnia-wasi-http = "0.35.0"
+omnia-wasi-model = "0.35.0"
+omnia-wasi-otel = "0.35.0"
+
+omnia-cursor = "0.28.0"
 
 [patch.crates-io]
-# The omnia 0.35.0 crates (and the internal omnia-* crates they pull in) are
-# unpublished pre-publish pins. Temporarily supplied from the sibling local
-# checkout's `specify-feedback` branch while the async link-dispatch change
-# lands there; re-pin to the pushed rev before this branch finalizes.
 omnia = { path = "../omnia/crates/omnia" }
 omnia-guest = { path = "../omnia/crates/omnia-guest" }
 omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
 omnia-host-macros = { path = "../omnia/crates/host-macros" }
 omnia-testkit = { path = "../omnia/crates/testkit" }
-omnia-wasi-config = { path = "../omnia/crates/wasi-config" }
+# omnia-wasi-config = { path = "../omnia/crates/wasi-config" }
 omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
-# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io; omnia's own
-# [patch.crates-io] supplies it, but patches do not propagate to dependents,
-# so this workspace carries the same patch pinned to the rev omnia's
-# Cargo.lock records.
-wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc", rev = "b347c61db52dea9fe515a349ac9a91ba11cfe4f9" }
-wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc", rev = "b347c61db52dea9fe515a349ac9a91ba11cfe4f9" }
+omnia-cursor = { path = "../backends/crates/cursor" }
+
+# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc" }
 
 [profile.release]
 lto = true

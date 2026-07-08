@@ -161,7 +161,7 @@ error                    # leaf — thiserror + serde-saphyr only
 guest-model              # leaf — the local Model capability trait (WASI-backed on wasm32, MockModel off it); stand-in for the upstream omnia-guest capability, unpublished
 schema                   # depends on error (embedded JSON Schemas + jsonschema plumbing; also owns schema::digest — SHA-256 hex via sha2 + base16ct)
 diagnostics              # depends on {error,schema} (Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
-artifacts                    # depends on {error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow-lib or anything named lint)
+artifacts                # depends on {error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow-lib or anything named lint)
 standards                # standards layer — depends on {error,schema,diagnostics}; NOT on workflow-lib
 workflow-lib             # workflow layer — depends on {error,schema,artifacts,diagnostics,guest-model} (also owns workflow::agents — init-time AGENTS.md context-fence generation — workflow::judgment — the guest judgment legs — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on standards (no wasmtime in its graph)
 dispatch                 # wasm-clean dispatch boundary — clap grammar, envelopes, exit contract, pure verb handlers; sole consumer is the workflow guest shim
