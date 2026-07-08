@@ -57,8 +57,6 @@ members = [
     "crates/schema",
     "crates/workflow",
     "crates/specify",
-    "crates/echo-source",
-    "crates/echo-target",
     "crates/runtime",
 ]
 

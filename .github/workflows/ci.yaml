@@ -31,7 +31,27 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
+      # The composed runtime tests resolve real adapter components from
+      # the global adapter store (store-first, dev-sibling fallback);
+      # populate it from the registry at the committed pin. The store is
+      # cached on the pin, so a warm run needs neither network nor wkg
+      # (fetch-adapters skips existing entries).
+      - name: Cache adapter store
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/specify-adapter-store
+          key: adapter-store-${{ hashFiles('crates/runtime/tests/adapters.pin') }}
+
+      - name: Install wkg
+        run: cargo install wkg@0.15.0 --locked # pinned: matches the release workflows
+
+      - name: Fetch pinned adapter components
+        env:
+          SPECIFY_ADAPTER_STORE: ${{ runner.temp }}/specify-adapter-store
+        run: cargo make fetch-adapters
+
       - name: Rust workspace CI
         env:
           SPECIFY_ADAPTERS: ${{ github.workspace }}/specify-adapters
+          SPECIFY_ADAPTER_STORE: ${{ runner.temp }}/specify-adapter-store
         run: cargo make ci

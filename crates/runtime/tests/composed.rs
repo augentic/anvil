@@ -5,16 +5,17 @@
 //! workflow guest's `wasi:cli/run` through `omnia::run` with real argv,
 //! proving the wasip3 argv seam and the exit-code passthrough end to end
 //! (guest stdout is inherited in-process, so these assert the exit path).
-//! Subprocess: run the replay binary against the checked-in
-//! `omnia.toml` and assert the shim's stdout. The adapter link dispatch
-//! itself (survey/extract/build through `specify:adapter/source`/`target`)
-//! needs a scaffolded `.specify/` project in the mount and lands with the
-//! composed workflow tests (`workflow.rs`).
+//! Subprocess: run the replay binary against a rendered composed
+//! manifest over real resolved adapter components and assert the shim's
+//! stdout. The adapter link dispatch itself (survey/extract/build
+//! through `specify:adapter/source`/`target`) needs a scaffolded
+//! `.specify/` project in the mount and lands with the composed
+//! workflow tests (`workflow.rs`).
 
 use anyhow::Result;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 
-use crate::common::{self, Bundle, Quiet, SPECIFY_WASM};
+use crate::common::{self, Bundle, Quiet};
 
 // Drive one command-mode run of the composed deployment with the given
 // guest argv (argv[0], the program name, is supplied by the runtime core),
@@ -58,36 +59,29 @@ async fn usage_error_passthrough() -> Result<()> {
     Ok(())
 }
 
-// The real binary + the checked-in omnia.toml: stdout carries the shared
-// grammar's version line, proving argv forwarding (`-- --version`) through
-// the subprocess surface — and that the full N+1 manifest (workflow + the
-// eight release-built adapter components) composes. Targets the replay sibling
-// (`runtime-replay`): the `specify` binary's cursor-bound guest
-// leg requires `cursor-agent` on PATH at backend connect, which CI must
-// not.
+// The real binary + a rendered composed manifest (workflow guest plus
+// real resolved adapter components — store-first, sibling fallback):
+// stdout carries the shared grammar's version line, proving argv
+// forwarding (`-- --version`) through the subprocess surface. Targets
+// the replay sibling (`runtime-replay`): the `specify` binary's
+// cursor-bound guest leg requires `cursor-agent` on PATH at backend
+// connect, which CI must not. The checked-in repo-root omnia.toml is a
+// dev convenience only — no test consumes it.
 #[test]
 fn binary_stdout() -> Result<()> {
-    let engine = common::workspace_root();
-    let built = common::guest_wasm(SPECIFY_WASM);
-    // omnia.toml resolves guest paths relative to itself, expecting the
-    // workflow artifact under the repo-root target/ (the default target
-    // dir) and the release-built adapter components in the sibling
-    // checkout. Mirror the built guest there when CARGO_TARGET_DIR
-    // redirects the build elsewhere.
-    let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(SPECIFY_WASM);
-    if built != expected {
-        std::fs::create_dir_all(expected.parent().expect("artifact dir has a parent"))?;
-        std::fs::copy(&built, &expected)?;
-    }
-    common::adapters_root();
+    let mount = tempfile::tempdir()?;
+    let _cache = common::scoped_cache(mount.path());
+    let manifest = common::composed_manifest(mount.path(), &["source:intent", "target:omnia"])?;
 
     // An ephemeral port keeps the background HTTP trigger from colliding with
     // parallel test runs; command mode exits when the CLI guest finishes.
     let port = free_port()?;
     let output = assert_cmd::Command::cargo_bin("runtime-replay")?
-        .current_dir(&engine)
+        .current_dir(common::workspace_root())
         .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
-        .args(["run", "--config", "omnia.toml", "--", "--version"])
+        .args(["run", "--config"])
+        .arg(manifest.path())
+        .args(["--", "--version"])
         .output()?;
 
     assert!(

@@ -1,8 +1,10 @@
-# DEV-ONLY replay manifest — not an operator template. Debug-built guest
-# paths and sibling-checkout adapter paths below only resolve in a
-# development environment; running a guest verb with cwd = the repo root
-# picks this file up wholesale (omnia.toml-wins), which is exactly its
-# purpose here and a footgun anywhere else.
+# DEV-ONLY replay manifest — not an operator template, and no test
+# consumes it (the composed tests render their own manifests over
+# store-resolved components; see crates/runtime/tests/common.rs).
+# Debug-built guest paths and sibling-checkout adapter paths below only
+# resolve in a development environment; running a guest verb with cwd =
+# the repo root picks this file up wholesale (omnia.toml-wins), which is
+# exactly its purpose here and a footgun anywhere else.
 #
 # Composed deployment manifest: the workflow guest plus the eight adapter
 # guests, each adapter's MCP references routed at /mcp/<name>, over one

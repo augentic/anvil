@@ -165,9 +165,7 @@ standards                # standards layer — depends on {error,schema,diagnost
 workflow                 # workflow layer — depends on {error,schema,artifacts,diagnostics,omnia-guest} (also owns workflow::agents — init-time AGENTS.md context-fence generation — workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability (WASI-backed on wasm32; native tests bind the scripted mock in each test binary) — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on standards (no wasmtime in its graph)
 dispatch                 # wasm-clean dispatch boundary — clap grammar, envelopes, exit contract, pure verb handlers; shared by the native binary and the specify guest
 specify                  # wasm32 wasi:cli/run shim over dispatch + workflow (the core guest — published as specify:core@<binary version> on release; no committed artifact)
-echo-source              # wasm32 skeleton source-adapter guest for the composed runtime tests
-echo-target              # wasm32 skeleton target-adapter guest for composed-runtime coverage
-runtime                  # dev-only: the runtime-replay binary (the same runtime! macro over ModelDefault, for CI) + the composed-deployment integration tests
+runtime                  # dev-only: the runtime-replay binary (the same runtime! macro over ModelDefault, for CI) + the composed-deployment integration tests + the echo adapter guests (skeleton source/target fixtures as cdylib examples)
 specify-cli (root crate) # the one binary: a single omnia::runtime! command-mode invocation over the cursor-bound backends — no Specify vocabulary; every verb runs in the specify guest
 ```
 

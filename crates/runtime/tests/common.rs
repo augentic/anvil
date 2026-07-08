@@ -1,9 +1,10 @@
 //! Shared helpers for the composed-deployment integration tests.
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
-//! `omnia_testkit::find_guest`, pointed at the `{echo-source,echo-target,specify}` guest crates), the
-//! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
-//! macros generate, and the skeleton manifest the tests deploy.
+//! `omnia_testkit::find_guest`, pointed at the `specify` guest crate and the
+//! echo example fixtures of this crate), the hand-rolled backend bundles
+//! mirroring what the host binaries' `runtime!` macros generate, and the
+//! skeleton manifest the tests deploy.
 //!
 //! **Test-only in-process harness.** The product path is the `specify`
 //! binary — one `omnia::runtime!` invocation over the cursor-bound
@@ -26,8 +27,9 @@ use omnia_wasi_model::{
     Answer, FutureResult, HasModel, ModelDefault, Request, ToolHost, WasiModel, WasiModelCtx,
 };
 
-/// Built artifact name of the echo source-adapter guest.
-pub const ECHO_WASM: &str = "echo_source.wasm";
+/// Built artifact name of the echo source-adapter guest (a cdylib
+/// example of this crate, landing under `examples/`).
+pub const ECHO_WASM: &str = "examples/echo_source.wasm";
 
 /// Built artifact name of the workflow (`wasi:cli/run`) guest.
 pub const SPECIFY_WASM: &str = "specify.wasm";
@@ -60,18 +62,24 @@ pub fn guest_wasm(file: &str) -> PathBuf {
     path
 }
 
-// Build the skeleton guest crates once per test process; cargo's own build
+// Build the guest artifacts once per test process — the core `specify`
+// guest plus the echo example fixtures of this crate; cargo's own build
 // lock serializes concurrent invocations across test binaries.
 fn build_guests() {
     static GUESTS: OnceLock<()> = OnceLock::new();
     GUESTS.get_or_init(|| {
-        let status = Command::new("cargo")
-            .env("CARGO_TARGET_DIR", target_dir())
-            .args(["build", "-p", "echo-source", "-p", "workflow", "--target", "wasm32-wasip2"])
-            .current_dir(workspace_root())
-            .status()
-            .expect("spawning guest build");
-        assert!(status.success(), "guest build failed with status {status}");
+        for args in [
+            ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
+            ["build", "-p", "runtime", "--examples", "--target", "wasm32-wasip2"].as_slice(),
+        ] {
+            let status = Command::new("cargo")
+                .env("CARGO_TARGET_DIR", target_dir())
+                .args(args)
+                .current_dir(workspace_root())
+                .status()
+                .expect("spawning guest build");
+            assert!(status.success(), "guest build failed with status {status}");
+        }
     });
 }
 
@@ -86,57 +94,74 @@ fn target_dir() -> PathBuf {
         .to_path_buf()
 }
 
-/// The sibling `augentic/specify-adapters` checkout carrying the adapter
-/// guest sources the composed deployment builds on (release-built via
-/// `cargo make release` there; adapters ship as single-file components,
-/// never as committed `guest.wasm` artifacts).
-///
-/// # Panics
-///
-/// Panics when the checkout is absent — the composed workflow tests hard-
-/// require it (same posture as the `omnia` path pins in `Cargo.toml`).
-pub fn adapters_root() -> PathBuf {
-    let root = workspace_root()
-        .parent()
-        .expect("the specify repo root has a parent")
-        .join("specify-adapters");
-    assert!(
-        root.is_dir(),
-        "sibling augentic/specify-adapters checkout not found at {root}; the composed \
-         deployment tests require it (see the repo-root omnia.toml)",
-        root = root.display()
-    );
-    root
+/// The pinned first-party adapters version the composed tests resolve
+/// from the global adapter store. Single source of truth shared with
+/// the `fetch-adapters` make task (which reads the same file).
+fn adapters_pin() -> &'static str {
+    include_str!("adapters.pin").trim()
 }
 
-/// The sibling checkout's release-built component for one adapter,
-/// addressed by its manifest guest id (`source:intent`, `target:omnia`,
-/// …), mirroring the checked-in repo-root `omnia.toml` paths. Locate-
-/// only: the one-time `cargo make release` in the sibling checkout is a
-/// developer prerequisite (this repo's tests never drive a build in the
-/// sibling workspace).
+// The sibling `augentic/specify-adapters` checkout — the development
+// fallback source for adapter components (release-built via
+// `cargo make release` / `cargo make dev` there).
+fn adapters_root() -> PathBuf {
+    workspace_root()
+        .parent()
+        .expect("the specify repo root has a parent")
+        .join("specify-adapters")
+}
+
+/// The real adapter component for one manifest guest id
+/// (`source:intent`, `target:omnia`, …). Locate-only — tests never
+/// fetch or build; population is the explicit `cargo make
+/// fetch-adapters` task (CI) or a sibling `cargo make release` (dev).
+///
+/// Resolution order mirrors the product posture:
+///
+/// 1. the global adapter store entry `<name>@<pin>.wasm` (root from
+///    `$SPECIFY_ADAPTER_STORE`, else `$HOME/.specify/adapters`),
+///    verify-on-read against its digest sidecar;
+/// 2. the sibling checkout's release build
+///    (`../specify-adapters/target/wasm32-wasip2/release/<name>.wasm`).
 ///
 /// # Panics
 ///
-/// Panics when the id has no axis prefix or the artifact is absent.
+/// Panics when the id has no axis prefix, a store entry fails
+/// verify-on-read, or both probes miss.
 pub fn adapter_component_wasm(id: &str) -> PathBuf {
     let (_axis, name) = id.split_once(':').expect("adapter guest id is `<axis>:<name>`");
-    let path = adapters_root()
+    let pin = adapters_pin();
+    let entry = schema::cache::adapter_store_entry(name, pin);
+    if entry.exists() {
+        if let Err(drift) = schema::cache::verify_store_entry(name, pin) {
+            panic!(
+                "store entry {entry} failed verify-on-read: recorded {recorded}, actual \
+                 {actual}; remove the entry and re-run `cargo make fetch-adapters`",
+                entry = entry.display(),
+                recorded = drift.recorded,
+                actual = drift.actual,
+            );
+        }
+        return entry;
+    }
+    let sibling = adapters_root()
         .join("target/wasm32-wasip2/release")
         .join(format!("{}.wasm", name.replace('-', "_")));
     assert!(
-        path.exists(),
-        "adapter component not found at {path}; run `cargo make release` in the sibling \
-         specify-adapters checkout",
-        path = path.display()
+        sibling.exists(),
+        "adapter component `{name}` not found: no store entry at {entry} and no sibling \
+         release build at {sibling}; run `cargo make fetch-adapters` from the repo root \
+         (or `cargo make release` in the sibling specify-adapters checkout)",
+        entry = entry.display(),
+        sibling = sibling.display(),
     );
-    path
+    sibling
 }
 
-/// A composed-deployment manifest: the workflow guest plus the
-/// given release-built adapter components (each with its `/mcp/<name>` route),
+/// A composed-deployment manifest: the workflow guest plus the given
+/// resolved adapter components (each with its `/mcp/<name>` route),
 /// sharing one writable `"."` mount at `mount` — the shape of the
-/// checked-in repo-root `omnia.toml` over a test-owned project tree —
+/// dev-only repo-root `omnia.toml` over a test-owned project tree —
 /// plus the per-project derived cache mounted at the guest cache
 /// preopen (guest routing), mirroring the generated manifest.
 ///
@@ -177,7 +202,7 @@ pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest
     temp_manifest(&doc)
 }
 
-/// Assemble a composed deployment (workflow + release-built adapters, `"."`
+/// Assemble a composed deployment (workflow + resolved adapters, `"."`
 /// mounted at `mount`) into a runtime the in-process HTTP driver can
 /// serve requests through, over the stubbed model backend.
 ///

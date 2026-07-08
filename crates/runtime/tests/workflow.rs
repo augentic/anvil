@@ -1,7 +1,8 @@
 //! Composed workflow tests over the full deployment: the workflow
-//! guest plus release-built adapter components from the sibling
-//! `augentic/specify-adapters` checkout, driven in command mode with the
-//! model backend stubbed.
+//! guest plus real adapter components (resolved store-first from the
+//! global adapter store, falling back to the sibling
+//! `augentic/specify-adapters` checkout's release build), driven in
+//! command mode with the model backend stubbed.
 //!
 //! Three proofs beyond the command-mode skeleton:
 //!
@@ -64,8 +65,8 @@ impl Project {
         }
         fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: omnia\nrules: {}\n")
             .expect("write project.yaml");
-        // Stage the sibling checkout's release-built omnia component at
-        // the resolver's in-repo development probe
+        // Stage the resolved omnia component at the resolver's in-repo
+        // development probe
         // (`<project>/target/wasm32-wasip2/release/omnia.wasm`),
         // which sits under the `"."` mount so the guest sees it too.
         let dev_dir = root.join("target/wasm32-wasip2/release");

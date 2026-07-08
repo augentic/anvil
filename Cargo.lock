@@ -1195,28 +1195,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
-name = "echo-source"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "omnia-wasi-http",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.58.0",
-]
-
-[[package]]
-name = "echo-target"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "omnia-wasi-http",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.58.0",
-]
-
-[[package]]
 name = "either"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3635,6 +3613,8 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "wasip3",
+ "wit-bindgen 0.58.0",
  "workflow",
 ]
 

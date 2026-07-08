@@ -87,12 +87,64 @@ env = { RUSTFLAGS = "-Dwarnings" }
 
 # Build guests
 #
-# wasm32-wasip2 skeleton guest components (RFC-61 Step 1) loaded by the
-# composed runtime integration tests in crates/runtime/tests/. The target
-# comes from rust-toolchain.toml.
+# wasm32-wasip2 guest components loaded by the composed runtime
+# integration tests in crates/runtime/tests/: the core `specify` guest
+# plus the echo adapter fixtures (cdylib examples of the runtime crate,
+# landing under target/wasm32-wasip2/debug/examples/). Two invocations:
+# `--examples` narrows target selection to example targets only, so the
+# core guest's lib needs its own build.
 [tasks.build-guests]
-command = "cargo"
-args = ["build", "-p", "echo-source", "-p", "echo-target", "-p", "specify", "--target", "wasm32-wasip2"]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+cargo build -p specify --target wasm32-wasip2
+cargo build -p runtime --examples --target wasm32-wasip2
+'''
+
+# Fetch adapters
+#
+# Populate the global adapter store with the pinned published adapter
+# components the composed runtime tests resolve (store-first; the dev
+# sibling checkout's release build is the fallback — see
+# crates/runtime/tests/common.rs `adapter_component_wasm`). The version
+# pin is the single source of truth at crates/runtime/tests/adapters.pin,
+# shared with the test harness. Idempotent and offline-safe: an existing
+# store entry is never re-fetched, so a warm store needs neither network
+# nor `wkg`. On miss, requires `wkg` on PATH (CI pins
+# `cargo install wkg@0.15.0 --locked`). The store root honours
+# `$SPECIFY_ADAPTER_STORE` (else `$HOME/.specify/adapters`) and the
+# registry host `$SPECIFY_REGISTRY` (else augentic.io), matching the
+# release workflow. The sidecar written beside each entry is the
+# verify-on-read record `schema::cache::verify_store_entry` checks.
+[tasks.fetch-adapters]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+pin="$(tr -d '[:space:]' < crates/runtime/tests/adapters.pin)"
+store="${SPECIFY_ADAPTER_STORE:-${HOME}/.specify/adapters}"
+registry="${SPECIFY_REGISTRY:-augentic.io}"
+mkdir -p "${store}"
+config="$(mktemp)"
+trap 'rm -f "${config}"' EXIT
+printf '[namespace_registries]\nspecify = "%s"\n' "${registry}" > "${config}"
+for name in intent omnia; do
+    entry="${store}/${name}@${pin}.wasm"
+    meta="${store}/${name}@${pin}.meta"
+    if [ -f "${entry}" ]; then
+        echo "${name}@${pin} already in store; skipping"
+        continue
+    fi
+    echo "fetching specify:${name}@${pin} into ${entry}"
+    wkg get "specify:${name}@${pin}" --output "${entry}" --config "${config}"
+    if command -v sha256sum >/dev/null 2>&1; then
+        digest="$(sha256sum "${entry}" | awk '{print $1}')"
+    else
+        digest="$(shasum -a 256 "${entry}" | awk '{print $1}')"
+    fi
+    printf 'tree_digest: sha256:%s\n' "${digest}" > "${meta}"
+    chmod a-w "${entry}"
+done
+'''
 
 # Test
 #
