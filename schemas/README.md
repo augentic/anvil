@@ -6,8 +6,6 @@ This directory contains JSON Schemas and bundled workflow fixtures used by the `
 
 | Schema | Purpose |
 |---|---|
-| [`extension.schema.json`](extension.schema.json) | Validates the project-scope `tools[]` array in `.specify/project.yaml` — each entry's kebab-case `name`, strict-semver `version`, `source` URI (`$PROJECT_DIR` / `$CAPABILITY_DIR` prefixes or a `specify:<name>@<semver>` package ref), optional `sha256`, and `permissions.{read,write}` paths that may not target `.specify/`. |
-| [`extension-sidecar.schema.json`](extension-sidecar.schema.json) | Validates the WASI extension cache sidecar recording `(scope, tool-name, tool-version, source, fetched-at, permissions-snapshot)` plus optional `sha256` / `package` for a fetched cache entry; `scope` is `project--<name>` or `adapter--<axis>--<slug>`. |
 | [`evidence.schema.json`](evidence.schema.json) | Validates per-source `Evidence` files written by `source.extract` per workflow §Source adapter contract; closed `kind` enum includes the spatial `region` / `container` / `leaf` kinds from day one. |
 | [`discovery/lead.schema.json`](discovery/lead.schema.json) | Validates a single lead block under `## Lead inventory` in `discovery.md` per workflow §Discovery handshake. |
 | [`plan/plan.schema.json`](plan/plan.schema.json) | Validates `plan.yaml` structure, including the structured `sources[<key>]` binding shape and the per-slice `project` binding (optional; an omitted value resolves to the sole topology project). The target adapter is not stored per slice — it is resolved on demand from the bound project's topology. |

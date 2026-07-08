@@ -1,9 +1,9 @@
 # Tool Declarations
 
 > [!NOTE]
-> **Who needs this page.** Tool declarations are an advanced authoring topic for *project authors* who ship a deterministic lint helper alongside their rules. If you are running changes, you can skip it. Adapter-owned helpers (the contract validator and the Vectis tools) are **not** declared tools anymore — they are in-guest library code inside each adapter's published component (Omnia-migration cutover). The one runner that dispatched declared tools (`specify lint project`) retired from the operational surface; the declaration shape below survives as the validated `tools[]` contract until the surface's fate is decided.
+> **Who needs this page.** Tool declarations are an advanced authoring topic for *project authors* who ship a deterministic lint helper alongside their rules. If you are running changes, you can skip it. Adapter-owned helpers (the contract validator and the Vectis tools) are **not** declared tools anymore — they are in-guest library code inside each adapter's published component (Omnia-migration cutover). The one runner that dispatched declared tools (`specify lint project`) retired from the operational surface; the declaration shape below survives as the parse-enforced `tools[]` contract until the surface's fate is decided.
 
-Specify tools are WASI components a **project** declares for deterministic lint helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specify` binary resolved, cached, and ran them with explicit permissions when a `kind: tool` lint hint named them during the retired `specify lint project` run; today the declaration shape is validated but no verb dispatches a project-scope tool.
+Specify tools are WASI components a **project** declares for deterministic lint helper work. ([WASI](https://wasi.dev/) — the WebAssembly System Interface — lets a sandboxed WebAssembly module run with tightly scoped filesystem access and no network.) The `specify` binary resolved, cached, and ran them with explicit permissions when a `kind: tool` lint hint named them during the retired `specify lint project` run; today the declaration shape is enforced at parse time but no verb dispatches a project-scope tool.
 
 ## Declaration site
 
@@ -87,7 +87,7 @@ The framework linter reserves rule ids for this surface:
 - `tool.write-permission-too-broad` may warn on broad writes, including `$PROJECT_DIR`, when a future framework linter has enough context to distinguish root-file scaffolding from unnecessarily broad authority.
 - `tool.lifecycle-state-write-denied` rejects writes to Specify lifecycle state.
 
-Tool declaration structure is validated by the `specify-extension` shape (the `tools[]` schema); no verb assembles a declared-tool inventory today.
+Tool declaration structure is enforced at parse time by the `tools[]` serde shape (`specify_workflow::config::tools`); the standalone structural-validation surface retired with it, and no verb assembles a declared-tool inventory today.
 
 ## See also
 

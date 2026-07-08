@@ -6,14 +6,6 @@
 //! schema" for the standards-layer schemas; the workflow schemas are
 //! pinned by the workflow contract under `docs/standards/workflow.md`.
 
-/// Schema for an adapter's declared WASI extension (`extension.schema.json`).
-pub const EXTENSION_JSON_SCHEMA: &str = include_str!("../../../schemas/extension.schema.json");
-
-/// Schema for a fetched WASI extension sidecar metadata file
-/// (`<artifact>.sha256` companion manifest).
-pub const EXTENSION_SIDECAR_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/extension-sidecar.schema.json");
-
 /// Schema for `plan.yaml` (workflow contract — `slices[].sources[]`
 /// bindings, `target`, slice-level `divergence` enum).
 pub const PLAN_JSON_SCHEMA: &str = include_str!("../../../schemas/plan/plan.schema.json");
@@ -176,12 +168,6 @@ pub const REPORT_ANSWER_JSON_SCHEMA: &str =
 /// byte-match its on-disk source). Add new embedded constants here in
 /// the same change that declares them.
 pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
-    ("EXTENSION_JSON_SCHEMA", "schemas/extension.schema.json", EXTENSION_JSON_SCHEMA),
-    (
-        "EXTENSION_SIDECAR_JSON_SCHEMA",
-        "schemas/extension-sidecar.schema.json",
-        EXTENSION_SIDECAR_JSON_SCHEMA,
-    ),
     ("PLAN_JSON_SCHEMA", "schemas/plan/plan.schema.json", PLAN_JSON_SCHEMA),
     ("EVIDENCE_JSON_SCHEMA", "schemas/evidence.schema.json", EVIDENCE_JSON_SCHEMA),
     ("LEAD_JSON_SCHEMA", "schemas/discovery/lead.schema.json", LEAD_JSON_SCHEMA),

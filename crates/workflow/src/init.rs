@@ -16,7 +16,6 @@ pub use adapter_uri::{
 pub use cache::{CodexMeta, ComponentMeta, codex_cache_root};
 use jiff::Timestamp;
 use specify_error::Error;
-use specify_extension::{DEFAULT_WASM_PKG_CONFIG, WASM_PKG_CONFIG_FILENAME};
 use specify_model::atomic::bytes_write;
 
 use crate::adapter::PlatformsViolation;
@@ -194,12 +193,24 @@ pub(crate) fn upsert_gitignore(project_dir: &Path) -> Result<(), Error> {
     crate::registry::ensure_gitignore_entries(project_dir)
 }
 
+/// Filename of the project-local wasm-pkg config inside `.specify/`.
+const WASM_PKG_CONFIG_FILENAME: &str = "wasm-pkg.toml";
+
+/// Canonical contents `specify init` writes for a fresh project.
+///
+/// Mirrors the wasm-pkg distribution model so `wkg --config
+/// .specify/wasm-pkg.toml` and any future in-guest fetch leg agree on
+/// namespace routing.
+const DEFAULT_WASM_PKG_CONFIG: &str = "default_registry = \"augentic.io\"\n\
+                                       \n\
+                                       [namespace_registries]\n\
+                                       specify = \"augentic.io\"\n";
+
 /// Scaffold the project-local wasm-pkg config when absent, preserving
 /// any operator-edited file byte-for-byte on re-init.
 ///
 /// The contents are the canonical wasm-pkg namespace mapping
-/// (`specify -> augentic.io`); see
-/// [`specify_extension::DEFAULT_WASM_PKG_CONFIG`]. Operators are expected
+/// (`specify -> augentic.io`). Operators are expected
 /// to edit this file to add private mirrors or other namespace
 /// mappings, so a re-init must never clobber their changes.
 ///

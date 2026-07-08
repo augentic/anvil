@@ -42,7 +42,6 @@ specify-error.workspace = true
 specify-guest-model.workspace = true
 specify-model.workspace = true
 specify-schema.workspace = true
-specify-extension.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true

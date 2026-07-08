@@ -46,7 +46,6 @@ members = [
     "crates/guest-model",
     "crates/model",
     "crates/schema",
-    "crates/extension",
     "crates/workflow",
     "crates/echo-guest",
     "crates/echo-target-guest",
@@ -194,7 +193,6 @@ specify-model = { path = "crates/model" }
 specify-workflow = { path = "crates/workflow", default-features = false }
 specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
-specify-extension = { path = "crates/extension" }
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"

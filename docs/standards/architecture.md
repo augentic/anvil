@@ -11,9 +11,8 @@ specify-error                    # leaf — thiserror + serde-saphyr only
 specify-schema                   # depends on specify-error (embedded JSON Schemas + jsonschema plumbing; also owns schema::digest — SHA-256 hex via sha2 + base16ct)
 specify-diagnostics              # depends on specify-{error,schema} (Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
 specify-model                    # depends on specify-{error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; model::validate artifact rule registry — NOT on specify-workflow or anything named lint)
-specify-extension                # depends on specify-{diagnostics,schema} (WASI extension manifest DTOs + structural validation; wasmtime-free leaf)
 specify-standards                # standards layer — depends on specify-{error,schema,diagnostics}; NOT on specify-workflow
-specify-workflow                 # workflow layer — depends on specify-{error,schema,extension,model,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation); NOT on specify-standards (no wasmtime in its graph)
+specify-workflow                 # workflow layer — depends on specify-{error,schema,model,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on specify-standards (no wasmtime in its graph)
 specify (root crate)             # the omnia::runtime! binary — depends on no specify-* crate
 ```
 
@@ -56,7 +55,7 @@ Four module trees carry the workflow contract — three in `specify-workflow`, p
 
 ## WASI tool sidecar scope
 
-The WASI tool cache root resolves `$SPECIFY_EXTENSIONS_CACHE` → `$XDG_CACHE_HOME/specify/extensions/` → `$HOME/.cache/specify/extensions/`. Inside it the scope segment is `project--<project-name>` for project-scope tools (the only scope with a declaration shape since S4 — adapter-scope extensions retired with the `extension run` verb family). The `--` separator avoids collisions with hyphenated names. The plugin-scope substitution variable that maps into permission paths is `$CAPABILITY_DIR` (it expands to the resolved adapter's root directory and is rejected on project-scope use as `tool.capability-dir-out-of-scope`). The declaration DTOs and this validation live in `specify-extension`; no runner exists today — the Wasmtime tool runner deleted with the `specify-registry` crate, so nothing resolves or executes declared tools until the `tools[]` surface's fate is decided.
+Historical: the WASI tool cache (`$SPECIFY_EXTENSIONS_CACHE` → `$XDG_CACHE_HOME/specify/extensions/` → `$HOME/.cache/specify/extensions/`, `project--<project-name>` scope segments) deleted with the Wasmtime tool runner and the `specify-registry` crate, and the structural validation surface deleted with `specify-extension`. What survives is the parse-clean `tools[]` declaration shape on `project.yaml` (`specify_workflow::config::tools`); nothing resolves, validates, or executes declared tools until the `tools[]` surface's fate is decided.
 
 ## WASI carve-outs
 
@@ -64,7 +63,7 @@ The two adapter validators — `contract` and `vectis` — no longer live in thi
 
 The framework checkers behind `specify lint framework`'s Road B rules are not WASI components — they run in-process inside `specify-standards` (`crates/standards/src/lint/framework_tools/`), resolved by name from the `kind: tool` evaluator before the `ToolRunner` trait (which survives for the project-side WASI path).
 
-**Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. The `specify-registry` crate (the wasm-pkg transport, adapter store install path, and Wasmtime tool runner) is deleted — the declared-tool (`tools[]`) declaration shape survives in `specify-extension` until that surface's fate is decided. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
+**Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. The `specify-registry` and `specify-extension` crates are deleted — the declared-tool (`tools[]`) declaration shape survives as `specify_workflow::config::tools` until that surface's fate is decided. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
 
 ## Layout boundary
 
