@@ -171,8 +171,11 @@ pub fn proposal() -> Value {
         take(&mut defs, request_only);
     }
     // A def added to the canonical schema must be classified here —
-    // response-reachable stays, request-only joins the trim list.
-    let residual: Vec<&String> = defs.as_object().expect("$defs is an object").keys().collect();
+    // response-reachable stays, request-only joins the trim list. Sorted:
+    // map key order depends on serde_json's `preserve_order` feature,
+    // which downstream dependencies may toggle.
+    let mut residual: Vec<&String> = defs.as_object().expect("$defs is an object").keys().collect();
+    residual.sort();
     assert_eq!(
         residual,
         ["disagreement", "gateProse", "kebabName", "responseMember", "responseSlice"],
@@ -266,7 +269,11 @@ pub fn synthesis() -> Value {
 }
 
 /// Render an answer schema the way the generated `schemas/answers/`
-/// files are committed: pretty-printed with a trailing newline.
+/// files are committed: object keys sorted, pretty-printed, trailing
+/// newline.
+///
+/// The explicit sort keeps the byte shape independent of `serde_json`'s
+/// `preserve_order` feature, which downstream dependencies may toggle.
 ///
 /// # Panics
 ///
@@ -274,9 +281,25 @@ pub fn synthesis() -> Value {
 /// derivations above.
 #[must_use]
 pub fn render(schema: &Value) -> String {
-    let mut rendered = serde_json::to_string_pretty(schema).expect("answer schema serialises");
+    let mut rendered =
+        serde_json::to_string_pretty(&sort_keys(schema)).expect("answer schema serialises");
     rendered.push('\n');
     rendered
+}
+
+// Rebuild the value with object keys in sorted order, recursively.
+fn sort_keys(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut entries: Vec<(&String, &Value)> = map.iter().collect();
+            entries.sort_by_key(|(key, _)| *key);
+            Value::Object(
+                entries.into_iter().map(|(key, entry)| (key.clone(), sort_keys(entry))).collect(),
+            )
+        }
+        Value::Array(items) => Value::Array(items.iter().map(sort_keys).collect()),
+        other => other.clone(),
+    }
 }
 
 fn parse(source: &str) -> Value {
