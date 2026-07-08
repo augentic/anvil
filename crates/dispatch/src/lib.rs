@@ -6,7 +6,7 @@
 //! project context ([`context::Ctx`]), and the handlers for every pure
 //! workflow verb (`plan`, `slice`, `source`, `target`, `journal`).
 //!
-//! One consumer: the workflow guest shim (`crates/workflow-guest`)
+//! One consumer: the workflow guest shim (`crates/workflow`)
 //! parses argv through [`guest::route`], runs the pure verbs
 //! in-process, and drives the [`guest::Orchestration`] verbs against
 //! its WIT-provided seam. The `specify` binary itself is a generic

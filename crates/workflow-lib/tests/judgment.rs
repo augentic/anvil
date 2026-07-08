@@ -6,10 +6,10 @@ use std::collections::BTreeMap;
 
 use specify_guest_model::MockModel;
 use specify_model::evidence::{AuthorityClass, ClaimKind};
-use specify_workflow::change::{ProposalKind, ProposalRequest};
-use specify_workflow::judgment::synthesize::Kernel;
-use specify_workflow::judgment::{propose, synthesize};
-use specify_workflow::slice::{BaselineIndex, ProjectionHeader, SynthesisInputs};
+use specify_workflow_lib::change::{ProposalKind, ProposalRequest};
+use specify_workflow_lib::judgment::synthesize::Kernel;
+use specify_workflow_lib::judgment::{propose, synthesize};
+use specify_workflow_lib::slice::{BaselineIndex, ProjectionHeader, SynthesisInputs};
 
 fn request() -> ProposalRequest {
     serde_json::from_value(serde_json::json!({
@@ -78,7 +78,7 @@ mod propose_leg {
         let model = MockModel::answering([Box::leak(answer.into_boxed_str()) as &'static str]);
         let sources = BTreeMap::from([(
             "legacy".to_string(),
-            serde_json::from_value::<specify_workflow::change::SourceBinding>(serde_json::json!({
+            serde_json::from_value::<specify_workflow_lib::change::SourceBinding>(serde_json::json!({
                 "adapter": "typescript",
                 "path": "./vendor/legacy"
             }))

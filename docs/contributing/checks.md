@@ -128,7 +128,7 @@ Exit codes follow the existing semantics — `0` on a clean tree, `2` when findi
 
 Every relative link in every `.md` file must resolve to an existing file. External links (`http://`, `mailto:`, `#` anchors) and `src/` paths are skipped. Fenced code blocks and HTML comments are stripped before scanning.
 
-The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/workflow/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the lint (the Omnia-migration embed-time link resolution).
+The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/workflow-lib/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the lint (the Omnia-migration embed-time link resolution).
 
 **Common fix:** update the link target or remove a stale link.
 

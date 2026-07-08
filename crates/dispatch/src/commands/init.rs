@@ -18,8 +18,8 @@ use std::path::Path;
 use jiff::Timestamp;
 use serde::Serialize;
 use specify_error::{Error, Result};
-use specify_workflow::init::{InitOptions, InitResult, init};
-use specify_workflow::platform::parse_platforms_csv;
+use specify_workflow_lib::init::{InitOptions, InitResult, init};
+use specify_workflow_lib::platform::parse_platforms_csv;
 
 use crate::output::{self, Format};
 

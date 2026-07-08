@@ -3,7 +3,7 @@
 use std::io::Write;
 
 use serde::Serialize;
-use specify_workflow::registry::{Registry, RegistryProject};
+use specify_workflow_lib::registry::{Registry, RegistryProject};
 
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]

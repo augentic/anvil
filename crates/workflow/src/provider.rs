@@ -4,7 +4,7 @@
 //! world's `source` / `target` imports.
 //!
 //! The mapping layer between the WIT records and the seam DTOs lives
-//! here in full, so `specify-workflow` and `specify-dispatch` stay
+//! here in full, so `specify-workflow-lib` and `specify-dispatch` stay
 //! wasm-clean. Two mappings are judgment-free but deliberately shaped:
 //!
 //! - **Claims** cross as raw JSON objects (the evidence schema leaves
@@ -28,11 +28,11 @@ use std::future::Future;
 use specify_diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use specify_error::Error;
 use specify_model::evidence::AuthorityClass;
-use specify_workflow::adapter::describe::{DescribeAnswer, DescribeRequest};
-use specify_workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
-use specify_workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
-use specify_workflow::slice::build::wire::BUILD_VERSION;
-use specify_workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
+use specify_workflow_lib::adapter::describe::{DescribeAnswer, DescribeRequest};
+use specify_workflow_lib::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
+use specify_workflow_lib::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
+use specify_workflow_lib::slice::build::wire::BUILD_VERSION;
+use specify_workflow_lib::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::specify::adapter::{source, target, types};
 
@@ -292,8 +292,8 @@ const fn map_severity(severity: target::Severity) -> Severity {
 }
 
 /// WIT `target.platform` → the workflow [`Platform`] taxonomy.
-const fn map_platform(platform: target::Platform) -> specify_workflow::platform::Platform {
-    use specify_workflow::platform::Platform;
+const fn map_platform(platform: target::Platform) -> specify_workflow_lib::platform::Platform {
+    use specify_workflow_lib::platform::Platform;
     match platform {
         target::Platform::Core => Platform::Core,
         target::Platform::Ios => Platform::Ios,

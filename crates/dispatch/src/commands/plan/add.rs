@@ -6,12 +6,12 @@
 use std::collections::BTreeMap;
 
 use specify_error::Result;
-use specify_workflow::change::{
+use specify_workflow_lib::change::{
     Entry, Plan, SliceAuthorityOverride, Status, emit_authority_override_seed_events, entry_mut,
 };
-use specify_workflow::config::with_state;
-use specify_workflow::journal;
-use specify_workflow::schema::validate_plan;
+use specify_workflow_lib::config::with_state;
+use specify_workflow_lib::journal;
+use specify_workflow_lib::schema::validate_plan;
 
 use super::args::{bindings_from_args, load_discovery};
 use super::cli::AddArgs;

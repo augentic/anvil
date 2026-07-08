@@ -42,10 +42,10 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
 (
   cd "$root"
   cargo build -q -p specify
-  cargo build -q -p specify-workflow-guest --target wasm32-wasip2
+  cargo build -q -p specify-workflow --target wasm32-wasip2
 )
 specify="$root/target/debug/specify"
-workflow_wasm="$root/target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
+workflow_wasm="$root/target/wasm32-wasip2/debug/specify_workflow.wasm"
 # Pin the freshly built guest as the core (development override)
 # so init never hydrates `specify:core` from the registry — the loop
 # under test is the branch head, not a published core.

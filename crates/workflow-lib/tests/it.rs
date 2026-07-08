@@ -1,4 +1,4 @@
-//! Consolidated integration binary for `specify-workflow`.
+//! Consolidated integration binary for `specify-workflow-lib`.
 //!
 //! One binary per crate: each former `tests/<area>.rs` hub is pulled in here as
 //! a `#[path]` submodule so the crate-under-test links exactly once instead of

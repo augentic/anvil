@@ -1,7 +1,7 @@
 //! Shared helpers for the composed-deployment integration tests.
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
-//! `omnia_testkit::find_guest`, pointed at the `specify-*-guest` crates), the
+//! `omnia_testkit::find_guest`, pointed at the `specify-{echo-source,echo-target,workflow}` guest crates), the
 //! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
 //! macros generate, and the skeleton manifest the tests deploy.
 //!
@@ -27,10 +27,10 @@ use omnia_wasi_model::{
 };
 
 /// Built artifact name of the echo source-adapter guest.
-pub const ECHO_WASM: &str = "specify_echo_guest.wasm";
+pub const ECHO_WASM: &str = "specify_echo_source.wasm";
 
 /// Built artifact name of the workflow (`wasi:cli/run`) guest.
-pub const WORKFLOW_WASM: &str = "specify_workflow_guest.wasm";
+pub const WORKFLOW_WASM: &str = "specify_workflow.wasm";
 
 /// The repo workspace root (`<root>/crates/runtime` is this crate).
 pub fn workspace_root() -> PathBuf {
@@ -70,9 +70,9 @@ fn build_guests() {
             .args([
                 "build",
                 "-p",
-                "specify-echo-guest",
+                "specify-echo-source",
                 "-p",
-                "specify-workflow-guest",
+                "specify-workflow",
                 "--target",
                 "wasm32-wasip2",
             ])

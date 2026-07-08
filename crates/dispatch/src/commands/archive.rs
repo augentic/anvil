@@ -9,7 +9,7 @@ use std::io::Write;
 use cli::ArchiveAction;
 use serde::Serialize;
 use specify_error::{Error, Result};
-use specify_workflow::slice::actions::{Retention, prune};
+use specify_workflow_lib::slice::actions::{Retention, prune};
 
 use crate::context::Ctx;
 

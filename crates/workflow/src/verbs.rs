@@ -5,7 +5,7 @@
 //! them — the seam lives here, where the WIT bindings are. Each arm
 //! loads the shared [`Ctx`] (the `"."` preopen is the project root),
 //! reads the clock once at the boundary, drives the matching
-//! `specify_workflow::orchestrate` entry point, and renders a compact
+//! `specify_workflow_lib::orchestrate` entry point, and renders a compact
 //! outcome envelope through the same [`Ctx::write`] / `report`
 //! machinery the native verbs use — failures land on stderr with the
 //! native error-body shape and the native exit-code mapping.
@@ -24,11 +24,11 @@ use specify_dispatch::context::Ctx;
 use specify_dispatch::guest::{Orchestration, Verb};
 use specify_dispatch::output::{Exit, Format, report};
 use specify_error::Error;
-use specify_workflow::change::LoopStep;
-use specify_workflow::orchestrate;
-use specify_workflow::orchestrate::ExecuteOutcome;
-use specify_workflow::seam::WorkingTree;
-use specify_workflow::slice::BuildStatus;
+use specify_workflow_lib::change::LoopStep;
+use specify_workflow_lib::orchestrate;
+use specify_workflow_lib::orchestrate::ExecuteOutcome;
+use specify_workflow_lib::seam::WorkingTree;
+use specify_workflow_lib::slice::BuildStatus;
 
 use crate::provider::Provider;
 

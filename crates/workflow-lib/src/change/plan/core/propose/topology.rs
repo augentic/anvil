@@ -192,5 +192,5 @@ fn regular_topology(config: &ProjectConfig, project_dir: &Path) -> Result<Projec
 }
 
 // The `apply_greenfield_seed` projection is exercised through the crate's
-// public API in `crates/workflow/tests/propose_topology.rs` (seed → empty
+// public API in `crates/workflow-lib/tests/propose_topology.rs` (seed → empty
 // greenfield surface, seed shadowed by a baseline, absent-seed no-op).

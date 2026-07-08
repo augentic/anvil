@@ -23,7 +23,7 @@ The configuration surfaces:
 The CLI verbs that read or change Layer 0 state:
 
 - **`specify init <target>`** / **`specify init --workspace`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/workflow/src/adapter/`) routes by axis.
+- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/workflow-lib/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 

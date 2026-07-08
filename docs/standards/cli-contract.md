@@ -46,7 +46,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Source / target adapters and declared tools
 
 - `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates a manifest and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence (the two-phase `--phase` envelope and the isolated `source preview` verb retired at the cutover).
-- Declared WASI tools — a project declares tools in `.specify/project.yaml` (project scope, a `tools[]` array). The one runner (`specify lint project`) retired from the operational surface, and the Wasmtime runner itself deleted with the `specify-registry` crate, so no verb resolves or runs declared tools today; the declaration shape (`specify_workflow::config::tools`) survives only until the `tools[]` surface's fate is decided. Permissions are directory preopens with `$PROJECT_DIR`; the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Object declarations may pin `sha256`. The `extension` verb family and adapter-scope declarations retired at the cutover — adapter helpers are in-guest library code.
+- Declared WASI tools — a project declares tools in `.specify/project.yaml` (project scope, a `tools[]` array). The one runner (`specify lint project`) retired from the operational surface, and the Wasmtime runner itself deleted with the `specify-registry` crate, so no verb resolves or runs declared tools today; the declaration shape (`specify_workflow_lib::config::tools`) survives only until the `tools[]` surface's fate is decided. Permissions are directory preopens with `$PROJECT_DIR`; the host canonicalises paths and rejects `..`, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. Object declarations may pin `sha256`. The `extension` verb family and adapter-scope declarations retired at the cutover — adapter helpers are in-guest library code.
 
 ### Journal
 
@@ -99,7 +99,7 @@ Durable run telemetry is the newline-delimited JSON journal at `.specify/journal
 {"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}
 ```
 
-The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum's `WIRE_EVENT_IDS` table when the taxonomy changes:
+The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow-lib/src/journal.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum's `WIRE_EVENT_IDS` table when the taxonomy changes:
 
 | Family | Event ids | Emitted by |
 |---|---|---|

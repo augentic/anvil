@@ -1,13 +1,13 @@
 //! Integration coverage for the composition delta-merge kernel
-//! (`specify_workflow::merge::composition`). Re-homed and collapsed from the
+//! (`specify_workflow_lib::merge::composition`). Re-homed and collapsed from the
 //! former `merge/composition/tests.rs` unit module — the screen-level delta
 //! matrix has no CLI fixture. One test sweeps the `merge` operations and
 //! errors, the other the two pure shape predicates. Every former input is
 //! represented.
 
 use specify_error::Error;
-use specify_workflow::merge::MergeOperation;
-use specify_workflow::merge::composition::{
+use specify_workflow_lib::merge::MergeOperation;
+use specify_workflow_lib::merge::composition::{
     baseline_is_non_empty, is_whole_document_replacement, merge,
 };
 

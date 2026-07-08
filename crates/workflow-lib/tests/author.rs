@@ -1,6 +1,6 @@
 //! Plan-authoring orchestrator integration tests.
 //!
-//! Scripted end-to-end walks of `specify_workflow::orchestrate::author`
+//! Scripted end-to-end walks of `specify_workflow_lib::orchestrate::author`
 //! against mocked Model + source seam: scaffold → survey fan-out →
 //! reconcile (with Gate 1 prose) → project `plan.yaml.slices[]` →
 //! persist `change.md` / `discovery.md` → validate → exit at
@@ -13,11 +13,11 @@ use std::path::PathBuf;
 
 use jiff::Timestamp;
 use serde_json::{Value, json};
-use specify_workflow::change::{Lifecycle, Plan, SourceBinding, Status};
-use specify_workflow::config::Layout;
-use specify_workflow::orchestrate;
-use specify_workflow::seam::{Lead, MockSourceSeam};
-use specify_workflow::slice::SLICES_DIR_NAME;
+use specify_workflow_lib::change::{Lifecycle, Plan, SourceBinding, Status};
+use specify_workflow_lib::config::Layout;
+use specify_workflow_lib::orchestrate;
+use specify_workflow_lib::seam::{Lead, MockSourceSeam};
+use specify_workflow_lib::slice::SLICES_DIR_NAME;
 use tempfile::TempDir;
 
 use crate::common;
@@ -221,7 +221,7 @@ async fn author_fan_out_failure_aborts() {
     let sources = MockSourceSeam::scripted(
         [
             Ok(vec![lead("user-registration", "Registration endpoint per the design notes.")]),
-            Err(specify_workflow::seam::Error::Internal("survey brief crashed".to_string())),
+            Err(specify_workflow_lib::seam::Error::Internal("survey brief crashed".to_string())),
         ],
         [],
     );

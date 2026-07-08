@@ -22,7 +22,7 @@
 
 [[guest]]
 id = "workflow"
-source.path = "target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
+source.path = "target/wasm32-wasip2/debug/specify_workflow.wasm"
 # Link names must match the component's import names exactly (omnia's
 # polyfill is an exact string match), so they carry the WIT package version.
 link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]

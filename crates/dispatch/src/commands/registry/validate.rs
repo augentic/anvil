@@ -1,8 +1,8 @@
 //! `specify registry validate` handler.
 
 use specify_error::Result;
-use specify_workflow::config::ProjectConfig;
-use specify_workflow::registry::Registry;
+use specify_workflow_lib::config::ProjectConfig;
+use specify_workflow_lib::registry::Registry;
 
 use super::dto::{ValidateBody, write_validate_text};
 use crate::context::Ctx;

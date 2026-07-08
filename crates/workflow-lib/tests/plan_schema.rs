@@ -1,6 +1,6 @@
 //! Pure-library tests for `schemas/plan/plan.schema.json` (embedded as
 //! `specify_schema::PLAN_JSON_SCHEMA`) plus the kebab-name regex shared
-//! with `specify_workflow::slice::actions::validate_name`. CLI
+//! with `specify_workflow_lib::slice::actions::validate_name`. CLI
 //! integration tests for the `specify plan *` group live in the binary
 //! harness under `tests/workflow/`.
 
@@ -147,11 +147,11 @@ fn schema_rejects_non_kebab_name() {
 /// The JSON Schema regex and `validate_name` must agree on every name,
 /// in both directions. The cases below are the plan schema alias cases
 /// out; keep them in sync with the doc-comment on
-/// `specify_workflow::slice::actions::validate_name`.
+/// `specify_workflow_lib::slice::actions::validate_name`.
 #[test]
 fn kebab_name_regex_matches_validate_name() {
     use regex::Regex;
-    use specify_workflow::slice::actions as slice_actions;
+    use specify_workflow_lib::slice::actions as slice_actions;
 
     // Extract the pattern from the embedded schema to keep this test
     // honest against drift — the schema is the source of truth.

@@ -2,7 +2,7 @@
 //! workflow §Observability event taxonomy.
 //!
 //! `emit` is the guarded write: it deserialises `<event-id>` +
-//! `--payload` into the closed [`specify_workflow::journal::EventKind`]
+//! `--payload` into the closed [`specify_workflow_lib::journal::EventKind`]
 //! (the taxonomy *is* the per-kind payload schema — there is no
 //! parallel JSON-schema registry), stamps a second-precision UTC
 //! timestamp, and appends exactly one well-formed line to

@@ -15,7 +15,7 @@
 # docs/standards/testing.md and unit-test-reduction.md.
 [crate]
 standards = 55
-workflow = 59
+workflow-lib = 59
 schema = 10
 dispatch = 1
 model = 1

@@ -6,7 +6,7 @@
 
 use specify_diagnostics::Diagnostic;
 use specify_error::Error;
-use specify_workflow::merge::{merge, validate_baseline};
+use specify_workflow_lib::merge::{merge, validate_baseline};
 
 macro_rules! fixture {
     ($case:literal, $file:literal) => {

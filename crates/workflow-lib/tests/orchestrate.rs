@@ -1,7 +1,7 @@
 //! Guest orchestrator integration tests.
 //!
 //! Each test builds a throw-away project under `tempfile::TempDir` and
-//! drives the `specify_workflow::orchestrate` functions against the
+//! drives the `specify_workflow_lib::orchestrate` functions against the
 //! scripted seam mocks, proving the fan-out, the validate-before-visible
 //! tails, and the journal cadence match the native verbs.
 
@@ -13,14 +13,14 @@ use serde_json::{Value, json};
 use specify_diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity as DiagSeverity,
 };
-use specify_workflow::config::Layout;
-use specify_workflow::merge::{ArtifactClass, MergeStrategy};
-use specify_workflow::orchestrate;
-use specify_workflow::seam::{
+use specify_workflow_lib::config::Layout;
+use specify_workflow_lib::merge::{ArtifactClass, MergeStrategy};
+use specify_workflow_lib::orchestrate;
+use specify_workflow_lib::seam::{
     Error as SeamError, Evidence, Lead, MockSourceSeam, MockTargetSeam, SourceCall, TargetCall,
     WorkingTree,
 };
-use specify_workflow::slice::{
+use specify_workflow_lib::slice::{
     BuildOutput, BuildReport, BuildStatus, LifecycleStatus, SLICES_DIR_NAME, SliceMetadata,
     UiSurface,
 };
@@ -422,8 +422,8 @@ async fn build_happy_path_runs_finalize_tail() {
     assert_eq!(slice, SLICE_NAME);
     assert_eq!(tree.base, "rev-1");
     assert_eq!(inputs.len(), 4, "proposal, design, tasks, one spec");
-    assert_eq!(inputs[0], specify_workflow::seam::Input::Proposal("# Proposal body\n".into()));
-    assert_eq!(inputs[3], specify_workflow::seam::Input::Spec(DELTA_SPEC.into()));
+    assert_eq!(inputs[0], specify_workflow_lib::seam::Input::Proposal("# Proposal body\n".into()));
+    assert_eq!(inputs[3], specify_workflow_lib::seam::Input::Spec(DELTA_SPEC.into()));
 
     // The `built` transition landed.
     let metadata = SliceMetadata::load(&project.slice_dir()).expect("reload metadata");
@@ -480,7 +480,7 @@ async fn build_rejects_missing_outputs() {
 
     let report = BuildReport {
         outputs: vec![BuildOutput {
-            platform: specify_workflow::Platform::Core,
+            platform: specify_workflow_lib::Platform::Core,
             path: "crates/feature-x/src/lib.rs".to_string(),
         }],
         ..success_report()
@@ -666,8 +666,8 @@ async fn synthesize_reads_seam_guidance() {
 
     use specify_guest_model::MockModel;
     use specify_model::evidence::{AuthorityClass, ClaimKind};
-    use specify_workflow::judgment::synthesize::Kernel;
-    use specify_workflow::slice::{BaselineIndex, ProjectionHeader};
+    use specify_workflow_lib::judgment::synthesize::Kernel;
+    use specify_workflow_lib::slice::{BaselineIndex, ProjectionHeader};
 
     let dir = tempfile::tempdir().expect("tempdir");
     let baseline = BaselineIndex::build(&dir.path().join("specs")).expect("empty baseline");

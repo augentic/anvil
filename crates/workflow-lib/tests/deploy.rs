@@ -1,5 +1,5 @@
 //! Integration tests for the deployment-manifest generator
-//! (`specify_workflow::deploy`).
+//! (`specify_workflow_lib::deploy`).
 //!
 //! Covers the generated document shape (guests, mount, routes,
 //! transport, the core link allow-list — asserted on parsed TOML, not
@@ -12,8 +12,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use specify_error::Error;
-use specify_workflow::adapter::Axis;
-use specify_workflow::deploy::{DeployGuest, generate, manifest_path};
+use specify_workflow_lib::adapter::Axis;
+use specify_workflow_lib::deploy::{DeployGuest, generate, manifest_path};
 
 use crate::common;
 

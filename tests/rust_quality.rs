@@ -29,19 +29,19 @@ mod checks {
     pub const RULE_ARCHAEOLOGY: &str = "rust.archaeology-in-doc-comment";
     /// Rule id for `#[allow]` without a `reason`.
     pub const RULE_ALLOW_NO_REASON: &str = "rust.allow-without-reason";
-    /// Rule id for wall-clock reads in specify-workflow library code.
+    /// Rule id for wall-clock reads in specify-workflow-lib library code.
     pub const RULE_WORKFLOW_CLOCK: &str = "rust.workflow-clock-read";
     /// Rule id for first-party adapter name literals in runtime dispatch code.
     pub const RULE_ADAPTER_NAME_LITERAL: &str = "rust.adapter-name-literal-in-runtime";
 
     const BANNED_ADAPTER_NAMES: &[&str] = &["vectis", "omnia", "contracts"];
-    const RUNTIME_SCAN_PREFIXES: &[&str] = &["src/", "crates/workflow/src/"];
+    const RUNTIME_SCAN_PREFIXES: &[&str] = &["src/", "crates/workflow-lib/src/"];
 
-    /// Forward-slash prefix marking `specify-workflow` library sources. Time
+    /// Forward-slash prefix marking `specify-workflow-lib` library sources. Time
     /// injection (architecture §Time injection) forbids `Timestamp::now()`
     /// here; the clock is read once at the dispatch boundary and
     /// threaded down.
-    const WORKFLOW_SRC_PREFIX: &str = "crates/workflow/src/";
+    const WORKFLOW_SRC_PREFIX: &str = "crates/workflow-lib/src/";
 
     const ARCHAEOLOGY_MARKERS: &[&str] = &[
         "RFC-",
@@ -176,7 +176,7 @@ mod checks {
         path.strip_prefix(root).unwrap_or(path).display().to_string().replace('\\', "/")
     }
 
-    /// True for `specify-workflow` library sources subject to the
+    /// True for `specify-workflow-lib` library sources subject to the
     /// time-injection rule. Test modules (`tests.rs` files or anything under
     /// a `tests/` directory) are exempt — they pin the clock with fixtures.
     fn is_workflow_runtime_source(rel: &str) -> bool {
@@ -219,7 +219,7 @@ mod checks {
                 findings.push(Finding {
                 rule: RULE_WORKFLOW_CLOCK,
                 message: format!(
-                    "`Timestamp::now()` at {rel}:{line_no} — specify-workflow must accept an injected `now`; read the clock once at the dispatch boundary and thread it down (architecture §Time injection)"
+                    "`Timestamp::now()` at {rel}:{line_no} — specify-workflow-lib must accept an injected `now`; read the clock once at the dispatch boundary and thread it down (architecture §Time injection)"
                 ),
             });
             }
@@ -351,11 +351,11 @@ use checks::{
 const GATED_RULES: [(&str, &str); 5] = [
     (RULE_TEST_FN_NAME, "test fn names must be <= 40 chars (see docs/standards/testing.md)"),
     (
-        // Time injection (architecture §Time injection): `specify-workflow`
+        // Time injection (architecture §Time injection): `specify-workflow-lib`
         // must accept an injected `now`; the clock is read once in a
         // `src/runtime/commands/**` handler and threaded down.
         RULE_WORKFLOW_CLOCK,
-        "specify-workflow library code must not call `Timestamp::now()` (see docs/standards/architecture.md §Time injection)",
+        "specify-workflow-lib library code must not call `Timestamp::now()` (see docs/standards/architecture.md §Time injection)",
     ),
     (
         // `#[allow]` without a `reason` is forbidden (style.md §Lint
@@ -396,7 +396,7 @@ fn no_gated_rust_quality_findings() {
 #[test]
 fn flags_long_test_fn_name() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("crates/workflow/src/foo/tests.rs");
+    let path = dir.path().join("crates/workflow-lib/src/foo/tests.rs");
     fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
     fs::write(&path, "#[test]\nfn this_test_function_name_is_way_too_long_for_policy() {}\n")
         .expect("write");
@@ -412,7 +412,7 @@ fn flags_long_test_fn_name() {
 #[test]
 fn flags_tokio_test_behind_attributes() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("crates/workflow/src/foo/tests.rs");
+    let path = dir.path().join("crates/workflow-lib/src/foo/tests.rs");
     fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
     fs::write(
         &path,
@@ -430,7 +430,7 @@ fn flags_tokio_test_behind_attributes() {
 #[test]
 fn ignores_long_non_test_fn() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("crates/workflow/src/foo/tests.rs");
+    let path = dir.path().join("crates/workflow-lib/src/foo/tests.rs");
     fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
     fs::write(&path, "fn this_helper_function_name_is_long_but_not_a_test_case() {}\n")
         .expect("write");
@@ -445,7 +445,7 @@ fn ignores_long_non_test_fn() {
 #[test]
 fn flags_bare_allow_and_clock_read() {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = dir.path().join("crates/workflow/src/foo.rs");
+    let path = dir.path().join("crates/workflow-lib/src/foo.rs");
     fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
     fs::write(
         &path,

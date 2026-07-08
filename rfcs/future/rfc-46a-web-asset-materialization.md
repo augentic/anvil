@@ -6,7 +6,7 @@
 
 The shipped iOS/Android asset-materialization capability closes the canonical-source → platform-binary → shell-resource → rendered-view loop for native shells and deliberately scopes web out so it ships as a single implementable initiative. This RFC captures the web pre-work so it is not lost: the `sources.web` schema field, the web render-by-`kind` path, web app-icon artifacts (favicon / manifest), and the build-time `app-icon` gate extension for `web`.
 
-It is **deferred** until a web shell scaffold exists. Everything here is additive to the shipped iOS/Android design — no breaking change to `assets.schema.json`, the `role` / `kind` enums, the `exports/<platform>/` tree, or the validation gate's platform handling. The host [`Platform`](../../crates/workflow/src/platform.rs) enum already reserves `Web` as a placeholder; the vectis materialize [`Platform`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/materialize/paths.rs) enum is `Ios | Android` today and must be extended for web.
+It is **deferred** until a web shell scaffold exists. Everything here is additive to the shipped iOS/Android design — no breaking change to `assets.schema.json`, the `role` / `kind` enums, the `exports/<platform>/` tree, or the validation gate's platform handling. The host [`Platform`](../../crates/workflow-lib/src/platform.rs) enum already reserves `Web` as a placeholder; the vectis materialize [`Platform`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/materialize/paths.rs) enum is `Ios | Android` today and must be extended for web.
 
 ## RFC-46 baseline (iOS/Android, shipped)
 
@@ -157,7 +157,7 @@ This RFC is a single initiative once a web shell target exists:
 - [`specify-adapters/.../src/verify/app_icon.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/verify/app_icon.rs)
 - [`specify-adapters/.../prepare.rs`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/extension/src/prepare.rs)
 - [`specify/engine/.../slice/build.rs`](../../src/runtime/commands/slice/build.rs) (prepare hook)
-- [`specify/engine/.../platform.rs`](../../crates/workflow/src/platform.rs)
+- [`specify/engine/.../platform.rs`](../../crates/workflow-lib/src/platform.rs)
 - [VECTIS-006](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/rules/VECTIS-006-asset-render-by-kind.md) (future web column)
 - [plan-propose.md](https://github.com/augentic/specify-adapters/blob/main/codex/references/runtime/cli/plan-propose.md) (explicit non-goal: no plan-time shell bootstrap)
 - W3C Web App Manifest — icon sizes (192, 512)

@@ -7,7 +7,7 @@ use serde::Serialize;
 use specify_error::Result;
 use specify_model::atomic::bytes_write;
 use specify_model::task::{Task, mark_complete, parse_tasks};
-use specify_workflow::slice::SliceMetadata;
+use specify_workflow_lib::slice::SliceMetadata;
 
 use crate::context::Ctx;
 

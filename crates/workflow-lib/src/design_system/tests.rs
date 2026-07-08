@@ -1,7 +1,7 @@
 use super::*;
 
 // The operator-authored `parts.yaml` input is exercised through the public
-// `Parts::load` in `crates/workflow/tests/design_system_parts.rs`. What stays
+// `Parts::load` in `crates/workflow-lib/tests/design_system_parts.rs`. What stays
 // here is the agent-written `ComponentsCatalog`, collapsed into two
 // table-style tests — its `from_yaml` parser is private, so it cannot re-home.
 // Every former single-purpose assertion is preserved.

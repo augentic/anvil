@@ -9,7 +9,7 @@
 use std::io::Write;
 
 use specify_error::{Error, Result};
-use specify_workflow::slice::SliceModel;
+use specify_workflow_lib::slice::SliceModel;
 
 use crate::context::Ctx;
 

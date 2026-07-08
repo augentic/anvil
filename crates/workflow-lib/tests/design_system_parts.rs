@@ -1,10 +1,10 @@
 //! Integration coverage for the operator-authored `parts.yaml` input
-//! (`specify_workflow::design_system::Parts`). Re-homed from the former
+//! (`specify_workflow_lib::design_system::Parts`). Re-homed from the former
 //! `design_system/tests.rs` unit module. The private `from_yaml` parser is
 //! exercised through the public `Parts::load` (write-to-disk then load), which
 //! is the only path operators reach.
 
-use specify_workflow::design_system::Parts;
+use specify_workflow_lib::design_system::Parts;
 
 const TAB_BAR_PART: &str = "version: 1
 parts:

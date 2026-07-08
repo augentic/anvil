@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 
 use specify_error::{Error, Result};
 use specify_model::evidence::ClaimKind;
-use specify_workflow::change::Plan;
-use specify_workflow::slice::SliceModel;
+use specify_workflow_lib::change::Plan;
+use specify_workflow_lib::slice::SliceModel;
 
 use crate::context::Ctx;
 

@@ -180,7 +180,7 @@ const CORE_REL: &str = "codex/rules/core";
 const MANIFEST_CACHE_LOGICAL: &str = "manifests";
 
 /// Out-of-tree manifest cache root, `<project-cache>/manifests/`. Kept
-/// in lockstep with `specify_workflow::adapter::cache_axis_dir`.
+/// in lockstep with `specify_workflow_lib::adapter::cache_axis_dir`.
 fn manifest_cache_root(project_dir: &Path) -> PathBuf {
     specify_schema::cache::project_cache_dir(project_dir).join("manifests")
 }
@@ -188,7 +188,7 @@ fn manifest_cache_root(project_dir: &Path) -> PathBuf {
 /// Out-of-tree project codex cache root, `<project-cache>/codex/`.
 /// Probe step 3 treats it as a derived rules root when it carries the
 /// shared `universal/` pack. Kept in lockstep with
-/// `specify_workflow::init::codex_cache_root`.
+/// `specify_workflow_lib::init::codex_cache_root`.
 fn codex_cache_root(project_dir: &Path) -> PathBuf {
     specify_schema::cache::project_cache_dir(project_dir).join("codex")
 }

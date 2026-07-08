@@ -1,6 +1,6 @@
 //! Guest execute-loop integration tests.
 //!
-//! Scripted end-to-end walk of `specify_workflow::orchestrate::execute`
+//! Scripted end-to-end walk of `specify_workflow_lib::orchestrate::execute`
 //! against mocked Model + seams: plan approved → claim → refine (extract
 //! fan-out, synthesis judgment, persist, validate, `refined`) → build →
 //! merge, per entry, to `drained`. Plus the typed stop paths (Gate 1
@@ -13,11 +13,11 @@ use std::path::PathBuf;
 
 use jiff::Timestamp;
 use serde_json::{Value, json};
-use specify_workflow::change::{LoopStep, Plan, Status, StopReason};
-use specify_workflow::config::Layout;
-use specify_workflow::orchestrate::{self, ExecuteOutcome};
-use specify_workflow::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
-use specify_workflow::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
+use specify_workflow_lib::change::{LoopStep, Plan, Status, StopReason};
+use specify_workflow_lib::config::Layout;
+use specify_workflow_lib::orchestrate::{self, ExecuteOutcome};
+use specify_workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
+use specify_workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 use tempfile::TempDir;
 
 use crate::common;
@@ -453,9 +453,9 @@ async fn refine_breakout_skips_entry_claim() {
 
     // The slice is `refined`; the plan entry was never claimed.
     let metadata =
-        specify_workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
+        specify_workflow_lib::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
             .expect("slice metadata");
-    assert_eq!(metadata.status, specify_workflow::slice::LifecycleStatus::Refined);
+    assert_eq!(metadata.status, specify_workflow_lib::slice::LifecycleStatus::Refined);
     // Development (unpinned) components resolve as the honest `0.0.0`
     // placeholder — there is no published package identity to record.
     assert_eq!(metadata.target, "omnia@0.0.0", "target resolved from the bound topology");

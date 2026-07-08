@@ -1,10 +1,10 @@
 //! Integration coverage for the AGENTS.md write planner
-//! (`specify_workflow::agents::fences::plan_agents_write`). Re-homed and
+//! (`specify_workflow_lib::agents::fences::plan_agents_write`). Re-homed and
 //! collapsed from the former `agents/fences/render.rs` unit module: one test
 //! sweeps the four write dispositions plus non-UTF-8 byte preservation, the
 //! other the two fence-policy errors. Every former input is represented.
 
-use specify_workflow::agents::fences::{FenceError, WriteDisposition, plan_agents_write};
+use specify_workflow_lib::agents::fences::{FenceError, WriteDisposition, plan_agents_write};
 
 const GENERATED: &[u8] = b"# demo - Agent Instructions\n\n<!-- specify:context begin\nfingerprint: sha256:new\ngenerated-by: specify 0.2.0\n-->\n\n## Runtime\n- new\n\n<!-- specify:context end -->\n";
 

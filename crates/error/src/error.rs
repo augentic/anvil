@@ -99,7 +99,7 @@ pub enum Error {
     /// kebab-case suffix that, prefixed with `filesystem-`, becomes the
     /// JSON envelope's `error` discriminant (e.g. `filesystem-readdir`).
     /// Canonical call sites: the slice-merge engine
-    /// (`specify_workflow::merge::slice::{read, write}`), where every
+    /// (`specify_workflow_lib::merge::slice::{read, write}`), where every
     /// recursive directory walk and file copy needs a stable, testable
     /// discriminant for operator follow-up.
     #[error("filesystem-{op}: {} ({source})", path.display())]
