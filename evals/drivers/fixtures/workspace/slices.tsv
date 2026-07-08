@@ -1,5 +1,0 @@
-oauth-contract	oauth-contract-req	Shared OAuth contract.	oauth
-oauth-backend	backend-impl-req	Backend OAuth exchange.	oauth
-oauth-mobile	mobile-impl-req	Mobile OAuth sign-in.	oauth
-auth-rotate	auth-rotate-req	Rotate auth secrets.	auth
-app-foundation	mobile-bootstrap-req	Bootstrap mobile shells.	app
