@@ -130,9 +130,9 @@ async fn seed_built_slice(project: &Project) {
     let survey_seam = MockSourceSeam::scripted([Ok(leads)], []);
     orchestrate::survey_all(&survey_seam, project.layout(), now()).await.expect("seed survey");
 
-    let model = guest_model::MockModel::answering([
-        Box::leak(synthesis_response().into_boxed_str()) as &'static str,
-    ]);
+    let model = workflow_lib::judgment::MockModel::answering([Box::leak(
+        synthesis_response().into_boxed_str(),
+    ) as &'static str]);
     let sources = MockSourceSeam::scripted(
         [],
         [Ok(Evidence {

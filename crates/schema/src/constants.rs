@@ -89,7 +89,7 @@ pub const RESOLVED_RULES_JSON_SCHEMA: &str =
 pub const RULE_JSON_SCHEMA: &str = include_str!("../../../schemas/rules/rule.schema.json");
 
 /// Schema for the neutral `Diagnostic` wire shape produced by every
-/// check surface (lint and validate alike) and validated at the
+/// check surface (validate and review alike) and validated at the
 /// diagnostic boundary. See the structured diagnostic schema.
 pub const DIAGNOSTIC_JSON_SCHEMA: &str =
     include_str!("../../../schemas/diagnostics/diagnostic.schema.json");

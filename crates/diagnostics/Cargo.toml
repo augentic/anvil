@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify neutral diagnostic substrate: the Diagnostic currency, fingerprint algorithm, validators, and renderers shared by the lint and validate surfaces"
+description = "Specify neutral diagnostic substrate: the Diagnostic currency, fingerprint algorithm, validators, and renderers shared by the validate and review surfaces"
 categories = ["development-tools"]
-keywords = ["specify", "diagnostic", "lint"]
+keywords = ["specify", "diagnostic", "validate"]
 readme = "../../README.md"
 # Integration tests link through the single `it` binary (tests/it.rs);
 # per-area files are pulled in via `#[path]` submodules.

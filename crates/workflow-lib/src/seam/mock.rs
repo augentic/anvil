@@ -1,7 +1,8 @@
 //! Native scripted providers for the seam capability traits.
 //!
-//! Mirrors `guest-model`'s `MockModel`: replies are served in
-//! FIFO order per operation and every call is recorded for assertion.
+//! Mirrors the judgment [`crate::judgment::MockModel`]: replies are
+//! served in FIFO order per operation and every call is recorded for
+//! assertion.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;

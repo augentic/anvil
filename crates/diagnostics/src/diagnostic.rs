@@ -255,8 +255,8 @@ pub enum FindingEvidence {
     },
 }
 
-/// Structured diagnostic — the neutral currency shared by the lint and
-/// validate surfaces.
+/// Structured diagnostic — the neutral currency shared by the validate
+/// and review surfaces.
 ///
 /// Producer-local `id` (e.g. `FIND-0001`) is distinct from the codex
 /// `rule_id` (e.g. `UNI-014`): `id` is a stable per-run handle and

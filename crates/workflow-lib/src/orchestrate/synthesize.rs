@@ -1,10 +1,10 @@
 //! Seam-guidance plumbing for the synthesis judgment leg.
 
 use error::Error;
-use guest_model::Model;
 
 use super::{seam_failure, target_adapter_id};
 use crate::judgment;
+use crate::judgment::model::JudgmentModel;
 use crate::judgment::synthesize::{Kernel, Synthesized};
 use crate::registry::topology::Surface;
 use crate::seam::TargetSeam;
@@ -41,7 +41,7 @@ pub struct SynthesizeRequest<'a> {
 ///
 /// - `seam-dispatch-failed` when the guidance dispatch fails.
 /// - propagates the judgment leg's model / schema / kernel failures.
-pub async fn synthesize<P: Model, T: TargetSeam>(
+pub async fn synthesize<P: JudgmentModel, T: TargetSeam>(
     model: &P, seam: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
     let id = target_adapter_id(request.target);

@@ -7,8 +7,8 @@
 //!
 //! The two surfaces stay conceptually distinct (they differ in gate
 //! policy, not in currency). Naming the substrate neutrally — rather
-//! than after either surface — lets `validate` produce diagnostics
-//! without depending on anything named `lint`: `artifacts` (which
+//! than after either surface — lets every producer mint diagnostics
+//! without importing the other surface's code: `artifacts` (which
 //! holds the `validate` registry) depends on this leaf.
 //!
 //! Dependency posture: depends only on `error` and

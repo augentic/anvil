@@ -53,7 +53,6 @@ members = [
     "crates/dispatch",
     "crates/standards",
     "crates/error",
-    "crates/guest-model",
     "crates/artifacts",
     "crates/schema",
     "crates/workflow-lib",
@@ -168,7 +167,6 @@ jsonschema = { version = "0.46", default-features = false }
 artifacts = { path = "crates/artifacts" }
 diagnostics = { path = "crates/diagnostics" }
 dispatch = { path = "crates/dispatch" }
-guest-model = { path = "crates/guest-model" }
 petgraph = "0.8"
 proptest = "1.11.0"
 regex = "1"

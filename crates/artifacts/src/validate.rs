@@ -1,8 +1,8 @@
 //! Validation rule registry and runner.
 //!
 //! `Rule` / `CrossRule` declare their `Classification`; [`validate_slice`]
-//! returns a `Vec<Diagnostic>` — the neutral currency shared with the
-//! `lint` surface. Structural `Fail` outcomes become deterministic
+//! returns a `Vec<Diagnostic>` — the neutral currency from the
+//! `diagnostics` leaf. Structural `Fail` outcomes become deterministic
 //! `violation` diagnostics (`important`, blocking); semantic rules become
 //! non-blocking `review` diagnostics (`suggestion`,
 //! [`diagnostics::DiagnosticKind::Review`]) that ask the agent to

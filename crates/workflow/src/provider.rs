@@ -1,6 +1,6 @@
 //! [`Provider`] — the WIT-backed seam the orchestrator verbs run
-//! against: `Model` (judgment through `omnia:model/completion`, the
-//! wasm32 default body) plus `SourceSeam` / `TargetSeam` over this
+//! against: `JudgmentModel` (judgment through `omnia:model/completion`,
+//! the wasm32 default body) plus `SourceSeam` / `TargetSeam` over this
 //! world's `source` / `target` imports.
 //!
 //! The mapping layer between the WIT records and the seam DTOs lives
@@ -40,10 +40,10 @@ use crate::bindings::specify::adapter::{source, target, types};
 /// orchestrators need, backed by the world's WIT imports.
 pub struct Provider;
 
-/// `Model` rides the wasm32 default body — judgment calls go straight
-/// to `omnia:model/completion` with the `"."` preopen lend resolved at
-/// the call site.
-impl guest_model::Model for Provider {}
+/// `JudgmentModel` rides the wasm32 default body — judgment calls go
+/// straight to `omnia:model/completion` with the `"."` preopen lend
+/// resolved at the call site.
+impl workflow_lib::judgment::model::JudgmentModel for Provider {}
 
 impl SourceSeam for Provider {
     fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {

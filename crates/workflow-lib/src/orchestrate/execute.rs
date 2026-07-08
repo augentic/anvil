@@ -23,13 +23,13 @@ use std::io::Write as _;
 use std::path::PathBuf;
 
 use error::Error;
-use guest_model::Model;
 use jiff::Timestamp;
 
 use crate::adapter::BuildInputDeclaration;
 use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_next_body, plan_status_body};
 use crate::config::{Layout, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
+use crate::judgment::model::JudgmentModel;
 use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 
 /// One phase the loop completed, in run order.
@@ -98,7 +98,7 @@ pub enum ExecuteOutcome {
 /// - propagates plan load/validate failures and marker I/O failures.
 /// - phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
-pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
+pub async fn execute<P: JudgmentModel, S: SourceSeam, T: TargetSeam>(
     model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp,
     manifest_inputs: &[BuildInputDeclaration], tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {

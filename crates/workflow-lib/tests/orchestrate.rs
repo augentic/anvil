@@ -665,7 +665,7 @@ async fn synthesize_reads_seam_guidance() {
     use std::collections::BTreeMap;
 
     use artifacts::evidence::{AuthorityClass, ClaimKind};
-    use guest_model::MockModel;
+    use workflow_lib::judgment::MockModel;
     use workflow_lib::judgment::synthesize::Kernel;
     use workflow_lib::slice::{BaselineIndex, ProjectionHeader};
 

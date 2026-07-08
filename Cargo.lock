@@ -1575,15 +1575,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "guest-model"
-version = "0.27.2"
-dependencies = [
- "omnia-wasi-model",
- "thiserror 2.0.18",
- "wasip3",
-]
-
-[[package]]
 name = "h2"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3608,7 +3599,6 @@ dependencies = [
  "clap",
  "clap_complete",
  "dispatch",
- "guest-model",
  "jiff",
  "omnia",
  "omnia-testkit",
@@ -5731,7 +5721,6 @@ dependencies = [
  "diagnostics",
  "dispatch",
  "error",
- "guest-model",
  "omnia-guest",
  "serde",
  "serde_json",
@@ -5748,9 +5737,9 @@ dependencies = [
  "diagnostics",
  "error",
  "glob",
- "guest-model",
  "jiff",
  "jsonschema",
+ "omnia-wasi-model",
  "petgraph",
  "proptest",
  "regex",
@@ -5765,6 +5754,7 @@ dependencies = [
  "tokio",
  "toml",
  "ureq",
+ "wasip3",
 ]
 
 [[package]]

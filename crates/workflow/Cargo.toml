@@ -23,7 +23,6 @@ serde_json.workspace = true
 diagnostics.workspace = true
 dispatch.workspace = true
 error.workspace = true
-guest-model.workspace = true
 artifacts.workspace = true
 workflow-lib.workspace = true
 wasip3.workspace = true

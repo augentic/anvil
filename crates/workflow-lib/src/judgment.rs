@@ -1,17 +1,28 @@
 //! The workflow guest's judgment kernel.
 //!
-//! Each leg is one schema-gated `Model::create` bracketed by
+//! Each leg is one schema-gated `JudgmentModel::create` bracketed by
 //! deterministic tails (schema gate, parse, projection kernel) inside a
 //! bounded repair loop: a tail failure re-prompts with the findings
 //! inlined, up to [`MAX_REPAIRS`] times. These legs are the sole
 //! judgment path, driven by the guest orchestrators.
+//!
+//! [`model`] carries the `JudgmentModel` capability trait itself —
+//! kept aligned with the canonical copy in `specify-adapters`
+//! `crates/adapter/src/model.rs` (edit there first, mirror here; the
+//! adapter-only `WasiModel` provider is the one intentional omission).
 
+#[cfg(not(target_arch = "wasm32"))]
+mod mock;
+pub mod model;
 pub mod propose;
 pub mod prose;
 pub mod synthesize;
 
 use error::Error;
-use guest_model::{Format, Message, Model, Reply, Request, Role, SchemaFormat};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::mock::MockModel;
+use self::model::{Format, JudgmentModel, Message, Reply, Request, Role, SchemaFormat};
 
 /// Maximum repair attempts after the first answer — a tail failure
 /// re-prompts with the findings inlined at most this many times before
@@ -38,7 +49,7 @@ pub(crate) async fn schema_gated<P, T, F>(
     model: &P, system: &str, user: String, schema_name: &str, schema: &str, mut tail: F,
 ) -> Result<T, Error>
 where
-    P: Model,
+    P: JudgmentModel,
     F: FnMut(&str) -> Result<T, Error>,
 {
     let mut prompt = user.clone();
@@ -58,7 +69,7 @@ where
 
 /// One `create` call: schema-constrained output, no MCP grants, the
 /// guest's own `"."` preopen lent as the shared workspace.
-async fn create<P: Model>(
+async fn create<P: JudgmentModel>(
     model: &P, system: &str, user: String, schema_name: &str, schema: &str,
 ) -> Result<Reply, Error> {
     model
@@ -83,7 +94,7 @@ async fn create<P: Model>(
 /// Map a typed model failure onto the workflow error currency. One code
 /// covers every variant — the variant detail rides in the message and
 /// no caller recovers differently per variant.
-fn model_error(schema_name: &str, err: &guest_model::Error) -> Error {
+fn model_error(schema_name: &str, err: &model::Error) -> Error {
     Error::Diag {
         code: "judgment-model-failed",
         detail: format!("{schema_name} judgment call failed: {err}"),

@@ -130,9 +130,9 @@ fn grouping_with_gate() -> String {
 #[tokio::test]
 async fn author_walks_to_pending_with_gate_prose() {
     let project = Project::new();
-    let model = guest_model::MockModel::answering([
-        Box::leak(grouping_with_gate().into_boxed_str()) as &'static str,
-    ]);
+    let model = workflow_lib::judgment::MockModel::answering([Box::leak(
+        grouping_with_gate().into_boxed_str(),
+    ) as &'static str]);
     let sources = MockSourceSeam::scripted(
         [
             Ok(vec![lead("user-registration", "Registration endpoint per the design notes.")]),
@@ -216,7 +216,7 @@ async fn author_walks_to_pending_with_gate_prose() {
 #[tokio::test]
 async fn author_fan_out_failure_aborts() {
     let project = Project::new();
-    let model = guest_model::MockModel::answering([]);
+    let model = workflow_lib::judgment::MockModel::answering([]);
     let sources = MockSourceSeam::scripted(
         [
             Ok(vec![lead("user-registration", "Registration endpoint per the design notes.")]),
@@ -266,7 +266,7 @@ async fn author_repairs_kernel_rejected_grouping() {
         }]
     }))
     .expect("answer serialises");
-    let model = guest_model::MockModel::answering([
+    let model = workflow_lib::judgment::MockModel::answering([
         Box::leak(uncovered.into_boxed_str()) as &'static str,
         Box::leak(grouping_with_gate().into_boxed_str()) as &'static str,
     ]);
@@ -319,7 +319,7 @@ async fn author_gate_missing_exhausts_budget() {
     }))
     .expect("answer serialises");
     let answer = Box::leak(gateless.into_boxed_str()) as &'static str;
-    let model = guest_model::MockModel::answering([answer, answer, answer]);
+    let model = workflow_lib::judgment::MockModel::answering([answer, answer, answer]);
     let sources = MockSourceSeam::scripted(
         [
             Ok(vec![lead("user-registration", "Registration endpoint per the design notes.")]),
@@ -352,7 +352,7 @@ async fn author_refuses_existing_plan() {
     fs::write(project.root.join("plan.yaml"), "name: other\nlifecycle: pending\nslices: []\n")
         .expect("pre-seed plan.yaml");
 
-    let model = guest_model::MockModel::answering([]);
+    let model = workflow_lib::judgment::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let err = orchestrate::author(
         &model,
@@ -377,7 +377,7 @@ async fn author_refuses_workspace_root() {
     )
     .expect("workspace project.yaml");
 
-    let model = guest_model::MockModel::answering([]);
+    let model = workflow_lib::judgment::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let err = orchestrate::author(
         &model,

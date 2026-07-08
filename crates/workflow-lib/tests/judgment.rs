@@ -5,10 +5,9 @@
 use std::collections::BTreeMap;
 
 use artifacts::evidence::{AuthorityClass, ClaimKind};
-use guest_model::MockModel;
 use workflow_lib::change::{ProposalKind, ProposalRequest};
 use workflow_lib::judgment::synthesize::Kernel;
-use workflow_lib::judgment::{propose, synthesize};
+use workflow_lib::judgment::{MockModel, propose, synthesize};
 use workflow_lib::slice::{BaselineIndex, ProjectionHeader, SynthesisInputs};
 
 fn request() -> ProposalRequest {
@@ -144,9 +143,10 @@ mod propose_leg {
         // On the live backend a schema-invalid answer surfaces as a
         // model `invalid-answer` failure — which must propagate without
         // burning repair attempts (the request did not change).
-        let model = MockModel::scripted([Err(guest_model::Error::InvalidAnswer(
-            "answer failed the create gate".to_string(),
-        ))]);
+        let model =
+            MockModel::scripted([Err(workflow_lib::judgment::model::Error::InvalidAnswer(
+                "answer failed the create gate".to_string(),
+            ))]);
         let err = propose::reconcile(&model, &request(), None, |_| Ok(()))
             .await
             .expect_err("model failure propagates");

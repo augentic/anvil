@@ -23,13 +23,13 @@ use std::path::{Path, PathBuf};
 
 use diagnostics::blocking_present;
 use error::Error;
-use guest_model::Model;
 use jiff::Timestamp;
 
 use super::synthesize::SynthesizeRequest;
 use crate::change::{Entry, Plan, Status, resolve_target, resolve_topology};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
+use crate::judgment::model::JudgmentModel;
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
 use crate::registry::topology::Surface;
@@ -70,7 +70,7 @@ pub struct RefineOutcome {
 /// - `slice-provenance-invalid` / `slice-pre-adapter-gate` /
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `lifecycle` gate error from the `refined` transition.
-pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
+pub async fn refine<P: JudgmentModel, S: SourceSeam, T: TargetSeam>(
     model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str,
     target_value: &str,
 ) -> Result<RefineOutcome, Error> {
@@ -199,7 +199,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
 /// - `slice-create-target-missing` when neither the slice metadata nor
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
-pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam>(
+pub async fn refine_breakout<P: JudgmentModel, S: SourceSeam, T: TargetSeam>(
     model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
     let entry = load_entry(layout, slice)?;
@@ -237,7 +237,7 @@ fn breakout_target(layout: Layout<'_>, entry: &Entry, slice: &str) -> Result<Str
 
 /// The judgment leg plus the native persist tail — one fallible unit
 /// so the `slice.synthesize.*` pair brackets both.
-async fn synthesize_and_persist<P: Model, T: TargetSeam>(
+async fn synthesize_and_persist<P: JudgmentModel, T: TargetSeam>(
     model: &P, targets: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>, slice_dir: &Path,
     baseline_index: &BaselineIndex,
 ) -> Result<Vec<String>, Error> {

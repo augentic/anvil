@@ -1,12 +1,12 @@
-//! Native mock provider for the [`Model`] capability.
+//! Native mock provider for the [`JudgmentModel`] capability.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use crate::model::{Error, Model, Reply, Request};
+use super::model::{Error, JudgmentModel, Reply, Request};
 
-/// Scripted [`Model`] provider for native tests: replies are served in
-/// FIFO order and every request is recorded for assertion.
+/// Scripted [`JudgmentModel`] provider for native tests: replies are
+/// served in FIFO order and every request is recorded for assertion.
 #[derive(Debug, Default)]
 pub struct MockModel {
     replies: Mutex<VecDeque<Result<Reply, Error>>>,
@@ -45,7 +45,7 @@ impl MockModel {
     }
 }
 
-impl Model for MockModel {
+impl JudgmentModel for MockModel {
     async fn create(&self, request: Request) -> Result<Reply, Error> {
         self.requests.lock().expect("mock lock").push(request);
         self.replies

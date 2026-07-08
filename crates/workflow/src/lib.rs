@@ -7,7 +7,7 @@
 //! in-process; the four collapsed orchestrator verbs come back as a
 //! `dispatch::guest::Orchestration` and `verbs::drive` runs
 //! them against `provider::Provider` — the WIT-backed
-//! `Model + SourceSeam + TargetSeam` implementation over this world's
+//! `JudgmentModel + SourceSeam + TargetSeam` implementation over this world's
 //! `source` / `target` imports (satisfied at runtime by Omnia's
 //! host-mediated dispatch, routed to the exporting adapter guest by
 //! each call's `adapter-id` first argument).
