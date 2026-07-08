@@ -61,4 +61,4 @@ The **Gate** column tiers the catalog into two signals:
 
 Groups keep carrying execution order; the Gate tier never moves a scenario between groups. Flipping any row's status requires the matching committed record at [`evals/runs/<id>.<result>.md`](../runs/README.md) — `specify lint framework` enforces catalog↔runs agreement. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here.
 
-Owner-local adapter scenarios stay under [`targets/<name>/tests/`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md) in `augentic/specify-adapters`.
+Owner-local adapter scenarios stay under [`evals/<name>/scenarios/`](https://github.com/augentic/specify-adapters/blob/main/evals/contracts/scenarios/README.md) in `augentic/specify-adapters`.

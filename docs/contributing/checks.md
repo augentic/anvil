@@ -190,7 +190,7 @@ Eval scenario files are validated against [`schemas/authoring/scenario.schema.js
 3. `targets/<target>/tests/<scenario>/scenario.md` — directory-form owner-local target scenarios.
 4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts test suite under [`targets/contracts/tests/`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those trees — [`evals/README.md`](../../evals/README.md), `evals/shared/*`, `evals/runs/`, catalog READMEs, narrative — are skipped silently. The shared suite is the platform scenario pack under [`evals/scenarios/`](../../evals/scenarios/README.md). The first owner-local target pack is the contracts scenario suite under [`evals/contracts/scenarios/`](https://github.com/augentic/specify-adapters/blob/main/evals/contracts/scenarios/README.md).
 
 An opt-in scenario looks like:
 
@@ -231,15 +231,15 @@ Internal markdown link resolution within scenarios is handled by check 1 (markdo
 **Example failure messages:**
 
 ```text
-FAIL: scenarios.schema-violation: Scenario frontmatter: targets/contracts/tests/_probe.md — / must have required property 'negative-expectations'
-  at targets/contracts/tests/_probe.md:1
-FAIL: scenarios.stages-not-contiguous: Scenario frontmatter: targets/contracts/tests/_probe.md — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ["build","define"]
-  at targets/contracts/tests/_probe.md:1
-FAIL: scenarios.body-id-mismatch: Scenario frontmatter: targets/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
-  at targets/contracts/tests/_probe.md:1
-FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: targets/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
-  at targets/contracts/tests/_probe.md:1
-FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: targets/contracts/tests/_probe.md, targets/contracts/tests/describe.md
+FAIL: scenarios.schema-violation: Scenario frontmatter: evals/contracts/scenarios/_probe.md — / must have required property 'negative-expectations'
+  at evals/contracts/scenarios/_probe.md:1
+FAIL: scenarios.stages-not-contiguous: Scenario frontmatter: evals/contracts/scenarios/_probe.md — stages must be a contiguous slice of [plan, refine, build, merge, drop] anchored at any element; got ["build","define"]
+  at evals/contracts/scenarios/_probe.md:1
+FAIL: scenarios.body-id-mismatch: Scenario frontmatter: evals/contracts/scenarios/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+  at evals/contracts/scenarios/_probe.md:1
+FAIL: scenarios.artifact-path-unsafe: Scenario frontmatter: evals/contracts/scenarios/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+  at evals/contracts/scenarios/_probe.md:1
+FAIL: scenarios.duplicate-id: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: evals/contracts/scenarios/_probe.md, evals/contracts/scenarios/describe.md
 ```
 
 Common fixes: align `kind`/`adapter` per the schema, walk back `stages` to a contiguous slice anchored in `[plan, refine, build, merge, drop]`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace, and ensure new scenario ids are unique.
