@@ -38,7 +38,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 1. **Plan** — `/spec:plan feature-doc source feature=docs/feature-doc.md`; confirm it produces one slice and stops at `pending`.
 2. **Stamp Gate 1** — `specify plan transition feature-doc approved`.
-3. **Execute** — `/spec:execute`; confirm `all-done`.
+3. **Execute** — `specify plan execute`; confirm drained.
 
 ## Assertions
 
@@ -46,7 +46,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 - `plan-validates`: `specify plan validate` exits cleanly.
 - `single-slice-from-doc`: the single docs path maps to exactly one slice.
 - `sources-documentation-only`: the slice's provenance is `Sources: [<doc-key>]` and nothing else.
-- `execute-loop-all-done`: `/spec:execute` reaches `all-done`.
+- `execute-loop-all-done`: `specify plan execute` reaches drained.
 
 ## Negative expectations
 

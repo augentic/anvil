@@ -41,7 +41,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 1. **Plan** — `/spec:plan fix-typo "fix typo in user.rs"`. Confirm it writes `change.md` + `plan.yaml`, validates, and stops at `pending` printing the literal `specify plan transition fix-typo approved`.
 2. **Stamp Gate 1** — run that literal transition command.
-3. **Refine** — `/spec:execute` drives the approved entry through `/spec:refine`; confirm the slice synthesizes and transitions to `refined` with `Sources: [intent]` provenance. Stop after `refined` — `build` / `merge` are out of scope (see [Scope](#scope)).
+3. **Refine** — `/spec:refine` drives the approved entry (the same `specify slice refine` orchestration `specify plan execute` runs); confirm the slice synthesizes and transitions to `refined` with `Sources: [intent]` provenance. Stop after `refined` — `build` / `merge` are out of scope (see [Scope](#scope)).
 
 ## Assertions
 
@@ -50,13 +50,13 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 - `intent-single-lead`: the degenerate `intent` survey produces exactly one lead / one slice.
 - `gate-1-not-auto-stamped`: `/spec:plan` exits at `pending` and prints the transition command; it does not stamp `approved` itself.
 - `sources-intent-only`: the slice's provenance is `Sources: [intent]`.
-- `refine-reaches-refined`: after the operator stamps Gate 1, `/spec:execute` drives the entry through `/spec:refine`, the slice validates cleanly, and it transitions to `refined`.
+- `refine-reaches-refined`: after the operator stamps Gate 1, `/spec:refine` drives the entry through the refine orchestration, the slice validates cleanly, and it transitions to `refined`.
 
 ## Scope
 
 This scenario is the **N=1 planning-and-synthesis gate**, not a codegen gate. Its `stages` stop at `refine` deliberately: every in-scope assertion is deterministic structure (plan shape, Gate-1 ergonomics, `Sources:` provenance, lifecycle `refined`), so the N=1 hard halt never depends on a non-deterministic surface.
 
-`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface. That gate belongs to a dedicated per-target build scenario; the orchestration half (`/spec:execute` reaching `all-done`) is proven by the execute scenarios' deterministic probes (see the [assertion taxonomy](../shared/assertions.md)), with recorded-transcript replay parked under [roadmap ideas, "Orchestration trace replay for eval scenarios"](../../rfcs/roadmap.md#ideas-parked).
+`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface. That gate belongs to a dedicated per-target build scenario; the orchestration half (`specify plan execute` reaching drained) is proven by the execute scenarios' deterministic probes (see the [assertion taxonomy](../shared/assertions.md)), with recorded-transcript replay parked under [roadmap ideas, "Orchestration trace replay for eval scenarios"](../../rfcs/roadmap.md#ideas-parked).
 
 ## Negative expectations
 

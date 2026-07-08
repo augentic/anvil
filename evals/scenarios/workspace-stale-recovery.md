@@ -28,7 +28,7 @@ Scenario ID: `workspace-stale-recovery`
 
 ## Intent
 
-Prove re-entry after an interrupted execute: the operator interrupts `/spec:execute` mid-run leaving a workspace slot dirty with uncommitted work; a fresh `specify workspace sync` plus resume reconciles cleanly without losing slice state, continuing from the in-progress entry rather than restarting or dropping work.
+Prove re-entry after an interrupted execute: the operator interrupts `specify plan execute` mid-run leaving a workspace slot dirty with uncommitted work; a fresh `specify workspace sync` plus resume reconciles cleanly without losing slice state, continuing from the in-progress entry rather than restarting or dropping work.
 
 ## Setup
 
@@ -36,9 +36,9 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 
 ## Invocation
 
-1. **Execute + interrupt** — `/spec:execute loop`; interrupt mid-run, leaving a slot dirty with uncommitted work.
+1. **Execute + interrupt** — `specify plan execute`; interrupt mid-run, leaving a slot dirty with uncommitted work. (Workspace routing has no in-guest counterpart yet: the verb currently exits with the typed `plan-execute-workspace-unsupported` refusal, so a run files as blocked until the workspace leg lands.)
 2. **Resync** — `specify workspace sync`; confirm it detects the dirty slot.
-3. **Resume** — `/spec:execute loop`; confirm it continues from the in-progress entry and reaches `all-done`.
+3. **Resume** — `specify plan execute`; confirm it continues from the in-progress entry and reaches drained.
 
 ## Assertions
 
@@ -46,7 +46,7 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 - `dirty-slot-detected-at-sync`: `specify workspace sync` detects the dirty/uncommitted slot.
 - `slice-state-preserved`: slice state survives the interruption (no lost or duplicated work).
 - `resume-continues-from-in-progress`: resume continues from the in-progress entry, not a restart.
-- `execute-loop-all-done`: the resumed loop reaches `all-done`.
+- `execute-loop-all-done`: the resumed loop reaches drained.
 
 ## Negative expectations
 

@@ -31,8 +31,8 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | --- | --- | --- | --- |
 | Target `shape` injection | [`target-shape`](target-shape.md) | passed | full |
 | Step-through breakout mid-execute | [`execute-pause-resume`](execute-pause-resume.md) | passed | full |
-| `/spec:execute` parks on a build failure | [`execute-fail-resume`](execute-fail-resume.md) | passed | release-blocker |
-| Workspace `/spec:execute` across two projects | [`workspace-two-projects`](workspace-two-projects.md) | passed | release-blocker |
+| `specify plan execute` parks on a build failure | [`execute-fail-resume`](execute-fail-resume.md) | passed | release-blocker |
+| Workspace `specify plan execute` across two projects | [`workspace-two-projects`](workspace-two-projects.md) | passed | release-blocker |
 | Workspace breakout after build failure | [`workspace-fail-resume`](workspace-fail-resume.md) | passed | full |
 | Stale-workspace recovery | [`workspace-stale-recovery`](workspace-stale-recovery.md) | passed | full |
 
@@ -42,7 +42,7 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | --- | --- | --- | --- |
 | Composed guest execute loop | [`guest-execute-loop`](guest-execute-loop.md) | failed | full |
 
-14 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [Rust workspace](https://github.com/augentic/specify), run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the CLI's plan-lock probe made it deterministic (`tests/workflow/plan_lock.rs`).
+14 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [Rust workspace](https://github.com/augentic/specify), run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the guest execute marker (the create-exclusive `.specify/guest.lock`, covered by `crates/workflow/tests/execute.rs`) made it deterministic.
 
 ## Status legend
 
@@ -61,4 +61,4 @@ The **Gate** column tiers the catalog into two signals:
 
 Groups keep carrying execution order; the Gate tier never moves a scenario between groups. Flipping any row's status requires the matching committed record at [`evals/runs/<id>.<result>.md`](../runs/README.md) — `specify lint framework` enforces catalog↔runs agreement. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here.
 
-Owner-local adapter scenarios stay under [`adapters/targets/<name>/tests/`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md).
+Owner-local adapter scenarios stay under [`targets/<name>/tests/`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md) in `augentic/specify-adapters`.

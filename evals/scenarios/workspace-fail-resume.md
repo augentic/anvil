@@ -28,7 +28,7 @@ Scenario ID: `workspace-fail-resume`
 
 ## Intent
 
-Prove breakout-verb routing across the workspace/slot boundary: `/spec:execute` parks on a slice in one project, the operator stays at the workspace and runs `/spec:build`, and the breakout verb resolves the active slice and `chdir`s into the correct slot without operator intervention.
+Prove breakout-verb routing across the workspace/slot boundary: `specify plan execute` parks on a slice in one project, the operator stays at the workspace and runs `/spec:build`, and the breakout verb resolves the active slice and `chdir`s into the correct slot without operator intervention.
 
 ## Setup
 
@@ -36,9 +36,9 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 
 ## Invocation
 
-1. **Execute** — `/spec:execute loop` from the workspace; let it park on the backend slice.
+1. **Execute** — `specify plan execute` from the workspace; let it park on the backend slice. (Workspace routing has no in-guest counterpart yet: the verb currently exits with the typed `plan-execute-workspace-unsupported` refusal, so a run files as blocked until the workspace leg lands.)
 2. **Breakout** — from the workspace, run `/spec:build`; confirm it routes into the backend slot automatically.
-3. **Resume** — `/spec:execute loop`; confirm `all-done`.
+3. **Resume** — `specify plan execute`; confirm drained.
 
 ## Assertions
 
@@ -46,7 +46,7 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 - `breakout-routes-to-slot`: `/spec:build` from the workspace routes into the parked slice's project slot.
 - `active-slice-resolved-across-boundary`: the breakout verb resolves the active slice across the workspace/slot boundary.
 - `chdir-without-operator-intervention`: the correct `chdir` happens without the operator changing directories.
-- `execute-loop-all-done`: the resumed loop reaches `all-done`.
+- `execute-loop-all-done`: the resumed loop reaches drained.
 
 ## Negative expectations
 

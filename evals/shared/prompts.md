@@ -76,9 +76,9 @@ stage the scenario's `stages` declares:
    hunting raw files.
 3. If the scenario executes: stamp Gate 1 only by running the literal
    `specify plan transition <name> approved` the plan printed.
-4. If the scenario executes: /spec:execute loop. Answer only genuine
+4. If the scenario executes: `specify plan execute`. Answer only genuine
    clarification prompts; never convert prompts into a script. Confirm the loop
-   exits `all-done`, not stuck/failed/interrupted.
+   exits drained, not stuck/failed/interrupted.
 5. If the scenario finalizes: /spec:finalize <name>. Confirm the branches
    pushed (per-project status `pushed`) and the plan archived in the same run;
    record the pushed branches and the archive path. Specify does not create,

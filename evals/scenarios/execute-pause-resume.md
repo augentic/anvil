@@ -26,7 +26,7 @@ Scenario ID: `execute-pause-resume`
 
 ## Intent
 
-Prove the stop/resume contract: an operator starts `/spec:execute`, cancels on the second slice, runs `/spec:build` directly to investigate, then re-invokes `/spec:execute` — which resumes without flags because the step-through verbs left on-disk state consistent.
+Prove the stop/resume contract: an operator starts `specify plan execute`, cancels on the second slice, runs `/spec:build` directly to investigate, then re-invokes `specify plan execute` — which resumes without flags because the step-through verbs left on-disk state consistent.
 
 ## Setup
 
@@ -34,16 +34,16 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Invocation
 
-1. **Execute** — `/spec:execute loop`; cancel during the second slice.
+1. **Execute** — `specify plan execute`; cancel during the second slice.
 2. **Breakout** — `/spec:build` directly on the active slice to investigate.
-3. **Resume** — re-invoke `/spec:execute loop`; confirm it resumes from the right entry without extra flags and reaches `all-done`.
+3. **Resume** — re-invoke `specify plan execute`; confirm it resumes from the right entry without extra flags and reaches drained.
 
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
 - `breakout-state-consistent`: after cancel + breakout `/spec:build`, on-disk slice/plan state is consistent.
-- `execute-resumes-without-flags`: re-invoking `/spec:execute` resumes from the in-progress entry with no flags.
-- `execute-loop-all-done`: the resumed loop reaches `all-done`.
+- `execute-resumes-without-flags`: re-invoking `specify plan execute` resumes from the in-progress entry with no flags.
+- `execute-loop-all-done`: the resumed loop reaches drained.
 
 ## Negative expectations
 

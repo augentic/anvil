@@ -20,7 +20,7 @@ Ids are deliberately shared across scenario files; this document is their single
 
 ### `plan-exists`
 
-Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `/spec:execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
+Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `specify plan execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
 
 **Probe.**
 
@@ -41,7 +41,7 @@ specify plan validate --format json; echo "exit=$?"    # expect exit=0
 
 ### `execute-loop-all-done`
 
-Used by `documentation-one-slice`, `contract-lifecycle`, `execute-pause-resume`, `workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`. `/spec:execute` exits because the plan is complete — every per-entry status is `done` and the scheduler reports drained — not because it parked, failed, or was interrupted.
+Used by `documentation-one-slice`, `contract-lifecycle`, `execute-pause-resume`, `workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`. `specify plan execute` exits because the plan is complete — every per-entry status is `done` and the scheduler reports drained — not because it parked, failed, or was interrupted.
 
 **Probe.**
 
@@ -94,7 +94,7 @@ specify slice provenance <slice> --format json    # every requirement's sources 
 
 ### `refine-reaches-refined`
 
-After Gate 1, `/spec:execute` drives the entry through `/spec:refine`; the slice validates cleanly and transitions to `refined`.
+After Gate 1, `specify plan execute` drives the entry through the refine orchestration (the `/spec:refine` breakout runs the same verb); the slice validates cleanly and transitions to `refined`.
 
 **Probe.**
 
@@ -408,7 +408,7 @@ The intent-driven and documentation-driven fixtures honour the same `shape`-deri
 
 ### `breakout-state-consistent`
 
-After cancelling `/spec:execute` and running `/spec:build` directly, on-disk slice and plan state is consistent — nothing half-written, exactly one active entry.
+After cancelling `specify plan execute` and running `/spec:build` directly, on-disk slice and plan state is consistent — nothing half-written, exactly one active entry.
 
 **Probe.**
 
@@ -420,7 +420,7 @@ specify slice validate <active-slice>; echo "exit=$?"    # expect exit=0
 
 ### `execute-resumes-without-flags`
 
-Re-invoking `/spec:execute` resumes from the in-progress entry with no extra flags — the scheduler returns the active entry rather than advancing a new one.
+Re-invoking `specify plan execute` resumes from the in-progress entry with no extra flags — the scheduler returns the active entry rather than advancing a new one.
 
 **Probe.**
 
@@ -456,7 +456,7 @@ diff <(parked tasks.md states) .specify/slices/<slice>/tasks.md    # previously-
 
 ### `loop-continues-to-merge`
 
-The resumed loop continues through merge to `all-done`.
+The resumed loop continues through merge to drained.
 
 **Probe.**
 
@@ -491,9 +491,9 @@ test -d workspace/backend && test -d workspace/mobile && echo materialised
 specify journal show --filter workspace.sync.completed | jq -c .payload    # "projects" lists both slots
 ```
 
-### `plan-lock-at-workspace`
+### `guest-lock-at-workspace`
 
-The plan-lock is held at the workspace while phase work runs in the slots — the workspace root owns `plan.yaml` and every per-entry status write; no slot grows its own plan. The CLI enforces the lock at runtime: with no session holding it, the plan-state-writing verbs refuse `plan-lock-not-held` (exit 2).
+The guest execute marker is held at the workspace while phase work runs in the slots — the workspace root owns `plan.yaml` and every per-entry status write; no slot grows its own plan. The guest loop holds the create-exclusive `.specify/guest.lock` at the plan root for the run's lifetime (a second driver session exits `guest-marker-held`) and releases it on exit.
 
 **Probe.**
 
@@ -501,7 +501,7 @@ The plan-lock is held at the workspace while phase work runs in the slots — th
 test -f plan.yaml && echo workspace-owns-plan
 ls workspace/*/plan.yaml 2>/dev/null    # expect no output
 specify journal show --filter plan.entry.advanced    # advances recorded in the workspace journal, not a slot's
-specify plan next --format json    # run after the driver released the lock: expect exit 2, "error":"plan-lock-not-held"
+test ! -f .specify/guest.lock && echo released    # after the run exits; mid-run the marker exists at the workspace root only
 ```
 
 ## `workspace-fail-resume`

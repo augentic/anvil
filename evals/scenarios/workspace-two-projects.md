@@ -9,7 +9,7 @@ assertions:
   - plan-exists
   - per-slice-project-routing
   - slots-materialised
-  - plan-lock-at-workspace
+  - guest-lock-at-workspace
   - execute-loop-all-done
 negative-expectations:
   - automated-runner-added
@@ -23,13 +23,13 @@ expected-artifacts:
   - workspace
 ---
 
-# Workspace /spec:execute across two projects
+# Workspace plan execute across two projects
 
 Scenario ID: `workspace-two-projects`
 
 ## Intent
 
-Prove workspace-driven execution across projects: a plan with slices targeting two registered projects executes from the workspace, with per-slice project routing, slot materialisation, `workspace prepare`, `chdir` + residue commit, and a plan-lock held at the workspace while phase work runs in the slots.
+Prove workspace-driven execution across projects: a plan with slices targeting two registered projects executes from the workspace, with per-slice project routing, slot materialisation, `workspace prepare`, `chdir` + residue commit, and the guest execute marker held at the workspace while phase work runs in the slots.
 
 ## Setup
 
@@ -37,7 +37,7 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 
 ## Invocation
 
-1. **Execute** — `/spec:execute loop` from the workspace.
+1. **Execute** — `specify plan execute` from the workspace. (Workspace routing has no in-guest counterpart yet: the verb currently exits with the typed `plan-execute-workspace-unsupported` refusal, so a run files as blocked until the workspace leg lands.)
 2. **Inspect** — `inspect plan.yaml`; `inspect workspace/<project>` with `git status`. Confirm each slice ran in its routed slot.
 
 ## Assertions
@@ -45,8 +45,8 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 - `plan-exists`: `plan.yaml` exists and is approved before execute.
 - `per-slice-project-routing`: each slice runs against its routed project slot.
 - `slots-materialised`: `workspace/backend/` and `workspace/mobile/` are materialised.
-- `plan-lock-at-workspace`: the plan-lock is held at the workspace while phase work runs in slots.
-- `execute-loop-all-done`: the loop reaches `all-done`.
+- `guest-lock-at-workspace`: the guest execute marker is held at the workspace while phase work runs in slots.
+- `execute-loop-all-done`: the loop reaches drained.
 
 ## Negative expectations
 

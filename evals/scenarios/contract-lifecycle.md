@@ -42,7 +42,7 @@ The full cross-repo happy path: a short feature brief becomes one contract slice
 
 ## Intent
 
-Prove the operator-facing Specify workflow can drive the cross-repo contract-first path end to end through `/spec:plan → Gate 1 → /spec:execute → /spec:finalize`, producing a durable end-state: each routed project's `specify/oauth-login` branch published to its `origin`, the archived plan path under `.specify/archive/plans/`, and the archived `change.md` next to the archived `plan.yaml`. The scenario checks durable structure and state transitions only — it must not fail because generated prose or implementation code differs from a previous run. It runs entirely against local bare-repo remotes; no forge client (`gh`) or network is involved.
+Prove the operator-facing Specify workflow can drive the cross-repo contract-first path end to end through `/spec:plan → Gate 1 → specify plan execute → /spec:finalize`, producing a durable end-state: each routed project's `specify/oauth-login` branch published to its `origin`, the archived plan path under `.specify/archive/plans/`, and the archived `change.md` next to the archived `plan.yaml`. The scenario checks durable structure and state transitions only — it must not fail because generated prose or implementation code differs from a previous run. It runs entirely against local bare-repo remotes; no forge client (`gh`) or network is involved.
 
 ```text
 feature brief
@@ -50,7 +50,7 @@ feature brief
   -> contract slice + routed backend and mobile implementation slices
   -> operator review pause (inspect plan.yaml)
   -> specify plan transition oauth-login approved
-  -> /spec:execute loop
+  -> specify plan execute
   -> /spec:finalize oauth-login   (pushes branches, then archives the plan)
   -> /spec:finalize oauth-login   (no active plan)
 ```
@@ -64,7 +64,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 1. **Draft** — from the workspace, run `/spec:plan oauth-login source oauth=docs/oauth-login.md`, asking for one contract slice plus backend and mobile implementation slices that both depend on the contract slice. The skill writes `change.md` + `plan.yaml`, validates, and stops at the hand-off (`pending`) printing the literal `specify plan transition oauth-login approved`. It must not proceed into execution.
 2. **Review (operator pause)** — `specify plan validate` and inspect `plan.yaml` read-only; confirm the slice shape. No `specify plan amend` for the parity run.
 3. **Stamp Gate 1** — run the literal `specify plan transition oauth-login approved`.
-4. **Execute** — `/spec:execute loop`; answer only genuine clarification prompts. The loop exits because the plan is complete (`all-done`).
+4. **Execute** — `specify plan execute`; answer only genuine clarification prompts. The loop exits because the plan is complete (drained).
 5. **Finalize** — `/spec:finalize oauth-login`. The skill pushes the prepared `specify/oauth-login` branches to each project's bare-repo `origin` (per-project status `pushed`), then runs `specify plan archive` (archiving `plan.yaml` + `change.md` under `.specify/archive/plans/oauth-login-<date>/`), and prints the pushed-branch list, a reminder to open PRs by hand, and the archived path.
 6. **Open PRs externally (out of scope for the assertions)** — the operator opens and merges the backend, mobile, and contracts pull requests by hand outside Specify; the scenario does not drive or assert this.
 7. **Finalize (re-run)** — `/spec:finalize oauth-login` reports no active plan remains and exits 0.
@@ -78,7 +78,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 - `dependencies-contract-before-implementations`: each implementation slice depends on the contract slice.
 - `draft-stops-at-handoff`: `/spec:plan` exits at the hand-off without executing, pushing, or finalizing.
 - `review-step-no-op`: inspecting `plan.yaml` between draft and execute reports the plan as authored.
-- `execute-loop-all-done`: `/spec:execute loop` exits because the plan is complete, not stuck/failed/interrupted.
+- `execute-loop-all-done`: `specify plan execute` exits because the plan is complete, not stuck/failed/interrupted.
 - `workspace-branches-prepared`: routed project work happens on `specify/oauth-login` branches.
 - `finalize-pushes-branches`: `/spec:finalize` pushes the `specify/oauth-login` branch to each project's `origin` (per-project status `pushed`); it creates, observes, and merges no PRs.
 - `finalize-archives-plan`: the same `/spec:finalize` run archives the plan via `specify plan archive` after the push succeeds.

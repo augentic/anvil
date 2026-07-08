@@ -1,5 +1,5 @@
-//! The drained execute loop (RFC-61 Step 4, Milestone E): the
-//! `/spec:execute` skill's body as guest control flow.
+//! The drained execute loop: the retired `/spec:execute` skill's body
+//! as guest control flow behind the guest-routed `specify plan execute`.
 //!
 //! [`execute`] takes the [`GuestMarker`] (D1), then loops
 //! [`plan_status_body`] → claim via the core `plan next` projection →
@@ -226,7 +226,8 @@ fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
             "the guest execute loop runs single-project plans only",
             format!(
                 "{detail}; workspace routing (slot sync + chdir) has no in-guest counterpart — \
-                 drive workspace plans through the native /spec:execute skill"
+                 drive workspace plans hand-driven (`specify plan next`, then the \
+                 /spec:refine → /spec:build → /spec:merge breakouts)"
             ),
         ));
     }

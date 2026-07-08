@@ -68,7 +68,7 @@ specify plan next
 
 Returns the first `pending` entry whose `depends-on` entries are all `done`. Returns an error if no eligible entry exists.
 
-With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`). `plan next` is the sole writer of per-entry `in-progress`; use `specify plan status` for a pure read.
+With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`drained`, `stuck`, `in-progress`). `plan next` is the sole writer of per-entry `in-progress`; use `specify plan status` for a pure read.
 
 ### specify plan status
 

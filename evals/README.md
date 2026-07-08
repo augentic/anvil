@@ -9,7 +9,7 @@ Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — 
 Tell a Cursor agent:
 
 ```text
-Run Specify's evals. For fail-resume scenarios (execute-fail-resume, workspace-fail-resume, execute-pause-resume, workspace-stale-recovery), follow each scenario's multi-step Invocation exactly — a parked execute is expected, not a failure. After the park, fix/breakout/resync as written, then resume until all-done.
+Run Specify's evals. For fail-resume scenarios (execute-fail-resume, workspace-fail-resume, execute-pause-resume, workspace-stale-recovery), follow each scenario's multi-step Invocation exactly — a parked execute is expected, not a failure. After the park, fix/breakout/resync as written, then resume until drained.
 ```
 
 The prompt tells the agent to follow the runbook in [docs/contributing/evals.md](../docs/contributing/evals.md#agent-runbook): it installs the build under test (`make install-cli`), drives each agent-based scenario in [scenarios/](scenarios/README.md), and files a report under [runs/](runs/README.md).
@@ -38,8 +38,8 @@ Same delegation as **Run all scenarios**, but the agent follows the [single-scen
 | `[contract-lifecycle](scenarios/contract-lifecycle.md)`               | Cross-repo contract flow (full lifecycle, local bare-repo remotes)       |
 | `[target-shape](scenarios/target-shape.md)`                           | Target `shape` injection                                                 |
 | `[execute-pause-resume](scenarios/execute-pause-resume.md)`           | Step-through breakout mid-execute                                        |
-| `[execute-fail-resume](scenarios/execute-fail-resume.md)`             | `/spec:execute` parks on a build failure                                 |
-| `[workspace-two-projects](scenarios/workspace-two-projects.md)`       | Workspace `/spec:execute` across two projects                            |
+| `[execute-fail-resume](scenarios/execute-fail-resume.md)`             | `specify plan execute` parks on a build failure                          |
+| `[workspace-two-projects](scenarios/workspace-two-projects.md)`       | Workspace `specify plan execute` across two projects                     |
 | `[workspace-fail-resume](scenarios/workspace-fail-resume.md)`         | Workspace breakout after build failure                                   |
 | `[workspace-stale-recovery](scenarios/workspace-stale-recovery.md)`   | Stale-workspace recovery                                                 |
 | `[guest-execute-loop](scenarios/guest-execute-loop.md)`               | Composed-runtime inverted loop (workflow guest drives `plan execute`)    |
@@ -72,4 +72,4 @@ make install-cli
 
 `.sandbox/` accumulates full per-scenario project trees (including Cargo target dirs) and is never pruned automatically — it can grow to multiple gigabytes across sweeps. Each scenario recreates its own root on the next run, so it is always safe to reclaim the space between runs with `rm -rf evals/.sandbox`.
 
-Owner-local adapter scenarios live under `[adapters/targets/<name>/tests/](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md)`.
+Owner-local adapter scenarios live under `[targets/<name>/tests/](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/tests/README.md)` in `augentic/specify-adapters`.

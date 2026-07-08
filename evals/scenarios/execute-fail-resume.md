@@ -20,13 +20,13 @@ expected-artifacts:
   - plan.yaml
 ---
 
-# /spec:execute parks on a build failure, operator fixes, resumes
+# Plan execute parks on a build failure, operator fixes, resumes
 
 Scenario ID: `execute-fail-resume`
 
 ## Intent
 
-Prove the build-failure recovery path: a slice's `cargo test` fails during `/spec:execute`, the loop parks with a stop hint, the operator patches the crate, and re-running `/spec:execute` resumes from the failed task and continues to merge.
+Prove the build-failure recovery path: a slice's `cargo test` fails during `specify plan execute`, the loop parks with a stop hint, the operator patches the crate, and re-running `specify plan execute` resumes from the failed task and continues to merge.
 
 ## Setup
 
@@ -34,16 +34,16 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Invocation
 
-1. **Execute** — `/spec:execute loop`; confirm it parks on the build failure with a clear stop hint.
+1. **Execute** — `specify plan execute`; confirm it parks on the build failure with a clear stop hint.
 2. **Fix** — patch the crate so the failing `cargo test` passes.
-3. **Resume** — `/spec:execute loop`; confirm it resumes from the failed task and reaches `all-done` through merge.
+3. **Resume** — `specify plan execute`; confirm it resumes from the failed task and reaches drained through merge.
 
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
 - `build-failure-stop-hint`: the loop parks with a structured stop hint naming the failed task/slice.
 - `build-resumes-from-failed-task`: after the fix, the build resumes from the failed task rather than restarting the slice.
-- `loop-continues-to-merge`: the resumed loop continues through merge to `all-done`.
+- `loop-continues-to-merge`: the resumed loop continues through merge to drained.
 
 ## Negative expectations
 

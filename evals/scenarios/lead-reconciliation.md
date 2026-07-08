@@ -29,7 +29,7 @@ Scenario ID: `lead-reconciliation`
 
 ## Intent
 
-Prove the `/spec:plan` propose step reconciles leads automatically when two adapters surface the same candidate: `specify plan propose --from` writes a slice with combined `sources:` without operator ceremony, uncertain merges surface under `## Tentative merges` in `change.md`, the operator can override a wrong merge via `specify plan amend` at Gate 1, and downstream `extract` runs against every contributing source.
+Prove the `/spec:plan` reconciliation step merges leads automatically when two adapters surface the same candidate: `specify plan author` writes a slice with combined `sources:` without operator ceremony, uncertain merges surface under `## Tentative merges` in `change.md`, the operator can override a wrong merge via `specify plan amend` at Gate 1, and downstream `extract` runs against every contributing source.
 
 ## Setup
 
@@ -37,9 +37,9 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Invocation
 
-1. **Plan** — `/spec:plan account-lockout` binding both sources; confirm the propose step writes a slice with combined `sources:` and surfaces any uncertain merge under `## Tentative merges` in `change.md`.
+1. **Plan** — `/spec:plan account-lockout` binding both sources; confirm the reconciliation step writes a slice with combined `sources:` and surfaces any uncertain merge under `## Tentative merges` in `change.md`.
 2. **Review** — inspect `plan.yaml` and `change.md`; if the merge is wrong, override with `specify plan amend`.
-3. **Refine** — `/spec:refine` (or `/spec:execute` to refine); confirm `extract` runs against every contributing source.
+3. **Refine** — `/spec:refine` (or `specify plan execute` to refine); confirm `extract` runs against every contributing source.
 
 ## Assertions
 

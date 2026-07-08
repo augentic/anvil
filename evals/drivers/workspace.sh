@@ -10,6 +10,12 @@
 # The fail/stale scenarios park mid-run (an engineered build failure or an
 # operator Ctrl-C leaving a slot dirty); the operator triages per the
 # scenario doc, then `bash $0 <scenario> resume` re-enters to drained.
+#
+# NOTE: workspace routing has no in-guest counterpart yet — `plan author` /
+# `plan execute` at a workspace root exit with the typed
+# `plan-author-workspace-unsupported` / `plan-execute-workspace-unsupported`
+# refusal, so the model legs currently file as blocked; the `setup` leg and
+# the typed refusal itself are still replayable.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
