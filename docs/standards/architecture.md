@@ -12,9 +12,10 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 diagnostics              # depends on {error,schema} (Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
 artifacts                    # depends on {error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 standards                # standards layer — depends on {error,schema,diagnostics}; NOT on workflow
-workflow             # workflow layer — depends on {error,schema,artifacts,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on standards (no wasmtime in its graph)
-workflow                 # wasm32 wasi:cli/run core guest — depends on dispatch + workflow
-specify (root crate)             # the omnia::runtime! binary — depends on no specify-* crate
+workflow                 # workflow layer — depends on {error,schema,artifacts,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on standards (no wasmtime in its graph)
+dispatch                 # wasm-clean dispatch boundary — shared by the native binary and the specify guest
+specify                  # wasm32 wasi:cli/run core guest — depends on dispatch + workflow
+specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-* crate
 ```
 
 The framework authoring checks run as plain cargo tests at [`tests/framework_quality/`](../../tests/framework_quality/) (with the Rust-quality siblings in `tests/rust_quality.rs`); there is no lint engine or `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).

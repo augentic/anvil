@@ -65,4 +65,4 @@ The pattern for a command handler:
 
 ## Public Rust API
 
-The root `specify` package is a binary-only crate. It does not expose a public library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `workflow::Plan`, `workflow::ProjectConfig`, or `error::Error`.
+The root `specify-cli` package is a binary-only crate. It does not expose a public library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `workflow::Plan`, `workflow::ProjectConfig`, or `error::Error`.

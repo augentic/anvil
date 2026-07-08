@@ -1,6 +1,6 @@
 //! `specify` — the generic Omnia command-mode runtime over the
 //! cursor-bound backends. The binary carries no Specify vocabulary:
-//! every verb runs in the workflow (core) guest, driven through
+//! every verb runs in the specify (core) guest, driven through
 //! omnia's own `run` grammar (`specify run <wasm|--config manifest>
 //! -- <guest argv>`, `OMNIA_CONFIG` as the manifest fallback). The
 //! replay sibling (`runtime-replay`, `crates/runtime`) keeps
