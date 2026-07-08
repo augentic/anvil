@@ -7,9 +7,9 @@
 //! *dispatched* in the shim, where the WIT-provided seam lives:
 //! [`route`] returns the [`Orchestration`] descriptor and the shim
 //! drives the matching `specify_workflow::orchestrate` entry point
-//! against its providers. Retired provisioning verbs (`init` without
+//! against its providers. Provisioning verbs (`init` without
 //! `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`,
-//! `plugins`) have no guest handler yet and fail with
+//! `plugins`) have no guest handler and fail with
 //! `Error::Argument` (exit 2).
 //!
 //! Project-scoped guest verbs anchor [`Ctx`] at `"."` — the mount

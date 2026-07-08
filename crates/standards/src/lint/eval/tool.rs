@@ -1,40 +1,20 @@
-//! `kind: tool` evaluator per `kind: tool` evaluator contract.
+//! `kind: tool` evaluator. Hint `value` is the tool name; the
+//! [`ToolRunner`] trait defers WASI host wiring to the CLI layer so
+//! this crate stays `wasmtime`-free.
 //!
-//! Hint `value` is the declared tool name. The runner trait the
-//! evaluator is plumbed with — [`ToolRunner`] — defers WASI host
-//! wiring to the CLI layer so the standards crate stays free of a
-//! `wasmtime` / `specify-tool` crate dependency. The CLI implementation
-//! lives in `specify lint` (S9); this module only consumes the
-//! abstract trait surface.
+//! The tool runs once per candidate file: the candidate's
+//! project-relative path is the first positional argument, and the
+//! hint's `config:` JSON is forwarded as a second so the tool reads
+//! its policy from the rule file — the engine relays the value, never
+//! interprets it.
 //!
-//! The tool runs once per candidate file. The candidate's
-//! project-relative path is the first positional argument; when the
-//! rule's `kind: tool` hint carries a `config:` block, its JSON
-//! serialisation is forwarded as a second positional argument so the
-//! tool reads its policy (caps, allow-lists, grammars) from the rule
-//! file — the engine relays the value, it never interprets it (the
-//! no-embedded-policy invariant). The closed `{artifact}` /
-//! `{project_dir}` / `{rule_id}` placeholder set named in the contract
-//! cannot be expanded in v1 because the closed [`crate::rules::RuleHint`]
-//! shape carries no `args:` field; extending the hint shape is the rules
-//! schema's responsibility, not this evaluator's.
-//!
-//! Per `kind: tool` evaluator contract:
-//!
-//! - Tools the project did not declare emit a single
-//!   `tool.undeclared` finding (severity `important`).
-//! - Successful runs whose stdout is the `DiagnosticReport`
-//!   envelope OR a single `Diagnostic` body fold the tool's
-//!   findings straight into the scan result; the umbrella
-//!   re-stamps `id` and `fingerprint` after applying the §"Evidence
-//!   cap" truncation.
-//! - Non-zero exit with no findings emits one
-//!   `tool.invocation-failed` finding with the rule's severity and
-//!   the (truncated) stderr in `Snippet` evidence.
-//! - Runner-level invocation failures (e.g. WASI host could not
-//!   start the tool) propagate as
-//!   [`super::HintError::ToolInvocation`] for the caller to map to
-//!   the lint exit mapping exit-code table.
+//! Outcomes: an undeclared tool emits one `tool.undeclared` finding;
+//! stdout parsing as a `DiagnosticReport` (or a single `Diagnostic`)
+//! folds the findings into the scan result with `id` / `fingerprint`
+//! re-stamped after evidence-cap truncation; non-zero exit with no
+//! findings emits one `tool.invocation-failed` finding carrying the
+//! truncated stderr; runner-level failures propagate as
+//! [`super::HintError::ToolInvocation`].
 
 use std::path::{Path, PathBuf};
 
@@ -52,7 +32,7 @@ const STDERR_MAX_BYTES: usize = 8 * 1024;
 /// evaluation (see [`super::evaluate_rules`]) so the WASI runtime stays
 /// out of the standards crate's dep graph.
 ///
-/// `specify lint` (S9) supplies a `wasmtime`-backed implementation;
+/// `specify lint` supplies a `wasmtime`-backed implementation;
 /// integration tests in this crate supply a fake.
 pub trait ToolRunner {
     /// Invoke the named tool with `args` against `project_dir`.

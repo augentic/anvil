@@ -9,12 +9,10 @@
 //! never mirrored. Provenance is stamped in [`ComponentMeta`].
 //!
 //! `cache_codex` materializes the shared codex packs compiled into the
-//! binary (DECISIONS.md §"Codex ownership flip: shared packs embed in
-//! the binary") into the project codex cache at
-//! `<project-cache>/codex/`, pinned to the binary
-//! version. The codex resolver's rules-root probe finds that tree
-//! without a co-located framework checkout or a manual `--rules-root`
-//! (RM-07). Provenance is stamped in [`CodexMeta`].
+//! binary into the project codex cache at `<project-cache>/codex/`,
+//! pinned to the binary version. The codex resolver's rules-root probe
+//! finds that tree without a co-located framework checkout or a manual
+//! `--rules-root`. Provenance is stamped in [`CodexMeta`].
 
 use std::fs;
 use std::path::{Path, PathBuf};

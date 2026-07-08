@@ -5,8 +5,9 @@
 //! wire is the **response**
 //! ([`SynthesisResponse`], `kind: response`), validated against
 //! `schemas/slice/synthesis.schema.json` by
-//! [`crate::schema::validate_synthesis_json`] before C8 deserialises it
-//! here. The response carries the agent's [`crate::slice::model::SliceModel`]
+//! [`crate::schema::validate_synthesis_json`] before the refine
+//! orchestration deserialises it here. The response carries the
+//! agent's [`crate::slice::model::SliceModel`]
 //! (kernel-owned and header fields omitted) plus the prose-only Markdown
 //! [`SynthesisArtifacts`].
 //!
@@ -22,8 +23,8 @@
 //! The assembly is pure over already-read inputs so it unit-tests
 //! without a temp project; [`SynthesisSourceInput::from_evidence_file`]
 //! is the only filesystem hook, kept off the core path and free of
-//! adapter resolution (C8 resolves the [`crate::adapter::TargetAdapter`]
-//! and reads the shape brief).
+//! adapter resolution (the refine orchestration resolves the
+//! [`crate::adapter::TargetAdapter`] and reads the shape brief).
 
 use std::path::Path;
 
@@ -56,7 +57,7 @@ pub enum SynthesisKind {
 /// `kind: response` envelope — the agent's synthesis result.
 ///
 /// Round-trips `schemas/slice/synthesis.schema.json`. The DTO is
-/// shape-only; C8 schema-gates the raw bytes via
+/// shape-only; the refine orchestration schema-gates the raw bytes via
 /// [`crate::schema::validate_synthesis_json`] before deserialising here,
 /// and the projection kernel re-derives every kernel-owned field.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,8 +136,8 @@ pub struct SynthesisInputs {
     /// One entry per bound source, carrying its inline `lead` and
     /// `claims`.
     pub sources: Vec<SynthesisSourceInput>,
-    /// The resolved target guidance body. Resolved and read by C8 —
-    /// never by this module.
+    /// The resolved target guidance body. Resolved and read by the
+    /// refine orchestration — never by this module.
     pub guidance_brief: String,
     /// The slice's bound project baseline surface (one entry
     /// per `.specify/specs/<domain>/spec.md`), so synthesis reconciles
@@ -246,8 +247,9 @@ impl SynthesisSourceInput {
 /// caller builds the vec by reading each `evidence/<source>.yaml`
 /// (e.g. via [`SynthesisSourceInput::from_evidence_file`]).
 /// `guidance_brief` is the bound target's resolved guidance body,
-/// provided by C8 (which resolves the [`crate::adapter::TargetAdapter`]
-/// and reads the brief) so this function stays pure and adapter-free.
+/// provided by the refine orchestration (which resolves the
+/// [`crate::adapter::TargetAdapter`] and reads the brief) so this
+/// function stays pure and adapter-free.
 #[must_use]
 pub fn build_synthesis_inputs(
     slice: &str, sources: &[SynthesisSourceInput], guidance_brief: &str, baseline: &[Surface],

@@ -81,6 +81,18 @@ fn skill_directive_re() -> &'static Regex {
 /// Lenient: unparseable lines are ignored, as are `### …` and deeper
 /// headings. Tasks appearing before the first `## ` heading receive
 /// `group == ""`.
+///
+/// ```
+/// use specify_model::task::parse_tasks;
+///
+/// let progress = parse_tasks(
+///     "## Core\n\
+///      - [x] 1.1 Define the request DTO\n\
+///      - [ ] 1.2 Wire the handler\n",
+/// );
+/// assert_eq!((progress.complete, progress.total), (1, 2));
+/// assert_eq!(progress.tasks[1].group, "Core");
+/// ```
 #[must_use]
 pub fn parse_tasks(content: &str) -> Progress {
     let mut current_group = String::new();

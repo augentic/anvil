@@ -22,8 +22,8 @@ pub struct Registry {
     /// with an actionable diagnostic.
     pub version: u32,
     /// Platform catalogue. Empty or single-entry is equivalent to
-    /// "single-repo mode"; multi-entry activates the `/change:draft`
-    /// *sync workspace* phase (C28/C30).
+    /// "single-repo mode"; multi-entry activates the workspace sync
+    /// phase.
     #[serde(default)]
     pub projects: Vec<RegistryProject>,
 }
@@ -211,8 +211,9 @@ impl RegistryProject {
     /// resolved filesystem path (`.` or a repo-relative path), as opposed
     /// to a `git clone` remote.
     ///
-    /// Callers may assume [`Registry::validate_shape`] has already accepted
-    /// the URL — this predicate mirrors the C28 classification rules.
+    /// Callers may assume [`Registry::validate_shape`] has already
+    /// accepted the URL — this predicate mirrors its classification
+    /// rules.
     #[must_use]
     pub fn is_local(&self) -> bool {
         self.url == "." || (!self.url.contains("://") && !self.url.starts_with("git@"))

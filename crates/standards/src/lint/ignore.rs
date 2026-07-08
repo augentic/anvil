@@ -1,39 +1,19 @@
-//! Directive-validation pass.
+//! Directive-validation pass, run after hint evaluation.
 //!
-//! Runs after hint evaluation and before envelope assembly. The pass
-//! consumes [`crate::lint::WorkspaceModel::ignore_directives`] and the
-//! current scan's finding set, stamps matching findings with
-//! [`FindingStatus::Ignored`] (or [`FindingStatus::FalsePositive`]
-//! when the directive's rationale carries the `false-positive:`
-//! prefix), and mints synthetic `UNI-022` / `UNI-023` findings for
-//! malformed or orphan directives.
+//! Stamps findings matched by an ignore directive with
+//! [`FindingStatus::Ignored`] (or [`FindingStatus::FalsePositive`] for
+//! a `false-positive:` rationale), and mints synthetic `UNI-022` /
+//! `UNI-023` findings for malformed or orphan directives — suppressed
+//! when the corresponding rule did not resolve in the current scan, so
+//! projects without the shared codex tree still get directives applied
+//! without tripping the synthetics.
 //!
-//! # Graceful degradation
+//! Directives are sorted by `(path, line, rule_id)` before iterating so
+//! stamping and synthetic ordering are deterministic.
 //!
-//! When the universal codex tree is absent the match-and-demote logic
-//! runs unconditionally;
-//! synthetic `UNI-022` / `UNI-023` emission is suppressed when the
-//! corresponding rule did not resolve in the current scan. Consumer
-//! projects without the shared codex tree see directives applied
-//! with `disposition.directive` populated but never trip the
-//! synthetic findings.
-//!
-//! # Determinism
-//!
-//! The pass sorts directives by `(path, line, rule_id)` before
-//! iterating so the stamping order and synthetic ordering are stable
-//! irrespective of the indexer's emission order. Findings are
-//! mutated in place; the returned synthetics are appended by the
-//! runner before envelope assembly.
-//!
-//! # Status-aware exit decision
-//!
-//! [`blocking_findings_present`] implements the exit and
-//! presentation semantics rule: exit 2 fires only when at least one
-//! finding has `severity ∈ {critical, important}` AND `status` is
-//! `open` (treating an unset status as `open`). The helper is kept
-//! standalone so the lint runner and unit tests share one source of
-//! truth for the decision.
+//! [`blocking_findings_present`] is the single exit-2 decision: it
+//! fires only when a finding has `severity ∈ {critical, important}`
+//! AND `status` is `open` (unset counts as `open`).
 
 use std::collections::HashMap;
 

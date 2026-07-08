@@ -1,42 +1,15 @@
-//! Stable export ordering and `ResolvedRules` assembly (CH-14).
+//! Stable export ordering and `ResolvedRules` assembly.
 //!
-//! Implements `ResolvedRules` export contract §"Ordering". CH-12 owns
-//! discovery, CH-13 owns filtering; this module sorts the survivors
-//! by the closed four-tuple and lifts each [`ResolvedRuleEntry`] into
-//! a wire-shaped [`ResolvedRule`] inside a [`ResolvedRules`] envelope.
-//!
-//! # Sort tuple
-//!
-//! Per the rules contract §"Ordering" the closed sort key is:
-//!
-//! 1. **non-deprecated before deprecated** — `rule.deprecated.is_some()`
-//!    maps to `false < true`, putting active rules ahead of historical
-//!    citations.
-//! 2. **severity** — `critical < important < suggestion < optional`.
-//! 3. **origin** — `target < source < shared < core < unknown`.
-//! 4. **`rule-id`** lexical.
-//!
-//! Both [`super::super::Severity`] and [`super::super::Origin`] are
-//! declared with variants in the contract sort order in
-//! [`crate::rules`], so the derived [`Ord`] picks up the
-//! contract-defined comparator directly — no bespoke `_sort_key` helpers
-//! needed. The `severity_ordering_matches_contract` and
-//! `origin_ordering_matches_contract` tests in `crates/standards/src/rules.rs`
-//! pin that declaration order so a future refactor cannot silently
-//! shift the sort.
-//!
-//! [`slice::sort_by`] is a stable sort, so ties on the closed four-tuple
-//! preserve CH-12's lexical intra-directory ordering. That keeps
-//! same-id-prefix rules from the same overlay rung in the order
-//! `list_rule_files` produced them.
-//!
-//! # Path stability
-//!
-//! [`ResolvedRule::path`] is carried verbatim from
-//! [`ResolvedRuleEntry::path`] (already relative to
-//! [`ResolvedRule::path_root`] per CH-12 §"Compute `path` relative to
-//! `root`"). The resolver writes forward-slash paths on every host,
-//! so golden bytes match across Linux, macOS, and Windows.
+//! Sorts the filtered pool by the contract's closed four-tuple —
+//! non-deprecated before deprecated, then severity, then origin, then
+//! `rule-id` lexical — and lifts each [`ResolvedRuleEntry`] into a
+//! wire-shaped [`ResolvedRule`] inside a [`ResolvedRules`] envelope.
+//! [`crate::rules`] declares the `Severity` and `Origin` variants in
+//! contract sort order, so the derived [`Ord`] is the comparator;
+//! tests in `rules.rs` pin that declaration order. The stable sort
+//! preserves the resolver's lexical intra-directory ordering on ties,
+//! and paths are carried verbatim (forward-slash on every host) so
+//! golden bytes match across platforms.
 
 use super::{ResolveError, ResolveInputs, ResolvedRuleEntry, filter};
 use crate::rules::{ResolvedRule, ResolvedRules, Rule};
@@ -44,8 +17,8 @@ use crate::rules::{ResolvedRule, ResolvedRules, Rule};
 /// Sort `entries` in place by the closed rules-export four-tuple.
 ///
 /// See the module docs for the ordering rationale. [`slice::sort_by`]
-/// is stable, so ties on the four-tuple preserve CH-12's lexical
-/// intra-directory ordering.
+/// is stable, so ties on the four-tuple preserve the resolver's
+/// lexical intra-directory ordering.
 pub fn sort_resolved(entries: &mut [ResolvedRuleEntry]) {
     entries.sort_by(|a, b| {
         let key_a = (a.rule.deprecated.is_some(), a.rule.severity, a.origin, a.rule.id.as_str());
@@ -57,9 +30,9 @@ pub fn sort_resolved(entries: &mut [ResolvedRuleEntry]) {
 /// Compose [`super::resolve`], [`super::filter`], and [`sort_resolved`]
 /// to assemble the [`ResolvedRules`] wire envelope.
 ///
-/// This is the top-level entry point CH-17 (the `specify rules
-/// export` CLI) will call. The returned envelope is fully ordered and
-/// ready for serialisation against `resolved.schema.json`.
+/// This is the top-level entry point the `specify rules export` CLI
+/// calls. The returned envelope is fully ordered and ready for
+/// serialisation against `resolved.schema.json`.
 ///
 /// # Errors
 ///

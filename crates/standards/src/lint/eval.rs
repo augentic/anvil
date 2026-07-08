@@ -1,39 +1,23 @@
-//! Hint interpreter umbrella per the executable hint-kind contract
-//! and §"Evaluation algorithm".
+//! Hint interpreter umbrella.
 //!
-//! Each rule's
-//! hints are partitioned by kind and evaluated in the fixed order
+//! Each rule's hints are partitioned by kind and evaluated in the
+//! fixed order
 //! `path-pattern → schema → reference-resolves → unique → constant-eq → fenced-block → presence → field-grammar → regex → tool`
 //! so the cheap filters narrow the candidate file set before the
 //! subprocess boundary fires.
 //!
-//! When a rule carries multiple include `path-pattern` hints they UNION.
-//! Hints whose `value` starts with `!` are exclusions applied after the
-//! include union. When a rule carries only exclusions,
-//! the starting set is every file in the model. When a rule carries zero
-//! `path-pattern` hints the
-//! candidate set defaults to every [`crate::lint::File`] in
-//! [`crate::lint::WorkspaceModel`]; per-kind sub-evaluators apply
-//! their own [`crate::lint::FileKind`] filter (e.g. regex skips
-//! binaries).
-//!
-//! Every [`HintKind`] variant has an executable interpreter and the
-//! partition is exhaustive over executable arms — no hint kind is
-//! reserved.
-//!
-//! # Evidence cap (the structured evidence union)
+//! Multiple include `path-pattern` hints UNION; `!`-prefixed values are
+//! exclusions applied after the include union (exclusions-only rules
+//! start from every file). A rule with zero `path-pattern` hints
+//! defaults to every file in [`crate::lint::WorkspaceModel`]; per-kind
+//! sub-evaluators apply their own [`crate::lint::FileKind`] filter.
 //!
 //! Every finding minted here passes through
-//! [`specify_diagnostics::validate_evidence_size`] before `compute_fingerprint`
-//! signs it. Snippet-evidence findings that exceed the 16 `KiB` cap are
-//! truncated by halving the snippet value (clamped to a UTF-8 char
-//! boundary) and appending a `…[truncated]` marker until the
-//! serialised evidence object fits, then re-fingerprinted. Structured
-//! evidence too large to inline collapses to
-//! `{"truncated": true}`. Findings with [`specify_diagnostics::FindingEvidence::Digest`]
-//! evidence above the cap are not produced by v1 evaluators; the
-//! truncation loop bails on them rather than synthesising a bogus
-//! payload.
+//! [`specify_diagnostics::validate_evidence_size`] before
+//! fingerprinting: oversized snippet evidence is halved (UTF-8-safe,
+//! `…[truncated]` marker appended) until the serialised evidence fits
+//! the 16 `KiB` cap, then re-fingerprinted; oversized structured
+//! evidence collapses to `{"truncated": true}`.
 
 pub mod constant_eq;
 mod error;

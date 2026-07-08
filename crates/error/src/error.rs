@@ -113,23 +113,6 @@ pub enum Error {
         source: std::io::Error,
     },
 
-    /// `specify workspace prepare` refused to land a branch
-    /// because `specify_registry::branch::prepare` returned a
-    /// diagnostic. The renderer surfaces the diagnostic key + paths
-    /// alongside the human-readable detail.
-    #[error("branch-preparation-failed: project `{project}`: {detail} ({key})")]
-    BranchPrepareFailed {
-        /// Project (registry slot) name.
-        project: String,
-        /// Stable diagnostic key from `specify_registry::branch`.
-        key: String,
-        /// Human-readable diagnostic message.
-        detail: String,
-        /// Repository-relative paths the diagnostic points at (may be
-        /// empty when the diagnostic is whole-clone scoped).
-        paths: Vec<String>,
-    },
-
     /// An I/O error propagated from the standard library.
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -198,7 +181,6 @@ impl Error {
             Self::AdapterCliTooOld { .. } => Cow::Borrowed("adapter-cli-too-old"),
             Self::ArtifactNotFound { .. } => Cow::Borrowed("artifact-not-found"),
             Self::Filesystem { op, .. } => Cow::Owned(format!("filesystem-{op}")),
-            Self::BranchPrepareFailed { .. } => Cow::Borrowed("branch-preparation-failed"),
             Self::Io(_) => Cow::Borrowed("io"),
             Self::YamlDe(_) | Self::YamlSer(_) => Cow::Borrowed("yaml"),
         }

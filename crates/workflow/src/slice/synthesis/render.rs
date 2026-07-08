@@ -12,7 +12,7 @@
 //! `### Requirement: <title>` plus an inline `[unknown]` / `[conflict]`
 //! / `[divergence]` tag suffix when the status is not `agreed`, then the
 //! three metadata lines, a blank line, and the body. Render and parse
-//! stay symmetric so the C9 `slice-spec-provenance-stale` check (which
+//! stay symmetric so the `slice-spec-provenance-stale` check (which
 //! parses the on-disk `spec.md` with that same parser) and
 //! `specify slice validate` round-trip the output cleanly. The tag is
 //! the status text itself (`divergence`, …), so the parser's
@@ -50,7 +50,7 @@ pub struct RenderedSpec {
 /// The canonical `(ID, Sources, Status)` provenance triplet a single
 /// requirement renders, paired with its owning domain.
 ///
-/// [`expected_provenance_lines`] returns one per requirement; the C9
+/// [`expected_provenance_lines`] returns one per requirement; the
 /// staleness check (`slice-spec-provenance-stale`) parses the on-disk
 /// `spec.md` with [`specify_model::spec::provenance::parse_spec_md`] and
 /// compares each parsed requirement's `id` / `sources` / `status`
@@ -140,7 +140,7 @@ fn render_modified_domain(
 }
 
 /// The canonical provenance triplet per requirement, in declaration
-/// order, for the C9 staleness comparison against on-disk `spec.md`.
+/// order, for the staleness comparison against on-disk `spec.md`.
 #[must_use]
 pub fn expected_provenance_lines(model: &SliceModel) -> Vec<ExpectedRequirement> {
     model

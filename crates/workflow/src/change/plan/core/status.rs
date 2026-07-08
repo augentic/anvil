@@ -35,7 +35,7 @@ pub enum NextActionKind {
     Drained,
 }
 
-/// Closed slice-loop step set for the RM-15 re-entry fields
+/// Closed slice-loop step set for the re-entry fields
 /// ([`StatusBody::current_step`] / [`StatusBody::last_completed`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
@@ -160,17 +160,17 @@ pub struct StatusBody {
     pub slice: Option<String>,
     /// Bound project of the targeted entry, when set.
     pub project: Option<String>,
-    /// RM-15: step the targeted slice is currently at — the awaited
+    /// Step the targeted slice is currently at — the awaited
     /// phase, including a phase the loop is stopped on. `None` when no
     /// slice is targeted (pre-Gate-1, `stuck`, `slice-dropped`,
     /// `drained`).
     pub current_step: Option<LoopStep>,
-    /// RM-15: most recent step the targeted slice completed, from its
+    /// Most recent step the targeted slice completed, from its
     /// lifecycle (`refined` → `refine`, `built` → `build`, a landed
     /// merge → `merge`). `None` before the first phase completes or
     /// when no slice is targeted.
     pub last_completed: Option<LoopStep>,
-    /// RM-15: next valid resume point as a literal command — the phase
+    /// Next valid resume point as a literal command — the phase
     /// skill for dispatches and retryable stops, the Gate 1 / `done`
     /// stamp for the stamp-shaped stops, `/spec:finalize` on drained.
     /// `None` when no single command makes progress (`stuck`,
@@ -329,7 +329,7 @@ fn assemble(
     }
 }
 
-/// RM-15 `current-step`: the phase the targeted slice is at — the
+/// `current-step`: the phase the targeted slice is at — the
 /// dispatched phase, or the phase a stop is parked on.
 fn current_step(resolution: &Resolution) -> Option<LoopStep> {
     match resolution.action {
@@ -349,7 +349,7 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
     }
 }
 
-/// RM-15 `resume`: the next valid resume point as a literal command.
+/// `resume`: the next valid resume point as a literal command.
 /// `None` when no single command makes progress.
 fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
     let slice = resolution.slice.as_deref();
@@ -405,7 +405,7 @@ fn resolve_entry(
         ));
     }
 
-    // RM-15 `last-completed`: the slice lifecycle is the record of the
+    // `last-completed`: the slice lifecycle is the record of the
     // most recent completed step.
     let last_completed = match lifecycle {
         None | Some(LifecycleStatus::Refining | LifecycleStatus::Dropped) => None,

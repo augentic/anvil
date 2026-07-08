@@ -5,13 +5,13 @@
 //!
 //! - [`Rule`] / [`Deprecated`] / [`Applicability`] /
 //!   [`RuleHint`] / [`Reference`] are the parsed-frontmatter
-//!   shape used by the CH-11 frontmatter parser. Field names are
+//!   shape used by the frontmatter parser. Field names are
 //!   kebab-case at every nesting level (`lint-mode`,
 //!   `rule-hints`, `replaced-by`); the parser performs the
 //!   `snake_case -> kebab-case` lift on the raw markdown side so the
 //!   in-memory shape matches the wire shape.
 //! - [`ResolvedRules`] / [`ResolvedRule`] are the export envelope
-//!   emitted by `specify rules export --format json` (CH-17). They
+//!   emitted by `specify rules export --format json`. They
 //!   add resolver-only fields ([`Origin`], [`PathRoot`], `path`,
 //!   `body`) on top of the codex-rule shape.
 //!
@@ -211,7 +211,7 @@ pub struct Deprecated {
 
 /// Parsed rule (frontmatter + body) on the wire-kebab shape.
 ///
-/// The CH-11 frontmatter parser owns the snake-to-kebab lift on the
+/// The frontmatter parser owns the snake-to-kebab lift on the
 /// markdown authoring side; this struct represents the post-lift
 /// shape so it round-trips cleanly through the resolved-export
 /// schema (the resolver-only fields — `origin`, `path-root`, `path`

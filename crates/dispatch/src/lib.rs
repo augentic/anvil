@@ -13,8 +13,7 @@
 //! Omnia runtime and never links this crate.
 //!
 //! Wasm specifics stay out: this crate never depends on wit-bindgen,
-//! wasip3, wasmtime, or `specify-registry` — the guest shim owns all
-//! WIT binding.
+//! wasip3, or wasmtime — the guest shim owns all WIT binding.
 
 pub mod cli;
 pub mod commands;

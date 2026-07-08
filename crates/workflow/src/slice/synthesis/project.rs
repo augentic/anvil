@@ -96,11 +96,10 @@ pub fn project(
     overrides: &BTreeMap<ClaimKind, String>,
     evidence_claims: &BTreeMap<(String, String), ClaimKind>, baseline_index: &BaselineIndex,
 ) -> Result<SliceModel> {
-    // Step 1 — claim anchoring runs before projection: the kernel
-    // cannot project an unanchored claim.
+    // Claim anchoring runs first: the kernel cannot project an
+    // unanchored claim.
     check_claim_anchors(&model, evidence_claims)?;
 
-    // Steps 2–3 — re-derive ids, status, winners, and rendered sources.
     let mut allocator = IdAllocator::new(baseline_index);
 
     for requirement in &mut model.requirements {
@@ -128,12 +127,12 @@ pub fn project(
         requirement.sources = sources;
     }
 
-    // Step 4 — stamp the header, ignoring any agent-supplied values.
+    // Stamp the header, ignoring any agent-supplied values.
     model.version = Some(header.version);
     model.slice = Some(header.slice);
     model.project = header.project;
 
-    // Step 5 — cross-ref then grammar over the now-projected ids.
+    // Cross-ref then grammar over the now-projected ids.
     check_cross_refs(&model)?;
     check_unique_ids(&model)?;
     check_id_grammar(&model)?;

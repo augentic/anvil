@@ -1,31 +1,18 @@
-//! `WorkspaceModel` DTOs per the standards-layer contract §"`WorkspaceModel`" and
-//! §"Core entity families (v1)".
+//! `WorkspaceModel` DTOs.
 //!
-//! The model is the deterministic, versioned snapshot of project
-//! facts the `specify lint` indexer produces once per run
-//! invocation. Per the standards-layer contract §"Persistence and query (v1 decision)" it
-//! is an internal execution artifact: **not** persisted in the working
-//! tree and **not** an operator-facing Specify artifact in
-//! v1. A `workspace-model.v1.json` in the out-of-tree project cache and
-//! `specify model query <selector>` are reserved surfaces with no
-//! implementation behind them.
+//! The model is the deterministic, versioned snapshot of project facts
+//! the `specify lint` indexer produces once per run. Internal
+//! execution artifact only — never persisted in the working tree and
+//! not operator-facing.
 //!
-//! The DTOs round-trip through `specify_schema::WORKSPACE_MODEL_JSON_SCHEMA`
-//! per the standards-layer contract §"Schema location". The envelope's `version: 1`
-//! discriminant pins the wire shape; per the standards-layer contract §"`WorkspaceModel`"
-//! breaking indexer output bumps the version.
-//!
-//! Wire shape notes:
-//!
-//! - Top-level envelope keys are `snake_case` (`project_dir`,
-//!   `scan_profile`, `markdown_sections`, …) to match the JSON
-//!   Schema under `specify/schemas/lint/workspace-model.schema.json`.
-//! - Nested entity-fact keys are kebab-case (`line-start`,
-//!   `from-path`, `frontmatter-ref`, …) per the same schema; each
-//!   entity struct carries `#[serde(rename_all = "kebab-case")]`.
-//! - Every array on the envelope is always serialised, even when
-//!   empty, so JSON consumers can rely on the full set of fact
-//!   families existing.
+//! The DTOs round-trip through
+//! `specify_schema::WORKSPACE_MODEL_JSON_SCHEMA`; the envelope's
+//! `version: 1` discriminant pins the wire shape, and breaking indexer
+//! output bumps it. Top-level envelope keys are `snake_case`; nested
+//! entity-fact keys are kebab-case (each entity struct carries
+//! `#[serde(rename_all = "kebab-case")]`). Every array on the envelope
+//! is always serialised, even when empty, so JSON consumers can rely
+//! on the full set of fact families existing.
 
 #![allow(
     clippy::module_name_repetitions,

@@ -34,6 +34,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// Closed severity enum. Variants are declared in the documented sort
 /// order — the derived [`Ord`] therefore yields `Critical < Important
 /// < Suggestion < Optional`.
+///
+/// ```
+/// use specify_diagnostics::Severity;
+///
+/// assert!(Severity::Critical < Severity::Suggestion);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Severity {
@@ -376,6 +382,20 @@ impl Diagnostic {
 
     /// Deterministic, `important`, [`DiagnosticKind::Violation`] finding —
     /// the default shape for a structural workflow invariant breach.
+    ///
+    /// ```
+    /// use specify_diagnostics::{Artifact, Diagnostic, Severity};
+    ///
+    /// let finding = Diagnostic::violation(
+    ///     "spec.requirement-id-missing",
+    ///     "Every requirement carries an `ID:` line",
+    ///     "`### Requirement: Login` has no `ID:` line",
+    ///     Artifact::Specs,
+    ///     None,
+    /// );
+    /// assert_eq!(finding.severity, Severity::Important);
+    /// assert!(finding.fingerprint.starts_with("sha256:"));
+    /// ```
     #[must_use]
     pub fn violation(
         rule_id: impl Into<String>, title: impl Into<String>, detail: impl Into<String>,
@@ -511,7 +531,29 @@ impl DiagnosticSummary {
     }
 }
 
-/// Diagnostic report envelope — `{ version, summary, diagnostics }`.
+/// Diagnostic report envelope — `{ version, summary, diagnostics }` —
+/// emitted by every check producer.
+///
+/// ```
+/// use specify_diagnostics::{
+///     Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary, Format, render,
+/// };
+///
+/// let findings = vec![Diagnostic::violation(
+///     "spec.requirement-id-missing",
+///     "Every requirement carries an `ID:` line",
+///     "`### Requirement: Login` has no `ID:` line",
+///     Artifact::Specs,
+///     None,
+/// )];
+/// let report = DiagnosticReport {
+///     version: Default::default(),
+///     summary: DiagnosticSummary::from_diagnostics(&findings),
+///     findings,
+/// };
+/// let compact = render(Format::Compact, &report).unwrap();
+/// assert!(compact.contains("spec.requirement-id-missing"));
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DiagnosticReport {

@@ -10,7 +10,7 @@ fn make_rule(
         id: id.into(),
         title: format!("{id} fixture"),
         severity: Severity::Important,
-        trigger: "Synthetic CH-13 filter fixture trigger sentence long enough for schema.".into(),
+        trigger: "Synthetic filter fixture trigger sentence long enough for schema.".into(),
         lint_mode: None,
         applicability,
         rule_hints: None,

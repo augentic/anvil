@@ -7,6 +7,13 @@
 use sha2::{Digest, Sha256};
 
 /// Lowercase hex encoding of a SHA-256 digest over `bytes`.
+///
+/// ```
+/// use specify_schema::digest::sha256_hex;
+///
+/// assert_eq!(sha256_hex(b"").len(), 64);
+/// assert!(sha256_hex(b"specify").starts_with(|c: char| c.is_ascii_hexdigit()));
+/// ```
 #[must_use]
 pub fn sha256_hex(bytes: &[u8]) -> String {
     sha256_output_hex(Sha256::digest(bytes))
@@ -23,6 +30,15 @@ pub fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
 /// Wraps [`sha2::Sha256`] so callers that hash chunk-by-chunk (download
 /// streams, large file reads) do not depend on `sha2` directly — this
 /// module is the single home for the digest dependency.
+///
+/// ```
+/// use specify_schema::digest::{Hasher, sha256_hex};
+///
+/// let mut hasher = Hasher::new();
+/// hasher.update(b"spec");
+/// hasher.update(b"ify");
+/// assert_eq!(hasher.finalize_hex(), sha256_hex(b"specify"));
+/// ```
 #[derive(Default)]
 pub struct Hasher(Sha256);
 

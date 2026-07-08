@@ -46,7 +46,6 @@ members = [
     "crates/guest-model",
     "crates/model",
     "crates/schema",
-    "crates/registry",
     "crates/extension",
     "crates/workflow",
     "crates/echo-guest",
@@ -158,7 +157,6 @@ base16ct = { version = "0.2", features = ["alloc"] }
 cfg-if = "1"
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
-futures-util = "0.3"
 glob = "0.3"
 globset = "0.4"
 ignore = "0.4"
@@ -196,7 +194,6 @@ specify-model = { path = "crates/model" }
 specify-workflow = { path = "crates/workflow", default-features = false }
 specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
-specify-registry = { path = "crates/registry" }
 specify-extension = { path = "crates/extension" }
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3"
@@ -205,13 +202,7 @@ toml = "1"
 tokio = { version = "1", features = ["fs", "io-util", "rt"] }
 ureq = { version = "3", features = ["json"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
-wasm-pkg-client = "0.15"
-# Component export sniffing for guest-leg axis discovery (RFC-64); held to
-# the wasmtime 46 line's wasmparser so one copy serves both.
-wasmparser = "0.251.0"
 wit-bindgen = { version = "0.58.0", features = ["async-spawn"] }
-wasmtime = { version = "45.0.3", default-features = false, features = ["cache", "component-model", "cranelift", "runtime"] }
-wasmtime-wasi = { version = "45.0.3", default-features = false, features = ["p2"] }
 
 [patch.crates-io]
 # The omnia 0.35.0 crates (and the internal omnia-* crates they pull in) are

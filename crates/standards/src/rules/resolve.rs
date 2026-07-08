@@ -1,72 +1,25 @@
-//! Codex resolver (CH-12): roots + overlay discovery.
+//! Codex resolver: roots + overlay discovery.
 //!
-//! Implements rules root resolution and codex root discovery
-//! / §"Resolution inputs" / §"Overlay precedence". This chunk discovers
-//! and parses every rule the export envelope eventually carries.
+//! [`resolve`] discovers and parses every rule the export envelope
+//! eventually carries; filtering lives in the sibling [`filter`]
+//! module and stable export ordering in `sort`.
 //!
-//! Filtering by applicability and deprecation lives in the sibling
-//! [`filter`] module (CH-13); stable export ordering (CH-14) and
-//! findings (CH-15/16) remain out of scope here.
+//! The shared root resolves from a **rules root**, probed in closed
+//! order: `inputs.rules_root` when supplied; else `project_dir` when
+//! `{project_dir}/codex/rules/universal/` exists (monorepo); else the
+//! distributed codex cache `<project-cache>/codex/` when it carries
+//! `codex/rules/universal/`; else [`ResolveError::RulesRootRequired`].
 //!
-//! # Closed precedence order
-//!
-//! Shared root (root 1) resolves from a **rules root**, picked by the
-//! closed probe in codex root resolution:
-//!
-//! 1. `inputs.rules_root` when supplied — use for root 1 and the
-//!    rules-root fallback overlay (overlay step 3 below).
-//! 2. Else if `{project_dir}/codex/rules/universal/` exists,
-//!    treat `project_dir` as the rules root (monorepo case). In this
-//!    case the rules-root fallback overlay step is **skipped** —
-//!    re-walking `project_dir` would just shadow the project-local
-//!    rung with the same filesystem tree.
-//! 3. Else if the distributed codex cache
-//!    `<project-cache>/codex/codex/rules/universal/`
-//!    exists (resolved out-of-tree from the OS cache), treat
-//!    `<project-cache>/codex/` as the rules
-//!    root. Populated by codex distribution (RM-07) at `specify init`
-//!    or `specify rules sync`. Like the monorepo case this is a derived
-//!    (non-explicit) root, so the rules-root fallback overlay step is
-//!    **skipped**.
-//! 4. Else → [`ResolveError::RulesRootRequired`].
-//!
-//! Source-adapter (root 3) and target-adapter (root 4) overlays follow
-//! the closed location order in rules root resolution:
+//! Per-adapter overlays probe, first existing rung wins (never merged):
 //!
 //! 1. project-local `{project_dir}/adapters/{sources,targets}/<name>/prose/rules/`;
 //! 2. manifest cache `<project-cache>/manifests/{sources,targets}/<name>/prose/rules/`
-//!    (out-of-tree; provenance recorded under [`PathRoot::Cache`] with a
-//!    cache-relative `manifests/...` path);
-//! 3. rules-root fallback `{rules_root}/adapters/{sources,targets}/<name>/prose/rules/`,
-//!    **only** when `inputs.rules_root.is_some()` (step 1 of the probe);
-//! 4. omit when no rung exists.
+//!    (provenance recorded under [`PathRoot::Cache`]);
+//! 3. rules-root fallback `{rules_root}/adapters/.../prose/rules/`,
+//!    **only** when `inputs.rules_root` was supplied explicitly.
 //!
-//! The **first existing** rung wins; locations never merge. Roots 2
-//! (shared language/artifact packs) and 5 (project-local overlays) are
-//! reserved by the rules contract and not implemented here. The closed
-//! [`Origin`] enum's `Unknown` variant is **not** root 5 — it is the
-//! consumer indexer's fallback bucket for cache rule files whose path
-//! does not match a recognized adapter shape (see the `infer_origin`
-//! function in [`crate::lint::index`]).
-//!
-//! # Duplicate ids
-//!
-//! Per overlay precedence: rules never override each other
-//! by sharing ids — duplicates always error, regardless of
-//! `include_deprecated`. The check runs after every rung is loaded so
-//! collisions across overlays surface as
-//! [`ResolveError::DuplicateRuleId`].
-//!
-//! # Out of scope
-//!
-//! - Applicability + deprecation filtering — see the sibling
-//!   [`filter`] module (CH-13). [`resolve`] returns the unfiltered pool;
-//!   call [`filter`] on that result to get the narrowed view.
-//! - Stable export ordering — CH-14 lives in the sibling `sort`
-//!   module. CH-12 only enforces deterministic intra-directory lexical
-//!   order so test goldens stay stable; the closed four-tuple sort and
-//!   the [`super::ResolvedRules`] envelope are assembled by
-//!   [`build_resolved_rules`].
+//! Rules never override each other by sharing ids — duplicates across
+//! overlays always error as [`ResolveError::DuplicateRuleId`].
 
 mod filter;
 mod sort;
@@ -84,12 +37,12 @@ use super::{Origin, PathRoot, Rule};
 /// Closed input contract for [`resolve`] and [`filter`] per the rules contract
 /// §"Resolution inputs".
 ///
-/// CH-12's [`resolve`] consumes `project_dir`, `rules_root`,
-/// `target_adapter`, and `source_adapters`. CH-13's [`filter`]
-/// additionally consumes `artifact_paths`, `languages`,
-/// `include_deprecated`, `include_unmatched`, and `include_core`.
-/// Callers compose [`resolve`] then [`filter`] when they need the
-/// narrowed pool; [`build_resolved_rules`] is the export entry point.
+/// [`resolve`] consumes `project_dir`, `rules_root`, `target_adapter`,
+/// and `source_adapters`; [`filter`] additionally consumes
+/// `artifact_paths`, `languages`, `include_deprecated`,
+/// `include_unmatched`, and `include_core`. Callers compose [`resolve`]
+/// then [`filter`] when they need the narrowed pool;
+/// [`build_resolved_rules`] is the export entry point.
 #[derive(Debug, Clone)]
 pub struct ResolveInputs<'a> {
     /// Project root used for adapter resolution and optional
@@ -103,16 +56,16 @@ pub struct ResolveInputs<'a> {
     pub target_adapter: &'a str,
     /// Source adapter names bound by the active plan entry.
     pub source_adapters: &'a [String],
-    /// Project-relative artifact paths consumed by CH-13's
+    /// Project-relative artifact paths consumed by the
     /// `applicability.paths` glob check.
     pub artifact_paths: &'a [PathBuf],
-    /// Language tokens consumed by CH-13's `applicability.languages`
+    /// Language tokens consumed by the `applicability.languages`
     /// match.
     pub languages: &'a [String],
-    /// Whether deprecated rules appear in the export. Toggled by CH-13.
+    /// Whether deprecated rules appear in the export.
     pub include_deprecated: bool,
     /// Whether rules with populated applicability dimensions the
-    /// caller did not satisfy are included. Toggled by CH-13.
+    /// caller did not satisfy are included.
     pub include_unmatched: bool,
     /// Whether rules with [`super::Origin::Core`] appear in the
     /// export. Default off (consumer-export filtering): consumer-project
@@ -122,13 +75,14 @@ pub struct ResolveInputs<'a> {
 
 /// Pre-sort intermediate emitted by [`resolve`].
 ///
-/// CH-14 owns the final sorted [`super::ResolvedRules`]; CH-12 returns
-/// every discovered rule with `origin`, `path_root`, and `path`
-/// populated. The `path` string is always relative to the matching
-/// [`PathRoot`], with forward slashes as separators.
+/// The `sort` module owns the final sorted [`super::ResolvedRules`];
+/// [`resolve`] returns every discovered rule with `origin`,
+/// `path_root`, and `path` populated. The `path` string is always
+/// relative to the matching [`PathRoot`], with forward slashes as
+/// separators.
 #[derive(Debug, Clone)]
 pub struct ResolvedRuleEntry {
-    /// Parsed rule from CH-11.
+    /// Parsed rule frontmatter + body.
     pub rule: Rule,
     /// Resolver origin tier (shared / source / target).
     pub origin: Origin,
@@ -158,7 +112,7 @@ pub enum ResolveError {
         /// Comma-joined relative paths of every offending file.
         paths: String,
     },
-    /// CH-11 parser rejected one of the discovered files.
+    /// The frontmatter parser rejected one of the discovered files.
     #[error("rule parse failed: {path}: {error}")]
     Parse {
         /// Absolute path of the failing file.
@@ -243,7 +197,7 @@ fn codex_cache_root(project_dir: &Path) -> PathBuf {
 ///
 /// See the module docs for the closed precedence order, rules-root
 /// probe, and duplicate-id rules. Filtering and sorting are deferred
-/// to CH-13 / CH-14.
+/// to [`filter`] and the `sort` module.
 ///
 /// # Errors
 ///

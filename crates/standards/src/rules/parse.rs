@@ -31,11 +31,10 @@
 //!
 //! # Out of scope
 //!
-//! No regex compilation. The rule-hints contract
-//! extensibility" requires the runtime resolver to never compile a
-//! regex it never executes — hint execution belongs to `specify lint`
-//! (CH-13 +). Applicability filtering, deprecation filtering, and
-//! stable ordering are CH-13 / CH-14.
+//! No regex compilation — the resolver never compiles a regex it never
+//! executes; hint execution belongs to `specify lint`. Applicability
+//! and deprecation filtering, and stable ordering, live in the
+//! `resolve` module.
 
 use std::path::Path;
 use std::{fs, io};

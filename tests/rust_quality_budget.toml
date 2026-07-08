@@ -16,7 +16,6 @@
 [crate]
 standards = 55
 workflow = 59
-registry = 36
 extension = 13
 schema = 10
 dispatch = 1

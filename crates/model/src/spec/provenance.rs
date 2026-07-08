@@ -219,6 +219,18 @@ const STATUS_PREFIX: &str = "Status:";
 /// Structural problems accumulate as [`ParsedSpec::findings`]; the
 /// cross-validation against `plan.yaml.sources` layers on top via
 /// [`validate`].
+///
+/// ```
+/// use specify_model::spec::provenance::parse_spec_md;
+///
+/// let spec = "### Requirement: User registration accepts valid email\n\n\
+///             ID: REQ-001\nSources: [legacy-monolith]\nStatus: agreed\n\n\
+///             The registration request is accepted when the email is valid.\n";
+/// let parsed = parse_spec_md(spec);
+/// assert_eq!(parsed.requirements[0].id, "REQ-001");
+/// assert_eq!(parsed.requirements[0].sources, ["legacy-monolith"]);
+/// assert!(parsed.findings.is_empty());
+/// ```
 #[must_use]
 pub fn parse_spec_md(text: &str) -> ParsedSpec {
     let mut requirements: Vec<Requirement> = Vec::new();

@@ -3,12 +3,13 @@
 //! Splits a markdown file at its leading `---\n…\n---\n` block and
 //! parses the YAML body via `serde_saphyr`. Non-markdown files and
 //! markdown files without a frontmatter block return `None`; YAML
-//! parse failures also collapse to `None` — reserved-hint diagnostics reserves the
-//! `index.warning` finding for S7's hint runner.
+//! parse failures also collapse to `None` — the `index.warning`
+//! finding is reserved for the hint runner.
 //!
-//! `schema_id` is left unset in v1: the `WorkspaceModel` entity families types it as `Option<String>` but v1 has no shape-inference
-//! pass to populate it. Consumers that need to consult the declared
-//! `schema_id` should read the fields map.
+//! `schema_id` is left unset: the entity families type it as
+//! `Option<String>` but no shape-inference pass populates it.
+//! Consumers that need the declared `schema_id` should read the
+//! fields map.
 
 use serde_json::{Map, Value};
 

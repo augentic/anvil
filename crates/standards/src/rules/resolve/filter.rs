@@ -1,83 +1,18 @@
-//! Applicability and deprecation filters (CH-13).
+//! Applicability and deprecation filters over the resolver's rule pool.
 //!
-//! Implements rule applicability, path-glob semantics, and
-//! §"Overlay precedence" / §"Resolved Decisions". The CH-12 resolver
-//! discovers every rule visible to the export envelope; this module
-//! narrows that pool down to the rules that actually apply to the
-//! caller's slice context, using the inclusive AND-across-dimensions
-//! semantics the rules contract defines.
-//!
-//! # Precedence
-//!
-//! Three filters run in a fixed order:
-//!
-//! 1. **Origin (`core`)** — entries with [`super::super::Origin::Core`]
-//!    are dropped unless [`ResolveInputs::include_core`] is set
-//!    (consumer-export filtering). The check runs
-//!    **first** so `CORE-*` rules never reach the deprecation or
-//!    applicability passes on a default consumer export — even if the
-//!    rule's `applicability` block would have accepted them.
-//! 2. **Deprecation** — entries whose [`Rule::deprecated`] is
-//!    populated are dropped unless [`ResolveInputs::include_deprecated`]
-//!    is set. Deprecation runs before applicability so an
-//!    `--include-deprecated` rule still walks through applicability
-//!    normally (§"Overlay precedence": "Export includes every rule that
-//!    passes applicability filtering" — `include_deprecated` does not
-//!    bypass applicability).
-//! 3. **Applicability** — a rule with no `applicability` block always
-//!    passes ("A rule with no `applicability` block applies wherever
-//!    its root applies"). A rule with an `applicability` block must
-//!    pass **every populated dimension** (AND semantics).
-//!
-//! # Populated dimension + missing caller input
-//!
-//! Rule applicability closes the awkward edge case: if the rule
-//! populates a dimension but the caller supplied no matching input, the
-//! rule is **excluded** unless [`ResolveInputs::include_unmatched`] is
-//! set. This module applies that rule per dimension.
-//!
-//! # Per-dimension matching
-//!
-//! - **`adapters`** — caller input is always populated
-//!   ([`ResolveInputs::target_adapter`] is required), so the
-//!   missing-input branch is unreachable. The rule matches when its
-//!   adapter list contains either the target adapter or any bound
-//!   source adapter. The rule's adapter ref may carry an optional
-//!   `@v<major>` suffix; for v1 this module strips the suffix before
-//!   comparison and matches by bare name.
-//! - **`languages`** — case-sensitive bare-name match against
-//!   [`ResolveInputs::languages`]. Missing caller input (empty slice)
-//!   excludes the rule unless `include_unmatched`.
-//! - **`artifacts`** — v1 has no `--artifact-kind` input on
-//!   [`ResolveInputs`]. Per the closed
-//!   populated-dimension-without-caller-input rule, any rule that
-//!   populates `applicability.artifacts` is **excluded unless
-//!   `include_unmatched` is set**. This is an honest reflection of v1
-//!   capability; a future contract may add an explicit `--artifact-kind`
-//!   input, after which `artifact_dimension_matches` would consult it
-//!   the same way `language_dimension_matches` consults `languages`.
-//! - **`paths`** — patterns interpreted by the `glob` crate
-//!   (`glob = "0.3"`). Per the rules contract §"Path glob semantics
-//!   (`applicability.paths`)": `*` matches a single path segment
-//!   without crossing `/`, `**` matches across segments, and `/` is the
-//!   only separator. Matching is case-sensitive. Caller paths are
-//!   normalised to forward-slash separators on Windows before being
-//!   tested. Missing caller input (empty [`ResolveInputs::artifact_paths`])
-//!   excludes the rule unless `include_unmatched`.
-//!
-//! Malformed glob patterns are treated as **non-matching** rather than
-//! aborting the resolver. `specify lint framework` catches
-//! authoring bugs in patterns; surfacing a hard error here over a
-//! single first-party typo would be more disruptive than dropping the
-//! rule from the export. A future authoring-check could elevate this to
-//! a hard error.
-//!
-//! # Composition
+//! [`filter`] runs three passes in fixed order: origin (`core` rules
+//! drop unless `--include-core`), deprecation (drops unless
+//! `--include-deprecated`), then applicability — a rule with no
+//! `applicability` block always passes; one with a block must match
+//! **every populated dimension** (AND semantics). A dimension the rule
+//! populates but the caller supplied no input for excludes the rule
+//! unless [`ResolveInputs::include_unmatched`] is set. Per-dimension
+//! matching semantics live on the `*_dimension_matches` functions
+//! below.
 //!
 //! Call [`super::resolve`] first, then pass its `Vec<ResolvedRuleEntry>`
-//! to [`filter`] — e.g. `filter(super::resolve(inputs)?, inputs)`.
-//! [`build_resolved_rules`] in the sibling `sort` module is the
-//! conventional export entry point.
+//! to [`filter`]; `build_resolved_rules` in the sibling `sort` module
+//! is the conventional export entry point.
 
 use std::path::{Path, PathBuf};
 
@@ -94,7 +29,8 @@ const PATH_MATCH_OPTIONS: MatchOptions = MatchOptions {
     require_literal_leading_dot: false,
 };
 
-/// Apply origin + deprecation + applicability filters to a CH-12 result.
+/// Apply origin + deprecation + applicability filters to a
+/// [`super::resolve`] result.
 ///
 /// Origin (`core`) runs first; deprecation runs against those
 /// survivors; applicability runs against the survivors of both. See
@@ -188,11 +124,10 @@ fn language_dimension_matches(
 
 /// Artifact dimension match.
 ///
-/// v1 [`ResolveInputs`] has no `--artifact-kind` input, so any rule
+/// [`ResolveInputs`] has no `--artifact-kind` input, so any rule
 /// that populates `applicability.artifacts` lacks caller input by
-/// definition. Per the rules contract §"Applicability" the populated-without-input
-/// case excludes the rule unless `include_unmatched` is set. See the
-/// module docs.
+/// definition and is excluded unless `include_unmatched` is set (the
+/// rules contract's populated-without-input rule).
 const fn artifact_dimension_matches(
     rule_artifacts: Option<&[String]>, include_unmatched: bool,
 ) -> bool {
@@ -209,7 +144,8 @@ const fn artifact_dimension_matches(
 /// excluded unless `include_unmatched`. Otherwise the rule matches
 /// when any caller path matches any compiled rule pattern via
 /// [`Pattern::matches_path_with`]. Patterns that fail to compile are
-/// treated as non-matching — see the module docs.
+/// treated as non-matching rather than aborting the resolver —
+/// `specify lint framework` catches pattern authoring bugs.
 fn paths_dimension_matches(
     rule_paths: Option<&[String]>, caller_paths: &[PathBuf], include_unmatched: bool,
 ) -> bool {

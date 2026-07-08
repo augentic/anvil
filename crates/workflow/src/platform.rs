@@ -44,6 +44,14 @@ pub enum Platform {
 /// Parse a comma-separated platform string into a sorted, deduplicated
 /// `Vec<Platform>`. Returns an error naming the first unknown token.
 ///
+/// ```
+/// use specify_workflow::platform::{Platform, parse_platforms_csv};
+///
+/// let set = parse_platforms_csv("ios, core, ios").unwrap();
+/// assert_eq!(set, [Platform::Core, Platform::Ios]);
+/// assert!(parse_platforms_csv("core,vision-os").is_err());
+/// ```
+///
 /// # Errors
 ///
 /// Returns a human-readable `String` when any token is not a valid

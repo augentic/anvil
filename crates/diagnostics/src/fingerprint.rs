@@ -89,6 +89,14 @@ pub fn verify_fingerprint(diagnostic: &Diagnostic) -> bool {
 
 /// Canonical JSON serialisation: sorted object keys, no insignificant
 /// whitespace, arrays preserve insertion order.
+///
+/// ```
+/// use serde_json::json;
+/// use specify_diagnostics::canonical_json;
+///
+/// let value = json!({"b": 1, "a": [2, 1]});
+/// assert_eq!(canonical_json(&value), r#"{"a":[2,1],"b":1}"#);
+/// ```
 #[must_use]
 pub fn canonical_json(value: &Value) -> String {
     let mut out = String::new();

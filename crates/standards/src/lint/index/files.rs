@@ -63,8 +63,8 @@ const BINARY_SNIFF_BYTES: usize = 8 * 1024;
 /// When `roots` is empty the walk starts at `project_dir`; otherwise
 /// every entry is treated as a project-relative path under
 /// `project_dir` per lint scope resolution. Walk-level failures (entry iteration
-/// errors) are swallowed silently in v1 — reserved-hint diagnostics reserves the
-/// `index.warning` finding for S7's hint runner; the walk only emits
+/// errors) are swallowed silently — the `index.warning` finding is
+/// reserved for the hint runner; the walk only emits
 /// an `Err` when the project root itself is missing.
 ///
 /// The output collections are sorted by project-relative path so the

@@ -27,8 +27,9 @@ const TASKS_ARTIFACT: &str = "tasks.md";
 /// `manifest_inputs` is the bound target adapter's declared build-inputs
 /// list (`TargetAdapter::inputs`); `slice_tree` is the slice tree all
 /// artifact paths resolve against (the request's `inputs.root`);
-/// `project_dir` is the working tree the target builds into. The verb
-/// (C6) resolves the target and supplies these so this stays pure.
+/// `project_dir` is the working tree the target builds into. The build
+/// orchestration resolves the target and supplies these so this stays
+/// pure.
 ///
 /// The singular artifacts are fixed relative names; the `specs[]` are
 /// the per-domain `specs/<domain>/spec.md` files found under the slice

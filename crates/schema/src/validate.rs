@@ -118,6 +118,16 @@ pub fn join_details(failures: &[ValidationSummary]) -> String {
 /// exit-code policy: structural manifest checks fold failures into
 /// [`Error::Diag`] (exit 1); plan / evidence checks fold into
 /// [`Error::Validation`] (exit 2).
+///
+/// ```
+/// use serde_json::json;
+/// use specify_schema::{ValidationStatus, validate_value};
+///
+/// let schema = r#"{"type": "object", "required": ["name"]}"#;
+/// let summaries =
+///     validate_value(&json!({"name": "auth"}), schema, "demo-schema", "payload matches schema");
+/// assert_eq!(summaries[0].status, ValidationStatus::Pass);
+/// ```
 #[must_use]
 pub fn validate_value(
     instance: &JsonValue, schema_source: &str, rule_id: &str, rule: &str,
