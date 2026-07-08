@@ -1,6 +1,6 @@
 # Vectis in-guest tools
 
-Vectis deterministic helpers are **in-guest library code** compiled into the vectis adapter's committed `guest.wasm` (Omnia-migration cutover). There is no host dispatch verb: the vectis build and merge orchestrations invoke these behaviours directly, and no separate Vectis host binary is part of the command surface.
+Vectis deterministic helpers are **in-guest library code** compiled into the vectis adapter's published component (Omnia-migration cutover). There is no host dispatch verb: the vectis build and merge orchestrations invoke these behaviours directly, and no separate Vectis host binary is part of the command surface.
 
 ## Behaviours
 

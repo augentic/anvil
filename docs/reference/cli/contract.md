@@ -1,6 +1,6 @@
 # Contract validator (in-guest)
 
-The contracts adapter ships a `contract` validator as in-guest library code inside its committed `guest.wasm` (Omnia-migration cutover — no host dispatch verb remains). It walks a baseline `contracts/` directory (typically `<project>/contracts/`), projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files. The contracts build and merge orchestrations invoke it directly; the JSON envelope below is the canonical output shape.
+The contracts adapter ships a `contract` validator as in-guest library code inside its published component (Omnia-migration cutover — no host dispatch verb remains). It walks a baseline `contracts/` directory (typically `<project>/contracts/`), projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files. The contracts build and merge orchestrations invoke it directly; the JSON envelope below is the canonical output shape.
 
 ## Validation Rules
 
@@ -56,11 +56,11 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The validator is library code inside the contracts adapter's committed `guest.wasm` ([`adapters/targets/contracts/`](https://github.com/augentic/specify-adapters/tree/main/targets/contracts)). Operators install `specify`; no separate contract-validator binary exists.
+The validator is library code inside the contracts adapter's published component ([`targets/contracts/`](https://github.com/augentic/specify-adapters/tree/main/targets/contracts)). Operators install `specify`; no separate contract-validator binary exists.
 
 ## See Also
 
-- [Tool declarations](../../explanation/tool-declarations.md) — the surviving project-scope tool surface behind `specify lint project`.
+- [Tool declarations](../../explanation/tool-declarations.md) — the surviving project-scope `tools[]` declaration shape.
 - [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
 - [`adapters/targets/contracts/prose/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/prose/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.

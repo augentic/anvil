@@ -24,8 +24,6 @@ This approach provides three major benefits:
 
 ## The shape of the system
 
-The shape of the system
-
 The system is two roles communicating over one contract: a generic runtime and the guests that run on it.
 
 - **Omnia is the foundation**: a command-line executable that instantiates a guest and satisfies its typed effect imports from the backends bound for this deployment. It knows nothing about adapters, workflows, or models.
@@ -118,10 +116,11 @@ The binary holds every guest on **one runtime** and picks among them in native c
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
-  "workflow"             -> InstancePre     (embedded in the binary via include_bytes!)
-  "source:typescript"    -> InstancePre   ┐  resolved by digest from an OCI store into a
-  "source:documentation" -> InstancePre   │  local cache — only the identities a plan
-  "target:omnia"         -> InstancePre   ┘  binds are instantiated
+  "workflow"             -> InstancePre     (the core guest, resolved from the global store
+                                             by the binary's own version: specify:core@<version>)
+  "source:typescript"    -> InstancePre   ┐  hydrated into the global single-file store
+  "source:documentation" -> InstancePre   │  ($HOME/.specify/adapters) — only the identities
+  "target:omnia"         -> InstancePre   ┘  the generated deployment manifest names are loaded
 ```
 
 Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
@@ -195,14 +194,20 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 ## CLI bootstrapping
 
-Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The runtime acquires its guests two ways:
+Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `specify` binary is two strictly separated layers (RFC-65):
 
-- **Embedded core**: first-party guests (the workflow) compile into the binary via `include_bytes!`, ensuring offline startup and zero version skew.
-- **Config-driven resolution**: adapters and third-party guests resolve dynamically via digest-pinned references from an OCI store into a local cache.
+- **A native provisioning surface** carrying the closed verb set the capability fence makes irreducibly native — `init`, `adapters sync`, `upgrade`, `plugins` (plus the acknowledged `workspace` residue until the host git capability lands). These are the only verbs the binary parses; every other argv forwards **unparsed** to the core guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
+- **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime (`omnia::runtime!`), mounted **in-process** via the macro's public `drive` beside its `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the generated deployment manifest.
+
+The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/adapters` (relocatable via `$SPECIFY_ADAPTER_STORE`):
+
+- **Hydration kernel**: `specify init` and `specify adapters sync` are the two triggers over one idempotent, concurrency-safe, non-interactive kernel — for each pinned identity a project declares, probe the store, pull on miss over the wasm-pkg transport, and verify the component-byte digest. Every hydrated entry is additionally pinned in the committed `.specify/adapters.lock`, so a cloud runner's install is byte-equivalent to the laptop that authored the pin. The guest never hydrates: a store miss at guest runtime is the typed `adapter-not-installed` naming the identity and the literal sync command, never a network fetch.
+- **Core versioned by the binary**: the workflow (core) guest resolves as `specify:core@<the binary's own version>` from the same store — the binary version *is* the core version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_CORE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves core-guest iteration; it is a development affordance, never a release mode.
+- **Generated deployment manifest**: provisioning renders the manifest into the per-project derived cache from the resolved store entries — one `[[guest]]` per component, the writable `"."` project mount, per-adapter MCP routes, and the core's link allow-list. It is derived, never committed, never hand-edited; the host layer reads nothing else.
 
 ## The incremental path
 
-The migration was sequenced by RFC-61 (completed and removed from the tree; recoverable from git history): the runtime binary and a walking skeleton, one real adapter guest (contracts) as the pattern-setter, the remaining adapters, the workflow guest, and finally the retirement of the bespoke host — coexisting in place with the native CLI over the same `.specify/` state until the last cutover. The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring; the Omnia runtime, the `wasi-model` host (`create`), and the cursor / genai / replay model backends landed in a changed shape, so those RFCs were likewise removed. [RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) remain deferred, not superseded.
+The migration was sequenced by RFC-61 (completed and removed from the tree; recoverable from git history): the runtime binary and a walking skeleton, one real adapter guest (contracts) as the pattern-setter, the remaining adapters, the workflow guest, and finally the retirement of the bespoke host — coexisting in place with the native CLI over the same `.specify/` state until the last cutover. [RFC-65](rfc-65-standalone-deployment.md) then landed the standalone deployment described above: the provisioning / runtime split, the hydration kernel and store-root move, the generated manifest, and the binary-versioned core guest, retiring RFC-61's workflow-verb triage and embedded-guest posture. The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring; the Omnia runtime, the `wasi-model` host (`create`), and the cursor / genai / replay model backends landed in a changed shape, so those RFCs were likewise removed. [RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) remain deferred, not superseded.
 
 ## Key trade-offs
 

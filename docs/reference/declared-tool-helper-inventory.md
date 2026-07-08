@@ -1,6 +1,6 @@
 # Declared Tool Helper Inventory
 
-This inventory tracks first-party deterministic helpers and where they live. Since the Omnia-migration cutover, adapter-owned helpers are **in-guest library code** compiled into each adapter's committed `guest.wasm` — the host dispatches no adapter WASI tool. The one surviving declared-tool surface is project-scope `tools[]` in `.specify/project.yaml`, resolved and run by `specify lint project` (see [Tool declarations](../explanation/tool-declarations.md)).
+This inventory tracks first-party deterministic helpers and where they live. Since the Omnia-migration cutover, adapter-owned helpers are **in-guest library code** compiled into each adapter's published component — the host dispatches no adapter WASI tool. The one surviving declared-tool surface is project-scope `tools[]` in `.specify/project.yaml`, a validated declaration shape with no live runner since `specify lint project` retired from the operational surface (see [Tool declarations](../explanation/tool-declarations.md)).
 
 A helper belongs in-guest when it is adapter-owned, deterministic, and filesystem-bounded. Host workflow remains appropriate when the work requires language toolchains, platform SDKs, package managers, network registries, forge operations, or core Specify lifecycle authority.
 

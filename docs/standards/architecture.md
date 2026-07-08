@@ -63,7 +63,7 @@ Beside the per-scope tool directories, `<tool cache root>/wasmtime/` holds the w
 
 ## WASI carve-outs
 
-The two adapter validators — `contract` and `vectis` — no longer live in this repo. They extracted to `augentic/specify-adapters` and are now in-guest adapter library code compiled into each adapter's committed `guest.wasm`. The carve-out discipline (leaner lint posture, minimal `[workspace.dependencies]`, no `specify-error` / `wasmtime` / `tokio` / `ureq` dependency) now lives in that repo's workspace. Crux shell presence and launcher-icon heuristics extracted with the vectis adapter too: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
+The two adapter validators — `contract` and `vectis` — no longer live in this repo. They extracted to `augentic/specify-adapters` and are now in-guest adapter library code compiled into each adapter's published component. The carve-out discipline (leaner lint posture, minimal `[workspace.dependencies]`, no `specify-error` / `wasmtime` / `tokio` / `ureq` dependency) now lives in that repo's workspace. Crux shell presence and launcher-icon heuristics extracted with the vectis adapter too: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
 
 The framework checkers behind `specify lint framework`'s Road B rules are not WASI components — they run in-process inside `specify-standards` (`crates/standards/src/lint/framework_tools/`), resolved by name from the `kind: tool` evaluator before the `ToolRunner` trait (which survives for the project-side WASI path).
 
