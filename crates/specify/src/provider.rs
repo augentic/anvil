@@ -5,7 +5,7 @@
 //! imports.
 //!
 //! The mapping layer between the WIT records and the seam DTOs lives
-//! here in full, so `workflow-lib` and `dispatch` stay
+//! here in full, so `workflow` and `dispatch` stay
 //! wasm-clean. Two mappings are judgment-free but deliberately shaped:
 //!
 //! - **Claims** cross as raw JSON objects (the evidence schema leaves
@@ -29,11 +29,11 @@ use std::future::Future;
 use artifacts::evidence::AuthorityClass;
 use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Error;
-use workflow_lib::adapter::describe::{DescribeAnswer, DescribeRequest};
-use workflow_lib::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
-use workflow_lib::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
-use workflow_lib::slice::build::wire::BUILD_VERSION;
-use workflow_lib::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
+use workflow::adapter::describe::{DescribeAnswer, DescribeRequest};
+use workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
+use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
+use workflow::slice::build::wire::BUILD_VERSION;
+use workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::specify::adapter::{source, target, types};
 
@@ -293,8 +293,8 @@ const fn map_severity(severity: target::Severity) -> Severity {
 }
 
 /// WIT `target.platform` → the workflow [`Platform`] taxonomy.
-const fn map_platform(platform: target::Platform) -> workflow_lib::platform::Platform {
-    use workflow_lib::platform::Platform;
+const fn map_platform(platform: target::Platform) -> workflow::platform::Platform {
+    use workflow::platform::Platform;
     match platform {
         target::Platform::Core => Platform::Core,
         target::Platform::Ios => Platform::Ios,

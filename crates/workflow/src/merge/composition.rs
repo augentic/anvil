@@ -178,5 +178,5 @@ pub fn baseline_is_non_empty(text: &str) -> bool {
 
 // The merge kernel's delta-operation matrix and the two shape predicates are
 // exercised through the crate's public API in
-// `crates/workflow-lib/tests/merge_composition.rs` (the screen-level delta matrix
+// `crates/workflow/tests/merge_composition.rs` (the screen-level delta matrix
 // has no CLI fixture).

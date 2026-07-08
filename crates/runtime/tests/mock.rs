@@ -1,6 +1,6 @@
 //! Scripted [`omnia_guest::Model`] mock for this test binary: replies
 //! are served in FIFO order. A dev-only, trimmed sibling of the copy in
-//! `workflow-lib`'s test binary (no request recording — nothing here
+//! `workflow`'s test binary (no request recording — nothing here
 //! asserts on requests); cross-crate test-support imports are not worth
 //! a shared crate for ~30 lines.
 

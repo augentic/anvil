@@ -1165,7 +1165,7 @@ dependencies = [
  "standards",
  "strum",
  "tempfile",
- "workflow-lib",
+ "workflow",
 ]
 
 [[package]]
@@ -3635,7 +3635,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
- "workflow-lib",
+ "workflow",
 ]
 
 [[package]]
@@ -4102,6 +4102,22 @@ dependencies = [
 
 [[package]]
 name = "specify"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "diagnostics",
+ "dispatch",
+ "error",
+ "omnia-guest",
+ "serde",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.58.0",
+ "workflow",
+]
+
+[[package]]
+name = "specify-cli"
 version = "0.27.2"
 dependencies = [
  "anyhow",
@@ -5741,22 +5757,6 @@ dependencies = [
 
 [[package]]
 name = "workflow"
-version = "0.27.2"
-dependencies = [
- "artifacts",
- "diagnostics",
- "dispatch",
- "error",
- "omnia-guest",
- "serde",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.58.0",
- "workflow-lib",
-]
-
-[[package]]
-name = "workflow-lib"
 version = "0.27.2"
 dependencies = [
  "artifacts",

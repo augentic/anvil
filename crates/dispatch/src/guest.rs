@@ -6,7 +6,7 @@
 //! shape is a two-phase agent handoff — are *parsed* here but
 //! *dispatched* in the shim, where the WIT-provided seam lives:
 //! [`route`] returns the [`Orchestration`] descriptor and the shim
-//! drives the matching `workflow_lib::orchestrate` entry point
+//! drives the matching `workflow::orchestrate` entry point
 //! against its providers. Provisioning verbs (`init` without
 //! `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`,
 //! `plugins`) have no guest handler and fail with
@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use error::{Error, Result};
-use workflow_lib::change::SourceBinding;
+use workflow::change::SourceBinding;
 
 use crate::cli::{Cli, Commands, Format, SourceArg};
 use crate::commands::init::ScaffoldArgs;

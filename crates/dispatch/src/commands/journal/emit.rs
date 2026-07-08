@@ -1,7 +1,7 @@
 //! `specify journal emit` handler.
 //!
 //! A guarded front door onto the closed
-//! [`workflow_lib::journal::EventKind`] taxonomy: the handler
+//! [`workflow::journal::EventKind`] taxonomy: the handler
 //! mints no event kinds of its own, it only deserialises the
 //! operator-supplied id + payload into an existing variant, stamps the
 //! timestamp, and appends one line.
@@ -11,7 +11,7 @@ use std::io::Write;
 use error::{Error, Result};
 use serde::Serialize;
 use serde_json::{Map, Value};
-use workflow_lib::journal::{self, Event, EventKind};
+use workflow::journal::{self, Event, EventKind};
 
 use crate::context::Ctx;
 

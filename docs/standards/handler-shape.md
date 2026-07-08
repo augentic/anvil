@@ -73,7 +73,7 @@ Never put domain logic in the binary. If a function needs unit tests, it belongs
 handlers — both clap arms in `src/runtime/commands.rs` dispatch to a single
 private `commands::resolve_adapter(format, axis, value, project_dir)`
 helper that takes a bare `Format` plus the project dir, switches on
-`axis` to invoke `workflow_lib::adapter::SourceAdapter::resolve(name,
+`axis` to invoke `workflow::adapter::SourceAdapter::resolve(name,
 project_dir)?` or `TargetAdapter::resolve(name, project_dir)?`, and
 emits a `ResolveBody { axis, name, resolved_path, location,
 operations, description }` via the direct `output::emit` path

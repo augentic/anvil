@@ -21,7 +21,7 @@ error.workspace = true
 artifacts.workspace = true
 schema.workspace = true
 standards.workspace = true
-workflow-lib.workspace = true
+workflow.workspace = true
 strum.workspace = true
 
 [dev-dependencies]

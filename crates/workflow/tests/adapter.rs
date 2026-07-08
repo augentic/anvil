@@ -1,5 +1,5 @@
 //! Integration tests for the adapter resolver
-//! (`workflow_lib::adapter`).
+//! (`workflow::adapter`).
 //!
 //! Covers:
 //! - pinned identities resolving the single-file store entry
@@ -18,8 +18,8 @@ use std::fs;
 use std::path::Path;
 
 use error::Error;
-use workflow_lib::adapter::describe::describe_cache_path;
-use workflow_lib::adapter::{
+use workflow::adapter::describe::describe_cache_path;
+use workflow::adapter::{
     AdapterLocation, AdapterRef, SourceAdapter, SourceOperation, TargetAdapter, TargetOperation,
     component_cache_entry,
 };
@@ -122,7 +122,7 @@ fn bare_resolves_from_component_cache() {
     assert_eq!(resolved.manifest.name, "captures");
     assert_eq!(
         resolved.manifest.version,
-        workflow_lib::adapter::dev_version(),
+        workflow::adapter::dev_version(),
         "a development artifact resolves as the 0.0.0 placeholder"
     );
     assert!(matches!(resolved.location, AdapterLocation::Dev(_)));
@@ -283,7 +283,7 @@ fn dev_component_paths_shape() {
     // The development probe: `target/wasm32-wasip2/release/<name>.wasm`
     // under the project, then the sibling `specify-adapters` checkout.
     let project = Path::new("/repos/consumer");
-    let paths = workflow_lib::adapter::dev_component_paths(project, "demo-target");
+    let paths = workflow::adapter::dev_component_paths(project, "demo-target");
     assert_eq!(
         paths[0],
         Path::new("/repos/consumer/target/wasm32-wasip2/release/demo_target.wasm")

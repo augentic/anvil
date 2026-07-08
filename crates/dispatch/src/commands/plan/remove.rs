@@ -2,9 +2,9 @@
 //! the plan is still replaceable (Gate 1 curation).
 
 use error::Result;
-use workflow_lib::change::Plan;
-use workflow_lib::config::with_state;
-use workflow_lib::schema::validate_plan;
+use workflow::change::Plan;
+use workflow::config::with_state;
+use workflow::schema::validate_plan;
 
 use super::entry::{Action, EntryBody, write_entry_text};
 use super::{plan_ref, require_file};

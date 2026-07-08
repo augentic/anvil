@@ -7,7 +7,7 @@ use artifacts::atomic::bytes_write;
 use artifacts::task::{Task, mark_complete, parse_tasks};
 use error::Result;
 use serde::Serialize;
-use workflow_lib::slice::SliceMetadata;
+use workflow::slice::SliceMetadata;
 
 use crate::context::Ctx;
 

@@ -1,5 +1,5 @@
 [package]
-name = "specify"
+name = "specify-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,15 +8,15 @@ description = "Specify — a generic Omnia command-mode runtime over the cursor-
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
-# Unpublishable to crates.io while the omnia stack rides [patch.crates-io]
-# path/git pins; the binary ships through the release-binaries.yaml archive
-# workflow instead (DECISIONS.md §"Release identity").
 publish = false
-# Integration tests are declared explicitly under `[[test]]` below.
 autotests = false
 
 # The binary is one `omnia::runtime!` invocation — no Specify domain
-# crates: every verb runs in the workflow (core) guest.
+# crates: every verb runs in the specify (core) guest.
+[[bin]]
+name = "specify"
+path = "src/main.rs"
+
 [dependencies]
 anyhow.workspace = true
 omnia.workspace = true
@@ -55,8 +55,8 @@ members = [
     "crates/error",
     "crates/artifacts",
     "crates/schema",
-    "crates/workflow-lib",
     "crates/workflow",
+    "crates/specify",
     "crates/echo-source",
     "crates/echo-target",
     "crates/runtime",
@@ -186,7 +186,7 @@ toml = "1"
 ureq = { version = "3", features = ["json"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.58.0", features = ["async-spawn"] }
-workflow-lib = { path = "crates/workflow-lib", default-features = false }
+workflow = { path = "crates/workflow", default-features = false }
 
 omnia = "0.35.0"
 omnia-guest = "0.35.0"
@@ -225,6 +225,9 @@ strip = true
 # opt-level the vectis component costs 40-70s per compile, so the
 # compiler-path crates are optimized even in dev/test profiles. Sole
 # cost is one cold rebuild of these dependencies.
+[profile.dev.package."*"]
+opt-level = 2
+
 # [profile.dev.package]
 # cranelift-codegen = { opt-level = 2 }
 # cranelift-frontend = { opt-level = 2 }
@@ -238,6 +241,3 @@ strip = true
 # wasmparser = { opt-level = 2 }
 # wasmtime-internal-cranelift = { opt-level = 2 }
 # wasmtime-environ = { opt-level = 2 }
-
-[profile.dev.package."*"]
-opt-level = 2

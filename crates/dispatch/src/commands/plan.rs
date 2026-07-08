@@ -16,8 +16,8 @@ use std::path::{Path, PathBuf};
 
 use error::{Error, Result};
 use serde::Serialize;
-use workflow_lib::change::Plan;
-use workflow_lib::registry::Registry;
+use workflow::change::Plan;
+use workflow::registry::Registry;
 
 use self::cli::PlanAction;
 use crate::context::Ctx;
@@ -52,7 +52,7 @@ pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
         // `plan execute` / `plan author` are guest-owned collapsed
         // orchestrations peeled off by both dispatchers before this
         // table (the native triage routes them to the guest leg; the
-        // guest router routes them to `workflow_lib::orchestrate`).
+        // guest router routes them to `workflow::orchestrate`).
         // The defensive arms keep the match exhaustive and never
         // collapse a real run to a misleading success.
         PlanAction::Execute => Err(Error::Argument {

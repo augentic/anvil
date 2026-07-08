@@ -1,12 +1,12 @@
 //! `specify journal show` handler — the read verb over
 //! `.specify/journal.jsonl`. Filtering and limit semantics live in
-//! [`workflow_lib::journal::show`]; this handler only renders.
+//! [`workflow::journal::show`]; this handler only renders.
 
 use std::io::Write;
 
 use error::Result;
 use serde::Serialize;
-use workflow_lib::journal::{self, Event};
+use workflow::journal::{self, Event};
 
 use crate::context::Ctx;
 

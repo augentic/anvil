@@ -170,7 +170,7 @@ mod tests {
 
     // The public `load` / `save` codec (cold-start `None`, save/load
     // round-trip, snake_case serialisation) lives in
-    // `crates/workflow-lib/tests/agents_lock.rs`. What stays here exercises code
+    // `crates/workflow/tests/agents_lock.rs`. What stays here exercises code
     // no public input reaches: the test-only `diff_inputs` helper, and the
     // version gate's forward-incompatible / unsupported-older / malformed
     // shapes (a normal `save` only ever writes the current version).

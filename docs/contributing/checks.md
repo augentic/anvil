@@ -54,7 +54,7 @@ Each module under [`tests/framework_quality/`](../../tests/framework_quality/) o
 - **Skill directive validation** — `<!-- skill: plugin:skill -->` directives must reference a real skill discovered under `plugins/`.
 - **Tool-owned schema URLs** — every `schemas.specify.dev/<tool>/<name>.schema.json` URL in adapter trees must match the constant tool → schema-name registry in the module (currently `vectis` → `tokens`, `assets`, `composition`).
 
-The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/workflow-lib/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the test.
+The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/workflow/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the test.
 
 ### `skills.rs`
 

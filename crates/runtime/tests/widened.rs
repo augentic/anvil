@@ -18,7 +18,7 @@ use omnia::{DeploymentBuilder, ExitStatus, Mode};
 use omnia_testkit::{TempManifest, temp_manifest};
 use tempfile::TempDir;
 
-use crate::common::{self, CacheGuard, ECHO_WASM, Quiet, StubBundle, WORKFLOW_WASM, scoped_cache};
+use crate::common::{self, CacheGuard, ECHO_WASM, Quiet, StubBundle, SPECIFY_WASM, scoped_cache};
 
 /// A throw-away project tree the composed deployment mounts at `"."`,
 /// with the hermetic per-project cache pinned beneath the tempdir —
@@ -66,7 +66,7 @@ impl Project {
 /// adapter-contract links without needing the sibling adapters
 /// checkout — no test here dispatches a seam call.
 fn manifest(mount: &Path) -> Result<TempManifest> {
-    let workflow = common::guest_wasm(WORKFLOW_WASM);
+    let workflow = common::guest_wasm(SPECIFY_WASM);
     let echo = common::guest_wasm(ECHO_WASM);
     let cache = schema::cache::project_cache_dir(mount);
     fs::create_dir_all(&cache)?;
@@ -221,7 +221,7 @@ async fn archive_prune_requires_bound() -> Result<()> {
 async fn rules_export_reads_cache_mount() -> Result<()> {
     let project = Project::initialised();
     let now = "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses");
-    workflow_lib::init::sync_codex(&project.root, now).expect("sync codex");
+    workflow::init::sync_codex(&project.root, now).expect("sync codex");
 
     let status =
         run(&project.root, &["rules", "export", "--target", "demo", "--format", "json"]).await?;

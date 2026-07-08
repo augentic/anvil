@@ -5,13 +5,13 @@
 
 use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
-use workflow_lib::change::{
+use workflow::change::{
     Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, entry_mut, mutate_authority_overrides,
     reject_duplicate_source_keys, reject_orphan_overrides,
 };
-use workflow_lib::config::with_state;
-use workflow_lib::journal;
-use workflow_lib::schema::validate_plan;
+use workflow::config::with_state;
+use workflow::journal;
+use workflow::schema::validate_plan;
 
 use super::args::{
     bindings_from_args, load_discovery, parse_divergence, parse_override_assigns,
@@ -98,7 +98,7 @@ pub(super) fn amend(ctx: &Ctx, args: AmendArgs) -> Result<()> {
                 .entries
                 .iter()
                 .find(|c| c.name == name)
-                .ok_or_else(|| workflow_lib::change::unknown_slice_err(&plan_name, &name))?;
+                .ok_or_else(|| workflow::change::unknown_slice_err(&plan_name, &name))?;
 
             let mut journal_events: Vec<journal::Event> = Vec::new();
             if let Some(to) = divergence {

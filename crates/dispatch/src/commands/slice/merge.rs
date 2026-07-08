@@ -1,12 +1,12 @@
 //! `slice merge preview | conflict-check`. Owns the merge-side JSON
 //! DTOs and summarisers; `slice merge run` itself is a guest-owned
-//! collapsed orchestration (`workflow_lib::orchestrate::merge`).
+//! collapsed orchestration (`workflow::orchestrate::merge`).
 
 use std::io::Write;
 
 use error::Result;
 use serde::Serialize;
-use workflow_lib::merge::{
+use workflow::merge::{
     BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, conflict_check, slice,
     summarise_operations,
 };

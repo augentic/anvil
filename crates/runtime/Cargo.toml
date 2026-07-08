@@ -37,7 +37,7 @@ serde_json.workspace = true
 dispatch.workspace = true
 artifacts.workspace = true
 schema.workspace = true
-workflow-lib = { workspace = true, features = ["native"] }
+workflow = { workspace = true, features = ["native"] }
 tempfile.workspace = true
 
 [lints]

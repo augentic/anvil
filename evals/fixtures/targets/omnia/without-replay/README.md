@@ -14,4 +14,4 @@ The two fixtures are byte-identical apart from the trailing `replay:` block. A `
 
 ## Validation
 
-`metadata.yaml` follows the `SliceMetadata` shape in [`crates/workflow-lib/src/slice/metadata.rs`](https://github.com/augentic/specify/blob/main/crates/workflow-lib/src/slice/metadata.rs) (kebab-case field names; closed `status:` and `outcome.phase:` enums; ISO-8601 UTC timestamps). No `replay:` field appears — the absence itself is what this fixture pins.
+`metadata.yaml` follows the `SliceMetadata` shape in [`crates/workflow/src/slice/metadata.rs`](https://github.com/augentic/specify/blob/main/crates/workflow/src/slice/metadata.rs) (kebab-case field names; closed `status:` and `outcome.phase:` enums; ISO-8601 UTC timestamps). No `replay:` field appears — the absence itself is what this fixture pins.

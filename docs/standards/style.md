@@ -7,9 +7,9 @@ Cross-cutting code-quality rules every Rust change in this workspace honours. Th
 A type lives in `crates/<crate>/<module>/<file>.rs`; that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
 
 ```rust
-// crates/workflow-lib/src/registry/workspace/push/forge.rs
+// crates/workflow/src/registry/workspace/push/forge.rs
 // BAD: WorkspacePushForge       GOOD: Forge
-// crates/workflow-lib/src/change/finalize/probe.rs
+// crates/workflow/src/change/finalize/probe.rs
 // BAD: FinalizeProbe            GOOD: Probe
 ```
 
@@ -45,7 +45,7 @@ ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
 
 ## No traits for testability alone
 
-Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `workflow_lib::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `workflow_lib::config`, shared by `Plan`, `Project`, and `Registry` for `.specify/` YAML state — implement that instead of inventing a sibling trait pair.
+Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `workflow::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `workflow::config`, shared by `Plan`, `Project`, and `Registry` for `.specify/` YAML state — implement that instead of inventing a sibling trait pair.
 
 ```rust
 // BAD — trait pair that exists so MockProjectStore can swap in.

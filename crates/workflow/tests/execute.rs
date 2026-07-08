@@ -1,6 +1,6 @@
 //! Guest execute-loop integration tests.
 //!
-//! Scripted end-to-end walk of `workflow_lib::orchestrate::execute`
+//! Scripted end-to-end walk of `workflow::orchestrate::execute`
 //! against mocked Model + seams: plan approved → claim → refine (extract
 //! fan-out, synthesis judgment, persist, validate, `refined`) → build →
 //! merge, per entry, to `drained`. Plus the typed stop paths (Gate 1
@@ -14,11 +14,11 @@ use std::path::PathBuf;
 use jiff::Timestamp;
 use serde_json::{Value, json};
 use tempfile::TempDir;
-use workflow_lib::change::{LoopStep, Plan, Status, StopReason};
-use workflow_lib::config::Layout;
-use workflow_lib::orchestrate::{self, ExecuteOutcome};
-use workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
-use workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
+use workflow::change::{LoopStep, Plan, Status, StopReason};
+use workflow::config::Layout;
+use workflow::orchestrate::{self, ExecuteOutcome};
+use workflow::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
+use workflow::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 
 use crate::common;
 
@@ -453,9 +453,9 @@ async fn refine_breakout_skips_entry_claim() {
 
     // The slice is `refined`; the plan entry was never claimed.
     let metadata =
-        workflow_lib::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
+        workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
             .expect("slice metadata");
-    assert_eq!(metadata.status, workflow_lib::slice::LifecycleStatus::Refined);
+    assert_eq!(metadata.status, workflow::slice::LifecycleStatus::Refined);
     // Development (unpinned) components resolve as the honest `0.0.0`
     // placeholder — there is no published package identity to record.
     assert_eq!(metadata.target, "omnia@0.0.0", "target resolved from the bound topology");

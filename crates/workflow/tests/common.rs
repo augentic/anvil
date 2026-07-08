@@ -185,7 +185,7 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
 /// writing the fixture component (`{}` for an empty answer).
 pub fn register_describe_stub() {
     use error::Error;
-    use workflow_lib::adapter::describe::{
+    use workflow::adapter::describe::{
         DescribeAnswer, DescribeRequest, register_describe_runner,
     };
 

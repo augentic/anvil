@@ -1,5 +1,5 @@
 //! Integration tests for the hydration kernel
-//! (`workflow_lib::hydrate`).
+//! (`workflow::hydrate`).
 //!
 //! Covers pinned-ref collection over `project.yaml` (the `adapter:`
 //! pin, the `adapters:` prefetch list) and `plan.yaml` source pins;
@@ -14,8 +14,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use error::Error;
-use workflow_lib::hydrate::{ResolvedAdapter, collect_refs, hydrate};
-use workflow_lib::init::AdapterPackage;
+use workflow::hydrate::{ResolvedAdapter, collect_refs, hydrate};
+use workflow::init::AdapterPackage;
 
 use crate::common;
 

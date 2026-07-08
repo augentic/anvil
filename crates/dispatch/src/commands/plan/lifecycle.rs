@@ -3,12 +3,12 @@ use std::io::Write;
 use diagnostics::{Diagnostic, Severity, blocking, blocking_present};
 use error::{Error, Result};
 use serde::Serialize;
-use workflow_lib::change::{
+use workflow::change::{
     Lifecycle, NextActionKind, NextBody, NextReason, Plan, Status, StatusBody, drained_line,
     plan_doctor, plan_finding, plan_next_body, plan_status_body,
 };
-use workflow_lib::config::with_state;
-use workflow_lib::registry::Registry;
+use workflow::config::with_state;
+use workflow::registry::Registry;
 
 use super::{Ref, plan_ref, require_file};
 use crate::context::Ctx;
@@ -31,7 +31,7 @@ pub(super) fn validate(ctx: &Ctx) -> Result<()> {
     }
     if let Some(reg) = &registry {
         let workspace_base = ctx.project_dir.join("workspace");
-        results.extend(workflow_lib::registry::cache_staleness(
+        results.extend(workflow::registry::cache_staleness(
             reg,
             &workspace_base,
             &ctx.layout().topology_lock_path(),
@@ -77,14 +77,14 @@ pub(super) fn next(ctx: &Ctx) -> Result<()> {
     // drained/stuck emits nothing, so a parked execute loop leaves no
     // advance event behind.
     if let Some(advanced) = &body.next {
-        let event = workflow_lib::journal::Event::new(
+        let event = workflow::journal::Event::new(
             ctx.now(),
-            workflow_lib::journal::EventKind::PlanEntryAdvanced {
+            workflow::journal::EventKind::PlanEntryAdvanced {
                 plan_name,
                 slice_name: advanced.clone().into(),
             },
         );
-        workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
+        workflow::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
     }
     ctx.write(&body, write_next_text)?;
     Ok(())
@@ -121,7 +121,7 @@ pub(super) fn status(ctx: &Ctx) -> Result<()> {
 pub(super) fn transition(
     ctx: &Ctx, name: String, target: Option<String>, undo: bool, actor: &str,
 ) -> Result<()> {
-    let actor: workflow_lib::journal::Actor = actor.parse().map_err(|detail| Error::Argument {
+    let actor: workflow::journal::Actor = actor.parse().map_err(|detail| Error::Argument {
         flag: "--actor",
         detail,
     })?;
@@ -146,30 +146,30 @@ pub(super) fn transition(
     // flags `changed = false` so we skip the emit.
     match (body.kind, body.changed) {
         (TransitionKind::Plan, true) => {
-            let event = workflow_lib::journal::Event::new(
+            let event = workflow::journal::Event::new(
                 ctx.now(),
-                workflow_lib::journal::EventKind::PlanTransitionApproved {
+                workflow::journal::EventKind::PlanTransitionApproved {
                     plan_name: body.name.clone().into(),
                     actor,
                 },
             );
-            workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
+            workflow::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
         }
         (TransitionKind::Undo, true) => {
             let pair = body.undo.ok_or_else(|| Error::Diag {
                 code: "plan-transition-undo",
                 detail: "undo body must carry the status pair".to_string(),
             })?;
-            let event = workflow_lib::journal::Event::new(
+            let event = workflow::journal::Event::new(
                 ctx.now(),
-                workflow_lib::journal::EventKind::PlanTransitionUndone {
+                workflow::journal::EventKind::PlanTransitionUndone {
                     plan_name: body.plan.name.clone().into(),
                     slice_name: body.name.clone().into(),
                     from: pair.from,
                     to: pair.to,
                 },
             );
-            workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
+            workflow::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
         }
         _ => {}
     }

@@ -66,4 +66,4 @@ pub fn plan_agents_write(
 // The write planner's dispositions (create / force-rewrite / replace-block /
 // unchanged, plus non-UTF-8 preservation) and the two fence-policy errors are
 // exercised through the public `plan_agents_write` in
-// `crates/workflow-lib/tests/agents_fences_render.rs`.
+// `crates/workflow/tests/agents_fences_render.rs`.

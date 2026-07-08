@@ -45,7 +45,7 @@ pub enum Platform {
 /// `Vec<Platform>`. Returns an error naming the first unknown token.
 ///
 /// ```
-/// use workflow_lib::platform::{Platform, parse_platforms_csv};
+/// use workflow::platform::{Platform, parse_platforms_csv};
 ///
 /// let set = parse_platforms_csv("ios, core, ios").unwrap();
 /// assert_eq!(set, [Platform::Core, Platform::Ios]);

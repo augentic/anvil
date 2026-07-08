@@ -8,7 +8,7 @@
 //! Guest-owned orchestrator verbs (`source survey`/`extract`,
 //! `slice refine`/`build`, `slice merge run`, `plan author`/`execute`)
 //! carry only their clap surface here — the workflow guest drives the
-//! matching `workflow_lib::orchestrate` entry points.
+//! matching `workflow::orchestrate` entry points.
 
 pub mod adapters;
 pub mod archive;
@@ -32,8 +32,8 @@ use diagnostics::{
 };
 use error::Result;
 use serde::Serialize;
-use workflow_lib::adapter::{Axis, SourceAdapter, TargetAdapter};
-use workflow_lib::init::adapter_ref_from_value;
+use workflow::adapter::{Axis, SourceAdapter, TargetAdapter};
+use workflow::init::adapter_ref_from_value;
 
 use crate::cli::Format;
 use crate::commands::journal::cli::JournalAction;

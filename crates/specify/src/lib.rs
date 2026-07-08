@@ -1,4 +1,4 @@
-//! The workflow guest: the deployment's only `wasi:cli/run` exporter.
+//! The specify guest: the deployment's only `wasi:cli/run` exporter.
 //!
 //! Argv arrives through wasip3 and parses through the shared
 //! `dispatch` grammar — the exact clap tree the native binary
@@ -57,7 +57,7 @@ impl wasip3::exports::cli::run::Guest for CliGuest {
         // Adapter describe dispatch routes through this world's WIT
         // imports, so the resolvers work in-guest against the
         // read-only store and cache mounts.
-        workflow_lib::adapter::describe::register_describe_runner(provider::describe_runner);
+        workflow::adapter::describe::register_describe_runner(provider::describe_runner);
         // argv verbatim as the host provides it, argv[0] included —
         // the shared grammar sees exactly what native clap sees.
         let argv = wasip3::cli::environment::get_arguments();

@@ -1,12 +1,12 @@
 //! The project-scope `tools[]` declaration shape on `project.yaml`
-//! (`workflow_lib::config::tools`): wire round-trips, the
+//! (`workflow::config::tools`): wire round-trips, the
 //! `parse_wire` source classifier, and the permissive
 //! `PackageRequest::parse` split points.
 
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use workflow_lib::config::tools::{
+use workflow::config::tools::{
     Extension, ExtensionPermissions, ExtensionSource, PackageRequest,
 };
 

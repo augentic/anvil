@@ -31,7 +31,7 @@ flips a kebab-case error `code` is a public-contract change, not a refresh.
 
 | Crate | Test binary | Fixture / golden dir(s) |
 | --- | --- | --- |
-| `workflow-lib` | `goldens` | `crates/workflow-lib/tests/fixtures/*.golden.json` |
+| `workflow` | `goldens` | `crates/workflow/tests/fixtures/*.golden.json` |
 | `standards` | `lint_index` | `crates/standards/tests/fixtures/lint/` |
 | `standards` | `lint_hint` | JSON: `crates/standards/tests/fixtures/lint/`; pretty: `crates/standards/tests/goldens/` |
 
@@ -44,7 +44,7 @@ Each crate keeps its cross-binary helpers under `tests/<helper>/mod.rs` (the
 sole `mod.rs` exception blessed in
 [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)):
 
-- `workflow-lib`: `crates/workflow-lib/tests/common/mod.rs` — `MockCmd`.
+- `workflow`: `crates/workflow/tests/common/mod.rs` — `MockCmd`.
 - `standards`: `crates/standards/tests/common/mod.rs`; `crates/standards/tests/eval_support/mod.rs` — `make_rule` / `hint` / `NoToolRunner` rule-and-hint scaffolding (the in-memory evaluator testkit lives at `crates/standards/src/lint/eval/testkit.rs`).
 
 The `GIT_ENV` / `run_git` / `copy_dir` trio is single-sourced at

@@ -4,8 +4,8 @@ use std::io::Write;
 
 use error::{Error, Result};
 use serde::Serialize;
-use workflow_lib::merge::MergeStrategy;
-use workflow_lib::slice::{
+use workflow::merge::MergeStrategy;
+use workflow::slice::{
     Overlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions,
 };
 

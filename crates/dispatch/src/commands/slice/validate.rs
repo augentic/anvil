@@ -4,7 +4,7 @@
 //! `spec.md` provenance metadata.
 //!
 //! The pre-adapter gate kernel lives in
-//! [`workflow_lib::slice::validate`]; this handler orchestrates it
+//! [`workflow::slice::validate`]; this handler orchestrates it
 //! against the adapter rules (`artifacts::validate::validate_slice`),
 //! renders the report on stdout, and maps the blocking decision to exit
 //! 2.
@@ -12,7 +12,7 @@
 use artifacts::validate::validate_slice;
 use diagnostics::{Diagnostic, blocking_present};
 use error::{Error, Result};
-use workflow_lib::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
+use workflow::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
 
 use crate::context::Ctx;
 

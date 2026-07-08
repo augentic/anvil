@@ -25,7 +25,7 @@ ci:
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:
 	@mkdir -p "$(INSTALL_DIR)"
-	cargo build --release -p specify
+	cargo build --release -p specify-cli
 	@ln -sfn "$(CURDIR)/target/release/specify" "$(INSTALL_DIR)/specify"
 	@specify --version 2>/dev/null || echo "Add $(INSTALL_DIR) to PATH before the sweep."
 

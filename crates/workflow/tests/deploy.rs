@@ -1,5 +1,5 @@
 //! Integration tests for the deployment-manifest generator
-//! (`workflow_lib::deploy`).
+//! (`workflow::deploy`).
 //!
 //! Covers the generated document shape (guests, mount, routes,
 //! transport, the core link allow-list — asserted on parsed TOML, not
@@ -12,8 +12,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use error::Error;
-use workflow_lib::adapter::Axis;
-use workflow_lib::deploy::{DeployGuest, generate, manifest_path};
+use workflow::adapter::Axis;
+use workflow::deploy::{DeployGuest, generate, manifest_path};
 
 use crate::common;
 
@@ -53,7 +53,7 @@ fn generates_manifest_into_project_cache() {
     let _cache = common::scoped_cache(tmp.path());
     let project = tmp.path().join("project");
     fs::create_dir_all(&project).expect("project dir");
-    let core = component(tmp.path(), "workflow.wasm");
+    let core = component(tmp.path(), "specify.wasm");
     let omnia = component(tmp.path(), "omnia@1.0.0.wasm");
     let intent = component(tmp.path(), "intent.wasm");
     let guests = [
@@ -127,7 +127,7 @@ fn dangling_pinned_entry_is_not_installed() {
     // manifest — never a generated-then-broken deployment.
     let tmp = tempfile::tempdir().expect("tempdir");
     let _cache = common::scoped_cache(tmp.path());
-    let core = component(tmp.path(), "workflow.wasm");
+    let core = component(tmp.path(), "specify.wasm");
     let guests =
         [pinned_guest(Axis::Target, "omnia", "1.0.0", tmp.path().join("omnia@1.0.0.wasm"))];
 
@@ -149,7 +149,7 @@ fn dangling_bare_component_is_not_found() {
     // remedy a development artifact.
     let tmp = tempfile::tempdir().expect("tempdir");
     let _cache = common::scoped_cache(tmp.path());
-    let core = component(tmp.path(), "workflow.wasm");
+    let core = component(tmp.path(), "specify.wasm");
     let guests = [bare_guest(Axis::Source, "intent", tmp.path().join("intent.wasm"))];
 
     let err = generate(tmp.path(), &core, &guests).expect_err("dangling bare component must fail");
@@ -175,7 +175,7 @@ fn hostile_paths_stay_parseable() {
     let _cache = common::scoped_cache(tmp.path());
     let project = tmp.path().join("we\"ird\\dir");
     fs::create_dir_all(&project).expect("hostile project dir");
-    let core = component(tmp.path(), "workflow.wasm");
+    let core = component(tmp.path(), "specify.wasm");
 
     let path = generate(&project, &core, &[]).expect("generate manifest");
     let doc: toml::Value =

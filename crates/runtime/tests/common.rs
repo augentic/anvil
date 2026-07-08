@@ -1,7 +1,7 @@
 //! Shared helpers for the composed-deployment integration tests.
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
-//! `omnia_testkit::find_guest`, pointed at the `{echo-source,echo-target,workflow}` guest crates), the
+//! `omnia_testkit::find_guest`, pointed at the `{echo-source,echo-target,specify}` guest crates), the
 //! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
 //! macros generate, and the skeleton manifest the tests deploy.
 //!
@@ -30,7 +30,7 @@ use omnia_wasi_model::{
 pub const ECHO_WASM: &str = "echo_source.wasm";
 
 /// Built artifact name of the workflow (`wasi:cli/run`) guest.
-pub const WORKFLOW_WASM: &str = "workflow.wasm";
+pub const SPECIFY_WASM: &str = "specify.wasm";
 
 /// The repo workspace root (`<root>/crates/runtime` is this crate).
 pub fn workspace_root() -> PathBuf {
@@ -146,7 +146,7 @@ pub fn adapter_component_wasm(id: &str) -> PathBuf {
 pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest> {
     use std::fmt::Write as _;
 
-    let workflow = guest_wasm(WORKFLOW_WASM);
+    let workflow = guest_wasm(SPECIFY_WASM);
     let mut doc = format!(
         "[[guest]]\n\
          id = \"workflow\"\n\
@@ -217,7 +217,7 @@ pub async fn composed_runtime(mount: &Path, adapters: &[&str]) -> Result<Runtime
 ///
 /// Returns an error when the temp manifest cannot be written.
 pub fn skeleton_manifest(echo_id: &str) -> Result<TempManifest> {
-    let workflow = guest_wasm(WORKFLOW_WASM);
+    let workflow = guest_wasm(SPECIFY_WASM);
     let echo = guest_wasm(ECHO_WASM);
     let mount = workspace_root().join("crates/runtime/workspace");
 

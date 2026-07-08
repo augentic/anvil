@@ -3,9 +3,9 @@
 use std::path::Path;
 
 use error::{Error, Result};
-use workflow_lib::change::Plan;
-use workflow_lib::config::{Layout, with_state};
-use workflow_lib::registry::Registry;
+use workflow::change::Plan;
+use workflow::config::{Layout, with_state};
+use workflow::registry::Registry;
 
 use super::dto::{RemoveBody, write_remove_text};
 use crate::context::Ctx;

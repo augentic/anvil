@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use artifacts::validate::validate_slice;
 use diagnostics::DiagnosticKind;
 use tempfile::TempDir;
-use workflow_lib::slice::SLICES_DIR_NAME;
+use workflow::slice::SLICES_DIR_NAME;
 
 use crate::common;
 
@@ -73,7 +73,7 @@ fn validate_slice_passes_all_rules() {
     // invariant in situ: if any Semantic rule's `check` were invoked the
     // runner would panic (by construction) and this test would fail.
     let repo = repo_root();
-    let fixture = repo.join("crates/workflow-lib/tests/fixtures/change-good");
+    let fixture = repo.join("crates/workflow/tests/fixtures/change-good");
     let (_guard, project_dir) = stage_project();
     let slice_dir = project_dir.join(".specify").join(SLICES_DIR_NAME).join("change-good");
     common::copy_dir(&fixture, &slice_dir);

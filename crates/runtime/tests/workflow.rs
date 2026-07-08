@@ -26,9 +26,9 @@ use jiff::Timestamp;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 use serde_json::{Value, json};
 use tempfile::TempDir;
-use workflow_lib::orchestrate;
-use workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
-use workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
+use workflow::orchestrate;
+use workflow::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
+use workflow::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 
 use crate::common::{self, CacheGuard, Quiet, StubBundle, scoped_cache};
 
@@ -53,8 +53,8 @@ impl Project {
         // stub describe dispatcher (first registration wins) so resolve
         // never needs a nested wasmtime instantiation here — describe
         // dispatch itself is covered by the engine's adapter suites.
-        workflow_lib::adapter::describe::register_describe_runner(|_request| {
-            Ok(workflow_lib::adapter::describe::DescribeAnswer::default())
+        workflow::adapter::describe::register_describe_runner(|_request| {
+            Ok(workflow::adapter::describe::DescribeAnswer::default())
         });
         let tmp = TempDir::new().expect("tempdir");
         let root = tmp.path().to_path_buf();
@@ -79,8 +79,8 @@ impl Project {
         }
     }
 
-    fn layout(&self) -> workflow_lib::config::Layout<'_> {
-        workflow_lib::config::Layout::new(&self.root)
+    fn layout(&self) -> workflow::config::Layout<'_> {
+        workflow::config::Layout::new(&self.root)
     }
 
     fn seed_plan(&self, content: &str) {

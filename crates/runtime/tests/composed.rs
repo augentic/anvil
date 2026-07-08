@@ -14,7 +14,7 @@
 use anyhow::Result;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 
-use crate::common::{self, Bundle, Quiet, WORKFLOW_WASM};
+use crate::common::{self, Bundle, Quiet, SPECIFY_WASM};
 
 // Drive one command-mode run of the composed deployment with the given
 // guest argv (argv[0], the program name, is supplied by the runtime core),
@@ -68,13 +68,13 @@ async fn usage_error_passthrough() -> Result<()> {
 #[test]
 fn binary_stdout() -> Result<()> {
     let engine = common::workspace_root();
-    let built = common::guest_wasm(WORKFLOW_WASM);
+    let built = common::guest_wasm(SPECIFY_WASM);
     // omnia.toml resolves guest paths relative to itself, expecting the
     // workflow artifact under the repo-root target/ (the default target
     // dir) and the release-built adapter components in the sibling
     // checkout. Mirror the built guest there when CARGO_TARGET_DIR
     // redirects the build elsewhere.
-    let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(WORKFLOW_WASM);
+    let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(SPECIFY_WASM);
     if built != expected {
         std::fs::create_dir_all(expected.parent().expect("artifact dir has a parent"))?;
         std::fs::copy(&built, &expected)?;

@@ -3,10 +3,10 @@
 
 use clap::Subcommand;
 use clap::builder::{PossibleValuesParser, TypedValueParser};
-use workflow_lib::slice::{CreateIfExists, LifecycleStatus};
+use workflow::slice::{CreateIfExists, LifecycleStatus};
 
 /// Clap value parser for a workflow enum carrying strum's kebab-case
-/// `EnumString` + `VariantNames` derives. `workflow-lib` is
+/// `EnumString` + `VariantNames` derives. `workflow` is
 /// clap-free, so the possible-values surface is reconstructed here at
 /// the CLI boundary from the strum metadata.
 fn kebab_enum<T>() -> impl TypedValueParser<Value = T>

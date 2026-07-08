@@ -1,4 +1,4 @@
-//! Integration tests for `workflow_lib::registry::workspace`.
+//! Integration tests for `workflow::registry::workspace`.
 //!
 //! Deliberately narrow: the binary-level `tests/workspace.rs` covers the
 //! `workspace {sync,push,prepare}` wire surface (selector preflight,
@@ -14,14 +14,14 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tempfile::TempDir;
-use workflow_lib::registry::branch::{
+use workflow::registry::branch::{
     LocalAction, RemoteAction, Request as BranchRequest, prepare,
 };
-use workflow_lib::registry::workspace::{
+use workflow::registry::workspace::{
     PushOutcome, SlotKind, SlotProblemReason, push_projects, slot_problem,
     sync_projects as workspace_sync_projects,
 };
-use workflow_lib::registry::{Registry, RegistryProject};
+use workflow::registry::{Registry, RegistryProject};
 
 #[cfg(unix)]
 fn symlink_dir(target: &Path, link: &Path) {
@@ -722,8 +722,8 @@ fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {
 
 #[test]
 fn topology_lock_projects_baseline() {
-    use workflow_lib::registry::topology::TopologyLock;
-    use workflow_lib::registry::workspace::regenerate_topology_lock;
+    use workflow::registry::topology::TopologyLock;
+    use workflow::registry::workspace::regenerate_topology_lock;
 
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
@@ -796,8 +796,8 @@ fn topology_lock_projects_baseline() {
 
 #[test]
 fn topology_lock_projects_decisions() {
-    use workflow_lib::registry::topology::TopologyLock;
-    use workflow_lib::registry::workspace::regenerate_topology_lock;
+    use workflow::registry::topology::TopologyLock;
+    use workflow::registry::workspace::regenerate_topology_lock;
 
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
