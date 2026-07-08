@@ -1,0 +1,32 @@
+[package]
+name = "workflow"
+description = "Workflow WASI guest component (wasi:cli/run shim) for the Specify Omnia runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+# Guest-only: the component body compiles solely for wasm32, so its
+# dependencies live under the same target gate omnia's guests use.
+# workflow-lib rides the workspace declaration's
+# default-features = false, so the `native` surface (ureq, upgrade,
+# plugins) never enters the guest graph.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+omnia-guest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+diagnostics.workspace = true
+dispatch.workspace = true
+error.workspace = true
+artifacts.workspace = true
+workflow-lib.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
+
+[lints]
+workspace = true
