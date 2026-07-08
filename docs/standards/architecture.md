@@ -12,10 +12,9 @@ specify-schema                   # depends on specify-error (embedded JSON Schem
 specify-diagnostics              # depends on specify-{error,schema} (Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
 specify-model                    # depends on specify-{error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; model::validate artifact rule registry — NOT on specify-workflow or anything named lint)
 specify-extension                # depends on specify-{diagnostics,schema} (WASI extension manifest DTOs + structural validation; wasmtime-free leaf)
-specify-registry                 # depends on specify-{error,schema,extension} (WASI runner + OCI transport + adapter pack/store; wasmtime, gated)
-specify-standards                # standards layer — depends on specify-{error,schema,diagnostics}; NOT on specify-workflow or specify-registry
-specify-workflow                 # workflow layer — depends on specify-{error,schema,extension,model,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation); NOT on specify-standards / specify-registry (no wasmtime in its graph)
-specify (root crate)             # wires runtime + framework crates into the specify binary
+specify-standards                # standards layer — depends on specify-{error,schema,diagnostics}; NOT on specify-workflow
+specify-workflow                 # workflow layer — depends on specify-{error,schema,extension,model,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation); NOT on specify-standards (no wasmtime in its graph)
+specify (root crate)             # the omnia::runtime! binary — depends on no specify-* crate
 ```
 
 The framework authoring checks behind `specify lint framework` run entirely through the declarative hint interpreter in `specify_standards::lint` plus the in-process Road B checkers beside it (`crates/standards/src/lint/framework_tools/`); there is no imperative `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).
@@ -57,9 +56,7 @@ Four module trees carry the workflow contract — three in `specify-workflow`, p
 
 ## WASI tool sidecar scope
 
-The WASI tool cache root resolves `$SPECIFY_EXTENSIONS_CACHE` → `$XDG_CACHE_HOME/specify/extensions/` → `$HOME/.cache/specify/extensions/`. Inside it the scope segment is `project--<project-name>` for project-scope tools (the only scope with a production writer since S4 — adapter-scope extensions retired with the `extension run` verb family). The `--` separator avoids collisions with hyphenated names. The plugin-scope substitution variable that maps into permission paths is `$CAPABILITY_DIR` (it expands to the resolved adapter's root directory and is rejected on project-scope use as `tool.capability-dir-out-of-scope`).
-
-Beside the per-scope tool directories, `<tool cache root>/wasmtime/` holds the wasmtime **compilation** cache (compiled-component artifacts, not tool bytes) configured by `WasiRunner::new`. It is best-effort — any resolution or setup failure disables it — and `$SPECIFY_WASMTIME_CACHE` overrides its location independently of the tool cache root (the integration suite pins it to `target/wasmtime-cache/` so per-test `SPECIFY_EXTENSIONS_CACHE` isolation does not defeat compiled-component reuse).
+The WASI tool cache root resolves `$SPECIFY_EXTENSIONS_CACHE` → `$XDG_CACHE_HOME/specify/extensions/` → `$HOME/.cache/specify/extensions/`. Inside it the scope segment is `project--<project-name>` for project-scope tools (the only scope with a declaration shape since S4 — adapter-scope extensions retired with the `extension run` verb family). The `--` separator avoids collisions with hyphenated names. The plugin-scope substitution variable that maps into permission paths is `$CAPABILITY_DIR` (it expands to the resolved adapter's root directory and is rejected on project-scope use as `tool.capability-dir-out-of-scope`). The declaration DTOs and this validation live in `specify-extension`; no runner exists today — the Wasmtime tool runner deleted with the `specify-registry` crate, so nothing resolves or executes declared tools until the `tools[]` surface's fate is decided.
 
 ## WASI carve-outs
 
@@ -67,7 +64,7 @@ The two adapter validators — `contract` and `vectis` — no longer live in thi
 
 The framework checkers behind `specify lint framework`'s Road B rules are not WASI components — they run in-process inside `specify-standards` (`crates/standards/src/lint/framework_tools/`), resolved by name from the `kind: tool` evaluator before the `ToolRunner` trait (which survives for the project-side WASI path).
 
-**Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. The `specify-registry` runner (`wasmtime` + `wasmtime-wasi`) is orphaned by the `lint project` retirement and kept only until the declared-tool (`tools[]`) surface's fate is decided. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
+**Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. The `specify-registry` crate (the wasm-pkg transport, adapter store install path, and Wasmtime tool runner) is deleted — the declared-tool (`tools[]`) declaration shape survives in `specify-extension` until that surface's fate is decided. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
 
 ## Layout boundary
 
@@ -75,11 +72,11 @@ The framework checkers behind `specify lint framework`'s Road B rules are not WA
 
 ## Time injection
 
-Functions that record a timestamp into a serialised artifact accept `now: jiff::Timestamp` from the dispatcher boundary. Library crates do not call `Timestamp::now()`; the call site lives in `src/runtime/commands/*.rs` so tests can pin time deterministically. The current carve-out — `slice_actions::*` and friends still consume an injected `now` argument — is the canonical shape to follow.
+Functions that record a timestamp into a serialised artifact accept `now: jiff::Timestamp` from the dispatcher boundary. Library crates do not call `Timestamp::now()`; the call sites live in the `specify-dispatch` handlers so tests can pin time deterministically. The current carve-out — `slice_actions::*` and friends still consume an injected `now` argument — is the canonical shape to follow.
 
 ## ureq fetch hardening
 
-The WASI tool fetch in `crates/registry/src/resolver.rs` runs every HTTP request with explicit per-call timeouts, a `MAX_RESPONSE_BYTES` cap (64 MiB) checked on both the `Content-Length` header and the streamed body, and streams the response to a tempfile before persisting into the cache. Any new HTTP path that lands in this crate must adopt the same shape (timeouts + size cap + stream-to-tempfile); do not buffer arbitrary remote bodies into memory.
+Any `ureq` HTTP path in this workspace (today: the channel-aware self-update probe in `crates/workflow/src/upgrade.rs`) runs with explicit per-call timeouts, a response-size cap checked on both the `Content-Length` header and the streamed body, and streams large bodies to a tempfile before persisting. Any new HTTP path must adopt the same shape (timeouts + size cap + stream-to-tempfile); do not buffer arbitrary remote bodies into memory.
 
 ## Atomic writes
 

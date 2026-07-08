@@ -6,11 +6,10 @@
 //! A package reference (and the versioned first-party shorthand, its
 //! sugar) is an *immutable*,
 //! content-addressed identity with a mandatory exact SemVer pin and no
-//! branch or tag defaulting. The root `specify init` layer installs
-//! the pinned component into the global content-addressed store
-//! ([`recognize_package`] → `registry::store::install_tofu`) before
-//! this flow runs, so a package reference resolves from the store
-//! entry ([`AdapterUri::from_package`]) as a local file.
+//! branch or tag defaulting. A package reference resolves from the
+//! global content-addressed store entry ([`AdapterUri::from_package`])
+//! as a local file; nothing installs into the store today — an
+//! install-on-fetch leg lands in-guest.
 //!
 //! A bare first-party name (`omnia`) is the development shorthand: it
 //! resolves the sibling/in-repo release build
@@ -89,13 +88,11 @@ impl AdapterUri {
     /// Resolve an immutable [`AdapterPackageRef`] registry locator from
     /// the global content-addressed adapter store.
     ///
-    /// The component is installed into the store by the root `specify
-    /// init` layer (`registry::store::install_tofu`) before this
-    /// workflow flow runs, so the store entry for the pinned
-    /// `(name, version)` is already present and this resolves it as a
-    /// local file. A missing entry is `adapter-package-not-installed` —
-    /// the install step did not run or failed — rather than a silent
-    /// fallback to a mutable checkout.
+    /// Resolve-only: the store entry for the pinned `(name, version)`
+    /// must already be present (nothing installs today — the
+    /// install-on-fetch leg returns in-guest). A missing entry is
+    /// `adapter-package-not-installed` rather than a silent fallback to
+    /// a mutable checkout.
     fn from_package(package: &AdapterPackageRef) -> Result<Self, Error> {
         let version = package.version.to_string();
         let component = adapter_store_entry(&package.name, &version);
@@ -237,11 +234,12 @@ impl AdapterPackageRef {
     }
 }
 
-/// Public projection of an adapter package reference for the root layer.
+/// Public projection of an adapter package reference for install
+/// layers.
 ///
-/// Carries the `(namespace, name, version)` the root `specify init`
-/// install layer keys the wasm-pkg pull and the global store entry by
-/// (`registry::store::install_tofu`).
+/// Carries the `(namespace, name, version)` an install leg keys the
+/// package pull and the global store entry by (see
+/// [`crate::hydrate::Fetch`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterPackage {
     /// First-party package namespace (e.g. `specify`) — the wasm-pkg

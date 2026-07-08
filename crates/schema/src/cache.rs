@@ -159,10 +159,9 @@ pub const GUEST_STORE_MOUNT: &str = "/specify-store";
 ///
 /// The store is keyed by the pinned identity, not the project, so two
 /// projects pinning the same `(name, version)` resolve to one shared,
-/// read-only entry (the Cargo `~/.cargo/registry` model). Install
-/// orchestration (pull → temp → verify → atomic rename → chmod) lives in
-/// the registry layer; this is the pure location resolver both install
-/// and read paths agree on.
+/// read-only entry (the Cargo `~/.cargo/registry` model). This is the
+/// pure location resolver install and read paths agree on (no install
+/// leg exists today; installation lands in-guest).
 #[must_use]
 pub fn adapter_store_entry(name: &str, version: &str) -> PathBuf {
     adapter_store_root().join(format!("{name}@{version}.wasm"))

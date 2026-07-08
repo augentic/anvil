@@ -28,10 +28,9 @@ permissions:
 env:
   # Canonical first-party registry host: `wkg` resolves it through
   # https://augentic.io/.well-known/wasm-pkg/registry.json to the OCI
-  # backend. Must match the `specify` namespace mapping the engine
-  # resolves `specify:<name>@<ver>` references against
-  # (crates/registry/src/package.rs). Override via repository variable
-  # for a mirror.
+  # backend. Must match the `specify` namespace mapping
+  # `specify:<name>@<ver>` package references resolve against. Override
+  # via repository variable for a mirror.
   REGISTRY: ${{ vars.SPECIFY_REGISTRY || 'augentic.io' }}
   REGISTRY_NAMESPACE: specify
 

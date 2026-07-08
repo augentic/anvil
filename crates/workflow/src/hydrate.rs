@@ -6,10 +6,9 @@
 //! each entry's recorded digest.
 //!
 //! The fetch leg ([`Fetch`]) is injected by the caller, so this crate
-//! stays wasmtime- and network-free. No caller wires one today — the
-//! native provisioning surface retired with the wasm-pkg transport
-//! crate, so a store miss is the typed `adapter-not-installed` until a
-//! fetch leg lands in-guest.
+//! stays wasmtime- and network-free. No caller wires one today, so a
+//! store miss is the typed `adapter-not-installed` until a fetch leg
+//! lands in-guest.
 //!
 //! Cross-machine digest pinning: every resolved entry is verified
 //! against the committed `.specify/adapters.lock` ([`AdaptersLock`])
