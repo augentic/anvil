@@ -665,9 +665,10 @@ async fn synthesize_reads_seam_guidance() {
     use std::collections::BTreeMap;
 
     use artifacts::evidence::{AuthorityClass, ClaimKind};
-    use workflow_lib::judgment::MockModel;
     use workflow_lib::judgment::synthesize::Kernel;
     use workflow_lib::slice::{BaselineIndex, ProjectionHeader};
+
+    use crate::mock::MockModel;
 
     let dir = tempfile::tempdir().expect("tempdir");
     let baseline = BaselineIndex::build(&dir.path().join("specs")).expect("empty baseline");

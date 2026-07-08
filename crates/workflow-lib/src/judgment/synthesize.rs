@@ -12,8 +12,8 @@ use std::collections::BTreeMap;
 
 use artifacts::evidence::{AuthorityClass, ClaimKind};
 use error::Error;
+use omnia_guest::Model;
 
-use super::model::JudgmentModel;
 use super::{prose, schema_gated};
 use crate::schema::validate_synthesis_json;
 use crate::slice::{
@@ -55,7 +55,7 @@ pub struct Synthesized {
 ///
 /// The mapped model failure, or the last schema / parse / kernel
 /// failure once the repair budget is exhausted.
-pub async fn synthesize<P: JudgmentModel>(
+pub async fn synthesize<P: Model>(
     model: &P, inputs: &SynthesisInputs, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
     let schema = schema::answers::render(&schema::answers::synthesis());

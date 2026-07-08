@@ -27,6 +27,7 @@ use artifacts::discovery::Discovery;
 use diagnostics::blocking_present;
 use error::{Error, is_kebab};
 use jiff::Timestamp;
+use omnia_guest::Model;
 
 use super::SurveyedSource;
 use crate::change::{
@@ -35,7 +36,6 @@ use crate::change::{
 };
 use crate::config::{Layout, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
-use crate::judgment::model::JudgmentModel;
 use crate::judgment::propose::{self, GateContext};
 use crate::name::SliceName;
 use crate::registry::Registry;
@@ -78,7 +78,7 @@ pub struct AuthorOutcome {
 ///   once the repair budget is exhausted.
 /// - `plan-structural-errors` when the doctor sweep finds blocking
 ///   findings after the write.
-pub async fn author<P: JudgmentModel, S: SourceSeam>(
+pub async fn author<P: Model, S: SourceSeam>(
     model: &P, sources: &S, layout: Layout<'_>, now: Timestamp, name: &str,
     bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<AuthorOutcome, Error> {

@@ -7,6 +7,7 @@
 //! [docs/standards/testing.md](../../../docs/standards/testing.md).
 
 mod common;
+mod mock;
 
 #[path = "adapter.rs"]
 mod adapter;

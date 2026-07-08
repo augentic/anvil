@@ -11,8 +11,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use error::Error;
+use omnia_guest::Model;
 
-use super::model::JudgmentModel;
 use super::{prose, schema_gated};
 use crate::change::{ProposalRequest, ProposalResponse, SourceBinding};
 use crate::schema::validate_proposal_json;
@@ -68,7 +68,7 @@ pub async fn reconcile<P, F>(
     model: &P, request: &ProposalRequest, gate: Option<GateContext<'_>>, mut check: F,
 ) -> Result<ProposalResponse, Error>
 where
-    P: JudgmentModel,
+    P: Model,
     F: FnMut(&ProposalResponse) -> Result<(), Error>,
 {
     let schema = schema::answers::render(&schema::answers::proposal());

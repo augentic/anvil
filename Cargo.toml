@@ -167,17 +167,17 @@ jsonschema = { version = "0.46", default-features = false }
 artifacts = { path = "crates/artifacts" }
 diagnostics = { path = "crates/diagnostics" }
 dispatch = { path = "crates/dispatch" }
+error = { path = "crates/error" }
 petgraph = "0.8"
 proptest = "1.11.0"
 regex = "1"
+schema = { path = "crates/schema" }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.26"
 serde_json = "1"
 sha2 = "0.11"
 standards = { path = "crates/standards" }
-error = { path = "crates/error" }
-schema = { path = "crates/schema" }
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"
@@ -225,27 +225,19 @@ strip = true
 # opt-level the vectis component costs 40-70s per compile, so the
 # compiler-path crates are optimized even in dev/test profiles. Sole
 # cost is one cold rebuild of these dependencies.
-[profile.dev.package.wasmtime-internal-cranelift]
-opt-level = 2
-[profile.dev.package.wasmtime-environ]
-opt-level = 2
-[profile.dev.package.cranelift-codegen]
-opt-level = 2
-[profile.dev.package.cranelift-frontend]
-opt-level = 2
-[profile.dev.package.cranelift-entity]
-opt-level = 2
-[profile.dev.package.cranelift-bforest]
-opt-level = 2
-[profile.dev.package.cranelift-bitset]
-opt-level = 2
-[profile.dev.package.cranelift-control]
-opt-level = 2
-[profile.dev.package.cranelift-native]
-opt-level = 2
-[profile.dev.package.cranelift-assembler-x64]
-opt-level = 2
-[profile.dev.package.regalloc2]
-opt-level = 2
-[profile.dev.package.wasmparser]
+# [profile.dev.package]
+# cranelift-codegen = { opt-level = 2 }
+# cranelift-frontend = { opt-level = 2 }
+# cranelift-entity = { opt-level = 2 }
+# cranelift-bforest = { opt-level = 2 }
+# cranelift-bitset = { opt-level = 2 }
+# cranelift-control = { opt-level = 2 }
+# cranelift-native = { opt-level = 2 }
+# cranelift-assembler-x64 = { opt-level = 2 }
+# regalloc2 = { opt-level = 2 }
+# wasmparser = { opt-level = 2 }
+# wasmtime-internal-cranelift = { opt-level = 2 }
+# wasmtime-environ = { opt-level = 2 }
+
+[profile.dev.package."*"]
 opt-level = 2

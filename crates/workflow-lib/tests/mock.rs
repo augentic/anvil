@@ -1,12 +1,15 @@
-//! Native mock provider for the [`JudgmentModel`] capability.
+//! Scripted [`omnia_guest::Model`] mock for this test binary: replies
+//! are served in FIFO order and every request is recorded for
+//! assertion. Dev-only by construction — the shipped library carries no
+//! test code.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use super::model::{Error, JudgmentModel, Reply, Request};
+use omnia_guest::Model;
+use omnia_guest::model::{Error, Reply, Request};
 
-/// Scripted [`JudgmentModel`] provider for native tests: replies are
-/// served in FIFO order and every request is recorded for assertion.
+/// Scripted [`Model`] provider for native tests.
 #[derive(Debug, Default)]
 pub struct MockModel {
     replies: Mutex<VecDeque<Result<Reply, Error>>>,
@@ -29,6 +32,7 @@ impl MockModel {
         Self::scripted(answers.into_iter().map(|answer| {
             Ok(Reply {
                 answer: answer.to_string(),
+                usage: None,
             })
         }))
     }
@@ -45,7 +49,7 @@ impl MockModel {
     }
 }
 
-impl JudgmentModel for MockModel {
+impl Model for MockModel {
     async fn create(&self, request: Request) -> Result<Reply, Error> {
         self.requests.lock().expect("mock lock").push(request);
         self.replies

@@ -10,6 +10,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 mod common;
+mod mock;
 
 #[path = "composed.rs"]
 mod composed;

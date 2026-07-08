@@ -31,6 +31,7 @@ assert_cmd.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 jiff.workspace = true
+omnia-guest.workspace = true
 omnia-testkit.workspace = true
 serde_json.workspace = true
 dispatch.workspace = true
