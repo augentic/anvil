@@ -20,7 +20,7 @@ Two different uses of "standards" appear in this repository:
 | Term | Meaning | Location |
 | --- | --- | --- |
 | **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced by `specify lint framework` (`make lint`) on `augentic/specify`; framework invariants also ship as [`CORE-*` rules](../../codex/rules/core/) resolved by a generic dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy in the rule's `config:`) |
-| **Engineering standards** | Durable engineering policy for generated and hand-written code | Codex markdown under `codex/rules/`, `targets/<name>/prose/rules/` (specify-adapters), and optional source overlays — resolved by `specify rules export` for consumer projects |
+| **Engineering standards** | Durable engineering policy for generated and hand-written code | Cross-target `UNI-*` rules under `codex/rules/universal/` ([`augentic/specify-adapters`](https://github.com/augentic/specify-adapters)); per-adapter overlays under `targets/<name>/prose/rules/` and `sources/<name>/prose/rules/`; framework `CORE-*` under `codex/rules/core/` here — resolved by `specify rules export` for consumer projects |
 
 Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
 
@@ -49,5 +49,5 @@ The split means lint code physically cannot construct or transition a slice, pla
 - [Core concepts](concepts.md) — change rhythm and slice loop
 - [Artifacts in depth](artifacts.md) — artifact responsibilities
 - [Consistency checks](../contributing/checks.md) — the `specify lint framework` authoring surface
-- [Shared UNI-* codex inventory](../../codex/rules/universal/README.md)
+- [Shared UNI-* codex inventory](https://github.com/augentic/specify-adapters/blob/main/codex/rules/universal/README.md)
 - [Ignore directives](../reference/ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and exit semantics

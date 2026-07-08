@@ -7,13 +7,34 @@ permissions:
   contents: read
 
 jobs:
-  # Full Rust workspace gate (clippy, fmt, test, doctests, doc, vet, deny)
-  # via the shared org workflow. The workspace lives at the repo root.
+  # Full Rust workspace gate. The workflow crate embeds cross-target UNI-*
+  # rules from the specify-adapters checkout at build time, so CI checks out
+  # both repositories (nested `specify-adapters/` + SPECIFY_ADAPTERS).
   rust:
-    uses: augentic/.github/.github/workflows/ci.yaml@main
-    with:
-      working-directory: .
-    secrets: inherit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/checkout@v6
+        with:
+          repository: augentic/specify-adapters
+          path: specify-adapters
+          fetch-depth: 1
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-on-failure: true
+
+      - name: Rust workspace CI
+        env:
+          SPECIFY_ADAPTERS: ${{ github.workspace }}/specify-adapters
+        run: cargo make ci
 
   # Repo-specific prose gate: the framework lint over the in-tree prose
   # surface (plugins/, docs/, codex/), built from the in-tree binary.
@@ -28,6 +49,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - uses: actions/checkout@v6
+        with:
+          repository: augentic/specify-adapters
+          path: specify-adapters
+          fetch-depth: 1
+
       # The framework lint runs in the workflow guest (wasm32-wasip2)
       # driven by the replay runtime, so the guest target is required.
       - uses: dtolnay/rust-toolchain@stable
@@ -40,4 +67,6 @@ jobs:
           cache-on-failure: true
 
       - name: Verify framework
+        env:
+          SPECIFY_ADAPTERS: ${{ github.workspace }}/specify-adapters
         run: make lint

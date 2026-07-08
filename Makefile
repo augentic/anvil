@@ -8,6 +8,12 @@ INSTALL_DIR ?= $(HOME)/.local/bin
 CURSOR_HOME ?= $(HOME)/.cursor
 MARKETPLACE := augentic
 
+# Cross-target UNI-* rules are authored in specify-adapters. The workflow
+# crate embeds them at build time from this checkout (sibling layout or
+# CI nested checkout).
+ADAPTERS_ROOT ?= $(firstword $(wildcard $(CURDIR)/../specify-adapters) $(wildcard $(CURDIR)/specify-adapters))
+export SPECIFY_ADAPTERS := $(ADAPTERS_ROOT)
+
 .PHONY: ci lint install-cli use-local-plugins use-team-plugins
 
 # Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the
@@ -26,6 +32,7 @@ TARGET_DIR := $(if $(CARGO_TARGET_DIR),$(CARGO_TARGET_DIR),target)
 # repo mounted writable at ".". The adapter-contract links resolve the
 # guest's imports; lint never dispatches them.
 lint:
+	@test -n "$(SPECIFY_ADAPTERS)" && test -d "$(SPECIFY_ADAPTERS)/codex/rules/universal" || (echo "missing cross-target codex: clone augentic/specify-adapters as a sibling or set SPECIFY_ADAPTERS" >&2; exit 1)
 	cargo build -q -p specify-workflow-guest --target wasm32-wasip2
 	HTTP_ADDR=127.0.0.1:0 cargo run -q -p specify-runtime --bin specify-runtime-replay -- run \
 		"$(TARGET_DIR)/wasm32-wasip2/debug/specify_workflow_guest.wasm" \

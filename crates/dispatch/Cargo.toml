@@ -21,7 +21,7 @@ specify-error.workspace = true
 specify-model.workspace = true
 specify-schema.workspace = true
 specify-standards.workspace = true
-specify-workflow.workspace = true
+specify-workflow-lib.workspace = true
 strum.workspace = true
 
 [dev-dependencies]

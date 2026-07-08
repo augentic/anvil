@@ -4014,13 +4014,13 @@ dependencies = [
  "specify-model",
  "specify-schema",
  "specify-standards",
- "specify-workflow",
+ "specify-workflow-lib",
  "strum",
  "tempfile",
 ]
 
 [[package]]
-name = "specify-echo-guest"
+name = "specify-echo-source"
 version = "0.27.2"
 dependencies = [
  "omnia-guest",
@@ -4031,7 +4031,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "specify-echo-target-guest"
+name = "specify-echo-target"
 version = "0.27.2"
 dependencies = [
  "omnia-guest",
@@ -4097,7 +4097,7 @@ dependencies = [
  "specify-guest-model",
  "specify-model",
  "specify-schema",
- "specify-workflow",
+ "specify-workflow-lib",
  "tempfile",
  "tokio",
 ]
@@ -4141,6 +4141,23 @@ dependencies = [
 name = "specify-workflow"
 version = "0.27.2"
 dependencies = [
+ "omnia-guest",
+ "serde",
+ "serde_json",
+ "specify-diagnostics",
+ "specify-dispatch",
+ "specify-error",
+ "specify-guest-model",
+ "specify-model",
+ "specify-workflow-lib",
+ "wasip3",
+ "wit-bindgen 0.58.0",
+]
+
+[[package]]
+name = "specify-workflow-lib"
+version = "0.27.2"
+dependencies = [
  "glob",
  "jiff",
  "jsonschema",
@@ -4162,23 +4179,6 @@ dependencies = [
  "tokio",
  "toml",
  "ureq",
-]
-
-[[package]]
-name = "specify-workflow-guest"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "serde",
- "serde_json",
- "specify-diagnostics",
- "specify-dispatch",
- "specify-error",
- "specify-guest-model",
- "specify-model",
- "specify-workflow",
- "wasip3",
- "wit-bindgen 0.58.0",
 ]
 
 [[package]]

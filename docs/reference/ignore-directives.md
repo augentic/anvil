@@ -94,12 +94,12 @@ Lint uses **status-aware severity** when deciding the process exit:
 
 ## What can go wrong
 
-- **Missing or too-short rationale** — emits [`UNI-022`](../../codex/rules/universal/ignore-directive-missing-rationale.md). The 16-character floor is the threshold at which a rationale is long enough to be useful to a future reviewer.
-- **Orphan directive** — a directive whose rule id matches no finding on its target line emits [`UNI-023`](../../codex/rules/universal/ignore-directive-orphan.md). Common causes: the rule was retired, the protected code was refactored, an intervening reformat moved the target, or the directive was copy-pasted into a context where the targeted finding never fired.
+- **Missing or too-short rationale** — emits [`UNI-022`](https://github.com/augentic/specify-adapters/blob/main/codex/rules/universal/ignore-directive-missing-rationale.md). The 16-character floor is the threshold at which a rationale is long enough to be useful to a future reviewer.
+- **Orphan directive** — a directive whose rule id matches no finding on its target line emits [`UNI-023`](https://github.com/augentic/specify-adapters/blob/main/codex/rules/universal/ignore-directive-orphan.md). Common causes: the rule was retired, the protected code was refactored, an intervening reformat moved the target, or the directive was copy-pasted into a context where the targeted finding never fired.
 - **Shared-codex tree absent** — when the codex resolver does not produce `UNI-022` or `UNI-023` (for example, a consumer project that has not yet picked up the shared codex tree), the matching/demotion step still runs but the synthetic findings for malformed and orphan directives are silently skipped. Run `specify adapters sync` (or `specify init`) to distribute the shared codex into the out-of-tree per-project cache at `<project-cache>/codex/`, or pass `--rules-root`, to restore them.
 
 ## Related reading
 
 - [Engineering standards layer](../explanation/standards-layer.md) — how standards enforcement fits next to workflow and artifacts
-- [Shared `UNI-*` codex inventory](../../codex/rules/universal/README.md) — every shared rule, including `UNI-022` and `UNI-023`
+- [Shared `UNI-*` codex inventory](https://github.com/augentic/specify-adapters/blob/main/codex/rules/universal/README.md) — every shared rule, including `UNI-022` and `UNI-023`
 - [Consistency checks](../contributing/checks.md) — the `specify lint framework` authoring surface

@@ -37,7 +37,7 @@ specify-dispatch.workspace = true
 specify-guest-model.workspace = true
 specify-model.workspace = true
 specify-schema.workspace = true
-specify-workflow = { workspace = true, features = ["native"] }
+specify-workflow-lib = { workspace = true, features = ["native"] }
 tempfile.workspace = true
 
 [lints]

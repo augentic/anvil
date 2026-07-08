@@ -54,7 +54,7 @@ A target adapter ships as one published component carrying the prompts that impl
 
 Shared material used by multiple adapters lives outside the adapter roots under `codex/`:
 
-- **`codex/rules/universal/`** — shared **engineering standards** (`UNI-*`) at [`codex/rules/universal/`](../../../codex/rules/universal/); per-target overlays stay at `targets/<name>/prose/rules/` in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). See [Standards layer](../../explanation/standards-layer.md).
+- **`codex/rules/universal/`** — shared **engineering standards** (`UNI-*`) at [`codex/rules/universal/`](https://github.com/augentic/specify-adapters/tree/main/codex/rules/universal) in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters); per-target overlays stay at `targets/<name>/prose/rules/` in the same repo. See [Standards layer](../../explanation/standards-layer.md).
 - **`codex/references/replay/`** — shared build-time replay hook contract at [`codex/references/replay/` in specify-adapters](https://github.com/augentic/specify-adapters/tree/main/codex/references/replay); per-target runners stay at `targets/<name>/prose/prompts/build/replay.md` when implemented.
 
 ## Validation

@@ -253,7 +253,7 @@ The recorded-trace check is opt-in. If a future suite adds
 
 ### 11. First-party rule shape
 
-First-party rule files are validated in the shared tree at `codex/rules/universal/**/*.md` (UNI-* rules) and in per-adapter overlays at `sources/*/prose/rules/**/*.md` and `targets/<name>/prose/rules/**/*.md` (specify-adapters).
+First-party rule files are validated in the shared tree at `codex/rules/universal/**/*.md` (`UNI-*` rules in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters)) and in per-adapter overlays at `sources/*/prose/rules/**/*.md` and `targets/<name>/prose/rules/**/*.md` (specify-adapters). Framework `CORE-*` rules live under `codex/rules/core/` in this repository.
 
 The check is format-only. It does not run consumer-project review and does not
 invoke any external validator. It validates:

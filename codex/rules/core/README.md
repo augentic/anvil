@@ -2,7 +2,7 @@
 
 First-party rules that enforce framework-repository invariants through the shared deterministic-hint interpreter. The pack root activates the second shared resolution root (`codex/rules/<pack>/`) with pack name `core`; resolved rules carry `origin: core`. `CORE-*` rules participate in `specify lint framework` runs by default and are excluded from consumer-side `specify rules export` / `specify lint` unless the operator passes `--include-core`.
 
-This directory is the peer of [`codex/rules/universal/`](../universal/README.md): same file shape, same JSON Schema, different namespace ownership. `CORE-*` is the only namespace allowed under `codex/rules/core/`; the `rules` WASI tool (CORE-009) rejects any non-`CORE-*` rule placed here and any `CORE-*` rule placed elsewhere.
+This directory is the peer of [`codex/rules/universal/`](https://github.com/augentic/specify-adapters/tree/main/codex/rules/universal) in `augentic/specify-adapters`: same file shape, same JSON Schema, different namespace ownership. `CORE-*` is the only namespace allowed under `codex/rules/core/`; the `rules` WASI tool (CORE-009) rejects any non-`CORE-*` rule placed here and any `CORE-*` rule placed elsewhere.
 
 See [docs/explanation/standards-layer.md](../../../../../docs/explanation/standards-layer.md) for how engineering standards relate to workflow, artifacts, and `docs/standards/` (authoring house style).
 

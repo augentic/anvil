@@ -46,10 +46,10 @@ members = [
     "crates/guest-model",
     "crates/model",
     "crates/schema",
+    "crates/workflow-lib",
     "crates/workflow",
-    "crates/echo-guest",
-    "crates/echo-target-guest",
-    "crates/workflow-guest",
+    "crates/echo-source",
+    "crates/echo-target",
     "crates/runtime",
 ]
 
@@ -190,7 +190,7 @@ specify-model = { path = "crates/model" }
 # `default-features = false` at the workspace level so wasm32-facing
 # members (specify-dispatch) stay off the `native` feature; the root
 # binary re-enables it explicitly.
-specify-workflow = { path = "crates/workflow", default-features = false }
+specify-workflow-lib = { path = "crates/workflow-lib", default-features = false }
 specify-error = { path = "crates/error" }
 specify-schema = { path = "crates/schema" }
 strum = { version = "0.28", features = ["derive"] }
