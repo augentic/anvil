@@ -2,7 +2,6 @@
 //! Every public function returns `Result<T, Error>`; variants are
 //! structured so the binary can route them to exit codes and formats.
 
-pub mod codes;
 pub mod error;
 pub mod serde_rfc3339;
 pub mod serde_rfc3339_opt;
