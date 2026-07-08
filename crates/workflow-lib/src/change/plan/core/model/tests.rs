@@ -277,7 +277,7 @@ fn drained_and_executing() {
 }
 
 /// A2/A13: plan validation findings are built directly on the neutral
-/// [`specify_diagnostics::Diagnostic`] currency via `plan_finding`. The
+/// [`diagnostics::Diagnostic`] currency via `plan_finding`. The
 /// stable check code becomes the `rule_id`, the offending entry is
 /// carried as `slice`, the artifact is `Plan`, and the fingerprint
 /// validates.
@@ -285,31 +285,31 @@ fn drained_and_executing() {
 fn plan_finding_builds_canonical_diagnostic() {
     let diagnostic = crate::change::plan::core::plan_finding(
         "plan.cycle",
-        specify_diagnostics::Severity::Important,
+        diagnostics::Severity::Important,
         "dependency cycle: a -> b -> a",
         Some("checkout".to_string()),
     );
 
     assert_eq!(diagnostic.rule_id.as_deref(), Some("plan.cycle"));
-    assert_eq!(diagnostic.severity, specify_diagnostics::Severity::Important);
+    assert_eq!(diagnostic.severity, diagnostics::Severity::Important);
     assert_eq!(diagnostic.slice.as_deref(), Some("checkout"));
-    assert_eq!(diagnostic.artifact, specify_diagnostics::Artifact::Plan);
+    assert_eq!(diagnostic.artifact, diagnostics::Artifact::Plan);
     assert_eq!(diagnostic.impact, "dependency cycle: a -> b -> a");
-    specify_diagnostics::validate_diagnostic(&diagnostic).expect("plan finding is valid");
-    assert!(specify_diagnostics::verify_fingerprint(&diagnostic), "fingerprint covers slice");
+    diagnostics::validate_diagnostic(&diagnostic).expect("plan finding is valid");
+    assert!(diagnostics::verify_fingerprint(&diagnostic), "fingerprint covers slice");
 }
 
 /// A non-blocking `Suggestion` finding never gates per
-/// [`specify_diagnostics::blocking`].
+/// [`diagnostics::blocking`].
 #[test]
 fn plan_finding_suggestion_is_non_blocking() {
     let diagnostic = crate::change::plan::core::plan_finding(
         "plan.orphan-source",
-        specify_diagnostics::Severity::Suggestion,
+        diagnostics::Severity::Suggestion,
         "source `docs` is unreferenced",
         None,
     );
-    assert_eq!(diagnostic.severity, specify_diagnostics::Severity::Suggestion);
+    assert_eq!(diagnostic.severity, diagnostics::Severity::Suggestion);
     assert!(diagnostic.slice.is_none());
-    assert!(!specify_diagnostics::blocking(&diagnostic));
+    assert!(!diagnostics::blocking(&diagnostic));
 }

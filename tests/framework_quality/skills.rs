@@ -174,7 +174,7 @@ pub fn run(root: &Path) -> Vec<Finding> {
 fn check_schema(
     relative: &str, fields: &serde_json::Map<String, JsonValue>, findings: &mut Vec<Finding>,
 ) {
-    let validator = match specify_schema::cached_validator(specify_schema::SKILL_JSON_SCHEMA) {
+    let validator = match schema::cached_validator(schema::SKILL_JSON_SCHEMA) {
         Ok(validator) => validator,
         Err(error) => {
             findings.push(Finding::new(

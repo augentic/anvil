@@ -5,7 +5,7 @@
 //! `Pending → Approved` plan-level (operator stamp at Gate 1, workflow
 //! §The Plan / §Writer ownership; `/spec:plan` MUST NOT call it).
 
-use specify_error::Error;
+use error::Error;
 
 use super::model::{Entry, Lifecycle, Plan, Status};
 

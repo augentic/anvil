@@ -1,4 +1,4 @@
-//! Consolidated integration binary for `specify-schema`.
+//! Consolidated integration binary for `schema`.
 //!
 //! One binary per crate: each former `tests/<area>.rs` is pulled in here as a
 //! `#[path]` submodule so the crate-under-test links exactly once. See

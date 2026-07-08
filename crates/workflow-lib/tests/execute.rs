@@ -1,6 +1,6 @@
 //! Guest execute-loop integration tests.
 //!
-//! Scripted end-to-end walk of `specify_workflow_lib::orchestrate::execute`
+//! Scripted end-to-end walk of `workflow_lib::orchestrate::execute`
 //! against mocked Model + seams: plan approved → claim → refine (extract
 //! fan-out, synthesis judgment, persist, validate, `refined`) → build →
 //! merge, per entry, to `drained`. Plus the typed stop paths (Gate 1
@@ -13,12 +13,12 @@ use std::path::PathBuf;
 
 use jiff::Timestamp;
 use serde_json::{Value, json};
-use specify_workflow_lib::change::{LoopStep, Plan, Status, StopReason};
-use specify_workflow_lib::config::Layout;
-use specify_workflow_lib::orchestrate::{self, ExecuteOutcome};
-use specify_workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
-use specify_workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 use tempfile::TempDir;
+use workflow_lib::change::{LoopStep, Plan, Status, StopReason};
+use workflow_lib::config::Layout;
+use workflow_lib::orchestrate::{self, ExecuteOutcome};
+use workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
+use workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 
 use crate::common;
 
@@ -134,7 +134,7 @@ slices:
 /// claim the response anchors.
 fn intent_evidence(claim_id: &str, statement: &str) -> Evidence {
     Evidence {
-        authority: specify_model::evidence::AuthorityClass::Intent,
+        authority: artifacts::evidence::AuthorityClass::Intent,
         claims: vec![json!({
             "kind": "intent",
             "id": claim_id,
@@ -235,7 +235,7 @@ async fn execute_drains_two_entry_plan() {
     project.seed_discovery(&["feature-x", "feature-y"]).await;
     let survey_events = project.journal_event_ids().len();
 
-    let model = specify_guest_model::MockModel::answering([
+    let model = guest_model::MockModel::answering([
         Box::leak(
             synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
         ) as &'static str,
@@ -334,7 +334,7 @@ async fn execute_refuses_unapproved_plan() {
     let project = Project::new();
     project.seed_plan(&APPROVED_PLAN.replace("lifecycle: approved\n", ""));
 
-    let model = specify_guest_model::MockModel::answering([]);
+    let model = guest_model::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
 
@@ -365,7 +365,7 @@ async fn build_failure_stops_typed_entry_kept() {
     project.seed_plan(APPROVED_PLAN);
     project.seed_discovery(&["feature-x", "feature-y"]).await;
 
-    let model = specify_guest_model::MockModel::answering([Box::leak(
+    let model = guest_model::MockModel::answering([Box::leak(
         synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
     ) as &'static str]);
     let sources =
@@ -408,7 +408,7 @@ async fn build_failure_stops_typed_entry_kept() {
     // Re-entry: a fresh execute (no phases scripted — nothing should
     // dispatch) re-reports the same typed stop from the journal
     // overlay.
-    let model = specify_guest_model::MockModel::answering([]);
+    let model = guest_model::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let outcome =
@@ -431,7 +431,7 @@ async fn refine_breakout_skips_entry_claim() {
     project.seed_discovery(&["feature-x", "feature-y"]).await;
     let survey_events = project.journal_event_ids().len();
 
-    let model = specify_guest_model::MockModel::answering([Box::leak(
+    let model = guest_model::MockModel::answering([Box::leak(
         synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
     ) as &'static str]);
     let sources =
@@ -453,9 +453,9 @@ async fn refine_breakout_skips_entry_claim() {
 
     // The slice is `refined`; the plan entry was never claimed.
     let metadata =
-        specify_workflow_lib::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
+        workflow_lib::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
             .expect("slice metadata");
-    assert_eq!(metadata.status, specify_workflow_lib::slice::LifecycleStatus::Refined);
+    assert_eq!(metadata.status, workflow_lib::slice::LifecycleStatus::Refined);
     // Development (unpinned) components resolve as the honest `0.0.0`
     // placeholder — there is no published package identity to record.
     assert_eq!(metadata.target, "omnia@0.0.0", "target resolved from the bound topology");
@@ -488,7 +488,7 @@ async fn refine_breakout_refuses_done_entry() {
         "  - name: feature-x\n    status: done\n",
     ));
 
-    let model = specify_guest_model::MockModel::answering([]);
+    let model = guest_model::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::refine_breakout(
@@ -513,7 +513,7 @@ async fn refine_breakout_refuses_unknown_entry() {
     let project = Project::new();
     project.seed_plan(APPROVED_PLAN);
 
-    let model = specify_guest_model::MockModel::answering([]);
+    let model = guest_model::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::refine_breakout(
@@ -539,7 +539,7 @@ async fn workspace_routed_plan_refused() {
             .replace("  - name: feature-x\n", "  - name: feature-x\n    project: demo-app\n"),
     );
 
-    let model = specify_guest_model::MockModel::answering([]);
+    let model = guest_model::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err =
@@ -566,7 +566,7 @@ async fn held_marker_refused_and_named() {
     // recover.
     fs::write(project.marker_path(), "pid=999\nhostname=other\n").expect("pre-create marker");
 
-    let model = specify_guest_model::MockModel::answering([]);
+    let model = guest_model::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err =

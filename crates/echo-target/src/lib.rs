@@ -126,7 +126,7 @@ struct References;
 
 impl McpServer for References {
     fn info(&self) -> Implementation {
-        Implementation::new("specify-echo-target-references", env!("CARGO_PKG_VERSION"))
+        Implementation::new("echo-target-references", env!("CARGO_PKG_VERSION"))
     }
 
     fn tools(&self) -> Vec<Tool> {

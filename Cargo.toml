@@ -30,7 +30,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 regex.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
-specify-schema.workspace = true
+schema.workspace = true
 tempfile.workspace = true
 
 # `rust_quality` is the standalone dev-only Rust-quality gate.
@@ -54,7 +54,7 @@ members = [
     "crates/standards",
     "crates/error",
     "crates/guest-model",
-    "crates/model",
+    "crates/artifacts",
     "crates/schema",
     "crates/workflow-lib",
     "crates/workflow",
@@ -192,17 +192,17 @@ serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.26"
 serde_json = "1"
 sha2 = "0.11"
-specify-diagnostics = { path = "crates/diagnostics" }
-specify-dispatch = { path = "crates/dispatch" }
-specify-guest-model = { path = "crates/guest-model" }
-specify-standards = { path = "crates/standards" }
-specify-model = { path = "crates/model" }
+diagnostics = { path = "crates/diagnostics" }
+dispatch = { path = "crates/dispatch" }
+guest-model = { path = "crates/guest-model" }
+standards = { path = "crates/standards" }
+artifacts = { path = "crates/artifacts" }
 # `default-features = false` at the workspace level so wasm32-facing
-# members (specify-dispatch) stay off the `native` feature; the root
+# members (dispatch) stay off the `native` feature; the root
 # binary re-enables it explicitly.
-specify-workflow-lib = { path = "crates/workflow-lib", default-features = false }
-specify-error = { path = "crates/error" }
-specify-schema = { path = "crates/schema" }
+workflow-lib = { path = "crates/workflow-lib", default-features = false }
+error = { path = "crates/error" }
+schema = { path = "crates/schema" }
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"

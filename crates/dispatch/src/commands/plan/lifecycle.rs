@@ -1,14 +1,14 @@
 use std::io::Write;
 
+use diagnostics::{Diagnostic, Severity, blocking, blocking_present};
+use error::{Error, Result};
 use serde::Serialize;
-use specify_diagnostics::{Diagnostic, Severity, blocking, blocking_present};
-use specify_error::{Error, Result};
-use specify_workflow_lib::change::{
+use workflow_lib::change::{
     Lifecycle, NextActionKind, NextBody, NextReason, Plan, Status, StatusBody, drained_line,
     plan_doctor, plan_finding, plan_next_body, plan_status_body,
 };
-use specify_workflow_lib::config::with_state;
-use specify_workflow_lib::registry::Registry;
+use workflow_lib::config::with_state;
+use workflow_lib::registry::Registry;
 
 use super::{Ref, plan_ref, require_file};
 use crate::context::Ctx;
@@ -31,7 +31,7 @@ pub(super) fn validate(ctx: &Ctx) -> Result<()> {
     }
     if let Some(reg) = &registry {
         let workspace_base = ctx.project_dir.join("workspace");
-        results.extend(specify_workflow_lib::registry::cache_staleness(
+        results.extend(workflow_lib::registry::cache_staleness(
             reg,
             &workspace_base,
             &ctx.layout().topology_lock_path(),
@@ -60,7 +60,7 @@ pub(super) fn next(ctx: &Ctx) -> Result<()> {
     // project's topology, so the
     // topology inputs (`config` / `project_dir`) ride into the state
     // closure for `plan_next_body` to resolve the advanced entry's
-    // `$TARGET` lazily. All projection logic lives in `specify-workflow`;
+    // `$TARGET` lazily. All projection logic lives in `workflow`;
     // the handler only renders the returned body and owns the
     // journal/emit bracket.
     let slices_dir = ctx.layout().slices_dir();
@@ -77,14 +77,14 @@ pub(super) fn next(ctx: &Ctx) -> Result<()> {
     // drained/stuck emits nothing, so a parked execute loop leaves no
     // advance event behind.
     if let Some(advanced) = &body.next {
-        let event = specify_workflow_lib::journal::Event::new(
+        let event = workflow_lib::journal::Event::new(
             ctx.now(),
-            specify_workflow_lib::journal::EventKind::PlanEntryAdvanced {
+            workflow_lib::journal::EventKind::PlanEntryAdvanced {
                 plan_name,
                 slice_name: advanced.clone().into(),
             },
         );
-        specify_workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
+        workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
     }
     ctx.write(&body, write_next_text)?;
     Ok(())
@@ -92,7 +92,7 @@ pub(super) fn next(ctx: &Ctx) -> Result<()> {
 
 /// `specify plan status` — read-only projection of the plan's
 /// execution state into a deterministic `next-action`. All projection
-/// logic lives in `specify-workflow` (`plan_status_body`); the handler
+/// logic lives in `workflow` (`plan_status_body`); the handler
 /// loads the plan and renders the body. No journal emit, no writes.
 pub(super) fn status(ctx: &Ctx) -> Result<()> {
     let plan_path = require_file(ctx)?;
@@ -121,11 +121,10 @@ pub(super) fn status(ctx: &Ctx) -> Result<()> {
 pub(super) fn transition(
     ctx: &Ctx, name: String, target: Option<String>, undo: bool, actor: &str,
 ) -> Result<()> {
-    let actor: specify_workflow_lib::journal::Actor =
-        actor.parse().map_err(|detail| Error::Argument {
-            flag: "--actor",
-            detail,
-        })?;
+    let actor: workflow_lib::journal::Actor = actor.parse().map_err(|detail| Error::Argument {
+        flag: "--actor",
+        detail,
+    })?;
     let plan_path = ctx.layout().plan_path();
     let body = with_state::<Plan, _, _>(ctx.layout(), "plan.yaml", move |plan| {
         if undo {
@@ -147,36 +146,30 @@ pub(super) fn transition(
     // flags `changed = false` so we skip the emit.
     match (body.kind, body.changed) {
         (TransitionKind::Plan, true) => {
-            let event = specify_workflow_lib::journal::Event::new(
+            let event = workflow_lib::journal::Event::new(
                 ctx.now(),
-                specify_workflow_lib::journal::EventKind::PlanTransitionApproved {
+                workflow_lib::journal::EventKind::PlanTransitionApproved {
                     plan_name: body.name.clone().into(),
                     actor,
                 },
             );
-            specify_workflow_lib::journal::append_batch(
-                ctx.layout(),
-                std::slice::from_ref(&event),
-            )?;
+            workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
         }
         (TransitionKind::Undo, true) => {
             let pair = body.undo.ok_or_else(|| Error::Diag {
                 code: "plan-transition-undo",
                 detail: "undo body must carry the status pair".to_string(),
             })?;
-            let event = specify_workflow_lib::journal::Event::new(
+            let event = workflow_lib::journal::Event::new(
                 ctx.now(),
-                specify_workflow_lib::journal::EventKind::PlanTransitionUndone {
+                workflow_lib::journal::EventKind::PlanTransitionUndone {
                     plan_name: body.plan.name.clone().into(),
                     slice_name: body.name.clone().into(),
                     from: pair.from,
                     to: pair.to,
                 },
             );
-            specify_workflow_lib::journal::append_batch(
-                ctx.layout(),
-                std::slice::from_ref(&event),
-            )?;
+            workflow_lib::journal::append_batch(ctx.layout(), std::slice::from_ref(&event))?;
         }
         _ => {}
     }

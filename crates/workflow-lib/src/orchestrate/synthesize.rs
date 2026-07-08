@@ -1,7 +1,7 @@
 //! Seam-guidance plumbing for the synthesis judgment leg.
 
-use specify_error::Error;
-use specify_guest_model::Model;
+use error::Error;
+use guest_model::Model;
 
 use super::{seam_failure, target_adapter_id};
 use crate::judgment;

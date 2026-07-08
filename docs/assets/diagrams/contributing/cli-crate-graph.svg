@@ -1,4 +1,4 @@
-<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cli/ workspace crate dependency graph with specify-error at the base">
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="cli/ workspace crate dependency graph with error at the base">
   <title>cli/ workspace crate dependency graph</title>
   <defs>
     <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
@@ -11,9 +11,9 @@
   <text x="360" y="48" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">specify (binary)</text>
   <text x="360" y="66" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">root CLI crate</text>
 
-  <!-- specify-workflow -->
+  <!-- workflow -->
   <rect x="80" y="132" width="180" height="56" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
-  <text x="170" y="156" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">specify-workflow</text>
+  <text x="170" y="156" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">workflow</text>
   <text x="170" y="174" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">orchestration + adapters</text>
 
   <!-- specify-tool -->
@@ -21,9 +21,9 @@
   <text x="550" y="156" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">specify-tool</text>
   <text x="550" y="174" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">WASI tool runner</text>
 
-  <!-- specify-error -->
+  <!-- error -->
   <rect x="260" y="228" width="200" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
-  <text x="360" y="252" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">specify-error</text>
+  <text x="360" y="252" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">error</text>
   <text x="360" y="270" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">leaf  no workspace deps</text>
 
   <!-- specify -> workflow, tool, error -->

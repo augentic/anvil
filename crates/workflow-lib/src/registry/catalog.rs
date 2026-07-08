@@ -5,8 +5,8 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use serde::{Deserialize, Serialize};
-use specify_error::Error;
 
 /// In-memory representation of `registry.yaml` (at the repo root).
 ///
@@ -33,7 +33,7 @@ pub struct Registry {
 #[serde(deny_unknown_fields)]
 pub struct RegistryProject {
     /// Kebab-case identifier for the project; validated by
-    /// [`specify_error::is_kebab`].
+    /// [`error::is_kebab`].
     pub name: String,
     /// Clone target — `.`, a repo-relative path (`../peer`, `./foo`,
     /// `pkg/sub`), `git@host:path`, or an `http(s)://`, `ssh://`, or

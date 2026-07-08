@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 use super::*;
 use crate::Platform;

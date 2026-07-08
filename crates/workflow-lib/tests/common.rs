@@ -1,4 +1,4 @@
-//! Shared test helpers for `specify-workflow` integration tests.
+//! Shared test helpers for `workflow` integration tests.
 //!
 //! Centralises [`MockCmd`], a recorder that captures every invocation
 //! and dispatches the response through a per-test closure. Pass it to
@@ -145,7 +145,7 @@ pub fn scoped_cache(dir: &std::path::Path) -> CacheGuard {
 
 /// Out-of-tree cache directory for `project_dir` under the pinned root.
 pub fn expected_cache_dir(project_dir: &std::path::Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project_dir)
+    schema::cache::project_cache_dir(project_dir)
 }
 
 const STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
@@ -184,8 +184,8 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
 /// `DescribeAnswer`, so a test controls its adapter's metadata by
 /// writing the fixture component (`{}` for an empty answer).
 pub fn register_describe_stub() {
-    use specify_error::Error;
-    use specify_workflow_lib::adapter::describe::{
+    use error::Error;
+    use workflow_lib::adapter::describe::{
         DescribeAnswer, DescribeRequest, register_describe_runner,
     };
 

@@ -1,7 +1,7 @@
 //! [`Plan::amend`]: in-place edit of an existing entry's non-status fields.
 
-use specify_diagnostics::blocking;
-use specify_error::Error;
+use diagnostics::blocking;
+use error::Error;
 
 use super::model::{EntryPatch, Plan};
 use crate::change::detect;

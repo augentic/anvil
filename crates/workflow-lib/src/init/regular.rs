@@ -6,8 +6,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 use crate::adapter::TargetAdapter;
 use crate::config::{Layout, ProjectConfig};
@@ -23,7 +23,7 @@ use crate::init::{
 /// `pipeline.define[]`; refine synthesises the canonical set directly
 /// (see `DECISIONS.md` §"Adapter loader axis routing"). The exact
 /// scaffold keys mirror the validation registry namespaces in
-/// `specify_model::validate::registry::rules_for`.
+/// `artifacts::validate::registry::rules_for`.
 const SCAFFOLDED_RULE_KEYS: &[&str] = &["proposal", "specs", "design", "tasks"];
 
 pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> {

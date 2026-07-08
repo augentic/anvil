@@ -2,10 +2,10 @@
 
 use std::path::Path;
 
+use artifacts::atomic::bytes_write;
+use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
-use specify_error::Error;
-use specify_model::atomic::bytes_write;
 
 use super::{seam_failure, target_adapter_id};
 use crate::adapter::BuildInputDeclaration;

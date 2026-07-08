@@ -144,7 +144,7 @@
   "$id": "https://github.com/augentic/specify/schemas/answers/proposal.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — derived from schemas/discovery/proposal.schema.json by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to the plan-time lead-reconciliation judgment: the canonical `kind: response` envelope arm the guest `plan author` orchestration consumes, with the request-only definitions trimmed.",
+  "description": "Generated judgment-answer schema — derived from schemas/discovery/proposal.schema.json by schema's answer derivation; do not edit. Validates the schema-gated answer to the plan-time lead-reconciliation judgment: the canonical `kind: response` envelope arm the guest `plan author` orchestration consumes, with the request-only definitions trimmed.",
   "properties": {
     "gate": {
       "$ref": "#/$defs/gateProse"

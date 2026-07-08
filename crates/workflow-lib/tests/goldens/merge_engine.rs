@@ -4,9 +4,9 @@
 //! `validate_baseline` pass/fail fixtures. The engine must reproduce
 //! each `expected-merged.md` byte-for-byte.
 
-use specify_diagnostics::Diagnostic;
-use specify_error::Error;
-use specify_workflow_lib::merge::{merge, validate_baseline};
+use diagnostics::Diagnostic;
+use error::Error;
+use workflow_lib::merge::{merge, validate_baseline};
 
 macro_rules! fixture {
     ($case:literal, $file:literal) => {

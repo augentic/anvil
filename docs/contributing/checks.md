@@ -17,7 +17,7 @@ Framework validation splits into two surfaces:
 | **Editor-first (YAML/JSON LSP)**         | While you edit plain YAML or JSON           | Shape violations for files the language server can bind to a schema: `.cursor-plugin/marketplace.json` and other plain YAML/JSON artifacts that declare a schema  |
 | **`tests/framework_quality/` (cargo)**   | `cargo make ci` locally and in CI           | Markdown frontmatter (`SKILL.md`, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other cross-file predicate       |
 
-**Authoritative schemas** live in-tree under [`schemas/`](../../schemas) and are embedded in the `specify` binary via `specify-schema`; the framework-quality tests validate against those embedded constants (`SKILL_JSON_SCHEMA`, `SCENARIO_JSON_SCHEMA`, `MARKETPLACE_JSON_SCHEMA`). Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
+**Authoritative schemas** live in-tree under [`schemas/`](../../schemas) and are embedded in the `specify` binary via `schema`; the framework-quality tests validate against those embedded constants (`SKILL_JSON_SCHEMA`, `SCENARIO_JSON_SCHEMA`, `MARKETPLACE_JSON_SCHEMA`). Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
 **Plain YAML/JSON wiring.** Plain YAML control files can carry a first-line schema directive when a framework or runtime schema exists:
 

@@ -4,10 +4,10 @@
 
 use std::path::PathBuf;
 
+use artifacts::atomic::yaml_write;
+use error::Error;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use specify_error::Error;
-use specify_model::atomic::yaml_write;
 
 use crate::config::{Layout, ProjectConfig};
 use crate::registry::Registry;

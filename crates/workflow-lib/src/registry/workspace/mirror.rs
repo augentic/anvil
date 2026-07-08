@@ -14,8 +14,8 @@
 
 use std::path::Path;
 
-use specify_error::Error;
-use specify_schema::cache::project_cache_dir;
+use error::Error;
+use schema::cache::project_cache_dir;
 
 /// Mirror the workspace's component cache into `slot`'s component
 /// cache (keyed by the slot path, out-of-tree).

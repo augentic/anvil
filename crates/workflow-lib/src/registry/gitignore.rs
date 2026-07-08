@@ -5,7 +5,7 @@
 use std::fs;
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 /// Lines the framework requires in the project `.gitignore`. Both
 /// directories are framework-managed and regenerable —

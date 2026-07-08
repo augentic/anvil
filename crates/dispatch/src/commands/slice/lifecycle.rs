@@ -2,12 +2,10 @@
 
 use std::io::Write;
 
+use error::{Error, Result};
 use jiff::Timestamp;
 use serde::Serialize;
-use specify_error::{Error, Result};
-use specify_workflow_lib::slice::{
-    CreateIfExists, Created, LifecycleStatus, actions as slice_actions,
-};
+use workflow_lib::slice::{CreateIfExists, Created, LifecycleStatus, actions as slice_actions};
 
 use crate::context::Ctx;
 
@@ -70,13 +68,13 @@ pub(super) fn transition(ctx: &Ctx, name: String, target: LifecycleStatus) -> Re
 struct TransitionBody {
     name: String,
     status: LifecycleStatus,
-    #[serde(with = "specify_error::serde_rfc3339_opt")]
+    #[serde(with = "error::serde_rfc3339_opt")]
     defined_at: Option<Timestamp>,
-    #[serde(with = "specify_error::serde_rfc3339_opt")]
+    #[serde(with = "error::serde_rfc3339_opt")]
     completed_at: Option<Timestamp>,
-    #[serde(with = "specify_error::serde_rfc3339_opt")]
+    #[serde(with = "error::serde_rfc3339_opt")]
     merged_at: Option<Timestamp>,
-    #[serde(with = "specify_error::serde_rfc3339_opt")]
+    #[serde(with = "error::serde_rfc3339_opt")]
     dropped_at: Option<Timestamp>,
 }
 

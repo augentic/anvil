@@ -1,4 +1,4 @@
-//! Tests for `specify_workflow_lib::upgrade` — the pure channel classifier and
+//! Tests for `workflow_lib::upgrade` — the pure channel classifier and
 //! per-channel upgrade planner.
 //!
 //! The network release probe and the subprocess executor (`run_plan`) are out
@@ -7,8 +7,8 @@
 
 use std::path::Path;
 
-use specify_error::Error;
-use specify_workflow_lib::upgrade::{
+use error::Error;
+use workflow_lib::upgrade::{
     InstallChannel, PlannedCommand, classify, latest_release_tag, plan_upgrade,
 };
 

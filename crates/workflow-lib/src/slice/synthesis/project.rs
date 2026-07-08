@@ -31,8 +31,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use specify_error::{Error, Result};
-use specify_model::evidence::{AuthorityClass, ClaimKind};
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use error::{Error, Result};
 
 use crate::slice::model::{ModelClaim, ModelRequirement, SliceModel};
 use crate::slice::synthesis::authority::{ClaimRef, resolve};

@@ -7,7 +7,7 @@
 use std::io::Write;
 
 use serde::Serialize;
-use specify_workflow_lib::change::Entry;
+use workflow_lib::change::Entry;
 
 use super::Ref;
 

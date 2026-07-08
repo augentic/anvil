@@ -9,8 +9,8 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use clap::ValueEnum;
+use error::Error;
 use serde::Serialize;
-use specify_error::Error;
 
 /// Structured (`json`) or human (`text`) CLI output.
 #[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
@@ -133,12 +133,12 @@ impl From<&Error> for Exit {
 /// interleaves with the structured success stream skills consume.
 ///
 /// Single dispatcher entry point: handlers return
-/// `Result<T, specify_error::Error>` and the run loop in
+/// `Result<T, error::Error>` and the run loop in
 /// [`crate::commands`] hands the error here. The body shape is
 /// always [`ErrorBody`]. `Error::Validation` is payload-free — its
 /// `code` becomes the wire `error` discriminant and its `detail` the
 /// `message`; per-finding rows are rendered by the producing handler on
-/// stdout as a [`specify_diagnostics::DiagnosticReport`] before the
+/// stdout as a [`diagnostics::DiagnosticReport`] before the
 /// payload-free error is returned.
 pub fn report(format: Format, err: &Error) -> Exit {
     let code = Exit::from(err);
@@ -157,7 +157,7 @@ pub fn report(format: Format, err: &Error) -> Exit {
 /// discriminant (the `code` for `Error::Validation`), `message` the
 /// rendered detail, and `exit-code` the numeric exit. Per-finding rows
 /// are no longer part of the error body — handlers render
-/// [`specify_diagnostics::DiagnosticReport`] on stdout before
+/// [`diagnostics::DiagnosticReport`] on stdout before
 /// returning the payload-free error.
 ///
 /// Construct via `ErrorBody::from(&err)` — the variant is the only

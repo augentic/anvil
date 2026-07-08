@@ -4,8 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
-use specify_model::atomic::yaml_write;
+use artifacts::atomic::yaml_write;
+use error::Error;
 
 use super::model::Plan;
 use crate::config::{AtomicYaml, Layout};

@@ -1,7 +1,7 @@
 //! SHA-256 digest helpers shared across cache, fingerprint, and tool paths.
 //!
-//! Lives on the `specify-schema` leaf so siblings (`specify-diagnostics`,
-//! `specify-standards`, `specify-tool`, …) share one digest implementation
+//! Lives on the `schema` leaf so siblings (`diagnostics`,
+//! `standards`, `specify-tool`, …) share one digest implementation
 //! without each depending on `sha2` directly or pulling a heavier graph.
 
 use sha2::{Digest, Sha256};
@@ -9,7 +9,7 @@ use sha2::{Digest, Sha256};
 /// Lowercase hex encoding of a SHA-256 digest over `bytes`.
 ///
 /// ```
-/// use specify_schema::digest::sha256_hex;
+/// use schema::digest::sha256_hex;
 ///
 /// assert_eq!(sha256_hex(b"").len(), 64);
 /// assert!(sha256_hex(b"specify").starts_with(|c: char| c.is_ascii_hexdigit()));
@@ -32,7 +32,7 @@ pub fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
 /// module is the single home for the digest dependency.
 ///
 /// ```
-/// use specify_schema::digest::{Hasher, sha256_hex};
+/// use schema::digest::{Hasher, sha256_hex};
 ///
 /// let mut hasher = Hasher::new();
 /// hasher.update(b"spec");

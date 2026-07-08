@@ -396,7 +396,7 @@
   "$id": "https://github.com/augentic/specify/schemas/answers/report.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — derived from schemas/target/build-report.schema.json (with schemas/diagnostics/diagnostic.schema.json inlined) by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to a target adapter's build or merge operation: the canonical report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
+  "description": "Generated judgment-answer schema — derived from schemas/target/build-report.schema.json (with schemas/diagnostics/diagnostic.schema.json inlined) by schema's answer derivation; do not edit. Validates the schema-gated answer to a target adapter's build or merge operation: the canonical report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
   "properties": {
     "findings": {
       "default": [],

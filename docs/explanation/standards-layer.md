@@ -40,7 +40,7 @@ Plan **Gate 1** (`specify plan transition <name> approved`) is operator approval
 
 ## Type-system enforcement of the standards boundary
 
-"No lifecycle authority in review" is a structural invariant of the Rust workspace, not a coding convention. The shared codex parser (rules parse/resolve for `specify rules export`) lives in the `specify-standards` crate. `specify-standards` is a **sibling** of `specify-workflow`, not a child: neither crate imports the other, and the standards crate has no dependency on workflow types (slice, change, plan, journal). `specify-workflow` retains the workflow surface and gains nothing review-specific.
+"No lifecycle authority in review" is a structural invariant of the Rust workspace, not a coding convention. The shared codex parser (rules parse/resolve for `specify rules export`) lives in the `standards` crate. `standards` is a **sibling** of `workflow`, not a child: neither crate imports the other, and the standards crate has no dependency on workflow types (slice, change, plan, journal). `workflow` retains the workflow surface and gains nothing review-specific.
 
 The split means standards code physically cannot construct or transition a slice, plan entry, or change — the symbols are not in scope at compile time.
 

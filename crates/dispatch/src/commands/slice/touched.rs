@@ -2,10 +2,10 @@
 
 use std::io::Write;
 
+use error::{Error, Result};
 use serde::Serialize;
-use specify_error::{Error, Result};
-use specify_workflow_lib::merge::MergeStrategy;
-use specify_workflow_lib::slice::{
+use workflow_lib::merge::MergeStrategy;
+use workflow_lib::slice::{
     Overlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions,
 };
 

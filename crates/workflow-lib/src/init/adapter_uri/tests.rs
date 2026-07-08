@@ -1,8 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-use specify_error::Error;
-use specify_schema::cache::adapter_store_entry;
+use error::Error;
+use schema::cache::adapter_store_entry;
 
 use super::*;
 

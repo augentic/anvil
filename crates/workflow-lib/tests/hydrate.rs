@@ -1,5 +1,5 @@
 //! Integration tests for the hydration kernel
-//! (`specify_workflow_lib::hydrate`).
+//! (`workflow_lib::hydrate`).
 //!
 //! Covers pinned-ref collection over `project.yaml` (the `adapter:`
 //! pin, the `adapters:` prefetch list) and `plan.yaml` source pins;
@@ -13,9 +13,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
-use specify_workflow_lib::hydrate::{ResolvedAdapter, collect_refs, hydrate};
-use specify_workflow_lib::init::AdapterPackage;
+use error::Error;
+use workflow_lib::hydrate::{ResolvedAdapter, collect_refs, hydrate};
+use workflow_lib::init::AdapterPackage;
 
 use crate::common;
 
@@ -34,11 +34,11 @@ fn seed_project(root: &Path, body: &str) {
 /// Stage a verified store entry (bytes + digest sidecar) for
 /// `(name, version)` inside the scoped store root.
 fn stage_store_entry(name: &str, version: &str, bytes: &str) -> PathBuf {
-    let entry = specify_schema::cache::adapter_store_entry(name, version);
+    let entry = schema::cache::adapter_store_entry(name, version);
     fs::create_dir_all(entry.parent().expect("store root")).expect("create store root");
     fs::write(&entry, bytes).expect("write store component");
-    let digest = specify_schema::cache::file_content_digest(&entry);
-    specify_schema::cache::write_store_meta(name, version, &digest, None).expect("write sidecar");
+    let digest = schema::cache::file_content_digest(&entry);
+    schema::cache::write_store_meta(name, version, &digest, None).expect("write sidecar");
     entry
 }
 
@@ -140,7 +140,7 @@ fn warm_store_is_noop_probe() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let entry = stage_store_entry("typescript", "1.2.3", "\0asm-ts");
-    let digest = specify_schema::cache::file_content_digest(&entry);
+    let digest = schema::cache::file_content_digest(&entry);
 
     let resolved = hydrate(tmp.path(), &[pinned("typescript", "1.2.3")], false, &no_fetch)
         .expect("warm hydrate");
@@ -236,8 +236,8 @@ fn first_hydration_writes_lock() {
         contents,
         format!(
             "version: 1\nadapters:\n  typescript@1.2.3: {}\n  vectis@2.0.0: {}\n",
-            specify_schema::cache::file_content_digest(&ts),
-            specify_schema::cache::file_content_digest(&vectis),
+            schema::cache::file_content_digest(&ts),
+            schema::cache::file_content_digest(&vectis),
         ),
         "deterministic sorted lock bytes with a trailing newline"
     );
@@ -278,7 +278,7 @@ fn locked_digest_drift_refused() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let entry = stage_store_entry("typescript", "1.2.3", "\0asm-ts");
-    let actual = specify_schema::cache::file_content_digest(&entry);
+    let actual = schema::cache::file_content_digest(&entry);
 
     let refs = [pinned("typescript", "1.2.3")];
     hydrate(tmp.path(), &refs, false, &no_fetch).expect("first hydrate");
@@ -351,8 +351,8 @@ fn new_identity_appends_to_lock() {
         contents,
         format!(
             "version: 1\nadapters:\n  typescript@1.2.3: {}\n  vectis@2.0.0: {}\n",
-            specify_schema::cache::file_content_digest(&ts),
-            specify_schema::cache::file_content_digest(&vectis),
+            schema::cache::file_content_digest(&ts),
+            schema::cache::file_content_digest(&vectis),
         ),
         "the new identity appends; the undeclared existing entry survives"
     );

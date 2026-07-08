@@ -3,15 +3,15 @@
 //! through direct entry mutation, and authority-override flags
 //! through the shared domain engine.
 
-use specify_error::{Error, Result};
-use specify_model::evidence::ClaimKind;
-use specify_workflow_lib::change::{
+use artifacts::evidence::ClaimKind;
+use error::{Error, Result};
+use workflow_lib::change::{
     Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, entry_mut, mutate_authority_overrides,
     reject_duplicate_source_keys, reject_orphan_overrides,
 };
-use specify_workflow_lib::config::with_state;
-use specify_workflow_lib::journal;
-use specify_workflow_lib::schema::validate_plan;
+use workflow_lib::config::with_state;
+use workflow_lib::journal;
+use workflow_lib::schema::validate_plan;
 
 use super::args::{
     bindings_from_args, load_discovery, parse_divergence, parse_override_assigns,
@@ -94,9 +94,11 @@ pub(super) fn amend(ctx: &Ctx, args: AmendArgs) -> Result<()> {
             reject_orphan_overrides(plan)?;
 
             validate_plan(plan)?;
-            let amended = plan.entries.iter().find(|c| c.name == name).ok_or_else(|| {
-                specify_workflow_lib::change::unknown_slice_err(&plan_name, &name)
-            })?;
+            let amended = plan
+                .entries
+                .iter()
+                .find(|c| c.name == name)
+                .ok_or_else(|| workflow_lib::change::unknown_slice_err(&plan_name, &name))?;
 
             let mut journal_events: Vec<journal::Event> = Vec::new();
             if let Some(to) = divergence {

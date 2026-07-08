@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `lint`, `validate`, and framework checks share one `Diagnostic` substrate (`specify-diagnostics`) while keeping distinct gate authority, and core owns how sources reconcile into slices. Durable specs live in [docs/standards/workflow.md](../docs/standards/workflow.md), [DECISIONS.md](../DECISIONS.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase makes the loop observable and portable across teams, forges, agents, and catalogs.
+The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `lint`, `validate`, and framework checks share one `Diagnostic` substrate (`diagnostics`) while keeping distinct gate authority, and core owns how sources reconcile into slices. Durable specs live in [docs/standards/workflow.md](../docs/standards/workflow.md), [DECISIONS.md](../DECISIONS.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase makes the loop observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -94,7 +94,7 @@ specify journal export          # or: specify events export
 #### RM-11: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
-**Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the diagnostic substrate and consumer scanner (`IFACE-`* contract findings — [DECISIONS.md §Diagnostic substrate](../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) and [§Standards layer split](../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)).
+**Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the diagnostic substrate and consumer scanner (`IFACE-`* contract findings — [DECISIONS.md §Diagnostic substrate](../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) and [§Standards layer split](../DECISIONS.md#standards-layer-split-into-standards-and-schema)).
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
 **Consumes:** the neutral `Diagnostic` envelope. RM-11 owns the structured-evidence shape for `IFACE-`* contract findings via `schemas/review/finding/contracts-evidence.schema.json`; the `Diagnostic` evidence union reserves the `evidence.kind: structured` branch but leaves the inner `data` shape to this item, so contracts-specific decisions land with the gate that needs them.
 **Target surface:**

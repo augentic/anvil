@@ -4,7 +4,7 @@
 use std::io;
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 /// Move `src` to `dst`, falling back to copy-then-remove across mounts.
 ///

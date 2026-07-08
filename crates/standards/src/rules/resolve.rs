@@ -27,9 +27,9 @@ mod sort;
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use error::Error;
 pub use filter::filter;
 pub use sort::{build_resolved_rules, sort_resolved};
-use specify_error::Error;
 
 use super::parse::{ParseError, parse_rule_file};
 use super::{Origin, PathRoot, Rule};
@@ -127,7 +127,7 @@ pub enum ResolveError {
 }
 
 /// Translate the resolver's typed [`ResolveError`] onto the closed
-/// [`specify_error::Error`] enum.
+/// [`error::Error`] enum.
 ///
 /// `Exit::from(&Error)` then picks the right exit code per
 /// `docs/standards/handler-shape.md`: the three codex-shape failures
@@ -168,24 +168,24 @@ const SHARED_REL: &str = "codex/rules/universal";
 /// rules.
 ///
 /// The physical manifest cache lives out-of-tree (see
-/// [`specify_schema::cache::project_cache_dir`]), so rule provenance is
+/// [`schema::cache::project_cache_dir`]), so rule provenance is
 /// recorded under [`PathRoot::Cache`] with this stable, cache-relative
 /// prefix rather than the physical absolute path, keeping findings and
 /// goldens portable.
 const MANIFEST_CACHE_LOGICAL: &str = "manifests";
 
 /// Out-of-tree manifest cache root, `<project-cache>/manifests/`. Kept
-/// in lockstep with `specify_workflow_lib::adapter::cache_axis_dir`.
+/// in lockstep with `workflow_lib::adapter::cache_axis_dir`.
 fn manifest_cache_root(project_dir: &Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project_dir).join("manifests")
+    schema::cache::project_cache_dir(project_dir).join("manifests")
 }
 
 /// Out-of-tree project codex cache root, `<project-cache>/codex/`.
 /// Probe step 3 treats it as a derived rules root when it carries the
 /// shared `universal/` pack. Kept in lockstep with
-/// `specify_workflow_lib::init::codex_cache_root`.
+/// `workflow_lib::init::codex_cache_root`.
 fn codex_cache_root(project_dir: &Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project_dir).join("codex")
+    schema::cache::project_cache_dir(project_dir).join("codex")
 }
 
 /// Discover every rule visible to `inputs` and parse it.

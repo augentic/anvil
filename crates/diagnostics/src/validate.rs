@@ -11,8 +11,8 @@
 
 use std::sync::LazyLock;
 
+use schema::{DIAGNOSTIC_JSON_SCHEMA, compile_schema};
 use serde_json::Value as JsonValue;
-use specify_schema::{DIAGNOSTIC_JSON_SCHEMA, compile_schema};
 
 use crate::diagnostic::Diagnostic;
 

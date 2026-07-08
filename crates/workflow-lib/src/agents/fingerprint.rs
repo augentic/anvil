@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
+use error::Error;
 
 /// One renderer input file and its content digest.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,7 +89,7 @@ impl InputCollector {
                 let bytes = fs::read(absolute).map_err(Error::Io)?;
                 Ok(InputFingerprint {
                     path: relative.clone(),
-                    sha256: specify_schema::digest::sha256_hex(&bytes),
+                    sha256: schema::digest::sha256_hex(&bytes),
                 })
             })
             .collect()
@@ -131,7 +131,7 @@ pub fn body_sha256(body: &[u8]) -> String {
 }
 
 fn prefixed_sha256(bytes: &[u8]) -> String {
-    format!("sha256:{}", specify_schema::digest::sha256_hex(bytes))
+    format!("sha256:{}", schema::digest::sha256_hex(bytes))
 }
 
 fn repo_relative_path(project_dir: &Path, path: &Path) -> Result<String, Error> {
@@ -249,7 +249,7 @@ mod tests {
             inputs.iter().map(|i| i.path.as_str()).collect::<Vec<_>>(),
             vec!["sub/a.txt", "z.txt"]
         );
-        assert_eq!(inputs[1].sha256, specify_schema::digest::sha256_hex(b"zed"));
+        assert_eq!(inputs[1].sha256, schema::digest::sha256_hex(b"zed"));
 
         let project = tempfile::tempdir().expect("tempdir");
         let root = project.path();

@@ -8,7 +8,7 @@
 //! synthesis journal emission. Every entry point takes a [`Layout`] or
 //! plain paths rather than the CLI `Ctx`, so the gates are unit-testable
 //! without standing up a binary. Adapter validation (`validate_slice`,
-//! from `specify-model`'s `validate` registry) and report rendering stay
+//! from `artifacts`'s `validate` registry) and report rendering stay
 //! in the handler, keeping this kernel free of the registry and of
 //! output concerns.
 //!
@@ -22,10 +22,10 @@
 
 use std::path::{Path, PathBuf};
 
+use artifacts::spec::provenance::RequirementTag;
+use diagnostics::Diagnostic;
+use error::{Error, Result};
 use jiff::Timestamp;
-use specify_diagnostics::Diagnostic;
-use specify_error::{Error, Result};
-use specify_model::spec::provenance::RequirementTag;
 
 use crate::config::Layout;
 use crate::journal::{Event, EventKind, append_batch};

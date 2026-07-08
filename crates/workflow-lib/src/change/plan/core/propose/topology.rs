@@ -8,8 +8,8 @@
 
 use std::path::{Path, PathBuf};
 
-use specify_diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use specify_error::{Error, Result};
+use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use error::{Error, Result};
 
 use super::wire::ProjectRef;
 use crate::adapter::TargetAdapter;

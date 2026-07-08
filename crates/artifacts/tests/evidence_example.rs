@@ -1,5 +1,5 @@
+use artifacts::evidence::claim::example::*;
 use serde_json::json;
-use specify_model::evidence::claim::example::*;
 
 fn fixture() -> ExampleClaim {
     ExampleClaim {

@@ -10,9 +10,9 @@
 
 use std::collections::BTreeMap;
 
-use specify_error::Error;
-use specify_guest_model::Model;
-use specify_model::evidence::{AuthorityClass, ClaimKind};
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use error::Error;
+use guest_model::Model;
 
 use super::{prose, schema_gated};
 use crate::schema::validate_synthesis_json;
@@ -58,7 +58,7 @@ pub struct Synthesized {
 pub async fn synthesize<P: Model>(
     model: &P, inputs: &SynthesisInputs, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
-    let schema = specify_schema::answers::render(&specify_schema::answers::synthesis());
+    let schema = schema::answers::render(&schema::answers::synthesis());
     let system = prose::synthesize_system();
     let user = format!(
         "## Synthesis inputs\n\n```json\n{}\n```",

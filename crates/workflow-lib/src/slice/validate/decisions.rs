@@ -5,9 +5,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use specify_diagnostics::{Artifact, Diagnostic, FindingLocation};
-use specify_error::{Error, Result};
-use specify_model::decision::{DecisionRecord, parse_decision};
+use artifacts::decision::{DecisionRecord, parse_decision};
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
+use error::{Error, Result};
 
 use super::path_hint;
 use crate::config::Layout;
@@ -15,7 +15,7 @@ use crate::decisions::{is_dec_ref, list_md_files, read_baseline};
 
 /// Decision Record gate over
 /// `<slice>/decisions/*.md` it raises the per-file findings owned by the
-/// `specify-model` parser — `decision-record-schema`,
+/// `artifacts` parser — `decision-record-schema`,
 /// `decision-record-section-missing`, `decision-slug-grammar` (the same
 /// parser-drives-findings posture as the `spec.md` provenance parser, so
 /// no JSON schema runs here) — plus the two cross-file checks the parser

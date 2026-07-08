@@ -40,10 +40,10 @@ The dependency graph is one-way; `specify-core` never depends on the plugin load
 
 ```text
 specify (binary)
-   └─ specify-workflow
+   └─ workflow
         ├─ specify-tool
         └─ plugin loader (adapters/sources/ + adapters/targets/)
-              └─ specify-error
+              └─ error
 ```
 
 The invariant: **adapter resolution is a downstream concern**. Core owns the slice loop; adapters supply prompts.

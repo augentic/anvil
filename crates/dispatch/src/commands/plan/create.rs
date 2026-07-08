@@ -1,16 +1,14 @@
 //! `specify plan create` handler. Composes the shared CLI arg
 //! parsers in [`super::args`] with the domain authority-override
-//! engine in [`specify_workflow_lib::change::mutate_authority_overrides`]
+//! engine in [`workflow_lib::change::mutate_authority_overrides`]
 //! so the handler stays declarative.
 
 use std::io::Write;
 
+use error::{Error, Result, is_kebab};
 use serde::Serialize;
-use specify_error::{Error, Result, is_kebab};
-use specify_workflow_lib::change::{
-    Lifecycle, Plan, mutate_authority_overrides, reject_orphan_overrides,
-};
-use specify_workflow_lib::journal;
+use workflow_lib::change::{Lifecycle, Plan, mutate_authority_overrides, reject_orphan_overrides};
+use workflow_lib::journal;
 
 use super::args::{build_source_map, parse_override_assigns};
 use crate::cli::SourceArg;

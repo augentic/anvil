@@ -12,10 +12,10 @@
 //!
 //! [model-artifact]: ../../../../DECISIONS.md#single-slice-model-artifact
 
+use artifacts::spec::provenance::RequirementStatus;
+use error::{Error, Result};
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
-use specify_error::{Error, Result};
-use specify_model::spec::provenance::RequirementStatus;
 
 use crate::schema::{PROVENANCE_JSON_SCHEMA, validate_serialisable};
 
@@ -34,7 +34,7 @@ pub struct ProvenanceIndex {
     /// UTC second-precision timestamp at which the projection was
     /// produced. Resolution is to the second so byte-stable diffs
     /// survive reasonably-fast clocks.
-    #[serde(with = "specify_error::serde_rfc3339")]
+    #[serde(with = "error::serde_rfc3339")]
     pub generated_at: Timestamp,
     /// CLI version that produced the projection (e.g. `specify@2.1.0`).
     pub generator: String,
@@ -84,7 +84,7 @@ pub struct ContributingClaim {
     /// Claim kind copied from the source Evidence claim — closed
     /// enum (mirrored from
     /// `schemas/evidence.schema.json#/$defs/claimKind`).
-    pub kind: specify_model::evidence::ClaimKind,
+    pub kind: artifacts::evidence::ClaimKind,
     /// Optional single-line claim payload (statement / criterion /
     /// decision body).
     #[serde(default, skip_serializing_if = "Option::is_none")]

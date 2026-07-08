@@ -1,8 +1,8 @@
 //! YAML delta merge for composition.yaml — screen-level operations
 //! (added/modified/removed) applied to a baseline `screens` map.
 
+use error::Error;
 use serde_json::Value;
-use specify_error::Error;
 
 use crate::merge::engine::{MergeOperation, MergeResult};
 

@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 use crate::cmd;
 

@@ -1,6 +1,6 @@
 //! The `WIRE_CODES` table: sorted, unique, kebab-case.
 
-use specify_error::codes::WIRE_CODES;
+use error::codes::WIRE_CODES;
 
 #[test]
 fn sorted_unique_kebab() {
@@ -13,6 +13,6 @@ fn sorted_unique_kebab() {
         );
     }
     for code in WIRE_CODES {
-        assert!(specify_error::is_kebab(code), "wire code `{code}` must be kebab-case");
+        assert!(error::is_kebab(code), "wire code `{code}` must be kebab-case");
     }
 }

@@ -1,5 +1,5 @@
 //! Integration coverage for the CH-12 rule resolver
-//! (`specify_standards::{resolve, map_resolve_error}`). Re-homed from the
+//! (`standards::{resolve, map_resolve_error}`). Re-homed from the
 //! former `rules/resolve/tests.rs` unit module: every case drives the public
 //! `resolve` entry point (and `map_resolve_error`) over a real codex/overlay
 //! tree. The `duplicate-rule-id` and `rules-root-required` emit branches are
@@ -11,11 +11,9 @@
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
-use specify_error::Error;
-use specify_schema::cache::project_cache_dir;
-use specify_standards::{
-    Origin, PathRoot, ResolveError, ResolveInputs, map_resolve_error, resolve,
-};
+use error::Error;
+use schema::cache::project_cache_dir;
+use standards::{Origin, PathRoot, ResolveError, ResolveInputs, map_resolve_error, resolve};
 use tempfile::TempDir;
 
 /// Minimal frontmatter + body that satisfies the CH-11 parser and

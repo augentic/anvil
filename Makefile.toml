@@ -73,14 +73,14 @@ install_crate = "cargo-outdated"
 # Check wasm core
 #
 # Keeper for the wasm32-cleanliness of the guest-facing crates: the
-# guest shim depends on specify-workflow-lib (no `native` feature) and
-# specify-dispatch, so both must always compile for wasm32-wasip2.
+# guest shim depends on workflow-lib (no `native` feature) and
+# dispatch, so both must always compile for wasm32-wasip2.
 [tasks.check-wasm-core]
 command = "cargo"
 args = [
     "check",
-    "-p", "specify-workflow",
-    "-p", "specify-dispatch",
+    "-p", "workflow",
+    "-p", "dispatch",
     "--target", "wasm32-wasip2",
 ]
 env = { RUSTFLAGS = "-Dwarnings" }
@@ -92,7 +92,7 @@ env = { RUSTFLAGS = "-Dwarnings" }
 # comes from rust-toolchain.toml.
 [tasks.build-guests]
 command = "cargo"
-args = ["build", "-p", "specify-echo-source", "-p", "specify-echo-target", "-p", "specify-workflow", "--target", "wasm32-wasip2"]
+args = ["build", "-p", "echo-source", "-p", "echo-target", "-p", "workflow", "--target", "wasm32-wasip2"]
 
 # Test
 #
@@ -174,8 +174,8 @@ script = '''
 set -euo pipefail
 version="$(tr -d '[:space:]' < VERSION)"
 scripts/wkg-publish-idempotent.sh "specify:core@${version}" \
-    target/wasm32-wasip2/release/specify_workflow.wasm \
-    cargo build -p specify-workflow --release --target wasm32-wasip2
+    target/wasm32-wasip2/release/workflow.wasm \
+    cargo build -p workflow --release --target wasm32-wasip2
 '''
 
 # Publish WIT contract

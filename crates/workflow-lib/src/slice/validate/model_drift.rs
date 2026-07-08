@@ -3,12 +3,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use artifacts::evidence::ClaimKind;
+use artifacts::spec::provenance::{self, ParsedSpec, RequirementStatus};
+use artifacts::spec::{is_req_id, is_task_id};
+use diagnostics::{Artifact, Diagnostic};
+use error::{Error, Result};
 use serde_json::Value as JsonValue;
-use specify_diagnostics::{Artifact, Diagnostic};
-use specify_error::{Error, Result};
-use specify_model::evidence::ClaimKind;
-use specify_model::spec::provenance::{self, ParsedSpec, RequirementStatus};
-use specify_model::spec::{is_req_id, is_task_id};
 
 use crate::change::Plan;
 use crate::schema::EvidenceDoc;

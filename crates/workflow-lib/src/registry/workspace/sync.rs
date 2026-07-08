@@ -5,7 +5,7 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
+use error::Error;
 
 use super::bootstrap::{self, greenfield_init};
 use super::git::{self, git_output_ok};
@@ -323,7 +323,7 @@ pub(super) fn materialise_git_remote(
 /// a greenfield slot offline in that case, matching the prior
 /// clone-then-fallback behaviour.
 fn ensure_mirror(url: &str) -> Result<Option<PathBuf>, Error> {
-    let mirror = specify_schema::cache::mirror_dir(url);
+    let mirror = schema::cache::mirror_dir(url);
 
     if mirror.join("HEAD").exists() {
         git::run(

@@ -13,8 +13,8 @@
 
 use std::path::PathBuf;
 
+use error::Error;
 use serde::{Deserialize, Serialize};
-use specify_error::Error;
 
 use crate::Platform;
 use crate::adapter::operation::{SourceOperation, TargetOperation};
@@ -163,7 +163,7 @@ pub enum AdapterLocation {
     /// Resolved from the global content-addressed adapter store entry
     /// at `<store-root>/<name>@<version>.wasm` — the immutable,
     /// version-keyed install target resolved by
-    /// `specify_schema::cache::adapter_store_entry` and populated by
+    /// `schema::cache::adapter_store_entry` and populated by
     /// the wasm-pkg transport. Probed whenever the [`AdapterRef`]
     /// carries a pinned version.
     Store(PathBuf),

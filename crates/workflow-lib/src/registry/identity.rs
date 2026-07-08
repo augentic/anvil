@@ -10,9 +10,9 @@
 
 use std::path::Path;
 
-use specify_error::Error;
-use specify_model::decision::DecisionStatus;
-use specify_model::spec::provenance::parse_spec_md;
+use artifacts::decision::DecisionStatus;
+use artifacts::spec::provenance::parse_spec_md;
+use error::Error;
 
 use super::topology::{Decision, Surface};
 use crate::config::Layout;

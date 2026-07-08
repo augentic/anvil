@@ -2,10 +2,10 @@
 
 use std::path::Path;
 
-use specify_error::{Error, Result};
-use specify_workflow_lib::change::Plan;
-use specify_workflow_lib::config::{Layout, with_state};
-use specify_workflow_lib::registry::Registry;
+use error::{Error, Result};
+use workflow_lib::change::Plan;
+use workflow_lib::config::{Layout, with_state};
+use workflow_lib::registry::Registry;
 
 use super::dto::{RemoveBody, write_remove_text};
 use crate::context::Ctx;

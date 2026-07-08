@@ -1,7 +1,7 @@
 //! Test-only helpers for pinning the out-of-tree adapter store.
 //!
 //! The global adapter store lives in the per-user home resolved by
-//! `specify_schema::cache`. Tests that drive adapter install/resolve
+//! `schema::cache`. Tests that drive adapter install/resolve
 //! must redirect that store into a temp directory so reads are
 //! hermetic and never touch the developer's real store.
 

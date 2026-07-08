@@ -4,12 +4,12 @@
 
 use std::collections::BTreeMap;
 
-use specify_guest_model::MockModel;
-use specify_model::evidence::{AuthorityClass, ClaimKind};
-use specify_workflow_lib::change::{ProposalKind, ProposalRequest};
-use specify_workflow_lib::judgment::synthesize::Kernel;
-use specify_workflow_lib::judgment::{propose, synthesize};
-use specify_workflow_lib::slice::{BaselineIndex, ProjectionHeader, SynthesisInputs};
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use guest_model::MockModel;
+use workflow_lib::change::{ProposalKind, ProposalRequest};
+use workflow_lib::judgment::synthesize::Kernel;
+use workflow_lib::judgment::{propose, synthesize};
+use workflow_lib::slice::{BaselineIndex, ProjectionHeader, SynthesisInputs};
 
 fn request() -> ProposalRequest {
     serde_json::from_value(serde_json::json!({
@@ -78,12 +78,10 @@ mod propose_leg {
         let model = MockModel::answering([Box::leak(answer.into_boxed_str()) as &'static str]);
         let sources = BTreeMap::from([(
             "legacy".to_string(),
-            serde_json::from_value::<specify_workflow_lib::change::SourceBinding>(
-                serde_json::json!({
-                    "adapter": "typescript",
-                    "path": "./vendor/legacy"
-                }),
-            )
+            serde_json::from_value::<workflow_lib::change::SourceBinding>(serde_json::json!({
+                "adapter": "typescript",
+                "path": "./vendor/legacy"
+            }))
             .expect("binding fixture parses"),
         )]);
         let context = propose::GateContext {
@@ -127,7 +125,7 @@ mod propose_leg {
         let response = propose::reconcile(&model, &request(), None, |_| {
             if rejected == 0 {
                 rejected += 1;
-                return Err(specify_error::Error::validation_failed(
+                return Err(error::Error::validation_failed(
                     "plan-reconcile-lead-uncovered",
                     "every lead is covered",
                     "lead `x/y` is not referenced by any slice",
@@ -146,7 +144,7 @@ mod propose_leg {
         // On the live backend a schema-invalid answer surfaces as a
         // model `invalid-answer` failure — which must propagate without
         // burning repair attempts (the request did not change).
-        let model = MockModel::scripted([Err(specify_guest_model::Error::InvalidAnswer(
+        let model = MockModel::scripted([Err(guest_model::Error::InvalidAnswer(
             "answer failed the create gate".to_string(),
         ))]);
         let err = propose::reconcile(&model, &request(), None, |_| Ok(()))

@@ -1,4 +1,4 @@
-//! Consolidated integration binary for `specify-runtime`.
+//! Consolidated integration binary for `runtime`.
 //!
 //! One binary per crate: each area file is pulled in as a `#[path]` submodule
 //! so the harness links once. The areas compose the standalone

@@ -6,10 +6,10 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use specify_diagnostics::{Artifact, Diagnostic};
-use specify_error::{Error, Result};
-use specify_model::discovery::Discovery;
-use specify_model::spec::provenance::{self, ParsedSpec, RequirementTag};
+use artifacts::discovery::Discovery;
+use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
+use diagnostics::{Artifact, Diagnostic};
+use error::{Error, Result};
 
 use super::catalog::collect_catalog_drift_findings;
 use super::decisions::collect_decision_gates;

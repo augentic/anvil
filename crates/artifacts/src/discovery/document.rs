@@ -27,7 +27,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use specify_error::{Error, Result};
+use error::{Error, Result};
 
 use self::parse::{Parser, is_inventory_heading};
 use super::lead::Lead;

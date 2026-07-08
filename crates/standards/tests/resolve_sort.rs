@@ -1,5 +1,5 @@
 //! Integration coverage for the CH-14 resolved-rules envelope
-//! (`specify_standards::build_resolved_rules`). Re-homed from the former
+//! (`standards::build_resolved_rules`). Re-homed from the former
 //! `rules/resolve/sort/tests.rs` unit module: the versioned envelope plus the
 //! sorted rule list run through the public builder over a real overlay tree.
 //! The path-anchoring and byte-stability properties are asserted end-to-end by
@@ -9,7 +9,7 @@
 use std::fs;
 use std::path::Path;
 
-use specify_standards::{ResolveInputs, ResolvedRule, ResolvedRules, build_resolved_rules};
+use standards::{ResolveInputs, ResolvedRule, ResolvedRules, build_resolved_rules};
 use tempfile::TempDir;
 
 /// A minimal frontmatter + body that parses through CH-11 and validates

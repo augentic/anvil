@@ -4,9 +4,9 @@
 
 use std::str::FromStr;
 
+use artifacts::evidence::ClaimKind;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
-use specify_model::evidence::ClaimKind;
 
 use crate::commands::adapters::cli::AdaptersAction;
 use crate::commands::archive::cli::ArchiveAction;
@@ -275,7 +275,7 @@ pub struct UpgradeArgs {
 
 /// `specify upgrade --channel` value.
 ///
-/// `Auto` resolves to `specify_workflow_lib::upgrade::InstallChannel::detect`
+/// `Auto` resolves to `workflow_lib::upgrade::InstallChannel::detect`
 /// at the handler boundary (a `native`-feature module this wasm-clean
 /// crate never links); the other variants force the matching channel.
 #[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
@@ -305,7 +305,7 @@ pub enum ChannelArg {
 ///   after the second `:` and may contain anything (newlines,
 ///   colons, equals signs).
 ///
-/// Materialises as [`specify_workflow_lib::change::SourceBinding`] under
+/// Materialises as [`workflow_lib::change::SourceBinding`] under
 /// the structured `{ adapter, path?, value? }` wire form. The legacy
 /// bare-string `--source <key>=<path>` form was dropped — every
 /// binding now carries an explicit adapter name.
@@ -394,10 +394,10 @@ impl FromStr for SourceArg {
 ///
 /// - `<key>=<lead>` — structured binding; both sides are
 ///   non-empty kebab identifiers. Materialises via
-///   [`specify_workflow_lib::change::SliceSourceBinding::structured`].
+///   [`workflow_lib::change::SliceSourceBinding::structured`].
 /// - `<key>` — bare-string shorthand; sugar for
 ///   `{ key: <key>, lead: <slice.name> }`. Materialises via
-///   [`specify_workflow_lib::change::SliceSourceBinding::bare`].
+///   [`workflow_lib::change::SliceSourceBinding::bare`].
 ///
 /// Malformed inputs (empty key, empty lead, dangling `=`, more
 /// than one `=`) produce a `FromStr` error that clap surfaces as a

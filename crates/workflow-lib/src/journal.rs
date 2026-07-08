@@ -22,8 +22,8 @@ use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use serde_json::Value;
-use specify_error::Error;
 
 pub use self::append::append_batch;
 pub use self::emit::emit_best_effort;

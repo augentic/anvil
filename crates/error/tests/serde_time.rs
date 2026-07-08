@@ -6,7 +6,7 @@ mod rfc3339 {
 
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct Stamped {
-        #[serde(with = "specify_error::serde_rfc3339")]
+        #[serde(with = "error::serde_rfc3339")]
         at: Timestamp,
     }
 
@@ -52,7 +52,7 @@ mod rfc3339_opt {
     #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
     struct MaybeStamped {
         #[serde(
-            with = "specify_error::serde_rfc3339_opt",
+            with = "error::serde_rfc3339_opt",
             default,
             skip_serializing_if = "Option::is_none"
         )]

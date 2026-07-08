@@ -4,13 +4,13 @@
 //! validator.
 
 use jsonschema::{Registry, Resource};
-use serde_json::{Value, json};
-use specify_schema::{
+use schema::{
     BUILD_REPORT_JSON_SCHEMA, BUILD_REQUEST_JSON_SCHEMA, DECISION_JSON_SCHEMA,
     DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA, EMBEDDED_SCHEMAS, PARTS_JSON_SCHEMA,
     RESOLVED_RULES_JSON_SCHEMA, RULE_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA,
     ValidationStatus, compile_schema, validate_value,
 };
+use serde_json::{Value, json};
 
 /// Every embedded schema compiles, table-driven over the canonical
 /// [`EMBEDDED_SCHEMAS`] inventory so a new constant is covered the

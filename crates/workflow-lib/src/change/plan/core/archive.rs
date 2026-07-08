@@ -4,8 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 use super::model::{Plan, Status};
 use crate::slice::actions::move_atomic;

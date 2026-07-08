@@ -15,9 +15,9 @@
 //!   add resolver-only fields ([`Origin`], [`PathRoot`], `path`,
 //!   `body`) on top of the codex-rule shape.
 //!
-//! Structured diagnostic types ([`specify_diagnostics::Diagnostic`],
+//! Structured diagnostic types ([`diagnostics::Diagnostic`],
 //! renderers, fingerprint helpers) live in the neutral
-//! [`specify_diagnostics`] leaf — import them from there directly.
+//! [`diagnostics`] leaf — import them from there directly.
 //!
 //! Severity comparator order is `Critical < Important < Suggestion <
 //! Optional` and origin order is `Target < Source < Shared <
@@ -33,13 +33,13 @@
 pub mod parse;
 pub mod resolve;
 
+use diagnostics::Severity;
 pub use parse::{ParseError, parse_rule, parse_rule_file};
 pub use resolve::{
     ResolveError, ResolveInputs, ResolvedRuleEntry, build_resolved_rules, filter,
     map_resolve_error, resolve, sort_resolved,
 };
 use serde::{Deserialize, Serialize};
-use specify_diagnostics::Severity;
 
 /// Resolver origin tier per `ResolvedRules` export contract.
 ///

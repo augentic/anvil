@@ -21,8 +21,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
+use error::{Error, Result};
 use serde::{Deserialize, Serialize};
-use specify_error::{Error, Result};
 
 /// `owner/repo` slug for the release probe and the cargo git source.
 const REPO_SLUG: &str = "augentic/specify";

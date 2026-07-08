@@ -1,8 +1,8 @@
 //! `specify registry add` handler.
 
-use specify_error::{Error, Result, is_kebab};
-use specify_model::atomic::yaml_write;
-use specify_workflow_lib::registry::{Registry, RegistryProject};
+use artifacts::atomic::yaml_write;
+use error::{Error, Result, is_kebab};
+use workflow_lib::registry::{Registry, RegistryProject};
 
 use super::dto::{AddBody, write_add_text};
 use crate::context::Ctx;

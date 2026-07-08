@@ -1,5 +1,5 @@
 //! Integration tests for the deployment-manifest generator
-//! (`specify_workflow_lib::deploy`).
+//! (`workflow_lib::deploy`).
 //!
 //! Covers the generated document shape (guests, mount, routes,
 //! transport, the core link allow-list — asserted on parsed TOML, not
@@ -11,9 +11,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
-use specify_workflow_lib::adapter::Axis;
-use specify_workflow_lib::deploy::{DeployGuest, generate, manifest_path};
+use error::Error;
+use workflow_lib::adapter::Axis;
+use workflow_lib::deploy::{DeployGuest, generate, manifest_path};
 
 use crate::common;
 
@@ -94,19 +94,19 @@ fn generates_manifest_into_project_cache() {
     assert_eq!(mounts[0]["writable"].as_bool(), Some(true));
     // guest routing: the per-project derived cache is mounted so the
     // guest's `rules export` / scaffold leg reach the cache tenants.
-    assert_eq!(mounts[1]["name"].as_str(), Some(specify_schema::cache::GUEST_CACHE_MOUNT));
+    assert_eq!(mounts[1]["name"].as_str(), Some(schema::cache::GUEST_CACHE_MOUNT));
     assert_eq!(
         mounts[1]["path"].as_str(),
-        Some(specify_schema::cache::project_cache_dir(&project).display().to_string().as_str())
+        Some(schema::cache::project_cache_dir(&project).display().to_string().as_str())
     );
     assert_eq!(mounts[1]["writable"].as_bool(), Some(true));
     // global store mount: the global adapter store is mounted read-only so
     // forwarded verbs resolve pinned identities in-guest (hydration
     // stays native).
-    assert_eq!(mounts[2]["name"].as_str(), Some(specify_schema::cache::GUEST_STORE_MOUNT));
+    assert_eq!(mounts[2]["name"].as_str(), Some(schema::cache::GUEST_STORE_MOUNT));
     assert_eq!(
         mounts[2]["path"].as_str(),
-        Some(specify_schema::cache::adapter_store_root().display().to_string().as_str())
+        Some(schema::cache::adapter_store_root().display().to_string().as_str())
     );
     assert_eq!(mounts[2]["writable"].as_bool(), Some(false));
 

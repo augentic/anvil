@@ -3,9 +3,9 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
+use artifacts::spec::{REQ_ID_PATTERN, REQ_ID_PREFIX, SCENARIO_HEADING, parse_baseline};
+use diagnostics::{Artifact, Diagnostic};
 use regex::Regex;
-use specify_diagnostics::{Artifact, Diagnostic};
-use specify_model::spec::{REQ_ID_PATTERN, REQ_ID_PREFIX, SCENARIO_HEADING, parse_baseline};
 
 fn fail(rule_id: &str, rule: &str, detail: String) -> Diagnostic {
     Diagnostic::violation(rule_id, rule, detail, Artifact::Specs, None)
@@ -37,7 +37,7 @@ const RULE_REQ_HAS_SCENARIO_DESC: &str = "every requirement declares at least on
 /// deterministic, `important`); an empty vec means the baseline passes
 /// every coherence rule. Design-reference checking is not part of this
 /// pass — the `cross.design-references-valid` rule in
-/// `specify-model`'s `validate` registry owns it.
+/// `artifacts`'s `validate` registry owns it.
 ///
 /// # Panics
 ///

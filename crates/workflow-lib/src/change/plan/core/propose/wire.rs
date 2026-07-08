@@ -102,7 +102,7 @@ pub struct ProjectRef {
 ///
 /// Identity is the `(source, lead)` pair; `lead` repeats
 /// across rows when multiple sources surface the same slug. Mirrors a
-/// single `discovery.md` [`specify_model::discovery::Lead`]
+/// single `discovery.md` [`artifacts::discovery::Lead`]
 /// (DECISIONS.md §"Lead reconciliation").
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]

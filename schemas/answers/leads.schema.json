@@ -8,7 +8,7 @@
   "$id": "https://github.com/augentic/specify/schemas/answers/leads.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — derived from schemas/discovery/lead.schema.json by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the canonical lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source).",
+  "description": "Generated judgment-answer schema — derived from schemas/discovery/lead.schema.json by schema's answer derivation; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the canonical lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source).",
   "properties": {
     "leads": {
       "description": "Every lead the survey surfaced, in source order.",

@@ -1,4 +1,4 @@
-use specify_model::evidence::authority::*;
+use artifacts::evidence::authority::*;
 
 #[test]
 fn authority_class_round_trips_kebab_case() {

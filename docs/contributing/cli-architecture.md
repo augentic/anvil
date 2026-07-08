@@ -13,7 +13,7 @@ The core guest resolves from the global adapter store by the binary's own versio
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `specify-error` is the leaf; `specify-dispatch` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `specify-workflow` shim; `specify-workflow-lib` owns the workflow domain and stays wasmtime-free; `specify-standards` is its sibling (neither imports the other); the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `dispatch` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `workflow` shim; `workflow-lib` owns the workflow domain and stays wasmtime-free; `standards` is its sibling (neither imports the other); the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
 
 Adapter deterministic helpers no longer live in a sibling `wasi-tools/` workspace; they sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
@@ -28,7 +28,7 @@ src/main.rs  →  runtime::run(argv)  →  first-token triage  →  native provi
                                                             ↘  specify_runtime::drive (everything else)
 ```
 
-The full operator grammar — provisioning verbs included — lives in `specify-dispatch` (`crates/dispatch/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Native handlers live under `src/runtime/commands/`; the handler contract (`Ctx`, `Out` / `Render` / `emit`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The full operator grammar — provisioning verbs included — lives in `dispatch` (`crates/dispatch/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Native handlers live under `src/runtime/commands/`; the handler contract (`Ctx`, `Out` / `Render` / `emit`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
 ## JSON envelope contract
 
@@ -55,14 +55,14 @@ Forwarded verbs inherit the same contract: the guest shim forwards `clap::Error:
 
 ## Error handling
 
-Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, permission failures, runtime failures, and more.
+Most commands use `error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, permission failures, runtime failures, and more.
 
 The pattern for a command handler:
 
-1. Call into a library crate function that returns `Result<T, specify_error::Error>`
+1. Call into a library crate function that returns `Result<T, error::Error>`
 2. On success, format the result as text or JSON depending on `--format`
 3. On error, emit the error envelope and return the appropriate `Exit`
 
 ## Public Rust API
 
-The root `specify` package is a binary-only crate. It does not expose a public library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `specify_workflow_lib::Plan`, `specify_workflow_lib::ProjectConfig`, or `specify_error::Error`.
+The root `specify` package is a binary-only crate. It does not expose a public library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `workflow_lib::Plan`, `workflow_lib::ProjectConfig`, or `error::Error`.

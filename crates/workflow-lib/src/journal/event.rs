@@ -20,7 +20,7 @@ use crate::name::{PlanName, SliceName};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Event {
     /// Second-precision UTC timestamp (`%Y-%m-%dT%H:%M:%SZ`).
-    #[serde(with = "specify_error::serde_rfc3339")]
+    #[serde(with = "error::serde_rfc3339")]
     pub timestamp: Timestamp,
     /// Event id + payload, adjacently tagged so `event` and `payload`
     /// sit side by side in the JSON object.

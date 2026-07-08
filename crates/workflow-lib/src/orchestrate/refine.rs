@@ -21,10 +21,10 @@
 
 use std::path::{Path, PathBuf};
 
+use diagnostics::blocking_present;
+use error::Error;
+use guest_model::Model;
 use jiff::Timestamp;
-use specify_diagnostics::blocking_present;
-use specify_error::Error;
-use specify_guest_model::Model;
 
 use super::synthesize::SynthesizeRequest;
 use crate::change::{Entry, Plan, Status, resolve_target, resolve_topology};
@@ -267,12 +267,12 @@ fn validate(
             synthesis_tags,
             mut advisories,
         } => {
-            let mut findings = specify_model::validate::validate_slice(slice_dir)?;
+            let mut findings = artifacts::validate::validate_slice(slice_dir)?;
             findings.append(&mut advisories);
             if blocking_present(&findings) {
                 let rules: Vec<&str> = findings
                     .iter()
-                    .filter(|finding| specify_diagnostics::blocking(finding))
+                    .filter(|finding| diagnostics::blocking(finding))
                     .map(|finding| finding.rule_id.as_deref().unwrap_or("unnamed-rule"))
                     .collect();
                 return Err(Error::validation_failed(

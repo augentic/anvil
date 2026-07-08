@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 use super::io::move_atomic;
 

@@ -1,4 +1,4 @@
-use specify_model::discovery::lead::Lead;
+use artifacts::discovery::lead::Lead;
 
 #[test]
 fn round_trips_minimal_lead() {

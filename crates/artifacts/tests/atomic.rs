@@ -1,9 +1,9 @@
 //! Behavioural coverage for the crash-safe atomic writers
-//! (`specify_model::atomic`).
+//! (`artifacts::atomic`).
 
 use std::collections::BTreeMap;
 
-use specify_model::atomic::{bytes_write, yaml_write};
+use artifacts::atomic::{bytes_write, yaml_write};
 
 #[test]
 fn write_round_trips_appends_newline() {

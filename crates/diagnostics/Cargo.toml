@@ -1,5 +1,5 @@
 [package]
-name = "specify-diagnostics"
+name = "diagnostics"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -20,8 +20,8 @@ workspace = true
 jsonschema.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-specify-error.workspace = true
-specify-schema.workspace = true
+error.workspace = true
+schema.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

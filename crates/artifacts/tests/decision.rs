@@ -1,4 +1,4 @@
-use specify_model::decision::*;
+use artifacts::decision::*;
 
 const VALID: &str = "---\n\
 slug: identity-store-postgres\n\

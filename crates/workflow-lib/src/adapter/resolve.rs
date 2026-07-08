@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
+use error::Error;
 
 use super::core::{
     AdapterLocation, AdapterRef, Axis, ResolvedSourceAdapter, ResolvedTargetAdapter, SourceAdapter,
@@ -96,7 +96,7 @@ impl TargetAdapter {
 /// resolution stays project-local without re-reading the original path.
 #[must_use]
 pub fn component_cache_dir(project_dir: &Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project_dir).join("components")
+    schema::cache::project_cache_dir(project_dir).join("components")
 }
 
 /// Absolute path to the project component cache entry for `name` —
@@ -141,7 +141,7 @@ fn locate(
     let name = adapter_ref.name.as_str();
     if let Some(version) = adapter_ref.version.as_ref() {
         let version = version.to_string();
-        let entry = specify_schema::cache::adapter_store_entry(name, &version);
+        let entry = schema::cache::adapter_store_entry(name, &version);
         if !entry.is_file() {
             return Err(Error::Diag {
                 code: "adapter-not-found",
@@ -158,7 +158,7 @@ fn locate(
         // has drifted (a moved tag, a corrupted store entry).
         // A missing sidecar fails open. Dev artifacts are verify-exempt
         // — only the content-addressed store is gated.
-        if let Err(mismatch) = specify_schema::cache::verify_store_entry(name, &version) {
+        if let Err(mismatch) = schema::cache::verify_store_entry(name, &version) {
             return Err(Error::Diag {
                 code: "adapter-digest-mismatch",
                 detail: format!(

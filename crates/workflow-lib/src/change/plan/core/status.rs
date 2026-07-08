@@ -9,8 +9,8 @@
 
 use std::path::PathBuf;
 
+use error::Error;
 use serde::Serialize;
-use specify_error::Error;
 
 use super::model::{Entry, Lifecycle, Plan, Status};
 use crate::config::Layout;

@@ -2,13 +2,13 @@
 //!
 //! The generated documents under `schemas/answers/` must byte-match the
 //! `answers` derivation (regenerate via
-//! `REGENERATE_GOLDENS=1 cargo nextest run -p specify-schema`), every
+//! `REGENERATE_GOLDENS=1 cargo nextest run -p schema`), every
 //! derived document must compile standalone (the derivation inlines
 //! cross-file refs), and worked answer examples must validate — proving
 //! the envelope fields are gone and the canonical constraints survive.
 
+use schema::{ValidationStatus, answers, compile_schema, validate_value};
 use serde_json::{Value, json};
-use specify_schema::{ValidationStatus, answers, compile_schema, validate_value};
 
 fn schemas_dir() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

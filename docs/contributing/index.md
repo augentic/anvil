@@ -22,7 +22,7 @@ Two audiences share this repository:
 | Audience | Typical edits | Touches the Rust workspace? |
 |----------|---------------|-----------------------------|
 | **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
-| **Tooling contributors** | `specify-standards` framework predicates, schemas, deterministic tests | Yes — they work in `src/` and `crates/` |
+| **Tooling contributors** | `standards` framework predicates, schemas, deterministic tests | Yes — they work in `src/` and `crates/` |
 
 Every contributor runs `cargo test --test framework_quality` locally with only a Rust toolchain: the framework checks are plain cargo tests over the prose and manifest surfaces (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
 

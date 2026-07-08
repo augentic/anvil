@@ -8,7 +8,7 @@
 //! **Parser-symmetry decision.** The RFC's §"Rendering" sketch shows an
 //! `## <title>` h2 heading, but that example is illustrative. This
 //! renderer instead follows the requirement-block shape that
-//! [`specify_model::spec::provenance::parse_spec_md`] consumes —
+//! [`artifacts::spec::provenance::parse_spec_md`] consumes —
 //! `### Requirement: <title>` plus an inline `[unknown]` / `[conflict]`
 //! / `[divergence]` tag suffix when the status is not `agreed`, then the
 //! three metadata lines, a blank line, and the body. Render and parse
@@ -25,8 +25,8 @@
 use std::collections::HashMap;
 use std::fmt::Write as _;
 
-use specify_model::spec::SCENARIO_HEADING;
-use specify_model::spec::provenance::RequirementStatus;
+use artifacts::spec::SCENARIO_HEADING;
+use artifacts::spec::provenance::RequirementStatus;
 
 use crate::slice::model::{ModelRequirement, SliceModel};
 use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
@@ -52,10 +52,10 @@ pub struct RenderedSpec {
 ///
 /// [`expected_provenance_lines`] returns one per requirement; the
 /// staleness check (`slice-spec-provenance-stale`) parses the on-disk
-/// `spec.md` with [`specify_model::spec::provenance::parse_spec_md`] and
+/// `spec.md` with [`artifacts::spec::provenance::parse_spec_md`] and
 /// compares each parsed requirement's `id` / `sources` / `status`
 /// against this set. The field types mirror the parser's
-/// [`specify_model::spec::provenance::Requirement`] so the comparison is
+/// [`artifacts::spec::provenance::Requirement`] so the comparison is
 /// direct: `id` is a plain `String` (empty when unprojected), `status`
 /// is the optional enum the parser yields.
 #[derive(Debug, Clone, PartialEq, Eq)]

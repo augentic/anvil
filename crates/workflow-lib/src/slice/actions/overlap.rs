@@ -2,8 +2,8 @@
 
 use std::path::Path;
 
+use error::Error;
 use serde::Serialize;
-use specify_error::Error;
 
 use crate::slice::{LifecycleStatus, SliceMetadata, SpecKind};
 

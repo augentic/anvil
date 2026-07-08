@@ -9,7 +9,7 @@ use jiff::Timestamp;
 use serde::{Deserialize, Deserializer, Serializer};
 
 /// Serialise a [`Timestamp`] as `%Y-%m-%dT%H:%M:%SZ`. Wired by serde's
-/// `with = "specify_error::serde_rfc3339"` attribute.
+/// `with = "error::serde_rfc3339"` attribute.
 ///
 /// # Errors
 ///

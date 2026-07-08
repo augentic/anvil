@@ -13,10 +13,10 @@ use std::path::{Path, PathBuf};
 pub use adapter_uri::{
     AdapterPackage, adapter_name_from_value, adapter_ref_from_value, recognize_package,
 };
+use artifacts::atomic::bytes_write;
 pub use cache::{CodexMeta, ComponentMeta, codex_cache_root};
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
-use specify_model::atomic::bytes_write;
 
 use crate::adapter::PlatformsViolation;
 use crate::config::Layout;

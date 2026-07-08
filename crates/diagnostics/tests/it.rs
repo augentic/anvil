@@ -1,4 +1,4 @@
-//! Consolidated integration binary for `specify-diagnostics`.
+//! Consolidated integration binary for `diagnostics`.
 //!
 //! Pure-logic coverage for the neutral diagnostic substrate: the `v1`
 //! fingerprint algorithm (determinism plus which fields enter the

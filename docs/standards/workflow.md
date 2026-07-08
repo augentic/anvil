@@ -47,7 +47,7 @@ Adapter names remain unique across axes — one component exports exactly one ax
 
 ## Discovery handshake
 
-`survey` writes `## Lead inventory` blocks — one **raw, unmerged** lead per source, each identified by its `(source, lead)` pair (`survey` stamps `source` from the surveyed source). A re-survey of one source replaces only that source's blocks by `(source, lead)`; the same `lead` may appear under different source keys. The operator stamps `approved`; `extract` resolves `slices[].sources[].lead` against the canonical `lead` id within the binding's `source`. Cross-source unification is deferred to plan-time reconciliation. Schema at [`schemas/discovery/lead.schema.json`](../../schemas/discovery/lead.schema.json); parser at [`crates/model/src/discovery/document.rs`](../../crates/model/src/discovery/document.rs).
+`survey` writes `## Lead inventory` blocks — one **raw, unmerged** lead per source, each identified by its `(source, lead)` pair (`survey` stamps `source` from the surveyed source). A re-survey of one source replaces only that source's blocks by `(source, lead)`; the same `lead` may appear under different source keys. The operator stamps `approved`; `extract` resolves `slices[].sources[].lead` against the canonical `lead` id within the binding's `source`. Cross-source unification is deferred to plan-time reconciliation. Schema at [`schemas/discovery/lead.schema.json`](../../schemas/discovery/lead.schema.json); parser at [`crates/artifacts/src/discovery/document.rs`](../../crates/artifacts/src/discovery/document.rs).
 
 ## The Plan
 
@@ -71,7 +71,7 @@ The closed `Divergence` enum (`none | likely | accepted | rejected`) records a r
 
 ## Authority hierarchy
 
-Closed enum `intent > documentation > behaviour`. v1 resolution order per `(source, kind)`: per-slice `authority-override` → Evidence document-level `authority:` → tie at the top class is a `conflict` (the per-Evidence per-kind override is deferred — see §"D2 — Per-kind authority on Evidence (deferred)"). The kernel resolves authority **after** the synthesis response returns and projects winners/`status` from it (§"Slice synthesis"). Closed enums at [`crates/model/src/evidence/authority.rs`](../../crates/model/src/evidence/authority.rs); the production resolver at [`crates/workflow-lib/src/slice/synthesis/authority.rs`](../../crates/workflow-lib/src/slice/synthesis/authority.rs).
+Closed enum `intent > documentation > behaviour`. v1 resolution order per `(source, kind)`: per-slice `authority-override` → Evidence document-level `authority:` → tie at the top class is a `conflict` (the per-Evidence per-kind override is deferred — see §"D2 — Per-kind authority on Evidence (deferred)"). The kernel resolves authority **after** the synthesis response returns and projects winners/`status` from it (§"Slice synthesis"). Closed enums at [`crates/artifacts/src/evidence/authority.rs`](../../crates/artifacts/src/evidence/authority.rs); the production resolver at [`crates/workflow-lib/src/slice/synthesis/authority.rs`](../../crates/workflow-lib/src/slice/synthesis/authority.rs).
 
 ## Execution model
 
@@ -79,7 +79,7 @@ Closed enum `intent > documentation > behaviour`. v1 resolution order per `(sour
 
 ## Refinement
 
-The guest `slice refine` orchestration runs `extract` per bound source and drives the synthesis kernel (§"Slice synthesis") to produce `proposal.md` / `spec.md` / `design.md` / `tasks.md` / `model.yaml` (provenance is carried inline in the single `model.yaml` artifact, projected on demand by `specify slice provenance`), and transitions the slice to `refined`. Validators live in [`crates/model/src/validate/`](../../crates/model/src/validate/) and [`crates/dispatch/src/commands/slice/validate.rs`](../../crates/dispatch/src/commands/slice/validate.rs).
+The guest `slice refine` orchestration runs `extract` per bound source and drives the synthesis kernel (§"Slice synthesis") to produce `proposal.md` / `spec.md` / `design.md` / `tasks.md` / `model.yaml` (provenance is carried inline in the single `model.yaml` artifact, projected on demand by `specify slice provenance`), and transitions the slice to `refined`. Validators live in [`crates/artifacts/src/validate/`](../../crates/artifacts/src/validate/) and [`crates/dispatch/src/commands/slice/validate.rs`](../../crates/dispatch/src/commands/slice/validate.rs).
 
 ## Slice synthesis
 
@@ -108,7 +108,7 @@ Per-source `extract` is agent-executed and never memoized: agent outputs are non
 
 ## Requirement block contract
 
-`spec.md` requirements carry `ID:` / `Sources:` / `Status:` metadata; the closed `RequirementStatus` enum is `agreed | unknown | conflict | divergence`. Parser at [`crates/model/src/spec/provenance.rs`](../../crates/model/src/spec/provenance.rs).
+`spec.md` requirements carry `ID:` / `Sources:` / `Status:` metadata; the closed `RequirementStatus` enum is `agreed | unknown | conflict | divergence`. Parser at [`crates/artifacts/src/spec/provenance.rs`](../../crates/artifacts/src/spec/provenance.rs).
 
 ## Wire format
 
@@ -144,15 +144,15 @@ The `specify adapter` namespace carries adapter *authoring* verbs only — `spec
 
 ## Note to the implementing agent
 
-Touching `Slice.target`, `SliceSourceBinding`, `Divergence`, `crates/model/src/spec/provenance.rs`, `crates/workflow-lib/src/adapter/`, `crates/workflow-lib/src/journal.rs`, `crates/workflow-lib/src/schema.rs`, the `$CAPABILITY_DIR` env var, or the `adapter--<axis>--<slug>` tool cache scope requires a repo-wide `rg` sweep across both the in-tree Rust workspace and the surrounding `augentic/specify` prose in the same PR — the contract spans both trees.
+Touching `Slice.target`, `SliceSourceBinding`, `Divergence`, `crates/artifacts/src/spec/provenance.rs`, `crates/workflow-lib/src/adapter/`, `crates/workflow-lib/src/journal.rs`, `crates/workflow-lib/src/schema.rs`, the `$CAPABILITY_DIR` env var, or the `adapter--<axis>--<slug>` tool cache scope requires a repo-wide `rg` sweep across both the in-tree Rust workspace and the surrounding `augentic/specify` prose in the same PR — the contract spans both trees.
 
 ## D1 — Runtime source adapter (`captures`)
 
-`captures` emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`. Schema entry in [`schemas/evidence.schema.json`](../../schemas/evidence.schema.json); claim type at [`crates/model/src/evidence/claim/example.rs`](../../crates/model/src/evidence/claim/example.rs).
+`captures` emits `kind: example` Evidence claims with `replay-digest: sha256:…` anchors and default `authority: behaviour`. Schema entry in [`schemas/evidence.schema.json`](../../schemas/evidence.schema.json); claim type at [`crates/artifacts/src/evidence/claim/example.rs`](../../crates/artifacts/src/evidence/claim/example.rs).
 
 ## D2 — Per-kind authority on Evidence (deferred)
 
-A per-Evidence `authority-overrides` map keyed by claim kind is **deferred to a future RFC**. v1 resolves authority at document level via the Evidence `authority:` field, with the per-slice `authority-override` on `plan.yaml` as the sole override surface (D3). See [`DECISIONS.md` §"Authority: document-level plus one override (v1)"](../../DECISIONS.md#authority-document-level-plus-one-override-v1) and [`crates/model/src/evidence/authority.rs`](../../crates/model/src/evidence/authority.rs).
+A per-Evidence `authority-overrides` map keyed by claim kind is **deferred to a future RFC**. v1 resolves authority at document level via the Evidence `authority:` field, with the per-slice `authority-override` on `plan.yaml` as the sole override surface (D3). See [`DECISIONS.md` §"Authority: document-level plus one override (v1)"](../../DECISIONS.md#authority-document-level-plus-one-override-v1) and [`crates/artifacts/src/evidence/authority.rs`](../../crates/artifacts/src/evidence/authority.rs).
 
 ## D3 — Per-slice authority on `plan.yaml`
 

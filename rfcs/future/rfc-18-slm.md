@@ -178,6 +178,6 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 ## References
 
 - RFC-28 — [DECISIONS.md §Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
-- RFC-32 — [DECISIONS.md §Standards layer split](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
+- RFC-32 — [DECISIONS.md §Standards layer split](../../DECISIONS.md#standards-layer-split-into-standards-and-schema)
 - RFC-10 / RFC-13
 - [`adapters/targets/omnia/prose/briefs/build/crate.md`](../../adapters/targets/omnia/prose/briefs/build/crate.md)

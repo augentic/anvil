@@ -1,5 +1,5 @@
 [package]
-name = "specify-guest-model"
+name = "guest-model"
 description = "Local Model capability trait for the Specify workflow guest: WASI-backed on wasm32, mockable off it"
 version.workspace = true
 edition.workspace = true

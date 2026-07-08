@@ -28,9 +28,9 @@
 
 use std::path::Path;
 
+use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use specify_error::{Error, Result};
 
 use crate::registry::topology::Surface;
 use crate::slice::model::SliceModel;

@@ -4,9 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
-use specify_error::Error;
 
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
@@ -162,7 +162,7 @@ pub struct BaselineConflict {
     /// Slice's `defined_at` stamp, copied verbatim from `metadata.yaml`.
     pub defined_at: String,
     /// Baseline file modification time.
-    #[serde(with = "specify_error::serde_rfc3339")]
+    #[serde(with = "error::serde_rfc3339")]
     pub baseline_modified_at: Timestamp,
 }
 

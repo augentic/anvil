@@ -1,11 +1,11 @@
 //! The workflow guest: the deployment's only `wasi:cli/run` exporter.
 //!
 //! Argv arrives through wasip3 and parses through the shared
-//! `specify-dispatch` grammar — the exact clap tree the native binary
+//! `dispatch` grammar — the exact clap tree the native binary
 //! parses, so every shared verb is argv- and envelope-compatible with
-//! native. `specify_dispatch::guest::route` runs pure workflow verbs
+//! native. `dispatch::guest::route` runs pure workflow verbs
 //! in-process; the four collapsed orchestrator verbs come back as a
-//! `specify_dispatch::guest::Orchestration` and `verbs::drive` runs
+//! `dispatch::guest::Orchestration` and `verbs::drive` runs
 //! them against `provider::Provider` — the WIT-backed
 //! `Model + SourceSeam + TargetSeam` implementation over this world's
 //! `source` / `target` imports (satisfied at runtime by Omnia's
@@ -46,8 +46,8 @@ mod bindings {
 mod provider;
 mod verbs;
 
-use specify_dispatch::guest::{self, Route};
-use specify_dispatch::output::Exit;
+use dispatch::guest::{self, Route};
+use dispatch::output::Exit;
 
 struct CliGuest;
 wasip3::cli::command::export!(CliGuest);
@@ -57,9 +57,7 @@ impl wasip3::exports::cli::run::Guest for CliGuest {
         // Adapter describe dispatch routes through this world's WIT
         // imports, so the resolvers work in-guest against the
         // read-only store and cache mounts.
-        specify_workflow_lib::adapter::describe::register_describe_runner(
-            provider::describe_runner,
-        );
+        workflow_lib::adapter::describe::register_describe_runner(provider::describe_runner);
         // argv verbatim as the host provides it, argv[0] included —
         // the shared grammar sees exactly what native clap sees.
         let argv = wasip3::cli::environment::get_arguments();

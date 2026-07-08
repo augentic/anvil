@@ -37,8 +37,8 @@
 //! rephrasing a title cannot duplicate diagnostics for the same
 //! underlying issue.
 
+use schema::digest::sha256_hex;
 use serde_json::Value;
-use specify_schema::digest::sha256_hex;
 
 use crate::diagnostic::{Diagnostic, FindingEvidence, FindingLocation};
 
@@ -92,7 +92,7 @@ pub fn verify_fingerprint(diagnostic: &Diagnostic) -> bool {
 ///
 /// ```
 /// use serde_json::json;
-/// use specify_diagnostics::canonical_json;
+/// use diagnostics::canonical_json;
 ///
 /// let value = json!({"b": 1, "a": [2, 1]});
 /// assert_eq!(canonical_json(&value), r#"{"a":[2,1],"b":1}"#);

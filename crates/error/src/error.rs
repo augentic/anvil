@@ -99,7 +99,7 @@ pub enum Error {
     /// kebab-case suffix that, prefixed with `filesystem-`, becomes the
     /// JSON envelope's `error` discriminant (e.g. `filesystem-readdir`).
     /// Canonical call sites: the slice-merge engine
-    /// (`specify_workflow_lib::merge::slice::{read, write}`), where every
+    /// (`workflow_lib::merge::slice::{read, write}`), where every
     /// recursive directory walk and file copy needs a stable, testable
     /// discriminant for operator follow-up.
     #[error("filesystem-{op}: {} ({source})", path.display())]
@@ -198,7 +198,7 @@ impl Error {
     /// operational signal (malformed YAML, unknown slice name, …)
     /// rather than a set of findings.
     ///
-    /// [`Diagnostic`]: https://docs.rs/specify-diagnostics
+    /// [`Diagnostic`]: https://docs.rs/diagnostics
     #[must_use]
     pub fn validation_failed(
         code: impl Into<Cow<'static, str>>, rule: impl Into<String>, detail: impl Into<String>,

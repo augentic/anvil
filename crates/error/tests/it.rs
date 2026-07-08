@@ -1,4 +1,4 @@
-//! Consolidated integration binary for `specify-error`.
+//! Consolidated integration binary for `error`.
 //!
 //! Pure-logic edge matrices that are CLI-unreachable: the kebab-case
 //! validators, the `Error` discriminant/`Display` contract, the

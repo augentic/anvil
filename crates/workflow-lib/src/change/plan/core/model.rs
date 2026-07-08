@@ -1,14 +1,14 @@
 //! Type definitions for `plan.yaml` (`Plan`, `Entry`, `EntryPatch`,
 //! `Status`, `Lifecycle`). Validation findings are emitted on the
-//! neutral [`specify_diagnostics::Diagnostic`] currency by the sibling
+//! neutral [`diagnostics::Diagnostic`] currency by the sibling
 //! `validate` / `doctor` modules. Behaviour lives in the sibling
 //! submodules.
 
 use std::collections::BTreeMap;
 use std::fmt;
 
+use artifacts::evidence::ClaimKind;
 use serde::{Deserialize, Serialize};
-use specify_model::evidence::ClaimKind;
 
 use crate::name::{PlanName, SliceName};
 
@@ -363,7 +363,7 @@ impl TargetRef {
     pub fn parse(input: &str) -> Result<Self, TargetRefParseError> {
         let (name, version_part) =
             input.split_once('@').ok_or_else(|| TargetRefParseError::new(input))?;
-        if !specify_error::is_kebab_leading_alpha(name) {
+        if !error::is_kebab_leading_alpha(name) {
             return Err(TargetRefParseError::new(input));
         }
         let version =

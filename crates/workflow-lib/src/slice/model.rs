@@ -15,13 +15,13 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use artifacts::spec::provenance::RequirementStatus;
+use error::{Error, Result};
 use jiff::Timestamp;
+use schema::{ValidationStatus, join_details};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use specify_error::{Error, Result};
-use specify_model::evidence::{AuthorityClass, ClaimKind};
-use specify_model::spec::provenance::RequirementStatus;
-use specify_schema::{ValidationStatus, join_details};
 
 use crate::schema::{SLICE_MODEL_JSON_SCHEMA, evidence_yaml_paths, validate_value};
 use crate::slice::provenance::{

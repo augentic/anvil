@@ -9,8 +9,8 @@
 //! slot — gets its own collision-free cache that survives `git clean`
 //! and never pollutes the working tree.
 //!
-//! Lives on the `specify-schema` leaf so both `specify-workflow` (which
-//! populates the cache at init/sync) and `specify-standards` (which
+//! Lives on the `schema` leaf so both `workflow` (which
+//! populates the cache at init/sync) and `standards` (which
 //! reads it during rule resolution) resolve the same root without a
 //! cross-layer dependency.
 //!

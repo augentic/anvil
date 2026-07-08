@@ -22,12 +22,12 @@
 
 use std::collections::BTreeMap;
 
+use artifacts::atomic::bytes_write;
+use artifacts::discovery::Discovery;
+use diagnostics::blocking_present;
+use error::{Error, is_kebab};
+use guest_model::Model;
 use jiff::Timestamp;
-use specify_diagnostics::blocking_present;
-use specify_error::{Error, is_kebab};
-use specify_guest_model::Model;
-use specify_model::atomic::bytes_write;
-use specify_model::discovery::Discovery;
 
 use super::SurveyedSource;
 use crate::change::{

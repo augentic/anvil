@@ -161,7 +161,7 @@ fn collect_opted_scenarios(root: &Path) -> Vec<ScenarioFile> {
 /// `scenario.schema.json` (an unparseable block validates as empty and
 /// fails the schema's required fields).
 fn check_schema(opted: &[ScenarioFile], findings: &mut Vec<Finding>) {
-    let validator = match specify_schema::cached_validator(specify_schema::SCENARIO_JSON_SCHEMA) {
+    let validator = match schema::cached_validator(schema::SCENARIO_JSON_SCHEMA) {
         Ok(validator) => validator,
         Err(error) => {
             findings.push(Finding::new(

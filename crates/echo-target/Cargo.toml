@@ -1,5 +1,5 @@
 [package]
-name = "specify-echo-target"
+name = "echo-target"
 description = "Echo target-adapter WASI guest component for the Specify Omnia runtime"
 version.workspace = true
 edition.workspace = true

@@ -8,7 +8,7 @@
 //! Guest-owned orchestrator verbs (`source survey`/`extract`,
 //! `slice refine`/`build`, `slice merge run`, `plan author`/`execute`)
 //! carry only their clap surface here — the workflow guest drives the
-//! matching `specify_workflow_lib::orchestrate` entry points.
+//! matching `workflow_lib::orchestrate` entry points.
 
 pub mod adapters;
 pub mod archive;
@@ -26,14 +26,14 @@ pub mod workspace;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use serde::Serialize;
-use specify_diagnostics::{
+use diagnostics::{
     Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, blocking_present,
     renumber,
 };
-use specify_error::Result;
-use specify_workflow_lib::adapter::{Axis, SourceAdapter, TargetAdapter};
-use specify_workflow_lib::init::adapter_ref_from_value;
+use error::Result;
+use serde::Serialize;
+use workflow_lib::adapter::{Axis, SourceAdapter, TargetAdapter};
+use workflow_lib::init::adapter_ref_from_value;
 
 use crate::cli::Format;
 use crate::commands::journal::cli::JournalAction;
@@ -56,7 +56,7 @@ pub fn dispatch_source(format: Format, _plan_dir: Option<PathBuf>, action: Sourc
         }
         SourceAction::Survey { .. } => report(
             format,
-            &specify_error::Error::Argument {
+            &error::Error::Argument {
                 flag: "<command>",
                 detail: "`specify source survey` dispatches outside the shared verb table"
                     .to_string(),
@@ -64,7 +64,7 @@ pub fn dispatch_source(format: Format, _plan_dir: Option<PathBuf>, action: Sourc
         ),
         SourceAction::Extract { .. } => report(
             format,
-            &specify_error::Error::Argument {
+            &error::Error::Argument {
                 flag: "<command>",
                 detail: "`specify source extract` dispatches outside the shared verb table"
                     .to_string(),

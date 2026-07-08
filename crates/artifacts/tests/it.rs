@@ -1,9 +1,9 @@
-//! Consolidated integration binary for `specify-model`.
+//! Consolidated integration binary for `artifacts`.
 //!
 //! One binary per crate: each `tests/<area>.rs` is pulled in here as a
 //! `#[path]` submodule so the crate-under-test links exactly once. The
 //! parser edge-matrices (`spec`, `task`, `discovery`, `decision`,
-//! `evidence`) and the atomic writer exercise `specify-model`'s public
+//! `evidence`) and the atomic writer exercise `artifacts`'s public
 //! API. See [docs/standards/testing.md](../../../docs/standards/testing.md).
 
 #[path = "atomic.rs"]

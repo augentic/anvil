@@ -1,6 +1,6 @@
-use specify_error::Error;
-use specify_model::discovery::document::*;
-use specify_model::discovery::lead::Lead;
+use artifacts::discovery::document::*;
+use artifacts::discovery::lead::Lead;
+use error::Error;
 
 const SAMPLE: &str = "\
 # Discovery

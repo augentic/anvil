@@ -19,9 +19,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use artifacts::spec::provenance::RequirementStatus;
 use serde::{Deserialize, Serialize};
-use specify_model::evidence::{AuthorityClass, ClaimKind};
-use specify_model::spec::provenance::RequirementStatus;
 
 use crate::slice::provenance::ProvenanceResolution;
 

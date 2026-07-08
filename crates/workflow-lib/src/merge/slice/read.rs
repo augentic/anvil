@@ -5,9 +5,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use artifacts::spec::{REQ_HEADING, has_delta_headers};
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
-use specify_model::spec::{REQ_HEADING, has_delta_headers};
 
 use super::parse::system_time_to_utc;
 use super::{BaselineConflict, MergePreviewEntry, OpaqueAction, OpaquePreviewEntry};

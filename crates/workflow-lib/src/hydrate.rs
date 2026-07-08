@@ -25,9 +25,9 @@ pub mod lock;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+use error::Error;
 pub use lock::AdaptersLock;
-use specify_error::Error;
-use specify_schema::cache::{adapter_store_entry, file_content_digest, read_store_meta};
+use schema::cache::{adapter_store_entry, file_content_digest, read_store_meta};
 
 use crate::change::Plan;
 use crate::config::{Layout, ProjectConfig};
@@ -284,7 +284,7 @@ pub fn verify_resolved(
     name: &str, version: &semver::Version, path: PathBuf,
 ) -> Result<ResolvedAdapter, Error> {
     let version_str = version.to_string();
-    if let Err(mismatch) = specify_schema::cache::verify_store_entry(name, &version_str) {
+    if let Err(mismatch) = schema::cache::verify_store_entry(name, &version_str) {
         return Err(Error::Diag {
             code: "adapter-digest-mismatch",
             detail: format!(

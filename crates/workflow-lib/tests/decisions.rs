@@ -1,5 +1,5 @@
 //! Integration coverage for the Decision Record promotion kernel
-//! (`specify_workflow_lib::decisions::{promote, read_baseline}`). Re-homed from the
+//! (`workflow_lib::decisions::{promote, read_baseline}`). Re-homed from the
 //! former `decisions/tests.rs` unit module: every case drives the public
 //! `promote` entry point over a real slice/baseline tree. The private
 //! `dec_number` / `is_dec_ref` parser keeps its in-`src` unit test (no public
@@ -8,11 +8,11 @@
 use std::fs;
 use std::path::Path;
 
+use artifacts::decision::DecisionStatus;
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
-use specify_model::decision::DecisionStatus;
-use specify_workflow_lib::config::Layout;
-use specify_workflow_lib::decisions::{BaselineDecision, promote, read_baseline};
+use workflow_lib::config::Layout;
+use workflow_lib::decisions::{BaselineDecision, promote, read_baseline};
 
 fn ts() -> Timestamp {
     "2026-06-02T00:00:00Z".parse().expect("timestamp")

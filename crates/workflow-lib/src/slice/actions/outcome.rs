@@ -2,8 +2,8 @@
 
 use std::path::Path;
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 use crate::slice::{Outcome, OutcomeKind, SliceMetadata, TargetOperation};
 

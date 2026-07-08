@@ -4,7 +4,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use specify_error::is_kebab;
+use error::is_kebab;
 
 use super::{Diagnostic, git_output, git_output_optional};
 use crate::registry::catalog::RegistryProject;

@@ -12,7 +12,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 
-use specify_error::{Error, Result};
+use error::{Error, Result};
 
 use crate::adapter::BuildInputDeclaration;
 use crate::slice::build::wire::{BUILD_VERSION, BuildArtifacts, BuildInputs, BuildRequest};

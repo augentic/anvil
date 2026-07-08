@@ -1,11 +1,11 @@
 [package]
-name = "specify-model"
+name = "artifacts"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify model crate: artifact types and parsers (spec, task, evidence, discovery) plus the shared atomic writer"
+description = "Artifact types and parsers (spec, task, evidence, discovery) plus the shared atomic writer"
 categories = ["development-tools"]
 keywords = ["specify", "model", "workflow"]
 readme = "../../README.md"
@@ -22,8 +22,8 @@ regex.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
-specify-diagnostics.workspace = true
-specify-error.workspace = true
+diagnostics.workspace = true
+error.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 

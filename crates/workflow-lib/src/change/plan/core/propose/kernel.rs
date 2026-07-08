@@ -5,12 +5,12 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use petgraph::algo::tarjan_scc;
-use specify_diagnostics::{
+use artifacts::discovery::Discovery;
+use diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, blocking, fingerprint,
 };
-use specify_error::{Error, Result, is_kebab};
-use specify_model::discovery::Discovery;
+use error::{Error, Result, is_kebab};
+use petgraph::algo::tarjan_scc;
 
 use super::super::model::{
     Entry, Plan, SliceAuthorityOverride, SliceSourceBinding, Status, TargetRef,

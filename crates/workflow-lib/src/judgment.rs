@@ -10,8 +10,8 @@ pub mod propose;
 pub mod prose;
 pub mod synthesize;
 
-use specify_error::Error;
-use specify_guest_model::{Format, Message, Model, Reply, Request, Role, SchemaFormat};
+use error::Error;
+use guest_model::{Format, Message, Model, Reply, Request, Role, SchemaFormat};
 
 /// Maximum repair attempts after the first answer — a tail failure
 /// re-prompts with the findings inlined at most this many times before
@@ -83,7 +83,7 @@ async fn create<P: Model>(
 /// Map a typed model failure onto the workflow error currency. One code
 /// covers every variant — the variant detail rides in the message and
 /// no caller recovers differently per variant.
-fn model_error(schema_name: &str, err: &specify_guest_model::Error) -> Error {
+fn model_error(schema_name: &str, err: &guest_model::Error) -> Error {
     Error::Diag {
         code: "judgment-model-failed",
         detail: format!("{schema_name} judgment call failed: {err}"),

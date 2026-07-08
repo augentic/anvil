@@ -23,10 +23,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use error::{Error, Result};
+use schema::{MARKETPLACE_JSON_SCHEMA, ValidationStatus, join_details, validate_value};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use specify_error::{Error, Result};
-use specify_schema::{MARKETPLACE_JSON_SCHEMA, ValidationStatus, join_details, validate_value};
 
 /// Relative path Cursor stores its plugin cache under, from `$CURSOR_HOME`.
 const CACHE_SEGMENTS: &str = "plugins/cache";

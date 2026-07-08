@@ -2,13 +2,13 @@
 //! artifacts.
 //!
 //! The raw JSON-Schema plumbing and embedded constants live in
-//! [`specify_schema`] per [DECISIONS.md § Standards layer split into `specify-standards` and `specify-schema`](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema); this module holds
+//! [`schema`] per [DECISIONS.md § Standards layer split into `standards` and `schema`](../../DECISIONS.md#standards-layer-split-into-standards-and-schema); this module holds
 //! the workflow-aware wrappers — they import [`crate::change::Plan`],
 //! aggregate per-file findings into a single
-//! [`specify_error::Error::Validation`] payload, and pin the wire
+//! [`error::Error::Validation`] payload, and pin the wire
 //! `rule_id` strings the CLI surfaces.
 //!
-//! Schemas are embedded by [`specify_schema::constants`] via
+//! Schemas are embedded by [`schema::constants`] via
 //! `include_str!`. The validators return [`Error::Validation`] on a
 //! schema mismatch so the CLI exits with code 2
 //! (`Exit::ValidationFailed` in the binary crate).
@@ -18,18 +18,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
+use artifacts::discovery::Lead;
+use error::{Error, Result};
 use jsonschema::{Registry, Resource};
-use serde_json::Value as JsonValue;
-use specify_error::{Error, Result};
-use specify_model::discovery::Lead;
-pub(crate) use specify_schema::{
+pub(crate) use schema::{
     BUILD_REPORT_JSON_SCHEMA, BUILD_REQUEST_JSON_SCHEMA, COMPONENTS_JSON_SCHEMA,
     DIAGNOSTIC_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, LEAD_JSON_SCHEMA, PARTS_JSON_SCHEMA,
     PLAN_JSON_SCHEMA, PROPOSAL_JSON_SCHEMA, PROVENANCE_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA,
     SYNTHESIS_JSON_SCHEMA, TOPOLOGY_LOCK_JSON_SCHEMA, read_yaml_as_json, validate_serialisable,
     validate_value, validate_value_cached,
 };
-use specify_schema::{ValidationStatus, ValidationSummary, join_details};
+use schema::{ValidationStatus, ValidationSummary, join_details};
+use serde_json::Value as JsonValue;
 
 use crate::change::Plan;
 
@@ -430,7 +430,7 @@ pub fn validate_evidence(content: &str, source_path: &Path) -> Result<()> {
 /// DECISIONS.md §"Source operations"): the
 /// `survey` runner parses the agent- or tool-produced lead set, runs it
 /// through this check, and only calls
-/// [`crate::change`]-side [`specify_model::discovery::Discovery::merge_survey`]
+/// [`crate::change`]-side [`artifacts::discovery::Discovery::merge_survey`]
 /// on success — a schema failure leaves `discovery.md` untouched.
 ///
 /// Findings across every lead are aggregated into a single

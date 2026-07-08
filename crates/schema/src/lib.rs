@@ -1,13 +1,13 @@
 //! Embedded JSON Schemas and the JSON-Schema validation plumbing
-//! shared between `specify-workflow` (workflow artifacts) and
-//! `specify-standards` (the standards layer).
+//! shared between `workflow` (workflow artifacts) and
+//! `standards` (the standards layer).
 //!
 //! Schemas are bundled at compile time via `include_str!` so the binary
 //! carries them with no runtime filesystem lookup. The helpers in
 //! [`validate`] convert `jsonschema` validator output into the
 //! operational [`validate::ValidationSummary`] shape that callers fold
-//! into a payload-free [`specify_error::Error::Validation`] (exit code
-//! 2) or [`specify_error::Error::Diag`] (exit code 1) as their policy
+//! into a payload-free [`error::Error::Validation`] (exit code
+//! 2) or [`error::Error::Diag`] (exit code 1) as their policy
 //! dictates.
 
 pub mod answers;

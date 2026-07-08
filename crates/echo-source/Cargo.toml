@@ -1,5 +1,5 @@
 [package]
-name = "specify-echo-source"
+name = "echo-source"
 description = "Echo source-adapter WASI guest component for the Specify Omnia runtime"
 version.workspace = true
 edition.workspace = true

@@ -56,7 +56,7 @@ impl Project {
     }
 
     fn cache_dir(&self) -> PathBuf {
-        specify_schema::cache::project_cache_dir(&self.root)
+        schema::cache::project_cache_dir(&self.root)
     }
 }
 
@@ -68,7 +68,7 @@ impl Project {
 fn manifest(mount: &Path) -> Result<TempManifest> {
     let workflow = common::guest_wasm(WORKFLOW_WASM);
     let echo = common::guest_wasm(ECHO_WASM);
-    let cache = specify_schema::cache::project_cache_dir(mount);
+    let cache = schema::cache::project_cache_dir(mount);
     fs::create_dir_all(&cache)?;
     temp_manifest(&format!(
         "[[guest]]\n\
@@ -94,7 +94,7 @@ fn manifest(mount: &Path) -> Result<TempManifest> {
         workflow = workflow.display(),
         echo = echo.display(),
         mount = mount.display(),
-        cache_name = specify_schema::cache::GUEST_CACHE_MOUNT,
+        cache_name = schema::cache::GUEST_CACHE_MOUNT,
         cache = cache.display(),
     ))
 }
@@ -221,7 +221,7 @@ async fn archive_prune_requires_bound() -> Result<()> {
 async fn rules_export_reads_cache_mount() -> Result<()> {
     let project = Project::initialised();
     let now = "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses");
-    specify_workflow_lib::init::sync_codex(&project.root, now).expect("sync codex");
+    workflow_lib::init::sync_codex(&project.root, now).expect("sync codex");
 
     let status =
         run(&project.root, &["rules", "export", "--target", "demo", "--format", "json"]).await?;
@@ -279,7 +279,7 @@ async fn scaffold_regular() -> Result<()> {
     fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
     let component = dev_dir.join("demo.wasm");
     fs::write(&component, b"\0asm-component").expect("stage component");
-    let digest = specify_schema::cache::file_content_digest(&component);
+    let digest = schema::cache::file_content_digest(&component);
     fs::write(
         dev_dir.join("demo.wasm.describe.json"),
         format!("{{ \"digest\": \"{digest}\", \"manifest\": {{}} }}"),
@@ -312,7 +312,7 @@ fn completions_matches_native() -> Result<()> {
     let manifest = manifest(&project.root)?;
 
     let port = std::net::TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
-    let output = assert_cmd::Command::cargo_bin("specify-runtime-replay")?
+    let output = assert_cmd::Command::cargo_bin("runtime-replay")?
         .current_dir(&engine)
         .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
         .env_remove("RUST_LOG")
@@ -328,7 +328,7 @@ fn completions_matches_native() -> Result<()> {
     );
 
     let mut native = Vec::new();
-    let mut cmd = <specify_dispatch::cli::Cli as clap::CommandFactory>::command();
+    let mut cmd = <dispatch::cli::Cli as clap::CommandFactory>::command();
     clap_complete::generate(clap_complete::Shell::Zsh, &mut cmd, "specify", &mut native);
     assert!(!native.is_empty(), "the native grammar renders a script");
     assert_eq!(

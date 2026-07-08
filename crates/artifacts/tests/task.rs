@@ -1,5 +1,5 @@
-use specify_error::Error;
-use specify_model::task::*;
+use artifacts::task::*;
+use error::Error;
 
 // ---------------------------------------------------------------------------
 // Test 1: happy path — two groups, four tasks, mixed completion.

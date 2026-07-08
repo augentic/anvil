@@ -2,12 +2,12 @@
 //! the omnia `artifact_classes` synthesiser shared by `slice merge` and
 //! `slice touched-specs`.
 
-use specify_error::{Error, Result};
+use error::{Error, Result};
 /// Re-exported so existing dispatch and guest callers keep one import
-/// path while the synthesiser itself lives in `specify-workflow`
+/// path while the synthesiser itself lives in `workflow`
 /// (the guest refine/execute orchestrators resolve classes in-crate).
-pub use specify_workflow_lib::merge::artifact_classes;
-use specify_workflow_lib::slice::LifecycleStatus;
+pub use workflow_lib::merge::artifact_classes;
+use workflow_lib::slice::LifecycleStatus;
 
 pub mod cli;
 mod lifecycle;
@@ -43,7 +43,7 @@ pub fn run(ctx: &Ctx, action: SliceAction) -> Result<()> {
         // guest-owned collapsed orchestrations peeled off by both
         // dispatchers before this table (the native triage routes them
         // to the guest leg; the guest router routes them to
-        // `specify_workflow_lib::orchestrate`). The defensive arms keep the
+        // `workflow_lib::orchestrate`). The defensive arms keep the
         // match exhaustive and never collapse a real run to a
         // misleading success.
         SliceAction::Build { .. } => Err(Error::Argument {

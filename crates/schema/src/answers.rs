@@ -36,7 +36,7 @@ pub fn leads() -> Value {
         "$id": format!("{ANSWERS_ID_BASE}/leads.schema.json"),
         "title": "Specify survey answer",
         "description": "Generated judgment-answer schema — derived from \
-            schemas/discovery/lead.schema.json by specify-schema's answer \
+            schemas/discovery/lead.schema.json by schema's answer \
             derivation; do not edit. Validates the schema-gated answer to a \
             source adapter's survey operation: an object carrying `leads[]`, \
             each item the canonical lead shape minus the envelope `source` \
@@ -69,7 +69,7 @@ pub fn evidence() -> Value {
         "description",
         json!(
             "Generated judgment-answer schema — derived from \
-             schemas/evidence.schema.json by specify-schema's answer \
+             schemas/evidence.schema.json by schema's answer \
              derivation; do not edit. Validates the schema-gated answer to a \
              source adapter's extract operation: the canonical Evidence shape \
              minus the envelope `lead` key (the extract call names the lead)."
@@ -102,7 +102,7 @@ pub fn report() -> Value {
             "Generated judgment-answer schema — derived from \
              schemas/target/build-report.schema.json (with \
              schemas/diagnostics/diagnostic.schema.json inlined) by \
-             specify-schema's answer derivation; do not edit. Validates the \
+             schema's answer derivation; do not edit. Validates the \
              schema-gated answer to a target adapter's build or merge \
              operation: the canonical report shape minus the envelope keys \
              (`version`, `slice`, `target`) the caller already knows."
@@ -195,7 +195,7 @@ pub fn proposal() -> Value {
         "description".to_string(),
         json!(
             "Generated judgment-answer schema — derived from \
-             schemas/discovery/proposal.schema.json by specify-schema's answer \
+             schemas/discovery/proposal.schema.json by schema's answer \
              derivation; do not edit. Validates the schema-gated answer to the \
              plan-time lead-reconciliation judgment: the canonical `kind: \
              response` envelope arm the guest `plan author` orchestration \
@@ -232,7 +232,7 @@ pub fn synthesis() -> Value {
         json!(
             "Generated judgment-answer schema — derived from \
              schemas/slice/synthesis.schema.json (with \
-             schemas/slice/model.schema.json inlined) by specify-schema's \
+             schemas/slice/model.schema.json inlined) by schema's \
              answer derivation; do not edit. Validates the schema-gated \
              answer to the slice-synthesis judgment: the canonical `kind: \
              response` envelope the synthesis kernel projects and persists."

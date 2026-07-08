@@ -36,7 +36,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// < Suggestion < Optional`.
 ///
 /// ```
-/// use specify_diagnostics::Severity;
+/// use diagnostics::Severity;
 ///
 /// assert!(Severity::Critical < Severity::Suggestion);
 /// ```
@@ -384,7 +384,7 @@ impl Diagnostic {
     /// the default shape for a structural workflow invariant breach.
     ///
     /// ```
-    /// use specify_diagnostics::{Artifact, Diagnostic, Severity};
+    /// use diagnostics::{Artifact, Diagnostic, Severity};
     ///
     /// let finding = Diagnostic::violation(
     ///     "spec.requirement-id-missing",
@@ -535,9 +535,7 @@ impl DiagnosticSummary {
 /// emitted by every check producer.
 ///
 /// ```
-/// use specify_diagnostics::{
-///     Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary, Format, render,
-/// };
+/// use diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary, Format, render};
 ///
 /// let findings = vec![Diagnostic::violation(
 ///     "spec.requirement-id-missing",

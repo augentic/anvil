@@ -4,7 +4,7 @@ The contract every CLI command handler obeys: how `Ctx` is constructed, how outp
 
 ## Ctx construction
 
-Handlers take `&Ctx`, whose module path `crate::runtime::context::Ctx` carries the noun. `Ctx` exposes the resolved project dir, layout, output format, and a few thin facade methods for handler ergonomics; everything else flows through workspace crates. `Layout<'a>` lives on `Ctx` rather than at call sites so path helpers stay anchored in `specify-workflow` — see [architecture.md §"Layout boundary"](./architecture.md#layout-boundary).
+Handlers take `&Ctx`, whose module path `crate::runtime::context::Ctx` carries the noun. `Ctx` exposes the resolved project dir, layout, output format, and a few thin facade methods for handler ergonomics; everything else flows through workspace crates. `Layout<'a>` lives on `Ctx` rather than at call sites so path helpers stay anchored in `workflow` — see [architecture.md §"Layout boundary"](./architecture.md#layout-boundary).
 
 ## Default handler signature
 
@@ -73,7 +73,7 @@ Never put domain logic in the binary. If a function needs unit tests, it belongs
 handlers — both clap arms in `src/runtime/commands.rs` dispatch to a single
 private `commands::resolve_adapter(format, axis, value, project_dir)`
 helper that takes a bare `Format` plus the project dir, switches on
-`axis` to invoke `specify_workflow_lib::adapter::SourceAdapter::resolve(name,
+`axis` to invoke `workflow_lib::adapter::SourceAdapter::resolve(name,
 project_dir)?` or `TargetAdapter::resolve(name, project_dir)?`, and
 emits a `ResolveBody { axis, name, resolved_path, location,
 operations, description }` via the direct `output::emit` path

@@ -13,8 +13,8 @@
 
 use std::collections::BTreeSet;
 
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};
-use specify_diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 // ---------------------------------------------------------------------------
 // Public data types
@@ -221,7 +221,7 @@ const STATUS_PREFIX: &str = "Status:";
 /// [`validate`].
 ///
 /// ```
-/// use specify_model::spec::provenance::parse_spec_md;
+/// use artifacts::spec::provenance::parse_spec_md;
 ///
 /// let spec = "### Requirement: User registration accepts valid email\n\n\
 ///             ID: REQ-001\nSources: [legacy-monolith]\nStatus: agreed\n\n\

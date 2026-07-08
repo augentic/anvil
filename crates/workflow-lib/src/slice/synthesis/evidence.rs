@@ -7,9 +7,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use error::{Error, Result};
 use serde_json::Value as JsonValue;
-use specify_error::{Error, Result};
-use specify_model::evidence::{AuthorityClass, ClaimKind};
 
 use crate::change::Entry;
 use crate::slice::synthesis::wire::SynthesisSourceInput;

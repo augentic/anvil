@@ -7,8 +7,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use specify_error::{Error, Result};
-use specify_model::discovery::Discovery;
+use artifacts::discovery::Discovery;
+use error::{Error, Result};
 
 use super::PROPOSAL_VERSION;
 use super::wire::{LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest};

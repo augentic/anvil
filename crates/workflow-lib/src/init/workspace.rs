@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use specify_error::{Error, is_kebab};
+use error::{Error, is_kebab};
 
 use crate::config::{Layout, ProjectConfig};
 use crate::init::cache::ComponentMeta;

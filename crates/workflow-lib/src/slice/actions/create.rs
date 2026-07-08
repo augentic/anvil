@@ -3,9 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
+use error::{Error, is_kebab};
 use jiff::Timestamp;
 use serde::Serialize;
-use specify_error::{Error, is_kebab};
 
 use crate::slice::{LifecycleStatus, SliceMetadata};
 

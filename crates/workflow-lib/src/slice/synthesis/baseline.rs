@@ -7,8 +7,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use specify_error::Error;
-use specify_model::spec::provenance::parse_spec_md;
+use artifacts::spec::provenance::parse_spec_md;
+use error::Error;
 
 use crate::slice::SpecKind;
 

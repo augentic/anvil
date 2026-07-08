@@ -36,13 +36,13 @@
 use std::path::Path;
 use std::{fs, io};
 
+use schema::{RULE_JSON_SCHEMA, ValidationStatus, validate_value};
 use serde_json::{Map as JsonMap, Value as JsonValue};
-use specify_schema::{RULE_JSON_SCHEMA, ValidationStatus, validate_value};
 
 use super::Rule;
 
 /// Canonical codex-rule frontmatter schema, sourced from
-/// [`specify_schema::RULE_JSON_SCHEMA`]. Per the standards-layer contract
+/// [`schema::RULE_JSON_SCHEMA`]. Per the standards-layer contract
 /// §"Eliminates the vendored codex-rule schema", that constant is the
 /// single embedded source of truth.
 const RULE_SCHEMA: &str = RULE_JSON_SCHEMA;
@@ -138,9 +138,9 @@ pub fn parse_rule_file(path: &Path) -> Result<Rule, ParseError> {
 /// callers see body content starting at column 0; everything else
 /// is verbatim.
 ///
-/// A sibling `Option`-returning copy lives at `specify-model`'s
-/// `decision::split_frontmatter`; the `specify-standards` ⊥
-/// `specify-model` dependency-direction invariant blocks one shared impl.
+/// A sibling `Option`-returning copy lives at `artifacts`'s
+/// `decision::split_frontmatter`; the `standards` ⊥
+/// `artifacts` dependency-direction invariant blocks one shared impl.
 fn split_frontmatter(content: &str) -> Result<(&str, &str), ParseError> {
     let rest = if let Some(rest) = content.strip_prefix("---\n") {
         rest

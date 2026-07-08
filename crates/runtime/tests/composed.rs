@@ -62,7 +62,7 @@ async fn usage_error_passthrough() -> Result<()> {
 // grammar's version line, proving argv forwarding (`-- --version`) through
 // the subprocess surface — and that the full N+1 manifest (workflow + the
 // eight release-built adapter components) composes. Targets the replay sibling
-// (`specify-runtime-replay`): the `specify` binary's cursor-bound guest
+// (`runtime-replay`): the `specify` binary's cursor-bound guest
 // leg requires `cursor-agent` on PATH at backend connect, which CI must
 // not.
 #[test]
@@ -84,7 +84,7 @@ fn binary_stdout() -> Result<()> {
     // An ephemeral port keeps the background HTTP trigger from colliding with
     // parallel test runs; command mode exits when the CLI guest finishes.
     let port = free_port()?;
-    let output = assert_cmd::Command::cargo_bin("specify-runtime-replay")?
+    let output = assert_cmd::Command::cargo_bin("runtime-replay")?
         .current_dir(&engine)
         .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
         .args(["run", "--config", "omnia.toml", "--", "--version"])

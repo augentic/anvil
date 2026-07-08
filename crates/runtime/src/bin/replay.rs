@@ -1,4 +1,4 @@
-//! `specify-runtime-replay` — the replay sibling of the `specify`
+//! `runtime-replay` — the replay sibling of the `specify`
 //! binary.
 //!
 //! The same `omnia::runtime!` command-mode macro, binding `WasiModel:

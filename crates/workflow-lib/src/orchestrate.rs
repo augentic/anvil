@@ -21,7 +21,7 @@ mod source;
 mod synthesize;
 mod target;
 
-use specify_error::Error;
+use error::Error;
 
 pub use self::author::{AuthorOutcome, author};
 pub use self::execute::{ExecuteOutcome, GuestMarker, PhaseRun, execute};

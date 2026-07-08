@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
 use crate::slice::{SliceMetadata, SpecKind, TouchedSpec};

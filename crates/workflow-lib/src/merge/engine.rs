@@ -3,11 +3,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use serde::Serialize;
-use specify_error::Error;
-use specify_model::spec::{
+use artifacts::spec::{
     DeltaSpec, REQ_HEADING, Rename, Requirement, has_delta_headers, parse_baseline, parse_delta,
 };
+use error::Error;
+use serde::Serialize;
 
 /// Result of a successful [`merge`] call.
 ///
@@ -81,7 +81,7 @@ pub enum MergeOperation {
 /// "new adapter": the baseline is being created from scratch. In that
 /// case:
 ///   * if the delta has **no** delta-section headers (per
-///     [`specify_model::spec::has_delta_headers`]), the delta text is returned
+///     [`artifacts::spec::has_delta_headers`]), the delta text is returned
 ///     verbatim and `operations` holds a single
 ///     [`MergeOperation::CreatedBaseline`] entry whose `requirement_count`
 ///     counts the `### Requirement:` blocks found in the delta body;

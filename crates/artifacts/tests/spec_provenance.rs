@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use specify_model::spec::provenance::*;
+use artifacts::spec::provenance::*;
 
 macro_rules! fixture {
     ($rel:literal) => {

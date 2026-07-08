@@ -10,8 +10,8 @@
 use std::path::PathBuf;
 
 use jsonschema::Validator;
+use schema::{EVIDENCE_JSON_SCHEMA, LEAD_JSON_SCHEMA, PLAN_JSON_SCHEMA, compile_schema};
 use serde_json::Value as JsonValue;
-use specify_schema::{EVIDENCE_JSON_SCHEMA, LEAD_JSON_SCHEMA, PLAN_JSON_SCHEMA, compile_schema};
 
 fn load(source: &str) -> Validator {
     compile_schema(source).expect("embedded schema compiles")

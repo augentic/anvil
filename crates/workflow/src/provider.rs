@@ -4,7 +4,7 @@
 //! world's `source` / `target` imports.
 //!
 //! The mapping layer between the WIT records and the seam DTOs lives
-//! here in full, so `specify-workflow-lib` and `specify-dispatch` stay
+//! here in full, so `workflow-lib` and `dispatch` stay
 //! wasm-clean. Two mappings are judgment-free but deliberately shaped:
 //!
 //! - **Claims** cross as raw JSON objects (the evidence schema leaves
@@ -25,16 +25,14 @@
 
 use std::future::Future;
 
-use specify_diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use specify_error::Error;
-use specify_model::evidence::AuthorityClass;
-use specify_workflow_lib::adapter::describe::{DescribeAnswer, DescribeRequest};
-use specify_workflow_lib::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
-use specify_workflow_lib::seam::{
-    self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree,
-};
-use specify_workflow_lib::slice::build::wire::BUILD_VERSION;
-use specify_workflow_lib::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
+use artifacts::evidence::AuthorityClass;
+use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use error::Error;
+use workflow_lib::adapter::describe::{DescribeAnswer, DescribeRequest};
+use workflow_lib::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
+use workflow_lib::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
+use workflow_lib::slice::build::wire::BUILD_VERSION;
+use workflow_lib::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::specify::adapter::{source, target, types};
 
@@ -45,7 +43,7 @@ pub struct Provider;
 /// `Model` rides the wasm32 default body — judgment calls go straight
 /// to `omnia:model/completion` with the `"."` preopen lend resolved at
 /// the call site.
-impl specify_guest_model::Model for Provider {}
+impl guest_model::Model for Provider {}
 
 impl SourceSeam for Provider {
     fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
@@ -279,7 +277,7 @@ fn widen_finding(finding: target::Finding) -> Diagnostic {
         None,
     );
     diagnostic.rule_id = finding.rule_id;
-    diagnostic.fingerprint = specify_diagnostics::fingerprint(&diagnostic);
+    diagnostic.fingerprint = diagnostics::fingerprint(&diagnostic);
     diagnostic
 }
 
@@ -294,8 +292,8 @@ const fn map_severity(severity: target::Severity) -> Severity {
 }
 
 /// WIT `target.platform` → the workflow [`Platform`] taxonomy.
-const fn map_platform(platform: target::Platform) -> specify_workflow_lib::platform::Platform {
-    use specify_workflow_lib::platform::Platform;
+const fn map_platform(platform: target::Platform) -> workflow_lib::platform::Platform {
+    use workflow_lib::platform::Platform;
     match platform {
         target::Platform::Core => Platform::Core,
         target::Platform::Ios => Platform::Ios,

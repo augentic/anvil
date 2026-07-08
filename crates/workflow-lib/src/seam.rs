@@ -15,8 +15,8 @@ mod mock;
 
 use std::future::Future;
 
+use artifacts::evidence::AuthorityClass;
 use serde_json::Value as JsonValue;
-use specify_model::evidence::AuthorityClass;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::mock::{MockSourceSeam, MockTargetSeam, SourceCall, TargetCall};

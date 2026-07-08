@@ -17,9 +17,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
-use specify_error::Error;
 
 use crate::adapter::component_cache_entry;
 use crate::config::Layout;

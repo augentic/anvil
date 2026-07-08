@@ -2,7 +2,7 @@
 //! accumulate (no check short-circuits another); order is structural
 //! checks first, then consistency checks against the registry.
 //!
-//! Every check emits a neutral [`specify_diagnostics::Diagnostic`] via
+//! Every check emits a neutral [`diagnostics::Diagnostic`] via
 //! [`plan_finding`]: the stable check code becomes the `rule_id`, the
 //! offending plan entry (when present) populates `slice`, an `error`
 //! maps to a blocking `important` violation, and a `warning` maps to a
@@ -11,11 +11,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
-use petgraph::graph::DiGraph;
-use specify_diagnostics::{
+use diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence, Severity, fingerprint,
 };
-use specify_error::{Error, Result};
+use error::{Error, Result};
+use petgraph::graph::DiGraph;
 
 use super::model::{Divergence, Entry, Plan, Status};
 use crate::registry::Registry;
@@ -229,7 +229,7 @@ fn check_duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
     let findings: Vec<_> = check_duplicate_source_keys(&plan.entries)
         .into_iter()
-        .filter(specify_diagnostics::blocking)
+        .filter(diagnostics::blocking)
         .collect();
     let Some(first) = findings.first() else {
         return Ok(());

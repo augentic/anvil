@@ -17,10 +17,10 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 
+use artifacts::atomic::yaml_write;
+use diagnostics::{Diagnostic, Severity};
+use error::Error;
 use serde::{Deserialize, Serialize};
-use specify_diagnostics::{Diagnostic, Severity};
-use specify_error::Error;
-use specify_model::atomic::yaml_write;
 
 use crate::Platform;
 use crate::adapter::{PlatformsViolation, TargetAdapter};

@@ -2,13 +2,13 @@
 
 use std::path::{Path, PathBuf};
 
+use artifacts::atomic::bytes_write;
+use artifacts::discovery::{Discovery, Lead as DiscoveryLead};
+use artifacts::evidence::AuthorityClass;
+use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
-use specify_error::Error;
-use specify_model::atomic::bytes_write;
-use specify_model::discovery::{Discovery, Lead as DiscoveryLead};
-use specify_model::evidence::AuthorityClass;
 
 use super::{seam_failure, source_adapter_id};
 use crate::adapter::SourceOperation;

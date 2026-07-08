@@ -4,8 +4,8 @@
 
 use std::time::SystemTime;
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 /// Convert a [`SystemTime`] (as returned by `fs::metadata().modified()`)
 /// into UTC. Returns a typed `Error::Diag` rather than panicking when

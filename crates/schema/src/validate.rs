@@ -13,17 +13,17 @@ use std::fs;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, RwLock};
 
+use error::{Error, Result};
 use jsonschema::Validator;
 use jsonschema::error::{ValidationError, ValidationErrorKind};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
-use specify_error::{Error, Result};
 
 /// Outcome of a single schema-validation check.
 ///
 /// The schema layer is operational: it only ever decides `Pass` /
 /// `Fail` deterministically. The richer agent-judgment axis lives on
-/// the [`Diagnostic`](https://docs.rs/specify-diagnostics) currency the
+/// the [`Diagnostic`](https://docs.rs/diagnostics) currency the
 /// user-facing `validate` surface emits, not here.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -36,7 +36,7 @@ pub enum ValidationStatus {
 
 /// Compact result of one schema-validation check.
 ///
-/// Owned by `specify-schema` (the operational schema layer) rather than
+/// Owned by `schema` (the operational schema layer) rather than
 /// the error leaf: `Error::Validation` is now payload-free, so the
 /// outcome rows live with the validator that produces them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -121,7 +121,7 @@ pub fn join_details(failures: &[ValidationSummary]) -> String {
 ///
 /// ```
 /// use serde_json::json;
-/// use specify_schema::{ValidationStatus, validate_value};
+/// use schema::{ValidationStatus, validate_value};
 ///
 /// let schema = r#"{"type": "object", "required": ["name"]}"#;
 /// let summaries =
@@ -289,9 +289,9 @@ pub(crate) fn child_pointer(parent: &str, property: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use error::Error;
     use serde::Serialize;
     use serde_json::json;
-    use specify_error::Error;
 
     use super::{
         ValidationStatus, cached_validator, child_pointer, compile_schema, join_details,

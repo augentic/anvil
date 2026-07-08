@@ -11,11 +11,11 @@ mod sync;
 
 use std::path::{Component, Path, PathBuf};
 
+use error::Error;
 pub use push::{PushOutcome, PushResult, push_projects};
 pub use slot_problem::{
     Problem as SlotProblem, Reason as SlotProblemReason, SlotKind, inspect as slot_problem,
 };
-use specify_error::Error;
 pub use sync::{regenerate_topology_lock, sync_projects};
 
 fn workspace_base(project_dir: &Path) -> PathBuf {

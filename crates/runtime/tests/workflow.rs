@@ -25,10 +25,10 @@ use anyhow::{Context as _, Result};
 use jiff::Timestamp;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 use serde_json::{Value, json};
-use specify_workflow_lib::orchestrate;
-use specify_workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
-use specify_workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 use tempfile::TempDir;
+use workflow_lib::orchestrate;
+use workflow_lib::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
+use workflow_lib::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 
 use crate::common::{self, CacheGuard, Quiet, StubBundle, scoped_cache};
 
@@ -53,8 +53,8 @@ impl Project {
         // stub describe dispatcher (first registration wins) so resolve
         // never needs a nested wasmtime instantiation here — describe
         // dispatch itself is covered by the engine's adapter suites.
-        specify_workflow_lib::adapter::describe::register_describe_runner(|_request| {
-            Ok(specify_workflow_lib::adapter::describe::DescribeAnswer::default())
+        workflow_lib::adapter::describe::register_describe_runner(|_request| {
+            Ok(workflow_lib::adapter::describe::DescribeAnswer::default())
         });
         let tmp = TempDir::new().expect("tempdir");
         let root = tmp.path().to_path_buf();
@@ -79,8 +79,8 @@ impl Project {
         }
     }
 
-    fn layout(&self) -> specify_workflow_lib::config::Layout<'_> {
-        specify_workflow_lib::config::Layout::new(&self.root)
+    fn layout(&self) -> workflow_lib::config::Layout<'_> {
+        workflow_lib::config::Layout::new(&self.root)
     }
 
     fn seed_plan(&self, content: &str) {
@@ -130,14 +130,13 @@ async fn seed_built_slice(project: &Project) {
     let survey_seam = MockSourceSeam::scripted([Ok(leads)], []);
     orchestrate::survey_all(&survey_seam, project.layout(), now()).await.expect("seed survey");
 
-    let model =
-        specify_guest_model::MockModel::answering([
-            Box::leak(synthesis_response().into_boxed_str()) as &'static str,
-        ]);
+    let model = guest_model::MockModel::answering([
+        Box::leak(synthesis_response().into_boxed_str()) as &'static str,
+    ]);
     let sources = MockSourceSeam::scripted(
         [],
         [Ok(Evidence {
-            authority: specify_model::evidence::AuthorityClass::Intent,
+            authority: artifacts::evidence::AuthorityClass::Intent,
             claims: vec![json!({
                 "kind": "intent",
                 "id": "greeting.fix",

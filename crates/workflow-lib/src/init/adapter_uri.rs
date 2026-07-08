@@ -20,8 +20,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use specify_error::Error;
-use specify_schema::cache::adapter_store_entry;
+use error::Error;
+use schema::cache::adapter_store_entry;
 
 use crate::adapter::{AdapterRef, dev_component_paths};
 

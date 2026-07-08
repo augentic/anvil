@@ -84,7 +84,7 @@ After `workspace push` publishes the change branch, opening the pull request and
 The dependency edge is one-way; `specify-core` never depends on the registry.
 
 ```text
-specify (binary) → specify-workflow-lib → specify-tool → specify-error
+specify (binary) → workflow-lib → specify-tool → error
                                   ↑
                                   plugin loader (routes by axis)
 ```

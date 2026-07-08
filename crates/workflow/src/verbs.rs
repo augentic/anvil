@@ -1,11 +1,11 @@
 //! Drive the collapsed orchestrator verbs against the WIT-backed
 //! [`Provider`].
 //!
-//! `specify_dispatch::guest::route` parses these verbs but cannot run
+//! `dispatch::guest::route` parses these verbs but cannot run
 //! them — the seam lives here, where the WIT bindings are. Each arm
 //! loads the shared [`Ctx`] (the `"."` preopen is the project root),
 //! reads the clock once at the boundary, drives the matching
-//! `specify_workflow_lib::orchestrate` entry point, and renders a compact
+//! `workflow_lib::orchestrate` entry point, and renders a compact
 //! outcome envelope through the same [`Ctx::write`] / `report`
 //! machinery the native verbs use — failures land on stderr with the
 //! native error-body shape and the native exit-code mapping.
@@ -18,17 +18,17 @@
 
 use std::path::PathBuf;
 
+use dispatch::commands::slice::artifact_classes;
+use dispatch::context::Ctx;
+use dispatch::guest::{Orchestration, Verb};
+use dispatch::output::{Exit, Format, report};
+use error::Error;
 use serde::Serialize;
-use specify_dispatch::commands::slice::artifact_classes;
-use specify_dispatch::context::Ctx;
-use specify_dispatch::guest::{Orchestration, Verb};
-use specify_dispatch::output::{Exit, Format, report};
-use specify_error::Error;
-use specify_workflow_lib::change::LoopStep;
-use specify_workflow_lib::orchestrate;
-use specify_workflow_lib::orchestrate::ExecuteOutcome;
-use specify_workflow_lib::seam::WorkingTree;
-use specify_workflow_lib::slice::BuildStatus;
+use workflow_lib::change::LoopStep;
+use workflow_lib::orchestrate;
+use workflow_lib::orchestrate::ExecuteOutcome;
+use workflow_lib::seam::WorkingTree;
+use workflow_lib::slice::BuildStatus;
 
 use crate::provider::Provider;
 

@@ -2,8 +2,8 @@
 
 use std::path::PathBuf;
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 use crate::change::{Plan, Status};
 use crate::config::{Layout, with_state};

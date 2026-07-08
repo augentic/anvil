@@ -1,6 +1,6 @@
 //! Shared diagnostic fixtures consumed by the sibling integration modules.
 
-use specify_diagnostics::{
+use diagnostics::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence,
     FindingLocation, Severity,
 };

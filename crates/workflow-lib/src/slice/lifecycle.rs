@@ -3,7 +3,7 @@
 //! non-terminal state). [`LifecycleStatus::transition`] is the only
 //! sanctioned mutator.
 
-use specify_error::Error;
+use error::Error;
 
 /// Lifecycle states a slice passes through.
 #[derive(

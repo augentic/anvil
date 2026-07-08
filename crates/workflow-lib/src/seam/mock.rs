@@ -1,6 +1,6 @@
 //! Native scripted providers for the seam capability traits.
 //!
-//! Mirrors `specify-guest-model`'s `MockModel`: replies are served in
+//! Mirrors `guest-model`'s `MockModel`: replies are served in
 //! FIFO order per operation and every call is recorded for assertion.
 
 use std::collections::VecDeque;

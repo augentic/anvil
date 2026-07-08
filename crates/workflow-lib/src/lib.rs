@@ -1,7 +1,7 @@
 //! Specify workflow — slice, change, adapter, registry, config, merge,
 //! init lifecycle authority. The artifact model (spec, task, evidence,
 //! discovery) and the artifact validation rule registry both live in
-//! `specify-model` (`specify_model::validate`). See
+//! `artifacts` (`artifacts::validate`). See
 //! `docs/standards/architecture.md` for the rationale.
 
 pub mod adapter;

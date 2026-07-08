@@ -1,7 +1,7 @@
 //! Shared helpers for the composed-deployment integration tests.
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
-//! `omnia_testkit::find_guest`, pointed at the `specify-{echo-source,echo-target,workflow}` guest crates), the
+//! `omnia_testkit::find_guest`, pointed at the `{echo-source,echo-target,workflow}` guest crates), the
 //! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
 //! macros generate, and the skeleton manifest the tests deploy.
 //!
@@ -27,10 +27,10 @@ use omnia_wasi_model::{
 };
 
 /// Built artifact name of the echo source-adapter guest.
-pub const ECHO_WASM: &str = "specify_echo_source.wasm";
+pub const ECHO_WASM: &str = "echo_source.wasm";
 
 /// Built artifact name of the workflow (`wasi:cli/run`) guest.
-pub const WORKFLOW_WASM: &str = "specify_workflow.wasm";
+pub const WORKFLOW_WASM: &str = "workflow.wasm";
 
 /// The repo workspace root (`<root>/crates/runtime` is this crate).
 pub fn workspace_root() -> PathBuf {
@@ -67,15 +67,7 @@ fn build_guests() {
     GUESTS.get_or_init(|| {
         let status = Command::new("cargo")
             .env("CARGO_TARGET_DIR", target_dir())
-            .args([
-                "build",
-                "-p",
-                "specify-echo-source",
-                "-p",
-                "specify-workflow",
-                "--target",
-                "wasm32-wasip2",
-            ])
+            .args(["build", "-p", "echo-source", "-p", "workflow", "--target", "wasm32-wasip2"])
             .current_dir(workspace_root())
             .status()
             .expect("spawning guest build");
@@ -169,12 +161,12 @@ pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest
     writeln!(doc, "[[mount]]\nname = \".\"\npath = \"{}\"\nwritable = true\n", mount.display())?;
     // The mount registry opens every mount at deployment build, so the
     // cache dir must exist even when a test never touches it.
-    let cache = specify_schema::cache::project_cache_dir(mount);
+    let cache = schema::cache::project_cache_dir(mount);
     std::fs::create_dir_all(&cache)?;
     writeln!(
         doc,
         "[[mount]]\nname = \"{name}\"\npath = \"{path}\"\nwritable = true\n",
-        name = specify_schema::cache::GUEST_CACHE_MOUNT,
+        name = schema::cache::GUEST_CACHE_MOUNT,
         path = cache.display(),
     )?;
     for id in adapters {

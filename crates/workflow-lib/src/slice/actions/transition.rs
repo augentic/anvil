@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
+use error::Error;
 use jiff::Timestamp;
-use specify_error::Error;
 
 use crate::config::Layout;
 use crate::journal::{Event, EventKind, append_batch};

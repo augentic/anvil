@@ -11,8 +11,8 @@
 
 use std::path::{Path, PathBuf};
 
-use specify_diagnostics::{Artifact, Diagnostic, FindingLocation};
-use specify_error::Error;
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
+use error::Error;
 
 use crate::validate::registry::{cross_rules, rules_for};
 use crate::validate::{BriefContext, Classification, CrossContext, RuleOutcome};

@@ -4,10 +4,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use specify_diagnostics::DiagnosticKind;
-use specify_model::validate::validate_slice;
-use specify_workflow_lib::slice::SLICES_DIR_NAME;
+use artifacts::validate::validate_slice;
+use diagnostics::DiagnosticKind;
 use tempfile::TempDir;
+use workflow_lib::slice::SLICES_DIR_NAME;
 
 use crate::common;
 

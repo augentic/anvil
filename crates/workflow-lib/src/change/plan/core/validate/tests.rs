@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use specify_diagnostics::{Severity, blocking};
+use diagnostics::{Severity, blocking};
 use tempfile::tempdir;
 
 use super::super::model::{
@@ -33,7 +33,7 @@ fn clean_plan_validates() {
 }
 
 /// Match a neutral diagnostic on its stable check code (`rule_id`).
-fn has_code(d: &specify_diagnostics::Diagnostic, code: &str) -> bool {
+fn has_code(d: &diagnostics::Diagnostic, code: &str) -> bool {
     d.rule_id.as_deref() == Some(code)
 }
 

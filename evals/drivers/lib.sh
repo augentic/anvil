@@ -37,8 +37,8 @@ ensure_binary() {
     SPECIFY_BIN="$FRAMEWORK/target/debug/specify"
   fi
   if [ -z "${SPECIFY_CORE_PATH:-}" ]; then
-    ( cd "$FRAMEWORK" && cargo build -q -p specify-workflow --target wasm32-wasip2 )
-    SPECIFY_CORE_PATH="$FRAMEWORK/target/wasm32-wasip2/debug/specify_workflow.wasm"
+    ( cd "$FRAMEWORK" && cargo build -q -p workflow --target wasm32-wasip2 )
+    SPECIFY_CORE_PATH="$FRAMEWORK/target/wasm32-wasip2/debug/workflow.wasm"
   fi
   export SPECIFY_CORE_PATH
 }

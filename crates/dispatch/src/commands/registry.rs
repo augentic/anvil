@@ -11,7 +11,7 @@ mod dto;
 mod remove;
 mod validate;
 
-use specify_error::Result;
+use error::Result;
 
 use self::cli::RegistryAction;
 use crate::context::Ctx;

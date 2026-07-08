@@ -16,8 +16,8 @@
 //! baseline in hand. Like the spec provenance parser, findings
 //! aggregate so the operator sees every problem in one pass.
 
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};
-use specify_diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 /// Maximum length of a Decision Record `slug` (`decision-slug-grammar`).
 pub const SLUG_MAX_LEN: usize = 64;
@@ -270,9 +270,9 @@ fn h1_title(body: &str) -> Option<String> {
 /// Exposed so the merge promotion kernel can re-serialise a record's
 /// front-matter while preserving its Markdown body verbatim.
 ///
-/// A sibling `Result`-returning copy lives at `specify-standards`'
-/// `rules::parse::split_frontmatter`; the `specify-standards` ⊥
-/// `specify-model` dependency-direction invariant blocks one shared impl.
+/// A sibling `Result`-returning copy lives at `standards`'
+/// `rules::parse::split_frontmatter`; the `standards` ⊥
+/// `artifacts` dependency-direction invariant blocks one shared impl.
 #[must_use]
 pub fn split_frontmatter(content: &str) -> Option<(&str, &str)> {
     let rest = content.strip_prefix("---\n").or_else(|| content.strip_prefix("---\r\n"))?;

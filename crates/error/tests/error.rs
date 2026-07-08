@@ -1,6 +1,6 @@
 //! Error discriminant and Display contract.
 
-use specify_error::Error;
+use error::Error;
 
 #[test]
 fn diag_round_trip() {

@@ -22,9 +22,9 @@
 use std::io::Write as _;
 use std::path::PathBuf;
 
+use error::Error;
+use guest_model::Model;
 use jiff::Timestamp;
-use specify_error::Error;
-use specify_guest_model::Model;
 
 use crate::adapter::BuildInputDeclaration;
 use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_next_body, plan_status_body};

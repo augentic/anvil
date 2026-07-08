@@ -7,12 +7,12 @@
 //! stays covered by the binary's subprocess suite in `tests/`;
 //! these tests pin the seam the workflow guest depends on.
 
-use specify_dispatch::guest::{Orchestration, Route, Verb, parse, route};
-use specify_dispatch::output::Exit;
+use dispatch::guest::{Orchestration, Route, Verb, parse, route};
+use dispatch::output::Exit;
 
 /// Parse one argv line (program name included) through the shared
 /// grammar, panicking on parse failure.
-fn parse_ok(argv: &[&str]) -> specify_dispatch::cli::Cli {
+fn parse_ok(argv: &[&str]) -> dispatch::cli::Cli {
     parse(argv.iter().map(ToString::to_string)).unwrap_or_else(|exit| {
         panic!("argv {argv:?} failed to parse (exit {})", exit.code());
     })

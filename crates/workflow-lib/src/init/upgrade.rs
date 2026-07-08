@@ -9,7 +9,7 @@
 
 use std::fs;
 
-use specify_error::Error;
+use error::Error;
 
 use crate::adapter::TargetAdapter;
 use crate::config::{Layout, ProjectConfig};

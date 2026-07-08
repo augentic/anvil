@@ -5,7 +5,7 @@
 //! unified `commands::resolve_adapter` helper (it is byte-identical to
 //! the target-axis path apart from the `@version` peel). `survey` and
 //! `extract` are guest-owned collapsed orchestrations
-//! (`specify_workflow_lib::orchestrate`) — only their clap surface lives
+//! (`workflow_lib::orchestrate`) — only their clap surface lives
 //! here so the grammar stays whole.
 
 pub mod cli;

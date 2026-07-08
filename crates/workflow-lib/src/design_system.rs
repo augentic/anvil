@@ -13,10 +13,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use artifacts::atomic;
+use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use specify_error::{Error, Result};
-use specify_model::atomic;
 
 use crate::schema;
 

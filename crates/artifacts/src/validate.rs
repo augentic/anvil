@@ -5,7 +5,7 @@
 //! `lint` surface. Structural `Fail` outcomes become deterministic
 //! `violation` diagnostics (`important`, blocking); semantic rules become
 //! non-blocking `review` diagnostics (`suggestion`,
-//! [`specify_diagnostics::DiagnosticKind::Review`]) that ask the agent to
+//! [`diagnostics::DiagnosticKind::Review`]) that ask the agent to
 //! apply judgment. Passing structural rules emit no diagnostic — the
 //! report carries only findings, never the full pass checklist.
 

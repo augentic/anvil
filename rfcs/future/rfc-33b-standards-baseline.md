@@ -1,16 +1,16 @@
 # RFC-33b: Standards Baseline
 
-> Status: Deferred · Depends (all landed): the [Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28), the [deterministic consumer scanner](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema) (RFC-32), and the [lint-finding lifecycle](../../DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) · Enables: [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
+> Status: Deferred · Depends (all landed): the [Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28), the [deterministic consumer scanner](../../DECISIONS.md#standards-layer-split-into-standards-and-schema) (RFC-32), and the [lint-finding lifecycle](../../DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) · Enables: [roadmap RM-14](../roadmap.md#rm-14-local-structured-workflow-events)
 
 ## Abstract
 
 The shipped lint lifecycle (RFC-33a) delivers in-source ignore directives, the `ignored` finding status, the `disposition` field with its `directive` sub-field, and the `lint-completed` journal event. It does not deliver the **cross-run** lifecycle: how a project acknowledges a body of legitimate findings as baseline debt, how scans diff against prior runs, and how operators stage remediation across releases.
 
-This RFC pre-designs that surface so it can land against a settled contract once one of the trigger conditions in §"Trigger conditions" is met. While deferred, no baseline code, schema file, CLI verb, or filesystem path under `.specify/lint/` ships. RFC-33b extends the live wire shape additively: today `specify-diagnostics` carries `status ∈ { open, ignored, fixed, accepted, false-positive }` and `disposition.source ∈ { directive }` (the schema comment already reserves a future baseline source). RFC-33b adds `new` and `baselined` to `status` and `baseline` to `disposition.source`, plus the optional `disposition.baseline` payload.
+This RFC pre-designs that surface so it can land against a settled contract once one of the trigger conditions in §"Trigger conditions" is met. While deferred, no baseline code, schema file, CLI verb, or filesystem path under `.specify/lint/` ships. RFC-33b extends the live wire shape additively: today `diagnostics` carries `status ∈ { open, ignored, fixed, accepted, false-positive }` and `disposition.source ∈ { directive }` (the schema comment already reserves a future baseline source). RFC-33b adds `new` and `baselined` to `status` and `baseline` to `disposition.source`, plus the optional `disposition.baseline` payload.
 
 Concretely, RFC-33b adds:
 
-1. **Baseline file** — `.specify/lint/baseline.json`, indexed by the `specify-diagnostics` `fingerprint`. `specify lint project` runs in baseline mode by default when the file is present; only findings outside the baseline block CI.
+1. **Baseline file** — `.specify/lint/baseline.json`, indexed by the `diagnostics` `fingerprint`. `specify lint project` runs in baseline mode by default when the file is present; only findings outside the baseline block CI.
 2. **Last-run persistence** — `.specify/lint/last.json` carries the full `DiagnosticReport` from the most recent run so `specify lint project baseline diff` answers "what changed since last scan" without re-scanning.
 3. **Diff verb** — `specify lint project baseline diff` reports `new[] / fixed[] / unchanged[] / ignored[] / baselined[]` as a pure function over `last.json`, the current scan, and the baseline.
 4. **CLI surface** — `specify lint project baseline { write, drop, diff }` subcommands plus `--no-baseline` / `--baseline <path>` flags on `specify lint project`.
@@ -37,8 +37,8 @@ Each trigger has a clean owner: (1) shared-rule resolver output deltas, (2) the 
 
 ### What this RFC does not repeat
 
-- **RFC-28** owns the `Diagnostic` envelope, the fingerprint algorithm, the severity enum, and the closed `rule-id` namespace (in `specify-diagnostics`). RFC-33b consumes the fingerprint as its join key; it makes no envelope changes beyond the additive enum widening.
-- **RFC-32** owns `WorkspaceModel`, the hint interpreter, and `specify lint project`'s single-scan behaviour (in `specify-standards`). RFC-33b adds one optional baseline-loading step to the scanner pipeline.
+- **RFC-28** owns the `Diagnostic` envelope, the fingerprint algorithm, the severity enum, and the closed `rule-id` namespace (in `diagnostics`). RFC-33b consumes the fingerprint as its join key; it makes no envelope changes beyond the additive enum widening.
+- **RFC-32** owns `WorkspaceModel`, the hint interpreter, and `specify lint project`'s single-scan behaviour (in `standards`). RFC-33b adds one optional baseline-loading step to the scanner pipeline.
 - **RFC-33a** owns the ignore-directive grammar, the `ignored` status, the `disposition.directive` payload, and the `lint-completed` journal event. RFC-33b widens the schema again and supplies producers for the pre-existing `fixed` and `accepted` values.
 
 ## Design
@@ -47,7 +47,7 @@ Each trigger has a clean owner: (1) shared-rule resolver output deltas, (2) the 
 
 | ID | Decision | Implementation consequence |
 | --- | --- | --- |
-| **D1 Baseline file** | A scan-profile-scoped baseline lives at `.specify/lint/baseline.json`. | New `schemas/lint/baseline.schema.json`; new `Baseline` DTO in `specify-standards`; `specify lint project` loads and matches by `fingerprint`. |
+| **D1 Baseline file** | A scan-profile-scoped baseline lives at `.specify/lint/baseline.json`. | New `schemas/lint/baseline.schema.json`; new `Baseline` DTO in `standards`; `specify lint project` loads and matches by `fingerprint`. |
 | **D2 Baseline mode default** | When a baseline file matching the active scope exists, `specify lint project` runs in baseline mode unless `--no-baseline` is passed. Per-target files (`baseline.<target>.json`) override the project-wide `baseline.json` only when `--target <name>` is active; nearest-scope wins. `--baseline <path>` bypasses the layering rule. | Two new flags (`--no-baseline`, `--baseline <path>`); one new branch in the scanner pipeline; selection matrix pinned below. |
 | **D7 Last-run persistence** | `.specify/lint/last.json` holds the previous run's `DiagnosticReport` verbatim. | One additional write at scanner exit; new `schemas/lint/run.schema.json` (matching the live `diagnostic-report.schema.json` shape). |
 | **D9 Diff verb** | `specify lint project baseline diff` reports `new[]`, `fixed[]`, `unchanged[]`, `ignored[]`, `baselined[]` against `last.json`. | One new subcommand; pure function over two reports plus the baseline; no scan side effects. |
@@ -139,8 +139,8 @@ Behavioural notes:
 
 ### Implementation plan
 
-1. **Schemas.** Add `schemas/lint/baseline.schema.json` and `schemas/lint/run.schema.json`; widen `diagnostic.schema.json` additively as above. Mirror the embedded constants in `specify-schema`.
-2. **Standards-layer types.** Add `Baseline`, `BaselineEntry`, `ReviewRun` DTOs to `specify-standards`; reuse the `specify-diagnostics` canonical-JSON / fingerprint helpers.
+1. **Schemas.** Add `schemas/lint/baseline.schema.json` and `schemas/lint/run.schema.json`; widen `diagnostic.schema.json` additively as above. Mirror the embedded constants in `schema`.
+2. **Standards-layer types.** Add `Baseline`, `BaselineEntry`, `ReviewRun` DTOs to `standards`; reuse the `diagnostics` canonical-JSON / fingerprint helpers.
 3. **Scanner pipeline.** Insert the baseline pass after directive matching: hint evaluation → default `status: open` → directive validation/matching → baseline matching → ordering → report/render → status-aware exit.
 4. **Last-run persistence.** Write `.specify/lint/last.json` at scanner exit, after report emission.
 5. **CLI surface.** Add the `specify lint project baseline { write, write --append, write --rescan, drop, diff }` subcommands and the `--no-baseline` / `--baseline <path>` flags; enforce the selection matrix, the `lint-baseline-write-stale` check, and confirm-or-`--yes` discipline.
@@ -188,8 +188,8 @@ Behavioural notes:
 
 ## References
 
-- [Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28) — the `Diagnostic` envelope and fingerprint, in `specify-diagnostics`.
-- [Standards layer split](../../DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema) (RFC-32) — `WorkspaceModel` and the consumer scanner, in `specify-standards`.
+- [Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) (RFC-28) — the `Diagnostic` envelope and fingerprint, in `diagnostics`.
+- [Standards layer split](../../DECISIONS.md#standards-layer-split-into-standards-and-schema) (RFC-32) — `WorkspaceModel` and the consumer scanner, in `standards`.
 - [Lint finding lifecycle](../../DECISIONS.md#lint-finding-status-disposition-and-exit) (RFC-33a) — ignore directives, the `disposition` field, and the `lint-completed` event.
 - [Standards layer (explanation)](../../docs/explanation/standards-layer.md)
 - [Specify Roadmap — RM-14](../roadmap.md#rm-14-local-structured-workflow-events)

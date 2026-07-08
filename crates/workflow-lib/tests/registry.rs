@@ -1,5 +1,5 @@
-//! Integration tests for `specify_workflow_lib::registry::registry` and
-//! `specify_workflow_lib::registry::validate`.
+//! Integration tests for `workflow_lib::registry::registry` and
+//! `workflow_lib::registry::validate`.
 //!
 //! Deliberately narrow: the binary-level `tests/registry.rs` covers the
 //! `registry {add,remove,validate}` wire surface (happy-path parses,
@@ -9,9 +9,9 @@
 //! tables, base-vs-workspace validation ordering, and the
 //! contract-roles invariants (no binary test exercises `contracts:`).
 
-use specify_error::Error;
-use specify_workflow_lib::registry::{ContractRoles, GreenfieldSeed, Registry, RegistryProject};
+use error::Error;
 use tempfile::TempDir;
+use workflow_lib::registry::{ContractRoles, GreenfieldSeed, Registry, RegistryProject};
 
 /// Scaffold `registry.yaml` (at the repo root) with `contents` and
 /// return the containing project directory.

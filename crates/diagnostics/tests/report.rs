@@ -2,7 +2,7 @@
 //! `blocking_present`, the severity tally, `count_status`, and
 //! `renumber`.
 
-use specify_diagnostics::{
+use diagnostics::{
     DiagnosticKind, DiagnosticSummary, FindingStatus, Severity, blocking, blocking_present,
     count_status, renumber,
 };

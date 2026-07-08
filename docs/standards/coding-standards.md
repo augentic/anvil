@@ -124,7 +124,7 @@ Response DTOs (`*Body`, `*Row`) are **top-level** structs under `mod`. Declaring
 | Filesystem path | `PathBuf` | never `String`; serde's default carries the path losslessly |
 | Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]` | drop `.to_string()` at construction |
 | Stable kebab discriminant | `&'static str` | lives in the binary |
-| Timestamp written into JSON | `jiff::Timestamp` with `#[serde(with = "specify_error::serde_rfc3339")]` (or `serde_rfc3339_opt` on `Option<Timestamp>`) | serde owns the format |
+| Timestamp written into JSON | `jiff::Timestamp` with `#[serde(with = "error::serde_rfc3339")]` (or `serde_rfc3339_opt` on `Option<Timestamp>`) | serde owns the format |
 | Count | `usize` | JSON has neither `u32` nor `u64` |
 
 **Single-variant enums are dead overhead.** Drop either the variant or the enum; the type's name already says "this DTO represents kind X". The `BriefAction::Init` pattern is the canonical example of what not to add.
@@ -172,7 +172,7 @@ fn handle(ctx: &Ctx, outcome: &Outcome) -> Result<()> {
 
 ## Errors
 
-`specify-error::Error` variants are **structured**, not `Variant(String)` catch-alls. The kebab-case identifier in `#[error("…")]` (and in `Error::Diag.code`) is part of the public contract that skills and tests grep for; treat any rename as a breaking change (see [DECISIONS.md §"Wire compatibility"](../../DECISIONS.md#wire-compatibility)).
+`error::Error` variants are **structured**, not `Variant(String)` catch-alls. The kebab-case identifier in `#[error("…")]` (and in `Error::Diag.code`) is part of the public contract that skills and tests grep for; treat any rename as a breaking change (see [DECISIONS.md §"Wire compatibility"](../../DECISIONS.md#wire-compatibility)).
 
 **Diag-first error policy.** New diagnostic sites use `Error::Diag { code: "<kebab>", detail: format!(…) }`. Promote to a typed `Error::*` variant **only** when:
 
@@ -194,7 +194,7 @@ Every public `enum` or `struct` that may grow gets `#[non_exhaustive]`. The exce
 
 ## YAML, JSON, and atomic writes
 
-YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `specify_error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, specify_error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
+YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
 
 Writes that must not be observed mid-update use the shared atomic helpers in `specify_slice::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (`plan.yaml`, `registry.yaml`, `change.md`, `tasks.md`, `metadata.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale and [DECISIONS.md §"Atomic writes"](../../DECISIONS.md#atomic-writes) for the long form.
 

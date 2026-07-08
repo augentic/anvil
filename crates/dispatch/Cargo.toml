@@ -1,5 +1,5 @@
 [package]
-name = "specify-dispatch"
+name = "dispatch"
 description = "Wasm-clean `specify` CLI dispatch: argv grammar, output envelopes, exit mapping, and the pure workflow verb handlers shared by the native binary and the workflow guest"
 version.workspace = true
 edition.workspace = true
@@ -16,12 +16,12 @@ semver.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
-specify-diagnostics.workspace = true
-specify-error.workspace = true
-specify-model.workspace = true
-specify-schema.workspace = true
-specify-standards.workspace = true
-specify-workflow-lib.workspace = true
+diagnostics.workspace = true
+error.workspace = true
+artifacts.workspace = true
+schema.workspace = true
+standards.workspace = true
+workflow-lib.workspace = true
 strum.workspace = true
 
 [dev-dependencies]

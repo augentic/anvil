@@ -7,7 +7,7 @@ pub(in crate::registry::workspace) mod remote;
 
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 use self::remote::{current_branch, is_git_worktree, remote_branch_head, remote_default_branch_is};
 use super::git::{self, git_output_ok, git_status_porcelain, git_stdout_trimmed};

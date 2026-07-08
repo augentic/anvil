@@ -225,7 +225,7 @@ pub struct AddArgs {
     /// being added (per-slice authority override). Wire form is
     /// `<claim-kind>=<source>`; both sides are kebab-case
     /// and the kind is checked against the closed
-    /// [`ClaimKind`](specify_model::evidence::ClaimKind)
+    /// [`ClaimKind`](artifacts::evidence::ClaimKind)
     /// enum at parse time. Repeatable; later occurrences win on
     /// the same `(kind)` key. Orphan source keys are caught by
     /// `specify slice validate`. One
@@ -291,7 +291,7 @@ pub struct AmendArgs {
     /// `(slice, kind)` tuple. If the same `(slice, kind)` also
     /// appears in `--clear-authority-override`, the clear
     /// wins (clears apply after sets). Validated against the
-    /// closed [`ClaimKind`](specify_model::evidence::ClaimKind) enum
+    /// closed [`ClaimKind`](artifacts::evidence::ClaimKind) enum
     /// at parse time; orphan source
     /// keys are caught by `specify slice validate`.
     #[arg(

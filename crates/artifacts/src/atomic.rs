@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
+use error::Error;
 use serde::Serialize;
-use specify_error::Error;
 
 /// Serialise `value` as YAML (with a guaranteed trailing newline) and
 /// atomically persist it at `path`. See module-level docs for the

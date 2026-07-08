@@ -1,5 +1,5 @@
 [package]
-name = "specify-workflow-lib"
+name = "workflow-lib"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -37,11 +37,11 @@ semver.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
-specify-diagnostics.workspace = true
-specify-error.workspace = true
-specify-guest-model.workspace = true
-specify-model.workspace = true
-specify-schema.workspace = true
+diagnostics.workspace = true
+error.workspace = true
+guest-model.workspace = true
+artifacts.workspace = true
+schema.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true

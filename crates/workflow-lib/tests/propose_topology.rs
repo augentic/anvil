@@ -1,10 +1,10 @@
 //! Integration coverage for the greenfield-seed projection
-//! (`specify_workflow_lib::change::apply_greenfield_seed`): seed → empty
+//! (`workflow_lib::change::apply_greenfield_seed`): seed → empty
 //! greenfield surface, seed shadowed by a baseline, absent seed no-op.
 
-use specify_workflow_lib::change::{ProjectRef, apply_greenfield_seed};
-use specify_workflow_lib::registry::catalog::{GreenfieldSeed, Registry, RegistryProject};
-use specify_workflow_lib::registry::topology::Surface;
+use workflow_lib::change::{ProjectRef, apply_greenfield_seed};
+use workflow_lib::registry::catalog::{GreenfieldSeed, Registry, RegistryProject};
+use workflow_lib::registry::topology::Surface;
 
 fn project_ref(name: &str, surface: Vec<Surface>) -> ProjectRef {
     ProjectRef {

@@ -116,7 +116,7 @@
   "$id": "https://github.com/augentic/specify/schemas/answers/evidence.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
-  "description": "Generated judgment-answer schema — derived from schemas/evidence.schema.json by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the canonical Evidence shape minus the envelope `lead` key (the extract call names the lead).",
+  "description": "Generated judgment-answer schema — derived from schemas/evidence.schema.json by schema's answer derivation; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the canonical Evidence shape minus the envelope `lead` key (the extract call names the lead).",
   "properties": {
     "authority": {
       "$ref": "#/$defs/authorityClass",

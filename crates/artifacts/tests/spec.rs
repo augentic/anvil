@@ -1,4 +1,4 @@
-use specify_model::spec::*;
+use artifacts::spec::*;
 
 // ---------------------------------------------------------------------------
 // Fixture-backed parser tests. Fixtures live at the repo root under

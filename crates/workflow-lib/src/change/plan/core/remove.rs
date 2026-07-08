@@ -1,7 +1,7 @@
 //! [`Plan::remove`]: drop one pending plan entry while the plan is still
 //! replaceable (Gate 1 curation).
 
-use specify_error::Error;
+use error::Error;
 
 use super::model::{Lifecycle, Plan, Status};
 

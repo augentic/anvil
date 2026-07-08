@@ -1,5 +1,5 @@
 //! Integration tests for the adapter resolver
-//! (`specify_workflow_lib::adapter`).
+//! (`workflow_lib::adapter`).
 //!
 //! Covers:
 //! - pinned identities resolving the single-file store entry
@@ -17,9 +17,9 @@
 use std::fs;
 use std::path::Path;
 
-use specify_error::Error;
-use specify_workflow_lib::adapter::describe::describe_cache_path;
-use specify_workflow_lib::adapter::{
+use error::Error;
+use workflow_lib::adapter::describe::describe_cache_path;
+use workflow_lib::adapter::{
     AdapterLocation, AdapterRef, SourceAdapter, SourceOperation, TargetAdapter, TargetOperation,
     component_cache_entry,
 };
@@ -36,11 +36,11 @@ fn register_stub() {
 /// Stage a store entry for `(name, version)` whose bytes are `answer`
 /// (JSON), plus the verify-on-read sidecar over those bytes.
 fn stage_store_entry(name: &str, version: &str, answer: &str) -> std::path::PathBuf {
-    let entry = specify_schema::cache::adapter_store_entry(name, version);
+    let entry = schema::cache::adapter_store_entry(name, version);
     fs::create_dir_all(entry.parent().expect("store root")).expect("create store root");
     fs::write(&entry, answer).expect("write store component");
-    let digest = specify_schema::cache::file_content_digest(&entry);
-    specify_schema::cache::write_store_meta(name, version, &digest, None).expect("write sidecar");
+    let digest = schema::cache::file_content_digest(&entry);
+    schema::cache::write_store_meta(name, version, &digest, None).expect("write sidecar");
     entry
 }
 
@@ -90,7 +90,7 @@ fn describe_cache_short_circuits() {
     // digest: a second resolve must return the sidecar answer without
     // re-dispatching (the stub would have returned an empty answer).
     let sidecar = describe_cache_path(&entry);
-    let digest = specify_schema::cache::file_content_digest(&entry);
+    let digest = schema::cache::file_content_digest(&entry);
     fs::write(
         &sidecar,
         format!(r#"{{ "digest": "{digest}", "manifest": {{ "specify-floor": "0.1.0" }} }}"#),
@@ -122,7 +122,7 @@ fn bare_resolves_from_component_cache() {
     assert_eq!(resolved.manifest.name, "captures");
     assert_eq!(
         resolved.manifest.version,
-        specify_workflow_lib::adapter::dev_version(),
+        workflow_lib::adapter::dev_version(),
         "a development artifact resolves as the 0.0.0 placeholder"
     );
     assert!(matches!(resolved.location, AdapterLocation::Dev(_)));
@@ -283,7 +283,7 @@ fn dev_component_paths_shape() {
     // The development probe: `target/wasm32-wasip2/release/<name>.wasm`
     // under the project, then the sibling `specify-adapters` checkout.
     let project = Path::new("/repos/consumer");
-    let paths = specify_workflow_lib::adapter::dev_component_paths(project, "demo-target");
+    let paths = workflow_lib::adapter::dev_component_paths(project, "demo-target");
     assert_eq!(
         paths[0],
         Path::new("/repos/consumer/target/wasm32-wasip2/release/demo_target.wasm")

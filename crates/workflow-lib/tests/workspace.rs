@@ -1,4 +1,4 @@
-//! Integration tests for `specify_workflow_lib::registry::workspace`.
+//! Integration tests for `workflow_lib::registry::workspace`.
 //!
 //! Deliberately narrow: the binary-level `tests/workspace.rs` covers the
 //! `workspace {sync,push,prepare}` wire surface (selector preflight,
@@ -13,15 +13,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use specify_workflow_lib::registry::branch::{
+use tempfile::TempDir;
+use workflow_lib::registry::branch::{
     LocalAction, RemoteAction, Request as BranchRequest, prepare,
 };
-use specify_workflow_lib::registry::workspace::{
+use workflow_lib::registry::workspace::{
     PushOutcome, SlotKind, SlotProblemReason, push_projects, slot_problem,
     sync_projects as workspace_sync_projects,
 };
-use specify_workflow_lib::registry::{Registry, RegistryProject};
-use tempfile::TempDir;
+use workflow_lib::registry::{Registry, RegistryProject};
 
 #[cfg(unix)]
 fn symlink_dir(target: &Path, link: &Path) {
@@ -79,7 +79,7 @@ fn scoped_cache(dir: &Path) -> CacheGuard {
 
 /// Out-of-tree cache directory for `project_dir` under the pinned root.
 fn expected_cache_dir(project_dir: &Path) -> PathBuf {
-    specify_schema::cache::project_cache_dir(project_dir)
+    schema::cache::project_cache_dir(project_dir)
 }
 
 fn registry_with_projects(names: &[&str]) -> Registry {
@@ -478,7 +478,7 @@ fn sync_remote_worktree_reuses_mirror() {
     );
     assert!(slot.join("README.md").is_file(), "worktree checks out the remote's default branch");
 
-    let mirror = specify_schema::cache::mirror_dir(&remote_url);
+    let mirror = schema::cache::mirror_dir(&remote_url);
     assert!(mirror.join("HEAD").is_file(), "the persistent bare mirror lives out-of-tree");
 
     // A re-clone would wipe this sentinel; a fetch keeps it.
@@ -713,17 +713,17 @@ fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {
     fs::create_dir_all(&slot_specify).unwrap();
     fs::write(slot_specify.join("project.yaml"), project_yaml).unwrap();
     crate::common::register_describe_stub();
-    let entry = specify_schema::cache::adapter_store_entry("omnia", "1.0.0");
+    let entry = schema::cache::adapter_store_entry("omnia", "1.0.0");
     fs::create_dir_all(entry.parent().unwrap()).unwrap();
     fs::write(&entry, "{}").unwrap();
-    let digest = specify_schema::cache::file_content_digest(&entry);
-    specify_schema::cache::write_store_meta("omnia", "1.0.0", &digest, None).unwrap();
+    let digest = schema::cache::file_content_digest(&entry);
+    schema::cache::write_store_meta("omnia", "1.0.0", &digest, None).unwrap();
 }
 
 #[test]
 fn topology_lock_projects_baseline() {
-    use specify_workflow_lib::registry::topology::TopologyLock;
-    use specify_workflow_lib::registry::workspace::regenerate_topology_lock;
+    use workflow_lib::registry::topology::TopologyLock;
+    use workflow_lib::registry::workspace::regenerate_topology_lock;
 
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
@@ -796,8 +796,8 @@ fn topology_lock_projects_baseline() {
 
 #[test]
 fn topology_lock_projects_decisions() {
-    use specify_workflow_lib::registry::topology::TopologyLock;
-    use specify_workflow_lib::registry::workspace::regenerate_topology_lock;
+    use workflow_lib::registry::topology::TopologyLock;
+    use workflow_lib::registry::workspace::regenerate_topology_lock;
 
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();

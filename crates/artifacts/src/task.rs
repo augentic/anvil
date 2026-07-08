@@ -4,8 +4,8 @@
 
 use std::sync::OnceLock;
 
+use error::Error;
 use regex::Regex;
-use specify_error::Error;
 
 /// A single task entry parsed from `tasks.md`.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -83,7 +83,7 @@ fn skill_directive_re() -> &'static Regex {
 /// `group == ""`.
 ///
 /// ```
-/// use specify_model::task::parse_tasks;
+/// use artifacts::task::parse_tasks;
 ///
 /// let progress = parse_tasks(
 ///     "## Core\n\

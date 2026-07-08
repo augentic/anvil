@@ -10,8 +10,8 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-use specify_error::Error;
-use specify_guest_model::Model;
+use error::Error;
+use guest_model::Model;
 
 use super::{prose, schema_gated};
 use crate::change::{ProposalRequest, ProposalResponse, SourceBinding};
@@ -71,7 +71,7 @@ where
     P: Model,
     F: FnMut(&ProposalResponse) -> Result<(), Error>,
 {
-    let schema = specify_schema::answers::render(&specify_schema::answers::proposal());
+    let schema = schema::answers::render(&schema::answers::proposal());
     let mut user = format!(
         "## Reconciliation request\n\n```json\n{}\n```",
         super::render_json(request, "reconciliation request")?

@@ -6,8 +6,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use specify_error::Error;
-use specify_model::atomic::bytes_write;
+use artifacts::atomic::bytes_write;
+use error::Error;
 
 use super::MergePreviewEntry;
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};

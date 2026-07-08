@@ -141,6 +141,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 
 [[package]]
+name = "artifacts"
+version = "0.27.2"
+dependencies = [
+ "diagnostics",
+ "error",
+ "glob",
+ "regex",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "tempfile",
+]
+
+[[package]]
 name = "assert_cmd"
 version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1068,6 +1083,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 
 [[package]]
+name = "diagnostics"
+version = "0.27.2"
+dependencies = [
+ "error",
+ "jsonschema",
+ "proptest",
+ "schema",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "difflib"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1095,6 +1123,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "dispatch"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "clap",
+ "clap_complete",
+ "diagnostics",
+ "error",
+ "jiff",
+ "schema",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "standards",
+ "strum",
+ "tempfile",
+ "workflow-lib",
+]
+
+[[package]]
 name = "displaydoc"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1119,6 +1168,28 @@ name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
+
+[[package]]
+name = "echo-source"
+version = "0.27.2"
+dependencies = [
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.58.0",
+]
+
+[[package]]
+name = "echo-target"
+version = "0.27.2"
+dependencies = [
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.58.0",
+]
 
 [[package]]
 name = "either"
@@ -1179,6 +1250,18 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "error"
+version = "0.27.2"
+dependencies = [
+ "jiff",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -1489,6 +1572,15 @@ checksum = "b7e736dfe3881c53a7dce0685eb18202d0d9fe6911782f9870946eb9ee89d778"
 dependencies = [
  "arraydeque",
  "smallvec",
+]
+
+[[package]]
+name = "guest-model"
+version = "0.27.2"
+dependencies = [
+ "omnia-wasi-model",
+ "thiserror 2.0.18",
+ "wasip3",
 ]
 
 [[package]]
@@ -3506,6 +3598,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "artifacts",
+ "assert_cmd",
+ "cfg-if",
+ "clap",
+ "clap_complete",
+ "dispatch",
+ "guest-model",
+ "jiff",
+ "omnia",
+ "omnia-testkit",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "omnia-wasi-otel",
+ "schema",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "workflow-lib",
+]
+
+[[package]]
 name = "rusqlite"
 version = "0.40.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3687,6 +3804,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "91c1b7e4904c873ef0710c1f407dde2e6287de2bebc1bbbf7d430bb7cbffd939"
 dependencies = [
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "schema"
+version = "0.27.2"
+dependencies = [
+ "base16ct",
+ "error",
+ "jsonschema",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
 ]
 
 [[package]]
@@ -3964,201 +4095,11 @@ dependencies = [
  "omnia-wasi-model",
  "omnia-wasi-otel",
  "regex",
+ "schema",
  "serde-saphyr",
  "serde_json",
- "specify-schema",
  "tempfile",
  "tokio",
-]
-
-[[package]]
-name = "specify-diagnostics"
-version = "0.27.2"
-dependencies = [
- "jsonschema",
- "proptest",
- "serde",
- "serde_json",
- "specify-error",
- "specify-schema",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "specify-dispatch"
-version = "0.27.2"
-dependencies = [
- "clap",
- "clap_complete",
- "jiff",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "specify-diagnostics",
- "specify-error",
- "specify-model",
- "specify-schema",
- "specify-standards",
- "specify-workflow-lib",
- "strum",
- "tempfile",
-]
-
-[[package]]
-name = "specify-echo-source"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "omnia-wasi-http",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.58.0",
-]
-
-[[package]]
-name = "specify-echo-target"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "omnia-wasi-http",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.58.0",
-]
-
-[[package]]
-name = "specify-error"
-version = "0.27.2"
-dependencies = [
- "jiff",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "specify-guest-model"
-version = "0.27.2"
-dependencies = [
- "omnia-wasi-model",
- "thiserror 2.0.18",
- "wasip3",
-]
-
-[[package]]
-name = "specify-model"
-version = "0.27.2"
-dependencies = [
- "glob",
- "regex",
- "serde",
- "serde-saphyr",
- "serde_json",
- "specify-diagnostics",
- "specify-error",
- "strum",
- "tempfile",
-]
-
-[[package]]
-name = "specify-runtime"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "cfg-if",
- "clap",
- "clap_complete",
- "jiff",
- "omnia",
- "omnia-testkit",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "omnia-wasi-otel",
- "serde_json",
- "specify-dispatch",
- "specify-guest-model",
- "specify-model",
- "specify-schema",
- "specify-workflow-lib",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "specify-schema"
-version = "0.27.2"
-dependencies = [
- "base16ct",
- "jsonschema",
- "serde",
- "serde-saphyr",
- "serde_json",
- "sha2 0.11.0",
- "specify-error",
- "tempfile",
-]
-
-[[package]]
-name = "specify-standards"
-version = "0.27.2"
-dependencies = [
- "glob",
- "serde",
- "serde-saphyr",
- "serde_json",
- "specify-diagnostics",
- "specify-error",
- "specify-schema",
- "tempfile",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "specify-workflow"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "serde",
- "serde_json",
- "specify-diagnostics",
- "specify-dispatch",
- "specify-error",
- "specify-guest-model",
- "specify-model",
- "specify-workflow-lib",
- "wasip3",
- "wit-bindgen 0.58.0",
-]
-
-[[package]]
-name = "specify-workflow-lib"
-version = "0.27.2"
-dependencies = [
- "glob",
- "jiff",
- "jsonschema",
- "petgraph",
- "proptest",
- "regex",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "specify-diagnostics",
- "specify-error",
- "specify-guest-model",
- "specify-model",
- "specify-schema",
- "strum",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "toml",
- "ureq",
 ]
 
 [[package]]
@@ -4178,6 +4119,21 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
+name = "standards"
+version = "0.27.2"
+dependencies = [
+ "diagnostics",
+ "error",
+ "glob",
+ "schema",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "strsim"
@@ -5765,6 +5721,50 @@ dependencies = [
  "log",
  "thiserror 1.0.69",
  "wast",
+]
+
+[[package]]
+name = "workflow"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "diagnostics",
+ "dispatch",
+ "error",
+ "guest-model",
+ "omnia-guest",
+ "serde",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.58.0",
+ "workflow-lib",
+]
+
+[[package]]
+name = "workflow-lib"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "diagnostics",
+ "error",
+ "glob",
+ "guest-model",
+ "jiff",
+ "jsonschema",
+ "petgraph",
+ "proptest",
+ "regex",
+ "schema",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+ "ureq",
 ]
 
 [[package]]

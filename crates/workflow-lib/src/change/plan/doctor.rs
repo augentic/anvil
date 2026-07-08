@@ -4,8 +4,8 @@
 
 use std::path::Path;
 
+use diagnostics::Diagnostic;
 use serde::{Deserialize, Serialize};
-use specify_diagnostics::Diagnostic;
 
 use super::core::Plan;
 use crate::registry::Registry;

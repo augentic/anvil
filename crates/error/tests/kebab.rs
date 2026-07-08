@@ -1,6 +1,6 @@
 //! Kebab-case validators: `is_kebab` and `is_kebab_leading_alpha`.
 
-use specify_error::{is_kebab, is_kebab_leading_alpha};
+use error::{is_kebab, is_kebab_leading_alpha};
 
 #[test]
 fn is_kebab_accepts_and_rejects() {

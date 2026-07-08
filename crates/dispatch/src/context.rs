@@ -4,12 +4,12 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
-use specify_error::Error;
-use specify_workflow_lib::adapter::{ResolvedTargetAdapter, TargetAdapter};
-use specify_workflow_lib::config::{Layout, ProjectConfig};
-use specify_workflow_lib::init::adapter_ref_from_value;
+use workflow_lib::adapter::{ResolvedTargetAdapter, TargetAdapter};
+use workflow_lib::config::{Layout, ProjectConfig};
+use workflow_lib::init::adapter_ref_from_value;
 
 use crate::output;
 use crate::output::Format;
@@ -95,7 +95,7 @@ impl Ctx {
     }
 
     /// Typed view over `.specify/`-anchored paths. Hand this to
-    /// [`specify_workflow_lib::config::with_state`] in handlers that mutate
+    /// [`workflow_lib::config::with_state`] in handlers that mutate
     /// `plan.yaml` / `registry.yaml`.
     #[must_use]
     pub fn layout(&self) -> Layout<'_> {

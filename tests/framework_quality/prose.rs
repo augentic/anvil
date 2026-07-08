@@ -90,7 +90,7 @@ fn check_marketplace_drift(root: &Path, findings: &mut Vec<Finding>) {
         }
     };
 
-    match specify_schema::cached_validator(specify_schema::MARKETPLACE_JSON_SCHEMA) {
+    match schema::cached_validator(schema::MARKETPLACE_JSON_SCHEMA) {
         Ok(validator) => {
             let errors: Vec<Finding> = validator
                 .iter_errors(&value)
@@ -213,7 +213,7 @@ fn check_numeric_caps(root: &Path, findings: &mut Vec<Finding>) {
 }
 
 fn schema_description_max_length() -> Option<u64> {
-    let schema: JsonValue = serde_json::from_str(specify_schema::SKILL_JSON_SCHEMA).ok()?;
+    let schema: JsonValue = serde_json::from_str(schema::SKILL_JSON_SCHEMA).ok()?;
     schema.get("properties")?.get("description")?.get("maxLength").and_then(JsonValue::as_u64)
 }
 

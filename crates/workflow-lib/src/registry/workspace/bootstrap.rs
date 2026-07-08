@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use specify_error::Error;
+use error::Error;
 
 use super::git::{self, git_output_ok, git_porcelain_non_empty};
 use crate::adapter::TargetAdapter;

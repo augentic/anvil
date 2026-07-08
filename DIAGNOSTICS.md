@@ -4,8 +4,8 @@
 
 This file was the status record for the lint unification work tracked as **A19** (unify lint output path + framework/consumer dispatch) and **A16** (imperative→declarative lint burn-down). Both completed and were then superseded wholesale by the engine deletion. The durable residue:
 
-- The neutral `Diagnostic` / `DiagnosticReport` substrate in `specify-diagnostics` survives — `slice validate`, plan validation, and build reports speak it. See [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](./DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
+- The neutral `Diagnostic` / `DiagnosticReport` substrate in `diagnostics` survives — `slice validate`, plan validation, and build reports speak it. See [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](./DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
 - `Exit::from(&Error)` remains the only exit mapping ([docs/standards/handler-shape.md](./docs/standards/handler-shape.md)).
-- The rules parser/resolver behind `specify rules export` remains in `specify-standards`; rule-shape validation lives beside the rules in `augentic/specify-adapters` as a cargo test.
+- The rules parser/resolver behind `specify rules export` remains in `standards`; rule-shape validation lives beside the rules in `augentic/specify-adapters` as a cargo test.
 
 Git history carries the full A19 / A16 record.

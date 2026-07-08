@@ -5,7 +5,7 @@
 //! `### <id>` block plus its bullet list as a [`Lead`]. The assembled
 //! [`Discovery`] is returned to [`super::Discovery::parse`].
 
-use specify_error::{Error, Result};
+use error::{Error, Result};
 
 use super::Discovery;
 use crate::discovery::lead::Lead;

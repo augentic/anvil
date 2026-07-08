@@ -3,16 +3,16 @@
 use std::collections::BTreeMap;
 use std::fs;
 
-use specify_error::Error;
-use specify_model::evidence::{AuthorityClass, ClaimKind};
-use specify_workflow_lib::merge::{ArtifactClass, MergeOperation, MergeStrategy, merge, slice};
-use specify_workflow_lib::slice::model::{ModelClaim, ModelRequirement, SliceModel};
-use specify_workflow_lib::slice::synthesis::authority::Agreement;
-use specify_workflow_lib::slice::synthesis::baseline::BaselineIndex;
-use specify_workflow_lib::slice::{
+use artifacts::evidence::{AuthorityClass, ClaimKind};
+use error::Error;
+use tempfile::TempDir;
+use workflow_lib::merge::{ArtifactClass, MergeOperation, MergeStrategy, merge, slice};
+use workflow_lib::slice::model::{ModelClaim, ModelRequirement, SliceModel};
+use workflow_lib::slice::synthesis::authority::Agreement;
+use workflow_lib::slice::synthesis::baseline::BaselineIndex;
+use workflow_lib::slice::{
     LifecycleStatus, ProjectionHeader, SliceMetadata, project, render_spec_files,
 };
-use tempfile::TempDir;
 
 const TASK_BASELINE: &str = r"### Requirement: List tasks
 

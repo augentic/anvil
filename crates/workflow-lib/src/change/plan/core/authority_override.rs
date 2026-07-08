@@ -16,8 +16,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use specify_error::{Error, Result};
-use specify_model::evidence::ClaimKind;
+use artifacts::evidence::ClaimKind;
+use error::{Error, Result};
 
 use super::model::{Entry, Plan};
 use super::validate::orphan_authority_override_keys;
@@ -193,7 +193,7 @@ pub fn emit_seed_events(
 pub fn reject_orphan_overrides(plan: &Plan) -> Result<()> {
     let findings: Vec<_> = orphan_authority_override_keys(&plan.entries)
         .into_iter()
-        .filter(specify_diagnostics::blocking)
+        .filter(diagnostics::blocking)
         .collect();
     let Some(first) = findings.first() else {
         return Ok(());

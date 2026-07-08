@@ -9,8 +9,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub use atomic::{AtomicYaml, with_state};
+use error::Error;
 use serde::{Deserialize, Serialize};
-use specify_error::Error;
 
 use crate::platform::Platform;
 
@@ -238,14 +238,14 @@ impl<'a> Layout<'a> {
 
     /// Absolute path to this project's out-of-tree memoization root
     /// (manifest mirror, codex, …), resolved from the OS cache via
-    /// [`specify_schema::cache::project_cache_dir`]. Lives outside the
+    /// [`schema::cache::project_cache_dir`]. Lives outside the
     /// working tree, keyed by a digest of the project path, so deleting
     /// it costs recomputation only and it never pollutes git. Transient
     /// per-run working state lives in-tree under `.specify/scratch/`
     /// (gitignored at init; see DECISIONS.md §"Cache layout").
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
-        specify_schema::cache::project_cache_dir(self.project_dir)
+        schema::cache::project_cache_dir(self.project_dir)
     }
 
     /// Absolute path to `<project_dir>/.specify/decisions/` — the

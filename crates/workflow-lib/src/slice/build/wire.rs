@@ -7,9 +7,9 @@
 
 use std::path::{Path, PathBuf};
 
+use diagnostics::{Diagnostic, blocking};
+use error::{Error, Result};
 use serde::{Deserialize, Serialize};
-use specify_diagnostics::{Diagnostic, blocking};
-use specify_error::{Error, Result};
 
 use crate::platform::Platform;
 

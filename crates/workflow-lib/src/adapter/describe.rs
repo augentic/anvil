@@ -7,8 +7,8 @@
 //!
 //! - **Dispatch** is host-side, instance-per-call, and registered as a
 //!   process-global [`DescribeRunner`] by the root `specify` binary
-//!   (`specify-workflow` stays wasmtime-free; the runner lives in
-//!   `specify-runtime`). An unregistered runner — e.g. inside the
+//!   (`workflow` stays wasmtime-free; the runner lives in
+//!   `runtime`). An unregistered runner — e.g. inside the
 //!   workflow guest, which never resolves adapters — is the typed
 //!   `adapter-describe-unavailable` failure.
 //! - **Caching** keys the answer on the component file's SHA-256: the
@@ -20,8 +20,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use error::Error;
 use serde::{Deserialize, Serialize};
-use specify_error::Error;
 
 use super::core::{AdapterLocation, Axis, BuildInputDeclaration, PlatformsCapability};
 
@@ -104,7 +104,7 @@ pub fn describe(
     location: &AdapterLocation, axis: Axis, name: &str,
 ) -> Result<DescribeAnswer, Error> {
     let component = location.path();
-    let digest = specify_schema::cache::file_content_digest(component);
+    let digest = schema::cache::file_content_digest(component);
     let cache_path = describe_cache_path(component);
     if let Some(answer) = read_cache(&cache_path, &digest) {
         return Ok(answer);

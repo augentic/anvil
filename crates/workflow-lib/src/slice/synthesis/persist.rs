@@ -11,7 +11,7 @@
 
 use std::path::{Path, PathBuf};
 
-use specify_error::{Error, Result};
+use error::{Error, Result};
 
 use crate::slice::model::SliceModel;
 use crate::slice::synthesis::baseline::BaselineIndex;
@@ -42,7 +42,7 @@ pub fn persist_synthesized(
     // already enforced orphans/cross-refs/grammar; the broader drift
     // suite is `slice validate`'s job). `parse_yaml` validates the
     // serialised document and re-parses it.
-    let model_yaml = specify_model::atomic::serialise_yaml(projected)?;
+    let model_yaml = artifacts::atomic::serialise_yaml(projected)?;
     SliceModel::parse_yaml(&model_yaml)?;
 
     // Render provenance lines into `spec.md` (in memory).
@@ -63,13 +63,13 @@ pub fn persist_synthesized(
     let touched = slice_actions::touched_from_rendered(&specs, baseline_index);
     let mut metadata = SliceMetadata::load(slice_dir)?;
     metadata.touched_specs = touched;
-    let metadata_yaml = specify_model::atomic::serialise_yaml(&metadata)?;
+    let metadata_yaml = artifacts::atomic::serialise_yaml(&metadata)?;
     staged.push(staged_file(slice_dir, "metadata.yaml", metadata_yaml.into_bytes()));
 
     // Persist every staged artifact in one batch.
     let mut written = Vec::with_capacity(staged.len());
     for file in &staged {
-        specify_model::atomic::bytes_write(&file.abs, &file.bytes)?;
+        artifacts::atomic::bytes_write(&file.abs, &file.bytes)?;
         written.push(file.rel.clone());
     }
 

@@ -2,7 +2,7 @@
 
 use std::io::Write;
 
-use specify_error::Error;
+use error::Error;
 
 use super::{Event, path};
 use crate::config::Layout;

@@ -1,4 +1,4 @@
-//! Filesystem tests for `specify_model::validate::validate_slice` — the
+//! Filesystem tests for `artifacts::validate::validate_slice` — the
 //! contracts-brief (`contracts.*`) and cross-brief (`cross.*`) rule paths.
 //!
 //! Each test seeds a throw-away slice dir under `tempfile::TempDir`, runs the
@@ -9,7 +9,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use specify_model::validate::validate_slice;
+use artifacts::validate::validate_slice;
 use tempfile::TempDir;
 
 fn write(path: &Path, body: &str) {

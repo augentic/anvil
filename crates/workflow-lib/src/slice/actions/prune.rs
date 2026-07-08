@@ -12,8 +12,8 @@
 
 use std::path::{Path, PathBuf};
 
+use error::{Error, Result};
 use jiff::Timestamp;
-use specify_error::{Error, Result};
 
 /// Seconds in a day, for whole-day age arithmetic.
 const SECONDS_PER_DAY: i64 = 86_400;

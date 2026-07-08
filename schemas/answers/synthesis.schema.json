@@ -263,7 +263,7 @@
   "$id": "https://github.com/augentic/specify/schemas/answers/synthesis.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — derived from schemas/slice/synthesis.schema.json (with schemas/slice/model.schema.json inlined) by specify-schema's answer derivation; do not edit. Validates the schema-gated answer to the slice-synthesis judgment: the canonical `kind: response` envelope the synthesis kernel projects and persists.",
+  "description": "Generated judgment-answer schema — derived from schemas/slice/synthesis.schema.json (with schemas/slice/model.schema.json inlined) by schema's answer derivation; do not edit. Validates the schema-gated answer to the slice-synthesis judgment: the canonical `kind: response` envelope the synthesis kernel projects and persists.",
   "properties": {
     "artifacts": {
       "$ref": "#/$defs/artifacts"

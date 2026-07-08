@@ -4,7 +4,7 @@
 
 - **Scenario:** `guest-execute-loop`
 - **Operator:** Cursor agent (Fable 5), driving `evals/drivers/guest-execute-loop.sh` on the RFC-61 `specify-wasm` branch
-- **CLI:** `engine/target/debug/specify` — `specify 0.27.2` (in-tree build under test; `specify-runtime` from the same workspace)
+- **CLI:** `engine/target/debug/specify` — `specify 0.27.2` (in-tree build under test; `runtime` from the same workspace)
 - **Sandbox:** `evals/.sandbox/guest-execute-loop/`
 
 ## Assertions
@@ -47,9 +47,9 @@
 #### Failure detail
 
 ```text
-==> specify-runtime -- source survey intent
+==> runtime -- source survey intent
 error: seam-dispatch-failed: seam `survey` dispatch to `source:intent` failed: internal: backend failure: cursor-agent exited with exit status: 1: Error: Authentication required. Please run 'agent login' first, or set CURSOR_API_KEY environment variable.
-==> specify-runtime -- plan execute
+==> runtime -- plan execute
 error: plan-execute-stopped: the execute loop drains the plan: stop refine-failed (greeting-service): discovery.md not found at ./discovery.md — Fix the failure, then retry /spec:refine for the slice. The plan entry stays in-progress.
 ```
 
