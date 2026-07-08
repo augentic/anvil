@@ -95,8 +95,11 @@ pub fn collect_refs(project_dir: &Path) -> Result<Vec<AdapterPackage>, Error> {
 /// entry. This is the set `specify init` hydrates — plan pins join
 /// through [`collect_refs`] at the explicit sync trigger.
 ///
-/// Stage D seam: `specify:core@<the binary's own version>` joins this
-/// set when the binary does not embed its core (RFC-65 move 4).
+/// The core guest (`specify:core@<the binary's own version>`, RFC-65
+/// move 4) is *not* collected here: the binary's provisioning triggers
+/// append it themselves, because only the binary knows its own version
+/// and its development-override state — the kernel stays version-
+/// agnostic.
 ///
 /// # Errors
 ///

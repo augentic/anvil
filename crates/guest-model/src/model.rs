@@ -52,7 +52,7 @@ pub enum Format {
 }
 
 /// Remote MCP server offered to the model for this completion — the
-/// adapter's own reference shelf route, carrying its endpoint URL.
+/// adapter's own references route, carrying its endpoint URL.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct McpGrant {
     /// Logical server name (e.g. in `.cursor/mcp.json`).

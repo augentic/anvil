@@ -16,12 +16,10 @@
 //! entry is the typed `adapter-not-installed` (naming the identity and
 //! the literal sync command), never a generated-then-broken manifest.
 //!
-//! Stage D seam (RFC-65 move 4): the core guest arrives as a plain
-//! `core` path parameter — today the binary stages its embedded
-//! workflow-guest bytes into the deployment tenant; swapping that for
-//! a hydrated `specify:core@<binary version>` store entry (or a macro
-//! embed that drops the entry entirely) changes only the caller, never
-//! the adapter half of this generator.
+//! The core guest arrives as a plain `core` path parameter (RFC-65
+//! move 4): the binary resolves it by its own version — a development
+//! override, else the hydrated `specify:core@<binary version>` store
+//! entry — so this generator never knows how the core was obtained.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -69,17 +67,6 @@ pub fn deployment_dir(project_dir: &Path) -> PathBuf {
 #[must_use]
 pub fn manifest_path(project_dir: &Path) -> PathBuf {
     deployment_dir(project_dir).join(MANIFEST_FILENAME)
-}
-
-/// Staging path for the core/workflow guest component —
-/// `<project-cache>/deployment/workflow.wasm`.
-///
-/// The binary materialises its embedded guest bytes here before
-/// calling [`generate`] (the Stage D seam swaps this for a store
-/// entry or a macro embed without touching the generator).
-#[must_use]
-pub fn core_stage_path(project_dir: &Path) -> PathBuf {
-    deployment_dir(project_dir).join("workflow.wasm")
 }
 
 /// The typed store-miss error for a pinned identity the deployment

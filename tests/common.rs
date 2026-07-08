@@ -117,7 +117,9 @@ fn echo_target_guest_wasm() -> PathBuf {
     use std::sync::OnceLock;
     static BUILT: OnceLock<PathBuf> = OnceLock::new();
     BUILT
-        .get_or_init(|| build_echo_guest("specify-echo-target-guest", "specify_echo_target_guest"))
+        .get_or_init(|| {
+            build_wasip2_guest("specify-echo-target-guest", "specify_echo_target_guest")
+        })
         .clone()
 }
 
@@ -126,17 +128,35 @@ fn echo_target_guest_wasm() -> PathBuf {
 fn echo_source_guest_wasm() -> PathBuf {
     use std::sync::OnceLock;
     static BUILT: OnceLock<PathBuf> = OnceLock::new();
-    BUILT.get_or_init(|| build_echo_guest("specify-echo-guest", "specify_echo_guest")).clone()
+    BUILT.get_or_init(|| build_wasip2_guest("specify-echo-guest", "specify_echo_guest")).clone()
 }
 
-fn build_echo_guest(package: &str, artifact_stem: &str) -> PathBuf {
+/// Build (once per test process) the workflow (core) guest and return
+/// a staged copy — the component [`specify_cmd`] pins as the
+/// `SPECIFY_CORE_PATH` development override, so tests never resolve
+/// (or fetch) a `specify:core` store entry. Staged (not the raw cargo
+/// artifact path) because a concurrent test binary's rebuild briefly
+/// unlinks the artifact mid-uplift, and a `specify` process loading
+/// the core in that window would fail.
+pub fn workflow_guest_wasm() -> PathBuf {
+    use std::sync::OnceLock;
+    static BUILT: OnceLock<PathBuf> = OnceLock::new();
+    BUILT
+        .get_or_init(|| {
+            let built = build_wasip2_guest("specify-workflow-guest", "specify_workflow_guest");
+            stage_named_component("specify-core", &built)
+        })
+        .clone()
+}
+
+fn build_wasip2_guest(package: &str, artifact_stem: &str) -> PathBuf {
     let status = std::process::Command::new("cargo")
         .env("CARGO_TARGET_DIR", cargo_target_dir())
         .args(["build", "-p", package, "--target", "wasm32-wasip2"])
         .current_dir(repo_root())
         .status()
-        .expect("spawning echo guest build");
-    assert!(status.success(), "echo guest build failed with status {status}");
+        .expect("spawning guest build");
+    assert!(status.success(), "guest build failed with status {status}");
     cargo_target_dir().join("wasm32-wasip2").join("debug").join(format!("{artifact_stem}.wasm"))
 }
 
@@ -190,6 +210,11 @@ pub fn specify_cmd() -> Command {
     // pinned-identity resolution never reads (or writes) the
     // developer's real content-addressed store.
     cmd.env("SPECIFY_ADAPTER_STORE", isolated_adapter_store_root());
+    // Pin the core guest to the freshly built debug component (the
+    // RFC-65 move 4 development override), so provisioning verbs never
+    // hydrate `specify:core` and forwarded verbs never probe the store
+    // for it — tests stay network-free.
+    cmd.env("SPECIFY_CORE_PATH", workflow_guest_wasm());
     cmd
 }
 

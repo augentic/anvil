@@ -11,16 +11,17 @@ argument-hint: <adapter|workspace>
 ## Invocation
 
 1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify` only after explicit operator confirmation. Optionally probe drift with `specify upgrade --dry-run` and `specify plugins doctor`, acting (`specify upgrade --yes` / `specify plugins refresh --yes`) only on operator consent; after a plugin refresh, stop for a Cursor restart.
-2. **Route re-entry** — when `.specify/project.yaml` already exists, ask before reinitializing and route through `specify init --upgrade`.
-3. **Invoke** — `<adapter>` and `--workspace` are mutually exclusive; the literal argument `workspace` means workspace init. When the target adapter declares `platforms.required` (e.g. vectis), elicit the platform set first (the CLI's error names the allowed and default sets; `core` is mandatory):
+2. **Route re-entry** — when `.specify/project.yaml` already exists, `specify init` changes nothing: it exits 0 and prints the literal `specify init --upgrade` re-entry command. Confirm with the operator, then run `specify init --upgrade`.
+3. **Elicit every required input and pass it as a flag** — never rely on the CLI's interactive prompt mode: it engages only on a TTY, and agent shells are not TTYs, so a missing input fails typed instead of prompting (`init-adapter-required` for the adapter; `project-platforms-required` when the target demands `--platforms`, naming the allowed and default sets — `core` is mandatory). Gather conversationally: the adapter (`<adapter>` and `--workspace` are mutually exclusive; the literal argument `workspace` means workspace init), `--platforms <platforms>` when the target adapter declares `platforms.required` (e.g. vectis), and optionally `--name <name>` / `--description "<description>"`.
+4. **Invoke**:
 
 ```bash
-specify init <adapter> --platforms <platforms>
+specify init <adapter> [--name <name>] [--description "<description>"] [--platforms <platforms>]
 ```
 
 or `specify init --workspace` for a registry-only workspace.
 
 ## Relay
 
-- Surface the CLI output verbatim, including the workspace-sync message and next actions.
+- Surface the CLI output verbatim — the postflight report names what was scaffolded, the hydrated adapters (`name@version`), the adapter-store root, and the literal next command.
 - On non-zero exit, surface the structured error and stop — never hand-roll scaffold files, never overwrite `project.yaml` without confirmation, and never pre-populate the out-of-tree adapter cache.

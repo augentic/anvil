@@ -1,5 +1,5 @@
 //! MCP HTTP route test: the `/mcp/echo` route serves the echo guest's
-//! reference shelf.
+//! references.
 //!
 //! Mirrors omnia's `wasi-http` routing seam test — deployment from a manifest,
 //! `wasi:http` host linked, requests driven through the testkit's in-process
@@ -45,11 +45,11 @@ async fn post(runtime: &Runtime<Bundle>, message: &Value) -> Result<Value> {
     serde_json::from_slice(response.body()).context("MCP reply is JSON")
 }
 
-// The route serves an MCP shelf: initialize identifies the echo server,
+// The route serves an MCP references: initialize identifies the echo server,
 // resources/list carries the echo-reference doc, and the read_reference tool
 // returns its body.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn shelf() -> Result<()> {
+async fn references() -> Result<()> {
     let runtime = runtime().await?;
 
     let init = post(

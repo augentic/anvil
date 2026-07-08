@@ -2,13 +2,14 @@
 //!
 //! Provisioning verb: it shares the hydration kernel with `specify
 //! init` (`specify_workflow::hydrate`) but collects the *full*
-//! declared set — the `project.yaml.adapter` pin, the `adapters:`
-//! prefetch list, and `plan.yaml` source pins — via
-//! `hydrate::collect_refs`, then hydrates it against the global store
-//! with the `store::install_tofu` fetch leg and regenerates the
-//! deployment manifest from the resolved set (`commands::deploy`).
-//! `--frozen` turns any would-be fetch into the typed
-//! `adapter-not-installed` (exit 2).
+//! declared set — the core guest `specify:core@<the binary's own
+//! version>` when no development override resolves (RFC-65 move 4),
+//! the `project.yaml.adapter` pin, the `adapters:` prefetch list, and
+//! `plan.yaml` source pins via `hydrate::collect_refs` — then hydrates
+//! it against the global store with the `store::install_tofu` fetch
+//! leg and regenerates the deployment manifest from the resolved set
+//! (`commands::deploy`). `--frozen` turns any would-be fetch into the
+//! typed `adapter-not-installed` (exit 2).
 
 use std::cell::Cell;
 use std::io::Write;
@@ -24,7 +25,11 @@ use crate::runtime::commands::deploy;
 use crate::runtime::context::Ctx;
 
 pub(super) fn sync(ctx: &Ctx, frozen: bool) -> Result<()> {
-    let refs = hydrate::collect_refs(&ctx.project_dir)?;
+    let mut refs = Vec::new();
+    if deploy::dev_core(&ctx.project_dir)?.is_none() {
+        refs.push(deploy::core_package());
+    }
+    refs.extend(hydrate::collect_refs(&ctx.project_dir)?);
     let fetched = Cell::new(0_usize);
     let fetch = |package: &AdapterPackage| {
         fetched.set(fetched.get() + 1);

@@ -5,8 +5,8 @@
 //! the full deployment set — bound adapters through the axis
 //! resolvers, `project.yaml.adapters:` prefetch pins against the
 //! global store, and the component-cache scan for unbound local
-//! components — stages the embedded workflow guest into the
-//! deployment tenant, and hands the set to the pure generator in
+//! components — resolves the core guest by the binary's own version
+//! ([`resolve_core`]), and hands the set to the pure generator in
 //! `specify_workflow::deploy`. No leg here fetches: a pinned identity
 //! absent from the store is the typed `adapter-not-installed` naming
 //! the identity and the literal sync command (the guest never
@@ -31,20 +31,27 @@ use specify_workflow::change::Plan;
 use specify_workflow::config::{Layout, ProjectConfig};
 use specify_workflow::deploy::{self, DeployGuest};
 use specify_workflow::hydrate::{self, AdaptersLock};
-use specify_workflow::init::adapter_ref_from_value;
+use specify_workflow::init::{AdapterPackage, adapter_ref_from_value};
+
+/// Kebab-case name of the core guest's pinned identity —
+/// `specify:core@<binary version>` (RFC-65 move 4).
+const CORE_NAME: &str = "core";
+
+/// Development-only core override: an explicit component path.
+const CORE_PATH_ENV: &str = "SPECIFY_CORE_PATH";
 
 /// Regenerate the deployment manifest for `project_dir` and return its
 /// path (`<project-cache>/deployment/omnia.toml`).
 ///
-/// Runs the full discovery, stages the embedded workflow guest into
-/// the deployment tenant (skipping the write when the staged bytes
-/// already match), and generates the manifest atomically.
+/// Runs the full discovery, resolves the core guest by the binary's
+/// own version, and generates the manifest atomically.
 pub fn regenerate(project_dir: &Path) -> Result<PathBuf, Error> {
     // The manifest lives out-of-tree, so every path it carries must be
     // absolute — including the mount, which callers may pass as ".".
     let project_dir = fs::canonicalize(project_dir).map_err(Error::Io)?;
-    let adapters = discover(&project_dir)?;
-    let core = stage_core(&project_dir)?;
+    let lock = load_lock(&project_dir)?;
+    let adapters = discover(&project_dir, &lock)?;
+    let core = resolve_core(&project_dir, &lock)?;
     deploy::generate(&project_dir, &core, &adapters)
 }
 
@@ -57,22 +64,84 @@ pub fn regenerate(project_dir: &Path) -> Result<PathBuf, Error> {
 /// successful full regeneration overwrites this manifest.
 pub fn regenerate_core_only(project_dir: &Path) -> Result<PathBuf, Error> {
     let project_dir = fs::canonicalize(project_dir).map_err(Error::Io)?;
-    let core = stage_core(&project_dir)?;
+    let lock = load_lock(&project_dir)?;
+    let core = resolve_core(&project_dir, &lock)?;
     deploy::generate(&project_dir, &core, &[])
 }
 
-/// Materialise the embedded workflow guest at the deployment tenant's
-/// core staging path, skipping the write when the bytes already match
-/// (Stage D swaps this staging for a hydrated `specify:core` store
-/// entry or a macro embed without touching the generator).
-fn stage_core(project_dir: &Path) -> Result<PathBuf, Error> {
-    let path = deploy::core_stage_path(project_dir);
-    let bytes = specify_runtime::WORKFLOW_GUEST_WASM;
-    if fs::read(&path).is_ok_and(|current| current == bytes) {
-        return Ok(path);
+/// The committed `.specify/adapters.lock`, or the empty default when
+/// the project carries none. Read-only here; only the hydration
+/// kernel appends to it.
+fn load_lock(project_dir: &Path) -> Result<AdaptersLock, Error> {
+    Ok(AdaptersLock::load(&Layout::new(project_dir).adapters_lock_path())?.unwrap_or_default())
+}
+
+/// The core guest's pinned identity — `specify:core@<binary version>`.
+/// One knob: the pin is always the running binary's own version.
+pub(super) fn core_package() -> AdapterPackage {
+    let version = semver::Version::parse(env!("CARGO_PKG_VERSION"))
+        .expect("CARGO_PKG_VERSION is exact semver");
+    AdapterPackage::first_party(CORE_NAME, version)
+}
+
+/// Resolve the core guest component for a deployment.
+///
+/// Resolution order (RFC-65 move 4):
+///
+/// 1. **Development override** ([`dev_core`]) — the `SPECIFY_CORE_PATH`
+///    env var, then the in-repo dev build. Never verified against the
+///    store or the lock: the override is the development posture, the
+///    same trust level as a bare-name adapter.
+/// 2. **The global store entry** `core@<binary version>.wasm`, D4
+///    verify-on-read plus the committed-lock gate — the same
+///    verification pair every pinned adapter passes.
+///
+/// A miss on both is the typed `adapter-not-installed` naming the
+/// identity and the literal `specify adapters sync` command — the
+/// drive never fetches.
+fn resolve_core(project_dir: &Path, lock: &AdaptersLock) -> Result<PathBuf, Error> {
+    if let Some(component) = dev_core(project_dir)? {
+        return Ok(component);
     }
-    specify_model::atomic::bytes_write(&path, bytes)?;
-    Ok(path)
+    let package = core_package();
+    let entry = specify_schema::cache::adapter_store_entry(CORE_NAME, &package.version.to_string());
+    if !entry.is_file() {
+        return Err(deploy::adapter_not_installed(CORE_NAME, &package.version, &entry));
+    }
+    let resolved = hydrate::verify_resolved(CORE_NAME, &package.version, entry)?;
+    hydrate::verify_locked(lock, &resolved)?;
+    Ok(resolved.path)
+}
+
+/// The development core override, when one resolves: the
+/// `SPECIFY_CORE_PATH` env var (a set-but-dangling path is the typed
+/// `core-override-missing` — an explicit override never falls through
+/// silently), then the in-repo dev build at
+/// `target/wasm32-wasip2/{release,debug}/specify_workflow_guest.wasm`
+/// under the project dir. Development posture only — a released
+/// binary in a consumer project misses both probes and resolves the
+/// hydrated store entry.
+pub(super) fn dev_core(project_dir: &Path) -> Result<Option<PathBuf>, Error> {
+    if let Some(value) = std::env::var_os(CORE_PATH_ENV)
+        && !value.is_empty()
+    {
+        let path = PathBuf::from(value);
+        if !path.is_file() {
+            return Err(Error::Diag {
+                code: "core-override-missing",
+                detail: format!(
+                    "{CORE_PATH_ENV} names no component file at {}; fix or unset the override",
+                    path.display()
+                ),
+            });
+        }
+        return Ok(Some(path));
+    }
+    let dev = Path::new("target").join("wasm32-wasip2");
+    Ok(["release", "debug"]
+        .iter()
+        .map(|profile| project_dir.join(dev.join(profile)).join("specify_workflow_guest.wasm"))
+        .find(|candidate| candidate.is_file()))
 }
 
 /// Discover the full deployment set with the resolvers' precedence.
@@ -104,12 +173,10 @@ fn stage_core(project_dir: &Path) -> Result<PathBuf, Error> {
 /// verification pair from the hydration kernel — D4 verify-on-read
 /// plus the committed-lock gate (RFC-65 AC8) — before it can reach the
 /// manifest.
-fn discover(project_dir: &Path) -> Result<Vec<DeployGuest>, Error> {
+fn discover(project_dir: &Path, lock: &AdaptersLock) -> Result<Vec<DeployGuest>, Error> {
     let mut guests = Vec::new();
     let mut seen: BTreeSet<(&'static str, String)> = BTreeSet::new();
     let config = load_config(project_dir)?;
-    let lock =
-        AdaptersLock::load(&Layout::new(project_dir).adapters_lock_path())?.unwrap_or_default();
 
     for (axis, adapter_ref) in bound_adapters(config.as_ref(), project_dir)? {
         if !seen.insert((axis.dir_segment(), adapter_ref.name.clone())) {
@@ -142,7 +209,7 @@ fn discover(project_dir: &Path) -> Result<Vec<DeployGuest>, Error> {
             // by another project or machine) is caught here — before
             // any manifest is written or guest driven (RFC-65 AC8).
             let entry = hydrate::verify_resolved(&adapter_ref.name, version, component.clone())?;
-            hydrate::verify_locked(&lock, &entry)?;
+            hydrate::verify_locked(lock, &entry)?;
         }
         guests.push(DeployGuest {
             axis,
@@ -165,7 +232,7 @@ fn discover(project_dir: &Path) -> Result<Vec<DeployGuest>, Error> {
             // presence alone).
             let verified =
                 hydrate::verify_resolved(&package.name, &package.version, entry.clone())?;
-            hydrate::verify_locked(&lock, &verified)?;
+            hydrate::verify_locked(lock, &verified)?;
             let Some(axis) = sniffed_axis(&entry) else {
                 continue;
             };

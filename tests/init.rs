@@ -72,6 +72,12 @@ mod base {
         );
         assert!(value["specify-version"].is_string());
         assert!(value["scaffolded-rule-keys"].is_array());
+        // Postflight fields (RFC-65 operator onboarding): the hydrated
+        // set, the store root, and the literal next command are part
+        // of the stable envelope.
+        assert!(value["hydrated"].is_array());
+        assert!(value["adapter-store"].is_string());
+        assert_eq!(value["next"], "/spec:plan <name>");
     }
 
     #[test]
@@ -306,26 +312,35 @@ mod base {
 
     #[test]
     fn init_with_no_args_errors() {
-        // Acceptance (c): `specify init` (no positional, no `--workspace`) must
-        // exit `2` (clap's parse-error slot) with clap's standard
-        // "required arguments were not provided" diagnostic. The historical
-        // post-parse `init-requires-adapter-or-workspace` diagnostic was lifted
-        // into the clap surface (`required_unless_present = "workspace"`).
+        // Acceptance (c): `specify init` (no positional, no `--workspace`)
+        // off a TTY must exit `2` with the typed `init-adapter-required`
+        // naming the missing argument and both alternatives. The
+        // requiredness lives in the RFC-65 elicitation layer (so a TTY
+        // can prompt instead of failing), not in clap — stdin is a pipe
+        // under the test harness, so the non-interactive leg fires.
         let tmp = tempdir().unwrap();
-        let assert = specify_cmd().current_dir(tmp.path()).args(["init"]).assert().failure();
+        let assert = specify_cmd()
+            .current_dir(tmp.path())
+            .args(["--format", "json", "init"])
+            .assert()
+            .failure();
         assert_eq!(
             assert.get_output().status.code(),
             Some(2),
-            "clap parse errors map to exit code 2"
+            "missing-flag errors map to the validation exit code"
         );
-        let stderr = String::from_utf8(assert.get_output().stderr.clone()).expect("utf8");
+        let envelope: serde_json::Value = serde_json::from_slice(&assert.get_output().stderr)
+            .expect("stderr is the JSON envelope");
+        assert_eq!(envelope["error"], "init-adapter-required");
+        assert_eq!(envelope["exit-code"], 2);
+        let message = envelope["message"].as_str().expect("message");
         assert!(
-            stderr.contains("required arguments were not provided") && stderr.contains("ADAPTER"),
-            "diagnostic must surface clap's required-arg parse error, got stderr:\n{stderr}"
+            message.contains("<adapter>") && message.contains("--workspace"),
+            "error names the missing positional and the workspace alternative: {message}"
         );
         assert!(
             !tmp.path().join(".specify").exists(),
-            "no .specify must be scaffolded on parse failure"
+            "no .specify must be scaffolded on the missing-flag failure"
         );
     }
 
@@ -939,5 +954,143 @@ mod hydration {
             envelope["message"].as_str().is_some_and(|m| m.contains("demo-target@1.0.0")),
             "error names the identity: {envelope}"
         );
+    }
+}
+
+mod onboarding {
+    //! RFC-65 §"Operator onboarding": idempotent re-entry routing to
+    //! `--upgrade` and the postflight report (hydrated set, store
+    //! root, literal next command). The typed missing-flag error for
+    //! the non-TTY substrate is pinned by
+    //! `base::init_with_no_args_errors`; the TTY prompt path cannot be
+    //! reached through a subprocess (stdin is a pipe) and shares the
+    //! same decision logic, so the non-TTY coverage carries it.
+
+    use std::fs;
+
+    use tempfile::tempdir;
+
+    use crate::common::{
+        isolated_adapter_store_root, omnia_component, parse_json, specify_cmd,
+        stage_store_component,
+    };
+
+    #[test]
+    fn reentry_exits_zero_and_routes_to_upgrade() {
+        // Rerunning the init door over an initialized project is never
+        // an error: it changes nothing, exits 0, and prints the
+        // literal `specify init --upgrade` re-entry command.
+        let tmp = tempdir().unwrap();
+        specify_cmd()
+            .current_dir(tmp.path())
+            .args(["init"])
+            .arg(omnia_component())
+            .args(["--name", "demo"])
+            .assert()
+            .success();
+        let config_path = tmp.path().join(".specify/project.yaml");
+        let before = fs::read(&config_path).expect("read project.yaml");
+
+        let assert = specify_cmd()
+            .current_dir(tmp.path())
+            .args(["--format", "json", "init"])
+            .arg(omnia_component())
+            .assert()
+            .success();
+        let body = parse_json(&assert.get_output().stdout);
+        assert_eq!(body["already-initialized"], true);
+        assert_eq!(body["name"], "demo");
+        assert_eq!(body["next"], "specify init --upgrade");
+        assert_eq!(
+            fs::read(&config_path).expect("re-read project.yaml"),
+            before,
+            "re-entry must leave project.yaml byte-identical"
+        );
+    }
+
+    #[test]
+    fn reentry_wins_over_missing_adapter() {
+        // Re-entry detection runs ahead of the elicitation layer:
+        // `specify init` with no arguments inside an initialized
+        // project routes to `--upgrade` (exit 0) instead of raising
+        // the typed missing-adapter error.
+        let tmp = tempdir().unwrap();
+        specify_cmd()
+            .current_dir(tmp.path())
+            .args(["init"])
+            .arg(omnia_component())
+            .args(["--name", "demo"])
+            .assert()
+            .success();
+
+        let assert = specify_cmd().current_dir(tmp.path()).args(["init"]).assert().success();
+        let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8");
+        assert!(
+            stdout.contains("Already initialized"),
+            "text report names the re-entry state: {stdout}"
+        );
+        assert!(
+            stdout.contains("specify init --upgrade"),
+            "text report carries the literal re-entry command: {stdout}"
+        );
+    }
+
+    #[test]
+    fn postflight_reports_hydrated_pin_and_store() {
+        // A pinned init against a warm store reports the hydrated
+        // identity (`<name>@<version>`), the store root, and the
+        // literal next command; a fully-flagged run teaches no
+        // `equivalent` invocation.
+        let tmp = tempdir().unwrap();
+        stage_store_component("demo-target", "1.0.0");
+
+        let assert = specify_cmd()
+            .current_dir(tmp.path())
+            .args(["--format", "json", "init", "demo-target@1.0.0", "--name", "demo"])
+            .assert()
+            .success();
+        let body = parse_json(&assert.get_output().stdout);
+        let hydrated: Vec<&str> = body["hydrated"]
+            .as_array()
+            .expect("hydrated array")
+            .iter()
+            .map(|v| v.as_str().expect("identity string"))
+            .collect();
+        assert_eq!(hydrated, vec!["demo-target@1.0.0"], "the warm-store pin resolves");
+        assert_eq!(
+            body["adapter-store"],
+            isolated_adapter_store_root().display().to_string(),
+            "the report names the resolved store root"
+        );
+        assert_eq!(body["next"], "/spec:plan <name>");
+        assert!(
+            body.get("equivalent").is_none(),
+            "no prompt fired, so no equivalent invocation is taught: {body}"
+        );
+    }
+
+    #[test]
+    fn postflight_text_names_store_and_next() {
+        // The text renderer carries the same postflight facts: the
+        // (empty, for a local component) hydrated set, the store root,
+        // and the literal next command.
+        let tmp = tempdir().unwrap();
+        let assert = specify_cmd()
+            .current_dir(tmp.path())
+            .args(["init"])
+            .arg(omnia_component())
+            .args(["--name", "demo"])
+            .assert()
+            .success();
+        let stdout = String::from_utf8(assert.get_output().stdout.clone()).expect("utf8");
+        assert!(
+            stdout.contains("hydrated: nothing (components resolved locally)"),
+            "a local-component init hydrates nothing: {stdout}"
+        );
+        assert!(
+            stdout.contains(&format!("adapter store: {}", isolated_adapter_store_root().display())),
+            "the report names the store root: {stdout}"
+        );
+        assert!(stdout.contains("Next: run `/spec:plan <name>`"), "literal next command: {stdout}");
     }
 }

@@ -16,7 +16,11 @@ Two modes, picked by the presence of `--workspace`:
 - **Regular** (positional `<adapter>`): scaffolds a single-project workspace. Creates `.specify/{slices,specs,archive}/`, resolves the adapter identifier into the out-of-tree per-project cache, writes `.specify/project.yaml` with `adapter:` set and a `rules:` entry per `pipeline.define` brief, records the running binary's version as `specify-version`, and generates root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent.
 - **Workspace** (with `--workspace`): scaffolds a registry-only workspace. Creates `.specify/`, writes a sentinel `.specify/project.yaml { workspace: true, … }` (the `adapter:` field is omitted — its absence is what disables adapter resolution), creates an empty `registry.yaml { version: 1, projects: [] }` at the repo root, chains `specify workspace sync` before returning, and generates workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` is absent. No adapter identifier is needed, no cache is needed, and phase-pipeline directories (`slices/`, `specs/`) are NOT scaffolded — the workspace disables those pipelines on itself. `change.md` and `plan.yaml` are operator artifacts minted later by `/spec:plan` (via `specify plan create`) (which scaffolds both files together). Refuses to run when `.specify/` already exists.
 
-The two modes are mutually exclusive: `specify init` with neither an adapter positional nor `--workspace`, or with both, exits `2` with clap's standard parse-error diagnostic.
+The two modes are mutually exclusive: `specify init` with both an adapter positional and `--workspace` exits `2` with clap's standard parse-error diagnostic. With neither, the elicitation layer engages: a line prompt for the adapter when stdin is a TTY, else the typed `init-adapter-required` error (exit `2`) naming the missing argument. When the resolved target requires `--platforms` and stdin is a TTY, init prompts for the platform set the same way; off a TTY the typed `project-platforms-required` names the flag and the default set.
+
+Re-running `specify init` in an already-initialized project changes nothing and exits `0` with a message routing to `specify init --upgrade`.
+
+On success init prints a postflight report: what was scaffolded, which pinned identities were hydrated (`<name>@<version>`), where the global adapter store lives, and the literal next command.
 
 In both modes the command upserts `.specify/scratch/` and top-level `workspace/` into the project `.gitignore`.
 
@@ -46,6 +50,10 @@ When `--format json` is provided, returns:
 - `directories-created` -- list of directories created
 - `scaffolded-rule-keys` -- per-brief rule keys added to `project.yaml` (always empty in workspace mode)
 - `specify-version` -- version recorded in `project.yaml`
+- `hydrated` -- pinned identities hydrated into the global adapter store (`<name>@<version>`, bootstrap order; empty when components resolved locally)
+- `adapter-store` -- root of the global adapter store
+- `next` -- the literal next command for the operator
+- `equivalent` -- the fully-flagged invocation, present only when a TTY prompt filled a missing argument
 - `workspace-synced` -- `true` when workspace init chained sync (workspace mode only)
 - `workspace-sync-message` -- human-readable sync outcome (workspace mode only; e.g. `workspace sync complete`)
 - `context-generated` -- `true` when init generated root `AGENTS.md` and `.specify/context.lock`

@@ -15,7 +15,7 @@
 //!   backend pends then fails, and the failure comes back as the typed
 //!   `seam-dispatch-failed` exit — not a trap.
 //! - **Adapter MCP shelves** — each committed adapter guest serves its
-//!   own reference shelf on its own `/mcp/<name>` route beside the
+//!   own references on its own `/mcp/<name>` route beside the
 //!   workflow guest.
 
 use std::fs;
@@ -309,7 +309,7 @@ async fn post(runtime: &omnia::Runtime<StubBundle>, route: &str, message: &Value
     serde_json::from_slice(response.body()).context("MCP reply is JSON")
 }
 
-// Each committed adapter guest serves its own MCP reference shelf on its
+// Each committed adapter guest serves its own MCP references on its
 // own route beside the workflow guest — the deployment surface the
 // spawned cursor-agent reads through `SPECIFY_<ADAPTER>_MCP_URL`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -329,7 +329,7 @@ async fn adapter_shelves() -> Result<()> {
         )
         .await?;
         let name = init["result"]["serverInfo"]["name"].as_str().unwrap_or_default();
-        assert!(name.starts_with(adapter), "{route} identifies the {adapter} shelf: {init}");
+        assert!(name.starts_with(adapter), "{route} identifies the {adapter} references: {init}");
     }
     Ok(())
 }

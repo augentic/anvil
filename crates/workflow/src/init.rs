@@ -137,9 +137,10 @@ pub struct InitResult {
 /// # Errors
 ///
 /// Pre-condition: regular (non-workspace) init requires
-/// [`InitOptions::adapter`] to be set; the CLI dispatcher enforces
-/// the `init-requires-adapter-or-workspace` invariant ahead of this call,
-/// but `init` re-validates as a defence in depth. Bubbles up
+/// [`InitOptions::adapter`] to be set; the CLI's elicitation layer
+/// enforces this ahead of the call (the typed `init-adapter-required`,
+/// or a TTY prompt), and `init` re-validates as a defence in depth
+/// (`init-requires-adapter-or-workspace`). Bubbles up
 /// filesystem, adapter resolution, and serialisation errors from
 /// the underlying calls.
 pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> {

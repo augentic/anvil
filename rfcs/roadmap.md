@@ -161,7 +161,7 @@ specify execute resume <run-id>
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Reframed by RFC-61:** an adapter is a wasm component implementing one axis of the versioned `specify:adapter` WIT contract, so compatibility becomes WIT-package versioning rather than manifest brief-path machinery (deleted at RFC-64). Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
-**Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, reference shelves) beyond the first-party Omnia/Vectis/contracts set.
+**Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, references) beyond the first-party Omnia/Vectis/contracts set.
 
 #### RM-22: Hosted observability dashboards
 

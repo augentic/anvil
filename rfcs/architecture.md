@@ -76,14 +76,14 @@ Behind the host sits a **swappable model backend**. The backend runs an LLM tool
 
 ### Resolving references — the host calls back into a guest
 
-A brief points at internal references (e.g. `../references/business-logic.md`). The model emits a `resolve` tool call for each; the backend follows it by selecting the relevant **adapter guest**, instantiating it, and calling its exported reference shelf:
+A brief points at internal references (e.g. `../references/business-logic.md`). The model emits a `resolve` tool call for each; the backend follows it by selecting the relevant **adapter guest**, instantiating it, and calling its exported references:
 
 ```wit
-// adapter reference shelf — the model backend calls this back into the guest
+// adapter references — the model backend calls this back into the guest
 resolve: func(id: adapter-id, reference: reference) -> result<list<u8>, error>;
 ```
 
-Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime core stays free of any reference-injection machinery.
+Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The references server is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime core stays free of any reference-injection machinery.
 
 Logical sequence: extract
 
@@ -143,12 +143,12 @@ A `build` flows like this:
 1. The workflow guest resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
 2. It runs any deterministic setup (a `tool` adapter export, reached by host-mediated dynamic linking).
 3. For the judgment leg it calls `wasi-model.eval` with the `build` brief.
-4. The model backend drives the model. `resolve` follows the brief's reference shelf (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
+4. The model backend drives the model. `resolve` follows the brief's references (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
 5. When the brief calls for it the model emits `verify(<check>)`; the backend runs that vetted, sandboxed profile and feeds the severity-tiered `report` back; the model repairs and re-verifies.
 6. `eval` returns the validated, typed answer to the guest.
 7. The report carries only judgment (status and findings); the host extracts the resulting mutations as a content-addressed `change-set` (a `git diff` against the base revision), and the guest requests the lifecycle `transition` effect.
 
-In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the shelf, and what crosses out is a typed report plus a content-addressed change-set.
+In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the references server, and what crosses out is a typed report plus a content-addressed change-set.
 
 ## The working tree
 

@@ -3,7 +3,7 @@
 //! Exports the `specify:adapter` `source-adapter` world — `survey` returns one
 //! hardcoded lead echoing the `adapter-id` argument and `extract` returns one
 //! trivial claim echoing the lead — plus `wasi:http/incoming-handler`, serving
-//! a compiled-in single-document MCP reference shelf. Deliberately model-free:
+//! a compiled-in single-document MCP references. Deliberately model-free:
 //! the component exists to exercise the runtime seams, not Specify logic.
 #![cfg(target_arch = "wasm32")]
 
@@ -89,7 +89,7 @@ const REFERENCE_BODY: &str = "# Echo Reference\n\n\
      The echo source adapter surveys one hardcoded lead and extracts one \
      claim that repeats the lead's synopsis verbatim.\n";
 
-/// The compiled-in single-document reference shelf served over MCP.
+/// The compiled-in single-document references served over MCP.
 struct References;
 
 impl McpServer for References {

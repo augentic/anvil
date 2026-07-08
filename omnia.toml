@@ -5,7 +5,7 @@
 # purpose here and a footgun anywhere else.
 #
 # Composed deployment manifest (RFC-61 Step 4, Milestone F): the workflow
-# guest plus the eight adapter guests, each adapter's MCP reference shelf
+# guest plus the eight adapter guests, each adapter's MCP references
 # routed at /mcp/<name>, over one writable "." mount.
 #
 # Paths resolve relative to this file. The workflow guest is built in-tree

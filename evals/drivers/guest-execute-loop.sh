@@ -35,7 +35,7 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
 
 # Build the binary under test and a fresh workflow guest (the manifest
 # below points at the debug guest so the loop under test is the branch
-# head, not the committed embed).
+# head, not a published core).
 (
   cd "$root"
   cargo build -q -p specify
@@ -43,6 +43,10 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
 )
 specify="$root/target/debug/specify"
 workflow_wasm="$root/target/wasm32-wasip2/debug/specify_workflow_guest.wasm"
+# Pin the freshly built guest as the core (RFC-65 move 4 development
+# override) so init never hydrates `specify:core` from the registry —
+# the loop under test is the branch head, not a published core.
+export SPECIFY_CORE_PATH="$workflow_wasm"
 
 # Seed the sandbox: vendored target adapter (symlinks dereferenced — the
 # adapter's reference symlinks point into the checkout's shared/ tree,

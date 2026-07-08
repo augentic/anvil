@@ -19,16 +19,6 @@ use std::path::Path;
 
 use anyhow::Result;
 
-/// The release-built workflow-guest component, embedded at compile time.
-///
-/// Sourced from the committed artifact at `crates/workflow-guest/guest.wasm`
-/// (regenerate with `cargo make dist-guest` after changing guest-reachable
-/// code). The triage dispatch in the `specify` binary stages these bytes
-/// into its transient deployment manifest so a released binary is
-/// self-contained. See `DECISIONS.md` §"Workflow-guest distribution".
-pub const WORKFLOW_GUEST_WASM: &[u8] =
-    include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../workflow-guest/guest.wasm"));
-
 /// Drive one guest CLI invocation through the composed deployment in
 /// command mode, in-process.
 ///

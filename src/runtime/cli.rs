@@ -64,8 +64,10 @@ pub enum Commands {
     /// Pass `<adapter>` (first-party shorthand, local path, or URL) for
     /// a regular project, or `--workspace` for a registry-only
     /// workspace. The two are mutually exclusive — clap enforces the
-    /// `<adapter>` xor `--workspace` shape and exits `2` with its
-    /// standard parse-error diagnostic when the invariant is violated.
+    /// conflict and exits `2` with its standard parse-error diagnostic.
+    /// A missing `<adapter>` reaches the elicitation layer in
+    /// `commands::init`: prompted when stdin is a TTY, the typed
+    /// `init-adapter-required` (exit 2) everywhere else.
     Init(InitArgs),
 
     /// Global adapter-store provisioning. `sync` is the explicit

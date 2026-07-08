@@ -94,23 +94,6 @@ env = { RUSTFLAGS = "-Dwarnings" }
 command = "cargo"
 args = ["build", "-p", "specify-echo-guest", "-p", "specify-echo-target-guest", "-p", "specify-workflow-guest", "--target", "wasm32-wasip2"]
 
-# Dist guest
-#
-# Rebuild the release workflow-guest component, refresh the committed
-# embed source at crates/workflow-guest/guest.wasm (the `specify` binary
-# `include_bytes!`s it — DECISIONS.md §"Workflow-guest distribution"),
-# and re-record the guest.wasm.sha256 staleness sidecar the tests/dist.rs
-# gate checks in `ci`. Run after changing guest-reachable code and commit
-# the refreshed artifact + sidecar together. This task is the only
-# supported sidecar writer: it rebuilds before recording, so the sidecar
-# can never pair a fresh source fingerprint with a stale component.
-[tasks.dist-guest]
-script = '''
-cargo build -p specify-workflow-guest --release --target wasm32-wasip2
-cp target/wasm32-wasip2/release/specify_workflow_guest.wasm crates/workflow-guest/guest.wasm
-REGENERATE_GOLDENS=1 cargo nextest run --test it dist::embedded_guest_sidecar
-'''
-
 # Test
 #
 # `clean` is deliberately not in the dependency list: the
@@ -175,10 +158,10 @@ args = ["publish", "--registry=augentic", "--allow-dirty", "--dry-run"]
 # Publish the release-built workflow-guest component as
 # `specify:core@<version>`, where <version> is the VERSION file — the
 # published identity IS the binary version, one knob (VERSION and the
-# workspace Cargo.toml version move together via release.yaml). Lands
-# inert ahead of RFC-65 Stage D: the binary does not yet consume the
-# published core (it still embeds crates/workflow-guest/guest.wasm);
-# publishing on every tag de-risks the switch. The probe-first
+# workspace Cargo.toml version move together via release.yaml). This
+# leg is load-bearing (RFC-65 Stage D): a released binary resolves its
+# core from the store entry `specify init` / `specify adapters sync`
+# hydrate from exactly this published identity. The probe-first
 # idempotency (skip-if-present, abort when absent-vs-unreachable is
 # undecidable) lives in scripts/wkg-publish-idempotent.sh, which builds
 # the component only when the identity is definitively absent. Requires

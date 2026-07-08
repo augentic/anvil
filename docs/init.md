@@ -2,7 +2,8 @@
 
 `specify init` scaffolds the per-project `.specify/` tree plus
 `project.yaml`. It has two mutually exclusive shapes; missing both
-surfaces as `init-requires-adapter-or-workspace`.
+prompts for the adapter when stdin is a TTY and surfaces the typed
+`init-adapter-required` (exit 2) everywhere else (CI, agents, pipes).
 
 ## Regular project — `specify init <adapter>`
 
@@ -49,6 +50,16 @@ An adapter project pins one adapter identifier; a workspace pins
 none (it owns the registry of many). Mixing the two would produce a
 `project.yaml` whose semantics depend on whether downstream verbs
 treat the project as an adapter source or as a registry root, and
-different verbs would disagree. The CLI refuses the ambiguous shape
-at the entry point with the `init-requires-adapter-or-workspace`
-discriminant.
+different verbs would disagree. Supplying both is a clap conflict
+(exit 2); supplying neither engages the elicitation layer — a TTY
+prompt, or the typed `init-adapter-required` — with the historical
+`init-requires-adapter-or-workspace` discriminant surviving as the
+workflow layer's defence-in-depth check.
+
+## Re-entry
+
+Running `specify init` in an already-initialized project (one whose
+`.specify/project.yaml` exists) changes nothing and exits 0 with a
+message routing to `specify init --upgrade` — the re-entry flag that
+bumps the `specify` pin, re-runs hydration over the declared set, and
+preserves every operator artifact.

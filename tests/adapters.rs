@@ -256,8 +256,8 @@ fn sync_regenerates_deployment_manifest() {
     // Sync regenerates the deployment manifest from the resolved set
     // into the per-project cache and names the path in its envelope:
     // one `[[guest]]` per resolved component pointing at its store
-    // entry (axis sniffed from the component's exports), the staged
-    // workflow guest with the adapter-contract link allow-list, the
+    // entry (axis sniffed from the component's exports), the resolved
+    // core guest with the adapter-contract link allow-list, the
     // writable `"."` mount over the project dir, one `/mcp/<name>`
     // route per adapter, and the in-process transport. The bare
     // (unresolvable) `adapter: omnia` development name is skipped —
@@ -285,8 +285,8 @@ fn sync_regenerates_deployment_manifest() {
     let guests = doc["guest"].as_array().expect("guest array");
     assert_eq!(
         guests[0]["source"]["path"].as_str(),
-        Some(deployment.join("workflow.wasm").display().to_string().as_str()),
-        "the workflow guest is staged in the deployment tenant"
+        Some(common::workflow_guest_wasm().display().to_string().as_str()),
+        "the core guest resolves through the SPECIFY_CORE_PATH development override"
     );
     assert_eq!(
         guests[0]["link"].as_array().map(Vec::len),
@@ -364,6 +364,64 @@ fn relocated_store_reflected_in_manifest() {
         doc["guest"].as_array().expect("guest array")[1]["source"]["path"].as_str(),
         Some(entry.display().to_string().as_str()),
         "the manifest follows the relocated store entry"
+    );
+}
+
+#[test]
+fn sync_hydrates_core_without_override() {
+    // RFC-65 move 4: with no development override, the core identity
+    // `core@<binary version>` joins the hydration set ahead of the
+    // declared adapters. Frozen against an empty store, the miss is
+    // the typed `adapter-not-installed` naming the core identity;
+    // with the entry staged, the sync resolves it as the leading row
+    // and pins it into the committed lock.
+    let tmp = tempdir().unwrap();
+    seed_project_with_prefetch(tmp.path(), &[]);
+    let version = env!("CARGO_PKG_VERSION");
+    let empty_store = tempdir().unwrap();
+
+    let assert = specify_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SPECIFY_CORE_PATH")
+        .env("SPECIFY_ADAPTER_STORE", empty_store.path())
+        .args(["--format", "json", "adapters", "sync", "--frozen"])
+        .assert()
+        .failure();
+    let code = assert.get_output().status.code().expect("process exited with a code");
+    assert_eq!(code, 2, "a frozen core miss is a validation failure");
+    let envelope: serde_json::Value =
+        serde_json::from_slice(&assert.get_output().stderr).expect("stderr is the JSON envelope");
+    assert_eq!(envelope["error"], "adapter-not-installed");
+    let message = envelope["message"].as_str().expect("message");
+    assert!(message.contains(&format!("core@{version}")), "error names the core: {message}");
+
+    let store = tempdir().unwrap();
+    let entry = store.path().join(format!("core@{version}.wasm"));
+    fs::copy(common::workflow_guest_wasm(), &entry).expect("stage core store entry");
+    let digest = common::sha256_hex(&entry);
+    fs::write(
+        store.path().join(format!("core@{version}.meta")),
+        format!("tree_digest: sha256:{digest}\n"),
+    )
+    .expect("write core meta sidecar");
+
+    let assert = specify_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SPECIFY_CORE_PATH")
+        .env("SPECIFY_ADAPTER_STORE", store.path())
+        .args(["--format", "json", "adapters", "sync"])
+        .assert()
+        .success();
+    let body = parse_json(&assert.get_output().stdout);
+    assert_eq!(body["resolved"], 1);
+    assert_eq!(body["fetched"], 0, "a warm store fetches nothing");
+    assert_eq!(body["adapters"][0]["name"], "core");
+    assert_eq!(body["adapters"][0]["version"], version);
+
+    let lock = fs::read_to_string(tmp.path().join(".specify/adapters.lock")).expect("lock written");
+    assert!(
+        lock.contains(&format!("core@{version}: sha256:{digest}")),
+        "sync pins the core identity in the committed lock: {lock}"
     );
 }
 

@@ -16,8 +16,6 @@ mod archive;
 mod bootstrap;
 #[path = "cli.rs"]
 mod cli;
-#[path = "dist.rs"]
-mod dist;
 #[path = "e2e.rs"]
 mod e2e;
 #[path = "guest.rs"]

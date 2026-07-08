@@ -4,7 +4,6 @@ A Specify release ships three artifacts from one `v*` tag: the **platform binari
 
 ## Before tagging
 
-- **Refresh the embedded workflow guest.** The `specify` binary embeds the committed release-built workflow guest (`crates/workflow-guest/guest.wasm` via `include_bytes!` — `DECISIONS.md` §"Workflow-guest distribution"). If any guest-reachable code changed since the artifact was last regenerated, run `cargo make dist-guest` and commit the refreshed `guest.wasm` **and its `guest.wasm.sha256` sidecar** before the release PR merges. Staleness is CI-gated: `dist-guest` records the component's SHA-256 plus a fingerprint of the guest-reachable source trees in the sidecar, and the `tests/dist.rs` gate (part of the ordinary suite, so `cargo make ci` runs it) fails when either drifts. The gate does not fingerprint external dependency bumps (`Cargo.lock`) or toolchain changes — for those, this checklist item is still the backstop: if the guest's dependency graph moved, re-run `dist-guest` even though CI stays green. (This step retires with the standalone-deployment cut's core-by-binary-version switch, when the binary resolves its core from the registry-published `specify:core` and the committed blob is deleted; until then the publish leg below runs in parallel with the embed.)
 - **Check the omnia pins.** Release builds run `cargo build --locked`, so the `[patch.crates-io]` entries in `Cargo.toml` must resolve on a clean runner: git-rev pins build anywhere, sibling *path* pins only build where the sibling checkout exists. Re-pin any local-path patch to a pushed rev before tagging.
 
 ## Triggering a release
@@ -22,7 +21,7 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
    Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
 
-2. **`publish-core`.** Publishes the core guest as `specify:core@<version>` through `cargo make publish-core`, where `<version>` is the `VERSION` file — the job guards that the tag matches `VERSION`, so the published core identity always equals the binary version. The task builds `specify-workflow-guest` for `wasm32-wasip2` and pushes it over the wasm-pkg transport; the `specify:` namespace resolves through `https://augentic.io/.well-known/wasm-pkg/registry.json` to the backing registry. This leg currently lands **inert**: the binary still embeds its committed core guest, and the consume side (hydrate-by-binary-version) belongs to the standalone-deployment cut — publishing on every tag de-risks that switch.
+2. **`publish-core`.** Publishes the core guest as `specify:core@<version>` through `cargo make publish-core`, where `<version>` is the `VERSION` file — the job guards that the tag matches `VERSION`, so the published core identity always equals the binary version. The task builds `specify-workflow-guest` for `wasm32-wasip2` and pushes it over the wasm-pkg transport; the `specify:` namespace resolves through `https://augentic.io/.well-known/wasm-pkg/registry.json` to the backing registry. This leg is **load-bearing** (`DECISIONS.md` §"Core versioned by the binary"): the released binary hydrates `specify:core@<its own version>` at `specify init` / `specify adapters sync` and resolves its core from that store entry at drive time — the binary carries no embedded guest.
 
 3. **`publish-wit`.** Publishes the adapter contract as `specify:adapter@<wit version>` through `cargo make publish-wit`, parsing the version from `wit/specify.wit`'s `package` declaration. There is no separate version-changed guard: a tag that did not bump the WIT version finds the identity already published and the leg no-ops (see idempotency below). `specify-adapters` consumes the published package as its vendored pin.
 
@@ -45,7 +44,7 @@ Two supported install paths:
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
 
-`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the binary itself carries the workflow guest.
+`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest hydrates from the published `specify:core@<binary version>` at `specify init` (`DECISIONS.md` §"Core versioned by the binary").
 
 ## Adding a new target triple
 

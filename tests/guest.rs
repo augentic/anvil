@@ -8,7 +8,9 @@
 //! `--version` and fails any real invocation — the covered flows never
 //! legitimately reach a completion. The composed run itself is real:
 //! the deployment manifest is regenerated into the per-project cache
-//! (RFC-65) with the embedded workflow guest staged beside it, adapter
+//! (RFC-65) with the core guest resolved by the binary's own version
+//! (the `SPECIFY_CORE_PATH` development override here, the
+//! `core@<version>` store entry otherwise — RFC-65 move 4), adapter
 //! guests resolve through the axis resolvers (bound adapters) or the
 //! component-cache scan (unbound), and the guest's exit code passes
 //! through to the process exit. A failure ahead of the guest run —
@@ -54,7 +56,7 @@ fn stub_path(stub_dir: &Path) -> String {
 }
 
 // The built echo source-adapter guest (exports the source seam plus an
-// MCP shelf over `wasi:http`), self-built so a bare `cargo nextest run`
+// MCP references over `wasi:http`), self-built so a bare `cargo nextest run`
 // works without a prior `cargo make build-guests`.
 fn echo_guest_wasm() -> PathBuf {
     static BUILT: OnceLock<()> = OnceLock::new();
@@ -87,7 +89,8 @@ fn free_port() -> u16 {
 // generated-manifest assembly, and the exit-code passthrough at once.
 // The drive regenerates the deployment manifest into the per-project
 // cache (RFC-65: one manifest-producing code path, no transient
-// assembly), staging the embedded workflow guest beside it.
+// assembly), with the core guest resolved through the development
+// override `specify_cmd` pins.
 #[test]
 fn guest_verb_exit_passthrough() {
     let stub = stub_cursor_agent();
@@ -108,15 +111,112 @@ fn guest_verb_exit_passthrough() {
         "the verb must fail inside the guest (native dispatch refuses it as `argument`)"
     );
 
-    let deployment = common::expected_cache_dir(project.path()).join("deployment");
+    let manifest = common::expected_cache_dir(project.path()).join("deployment").join("omnia.toml");
     assert!(
-        deployment.join("omnia.toml").is_file(),
+        manifest.is_file(),
         "the drive must regenerate the deployment manifest in the project cache"
     );
+    let body = fs::read_to_string(&manifest).expect("read generated manifest");
+    let core = common::workflow_guest_wasm();
     assert!(
-        deployment.join("workflow.wasm").is_file(),
-        "the embedded workflow guest must be staged in the deployment tenant"
+        body.contains(&core.display().to_string()),
+        "the manifest must reference the dev-override core component {}:\n{body}",
+        core.display()
     );
+}
+
+// RFC-65 move 4, store leg: with no development override the core
+// resolves the global store entry `core@<binary version>.wasm` (D4
+// verify-on-read), the manifest points straight at it, and the verb
+// fails *inside* the guest — proving the store-resolved core deploys.
+#[test]
+fn core_resolves_from_store() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    let store = tempdir().expect("adapter store root");
+    let version = env!("CARGO_PKG_VERSION");
+    let entry = store.path().join(format!("core@{version}.wasm"));
+    fs::copy(common::workflow_guest_wasm(), &entry).expect("stage core store entry");
+    let digest = common::sha256_hex(&entry);
+    fs::write(
+        store.path().join(format!("core@{version}.meta")),
+        format!("tree_digest: sha256:{digest}\n"),
+    )
+    .expect("write core meta sidecar");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env_remove("SPECIFY_CORE_PATH")
+        .env("SPECIFY_ADAPTER_STORE", store.path())
+        .env("PATH", stub_path(stub.path()))
+        .env_remove("RUST_LOG")
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1), "the verb must reach the guest: {output:?}");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "not-initialized", "the store-resolved core must deploy");
+
+    let manifest = common::expected_cache_dir(project.path()).join("deployment").join("omnia.toml");
+    let body = fs::read_to_string(&manifest).expect("read generated manifest");
+    assert!(
+        body.contains(&entry.display().to_string()),
+        "the manifest must reference the core store entry:\n{body}"
+    );
+}
+
+// RFC-65 move 4, miss posture: no override and no store entry is the
+// typed `adapter-not-installed` (exit 2) naming the core identity and
+// the literal sync command — the drive never fetches.
+#[test]
+fn missing_core_is_not_installed() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+    let empty_store = tempdir().expect("empty store root");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env_remove("SPECIFY_CORE_PATH")
+        .env("SPECIFY_ADAPTER_STORE", empty_store.path())
+        .env("PATH", stub_path(stub.path()))
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(2), "a core store miss is a validation failure");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "adapter-not-installed");
+    let message = envelope["message"].as_str().expect("message");
+    let identity = format!("core@{}", env!("CARGO_PKG_VERSION"));
+    assert!(message.contains(&identity), "error names the core identity: {message}");
+    assert!(
+        message.contains("specify adapters sync"),
+        "error names the literal sync command: {message}"
+    );
+}
+
+// An explicit `SPECIFY_CORE_PATH` naming no component file fails
+// loudly (`core-override-missing`) instead of silently falling through
+// to the store — a typo'd override must never mask itself.
+#[test]
+fn dangling_core_override_refused() {
+    let stub = stub_cursor_agent();
+    let project = tempdir().expect("project dir");
+
+    let output = specify_cmd()
+        .current_dir(project.path())
+        .env("SPECIFY_CORE_PATH", project.path().join("no-such-core.wasm"))
+        .env("PATH", stub_path(stub.path()))
+        .args(["plan", "execute", "--format", "json"])
+        .output()
+        .expect("running specify");
+
+    assert_eq!(output.status.code(), Some(1), "a dangling override is a generic failure");
+    let envelope = parse_json(&output.stderr);
+    assert_eq!(envelope["error"], "core-override-missing");
+    let message = envelope["message"].as_str().expect("message");
+    assert!(message.contains("no-such-core.wasm"), "error names the dangling path: {message}");
 }
 
 // The developer posture is untouched: a project-root omnia.toml wins

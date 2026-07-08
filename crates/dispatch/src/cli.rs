@@ -66,8 +66,10 @@ pub enum Commands {
     /// Pass `<adapter>` (first-party shorthand, local path, or URL) for
     /// a regular project, or `--workspace` for a registry-only
     /// workspace. The two are mutually exclusive — clap enforces the
-    /// `<adapter>` xor `--workspace` shape and exits `2` with its
-    /// standard parse-error diagnostic when the invariant is violated.
+    /// conflict and exits `2` with its standard parse-error diagnostic.
+    /// A missing `<adapter>` reaches the native elicitation layer:
+    /// prompted on a TTY, the typed `init-adapter-required` (exit 2)
+    /// everywhere else.
     Init(InitArgs),
 
     /// Global adapter-store provisioning (RFC-65). `sync` is the
@@ -216,12 +218,12 @@ pub struct InitArgs {
     /// local path
     /// (`./adapters/targets/omnia`, `file://…`) or a full
     /// `https://github.com/<owner>/<repo>/adapters/targets/<name>`
-    /// URL. Required unless `--workspace` or `--upgrade` is set;
-    /// mutually exclusive with `--workspace`.
-    #[arg(
-        conflicts_with = "workspace",
-        required_unless_present_any = ["workspace", "upgrade"]
-    )]
+    /// URL. Required unless `--workspace` or `--upgrade` is set —
+    /// left open at the clap surface so the native elicitation layer
+    /// can prompt on a TTY and fail with the typed
+    /// `init-adapter-required` (exit 2) elsewhere. Mutually
+    /// exclusive with `--workspace`.
+    #[arg(conflicts_with = "workspace")]
     pub adapter: Option<String>,
     /// Project name (defaults to the project directory name)
     #[arg(long)]

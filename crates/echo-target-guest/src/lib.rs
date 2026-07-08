@@ -2,7 +2,7 @@
 //!
 //! Exports the `specify:adapter` `target-adapter` world with trivial,
 //! model-free operations plus `wasi:http/incoming-handler` serving a
-//! compiled-in single-document MCP reference shelf. The component
+//! compiled-in single-document MCP references. The component
 //! exists so host-side tests (init platform gates, describe-driven
 //! resolve, guest-leg discovery) can exercise a *real* target
 //! component: `describe` keys its platforms capability off the routed
@@ -121,7 +121,7 @@ const REFERENCE_BODY: &str = "# Echo Target Reference\n\n\
      The echo target adapter reports success from every operation and \
      describes an id-conditioned platforms capability.\n";
 
-/// The compiled-in single-document reference shelf served over MCP.
+/// The compiled-in single-document references served over MCP.
 struct References;
 
 impl McpServer for References {
