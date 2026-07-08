@@ -5,11 +5,11 @@
 //! store, pulls on miss through an injected fetch leg, and verifies
 //! each entry's recorded digest.
 //!
-//! The fetch leg ([`Fetch`]) is injected by the caller: the root
-//! `specify` binary composes `registry::store::install_tofu` here, so
-//! this crate stays wasmtime- and network-free (the guest never
-//! hydrates — a miss without a fetch is the typed
-//! `adapter-not-installed`).
+//! The fetch leg ([`Fetch`]) is injected by the caller, so this crate
+//! stays wasmtime- and network-free. No caller wires one today — the
+//! native provisioning surface retired with the wasm-pkg transport
+//! crate, so a store miss is the typed `adapter-not-installed` until a
+//! fetch leg lands in-guest.
 //!
 //! Cross-machine digest pinning: every resolved entry is verified
 //! against the committed `.specify/adapters.lock` ([`AdaptersLock`])
@@ -37,10 +37,10 @@ use crate::init::{AdapterPackage, recognize_package};
 /// The injected fetch leg.
 ///
 /// Pulls one pinned identity into the global store and returns its
-/// entry path. The root binary supplies
-/// `registry::store::install_tofu`; idempotency and concurrency-safety
-/// are the store's (blocking install lock, atomic publish), not the
-/// kernel's.
+/// entry path. Idempotency and concurrency-safety are the supplier's,
+/// not the kernel's. No caller supplies one today (see the module
+/// docs); hydration runs store-probe-only until a fetch leg lands
+/// in-guest.
 pub type Fetch<'a> = &'a dyn Fn(&AdapterPackage) -> Result<PathBuf, Error>;
 
 /// One hydrated identity in the resolved set.
