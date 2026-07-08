@@ -1,20 +1,20 @@
-//! Composed workflow tests over the Milestone F deployment: the workflow
-//! guest plus committed adapter guests from the sibling
+//! Composed workflow tests over the full deployment: the workflow
+//! guest plus release-built adapter components from the sibling
 //! `augentic/specify-adapters` checkout, driven in command mode with the
-//! model backend stubbed (RFC-61 Step 4, Milestone F).
+//! model backend stubbed.
 //!
-//! Three proofs the walking skeleton retired or deferred:
+//! Three proofs beyond the command-mode skeleton:
 //!
 //! - **Merge-leg drain** — a plan whose only slice is already `built`
 //!   (seeded natively with mocked seams) drains through the guest's
 //!   `plan execute` without a model call, and the merge cadence lands in
 //!   the journal on the shared `"."` preopen.
 //! - **Link dispatch + pending model future** — `source survey` routes
-//!   through `specify:adapter/source` to the *real* committed intent
-//!   guest, whose judgment leg awaits `omnia:model/completion`; the stub
+//!   through `specify:adapter/source` to the *real* release-built intent
+//!   component, whose judgment leg awaits `omnia:model/completion`; the stub
 //!   backend pends then fails, and the failure comes back as the typed
 //!   `seam-dispatch-failed` exit — not a trap.
-//! - **Adapter MCP shelves** — each committed adapter guest serves its
+//! - **Adapter MCP shelves** — each adapter component serves its
 //!   own references on its own `/mcp/<name>` route beside the
 //!   workflow guest.
 
@@ -209,7 +209,7 @@ fn synthesis_response() -> String {
 }
 
 // Drive one command-mode run of the composed deployment (workflow guest +
-// the given committed adapter guests, `"."` mounted at `mount`) with the
+// the given release-built adapter components, `"."` mounted at `mount`) with the
 // given guest argv, over the stubbed model backend.
 async fn run_composed(mount: &Path, adapters: &[&str], args: &[&str]) -> Result<ExitStatus> {
     let manifest = common::composed_manifest(mount, adapters)?;
@@ -274,7 +274,7 @@ async fn execute_drains_merge_leg() -> Result<()> {
     Ok(())
 }
 
-// Link dispatch to a real committed adapter guest, surviving a pending
+// Link dispatch to a real release-built adapter component, surviving a pending
 // model future: `source survey intent` routes through
 // `specify:adapter/source` to the intent guest, whose judgment leg
 // awaits `omnia:model/completion`. The stub backend parks the future and
@@ -309,9 +309,10 @@ async fn post(runtime: &omnia::Runtime<StubBundle>, route: &str, message: &Value
     serde_json::from_slice(response.body()).context("MCP reply is JSON")
 }
 
-// Each committed adapter guest serves its own MCP references on its
+// Each adapter component serves its own MCP references on its
 // own route beside the workflow guest — the deployment surface the
-// spawned cursor-agent reads through `SPECIFY_<ADAPTER>_MCP_URL`.
+// model backend advertises to the spawned agent (the cursor backend
+// writes the `/mcp/<name>` routes into `.cursor/mcp.json`).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn adapter_shelves() -> Result<()> {
     let mount = TempDir::new()?;

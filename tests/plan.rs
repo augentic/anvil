@@ -1844,7 +1844,7 @@ slices:
         );
     }
 
-    // -- plan create --intent (elicitation-to-argv sugar, RFC-61 Milestone E) ----------------
+    // -- plan create --intent (elicitation-to-argv sugar) --------------------------------------
 
     #[test]
     fn create_intent_desugars_to_source_binding() {
@@ -1939,8 +1939,8 @@ slices:
 
     #[test]
     fn plan_author_routes_to_guest_leg() {
-        // `plan author` (the collapsed /spec:plan flow, RFC-61 S1) —
-        // the same triage posture as `plan execute`.
+        // `plan author` (the collapsed /spec:plan flow) — the same
+        // triage posture as `plan execute`.
         let empty_path = tempdir().expect("empty PATH dir");
         let project = Project::init();
         let assert = specify_cmd()

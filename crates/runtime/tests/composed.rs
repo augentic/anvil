@@ -1,5 +1,5 @@
 //! Command-mode tests over the composed deployment, driving the real
-//! workflow guest shim (RFC-61 Step 4, Milestone D).
+//! workflow guest shim.
 //!
 //! In-process: build the two-guest deployment from a manifest and drive the
 //! workflow guest's `wasi:cli/run` through `omnia::run` with real argv,
@@ -9,7 +9,7 @@
 //! `omnia.toml` and assert the shim's stdout. The adapter link dispatch
 //! itself (survey/extract/build through `specify:adapter/source`/`target`)
 //! needs a scaffolded `.specify/` project in the mount and lands with the
-//! Milestone F composed workflow tests.
+//! composed workflow tests (`workflow.rs`).
 
 use anyhow::Result;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
@@ -61,7 +61,7 @@ async fn usage_error_passthrough() -> Result<()> {
 // The real binary + the checked-in omnia.toml: stdout carries the shared
 // grammar's version line, proving argv forwarding (`-- --version`) through
 // the subprocess surface — and that the full N+1 manifest (workflow + the
-// eight committed adapter guests) composes. Targets the replay sibling
+// eight release-built adapter components) composes. Targets the replay sibling
 // (`specify-runtime-replay`): the `specify` binary's cursor-bound guest
 // leg requires `cursor-agent` on PATH at backend connect, which CI must
 // not.
@@ -71,7 +71,7 @@ fn binary_stdout() -> Result<()> {
     common::guest_wasm(WORKFLOW_WASM);
     // omnia.toml resolves guest paths relative to itself, so the built
     // workflow artifact must sit under the repo-root target/ (the default target
-    // dir) and the committed adapter guests in the sibling checkout.
+    // dir) and the release-built adapter components in the sibling checkout.
     let expected = engine.join("target").join("wasm32-wasip2").join("debug").join(WORKFLOW_WASM);
     assert!(
         expected.exists(),

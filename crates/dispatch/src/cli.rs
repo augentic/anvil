@@ -211,14 +211,14 @@ pub enum Commands {
     reason = "clap flag surface: each bool is an independent operator-facing CLI flag, not state"
 )]
 pub struct InitArgs {
-    /// Adapter identifier. First-party shorthand (`omnia`,
-    /// `omnia@1.0.0` — bare name resolves the single installed
-    /// identity, a semver pin records the full `name@<semver>`)
-    /// resolves to the published adapter on GitHub. Also accepts a
-    /// local path
-    /// (`./adapters/targets/omnia`, `file://…`) or a full
-    /// `https://github.com/<owner>/<repo>/adapters/targets/<name>`
-    /// URL. Required unless `--workspace` or `--upgrade` is set —
+    /// Adapter identifier. A package reference
+    /// (`specify:omnia@1.0.0`) or the first-party shorthand
+    /// (`omnia@1.0.0` — package-reference sugar installing the
+    /// published component; bare `omnia` — the development shorthand
+    /// resolving the sibling/in-repo release build). Also accepts a
+    /// local `.wasm` component path (`./omnia.wasm`, `file://…`).
+    /// GitHub URLs are refused (`adapter-github-uri-unsupported`).
+    /// Required unless `--workspace` or `--upgrade` is set —
     /// left open at the clap surface so the native elicitation layer
     /// can prompt on a TTY and fail with the typed
     /// `init-adapter-required` (exit 2) elsewhere. Mutually

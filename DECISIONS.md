@@ -591,7 +591,7 @@ One hardening move per seam, each carried by its own standing decision: the mach
 
 ## Composition accumulation and component inference
 
-The landed split: deterministic component *identity* (structural fingerprint over the normalized skeleton) and stable, non-clobbering name *binding* are vectis-core-owned in-guest (the native `specify catalog infer` wrapper retired at S4 — see §"Old-stack deletion"); component *identification and naming* are model judgement in the Vectis build prompts. The operator-curated catalog ([§"Component catalog"](#component-catalog)) and the Vectis composition cross-reference check ([§"Vectis catalog consumer"](#vectis-catalog-consumer)) carry the durable contract; the hard-coded slug-derivation ontology was deleted, not extended.
+The landed split: deterministic component *identity* (structural fingerprint over the normalized skeleton) and stable, non-clobbering name *binding* are owned in-guest by the vectis adapter crate (the native `specify catalog infer` wrapper retired at S4 — see §"Old-stack deletion"); component *identification and naming* are model judgement in the Vectis build prompts. The operator-curated catalog ([§"Component catalog"](#component-catalog)) and the Vectis composition cross-reference check ([§"Vectis catalog consumer"](#vectis-catalog-consumer)) carry the durable contract; the hard-coded slug-derivation ontology was deleted, not extended.
 
 ## Authority: document-level plus one override (v1)
 

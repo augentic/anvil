@@ -1036,7 +1036,7 @@ mod onboarding {
     }
 
     #[test]
-    fn postflight_reports_hydrated_pin_and_store() {
+    fn postflight_reports_hydration_and_store() {
         // A pinned init against a warm store reports the hydrated
         // identity (`<name>@<version>`), the store root, and the
         // literal next command; a fully-flagged run teaches no

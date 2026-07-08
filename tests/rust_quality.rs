@@ -365,7 +365,7 @@ const GATED_RULES: [(&str, &str); 4] = [
     ),
     (
         RULE_ADAPTER_NAME_LITERAL,
-        "runtime dispatch must not hardcode first-party adapter names (RFC-61 — the contract stays adapter-agnostic)",
+        "runtime dispatch must not hardcode first-party adapter names (the contract stays adapter-agnostic)",
     ),
 ];
 

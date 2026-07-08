@@ -4,17 +4,18 @@
 # picks this file up wholesale (omnia.toml-wins), which is exactly its
 # purpose here and a footgun anywhere else.
 #
-# Composed deployment manifest (RFC-61 Step 4, Milestone F): the workflow
-# guest plus the eight adapter guests, each adapter's MCP references
-# routed at /mcp/<name>, over one writable "." mount.
+# Composed deployment manifest: the workflow guest plus the eight adapter
+# guests, each adapter's MCP references routed at /mcp/<name>, over one
+# writable "." mount.
 #
 # Paths resolve relative to this file. The workflow guest is built in-tree
-# (`cargo make build-guests`); the adapter guests are RFC-64 single-file
+# (`cargo make build-guests`); the adapter guests are single-file
 # components release-built in the sibling augentic/specify-adapters
 # checkout — run `cargo make release` there once (and after
 # any adapter change) to populate its `target/wasm32-wasip2/release/`.
 # The `specify` binary's guest leg honors a project-root omnia.toml like
-# this one over its transient assembly (DECISIONS.md §"One `specify`
+# this one over the generated manifest in the project cache
+# (DECISIONS.md §"One `specify`
 # binary"); the replay sibling drives the manifest without
 # `cursor-agent` (args after `--` become the guest's argv):
 #   cargo run -p specify-runtime-replay -- run --config omnia.toml -- --version

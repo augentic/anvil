@@ -3,7 +3,7 @@
 //! Owns guest-artifact building/locating (this workspace's counterpart to
 //! `omnia_testkit::find_guest`, pointed at the `specify-*-guest` crates), the
 //! hand-rolled backend bundles mirroring what the host binaries' `runtime!`
-//! macros generate, and the walking-skeleton manifest the tests deploy.
+//! macros generate, and the skeleton manifest the tests deploy.
 //!
 //! **Test-only in-process harness.** The product path is the in-process
 //! host mount (`specify_runtime::drive` over the cursor-bound `host`
@@ -95,9 +95,9 @@ fn target_dir() -> PathBuf {
 }
 
 /// The sibling `augentic/specify-adapters` checkout carrying the adapter
-/// guest sources the Milestone F deployment composes (release-built via
-/// `cargo make release` there; RFC-64 removed the committed
-/// `guest.wasm` artifacts).
+/// guest sources the composed deployment builds on (release-built via
+/// `cargo make release` there; adapters ship as single-file components,
+/// never as committed `guest.wasm` artifacts).
 ///
 /// # Panics
 ///
@@ -141,8 +141,8 @@ pub fn adapter_component_wasm(id: &str) -> PathBuf {
     path
 }
 
-/// A Milestone F composed-deployment manifest: the workflow guest plus the
-/// given release-built adapter guests (each with its `/mcp/<name>` route),
+/// A composed-deployment manifest: the workflow guest plus the
+/// given release-built adapter components (each with its `/mcp/<name>` route),
 /// sharing one writable `"."` mount at `mount` — the shape of the
 /// checked-in repo-root `omnia.toml` over a test-owned project tree —
 /// plus the per-project derived cache mounted at the guest cache
@@ -185,7 +185,7 @@ pub fn composed_manifest(mount: &Path, adapters: &[&str]) -> Result<TempManifest
     temp_manifest(&doc)
 }
 
-/// Assemble a composed deployment (workflow + committed adapters, `"."`
+/// Assemble a composed deployment (workflow + release-built adapters, `"."`
 /// mounted at `mount`) into a runtime the in-process HTTP driver can
 /// serve requests through, over the stubbed model backend.
 ///

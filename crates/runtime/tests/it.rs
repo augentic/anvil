@@ -1,7 +1,7 @@
 //! Consolidated integration binary for `specify-runtime`.
 //!
 //! One binary per crate: each area file is pulled in as a `#[path]` submodule
-//! so the harness links once. The areas compose the RFC-61 walking-skeleton
+//! so the harness links once. The areas compose the standalone
 //! deployment — workflow + echo guests over the omnia runtime — in-process
 //! and through the real binary. The shared `common` helper builds and locates
 //! the wasm32-wasip2 guest artifacts. See

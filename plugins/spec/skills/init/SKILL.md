@@ -6,7 +6,7 @@ argument-hint: <adapter|workspace>
 
 # Init Skill
 
-`specify init` owns every filesystem write — `.specify/`, `project.yaml`, the adapter cache, root `AGENTS.md`, `.specify/context.lock`, and (for workspaces) the chained initial `workspace sync`. This skill only verifies the binary, elicits arguments, invokes the verb, and relays its output.
+`specify init` owns every filesystem write — `.specify/`, `project.yaml`, the global adapter store and project component cache, the generated deployment manifest, root `AGENTS.md`, `.specify/context.lock`, and (for workspaces) the chained initial `workspace sync`. This skill only verifies the binary, elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 
@@ -24,4 +24,4 @@ or `specify init --workspace` for a registry-only workspace.
 ## Relay
 
 - Surface the CLI output verbatim — the postflight report names what was scaffolded, the hydrated adapters (`name@version`), the adapter-store root, and the literal next command.
-- On non-zero exit, surface the structured error and stop — never hand-roll scaffold files, never overwrite `project.yaml` without confirmation, and never pre-populate the out-of-tree adapter cache.
+- On non-zero exit, surface the structured error and stop — never hand-roll scaffold files, never overwrite `project.yaml` without confirmation, and never pre-populate the global adapter store or the project component cache by hand.
