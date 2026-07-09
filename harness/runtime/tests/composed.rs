@@ -14,6 +14,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+mod common;
+
 use anyhow::Result;
 use omnia::{DeploymentBuilder, ExitStatus, Mode};
 
@@ -23,7 +25,7 @@ use crate::common::{Bundle, Quiet};
 // guest argv (argv[0], the program name, is supplied by the runtime core),
 // with the echo guest registered under `echo_id`.
 async fn run_command(echo_id: &str, args: &[&str]) -> Result<ExitStatus> {
-    let manifest = crate::common::skeleton_manifest(echo_id)?;
+    let manifest = common::skeleton_manifest(echo_id)?;
     let builder = DeploymentBuilder::new()
         .config(manifest.path().to_path_buf())
         .mode(Mode::Command)
@@ -72,15 +74,15 @@ async fn usage_error_passthrough() -> Result<()> {
 #[test]
 fn binary_stdout() -> Result<()> {
     let mount = tempfile::tempdir()?;
-    let _cache = crate::common::scoped_cache(mount.path());
+    let _cache = common::scoped_cache(mount.path());
     let manifest =
-        crate::common::composed_manifest(mount.path(), &["source:intent", "target:omnia"])?;
+        common::composed_manifest(mount.path(), &["source:intent", "target:omnia"])?;
 
     // An ephemeral port keeps the background HTTP trigger from colliding with
     // parallel test runs; command mode exits when the CLI guest finishes.
     let port = free_port()?;
     let output = assert_cmd::Command::cargo_bin("runtime-replay")?
-        .current_dir(crate::common::workspace_root())
+        .current_dir(common::workspace_root())
         .env("HTTP_ADDR", format!("127.0.0.1:{port}"))
         .args(["run", "--config"])
         .arg(manifest.path())
@@ -109,7 +111,7 @@ fn binary_stdout() -> Result<()> {
 fn binary_cursor_bound() -> Result<()> {
     use std::os::unix::fs::PermissionsExt as _;
 
-    let manifest = crate::common::skeleton_manifest("source:echo")?;
+    let manifest = common::skeleton_manifest("source:echo")?;
 
     let stub_dir = tempfile::tempdir()?;
     let stub = stub_dir.path().join("cursor-agent");

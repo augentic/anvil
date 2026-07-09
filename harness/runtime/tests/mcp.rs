@@ -8,6 +8,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+mod common;
+
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
@@ -22,7 +24,7 @@ use crate::common::Bundle;
 // Assemble the skeleton deployment into a runtime the in-process HTTP driver
 // can serve requests through.
 async fn runtime() -> Result<Runtime<Bundle>> {
-    let manifest = crate::common::skeleton_manifest("source:echo")?;
+    let manifest = common::skeleton_manifest("source:echo")?;
     let mut deployment = DeploymentBuilder::new()
         .config(manifest.path().to_path_buf())
         .build::<StoreCtx<Bundle>>()

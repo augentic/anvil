@@ -13,6 +13,8 @@
 //! drive the deployment in-process over stubbed backends instead of
 //! through the product binary.
 
+#![expect(dead_code, reason = "shared fixtures; each consuming binary uses a subset")]
+
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, OnceLock};

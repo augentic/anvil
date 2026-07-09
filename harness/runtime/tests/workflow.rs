@@ -21,6 +21,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+mod common;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -73,7 +75,7 @@ impl Project {
         // which sits under the `"."` mount so the guest sees it too.
         let dev_dir = root.join("target/wasm32-wasip2/release");
         fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-        fs::copy(crate::common::adapter_component_wasm("target:omnia"), dev_dir.join("omnia.wasm"))
+        fs::copy(common::adapter_component_wasm("target:omnia"), dev_dir.join("omnia.wasm"))
             .expect("stage omnia component");
         Self {
             _tmp: tmp,
@@ -214,7 +216,7 @@ fn synthesis_response() -> String {
 // the given release-built adapter components, `"."` mounted at `mount`) with the
 // given guest argv, over the stubbed model backend.
 async fn run_composed(mount: &Path, adapters: &[&str], args: &[&str]) -> Result<ExitStatus> {
-    let manifest = crate::common::composed_manifest(mount, adapters)?;
+    let manifest = common::composed_manifest(mount, adapters)?;
     let builder = DeploymentBuilder::new()
         .config(manifest.path().to_path_buf())
         .mode(Mode::Command)
@@ -319,7 +321,7 @@ async fn post(runtime: &omnia::Runtime<StubBundle>, route: &str, message: &Value
 async fn adapter_shelves() -> Result<()> {
     let mount = TempDir::new()?;
     let runtime =
-        crate::common::composed_runtime(mount.path(), &["source:intent", "target:omnia"]).await?;
+        common::composed_runtime(mount.path(), &["source:intent", "target:omnia"]).await?;
 
     for (route, adapter) in [("/mcp/intent", "intent"), ("/mcp/omnia", "omnia")] {
         let init = post(
