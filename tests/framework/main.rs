@@ -1,11 +1,9 @@
 //! Enforce the repo-local framework-quality predicates over the prose
 //! and manifest surfaces (links, skills, scenarios, plugins, docs).
 //!
-//! Run with `cargo test --test framework`. Any finding fails
-//! CI. These are the surviving framework checks from the retired
-//! `specify lint framework` engine, rehomed as plain cargo tests per
-//! the `tests/rust_quality.rs` pattern: policy lives as constants in
-//! each module, failures are test failures.
+//! Run with `cargo test --test framework`. Any finding fails CI.
+//! Plain cargo tests per the `tests/rust_quality.rs` pattern: policy
+//! lives as constants in each module, failures are test failures.
 
 mod links;
 mod prose;
@@ -352,7 +350,7 @@ fn prose_checks_fire_on_bad_fixtures() {
     write(dir.path(), "targets/demo/prose/references/providers/b.md", "B.\n");
     assert!(fired(&prose::run(dir.path()), prose::CHECK_CORPUS_UNINDEXED));
 
-    // A retired design-history citation fires; a standards RFC passes.
+    // A design-history citation fires; a standards RFC passes.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_prose_tree(dir.path());
     write(dir.path(), "docs/explanation/why.md", "Per RFC-5 the loop was split.\n");

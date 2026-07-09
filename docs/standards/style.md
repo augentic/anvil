@@ -70,7 +70,7 @@ enum Kind { /* ... */ }
 
 ## No archaeology in code
 
-Module and crate docs describe what the code *does today*, in ≤ 3 lines. Historical framing — "Phase 1 …", "old contract renamed …", "previously lived in …", "to avoid the X → Y cycle" — is deleted, not relocated; git history is the record.
+Comments — doc comments and `//` line comments alike — describe what the code *does today*, in ≤ 3 lines. Historical framing — "Phase 1 …", "old contract renamed …", "previously lived in …", "former tests collapse here", "to avoid the X → Y cycle" — is deleted, not relocated; git history is the record. Enforced by the `rust.archaeology-in-comment` gate in `tests/rust_quality.rs` over `crates/`, `src/`, and the root `tests/` tree.
 
 ```rust
 // BAD

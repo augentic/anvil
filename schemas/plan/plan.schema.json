@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/plan/plan.schema.json",
   "title": "Specify plan.yaml",
-  "description": "Validates the structure of `plan.yaml` (at the repo root): the change name, the optional plan-level `lifecycle` (`pending | approved` per the workflow contract \u00a7Workflow vocabulary), the optional named-sources map, and the ordered list of plan slices with their dependencies, status, and (per the workflow contract) structured source bindings plus the optional `divergence` enum. Strict schema \u2014 unknown top-level and per-slice fields are rejected.\n\nEach slice binds a `project` (the target registry project; optional on disk \u2014 an omitted `project` resolves to the sole project in the topology) and an optional `divergence` enum (`likely | accepted | rejected`). The target adapter (`name@<semver>`) is no longer stored per slice \u2014 it is resolved on demand from the bound project's topology (the committed `.specify/topology.lock` for a workspace, `project.yaml.adapter` for a single regular project). `slices[].sources[]` items accept either a bare-string source key (shorthand for `{ source: <key>, lead: <slice.name> }`) or the structured `{ source, lead }` object form; the top-level `sources` map carries the structured `{ adapter, path?, value? }` object per source key \u2014 the legacy bare-string shorthand was dropped and exactly one of `path` or `value` is required. The per-entry status enum is `{pending, in-progress, done}` (no `blocked`/`failed`/`skipped`); the plan-level `lifecycle` enum is the collapsed `{pending, approved}` \u2014 `drained` and `currently executing` are computed from per-entry status at read time.\n\nworkflow \u00a7D3: each slice MAY carry an optional `authority-override` map keyed by claim kind whose values are source keys present in the slice's own `sources[]` list \u2014 orphan keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source`. workflow \u00a7D5: every `divergence` value (including `likely`) is CLI-written via `specify plan amend --divergence`; the plan skill no longer patches the file directly.",
+  "description": "Validates the structure of `plan.yaml` (at the repo root): the change name, the optional plan-level `lifecycle` (`pending | approved` per the workflow contract \u00a7Workflow vocabulary), the optional named-sources map, and the ordered list of plan slices with their dependencies, status, and (per the workflow contract) structured source bindings plus the optional `divergence` enum. Strict schema \u2014 unknown top-level and per-slice fields are rejected.\n\nEach slice binds a `project` (the target registry project; optional on disk \u2014 an omitted `project` resolves to the sole project in the topology) and an optional `divergence` enum (`likely | accepted | rejected`). The target adapter (`name@<semver>`) is not stored per slice \u2014 it is resolved on demand from the bound project's topology (the committed `.specify/topology.lock` for a workspace, `project.yaml.adapter` for a single regular project). `slices[].sources[]` items accept either a bare-string source key (shorthand for `{ source: <key>, lead: <slice.name> }`) or the structured `{ source, lead }` object form; the top-level `sources` map carries the structured `{ adapter, path?, value? }` object per source key (no bare-string shorthand) \u2014 exactly one of `path` or `value` is required. The per-entry status enum is `{pending, in-progress, done}` (no `blocked`/`failed`/`skipped`); the plan-level `lifecycle` enum is the collapsed `{pending, approved}` \u2014 `drained` and `currently executing` are computed from per-entry status at read time.\n\nworkflow \u00a7D3: each slice MAY carry an optional `authority-override` map keyed by claim kind whose values are source keys present in the slice's own `sources[]` list \u2014 orphan keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source`. workflow \u00a7D5: every `divergence` value (including `likely`) is CLI-written via `specify plan amend --divergence`; the plan skill never patches the file directly.",
   "type": "object",
   "required": [
     "name",
@@ -73,7 +73,7 @@
           "description": "The per-source disagreeing values. A genuine disagreement records \u22652 distinct source values; the CLI checks this structurally but never decides materiality."
         }
       },
-      "description": "RFC-46 D4 \u2014 one field on which a slice's matched leads materially disagree, recorded by the propose agent alongside a `divergence` flag."
+      "description": "One field on which a slice's matched leads materially disagree, recorded by the reconciling agent alongside a `divergence` flag."
     },
     "claimKind": {
       "type": "string",
@@ -109,7 +109,7 @@
         "version": {
           "type": "string",
           "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
-          "description": "Optional exact semver pin for the bound source adapter (RFC-47). Additive: an omitted `version` resolves the single installed identity, so existing source binds parse unchanged."
+          "description": "Optional exact semver pin for the bound source adapter. An omitted `version` resolves the single installed identity."
         },
         "path": {
           "type": "string",
@@ -173,7 +173,7 @@
             "string",
             "null"
           ],
-          "description": "Target registry project name. Required for multi-project registries; optional for single-project (an omitted value resolves to the sole topology project). The target adapter is resolved from this project via the committed `.specify/topology.lock` (workspace) or `project.yaml.adapter` (single regular project); it is no longer stored per slice."
+          "description": "Target registry project name. Required for multi-project registries; optional for single-project (an omitted value resolves to the sole topology project). The target adapter is resolved from this project via the committed `.specify/topology.lock` (workspace) or `project.yaml.adapter` (single regular project); it is not stored per slice."
         },
         "status": {
           "type": "string",
@@ -196,7 +196,7 @@
         "disagreements": {
           "type": "array",
           "items": { "$ref": "#/$defs/disagreement" },
-          "description": "RFC-46 D4 \u2014 the per-field disagreeing values backing a `divergence` flag. The `/spec:plan` propose agent records them when it flags `divergence: likely`; the CLI checks structural consistency only (a flagged slice records them with \u22652 distinct source values each; a recorded set without a flag is an orphan) and never decides materiality. Absent stays off disk."
+          "description": "The per-field disagreeing values backing a `divergence` flag. The `/spec:plan` reconciling agent records them when it flags `divergence: likely`; the CLI checks structural consistency only (a flagged slice records them with \u22652 distinct source values each; a recorded set without a flag is an orphan) and never decides materiality. Absent stays off disk."
         },
         "authority-override": {
           "type": "object",
@@ -221,7 +221,7 @@
         },
         "context": {
           "type": "array",
-          "description": "Baseline paths relevant to this slice, relative to `.specify/`. Briefs use these as a focus hint when scanning baseline directories.",
+          "description": "Baseline paths relevant to this slice, relative to `.specify/`. Prompts use these as a focus hint when scanning baseline directories.",
           "items": {
             "type": "string",
             "minLength": 1

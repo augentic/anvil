@@ -52,10 +52,9 @@ fn entry(name: &str, status: Status) -> Entry {
 }
 
 /// Every parse / serialize / round-trip / default case for `Plan`,
-/// `Entry`, the source-binding shapes, `TargetRef`, and `EntryPatch`.
-/// Each block is one of the former single-purpose serde tests; the
-/// inputs are exhaustive so coverage is identical to the split form.
-#[expect(clippy::too_many_lines, reason = "collapsed serde matrix: one block per former test")]
+/// `Entry`, the source-binding shapes, `TargetRef`, and `EntryPatch`,
+/// one block per case.
+#[expect(clippy::too_many_lines, reason = "serde matrix: one block per wire shape")]
 #[test]
 fn serde_shapes() {
     // The §The Plan reference fixture round-trips and parses every entry.

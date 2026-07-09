@@ -29,7 +29,7 @@ pub const CHECK_CATALOG_RUNS_DRIFT: &str = "scenarios.catalog-runs-drift";
 /// a contiguous slice of, anchored at any element.
 const STAGES_ORDER: [&str; 5] = ["plan", "refine", "build", "merge", "drop"];
 
-/// Catalog↔runs policy (formerly CORE-056's `config:`).
+/// Catalog↔runs policy.
 const CATALOG: &str = "evals/scenarios/README.md";
 const SCENARIOS_DIR: &str = "evals/scenarios";
 const RUNS_DIR: &str = "evals/runs";
@@ -308,7 +308,7 @@ static ROW_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// The scenario catalog, the scenario files, and the committed run
-/// records must agree (formerly CORE-056).
+/// records must agree.
 fn check_catalog_runs(root: &Path, findings: &mut Vec<Finding>) {
     let Ok(content) = fs::read_to_string(root.join(CATALOG)) else {
         findings.push(Finding::new(

@@ -1,6 +1,5 @@
 //! Shared plumbing for the framework-quality predicates: repo walk,
-//! frontmatter split, and the fence-aware markdown link scanner ported
-//! from the retired lint indexer.
+//! frontmatter split, and the fence-aware markdown link scanner.
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -103,8 +102,7 @@ pub struct MarkdownLink {
 }
 
 /// Extract `[label](target)` links from markdown text, skipping fenced
-/// code blocks, HTML comments, and inline code spans (ported from the
-/// retired lint indexer's fence-aware scanner).
+/// code blocks, HTML comments, and inline code spans.
 pub fn extract_links(text: &str) -> Vec<MarkdownLink> {
     let mut state = ScanState::default();
     let mut links = Vec::new();
@@ -273,8 +271,7 @@ pub struct FencedBlock {
     pub body: String,
 }
 
-/// Extract closed fenced-code blocks (ported from the retired lint
-/// indexer's fence scanner).
+/// Extract closed fenced-code blocks.
 pub fn extract_fenced_blocks(text: &str) -> Vec<FencedBlock> {
     let mut out = Vec::new();
     let mut in_block = false;

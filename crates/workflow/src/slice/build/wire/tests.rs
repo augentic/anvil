@@ -47,8 +47,7 @@ fn report_with_ui_surface(screens: u32) -> BuildReport {
 
 /// The `BuildRequest` / `BuildReport` serde envelope: the optional `ui-surface`
 /// claim, the `project-dir` request round-trip, `deny_unknown_fields`
-/// rejection, and the per-platform `outputs` round-trip. Collapsed from the
-/// four former single-shape serde tests; every input is preserved.
+/// rejection, and the per-platform `outputs` round-trip.
 #[test]
 fn wire_serde() {
     // `ui-surface` present round-trips kebab-case; absent defaults to None

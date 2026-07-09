@@ -73,7 +73,7 @@ interface types {
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
-/// assembles a prompt from its compiled-in brief, issues `create` with an MCP
+/// assembles a prompt from its compiled-in prompt fragments, issues `create` with an MCP
 /// grant naming its own reference route and a workspace lend of its `"."`
 /// preopen, and deserializes the schema-gated answer into the records below.
 interface source {

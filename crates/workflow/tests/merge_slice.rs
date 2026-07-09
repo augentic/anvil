@@ -373,7 +373,7 @@ fn merge_without_contracts_dir() {
     );
     assert!(
         !project.root.join(".specify/contracts").exists(),
-        "merge must not create the legacy .specify/contracts/ either"
+        "merge must not create .specify/contracts/ either"
     );
 
     let archived = find_archived_metadata(&project);

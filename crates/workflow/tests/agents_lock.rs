@@ -1,9 +1,8 @@
 //! Integration coverage for the AGENTS.md context-lock sidecar codec
-//! (`workflow::agents::lock::{load, save}`). Re-homed from the former
-//! `agents/lock.rs` unit module: the cold-start read (missing → `None`), the
-//! save/load round-trip, and `snake_case` serialisation all run through the
-//! public codec. The version gate and the test-only `diff_inputs` helper keep
-//! their in-`src` unit tests (no public input reaches the latter).
+//! (`workflow::agents::lock::{load, save}`): the cold-start read (missing →
+//! `None`), the save/load round-trip, and `snake_case` serialisation all run
+//! through the public codec. The version gate and the test-only `diff_inputs`
+//! helper keep their in-`src` unit tests (no public input reaches the latter).
 
 use workflow::agents::lock::{ContextLock, Fences, Input, load, save};
 

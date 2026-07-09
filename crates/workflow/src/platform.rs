@@ -80,8 +80,8 @@ mod tests {
 
     // The `--platforms` reject branch (unknown token) is covered end-to-end
     // by `tests/init.rs`; the wire-name coherence and the CSV
-    // sort/dedup/whitespace accept-half below have no CLI fixture, so both
-    // former tests collapse here (every assertion preserved).
+    // sort/dedup/whitespace accept-half below have no CLI fixture, so they
+    // live here.
     #[test]
     fn wire_names_and_csv() {
         // The strum-derived `Display` / `FromStr` (`serialize_all =

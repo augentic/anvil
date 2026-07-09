@@ -236,10 +236,9 @@ mod tests {
     use super::*;
 
     // The marker grammars are pure `(text -> parsed)` matrices with no CLI
-    // fixture pinning each shape, so the seven former tests collapse into two:
-    // the `TomlMarker` parser and the line-oriented grammars (Makefile
-    // targets, `go.mod` version, JSON-comment stripping, relative paths).
-    // Every former input is preserved.
+    // fixture pinning each shape, so two matrix tests cover them: the
+    // `TomlMarker` parser and the line-oriented grammars (Makefile targets,
+    // `go.mod` version, JSON-comment stripping, relative paths).
     #[test]
     fn toml_marker() {
         let nested = TomlMarker::parse("[tool.poetry]\nname = \"demo\"\n").expect("parse nested");

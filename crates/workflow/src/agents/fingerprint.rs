@@ -162,8 +162,8 @@ mod tests {
     }
 
     // The pure hashing functions are a `(inputs/version/body -> digest)`
-    // matrix with no CLI fixture pinning the canonical encoding, so the five
-    // former hash tests collapse here. Every former input is preserved.
+    // matrix with no CLI fixture pinning the canonical encoding, so the hash
+    // cases live here as one matrix.
     #[test]
     fn hashing_matrix() {
         // `aggregate` sorts inputs by path before hashing, yielding a stable digest.
@@ -229,8 +229,7 @@ mod tests {
     // `finalize` hashes content in sorted path order; `add_file_if_present` is
     // the soft variant that silently skips a missing path and a directory. A
     // regression that dropped the dedup or the sort would shuffle the canonical
-    // aggregate and break lock stability across runs. Collapsed from the two
-    // former collector tests.
+    // aggregate and break lock stability across runs.
     #[test]
     fn collector_dedups_and_filters() {
         let project = tempfile::tempdir().expect("tempdir");

@@ -2,7 +2,7 @@
 //!
 //! Run with `cargo test --test rust_quality`. Hard gates: any
 //! `rust.test-fn-name-too-long`, `rust.workflow-clock-read`,
-//! `rust.allow-without-reason`, or `rust.archaeology-in-doc-comment`
+//! `rust.allow-without-reason`, or `rust.archaeology-in-comment`
 //! finding fails CI. The predicates live in [`checks`], dev-only
 //! beside this gate.
 
@@ -24,8 +24,8 @@ mod checks {
 
     /// Rule id for sentence-length test fn names.
     pub const RULE_TEST_FN_NAME: &str = "rust.test-fn-name-too-long";
-    /// Rule id for archaeology markers in doc comments.
-    pub const RULE_ARCHAEOLOGY: &str = "rust.archaeology-in-doc-comment";
+    /// Rule id for archaeology markers in comments (doc and line).
+    pub const RULE_ARCHAEOLOGY: &str = "rust.archaeology-in-comment";
     /// Rule id for `#[allow]` without a `reason`.
     pub const RULE_ALLOW_NO_REASON: &str = "rust.allow-without-reason";
     /// Rule id for wall-clock reads in workflow library code.
@@ -42,17 +42,30 @@ mod checks {
     /// threaded down.
     const WORKFLOW_SRC_PREFIX: &str = "crates/workflow/src/";
 
+    /// Substrings that mark a comment as narrating history rather than
+    /// describing current behavior. Case-sensitive; capitalised variants
+    /// are listed where sentence-initial use is plausible. Bare
+    /// `superseded` is deliberately absent — it is live Decision-Record
+    /// lifecycle vocabulary (`DecisionStatus::Superseded`).
     const ARCHAEOLOGY_MARKERS: &[&str] = &[
         "RFC-",
         "Milestone ",
         "retired ",
+        "Retired ",
         "re-homed",
+        "Re-homed",
+        "rehomed",
         "old stack",
         "formerly ",
+        "Formerly ",
         "previously lived",
         "old contract",
         "pre-cutover",
         "folded pair",
+        "former ",
+        "Former ",
+        "collapsed from",
+        "Collapsed from",
     ];
 
     /// One predicate hit: the rule id plus a human-readable message that
@@ -194,6 +207,9 @@ mod checks {
         };
         let rel = relative_display(root, path);
         let source_quality_scope = rel.starts_with("crates/") || rel.starts_with("src/");
+        // Archaeology is also gated over the root `tests/` tree, where
+        // migrated test binaries tend to accumulate provenance headers.
+        let archaeology_scope = source_quality_scope || rel.starts_with("tests/");
         let workflow_clock_scope = is_workflow_runtime_source(&rel);
         let test_file = is_test_rust_file(&rel);
         let lines: Vec<&str> = content.lines().collect();
@@ -204,6 +220,9 @@ mod checks {
 
             if test_file {
                 check_test_fn_name(&lines, line_idx, &rel, findings);
+            }
+            if archaeology_scope {
+                check_archaeology(trimmed, &rel, line_no, findings);
             }
             if !source_quality_scope {
                 continue;
@@ -223,20 +242,6 @@ mod checks {
             });
             }
 
-            if trimmed.starts_with("//!") || trimmed.starts_with("///") {
-                for marker in ARCHAEOLOGY_MARKERS {
-                    if trimmed.contains(marker) {
-                        findings.push(Finding {
-                        rule: RULE_ARCHAEOLOGY,
-                        message: format!(
-                            "archaeology marker `{marker}` in doc comment at {rel}:{line_no} — keep ≤3 lines of what-it-does-today; history belongs in DECISIONS.md"
-                        ),
-                    });
-                        break;
-                    }
-                }
-            }
-
             if trimmed.contains("#[allow(") && !trimmed.contains("reason") {
                 findings.push(Finding {
                 rule: RULE_ALLOW_NO_REASON,
@@ -247,6 +252,26 @@ mod checks {
             }
 
             check_adapter_name_literals(&rel, line, line_no, findings);
+        }
+    }
+
+    /// Flag archaeology markers in any comment form (`//`, `//!`, `///`).
+    /// Only comment lines are scanned, so string literals (fixtures, the
+    /// marker list itself) never fire.
+    fn check_archaeology(trimmed: &str, rel: &str, line_no: usize, findings: &mut Vec<Finding>) {
+        if !trimmed.starts_with("//") {
+            return;
+        }
+        for marker in ARCHAEOLOGY_MARKERS {
+            if trimmed.contains(marker) {
+                findings.push(Finding {
+                    rule: RULE_ARCHAEOLOGY,
+                    message: format!(
+                        "archaeology marker `{marker}` in comment at {rel}:{line_no} — comments describe what the code does today; history belongs in git"
+                    ),
+                });
+                break;
+            }
         }
     }
 
@@ -369,7 +394,7 @@ const GATED_RULES: [(&str, &str); 5] = [
     ),
     (
         RULE_ARCHAEOLOGY,
-        "doc comments describe what the code does today; history belongs in DECISIONS.md (see docs/standards/style.md)",
+        "comments describe what the code does today; history belongs in git (see docs/standards/style.md)",
     ),
 ];
 
@@ -439,6 +464,29 @@ fn ignores_long_non_test_fn() {
         !findings.iter().any(|f| f.rule == RULE_TEST_FN_NAME),
         "non-test fns must not be flagged"
     );
+}
+
+#[test]
+fn flags_archaeology_in_line_comments() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    // Line comments in root `tests/` are in scope alongside doc comments
+    // in `crates/`; string literals carrying a marker never fire.
+    let test_file = dir.path().join("tests/it.rs");
+    fs::create_dir_all(test_file.parent().expect("parent")).expect("mkdir");
+    fs::write(&test_file, "// Collapsed from the former unit module.\nfn a() {}\n")
+        .expect("write");
+    let literal_file = dir.path().join("crates/demo/src/lib.rs");
+    fs::create_dir_all(literal_file.parent().expect("parent")).expect("mkdir");
+    fs::write(&literal_file, "const FIXTURE: &str = \"formerly a brief\";\n").expect("write");
+
+    let findings = checks::run(dir.path());
+    let archaeology: Vec<&str> = findings
+        .iter()
+        .filter(|f| f.rule == RULE_ARCHAEOLOGY)
+        .map(|f| f.message.as_str())
+        .collect();
+    assert_eq!(archaeology.len(), 1, "exactly the line comment fires: {archaeology:?}");
+    assert!(archaeology[0].contains("tests/it.rs:1"), "{archaeology:?}");
 }
 
 #[test]

@@ -14,8 +14,8 @@
 //! A bare first-party name (`omnia`) is the development shorthand: it
 //! resolves the sibling/in-repo release build
 //! (`target/wasm32-wasip2/release/<name>.wasm`, built by
-//! `cargo make release` in the adapters repo). GitHub URLs are refused —
-//! a source checkout no longer yields a usable adapter artifact.
+//! `cargo make release` in the adapters repo). GitHub URLs are refused;
+//! adapters resolve from the registry or a dev build.
 
 use std::fs;
 use std::path::{Path, PathBuf};

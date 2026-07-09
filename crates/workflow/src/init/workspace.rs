@@ -33,8 +33,8 @@ use crate::registry::Registry;
 /// a workspace; the operator runs `/spec:plan <name>`
 /// (which scaffolds both files atomically) when the work itself begins.
 ///
-/// Adapter resolution is intentionally skipped — there is no
-/// `pipeline.define` for a workspace to walk.
+/// Adapter resolution is intentionally skipped — a workspace binds no
+/// adapter of its own; member projects declare theirs.
 ///
 /// # Errors
 ///

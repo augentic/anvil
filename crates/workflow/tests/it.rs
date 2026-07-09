@@ -1,9 +1,9 @@
 //! Consolidated integration binary for `workflow`.
 //!
-//! One binary per crate: each former `tests/<area>.rs` hub is pulled in here as
-//! a `#[path]` submodule so the crate-under-test links exactly once instead of
-//! once per area. The shared `common` helper is declared a single time and every
-//! area reaches it as `crate::common`. See
+//! One binary per crate: each area file is pulled in here as a `#[path]`
+//! submodule so the crate-under-test links exactly once instead of once per
+//! area. The shared `common` helper is declared a single time and every area
+//! reaches it as `crate::common`. See
 //! [docs/standards/testing.md](../../../docs/standards/testing.md).
 
 mod common;

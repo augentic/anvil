@@ -295,9 +295,9 @@ pub enum ChannelArg {
 ///   colons, equals signs).
 ///
 /// Materialises as [`workflow::change::SourceBinding`] under
-/// the structured `{ adapter, path?, value? }` wire form. The legacy
-/// bare-string `--source <key>=<path>` form was dropped — every
-/// binding now carries an explicit adapter name.
+/// the structured `{ adapter, path?, value? }` wire form. Every
+/// binding carries an explicit adapter name; there is no bare-string
+/// `--source <key>=<path>` form.
 ///
 /// The [`FromStr`] impl returns a `String` error on malformed input
 /// so clap surfaces a standard usage diagnostic (exit code 2).

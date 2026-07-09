@@ -15,7 +15,7 @@ pub(super) fn run(ctx: &Ctx, name: String) -> Result<()> {
     let path = path_buf.display().to_string();
     let workspace_mode = ctx.config.workspace;
 
-    // Pre-flight: surface the legacy `registry-remove-no-registry`
+    // Pre-flight: surface the `registry-remove-no-registry`
     // diagnostic when the file is absent. `with_state` would
     // emit the generic `Error::ArtifactNotFound`; the registry-specific
     // diag is part of the wire contract.

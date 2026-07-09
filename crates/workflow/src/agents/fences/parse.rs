@@ -235,12 +235,10 @@ mod tests {
     use super::*;
 
     // `parse_document` is a pure `(bytes -> Ok(Some) | Ok(None) | Err)` matrix
-    // with no CLI fixture exercising the per-shape errors, so the 11 former
-    // single-case tests collapse here. The success case keeps its rich
-    // multi-field assertions (and the `#[cfg(test)]`-only `metadata()`
-    // accessor, which forces this to stay an in-`src` unit test); the error
-    // cases — each a distinct code path — drive a table. Every former input is
-    // preserved.
+    // with no CLI fixture exercising the per-shape errors. The success case
+    // keeps its rich multi-field assertions (and the `#[cfg(test)]`-only
+    // `metadata()` accessor, which forces this to stay an in-`src` unit
+    // test); the error cases — each a distinct code path — drive a table.
     #[test]
     fn parse_document_matrix() {
         // The one well-formed document: prefix / body / suffix / metadata /

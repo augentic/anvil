@@ -2,7 +2,7 @@
 //!
 //! Pure-logic edge matrices that are CLI-unreachable: the kebab-case
 //! validators, the `Error` discriminant/`Display` contract, and the
-//! RFC 3339 serde helpers. Each former area is pulled in here as a
+//! RFC 3339 serde helpers. Each area file is pulled in here as a
 //! `#[path]` submodule so the crate links exactly once. See
 //! [docs/standards/testing.md](../../../docs/standards/testing.md).
 

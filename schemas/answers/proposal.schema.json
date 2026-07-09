@@ -2,7 +2,7 @@
   "$defs": {
     "disagreement": {
       "additionalProperties": false,
-      "description": "RFC-46 D4 — one field on which a slice's matched leads materially disagree, recorded by the propose agent alongside a `divergence` flag.",
+      "description": "One field on which a slice's matched leads materially disagree, recorded by the reconciling agent alongside a `divergence` flag.",
       "properties": {
         "field": {
           "description": "The aspect the matched leads disagree on (a free-form label, e.g. `password-min-length`).",
@@ -38,7 +38,7 @@
     },
     "gateProse": {
       "additionalProperties": false,
-      "description": "Gate 1 review prose authored alongside the grouping (RFC-61 S1). Canonically optional (the retired native `plan propose --from` verb accepted responses without it); the derived judgment-answer schema requires it, so the collapsed guest `plan author` orchestration always receives the prose and persists it into `change.md` / `discovery.md`. Section bodies only — the orchestrator owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, the `##` headings).",
+      "description": "Gate 1 review prose authored alongside the grouping. Canonically optional; the derived judgment-answer schema requires it, so the guest `plan author` orchestration always receives the prose and persists it into `change.md` / `discovery.md`. Section bodies only — the orchestrator owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, the `##` headings).",
       "properties": {
         "change": {
           "description": "The `change.md` operator brief body rendered below the deterministic `# Change — <name>` heading: intent, scope, and the Gate 1 review prose the skill flow authored by hand (`## Tentative merges`, `## Cross-cutting leads`, `## Likely divergences` when applicable).",

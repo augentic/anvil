@@ -47,10 +47,9 @@ mod test_fixtures {
     use super::model::{Entry, Lifecycle, Plan, SliceAuthorityOverride, Status};
 
     /// Reduced-state reproduction of the plan execution
-    /// §"The Plan" fixture. v1 has no per-entry `failed`, `blocked`, or
-    /// `skipped` state — entries either move forward or stay where they
-    /// are. The fixture has been mechanically rewritten to use the
-    /// surviving three-state enum.
+    /// §"The Plan" fixture. There is no per-entry `failed`, `blocked`,
+    /// or `skipped` state — entries either move forward or stay where
+    /// they are.
     pub const PLAN_EXAMPLE_YAML: &str = r"name: platform-v2
 sources:
   monolith:

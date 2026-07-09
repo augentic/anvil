@@ -1,9 +1,7 @@
 //! Integration coverage for the composition delta-merge kernel
-//! (`workflow::merge::composition`). Re-homed and collapsed from the
-//! former `merge/composition/tests.rs` unit module — the screen-level delta
-//! matrix has no CLI fixture. One test sweeps the `merge` operations and
-//! errors, the other the two pure shape predicates. Every former input is
-//! represented.
+//! (`workflow::merge::composition`) — the screen-level delta matrix has no
+//! CLI fixture. One test sweeps the `merge` operations and errors, the other
+//! the two pure shape predicates.
 
 use error::Error;
 use workflow::merge::MergeOperation;

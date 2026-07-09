@@ -100,9 +100,9 @@ fn resolve_lead_token(token: &str, discovery: Option<&Discovery>) -> Result<Stri
 }
 
 /// Best-effort load of `<project_dir>/discovery.md`. Returns
-/// `Ok(None)` when the file is absent so the legacy plan-create
-/// path (with no `discovery.md`) keeps working; propagates parse /
-/// I/O errors otherwise.
+/// `Ok(None)` when the file is absent so `plan create` works
+/// without a `discovery.md`; propagates parse / I/O errors
+/// otherwise.
 pub fn load_discovery(layout: Layout<'_>) -> Result<Option<Discovery>> {
     let path = layout.discovery_path();
     if !path.exists() {

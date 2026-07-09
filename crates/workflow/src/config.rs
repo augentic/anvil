@@ -55,10 +55,10 @@ pub struct ProjectConfig {
     #[serde(rename = "specify", default, skip_serializing_if = "Option::is_none")]
     pub specify_version: Option<String>,
 
-    /// Map of brief id (e.g. `proposal`, `specs`, `design`, `tasks`) to a
+    /// Map of artifact key (`proposal`, `specs`, `design`, `tasks`) to a
     /// path (relative to `.specify/`) of a markdown file containing extra
-    /// rules for that brief. Scaffolded with one empty entry per
-    /// `pipeline.define` brief by `specify init`.
+    /// rules for that artifact. Scaffolded with one empty entry per key
+    /// by `specify init`.
     #[serde(default)]
     pub rules: BTreeMap<String, String>,
 

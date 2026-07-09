@@ -1,7 +1,6 @@
 //! Integration coverage for the Decision Record promotion kernel
-//! (`workflow::decisions::{promote, read_baseline}`). Re-homed from the
-//! former `decisions/tests.rs` unit module: every case drives the public
-//! `promote` entry point over a real slice/baseline tree. The private
+//! (`workflow::decisions::{promote, read_baseline}`): every case drives the
+//! public `promote` entry point over a real slice/baseline tree. The private
 //! `dec_number` / `is_dec_ref` parser keeps its in-`src` unit test (no public
 //! input reaches it).
 

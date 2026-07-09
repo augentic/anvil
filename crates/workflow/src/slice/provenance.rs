@@ -3,8 +3,8 @@
 //! The provenance view is **not** a persisted file. It is projected on
 //! demand from a slice's single `model.yaml` (which carries provenance
 //! inline) by `specify slice provenance`. Because the model and its
-//! provenance share one source of truth, the two can never drift — the
-//! former `model.yaml`-vs-`provenance.yaml` drift gate retires. The
+//! provenance share one source of truth, the two can never drift and
+//! no drift gate is needed. The
 //! projection round-trips against `schemas/slice/provenance.schema.json`
 //! so the audit shape stays stable. See [`DECISIONS.md` §"Single
 //! slice-model artifact"][model-artifact] and

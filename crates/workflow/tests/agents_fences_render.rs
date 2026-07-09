@@ -1,8 +1,7 @@
 //! Integration coverage for the AGENTS.md write planner
-//! (`workflow::agents::fences::plan_agents_write`). Re-homed and
-//! collapsed from the former `agents/fences/render.rs` unit module: one test
-//! sweeps the four write dispositions plus non-UTF-8 byte preservation, the
-//! other the two fence-policy errors. Every former input is represented.
+//! (`workflow::agents::fences::plan_agents_write`): one test sweeps the four
+//! write dispositions plus non-UTF-8 byte preservation, the other the two
+//! fence-policy errors.
 
 use workflow::agents::fences::{FenceError, WriteDisposition, plan_agents_write};
 

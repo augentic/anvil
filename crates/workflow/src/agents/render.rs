@@ -218,8 +218,8 @@ mod tests {
     }
 
     // `render_body` is a deterministic `(Input -> Markdown)` projection with no
-    // CLI fixture pinning the section shapes, so the five former body tests
-    // collapse here. Every former input is preserved.
+    // CLI fixture pinning the section shapes, so the body cases live here as
+    // one matrix.
     #[test]
     fn render_body_matrix() {
         // A regular (non-workspace) project renders all seven sections in

@@ -209,7 +209,7 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 ///
 /// The outcome stamp is written atomically with the status transition,
 /// before the archive move. This ensures the archived `metadata.yaml`
-/// carries the merge-success outcome so that `/spec:execute` can read
+/// carries the merge-success outcome so the plan execute loop can read
 /// it via direct `metadata.yaml` inspection (falling back to the archive
 /// when the active slice directory no longer exists).
 ///

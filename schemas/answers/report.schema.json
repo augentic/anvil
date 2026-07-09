@@ -25,7 +25,7 @@
     },
     "diagnostic": {
       "additionalProperties": false,
-      "description": "Wire shape for a single structured diagnostic — the neutral currency shared by every Specify check surface: the workflow-gating validate surface (`specify slice validate`), plan validation, target-adapter review briefs, model-assisted scorers, CI annotations, and dashboards. Field names are kebab-case at every nesting level. Producer-local `id` is distinct from the codex `rule-id` — `id` is a stable per-run handle (e.g. `FIND-0001`) and `rule-id` is the durable codex citation (e.g. `UNI-014`). Conditional requirements that JSON Schema cannot express (e.g. `confidence` required for `source: model-assisted`) are enforced producer-side.",
+      "description": "Wire shape for a single structured diagnostic — the neutral currency shared by every Specify check surface: the workflow-gating validate surface (`specify slice validate`), plan validation, target-adapter review prompts, model-assisted scorers, CI annotations, and dashboards. Field names are kebab-case at every nesting level. Producer-local `id` is distinct from the codex `rule-id` — `id` is a stable per-run handle (e.g. `FIND-0001`) and `rule-id` is the durable codex citation (e.g. `UNI-014`). Conditional requirements that JSON Schema cannot express (e.g. `confidence` required for `source: model-assisted`) are enforced producer-side.",
       "properties": {
         "artifact": {
           "$ref": "#/$defs/diagnostic-artifact"

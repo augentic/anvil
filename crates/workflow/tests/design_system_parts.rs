@@ -1,6 +1,5 @@
 //! Integration coverage for the operator-authored `parts.yaml` input
-//! (`workflow::design_system::Parts`). Re-homed from the former
-//! `design_system/tests.rs` unit module. The private `from_yaml` parser is
+//! (`workflow::design_system::Parts`). The private `from_yaml` parser is
 //! exercised through the public `Parts::load` (write-to-disk then load), which
 //! is the only path operators reach.
 

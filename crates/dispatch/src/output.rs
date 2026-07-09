@@ -155,8 +155,8 @@ pub fn report(format: Format, err: &Error) -> Exit {
 ///
 /// The shape is now payload-free: `error` carries the variant
 /// discriminant (the `code` for `Error::Validation`), `message` the
-/// rendered detail, and `exit-code` the numeric exit. Per-finding rows
-/// are no longer part of the error body — handlers render
+/// rendered detail, and `exit-code` the numeric exit. The error body
+/// carries no per-finding rows — handlers render
 /// [`schema::diagnostics::DiagnosticReport`] on stdout before
 /// returning the payload-free error.
 ///

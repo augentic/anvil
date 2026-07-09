@@ -1,6 +1,6 @@
 //! Prose and manifest predicates: marketplace↔plugins drift, skill
 //! numeric-cap drift, the canonical review-team-protocol document,
-//! reference-corpus indexes, retired design-history citations, and
+//! reference-corpus indexes, design-history citations, and
 //! text pipeline diagrams in docs.
 
 use std::collections::BTreeSet;
@@ -21,7 +21,7 @@ pub const CHECK_NUMERIC_CAP: &str = "prose.numeric-cap-exceeded";
 pub const CHECK_CANONICAL_MISSING: &str = "agent-teams.missing-canonical";
 /// A reference corpus holds two or more files but no README.md index.
 pub const CHECK_CORPUS_UNINDEXED: &str = "reference.corpus-unindexed";
-/// Prose cites a retired design-history RFC number below 100.
+/// Prose cites a design-history RFC number below 100.
 pub const CHECK_HISTORY_CITATION: &str = "docs.history-citation";
 /// A docs page draws a flow diagram inside a fenced `text` block.
 pub const CHECK_TEXT_DIAGRAM: &str = "docs.text-pipeline-diagram";
@@ -44,7 +44,7 @@ const CORPUS_ROOTS: &[&str] =
 const CORPUS_INDEX: &str = "README.md";
 const CORPUS_MIN_FILES: usize = 2;
 
-/// Trees scanned for retired design-history citations.
+/// Trees scanned for design-history citations.
 const HISTORY_SCOPE_PREFIXES: &[&str] = &["docs/", "codex/", "sources/", "targets/", "plugins/"];
 /// Subtrees excluded from the history-citation scan.
 const HISTORY_EXCLUDED_PREFIXES: &[&str] = &["docs/assets/", "codex/rules/"];
@@ -284,7 +284,7 @@ fn glob_dir_matches(pattern: &str, dir: &str) -> bool {
 static RFC_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)RFC[-\s]+(\d+)").expect("rfc citation pattern"));
 
-/// Retired Specify design-history citations (`RFC-N`, N < 100) must
+/// Specify design-history citations (RFC numbers below 100) must
 /// not appear in operator-facing prose; standards RFCs (>= 100) pass.
 fn check_history_citations(root: &Path, findings: &mut Vec<Finding>) {
     let mut paths = Vec::new();
