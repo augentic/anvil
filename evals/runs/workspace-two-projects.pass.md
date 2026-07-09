@@ -36,6 +36,5 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-two-projects`
 - **Retained at:** `evals/.sandbox/workspace-two-projects/`
 - **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/registry.yaml`, `platform/workspace/{backend,mobile,contracts}`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/`

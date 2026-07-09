@@ -33,7 +33,6 @@ Caveats, `needs-human` follow-ups, and links to follow-up issues (`fail` / `defe
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh "$SANDBOX"` (re-run against the retained sandbox; do not paste full output on `pass`)
 - **Retained at:** `<sandbox path(s)>`
 - **Key paths:** `<plan.yaml`, slice dirs, journal, PR URLs — as relevant>`
 

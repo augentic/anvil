@@ -36,6 +36,5 @@ Probe transcript highlights: two-slice `dashboard` plan (`metrics-summary`, `use
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-pause-resume`
 - **Retained at:** `evals/.sandbox/execute-pause-resume/`
 - **Key paths:** `plan.yaml`, `crates/`, `.specify/specs/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute-pause-resume.sh`

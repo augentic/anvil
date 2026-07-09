@@ -94,8 +94,8 @@ Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
   needs-human unless the evidence is unambiguous. Fill the **Assertions**
   table; cite probe output in the Evidence column for non-pass rows.
 - On a normal pass, record negative expectations as one line: held.
-- Point **Evidence** at the retained sandbox and `scripts/snapshot.sh "$SANDBOX"`
-  (do not paste full snapshot output on pass).
+- Point **Evidence** at the retained sandbox (see [`inspect.md`](inspect.md) for
+  read-only inspection commands).
 - Fill the run-summary template and file it under evals/runs/
   <id>.<result>.md; set the title verdict; update the scenario's status
   in the catalog.

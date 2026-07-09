@@ -36,6 +36,5 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `spe
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/documentation-multi-slice`
 - **Retained at:** `evals/.sandbox/documentation-multi-slice/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/catalog-revamp.md`, `docs/conventions.md`, `.specify/journal.jsonl`

@@ -39,7 +39,6 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `spe
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/typescript-multi-slice`
 - **Retained at:** `evals/.sandbox/typescript-multi-slice/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `legacy-monolith/src/server.ts`, `.specify/journal.jsonl`
 

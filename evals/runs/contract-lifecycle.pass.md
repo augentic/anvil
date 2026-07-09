@@ -47,7 +47,6 @@ Probe transcript highlights: fresh sandbox with offline local adapter paths (`om
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/contract-lifecycle`
 - **Retained at:** `evals/.sandbox/contract-lifecycle/`
 - **Key paths:** `.specify/archive/plans/oauth-login-20260615.yaml`, `.specify/archive/plans/oauth-login-20260615/change.md`, `workspace/{backend,mobile,contracts}/` on `specify/oauth-login`, `../{backend,mobile,contracts}-origin.git` bare remotes
 

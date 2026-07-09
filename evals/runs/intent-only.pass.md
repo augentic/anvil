@@ -36,6 +36,5 @@ Probe transcript highlights: fresh sandbox recreated; `plan.yaml` existed with `
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/intent-only`
 - **Retained at:** `evals/.sandbox/intent-only/`
 - **Key paths:** `plan.yaml`, `discovery.md`, `.specify/slices/fix-typo/`, `.specify/journal.jsonl`

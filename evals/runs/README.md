@@ -16,7 +16,7 @@ Filled run-summaries for eval scenario runs. Run records are the audit trail; th
 3. On `pass`, skip the fail-only sections at the bottom of the template.
 4. On `fail` or `deferred`, add **Fault**, **Failure detail**, and (when useful) **Plan structure**; link a follow-up issue from **Notes**.
 5. Update the scenario's status in the [catalog](../scenarios/README.md).
-6. Retain the sandbox under `evals/.sandbox/<id>/`; use `scripts/snapshot.sh "$SANDBOX"` to inspect (see [`evals/shared/inspect.md`](../shared/inspect.md)).
+6. Retain the sandbox under `evals/.sandbox/<id>/`; inspect with the read-only commands in [`evals/shared/inspect.md`](../shared/inspect.md).
 
 ## Record contract
 

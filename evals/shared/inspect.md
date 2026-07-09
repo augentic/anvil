@@ -41,13 +41,3 @@ specify registry validate                              # registry.yaml shape
 cat registry.yaml                                      # registered projects + routing descriptions
 cat topology.lock                                      # materialised slot topology (after workspace sync)
 ```
-
-## One-shot snapshot
-
-To capture the whole picture at once — directory tree plus the key artifact bodies — for a run record, use the snapshot helper:
-
-```bash
-scripts/snapshot.sh "$SANDBOX"
-```
-
-It is read-only and prints text suitable for the **Evidence** section of [`run-template.md`](run-template.md) (re-run the command; do not paste full output on pass).

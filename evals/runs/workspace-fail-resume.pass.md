@@ -35,6 +35,5 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-fail-resume/platform`
 - **Retained at:** `evals/.sandbox/workspace-fail-resume/`
 - **Key paths:** `platform/plan.yaml`, `platform/registry.yaml`, `platform/workspace/{backend,mobile}/`, `backend/.specify/journal.jsonl` (`slice.build.failed` / `slice.build.succeeded` for `auth-rotate`), `platform/.specify/journal.jsonl` (`plan.transition.approved`)

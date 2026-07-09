@@ -35,6 +35,5 @@ Probe transcript highlights: interrupted `/spec:execute` mid `oauth-backend` bui
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/workspace-stale-recovery`
 - **Retained at:** `evals/.sandbox/workspace-stale-recovery/`
 - **Key paths:** `platform/plan.yaml`, `platform/workspace/{backend,mobile,contracts}/`, `platform/.specify/journal.jsonl`

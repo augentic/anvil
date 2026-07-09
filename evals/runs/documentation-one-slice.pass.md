@@ -37,6 +37,5 @@ Probe transcript highlights: fresh sandbox recreated; `plan.reconcile.completed`
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/documentation-one-slice`
 - **Retained at:** `evals/.sandbox/documentation-one-slice/`
 - **Key paths:** `plan.yaml`, `crates/health_check/`, `.specify/specs/health-check/spec.md`, `.specify/archive/`, `.specify/journal.jsonl`

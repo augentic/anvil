@@ -36,6 +36,5 @@ Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/execute-fail-resume`
 - **Retained at:** `evals/.sandbox/execute-fail-resume/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute-fail-resume.sh`

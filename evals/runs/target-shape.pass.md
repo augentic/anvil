@@ -33,7 +33,6 @@
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/target-shape-intent` and `scripts/snapshot.sh evals/.sandbox/target-shape-docs`
 - **Retained at:** `evals/.sandbox/target-shape-intent/`, `evals/.sandbox/target-shape-docs/`
 - **Key paths:** `plan.yaml`, `.specify/slices/greeting/` (`specs/greeting/spec.md`, `design.md`, `model.yaml`, `evidence/`), `.specify/journal.jsonl`
 - **Shape comparison:** `diff -u target-shape-intent/.specify/slices/greeting/design.md target-shape-docs/.specify/slices/greeting/design.md` (no output); spec diff shows only `Sources:` lines

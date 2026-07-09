@@ -41,7 +41,6 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending` at Ga
 
 ## Evidence
 
-- **Reproduce:** `scripts/snapshot.sh evals/.sandbox/lead-reconciliation`
 - **Retained at:** `evals/.sandbox/lead-reconciliation/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/password-reset.md`, `legacy-monolith/src/auth/reset-password.ts`, `.specify/slices/account-lockout/evidence/`, `.specify/journal.jsonl`
 
