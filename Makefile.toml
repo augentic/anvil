@@ -87,65 +87,13 @@ env = { RUSTFLAGS = "-Dwarnings" }
 
 # Build guests
 #
-# wasm32-wasip2 guest components loaded by the parked composed runtime
-# integration tests in harness/runtime/tests/: the core `specify` guest
-# plus the echo adapter fixtures (cdylib examples of the
-# `harness/fixtures` package, landing under
-# target/wasm32-wasip2/debug/examples/). Two invocations: `--examples`
-# narrows target selection to example targets only, so the core guest's
-# lib needs its own build.
+# The core `specify` guest as a wasm32-wasip2 component — the dev build
+# the repo-root omnia.toml replay manifest points at. The parked test
+# rig's fixture guests build from inside harness/ (its own standalone
+# workspace; `cargo make build-guests` there builds both).
 [tasks.build-guests]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-cargo build -p specify --target wasm32-wasip2
-cargo build -p fixtures --examples --target wasm32-wasip2
-'''
-
-# Fetch adapters
-#
-# Populate the global adapter store with the pinned published adapter
-# components the parked composed runtime tests resolve (store-first; the
-# dev sibling checkout's release build is the fallback — see
-# harness/runtime/tests/common.rs `adapter_component_wasm`). The version
-# pin is the single source of truth at harness/runtime/tests/adapters.pin,
-# shared with the test harness. Idempotent and offline-safe: an existing
-# store entry is never re-fetched, so a warm store needs neither network
-# nor `wkg`. On miss, requires `wkg` on PATH (CI pins
-# `cargo install wkg@0.15.0 --locked`). The store root honours
-# `$SPECIFY_ADAPTER_STORE` (else `$HOME/.specify/adapters`) and the
-# registry host `$SPECIFY_REGISTRY` (else augentic.io), matching the
-# release workflow. The sidecar written beside each entry is the
-# verify-on-read record `schema::cache::verify_store_entry` checks.
-[tasks.fetch-adapters]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-pin="$(tr -d '[:space:]' < harness/runtime/tests/adapters.pin)"
-store="${SPECIFY_ADAPTER_STORE:-${HOME}/.specify/adapters}"
-registry="${SPECIFY_REGISTRY:-augentic.io}"
-mkdir -p "${store}"
-config="$(mktemp)"
-trap 'rm -f "${config}"' EXIT
-printf '[namespace_registries]\nspecify = "%s"\n' "${registry}" > "${config}"
-for name in intent omnia; do
-    entry="${store}/${name}@${pin}.wasm"
-    meta="${store}/${name}@${pin}.meta"
-    if [ -f "${entry}" ]; then
-        echo "${name}@${pin} already in store; skipping"
-        continue
-    fi
-    echo "fetching specify:${name}@${pin} into ${entry}"
-    wkg get "specify:${name}@${pin}" --output "${entry}" --config "${config}"
-    if command -v sha256sum >/dev/null 2>&1; then
-        digest="$(sha256sum "${entry}" | awk '{print $1}')"
-    else
-        digest="$(shasum -a 256 "${entry}" | awk '{print $1}')"
-    fi
-    printf 'tree_digest: sha256:%s\n' "${digest}" > "${meta}"
-    chmod a-w "${entry}"
-done
-'''
+command = "cargo"
+args = ["build", "-p", "specify", "--target", "wasm32-wasip2"]
 
 # Test
 #
@@ -153,21 +101,13 @@ done
 # `RUSTFLAGS=-Dwarnings` override already differs from the default
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
-# The parked test rig under harness/ (`runtime`, `fixtures`) is
-# excluded: its packages stay workspace members so `lint` keeps them
-# compiling, but the composed-deployment tests run on demand only
-# (`cargo nextest run -p runtime` after `cargo make build-guests`; see
-# harness/README.md).
+# The parked test rig under harness/ is its own standalone workspace
+# (excluded from this one), so no root-workspace task — test, lint,
+# doc, vet, deny — ever touches it; it runs manually from inside
+# harness/ (see harness/README.md).
 [tasks.test]
 command = "cargo"
-args = [
-    "nextest", "run",
-    "--workspace",
-    "--exclude", "runtime",
-    "--exclude", "fixtures",
-    "--all-features",
-    "--no-tests=pass",
-]
+args = ["nextest", "run", "--workspace", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
 # Test Doc

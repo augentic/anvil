@@ -9,9 +9,6 @@ description = "Embedded JSON Schemas and JSON-Schema validation plumbing shared 
 categories = ["development-tools"]
 keywords = ["specify", "json-schema"]
 readme = "../../README.md"
-# Integration tests compile to the single `it` binary (one binary per crate);
-# the per-area files are pulled in via tests/it.rs `#[path]` includes.
-autotests = false
 
 [lints]
 workspace = true
@@ -29,7 +26,3 @@ error.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 tempfile.workspace = true
-
-[[test]]
-name = "it"
-path = "tests/it.rs"

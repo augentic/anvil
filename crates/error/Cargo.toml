@@ -9,9 +9,6 @@ description = "Unified error types for the Specify CLI"
 categories = ["development-tools"]
 keywords = ["specify", "errors"]
 readme = "../../README.md"
-# Integration tests link through the single `it` binary (tests/it.rs);
-# per-area files are pulled in via `#[path]` submodules.
-autotests = false
 
 [lints]
 workspace = true
@@ -24,7 +21,3 @@ jiff.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
-
-[[test]]
-name = "it"
-path = "tests/it.rs"

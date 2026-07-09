@@ -57,26 +57,35 @@ pub fn guest_wasm(file: &str) -> PathBuf {
     let path = target_dir().join("wasm32-wasip2").join("debug").join(file);
     assert!(
         path.exists(),
-        "guest `{file}` not found at {path}; run `cargo make build-guests` from the repo root",
+        "guest `{file}` not found at {path}; run `cargo make build-guests` from harness/",
         path = path.display()
     );
     path
 }
 
 // Build the guest artifacts once per test process — the core `specify`
-// guest plus the echo fixtures in the `fixtures` package; cargo's own
-// build lock serializes concurrent invocations across test binaries.
+// guest (a root-workspace member, built from the repo root) plus the
+// echo fixtures (a member of this standalone harness workspace, built
+// from harness/); cargo's own build lock serializes concurrent
+// invocations across test binaries.
 fn build_guests() {
     static GUESTS: OnceLock<()> = OnceLock::new();
     GUESTS.get_or_init(|| {
-        for args in [
-            ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
-            ["build", "-p", "fixtures", "--examples", "--target", "wasm32-wasip2"].as_slice(),
+        let harness_dir = workspace_root().join("harness");
+        for (args, cwd) in [
+            (
+                ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
+                workspace_root(),
+            ),
+            (
+                ["build", "-p", "fixtures", "--examples", "--target", "wasm32-wasip2"].as_slice(),
+                harness_dir,
+            ),
         ] {
             let status = Command::new("cargo")
                 .env("CARGO_TARGET_DIR", target_dir())
                 .args(args)
-                .current_dir(workspace_root())
+                .current_dir(cwd)
                 .status()
                 .expect("spawning guest build");
             assert!(status.success(), "guest build failed with status {status}");
@@ -112,7 +121,7 @@ fn adapters_root() -> PathBuf {
 /// The real adapter component for one manifest guest id
 /// (`source:intent`, `target:omnia`, …). Locate-only — tests never
 /// fetch or build; population is the explicit `cargo make
-/// fetch-adapters` task (CI) or a sibling `cargo make release` (dev).
+/// fetch-adapters` task (from harness/) or a sibling `cargo make release` (dev).
 ///
 /// Resolution order mirrors the product posture:
 ///
@@ -148,7 +157,7 @@ pub fn adapter_component_wasm(id: &str) -> PathBuf {
     assert!(
         sibling.exists(),
         "adapter component `{name}` not found: no store entry at {entry} and no sibling \
-         release build at {sibling}; run `cargo make fetch-adapters` from the repo root \
+         release build at {sibling}; run `cargo make fetch-adapters` from harness/ \
          (or `cargo make release` in the sibling specify-adapters checkout)",
         entry = entry.display(),
         sibling = sibling.display(),

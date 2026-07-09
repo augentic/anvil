@@ -1,0 +1,7 @@
+# Share the repo-root target/ with the root workspace: rig builds
+# reuse the main build cache, the composed tests find the wasm guest
+# artifacts where `cargo make build-guests` puts them, and the dev-only
+# repo-root omnia.toml's `target/...` paths stay valid. Applies to any
+# cargo invocation whose cwd is at or below harness/.
+[build]
+target-dir = "../target"

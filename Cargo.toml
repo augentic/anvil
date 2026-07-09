@@ -48,7 +48,12 @@ path = "tests/framework/main.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/*"]
+members = ["crates/*"]
+# The parked composed-deployment test rig is its own standalone
+# workspace — never built, linted, tested, vetted, or documented by any
+# root-workspace invocation. Run it manually from inside harness/
+# (see harness/README.md).
+exclude = ["harness"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -143,9 +148,7 @@ verbose_file_reads = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.11"
-assert_cmd = "2.1.1"
 base16ct = { version = "1.0.0", features = ["alloc"] }
-cfg-if = "1.0.1"
 clap = { version = "4.5.33", features = ["derive", "env"] }
 clap_complete = "4.0.2"
 glob = "0.3.3"
@@ -178,7 +181,6 @@ omnia = "0.35.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
-omnia-testkit = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
@@ -190,7 +192,6 @@ omnia = { path = "../omnia/crates/omnia" }
 omnia-guest = { path = "../omnia/crates/omnia-guest" }
 omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
 omnia-host-macros = { path = "../omnia/crates/host-macros" }
-omnia-testkit = { path = "../omnia/crates/testkit" }
 omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }

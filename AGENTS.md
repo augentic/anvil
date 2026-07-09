@@ -163,8 +163,8 @@ artifacts                # depends on {error,schema} (artifact types + parsers: 
 workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability (WASI-backed on wasm32; native tests bind the scripted mock in each test binary)); no wasmtime in its graph
 dispatch                 # wasm-clean dispatch boundary — clap grammar, envelopes, exit contract, pure verb handlers; shared by the native binary and the specify guest
 specify                  # wasm32 wasi:cli/run shim over dispatch + workflow (the core guest — published as specify:core@<binary version> on release; no committed artifact)
-harness/runtime          # PARKED test rig: the runtime-replay binary (the same runtime! macro over ModelDefault) + the composed-deployment integration tests — workspace member, excluded from `cargo make test`; run on demand (harness/README.md)
-harness/fixtures         # echo adapter fixtures, omnia's examples/ pattern (skeleton source/target guests as cdylib examples) the parked composed tests load
+harness/runtime          # PARKED test rig: the runtime-replay binary (the same runtime! macro over ModelDefault) + the composed-deployment integration tests — in the standalone harness/ workspace, outside every root gate; invoked manually only (harness/README.md)
+harness/fixtures         # echo adapter fixtures, omnia's examples/ pattern (skeleton source/target guests as cdylib examples) the parked composed tests load — same standalone workspace
 specify-cli (root crate) # the one binary: a single omnia::runtime! command-mode invocation over the cursor-bound backends — no Specify vocabulary; every verb runs in the specify guest
 ```
 
@@ -200,7 +200,7 @@ src/main.rs              the one binary — a single omnia::runtime! command-mod
 crates/dispatch/         shared clap grammar, envelopes, exit contract, pure verb handlers
 crates/workflow/         workflow domain logic
 crates/specify/          wasm32 core guest shim
-harness/                 PARKED composed-deployment test rig (runtime + echo fixtures; harness/README.md)
+harness/                 PARKED composed-deployment test rig — standalone workspace, manual-only (runtime + echo fixtures; harness/README.md)
 tests/rust_quality.rs    dev-only Rust-quality predicates + gate
 tests/framework/ prose/manifest framework checks as cargo tests
 ```

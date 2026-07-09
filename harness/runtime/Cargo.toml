@@ -7,9 +7,6 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 publish = false
-# Integration tests compile to the single `it` binary (one binary per crate);
-# the per-area hubs are pulled in via tests/it.rs `#[path]` includes.
-autotests = false
 
 # The target guard in src/bin/replay.rs needs cfg-if on every target; a
 # stray wasm32 build of the whole workspace then compiles to an empty main.
@@ -42,10 +39,6 @@ tempfile.workspace = true
 
 [lints]
 workspace = true
-
-[[test]]
-name = "it"
-path = "tests/it.rs"
 
 # The replay sibling of the `specify` binary: the same `omnia::runtime!`
 # macro over `WasiModel: ModelDefault` instead of the cursor backend, for

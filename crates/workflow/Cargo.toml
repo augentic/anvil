@@ -9,9 +9,6 @@ description = "Specify workflow crate: slice, change, adapter, registry, config,
 categories = ["development-tools"]
 keywords = ["specify", "workflow", "lifecycle"]
 readme = "../../README.md"
-# Integration tests compile to the single `it` binary (one binary per crate);
-# the per-area hubs are pulled in via tests/it.rs `#[path]` includes.
-autotests = false
 
 [lints]
 workspace = true
@@ -53,7 +50,3 @@ serde_json.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
-
-[[test]]
-name = "it"
-path = "tests/it.rs"
