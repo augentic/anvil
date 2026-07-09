@@ -1,7 +1,0 @@
-target: omnia
-status: built
-touched-specs:
-  - name: login
-    type: new
-  - name: oauth
-    type: new

@@ -1,5 +1,0 @@
-{
-  "lifecycle": "pending",
-  "name": "my-change",
-  "plan": "./plan.yaml"
-}

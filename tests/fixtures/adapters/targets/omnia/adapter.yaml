@@ -1,5 +1,0 @@
-# yaml-language-server: $schema=../../../../../../schemas/adapter.schema.json
-name: omnia
-version: "1.0.0"
-axis: target
-description: Omnia Rust WASM workflow

@@ -1,7 +1,0 @@
-{
-  "archived": "./.specify/archive/plans/demo-<YYYYMMDD>.yaml",
-  "archived-plans-dir": "./.specify/archive/plans/demo-<YYYYMMDD>",
-  "plan": {
-    "name": "demo"
-  }
-}
