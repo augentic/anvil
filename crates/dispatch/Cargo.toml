@@ -1,12 +1,15 @@
 [package]
 name = "dispatch"
-description = "Wasm-clean `specify` CLI dispatch: argv grammar, output envelopes, exit mapping, and the pure workflow verb handlers shared by the native binary and the workflow guest"
+description = "Wasm-clean `specify` CLI dispatch: argv grammar, output envelopes, exit mapping, and the pure workflow verb handlers consumed by the specify guest"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 publish = false
+# Integration tests compile to the single `it` binary (one binary per
+# crate); the per-area hubs are pulled in as submodules of tests/it.rs.
+autotests = false
 
 [dependencies]
 clap.workspace = true
@@ -27,3 +30,7 @@ tempfile.workspace = true
 
 [lints]
 workspace = true
+
+[[test]]
+name = "it"
+path = "tests/it.rs"

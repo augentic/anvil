@@ -1252,17 +1252,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "examples"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "omnia-wasi-http",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.59.0",
-]
-
-[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1302,6 +1291,17 @@ name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
+
+[[package]]
+name = "fixtures"
+version = "0.27.2"
+dependencies = [
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.59.0",
+]
 
 [[package]]
 name = "flate2"

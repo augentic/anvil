@@ -3,8 +3,8 @@
 //! every verb runs in the specify (core) guest, driven through
 //! omnia's own `run` grammar (`specify run <wasm|--config manifest>
 //! -- <guest argv>`, `OMNIA_CONFIG` as the manifest fallback). The
-//! replay sibling (`runtime-replay`, `crates/runtime`) keeps
-//! the same macro over `ModelDefault` for tests and CI.
+//! replay sibling (`runtime-replay`, `harness/runtime`) keeps
+//! the same macro over `ModelDefault` for on-demand rig runs.
 
 use omnia_cursor::Client as Cursor;
 use omnia_wasi_http::{HttpDefault, WasiHttp};

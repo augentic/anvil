@@ -87,27 +87,28 @@ env = { RUSTFLAGS = "-Dwarnings" }
 
 # Build guests
 #
-# wasm32-wasip2 guest components loaded by the composed runtime
-# integration tests in crates/runtime/tests/: the core `specify` guest
-# plus the echo adapter fixtures (cdylib examples of the top-level
-# `examples` package, landing under target/wasm32-wasip2/debug/examples/).
-# Two invocations: `--examples` narrows target selection to example
-# targets only, so the core guest's lib needs its own build.
+# wasm32-wasip2 guest components loaded by the parked composed runtime
+# integration tests in harness/runtime/tests/: the core `specify` guest
+# plus the echo adapter fixtures (cdylib examples of the
+# `harness/fixtures` package, landing under
+# target/wasm32-wasip2/debug/examples/). Two invocations: `--examples`
+# narrows target selection to example targets only, so the core guest's
+# lib needs its own build.
 [tasks.build-guests]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 cargo build -p specify --target wasm32-wasip2
-cargo build -p examples --examples --target wasm32-wasip2
+cargo build -p fixtures --examples --target wasm32-wasip2
 '''
 
 # Fetch adapters
 #
 # Populate the global adapter store with the pinned published adapter
-# components the composed runtime tests resolve (store-first; the dev
-# sibling checkout's release build is the fallback — see
-# crates/runtime/tests/common.rs `adapter_component_wasm`). The version
-# pin is the single source of truth at crates/runtime/tests/adapters.pin,
+# components the parked composed runtime tests resolve (store-first; the
+# dev sibling checkout's release build is the fallback — see
+# harness/runtime/tests/common.rs `adapter_component_wasm`). The version
+# pin is the single source of truth at harness/runtime/tests/adapters.pin,
 # shared with the test harness. Idempotent and offline-safe: an existing
 # store entry is never re-fetched, so a warm store needs neither network
 # nor `wkg`. On miss, requires `wkg` on PATH (CI pins
@@ -120,7 +121,7 @@ cargo build -p examples --examples --target wasm32-wasip2
 script_runner = "bash"
 script = '''
 set -euo pipefail
-pin="$(tr -d '[:space:]' < crates/runtime/tests/adapters.pin)"
+pin="$(tr -d '[:space:]' < harness/runtime/tests/adapters.pin)"
 store="${SPECIFY_ADAPTER_STORE:-${HOME}/.specify/adapters}"
 registry="${SPECIFY_REGISTRY:-augentic.io}"
 mkdir -p "${store}"
@@ -152,14 +153,22 @@ done
 # `RUSTFLAGS=-Dwarnings` override already differs from the default
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
-# The RFC-61 skeleton guests are NOT checked in — `build-guests` builds
-# them fresh here, and the runtime crate's tests also self-build them so
-# a bare `cargo nextest run` works.
+# The parked test rig under harness/ (`runtime`, `fixtures`) is
+# excluded: its packages stay workspace members so `lint` keeps them
+# compiling, but the composed-deployment tests run on demand only
+# (`cargo nextest run -p runtime` after `cargo make build-guests`; see
+# harness/README.md).
 [tasks.test]
 command = "cargo"
-args = ["nextest", "run", "--all", "--all-features", "--no-tests=pass"]
+args = [
+    "nextest", "run",
+    "--workspace",
+    "--exclude", "runtime",
+    "--exclude", "fixtures",
+    "--all-features",
+    "--no-tests=pass",
+]
 env = { RUSTFLAGS = "-Dwarnings" }
-dependencies = ["build-guests"]
 
 # Test Doc
 [tasks.test-docs]

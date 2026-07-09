@@ -2,7 +2,7 @@
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
 //! `omnia_testkit::find_guest`, pointed at the `specify` guest crate and the
-//! echo fixtures in the top-level `examples` package), the hand-rolled
+//! echo fixtures in the sibling `harness/fixtures` package), the hand-rolled
 //! backend bundles mirroring what the host binaries' `runtime!` macros
 //! generate, and the skeleton manifest the tests deploy.
 //!
@@ -28,19 +28,19 @@ use omnia_wasi_model::{
 };
 
 /// Built artifact name of the echo source-adapter guest (a cdylib
-/// example of the top-level `examples` package, landing under the
+/// example of the `harness/fixtures` package, landing under the
 /// target dir's `examples/` subdirectory).
 pub const ECHO_WASM: &str = "examples/echo_source.wasm";
 
 /// Built artifact name of the workflow (`wasi:cli/run`) guest.
 pub const SPECIFY_WASM: &str = "specify.wasm";
 
-/// The repo workspace root (`<root>/crates/runtime` is this crate).
+/// The repo workspace root (`<root>/harness/runtime` is this crate).
 pub fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
-        .expect("runtime manifest dir is <workspace>/crates/runtime")
+        .expect("runtime manifest dir is <workspace>/harness/runtime")
         .to_path_buf()
 }
 
@@ -64,14 +64,14 @@ pub fn guest_wasm(file: &str) -> PathBuf {
 }
 
 // Build the guest artifacts once per test process — the core `specify`
-// guest plus the echo fixtures in the `examples` package; cargo's own
+// guest plus the echo fixtures in the `fixtures` package; cargo's own
 // build lock serializes concurrent invocations across test binaries.
 fn build_guests() {
     static GUESTS: OnceLock<()> = OnceLock::new();
     GUESTS.get_or_init(|| {
         for args in [
             ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
-            ["build", "-p", "examples", "--examples", "--target", "wasm32-wasip2"].as_slice(),
+            ["build", "-p", "fixtures", "--examples", "--target", "wasm32-wasip2"].as_slice(),
         ] {
             let status = Command::new("cargo")
                 .env("CARGO_TARGET_DIR", target_dir())
@@ -242,7 +242,7 @@ pub async fn composed_runtime(mount: &Path, adapters: &[&str]) -> Result<Runtime
 pub fn skeleton_manifest(echo_id: &str) -> Result<TempManifest> {
     let workflow = guest_wasm(SPECIFY_WASM);
     let echo = guest_wasm(ECHO_WASM);
-    let mount = workspace_root().join("crates/runtime/workspace");
+    let mount = workspace_root().join("harness/runtime/workspace");
 
     temp_manifest(&format!(
         "[[guest]]\n\

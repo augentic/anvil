@@ -236,15 +236,14 @@ pub struct InitArgs {
     /// Run only the project-scoped scaffold leg (`.specify/`,
     /// `project.yaml`, workspace `registry.yaml`) — no hydration,
     /// no deployment-manifest generation, no `AGENTS.md` context
-    /// generation. The guest-invocable half of `init`: the
-    /// provisioning front calls it through the host form after
-    /// hydration. Hidden — not an operator-facing verb.
+    /// generation. The guest-invocable half of `init`; the
+    /// provisioning half awaits its in-guest implementation.
+    /// Hidden — not an operator-facing verb.
     #[arg(long, hide = true, conflicts_with = "upgrade")]
     pub scaffold_only: bool,
 }
 
-/// Flag surface for `specify upgrade` — shared with the native
-/// provisioning grammar exactly like [`InitArgs`].
+/// Flag surface for `specify upgrade`.
 #[derive(Debug, Clone, Copy, Args)]
 pub struct UpgradeArgs {
     /// Install channel to upgrade. `auto` detects it from the

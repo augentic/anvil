@@ -21,7 +21,7 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
    Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
 
-2. **`publish-core`.** Publishes the core guest as `specify:core@<version>` through `cargo make publish-core`, where `<version>` is the `VERSION` file — the job guards that the tag matches `VERSION`, so the published core identity always equals the binary version. The task builds `workflow` for `wasm32-wasip2` and pushes it over the wasm-pkg transport; the `specify:` namespace resolves through `https://augentic.io/.well-known/wasm-pkg/registry.json` to the backing registry. This leg is **load-bearing** (`DECISIONS.md` §"Core versioned by the binary"): the released binary hydrates `specify:core@<its own version>` at `specify init` / `specify adapters sync` and resolves its core from that store entry at drive time — the binary carries no embedded guest.
+2. **`publish-core`.** Publishes the core guest as `specify:core@<version>` through `cargo make publish-core`, where `<version>` is the `VERSION` file — the job guards that the tag matches `VERSION`, so the published core identity always equals the binary version. The task builds `workflow` for `wasm32-wasip2` and pushes it over the wasm-pkg transport; the `specify:` namespace resolves through `https://augentic.io/.well-known/wasm-pkg/registry.json` to the backing registry. This leg is **load-bearing** (`DECISIONS.md` §"Core versioned by the binary"): a released binary consumes exactly the core identity its tag published — `specify:core@<its own version>` — and carries no embedded guest (store-backed resolution rides the in-guest provisioning story, `DECISIONS.md` §"One `specify` binary").
 
 3. **`publish-wit`.** Publishes the adapter contract as `specify:adapter@<wit version>` through `cargo make publish-wit`, parsing the version from `wit/specify.wit`'s `package` declaration. There is no separate version-changed guard: a tag that did not bump the WIT version finds the identity already published and the leg no-ops (see idempotency below). `specify-adapters` consumes the published package as its vendored pin.
 
@@ -29,7 +29,7 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 Both publish legs run through the probe-first `scripts/wkg-publish-idempotent.sh`: the registry is probed for the exact identity before anything is built or pushed, a present identity is skipped (registry identities are immutable — skip-if-present is what makes a re-run against an already-published tag a safe no-op that pushes nothing), and a probe that cannot distinguish *absent* from *unreachable* (network failure, auth, timeout) aborts the leg rather than risk re-publishing. Auth is `GITHUB_TOKEN` only — `permissions: packages: write` plus a workflow-written wkg config; there are no registry username/password secrets. CI pins `wkg` at 0.15.0 because the probe's not-found fingerprints are coupled to its error text — revalidate them when bumping. Local emergency publishing runs the same `cargo make publish-*` task with a developer's own token in their wkg config: one code path, two invocation surfaces.
 
-The shipped surface is the `specify` binary alone: the generic host layer — the macro-generated command-mode runtime — is mounted **in-process** (`specify_runtime::drive` over the library's `host` module, DECISIONS.md §"In-process host mount"), so there is no second binary to build or package. The `runtime-replay` binary target is a dev/test surface and is never packaged.
+The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/main.rs`, DECISIONS.md §"One `specify` binary"), so there is no second binary to build or package. The `runtime-replay` binary target (in the parked `harness/runtime` rig) is a dev/test surface and is never packaged.
 
 ## Adapter components
 
@@ -44,7 +44,7 @@ Two supported install paths:
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
 
-`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest hydrates from the published `specify:core@<binary version>` at `specify init` (`DECISIONS.md` §"Core versioned by the binary").
+`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest resolves by the binary's own version, `specify:core@<binary version>` (`DECISIONS.md` §"Core versioned by the binary").
 
 ## Adding a new target triple
 

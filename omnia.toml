@@ -1,6 +1,6 @@
 # DEV-ONLY replay manifest — not an operator template, and no test
-# consumes it (the composed tests render their own manifests over
-# store-resolved components; see crates/runtime/tests/common.rs).
+# consumes it (the parked composed tests render their own manifests over
+# store-resolved components; see harness/runtime/tests/common.rs).
 # Debug-built guest paths and sibling-checkout adapter paths below only
 # resolve in a development environment; running a guest verb with cwd =
 # the repo root picks this file up wholesale (omnia.toml-wins), which is
@@ -63,7 +63,7 @@ source.path = "../specify-adapters/target/wasm32-wasip2/release/vectis.wasm"
 
 [[mount]]
 name = "."
-path = "crates/runtime/workspace"
+path = "harness/runtime/workspace"
 writable = true
 
 [[route.http]]

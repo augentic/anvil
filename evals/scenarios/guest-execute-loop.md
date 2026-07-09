@@ -32,7 +32,7 @@ Scenario ID: `guest-execute-loop`
 
 Prove the full inverted loop on a real model: a one-slice intent plan drains through the composed runtime's `plan execute` — survey and extract through the `source:intent` guest, synthesis through the workflow guest's judgment leg, build through the `target:omnia` guest (real codegen into the shared mount), merge folding the slice into the baseline — with the whole cadence journalled over the `"."` preopen and the generated crate passing its own verification.
 
-The entrypoint names `/spec:plan` because the run begins at plan authoring; the loop itself is the guest-routed `specify plan execute` — the retired `/spec:execute` skill's inverted counterpart: same plan contract, same Gate 1, same per-entry `done` writer — running inside the wasm32 workflow guest against `omnia:model/completion` instead of inside skill markdown against a Cursor session.
+The entrypoint names `/spec:plan` because the run begins at plan authoring; the loop itself is the guest-routed `specify plan execute` — the plan contract, Gate 1, and the per-entry `done` writer all hold — running inside the wasm32 workflow guest against `omnia:model/completion` rather than inside skill markdown against a Cursor session.
 
 ## Setup
 
@@ -59,7 +59,7 @@ All from the sandbox root, through the one `specify` binary — guest-owned verb
 
 ## Scope
 
-This is the **runtime-composition and live-judgment gate** for the inverted loop, not a planning-ergonomics scenario (that is `intent-only`). The deterministic substrate — argv/exit passthrough, link dispatch, the model-free merge leg, journal-append over the preopen, MCP shelves — is proven by the composed tests under `crates/runtime/tests/` on every commit; this scenario admits only what those cannot reach: judgment legs against the live cursor backend end to end (source survey/extract, synthesis, target codegen) and the quality of what they emit.
+This is the **runtime-composition and live-judgment gate** for the inverted loop, not a planning-ergonomics scenario (that is `intent-only`). The deterministic substrate — argv/exit passthrough, link dispatch, the model-free merge leg, journal-append over the preopen, MCP shelves — is proven by the parked composed rig under `harness/runtime/tests/` (run on demand; the always-on dispatch contract lives in `crates/dispatch/tests/`); this scenario admits only what those cannot reach: judgment legs against the live cursor backend end to end (source survey/extract, synthesis, target codegen) and the quality of what they emit.
 
 ## Negative expectations
 

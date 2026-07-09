@@ -48,7 +48,7 @@ path = "tests/framework/main.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*", "examples"]
+members = ["crates/*", "harness/*"]
 
 [workspace.package]
 authors = ["Augentic"]

@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each crate exposes **one** integration binary, `tests/it.rs`, which pulls every area in as a `#[path]` submodule (`mod plan_schema;`, `mod workspace;`, …). The per-area files stay on disk — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — but they are modules of `it`, not standalone binaries. The repo-root `tests/` carries only the dev-gate binaries (`tests/framework/`, `tests/rust_quality.rs`) and the shared fixture trees under `tests/fixtures/`; end-to-end composed-deployment coverage lives in `crates/runtime/tests/`. Test targets are declared explicitly because each crate sets `autotests = false` in its `Cargo.toml` to suppress per-file auto-discovery.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each crate exposes **one** integration binary, `tests/it.rs`, which pulls every area in as a `#[path]` submodule (`mod plan_schema;`, `mod workspace;`, …). The per-area files stay on disk — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — but they are modules of `it`, not standalone binaries. The repo-root `tests/` carries only the dev-gate binaries (`tests/framework/`, `tests/rust_quality.rs`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig is parked at `harness/runtime/tests/` and runs on demand, not in the gate (see `harness/README.md`). Test targets are declared explicitly because each crate sets `autotests = false` in its `Cargo.toml` to suppress per-file auto-discovery.
 
 One integration binary per crate is the intentional layout — see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-one-binary-per-crate-path-submodules). The crate-under-test links once per crate instead of once per area, which is the build cost the per-area layout paid 31 times over; the per-crate `it` keeps `cargo test -p <crate>` and nextest's `-E 'test(<area>::)'` module filters useful for local iteration, so consolidation does not cost the per-area selectivity the earlier mega-binary attempt would have. Never group across crates — each crate's `tests/` is its own compilation unit, so `workflow`, `schema`, and `artifacts` each own a distinct `it`.
 
@@ -81,7 +81,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
-The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice) and the composed-deployment tests in `crates/runtime/tests/`.
+The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice), with the parked composed-deployment rig at `harness/runtime/tests/` available on demand for the wasm seams.
 
 ## Golden file discipline
 

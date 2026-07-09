@@ -5,12 +5,12 @@
 //! lives in the component's own deterministic `describe` export, not in
 //! an on-disk manifest. The resolver obtains it through this module:
 //!
-//! - **Dispatch** is host-side, instance-per-call, and registered as a
-//!   process-global [`DescribeRunner`] by the root `specify` binary
-//!   (`workflow` stays wasmtime-free; the runner lives in
-//!   `runtime`). An unregistered runner — e.g. inside the
-//!   workflow guest, which never resolves adapters — is the typed
-//!   `adapter-describe-unavailable` failure.
+//! - **Dispatch** runs through a process-global [`DescribeRunner`] seam
+//!   (`workflow` stays wasmtime-free); the specify guest shim registers
+//!   its runner at startup, routing each request through the
+//!   deployment's WIT `source` / `target` imports by adapter id. An
+//!   unregistered runner is the typed `adapter-describe-unavailable`
+//!   failure.
 //! - **Caching** keys the answer on the component file's SHA-256: the
 //!   answer is persisted as a `<component>.describe.json` sidecar and
 //!   reused while the recorded digest still matches the file, so a
@@ -42,9 +42,9 @@ pub struct DescribeAnswer {
     pub platforms: Option<PlatformsCapability>,
 }
 
-/// One host-side describe dispatch: instantiate the component at
-/// `component`, invoke `describe` on the `axis` interface with
-/// `adapter_id`, and return the projected answer.
+/// One describe dispatch: resolve the `describe` answer for the
+/// component at `component` by invoking `describe` on the `axis`
+/// interface with `adapter_id`, returning the projected answer.
 #[derive(Debug)]
 pub struct DescribeRequest<'a> {
     /// The adapter component file.
@@ -56,13 +56,13 @@ pub struct DescribeRequest<'a> {
     pub adapter_id: &'a str,
 }
 
-/// The host-side describe dispatcher the root binary registers.
+/// The process-global describe dispatcher the guest shim registers.
 pub type DescribeRunner = fn(&DescribeRequest<'_>) -> Result<DescribeAnswer, Error>;
 
 static RUNNER: OnceLock<DescribeRunner> = OnceLock::new();
 
 /// Register the process-global describe dispatcher. First registration
-/// wins; later calls are no-ops (the root binary registers exactly one
+/// wins; later calls are no-ops (the guest shim registers exactly one
 /// runner at startup, and tests may register a stub).
 pub fn register_describe_runner(runner: DescribeRunner) {
     let _ = RUNNER.set(runner);
@@ -96,8 +96,8 @@ pub fn describe_cache_path(component: &Path) -> PathBuf {
 ///
 /// # Errors
 ///
-/// - `adapter-describe-unavailable` — no runner is registered (the
-///   caller is not the native binary).
+/// - `adapter-describe-unavailable` — no runner is registered in this
+///   process.
 /// - Any error from the runner itself (`adapter-describe-failed`,
 ///   `adapter-axis-mismatch`).
 pub fn describe(

@@ -3,14 +3,12 @@
 //!
 //! The scaffold writes project-scoped state only — `.specify/`,
 //! `project.yaml`, `registry.yaml` (workspace mode), `.gitignore`
-//! lines, and the per-project derived component-mirror cache tenant —
-//! so it runs on both sides of the seam. Everything
-//! the full native `init` adds around it (hydration, deployment-
+//! lines, and the per-project derived component-mirror cache tenant.
+//! Everything the full `init` adds around it (hydration, deployment-
 //! manifest generation, `AGENTS.md` context generation, the workspace
-//! sync chain) stays native: the provisioning front invokes this leg
-//! through the host form after hydration. The flag is hidden from
-//! operator-facing help; the forwarding form (stage C.3) calls it
-//! verbatim.
+//! sync chain) awaits its in-guest implementation (DECISIONS.md
+//! §"One `specify` binary"). The flag is hidden from operator-facing
+//! help.
 
 use std::io::Write;
 use std::path::Path;

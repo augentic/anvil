@@ -1,6 +1,6 @@
 [package]
-name = "examples"
-description = "Example WASI guest components for the Specify Omnia runtime"
+name = "fixtures"
+description = "Echo adapter guest fixtures for the parked Specify composed-deployment test rig"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -21,9 +21,10 @@ wit-bindgen.workspace = true
 workspace = true
 
 # The echo adapter guests: skeleton wasm32-wasip2 components loaded by
-# the composed runtime tests in crates/runtime/tests/ (`cargo make
+# the composed runtime tests in harness/runtime/tests/ (`cargo make
 # build-guests` builds them, and the tests self-build on first use).
-# Underscore names keep the artifact filenames deterministic
+# Underscore names keep the artifact filenames deterministic; example
+# targets always land under the target dir's examples/ subdirectory
 # (target/wasm32-wasip2/debug/examples/echo_{source,target}.wasm).
 [[example]]
 name = "echo_source"

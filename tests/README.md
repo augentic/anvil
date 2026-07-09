@@ -6,9 +6,11 @@ way to regenerate those goldens. See [`docs/standards/testing.md`](../docs/stand
 for the integration-first policy, golden discipline, and test-naming rules.
 
 The `specify` binary is a single `omnia::runtime!` invocation; the
-operational surface is covered by the composed-deployment tests in
-`crates/runtime/tests/` (driving the workflow guest through the omnia
-runtime) plus each crate's own `tests/`. The root `tests/` tree holds
+operational surface is covered by each crate's own `tests/` (the
+dispatch grammar, routing, and verb handlers in `crates/dispatch/tests/`
+and the workflow orchestrations in `crates/workflow/tests/`), with the
+parked composed-deployment rig at `harness/` available on demand for
+the wasm seams (see `harness/README.md`). The root `tests/` tree holds
 the dev-only Rust-quality gate (`rust_quality.rs`), the framework
 checks (`framework/`), and the shared `fixtures/` referenced by
 crate-level suites.

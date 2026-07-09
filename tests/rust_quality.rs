@@ -376,8 +376,8 @@ const GATED_RULES: [(&str, &str); 5] = [
     (RULE_TEST_FN_NAME, "test fn names must be <= 40 chars (see docs/standards/testing.md)"),
     (
         // Time injection (architecture §Time injection): `workflow`
-        // must accept an injected `now`; the clock is read once in a
-        // `src/runtime/commands/**` handler and threaded down.
+        // must accept an injected `now`; the clock is read once at the
+        // dispatch handler boundary and threaded down.
         RULE_WORKFLOW_CLOCK,
         "workflow library code must not call `Timestamp::now()` (see docs/standards/architecture.md §Time injection)",
     ),
@@ -473,8 +473,7 @@ fn flags_archaeology_in_line_comments() {
     // in `crates/`; string literals carrying a marker never fire.
     let test_file = dir.path().join("tests/it.rs");
     fs::create_dir_all(test_file.parent().expect("parent")).expect("mkdir");
-    fs::write(&test_file, "// Collapsed from the former unit module.\nfn a() {}\n")
-        .expect("write");
+    fs::write(&test_file, "// Collapsed from the former unit module.\nfn a() {}\n").expect("write");
     let literal_file = dir.path().join("crates/demo/src/lib.rs");
     fs::create_dir_all(literal_file.parent().expect("parent")).expect("mkdir");
     fs::write(&literal_file, "const FIXTURE: &str = \"formerly a brief\";\n").expect("write");

@@ -1,6 +1,6 @@
 [package]
 name = "runtime"
-description = "Replay runtime and composed-deployment test surface for Specify WASI components"
+description = "Parked test rig: replay runtime and composed-deployment test surface for Specify WASI components"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

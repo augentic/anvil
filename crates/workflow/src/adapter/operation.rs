@@ -1,12 +1,12 @@
 //! Closed source- and target-adapter operation enums.
 //!
 //! [`SourceOperation`] (`extract | survey`) and [`TargetOperation`]
-//! (`shape | build | merge`) are the typed `briefs.keys()` carried by
+//! (`build | guidance | merge`) are the typed `briefs.keys()` carried by
 //! the axis-specific manifest structs in `core.rs`. Living together in
 //! this module keeps the source/target operation pair symmetric.
 //!
 //! Wire format is kebab-case on both sides (`extract | survey` /
-//! `shape | build | merge`) — the [`Serialize`] / [`Deserialize`]
+//! `build | guidance | merge`) — the [`Serialize`] / [`Deserialize`]
 //! derives, the [`strum::Display`] impl, and the [`strum::EnumString`]
 //! impl all share the same `kebab-case` rule, so the YAML manifest
 //! key, the slice outcome `phase` field, and any
@@ -60,7 +60,7 @@ impl SourceOperation {
     }
 }
 
-/// Closed target-adapter operation set (`shape | build | merge`).
+/// Closed target-adapter operation set (`build | guidance | merge`).
 ///
 /// Target adapters serve exactly these three operations per
 /// workflow §Target adapter contract — the closed WIT operation set

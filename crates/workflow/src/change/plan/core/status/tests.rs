@@ -62,8 +62,8 @@ mod next_action {
 
     // The base happy-path dispatch arms (pending-stops, fresh-active-refine,
     // lifecycle refine/build/merge, drained, eligible-pending preview) are
-    // asserted end-to-end through the composed-deployment tests in
-    // `crates/runtime/tests/`. What stays here is the dispatch that has no
+    // asserted end-to-end through the parked composed-deployment rig in
+    // `harness/runtime/tests/`. What stays here is the dispatch that has no
     // CLI status fixture: a stuck dependency graph and a dropped slice.
 
     #[test]
@@ -88,8 +88,8 @@ mod next_action {
 mod failure_overlay {
     use super::*;
 
-    // The build-failure overlay is asserted end-to-end through the
-    // composed-deployment tests in `crates/runtime/tests/`. The remaining
+    // The build-failure overlay is asserted end-to-end through the parked
+    // composed-deployment rig in `harness/runtime/tests/`. The remaining
     // overlay classifications below have no CLI status fixture:
     // merge-conflict / refine-failed mapping, newest-marker precedence,
     // stale / pre-claim shadowing, and the torn merge-incomplete state.
@@ -234,7 +234,7 @@ mod re_entry {
 
     // The dispatch + resume projection for the fresh-refine and
     // refined/build-failed scenarios is exercised end-to-end through the
-    // composed-deployment tests in `crates/runtime/tests/`. The re-entry
+    // parked composed-deployment rig in `harness/runtime/tests/`. The re-entry
     // overlays with no CLI fixture remain: the torn merge-incomplete
     // resume, the drained finalize resume, the Gate-1 approved-stamp
     // resume, and the repair-shaped stops that carry no resume.

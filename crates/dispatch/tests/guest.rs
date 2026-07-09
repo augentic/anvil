@@ -3,9 +3,10 @@
 //! [`route`] table's three-way split (in-process pure verbs,
 //! shim-dispatched orchestrations, refused native-only verbs).
 //!
-//! The full per-verb behaviour (envelopes, side effects, golden files)
-//! stays covered by the binary's subprocess suite in `tests/`;
-//! these tests pin the seam the workflow guest depends on.
+//! The full per-verb behaviour (filesystem effects, exit codes) is
+//! driven end to end through the same route table by the sibling
+//! `verbs` area; these tests pin the seam the workflow guest
+//! depends on.
 
 use dispatch::guest::{Orchestration, Route, Verb, parse, route};
 use dispatch::output::Exit;
