@@ -5,9 +5,7 @@ use std::io::Write;
 use error::{Error, Result};
 use serde::Serialize;
 use workflow::merge::MergeStrategy;
-use workflow::slice::{
-    Overlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions,
-};
+use workflow::slice::{Overlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions};
 
 use super::artifact_classes;
 use crate::context::Ctx;

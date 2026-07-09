@@ -18,7 +18,7 @@ use omnia::{DeploymentBuilder, ExitStatus, Mode};
 use omnia_testkit::{TempManifest, temp_manifest};
 use tempfile::TempDir;
 
-use crate::common::{self, CacheGuard, ECHO_WASM, Quiet, StubBundle, SPECIFY_WASM, scoped_cache};
+use crate::common::{self, CacheGuard, ECHO_WASM, Quiet, SPECIFY_WASM, StubBundle, scoped_cache};
 
 /// A throw-away project tree the composed deployment mounts at `"."`,
 /// with the hermetic per-project cache pinned beneath the tempdir —

@@ -452,9 +452,8 @@ async fn refine_breakout_skips_entry_claim() {
     assert_eq!(outcome.extracted, [("intent".to_string(), "feature-x".to_string())]);
 
     // The slice is `refined`; the plan entry was never claimed.
-    let metadata =
-        workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
-            .expect("slice metadata");
+    let metadata = workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
+        .expect("slice metadata");
     assert_eq!(metadata.status, workflow::slice::LifecycleStatus::Refined);
     // Development (unpinned) components resolve as the honest `0.0.0`
     // placeholder — there is no published package identity to record.

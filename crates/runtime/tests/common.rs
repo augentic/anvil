@@ -105,10 +105,7 @@ fn adapters_pin() -> &'static str {
 // fallback source for adapter components (release-built via
 // `cargo make release` / `cargo make dev` there).
 fn adapters_root() -> PathBuf {
-    workspace_root()
-        .parent()
-        .expect("the specify repo root has a parent")
-        .join("specify-adapters")
+    workspace_root().parent().expect("the specify repo root has a parent").join("specify-adapters")
 }
 
 /// The real adapter component for one manifest guest id

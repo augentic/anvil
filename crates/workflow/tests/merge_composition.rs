@@ -7,9 +7,7 @@
 
 use error::Error;
 use workflow::merge::MergeOperation;
-use workflow::merge::composition::{
-    baseline_is_non_empty, is_whole_document_replacement, merge,
-};
+use workflow::merge::composition::{baseline_is_non_empty, is_whole_document_replacement, merge};
 
 fn diag_code(err: Error) -> String {
     match err {

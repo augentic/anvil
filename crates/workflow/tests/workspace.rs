@@ -14,9 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tempfile::TempDir;
-use workflow::registry::branch::{
-    LocalAction, RemoteAction, Request as BranchRequest, prepare,
-};
+use workflow::registry::branch::{LocalAction, RemoteAction, Request as BranchRequest, prepare};
 use workflow::registry::workspace::{
     PushOutcome, SlotKind, SlotProblemReason, push_projects, slot_problem,
     sync_projects as workspace_sync_projects,

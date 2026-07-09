@@ -185,9 +185,7 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
 /// writing the fixture component (`{}` for an empty answer).
 pub fn register_describe_stub() {
     use error::Error;
-    use workflow::adapter::describe::{
-        DescribeAnswer, DescribeRequest, register_describe_runner,
-    };
+    use workflow::adapter::describe::{DescribeAnswer, DescribeRequest, register_describe_runner};
 
     fn stub(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
         let raw = std::fs::read_to_string(request.component).map_err(|err| Error::Diag {
