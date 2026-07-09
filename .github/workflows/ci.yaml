@@ -7,21 +7,22 @@ permissions:
   contents: read
 
 jobs:
-  # Full Rust workspace gate. The workflow crate embeds cross-target UNI-*
-  # rules from the specify-adapters checkout at build time, so CI checks out
-  # both repositories (nested `specify-adapters/` + SPECIFY_ADAPTERS).
-  rust:
+  ci:
+    uses: augentic/.github/.github/workflows/ci.yaml@main
+    secrets: inherit
+
+  # The non-Rust checks: the framework-quality suite — prose/manifest
+  # invariants (links, skills, scenarios, docs) as plain cargo tests at
+  # tests/framework_quality/. The test target lives on the root package
+  # (no `workflow` crate in its graph), so no specify-adapters checkout
+  # is needed here.
+  framework:
+    name: Framework quality
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 1
-
-      - uses: actions/checkout@v6
-        with:
-          repository: augentic/specify-adapters
-          path: specify-adapters
           fetch-depth: 1
 
       - uses: dtolnay/rust-toolchain@stable
@@ -31,27 +32,5 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      # The composed runtime tests resolve real adapter components from
-      # the global adapter store (store-first, dev-sibling fallback);
-      # populate it from the registry at the committed pin. The store is
-      # cached on the pin, so a warm run needs neither network nor wkg
-      # (fetch-adapters skips existing entries).
-      - name: Cache adapter store
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/specify-adapter-store
-          key: adapter-store-${{ hashFiles('crates/runtime/tests/adapters.pin') }}
-
-      - name: Install wkg
-        run: cargo install wkg@0.15.0 --locked # pinned: matches the release workflows
-
-      - name: Fetch pinned adapter components
-        env:
-          SPECIFY_ADAPTER_STORE: ${{ runner.temp }}/specify-adapter-store
-        run: cargo make fetch-adapters
-
-      - name: Rust workspace CI
-        env:
-          SPECIFY_ADAPTERS: ${{ github.workspace }}/specify-adapters
-          SPECIFY_ADAPTER_STORE: ${{ runner.temp }}/specify-adapter-store
-        run: cargo make ci
+      - name: Framework quality checks
+        run: cargo test --test framework_quality
