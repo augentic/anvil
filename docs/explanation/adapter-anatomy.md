@@ -22,10 +22,10 @@ Specify has two adapter roles with a shared shape. **Source adapters** turn exte
 
 ## Two roles, one shared shape
 
-| Axis     | Role         | Operations                  | Default examples                                 | Lives under              |
-| -------- | ------------ | --------------------------- | ------------------------------------------------ | ------------------------ |
-| `source` | input        | `survey`, `extract`      | `intent`, `documentation`, `typescript`, `screenshots` | `adapters/sources/<name>/`        |
-| `target` | output       | `guidance`, `build`, `merge` | `omnia`, `vectis`, `contracts`                   | `adapters/targets/<name>/`        |
+| Axis     | Role   | Operations                   | Default examples                                       | Lives under                |
+| -------- | ------ | ---------------------------- | ------------------------------------------------------ | -------------------------- |
+| `source` | input  | `survey`, `extract`          | `intent`, `documentation`, `typescript`, `screenshots` | `adapters/sources/<name>/` |
+| `target` | output | `guidance`, `build`, `merge` | `omnia`, `vectis`, `contracts`                         | `adapters/targets/<name>/` |
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the closed WIT contract (`wit/specify.wit`) — one component, no manifest file. The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same component contract, same prose layout in the authoring repo. The axis decides the operations, which derive from the WIT contract rather than being declared on the wire.
 
@@ -71,12 +71,12 @@ Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decisio
 
 Source adapter operations run under the WASI Preview 2 posture: Wasm modules with directory preopens, no inherited host environment, no runtime network access, fixed working directory. The host pre-opens four runtime roots per call:
 
-| Root              | Mode       | Contents                                                                            |
-| ----------------- | ---------- | ----------------------------------------------------------------------------------- |
-| `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                 |
-| `$CAPABILITY_DIR` | read-only  | The adapter's capability shelf (out-of-tree, when present) — reference material distributed beside the component. |
+| Root              | Mode       | Contents                                                                                                                                                                                                                                                                                                          |
+| ----------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                                                                                                                                                                                                                                               |
+| `$CAPABILITY_DIR` | read-only  | The adapter's capability shelf (out-of-tree, when present) — reference material distributed beside the component.                                                                                                                                                                                                 |
 | `$SCRATCH_DIR`    | write-only | Per-operation scratch lane under the transient working-state root, structurally outside the cache tree: `extract` → `.specify/scratch/<adapter>/<slice>/`; `survey` (plan-time, no slice) → `.specify/scratch/<adapter>/survey/`. Recreated empty at `prepare` time — only what this run writes can be finalized. |
-| `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.     |
+| `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.                                                                                                                                                                                                                                    |
 
 Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `specify plan amend` to include the needed root, or drop the source.
 
@@ -160,7 +160,7 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 3. **Implement the operations.** The operation set is closed per axis by the WIT contract — sources implement `survey` / `extract`, targets implement `guidance` / `build` / `merge`.
 4. **Write the prompts.** Each operation prompt is a markdown file compiled into the adapter guest. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `guidance` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
 5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration.
-6. **Validate.** Build with `cargo make release` in the adapters repo, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `cargo test --test framework_quality` runs the documentation predicates.
+6. **Validate.** Build with `cargo make release` in the adapters repo, then `specify source resolve <name>` / `specify target resolve <name>` exercises resolution and the `describe` dispatch; `cargo test --test framework` runs the documentation predicates.
 
 ## Adapter manifests vs Cursor plugin manifests
 

@@ -56,7 +56,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop) + shared references/
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/tests/framework_quality/ # Prose/manifest framework checks as cargo tests
+/tests/framework/ # Prose/manifest framework checks as cargo tests
 /scripts/                 # Validation and plugin management
 ```
 
@@ -67,11 +67,11 @@ Source and target adapter trees (guest crates + `prose/prompts/`, per-adapter `p
 ## Validation
 
 ```bash
-cargo test --test framework_quality   # the prose/manifest framework checks
+cargo test --test framework   # the prose/manifest framework checks
 make ci                               # the full Rust workspace gate (cargo make ci)
 ```
 
-The framework checks are plain cargo tests at `tests/framework_quality/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
+The framework checks are plain cargo tests at `tests/framework/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
 
@@ -130,7 +130,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are plain cargo tests at [`tests/framework_quality/`](../../tests/framework_quality/), with policy as constants in each test module. The authoritative JSON Schemas are embedded in the `specify` binary and consumed by the same tests. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are plain cargo tests at [`tests/framework/`](../../tests/framework/), with policy as constants in each test module. The authoritative JSON Schemas are embedded in the `specify` binary and consumed by the same tests. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 

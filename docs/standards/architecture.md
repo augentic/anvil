@@ -18,7 +18,7 @@ specify                  # wasm32 wasi:cli/run core guest — depends on dispatc
 specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-* crate
 ```
 
-The framework authoring checks run as plain cargo tests at [`tests/framework_quality/`](../../tests/framework_quality/) (with the Rust-quality siblings in `tests/rust_quality.rs`); there is no lint engine or `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).
+The framework authoring checks run as plain cargo tests at [`tests/framework/`](../../tests/framework/) (with the Rust-quality siblings in `tests/rust_quality.rs`); there is no lint engine or `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).
 
 `standards` (standards) and `workflow` (workflow) are siblings: they never import each other. The artifact validation rule registry (`artifacts::validate`) is the validation analog: it sits on `artifacts`, which depends on neither `workflow` nor anything named lint, so an artifact rule cannot reach workflow lifecycle types — the same no-lifecycle-authority invariant `standards` enforces. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry both `standards` and `workflow` read, alongside `schema` and `error` at the bottom. The Phase 1B collapse from 13 crates and the standards-layer split that re-introduced `standards` and `schema` are logged in [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout) and [DECISIONS.md §"Standards layer split into `standards` and `schema`"](../../DECISIONS.md#standards-layer-split-into-standards-and-schema).
 
@@ -61,7 +61,7 @@ Historical: the WASI tool cache (`$SPECIFY_EXTENSIONS_CACHE` → `$XDG_CACHE_HOM
 
 The two adapter validators — `contract` and `vectis` — no longer live in this repo. They extracted to `augentic/specify-adapters` and are now in-guest adapter library code compiled into each adapter's published component. The carve-out discipline (leaner lint posture, minimal `[workspace.dependencies]`, no `error` / `wasmtime` / `tokio` / `ureq` dependency) now lives in that repo's workspace. Crux shell presence and launcher-icon heuristics extracted with the vectis adapter too: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
 
-The framework checks over this repo's prose are not WASI components either — they are plain cargo tests at `tests/framework_quality/`, dev-only and outside every shipped crate.
+The framework checks over this repo's prose are not WASI components either — they are plain cargo tests at `tests/framework/`, dev-only and outside every shipped crate.
 
 **Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. The `specify-registry` and `specify-extension` crates are deleted — the declared-tool (`tools[]`) declaration shape survives as `workflow::config::tools` until that surface's fate is decided. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
 

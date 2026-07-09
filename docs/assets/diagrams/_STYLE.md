@@ -14,17 +14,17 @@ Standalone SVG files under `docs/assets/diagrams/` follow these rules so hero pa
 
 Standalone SVG files cannot rely on mdBook CSS variables. Use explicit fills:
 
-| Role | Fill | Stroke |
-|------|------|--------|
-| Default node | `#f2f1ec` | `#c9c6bc` |
-| Source adapter | `#ede9d0` | `#c9b766` |
-| Synthesis / output | `#d9e7f1` | `#6ea8d8` |
-| Target / build | `#e6d9f0` | `#a489d8` |
-| New / highlight | `#d4ecd9` | `#6db978` (stroke-width 1.5) |
-| Ink (text) | `#1c1c1c` | — |
-| Dim text | `#555555` | — |
-| Faint / pillar labels | `#888888` | — |
-| Flow arrows | `#555555` | stroke-width 1.2 |
+| Role                  | Fill      | Stroke                       |
+| --------------------- | --------- | ---------------------------- |
+| Default node          | `#f2f1ec` | `#c9c6bc`                    |
+| Source adapter        | `#ede9d0` | `#c9b766`                    |
+| Synthesis / output    | `#d9e7f1` | `#6ea8d8`                    |
+| Target / build        | `#e6d9f0` | `#a489d8`                    |
+| New / highlight       | `#d4ecd9` | `#6db978` (stroke-width 1.5) |
+| Ink (text)            | `#1c1c1c` | —                            |
+| Dim text              | `#555555` | —                            |
+| Faint / pillar labels | `#888888` | —                            |
+| Flow arrows           | `#555555` | stroke-width 1.2             |
 
 ## Typography
 
@@ -59,4 +59,4 @@ Adjust `../` depth for file location (`orientation/` uses `../assets/…`, `refe
 
 - **SVG**: workflow pipelines, layered architecture, state machines, adapter axis diagrams, crate graphs.
 - **Table**: field inventories, CLI flag lists, closed enums.
-- **` ```text `**: banned for pipeline diagrams in `docs/explanation/` and `docs/orientation/` (enforced by `tests/framework_quality/prose.rs`).
+- **` ```text `**: banned for pipeline diagrams in `docs/explanation/` and `docs/orientation/` (enforced by `tests/framework/prose.rs`).

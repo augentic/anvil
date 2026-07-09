@@ -13,7 +13,7 @@ mod checks {
     //! skipping `target/`) and back the
     //! `cargo test --test rust_quality` gate. Repo-local policy lives
     //! with its only consumer instead of in `standards`; the
-    //! prose-surface siblings live in `tests/framework_quality/`.
+    //! prose-surface siblings live in `tests/framework/`.
 
     use std::collections::BTreeMap;
     use std::fs;

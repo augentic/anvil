@@ -6,11 +6,11 @@ Specify ships as a Cursor plugin marketplace. Each plugin provides skills and op
 
 ## Plugins overview
 
-| Plugin | Directory | Prefix | Purpose |
-|--------|-----------|--------|---------|
-| Specify | `plugins/spec/` | `/spec:` | Core workflow (define, build, merge, verify, etc.) |
-| Capture | `plugins/capture/` | `/capture:` | Runtime capture and regression testing |
-| Client | `plugins/client/` | `/client:` | Client-facing deliverables (SoW, proposals, pricing summaries) |
+| Plugin  | Directory          | Prefix      | Purpose                                                        |
+| ------- | ------------------ | ----------- | -------------------------------------------------------------- |
+| Specify | `plugins/spec/`    | `/spec:`    | Core workflow (define, build, merge, verify, etc.)             |
+| Capture | `plugins/capture/` | `/capture:` | Runtime capture and regression testing                         |
+| Client  | `plugins/client/`  | `/client:`  | Client-facing deliverables (SoW, proposals, pricing summaries) |
 
 Each plugin directory follows the same structure:
 
@@ -49,12 +49,12 @@ The top-level marketplace manifest at `.cursor-plugin/marketplace.json` declares
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `metadata.pluginRoot` | Base directory for all plugins (always `"plugins"`) |
-| `plugins[].name` | Plugin identifier used in the Cursor UI |
-| `plugins[].source` | Subdirectory name under `pluginRoot` |
-| `plugins[].description` | Human-readable description |
+| Field                   | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| `metadata.pluginRoot`   | Base directory for all plugins (always `"plugins"`) |
+| `plugins[].name`        | Plugin identifier used in the Cursor UI             |
+| `plugins[].source`      | Subdirectory name under `pluginRoot`                |
+| `plugins[].description` | Human-readable description                          |
 
 The `check.ts` script validates that every plugin with a `.cursor-plugin/plugin.json` file is listed in the marketplace manifest, and that every listed plugin has a `skills/` directory.
 
@@ -95,20 +95,20 @@ Adapter edits take effect immediately -- no cache clear or restart needed.
 
 Agent-critical prose is **runtime-canonical** under [`plugins/spec/references/`](../../plugins/spec/references/). The Cursor plugin cache ships only `plugins/`, so skills must link to `references/…` siblings (or `../../references/…` from a skill directory), never to `docs/` via `../` escapes.
 
-| Runtime file | Purpose |
-|------|---------|
-| [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) | Cross-cutting "do not / never / always" rules for skills |
-| [`plugins/spec/references/specialist-usage.md`](../../plugins/spec/references/specialist-usage.md) | How specialists consume the four artifacts |
-| [`plugins/spec/references/reconciliation.md`](../../plugins/spec/references/reconciliation.md) | Plan-time leads and slice-time evidence |
+| Runtime file                                                                                       | Purpose                                                  |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md)             | Cross-cutting "do not / never / always" rules for skills |
+| [`plugins/spec/references/specialist-usage.md`](../../plugins/spec/references/specialist-usage.md) | How specialists consume the four artifacts               |
+| [`plugins/spec/references/reconciliation.md`](../../plugins/spec/references/reconciliation.md)     | Plan-time leads and slice-time evidence                  |
 
 Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
 
 Adapter prompts in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) link to `references/spec-runtime/` inside each adapter: each adapter's `references/spec-runtime` is a directory symlink to that repo's `codex/references/runtime/`, whose files are embedded into the published adapter components at build time. That tree is the canonical copy of the spec-runtime bundle; when a change to `plugins/spec/references/` here affects prose the adapters mirror, port it to `codex/references/runtime/` in specify-adapters in the same change.
 
-| Book-only (not agent runtime) | Purpose |
-|------|---------|
-| [`docs/reference/artifact-format.md`](../reference/artifact-format.md) | Full artifact format reference |
-| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md) | JSON envelope shapes for CLI commands |
+| Book-only (not agent runtime)                                                    | Purpose                                                                                |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`docs/reference/artifact-format.md`](../reference/artifact-format.md)           | Full artifact format reference                                                         |
+| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md)       | JSON envelope shapes for CLI commands                                                  |
 | [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Review-team protocol (canonical for mdBook; mirrored into `spec-runtime` for adapters) |
 
 ## Publishing a new plugin
@@ -128,7 +128,7 @@ After this initial setup, the plugin participates in the normal dev/prod workflo
 
 There is no automated test harness for skills (they are markdown documents interpreted by an LLM). Testing is manual:
 
-1. Run `cargo test --test framework_quality` to validate structural consistency.
+1. Run `cargo test --test framework` to validate structural consistency.
 2. Run `make use-local-plugins` and restart Cursor.
 3. Open a target project and invoke the skill.
 4. Verify the skill produces the expected artifacts and CLI interactions.

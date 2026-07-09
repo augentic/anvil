@@ -2,9 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/authoring/marketplace.schema.json",
   "title": "Cursor plugin marketplace manifest",
-  "description": "Validates `.cursor-plugin/marketplace.json`. Cross-file consistency with `plugins/` (symlink integrity, declared plugin surfaces) is enforced by the framework-quality cargo tests (`tests/framework_quality/prose.rs` and `main.rs`).",
+  "description": "Validates `.cursor-plugin/marketplace.json`. Cross-file consistency with `plugins/` (symlink integrity, declared plugin surfaces) is enforced by the framework-quality cargo tests (`tests/framework/prose.rs` and `main.rs`).",
   "type": "object",
-  "required": ["name", "owner", "metadata", "plugins"],
+  "required": [
+    "name",
+    "owner",
+    "metadata",
+    "plugins"
+  ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -18,7 +23,10 @@
     },
     "owner": {
       "type": "object",
-      "required": ["name", "email"],
+      "required": [
+        "name",
+        "email"
+      ],
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -33,7 +41,11 @@
     },
     "metadata": {
       "type": "object",
-      "required": ["description", "version", "pluginRoot"],
+      "required": [
+        "description",
+        "version",
+        "pluginRoot"
+      ],
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -57,7 +69,11 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["name", "source", "description"],
+        "required": [
+          "name",
+          "source",
+          "description"
+        ],
         "additionalProperties": false,
         "properties": {
           "name": {

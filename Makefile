@@ -18,7 +18,7 @@ export SPECIFY_ADAPTERS := $(ADAPTERS_ROOT)
 
 # Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the
 # repo root). Framework prose invariants run as plain cargo tests
-# (tests/framework_quality/) inside the same gate.
+# (tests/framework/) inside the same gate.
 ci:
 	cargo make ci
 

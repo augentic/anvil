@@ -6,10 +6,10 @@ This section is for developers working on the Specify framework itself -- the sk
 
 The platform lives in one repository, [`augentic/specify`](https://github.com/augentic/specify):
 
-| Path | Contents | Language |
-|------|----------|----------|
-| `plugins/`, `adapters/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/` | Skills, adapters, brief templates, shared references, documentation, marketplace manifest | Markdown, YAML |
-| `src/`, `crates/`, `tests/` (the Cargo workspace at the repo root) | The `specify` binary (workflow runtime), workspace crates, and the framework-quality cargo tests | Rust |
+| Path                                                                   | Contents                                                                                         | Language       |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
+| `plugins/`, `adapters/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/` | Skills, adapters, brief templates, shared references, documentation, marketplace manifest        | Markdown, YAML |
+| `src/`, `crates/`, `tests/` (the Cargo workspace at the repo root)     | The `specify` binary (workflow runtime), workspace crates, and the framework-quality cargo tests | Rust           |
 
 The prose defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace at the repo root implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
@@ -19,12 +19,12 @@ The prose and the runtime share one version line and ship in one release. Skills
 
 Two audiences share this repository:
 
-| Audience | Typical edits | Touches the Rust workspace? |
-|----------|---------------|-----------------------------|
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs | No — markdown and YAML only |
-| **Tooling contributors** | `standards` framework predicates, schemas, deterministic tests | Yes — they work in `src/` and `crates/` |
+| Audience                      | Typical edits                                                  | Touches the Rust workspace?             |
+| ----------------------------- | -------------------------------------------------------------- | --------------------------------------- |
+| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs                   | No — markdown and YAML only             |
+| **Tooling contributors**      | `standards` framework predicates, schemas, deterministic tests | Yes — they work in `src/` and `crates/` |
 
-Every contributor runs `cargo test --test framework_quality` locally with only a Rust toolchain: the framework checks are plain cargo tests over the prose and manifest surfaces (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
+Every contributor runs `cargo test --test framework` locally with only a Rust toolchain: the framework checks are plain cargo tests over the prose and manifest surfaces (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree plugin changes in Cursor, `make use-local-plugins` mirrors `plugins/` into the Cursor plugin cache.
 
 ## Development environment
 
@@ -45,7 +45,7 @@ Every contributor runs `cargo test --test framework_quality` locally with only a
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `cargo test --test framework_quality` over the prose (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `cargo test --test framework` over the prose (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 

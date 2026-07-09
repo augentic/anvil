@@ -13,7 +13,7 @@ jobs:
 
   # The non-Rust checks: the framework-quality suite — prose/manifest
   # invariants (links, skills, scenarios, docs) as plain cargo tests at
-  # tests/framework_quality/. The test target lives on the root package
+  # tests/framework/. The test target lives on the root package
   # (no `workflow` crate in its graph), so no specify-adapters checkout
   # is needed here.
   framework:
@@ -33,4 +33,4 @@ jobs:
           cache-on-failure: true
 
       - name: Framework quality checks
-        run: cargo test --test framework_quality
+        run: cargo test --test framework

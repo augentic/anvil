@@ -4,11 +4,11 @@ Specify separates three concerns that often collapse in agentic delivery stacks.
 
 ## The triad
 
-| Layer | Role | On disk / in CLI |
-| --- | --- | --- |
-| **Workflow** | Orchestrate phases and lifecycle transitions | `/spec:*` phase skills; `specify plan`, `specify slice`, `specify workspace` |
-| **Artifacts** | Capture slice-local and baseline product intent | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, `plan.yaml`, baseline under `.specify/specs/` |
-| **Engineering standards** | Durable policy that outlives any slice | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays; `specify rules export` |
+| Layer                     | Role                                            | On disk / in CLI                                                                                 |
+| ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Workflow**              | Orchestrate phases and lifecycle transitions    | `/spec:*` phase skills; `specify plan`, `specify slice`, `specify workspace`                     |
+| **Artifacts**             | Capture slice-local and baseline product intent | `proposal.md`, `spec.md`, `design.md`, `tasks.md`, `plan.yaml`, baseline under `.specify/specs/` |
+| **Engineering standards** | Durable policy that outlives any slice          | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays; `specify rules export`       |
 
 Workflow **mutates** `.specify/` state through a closed set of CLI verbs. Artifacts **record** what a slice means to build and merge. Engineering standards **constrain** how work is done — they do not transition plans, slices, or changes.
 
@@ -17,9 +17,9 @@ Workflow **mutates** `.specify/` state through a closed set of CLI verbs. Artifa
 
 Two different uses of "standards" appear in this repository:
 
-| Term | Meaning | Location |
-| --- | --- | --- |
-| **Authoring standards** | House style for skills, docs, and framework contributions | [`docs/standards/`](../standards/) — enforced on `augentic/specify` by the framework-quality cargo tests ([`tests/framework_quality/`](../../tests/framework_quality/)), with policy as constants in each test module |
+| Term                      | Meaning                                                        | Location                                                                                                                                                                                                                                                                                       |
+| ------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Authoring standards**   | House style for skills, docs, and framework contributions      | [`docs/standards/`](../standards/) — enforced on `augentic/specify` by the framework-quality cargo tests ([`tests/framework/`](../../tests/framework/)), with policy as constants in each test module                                                                                          |
 | **Engineering standards** | Durable engineering policy for generated and hand-written code | Cross-target `UNI-*` rules under `codex/rules/universal/` ([`augentic/specify-adapters`](https://github.com/augentic/specify-adapters)); per-adapter overlays under `targets/<name>/prose/rules/` and `sources/<name>/prose/rules/` — resolved by `specify rules export` for consumer projects |
 
 Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
@@ -28,11 +28,11 @@ Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a
 
 Enforcement splits by audience, not by rule id:
 
-| Surface | Binary | Audience | What it checks |
-| --- | --- | --- | --- |
-| Framework authoring | `cargo test --test framework_quality` | `augentic/specify` contributors | Skill frontmatter, links, marketplace consistency, docs prose |
-| Consumer standards | `specify rules export` | Downstream projects with `.specify/` | Materialises the applicable rule set for agents and review prompts |
-| Build-time judgment | Target `build/review.md` briefs | Active slice during `/spec:build` | Model-assisted application of codex policy → human `REVIEW.md` |
+| Surface             | Binary                          | Audience                             | What it checks                                                     |
+| ------------------- | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| Framework authoring | `cargo test --test framework`   | `augentic/specify` contributors      | Skill frontmatter, links, marketplace consistency, docs prose      |
+| Consumer standards  | `specify rules export`          | Downstream projects with `.specify/` | Materialises the applicable rule set for agents and review prompts |
+| Build-time judgment | Target `build/review.md` briefs | Active slice during `/spec:build`    | Model-assisted application of codex policy → human `REVIEW.md`     |
 
 There is no lint verb on the CLI: the framework checks are cargo tests here, and the deterministic consumer-project scanner (`specify lint project`) retired from the operational surface — if it earns its way back, it returns as developer tooling. Standards enforcement is **not** a workflow phase either way: findings may block a pipeline but never call `specify slice transition` or write lifecycle fields. Phase skills already use deterministic CLI gates where lifecycle depends on them (`specify slice validate` during refine; verify-repair during build).
 

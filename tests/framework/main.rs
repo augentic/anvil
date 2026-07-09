@@ -1,7 +1,7 @@
 //! Enforce the repo-local framework-quality predicates over the prose
 //! and manifest surfaces (links, skills, scenarios, plugins, docs).
 //!
-//! Run with `cargo test --test framework_quality`. Any finding fails
+//! Run with `cargo test --test framework`. Any finding fails
 //! CI. These are the surviving framework checks from the retired
 //! `specify lint framework` engine, rehomed as plain cargo tests per
 //! the `tests/rust_quality.rs` pattern: policy lives as constants in
@@ -45,7 +45,7 @@ fn render_failures(findings: &[Finding]) -> String {
 }
 
 #[test]
-fn no_framework_quality_findings() {
+fn no_framework_findings() {
     let findings = run_all(&repo_root());
     assert!(findings.is_empty(), "framework-quality gates failed:\n{}", render_failures(&findings));
 }

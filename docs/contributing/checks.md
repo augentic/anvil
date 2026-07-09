@@ -1,9 +1,9 @@
 # Consistency Checks
 
-Framework invariants over this repo's prose and manifest surfaces are plain cargo tests: `tests/framework_quality/` (links, skills, scenarios, plugins, docs prose) and `tests/rust_quality.rs` (repo-local Rust-quality predicates). Both run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
+Framework invariants over this repo's prose and manifest surfaces are plain cargo tests: `tests/framework/` (links, skills, scenarios, plugins, docs prose) and `tests/rust_quality.rs` (repo-local Rust-quality predicates). Both run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
 
 ```bash
-cargo test --test framework_quality   # prose/manifest invariants only
+cargo test --test framework   # prose/manifest invariants only
 cargo test --test rust_quality        # Rust-quality predicates only
 cargo make ci                         # the full gate (fmt, clippy, all tests, docs, vet, deny)
 ```
@@ -12,10 +12,10 @@ cargo make ci                         # the full gate (fmt, clippy, all tests, d
 
 Framework validation splits into two surfaces:
 
-| Surface                                  | When it runs                                | What it covers                                                                                                                                                    |
-| ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Editor-first (YAML/JSON LSP)**         | While you edit plain YAML or JSON           | Shape violations for files the language server can bind to a schema: `.cursor-plugin/marketplace.json` and other plain YAML/JSON artifacts that declare a schema  |
-| **`tests/framework_quality/` (cargo)**   | `cargo make ci` locally and in CI           | Markdown frontmatter (`SKILL.md`, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other cross-file predicate       |
+| Surface                          | When it runs                      | What it covers                                                                                                                                                   |
+| -------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `.cursor-plugin/marketplace.json` and other plain YAML/JSON artifacts that declare a schema |
+| **`tests/framework/` (cargo)**   | `cargo make ci` locally and in CI | Markdown frontmatter (`SKILL.md`, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other cross-file predicate     |
 
 **Authoritative schemas** live in-tree under [`schemas/`](../../schemas) and are embedded in the `specify` binary via `schema`; the framework-quality tests validate against those embedded constants (`SKILL_JSON_SCHEMA`, `SCENARIO_JSON_SCHEMA`, `MARKETPLACE_JSON_SCHEMA`). Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
@@ -33,17 +33,17 @@ Workflow and consumer schemas (`plan`, `evidence`, …) and framework authoring 
 
 Framework and consumer validation are intentionally separate. See [Standards layer](../explanation/standards-layer.md).
 
-| Surface                   | Command                              | Audience                           | Enforces                                                        |
-| ------------------------- | ------------------------------------ | ---------------------------------- | --------------------------------------------------------------- |
-| **Authoring standards**   | `cargo test --test framework_quality` | `augentic/specify` contributors    | Skill frontmatter, links, marketplace consistency, docs prose   |
-| **Engineering standards** | `specify rules export`               | Consumer projects with `.specify/` | Resolved rule packs exported into the consumer's agent context  |
-| **Build-time judgment**   | Target `build/review.md` briefs      | Active slice during `/spec:build`  | Model-assisted codex policy → `REVIEW.md`                       |
+| Surface                   | Command                         | Audience                           | Enforces                                                       |
+| ------------------------- | ------------------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| **Authoring standards**   | `cargo test --test framework`   | `augentic/specify` contributors    | Skill frontmatter, links, marketplace consistency, docs prose  |
+| **Engineering standards** | `specify rules export`          | Consumer projects with `.specify/` | Resolved rule packs exported into the consumer's agent context |
+| **Build-time judgment**   | Target `build/review.md` briefs | Active slice during `/spec:build`  | Model-assisted codex policy → `REVIEW.md`                      |
 
 Rule *content* lives in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters): the shared tree at `codex/rules/universal/` (`UNI-*`) and per-adapter `prose/rules/` overlays. Rule *shape* validation (frontmatter fields, `## Rule` heading, id uniqueness, namespace ownership) also lives in that repo as a cargo test, beside the rules it validates; `rules/parse.rs` here schema-validates every rule again at each `specify rules export` as a backstop. `docs/standards/` in this repo is **authoring** house style only.
 
 ## What the framework-quality tests enforce
 
-Each module under [`tests/framework_quality/`](../../tests/framework_quality/) owns one family. Policy (schema registries, numeric caps, allow-lists) lives as constants in the module; a violation is a test failure naming the check and the offending path.
+Each module under [`tests/framework/`](../../tests/framework/) owns one family. Policy (schema registries, numeric caps, allow-lists) lives as constants in the module; a violation is a test failure naming the check and the offending path.
 
 ### `links.rs`
 
@@ -86,7 +86,7 @@ Eval scenario files (opt-in by frontmatter, discovered under `evals/scenarios/`,
 
 ## Extending the checks
 
-Add the predicate to the owning module under `tests/framework_quality/` (or a new module wired into `main.rs::run_all`), with its policy as module constants. Then add a known-bad fixture case to the matching `*_checks_fire_on_bad_fixtures` test in `main.rs`, proving the check fires. There is no rule file, no `config:` plumbing, and no registration step — a check that compiles and runs is enforced.
+Add the predicate to the owning module under `tests/framework/` (or a new module wired into `main.rs::run_all`), with its policy as module constants. Then add a known-bad fixture case to the matching `*_checks_fire_on_bad_fixtures` test in `main.rs`, proving the check fires. There is no rule file, no `config:` plumbing, and no registration step — a check that compiles and runs is enforced.
 
 Repo-local Rust predicates (test-fn naming, archaeology, `#[allow]` hygiene, the unit-test ratchet) belong in `tests/rust_quality.rs` instead; see [testing.md](../standards/testing.md).
 
@@ -95,7 +95,7 @@ Repo-local Rust predicates (test-fn naming, archaeology, `#[allow]` hygiene, the
 The Rust workspace at the repo root runs everything via `cargo-make` (from the repo root):
 
 ```bash
-cargo make ci     # fmt-check + clippy + all tests (incl. framework_quality, rust_quality) + docs + vet + deny
+cargo make ci     # fmt-check + clippy + all tests (incl. framework, rust_quality) + docs + vet + deny
 cargo make check  # the pre-commit subset
 ```
 

@@ -8,12 +8,12 @@ House rules for the Specify Developer Guide (`docs/`). The guide is built with [
 
 Organise chapters by reader intent. The `docs/SUMMARY.md` section order follows this model:
 
-| Type | Directory | Reader goal | Structure |
-| ---- | --------- | ----------- | --------- |
-| **Tutorial** | `tutorials/` | Learn by doing — first success guaranteed | Numbered steps; minimal forward references; link out for depth |
-| **How-to** | `how-to/` | Solve one specific task | Prerequisites (one line) → steps → See also |
-| **Explanation** | `explanation/`, `orientation/` | Understand concepts and design | Prose + SVG diagrams; no step-by-step commands as primary content |
-| **Reference** | `reference/`, `appendices/` | Look up precise facts | Synopsis first; tables; link to explanation for rationale |
+| Type            | Directory                      | Reader goal                               | Structure                                                         |
+| --------------- | ------------------------------ | ----------------------------------------- | ----------------------------------------------------------------- |
+| **Tutorial**    | `tutorials/`                   | Learn by doing — first success guaranteed | Numbered steps; minimal forward references; link out for depth    |
+| **How-to**      | `how-to/`                      | Solve one specific task                   | Prerequisites (one line) → steps → See also                       |
+| **Explanation** | `explanation/`, `orientation/` | Understand concepts and design            | Prose + SVG diagrams; no step-by-step commands as primary content |
+| **Reference**   | `reference/`, `appendices/`    | Look up precise facts                     | Synopsis first; tables; link to explanation for rationale         |
 
 Getting Started (`orientation/`) is setup and path selection only — vocabulary lives under Understanding Specify (`explanation/concepts.md`).
 
@@ -25,28 +25,28 @@ Chapters that use a hero block should **omit** the duplicate `# Title` H1 — th
 
 The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross-cutting stylesheet at [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
 
-| Class | Use |
-|-------|-----|
-| `.hero` + `.eyebrow` + `.hero-title` + `.meta-row` + `.meta-chip` | Top-of-chapter hero block with breadcrumb + lede + meta chips |
-| `section` + `h2 .num` | Numbered top-level sections (proposal-style outline) |
-| `.decisions` + `.decision[data-d="D1"..."D8"]` + `.tag` | Decision cards (D1 = behaviour, D2 = documentation, …) |
-| `.audience-grid` / `.audience` | "Start here if you are…" orientation blocks |
-| `.questions` / `.question` + `.qnum` + `.q` + `.answer` | Open-question cards |
-| `.matrix` + `.dot` + `.blocker` + `.scenario-id` + `.blocker-flag` | Acceptance / scenario matrices |
-| `details.alt` + `.alt-tag` + `.body` | Alternatives accordion (Rejected / Partial) |
-| `.pipeline` + `.pipeline-caption` | Architecture / workflow SVG diagrams |
-| Native admonitions (`> [!NOTE]`, `> [!IMPORTANT]`, …) | Posture notes, Gate reminders, gotchas, completion (see [Admonitions](#admonitions)) |
-| `.tutorial-step` + `.step-label` + `.step-title` | Numbered tutorial step panels |
-| `.prereq` / `.when` | Prerequisites block (tutorials) / when-to-use opener (how-tos) |
-| `.rhythm` + `.rhythm-step` + `.rhythm-num` + `.rhythm-label` | Change-rhythm summary cards (explanation pages) |
-| `.card-grid` + `.card` + `.card-time` | Section landing page link cards |
-| `.synopsis` | Reference page scannable lead |
-| `.see-also` | Consistent footer link block |
-| `.platform` + `.platform-product[data-active=true]` | Augentic product stack strip (Specify / Omnia / Vectis) |
-| `.status-pill` | Inline status badge (e.g. Draft) |
-| `.pill.agreed` / `.divergence` / `.conflict` | Inline requirement status chips |
-| `.authority-widget` | Interactive authority resolution demo (adapter-anatomy only) |
-| `.waves` | Wave / timeline wrapper |
+| Class                                                              | Use                                                                                  |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `.hero` + `.eyebrow` + `.hero-title` + `.meta-row` + `.meta-chip`  | Top-of-chapter hero block with breadcrumb + lede + meta chips                        |
+| `section` + `h2 .num`                                              | Numbered top-level sections (proposal-style outline)                                 |
+| `.decisions` + `.decision[data-d="D1"..."D8"]` + `.tag`            | Decision cards (D1 = behaviour, D2 = documentation, …)                               |
+| `.audience-grid` / `.audience`                                     | "Start here if you are…" orientation blocks                                          |
+| `.questions` / `.question` + `.qnum` + `.q` + `.answer`            | Open-question cards                                                                  |
+| `.matrix` + `.dot` + `.blocker` + `.scenario-id` + `.blocker-flag` | Acceptance / scenario matrices                                                       |
+| `details.alt` + `.alt-tag` + `.body`                               | Alternatives accordion (Rejected / Partial)                                          |
+| `.pipeline` + `.pipeline-caption`                                  | Architecture / workflow SVG diagrams                                                 |
+| Native admonitions (`> [!NOTE]`, `> [!IMPORTANT]`, …)              | Posture notes, Gate reminders, gotchas, completion (see [Admonitions](#admonitions)) |
+| `.tutorial-step` + `.step-label` + `.step-title`                   | Numbered tutorial step panels                                                        |
+| `.prereq` / `.when`                                                | Prerequisites block (tutorials) / when-to-use opener (how-tos)                       |
+| `.rhythm` + `.rhythm-step` + `.rhythm-num` + `.rhythm-label`       | Change-rhythm summary cards (explanation pages)                                      |
+| `.card-grid` + `.card` + `.card-time`                              | Section landing page link cards                                                      |
+| `.synopsis`                                                        | Reference page scannable lead                                                        |
+| `.see-also`                                                        | Consistent footer link block                                                         |
+| `.platform` + `.platform-product[data-active=true]`                | Augentic product stack strip (Specify / Omnia / Vectis)                              |
+| `.status-pill`                                                     | Inline status badge (e.g. Draft)                                                     |
+| `.pill.agreed` / `.divergence` / `.conflict`                       | Inline requirement status chips                                                      |
+| `.authority-widget`                                                | Interactive authority resolution demo (adapter-anatomy only)                         |
+| `.waves`                                                           | Wave / timeline wrapper                                                              |
 
 ## HTML component blocks
 
@@ -257,12 +257,12 @@ This document is <span class="status-pill">Draft</span>.
 
 Use mdBook 0.5 [native admonitions](https://rust-lang.github.io/mdBook/format/markdown.html#admonitions) for posture notes instead of custom callout HTML:
 
-| Kind | Syntax | Use |
-| ---- | ------ | --- |
+| Kind                  | Syntax           | Use                                    |
+| --------------------- | ---------------- | -------------------------------------- |
 | Gate / operator stamp | `> [!IMPORTANT]` | Gate 1 reminders, required human steps |
-| Gotcha | `> [!WARNING]` | Pitfalls and failure modes |
-| Success / completion | `> [!TIP]` | Tutorial outcomes, “you’re done” notes |
-| Unchanged behaviour | `> [!NOTE]` | Behaviour that did not change |
+| Gotcha                | `> [!WARNING]`   | Pitfalls and failure modes             |
+| Success / completion  | `> [!TIP]`       | Tutorial outcomes, “you’re done” notes |
+| Unchanged behaviour   | `> [!NOTE]`      | Behaviour that did not change          |
 
 ```markdown
 > [!IMPORTANT]
@@ -275,13 +275,13 @@ Multi-line bodies prefix every line with `> `.
 
 Copy the exemplar chapter for each Diátaxis type when authoring or migrating pages:
 
-| Type | Exemplar | Key components |
-| ---- | -------- | -------------- |
-| **Tutorial** | [`tutorials/quick-start.md`](../tutorials/quick-start.md) | hero, meta-chip, prereq, tutorial-step, pipeline, `> [!TIP]`, see-also |
-| **How-to** | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also |
-| **Explanation** | [`explanation/concepts.md`](../explanation/concepts.md) | hero, audience-grid, rhythm, pipeline, admonition, see-also |
-| **Reference** | [`reference/cli/plan.md`](../reference/cli/plan.md) | intro, verb cheat-sheet table, synopsis blocks, see-also |
-| **Section landing** | [`tutorials/index.md`](../tutorials/index.md) | hero, card-grid, see-also |
+| Type                | Exemplar                                                              | Key components                                                         |
+| ------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Tutorial**        | [`tutorials/quick-start.md`](../tutorials/quick-start.md)             | hero, meta-chip, prereq, tutorial-step, pipeline, `> [!TIP]`, see-also |
+| **How-to**          | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also               |
+| **Explanation**     | [`explanation/concepts.md`](../explanation/concepts.md)               | hero, audience-grid, rhythm, pipeline, admonition, see-also            |
+| **Reference**       | [`reference/cli/plan.md`](../reference/cli/plan.md)                   | intro, verb cheat-sheet table, synopsis blocks, see-also               |
+| **Section landing** | [`tutorials/index.md`](../tutorials/index.md)                         | hero, card-grid, see-also                                              |
 
 ## Palette and theme picker
 
@@ -321,7 +321,7 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 
 ## RFC citations
 
-User-facing docs must not cite RFC numbers in visible prose except in [`../contributing/`](../contributing/). Link targets to RFC paths are fine when the link text does not name the RFC. Enforced by the history-citation check in [`tests/framework_quality/prose.rs`](../../tests/framework_quality/prose.rs).
+User-facing docs must not cite RFC numbers in visible prose except in [`../contributing/`](../contributing/). Link targets to RFC paths are fine when the link text does not name the RFC. Enforced by the history-citation check in [`tests/framework/prose.rs`](../../tests/framework/prose.rs).
 
 ## Building locally
 

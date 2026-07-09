@@ -38,11 +38,11 @@ tempfile.workspace = true
 name = "rust_quality"
 path = "tests/rust_quality.rs"
 
-# `framework_quality` gates the prose/manifest surfaces (links, skills,
+# `framework` gates the prose/manifest surfaces (links, skills,
 # scenarios, plugins, docs) — the rehomed framework checks.
 [[test]]
-name = "framework_quality"
-path = "tests/framework_quality/main.rs"
+name = "framework"
+path = "tests/framework/main.rs"
 
 [lints]
 workspace = true

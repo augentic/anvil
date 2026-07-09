@@ -21,11 +21,11 @@ Initialize a project in Cursor Agent chat with a adapter:
 
 Common targets:
 
-| Target | URL | Use case |
-| ---------- | --- | -------- |
-| `omnia` | `https://github.com/augentic/specify/adapters/targets/omnia` | [Omnia](https://omnia.host) Rust WASM services |
-| `vectis` | `https://github.com/augentic/specify/adapters/targets/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
-| `contracts` | `https://github.com/augentic/specify/adapters/targets/contracts` | API/interface contract work |
+| Target      | URL                                                              | Use case                                                      |
+| ----------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
+| `omnia`     | `https://github.com/augentic/specify/adapters/targets/omnia`     | [Omnia](https://omnia.host) Rust WASM services                |
+| `vectis`    | `https://github.com/augentic/specify/adapters/targets/vectis`    | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | `https://github.com/augentic/specify/adapters/targets/contracts` | API/interface contract work                                   |
 
 Then work through a slice:
 
@@ -76,7 +76,7 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-cargo test --test framework_quality
+cargo test --test framework
 ```
 
 The framework checks are plain cargo tests over the prose and manifest surfaces. Only a Rust toolchain is required; the same tests run inside the full `cargo make ci` gate. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
