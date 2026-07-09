@@ -79,8 +79,9 @@ install_crate = "cargo-outdated"
 command = "cargo"
 args = [
     "check",
+    "--lib",
     "-p",
-    "specify",
+    "specify-cli",
     "-p",
     "cli",
     "--target",
@@ -96,7 +97,7 @@ env = { RUSTFLAGS = "-Dwarnings" }
 # inside harness/ (see harness/README.md).
 [tasks.build-guests]
 command = "cargo"
-args = ["build", "-p", "specify", "--target", "wasm32-wasip2"]
+args = ["build", "--lib", "-p", "specify-cli", "--target", "wasm32-wasip2"]
 
 # Test
 #
@@ -104,10 +105,9 @@ args = ["build", "-p", "specify", "--target", "wasm32-wasip2"]
 # `RUSTFLAGS=-Dwarnings` override already differs from the default
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
-# The parked test rig (`harness/runtime`, `harness/fixtures`) is a
-# workspace member but excluded from `default-members`, so no root gate
-# task — test, lint, doc, vet, deny, fmt — ever touches it; it runs
-# manually via `cargo make` inside harness/ (see harness/README.md).
+# The parked composed-deployment rig (`core/tests/`, `harness/fixtures`) is
+# excluded from the root gate via `.config/nextest.toml`; it runs manually
+# via `cargo make` inside harness/ (see harness/README.md).
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--all-features", "--no-tests=pass"]

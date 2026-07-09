@@ -4,7 +4,7 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary, one guest
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/main.rs`): it parses no verbs itself. Every verb — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `cli` grammar; envelopes and exit codes pass through verbatim. Provisioning verbs (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest router until their in-guest implementations land (DECISIONS.md §"One `specify` binary").
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`core/runtime.rs`): it parses no verbs itself. Every verb — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `cli` grammar; envelopes and exit codes pass through verbatim. Provisioning verbs (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest router until their in-guest implementations land (DECISIONS.md §"One `specify` binary").
 
 The core guest identity is versioned by the binary (`specify:core@<binary version>`, DECISIONS.md §"Core versioned by the binary"); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
 
@@ -21,7 +21,7 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/main.rs  →  omnia::runtime! (command mode)  →  specify guest (crates/specify)  →  cli::guest::parse + route
+core/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (core/lib.rs)  →  cli::guest::parse + route
 ```
 
 The full operator grammar — provisioning verbs included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Verb handlers live under `crates/cli/src/commands/`; the handler contract (`Ctx`, `Out` / `Render` / `emit`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).

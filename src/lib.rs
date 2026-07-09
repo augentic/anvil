@@ -21,24 +21,11 @@
 #![cfg(target_arch = "wasm32")]
 
 mod bindings {
-    //! `wit_bindgen::generate!` output for the `workflow` world. The world only
-    //! imports (`source` / `target`), so there is no `export!` shim here; the
-    //! `wasi:cli/run` export is wired by wasip3 in the crate root.
-    #![allow(
-        missing_docs,
-        unsafe_code,
-        clippy::pedantic,
-        clippy::nursery,
-        reason = "wit-bindgen generated bindings are not hand-maintained; the generated code cannot carry this workspace's lint posture"
-    )]
+    #![allow(missing_docs)]
 
     wit_bindgen::generate!({
         world: "workflow",
-        path: "../../wit",
-        // Asyncness follows the WIT declarations: the judgment operations
-        // are `async func`s (judgment legs await the async `omnia:model`
-        // import mid-call) and async-lower; `describe` is a plain `func`
-        // and sync-lowers.
+        path: "wit",
         generate_all,
     });
 }

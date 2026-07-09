@@ -1,7 +1,7 @@
 //! Dev-only shared test support for the Specify workspace.
 //!
 //! Home of the scripted [`omnia_guest::Model`] mock consumed by the
-//! `workflow` and `harness/runtime` test suites. A library crate (not a
+//! `workflow` and `core/tests` composed suites. A library crate (not a
 //! per-suite `mod` include) so every test binary shares one copy and
 //! partially-used helpers never trip `dead_code`. Never a dependency of
 //! shipped code — consumers reach it through `[dev-dependencies]` only.

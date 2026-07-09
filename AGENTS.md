@@ -162,11 +162,10 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability (WASI-backed on wasm32; native tests bind testkit's scripted mock)); no wasmtime in its graph
 cli                      # wasm-clean CLI surface — clap grammar, envelopes, exit contract, pure verb handlers; shared by the specify guest and native tests
-specify                  # wasm32 wasi:cli/run shim over cli + workflow (the core guest — published as specify:core@<binary version> on release; no committed artifact)
+specify                  # wasm32 wasi:cli/run shim — co-located under core/lib.rs (published as specify:core@<binary version>)
 testkit                  # dev-only shared test support (the scripted omnia_guest::Model mock); reached exclusively through [dev-dependencies], never by shipped code
-harness/runtime          # PARKED test rig: the runtime-replay binary (the same runtime! macro over ModelDefault) + the composed-deployment integration tests — workspace member excluded from `default-members`; invoked manually only (harness/README.md)
-harness/fixtures         # echo adapter fixtures, omnia's examples/ pattern (skeleton source/target guests as cdylib examples) the parked composed tests load — same parked harness pair
-specify-cli (root crate) # the one binary: a single omnia::runtime! command-mode invocation over the cursor-bound backends — no Specify vocabulary; every verb runs in the specify guest
+harness/fixtures         # PARKED echo adapter fixtures for the composed-deployment rig
+specify-cli (root crate) # Omnia deployment unit under core/: guest lib, shipped runtime, replay sibling
 ```
 
 The artifact validation rule registry lives in `artifacts::validate`: `artifacts` depends on `workflow` in no direction, so a rule cannot transition a slice or stamp a plan. `artifacts` is the lifecycle-free leaf holding the artifact types and parsers the workflow layer reads. The embedded JSON Schemas (and the shared `schema::digest` SHA-256 helpers) live in one place, `schema`, which also carries the neutral `Diagnostic` / `DiagnosticReport` substrate (`schema::diagnostics`), so every check producer — validate and review alike — emits the same finding currency without importing the other surface's code. See [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](./DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate). Engineering-standards rules ship inside the target adapters in `augentic/specify-adapters`; there is no engine-side rules crate.
@@ -197,11 +196,13 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/cli/src/output.r
 ### Repository map
 
 ```text
-src/main.rs              the one binary — a single omnia::runtime! command-mode invocation
+core/runtime.rs          shipped binary — omnia::runtime! command mode over cursor backends
+core/lib.rs              wasm32 core guest shim (wasi:cli/run)
+core/replay.rs           replay runtime (ModelDefault) for the parked composed rig
+core/tests/              parked composed-deployment integration tests
 crates/cli/              shared clap grammar, envelopes, exit contract, pure verb handlers
 crates/workflow/         workflow domain logic
-crates/specify/          wasm32 core guest shim
-harness/                 PARKED composed-deployment test rig — workspace members excluded from `default-members`, manual-only (runtime + echo fixtures; harness/README.md)
+harness/fixtures/        echo adapter fixtures for the composed rig
 tests/framework/         prose/manifest framework checks as cargo tests
 tests/fixtures/          shared fixture trees referenced by crate-level suites
 ```

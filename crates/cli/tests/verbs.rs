@@ -5,7 +5,7 @@
 //! against a throw-away project tree.
 //!
 //! This is the always-on native home of the coverage the parked
-//! composed-deployment rig (`harness/runtime/tests/widened.rs`) proves
+//! composed-deployment rig (`core/tests/composed_widened.rs`) proves
 //! over the wasm seam: `registry {add,validate,remove}`,
 //! `archive prune`, `init --scaffold-only`, and `journal {emit,show}`.
 //! Each test pins the process CWD to its own tempdir — safe because

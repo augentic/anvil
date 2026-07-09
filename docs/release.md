@@ -23,7 +23,7 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
-The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/main.rs`, DECISIONS.md §"One `specify` binary"), so there is no second binary to build or package. The `runtime-replay` binary target (in the parked `harness/runtime` rig) is a dev/test surface and is never packaged.
+The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `core/runtime.rs`, DECISIONS.md §"One `specify` binary"), so there is no second binary to build or package. The `runtime-replay` binary target (co-located at `core/replay.rs`) is a dev/test surface and is never packaged.
 
 ## Publishing the wasm-pkg packages
 
@@ -32,7 +32,7 @@ Both wasm-pkg packages are published manually with `wkg publish` by a maintainer
 - **Core guest.** After tagging, publish the release-built workflow component as `specify:core@<version>`, where `<version>` is the `VERSION` file — the published core identity must equal the binary version (`DECISIONS.md` §"Core versioned by the binary"): a released binary consumes exactly `specify:core@<its own version>` and carries no embedded guest.
 
 ```bash
-cargo build -p specify --release --target wasm32-wasip2
+cargo build --lib -p specify-cli --release --target wasm32-wasip2
 wkg publish target/wasm32-wasip2/release/specify.wasm --package "specify:core@$(cat VERSION)"
 ```
 

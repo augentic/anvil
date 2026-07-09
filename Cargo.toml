@@ -9,16 +9,23 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
-autotests = false
 
-# The binary is one `omnia::runtime!` invocation — no Specify domain
-# crates: every verb runs in the specify (core) guest.
+[lib]
+name = "specify"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
 [[bin]]
 name = "specify"
-path = "src/main.rs"
+path = "src/runtime.rs"
 
-[dependencies]
+[[bin]]
+name = "runtime-replay"
+path = "src/replay.rs"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
+cfg-if.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
@@ -26,12 +33,32 @@ omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+omnia-guest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+cli.workspace = true
+error.workspace = true
+schema.workspace = true
+artifacts.workspace = true
+workflow.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
+
 [dev-dependencies]
+assert_cmd.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+jiff.workspace = true
+omnia-guest.workspace = true
+omnia-testkit.workspace = true
 regex.workspace = true
 schema.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+testkit.workspace = true
+workflow = { workspace = true, features = ["native"] }
 
 # `framework` gates the prose/manifest surfaces (links, skills,
 # scenarios, plugins, docs) — the rehomed framework checks.
@@ -39,14 +66,29 @@ tempfile.workspace = true
 name = "framework"
 path = "tests/framework/main.rs"
 
+# Parked composed-deployment rig — excluded from the root CI gate via
+# `.config/nextest.toml`; run on demand from `harness/` (see harness/README.md).
+[[test]]
+name = "composed"
+path = "core/tests/composed.rs"
+
+[[test]]
+name = "composed_workflow"
+path = "core/tests/composed_workflow.rs"
+
+[[test]]
+name = "composed_widened"
+path = "core/tests/composed_widened.rs"
+
+[[test]]
+name = "composed_mcp"
+path = "core/tests/composed_mcp.rs"
+
 [lints]
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/runtime", "harness/fixtures"]
-# The parked composed-deployment rig (`runtime`, `fixtures`) is a
-# workspace member for shared lockfile and path deps, but excluded from
-# every automatic gate — see `default-members` and harness/README.md.
+members = ["crates/*", "harness/fixtures"]
 default-members = [
     ".",
     "crates/*",

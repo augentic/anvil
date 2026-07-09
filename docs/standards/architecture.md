@@ -4,7 +4,7 @@ Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>
 
 ## Workspace layout
 
-Binary crate (`name = "specify-cli"`) at the repo root. [`src/main.rs`](../../src/main.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest (`crates/specify`) through the shared cli grammar (`crates/cli`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
+Binary crate (`name = "specify-cli"`) at the repo root. [`core/runtime.rs`](../../core/runtime.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest ([`core/lib.rs`](../../core/lib.rs)) through the shared cli grammar (`crates/cli`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
 
 ```text
 error                    # leaf — thiserror + serde-saphyr only
@@ -12,7 +12,7 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts} (also owns workflow::agents — init-time AGENTS.md context-fence generation); no wasmtime in its graph
 cli                      # wasm-clean CLI surface — shared by the specify guest and native tests
-specify                  # wasm32 wasi:cli/run core guest — depends on cli + workflow
+specify                  # wasm32 wasi:cli/run core guest — co-located under core/lib.rs
 testkit                  # dev-only shared test support (the scripted Model mock); [dev-dependencies] only, never shipped
 specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-* crate
 ```
@@ -31,7 +31,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default. See [DECISIONS.md §"New workspace crates"](../../DECISIONS.md#new-workspace-crates) for the bar a new crate must clear.
 
-The root `specify` crate is a binary-only package (`src/main.rs`, the `omnia::runtime!` invocation). The whole `specify` clap tree lives in `crates/cli`; clap introspection for shell completions lives in [`crates/cli/src/commands.rs`](../../crates/cli/src/commands.rs) via `Cli::command()`.
+The root `specify-cli` package carries the Omnia deployment unit under `core/`: the guest lib (`core/lib.rs`), the shipped runtime (`core/runtime.rs`), and the replay sibling (`core/replay.rs`). The whole `specify` clap tree lives in `crates/cli`; clap introspection for shell completions lives in [`crates/cli/src/commands.rs`](../../crates/cli/src/commands.rs) via `Cli::command()`.
 
 ## workflow domain modules
 

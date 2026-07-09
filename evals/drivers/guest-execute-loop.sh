@@ -42,7 +42,7 @@ command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
 (
   cd "$root"
   cargo build -q -p specify-cli
-  cargo build -q -p specify --target wasm32-wasip2
+  cargo build -q -p specify-cli --lib --target wasm32-wasip2
 )
 specify="$root/target/debug/specify"
 workflow_wasm="$root/target/wasm32-wasip2/debug/specify.wasm"

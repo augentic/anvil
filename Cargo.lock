@@ -2664,13 +2664,10 @@ version = "0.35.0"
 dependencies = [
  "anyhow",
  "chrono",
- "fromenv",
  "futures",
  "omnia",
- "parking_lot",
  "polodb_core",
  "regex",
- "serde",
  "serde_json",
  "tracing",
  "wasmtime",
@@ -3643,32 +3640,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "runtime"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "artifacts",
- "assert_cmd",
- "cfg-if",
- "clap",
- "clap_complete",
- "cli",
- "jiff",
- "omnia",
- "omnia-guest",
- "omnia-testkit",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "omnia-wasi-otel",
- "schema",
- "serde_json",
- "tempfile",
- "testkit",
- "tokio",
- "workflow",
-]
-
-[[package]]
 name = "rusqlite"
 version = "0.40.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4133,37 +4104,36 @@ dependencies = [
 ]
 
 [[package]]
-name = "specify"
-version = "0.27.2"
-dependencies = [
- "artifacts",
- "cli",
- "error",
- "omnia-guest",
- "schema",
- "serde",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.59.0",
- "workflow",
-]
-
-[[package]]
 name = "specify-cli"
 version = "0.27.2"
 dependencies = [
  "anyhow",
+ "artifacts",
+ "assert_cmd",
+ "cfg-if",
+ "clap",
+ "clap_complete",
+ "cli",
+ "error",
+ "jiff",
  "omnia",
  "omnia-cursor",
+ "omnia-guest",
+ "omnia-testkit",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
  "regex",
  "schema",
+ "serde",
  "serde-saphyr",
  "serde_json",
  "tempfile",
+ "testkit",
  "tokio",
+ "wasip3",
+ "wit-bindgen 0.59.0",
+ "workflow",
 ]
 
 [[package]]

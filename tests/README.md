@@ -46,12 +46,12 @@ declared per test binary with `mod <helper>;`:
 - `workflow`: `crates/workflow/tests/common/mod.rs` — `MockCmd`, scaffold and
   stamped-outcome helpers.
 - `schema`: `crates/schema/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
-- `runtime` (harness): `harness/runtime/tests/common/mod.rs` — guest-artifact
+- `specify-cli` (root): `core/tests/common/mod.rs` — guest-artifact
   building and the in-process deployment bundles.
 
 Cross-package test support lives in the dev-only `testkit` workspace crate
 (`crates/testkit`): the scripted `Model` mock (`testkit::MockModel`) consumed by
-the `workflow` and `harness/runtime` suites.
+the `workflow` and `core/tests` composed suites.
 
 The `GIT_ENV` / `run_git` / `copy_dir` trio is single-sourced at
 `tests/fs_git.rs` and pulled into each crate's `tests/common` via a

@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses (see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-auto-discovered-per-area-binaries)). Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig (`harness/runtime`, `harness/fixtures`) is a workspace member excluded from `default-members` and runs on demand, not in the gate (see `harness/README.md`).
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses (see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-auto-discovered-per-area-binaries)). Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig (`core/tests/`, `harness/fixtures`) runs on demand via `harness/`, not in the gate (see `harness/README.md`).
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatcher contract"](./handler-shape.md#dispatcher-contract).
 
@@ -73,7 +73,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
-The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice), with the parked composed-deployment rig at `harness/runtime/tests/` available on demand for the wasm seams.
+The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice), with the parked composed-deployment rig at `core/tests/` available on demand for the wasm seams.
 
 ## Golden file discipline
 
