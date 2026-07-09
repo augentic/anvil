@@ -5,6 +5,8 @@
 //! of scope here; only the deterministic env-override branch of
 //! `latest_release_tag` is exercised (no network).
 
+#![cfg(feature = "native")]
+
 use std::path::Path;
 
 use error::Error;

@@ -1,3 +1,5 @@
+//! Lead wire-shape round-trip matrix (`artifacts::discovery::lead`).
+
 use artifacts::discovery::lead::Lead;
 
 #[test]

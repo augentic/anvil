@@ -19,6 +19,8 @@
 //!   own references on its own `/mcp/<name>` route beside the
 //!   workflow guest.
 
+#![cfg(not(target_arch = "wasm32"))]
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -31,7 +33,7 @@ use workflow::orchestrate;
 use workflow::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
 use workflow::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 
-use crate::common::{self, CacheGuard, Quiet, StubBundle, scoped_cache};
+use crate::common::{CacheGuard, Quiet, StubBundle, scoped_cache};
 
 fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
@@ -71,7 +73,7 @@ impl Project {
         // which sits under the `"."` mount so the guest sees it too.
         let dev_dir = root.join("target/wasm32-wasip2/release");
         fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-        fs::copy(common::adapter_component_wasm("target:omnia"), dev_dir.join("omnia.wasm"))
+        fs::copy(crate::common::adapter_component_wasm("target:omnia"), dev_dir.join("omnia.wasm"))
             .expect("stage omnia component");
         Self {
             _tmp: tmp,
@@ -131,8 +133,8 @@ async fn seed_built_slice(project: &Project) {
     let survey_seam = MockSourceSeam::scripted([Ok(leads)], []);
     orchestrate::survey_all(&survey_seam, project.layout(), now()).await.expect("seed survey");
 
-    let model = crate::mock::MockModel::answering([
-        Box::leak(synthesis_response().into_boxed_str()) as &'static str,
+    let model = testkit::MockModel::answering([
+        Box::leak(synthesis_response().into_boxed_str()) as &'static str
     ]);
     let sources = MockSourceSeam::scripted(
         [],
@@ -212,7 +214,7 @@ fn synthesis_response() -> String {
 // the given release-built adapter components, `"."` mounted at `mount`) with the
 // given guest argv, over the stubbed model backend.
 async fn run_composed(mount: &Path, adapters: &[&str], args: &[&str]) -> Result<ExitStatus> {
-    let manifest = common::composed_manifest(mount, adapters)?;
+    let manifest = crate::common::composed_manifest(mount, adapters)?;
     let builder = DeploymentBuilder::new()
         .config(manifest.path().to_path_buf())
         .mode(Mode::Command)
@@ -317,7 +319,7 @@ async fn post(runtime: &omnia::Runtime<StubBundle>, route: &str, message: &Value
 async fn adapter_shelves() -> Result<()> {
     let mount = TempDir::new()?;
     let runtime =
-        common::composed_runtime(mount.path(), &["source:intent", "target:omnia"]).await?;
+        crate::common::composed_runtime(mount.path(), &["source:intent", "target:omnia"]).await?;
 
     for (route, adapter) in [("/mcp/intent", "intent"), ("/mcp/omnia", "omnia")] {
         let init = post(

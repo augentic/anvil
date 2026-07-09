@@ -1,3 +1,5 @@
+//! `discovery.md` document parser edge matrix (`artifacts::discovery::document`).
+
 use artifacts::discovery::document::*;
 use artifacts::discovery::lead::Lead;
 use error::Error;

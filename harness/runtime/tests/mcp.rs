@@ -6,6 +6,8 @@
 //! HTTP driver (no TCP socket) — and speaks MCP Streamable HTTP: one JSON-RPC
 //! message per POST.
 
+#![cfg(not(target_arch = "wasm32"))]
+
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
@@ -15,12 +17,12 @@ use omnia_wasi_http::WasiHttp;
 use omnia_wasi_model::WasiModel;
 use serde_json::{Value, json};
 
-use crate::common::{self, Bundle};
+use crate::common::Bundle;
 
 // Assemble the skeleton deployment into a runtime the in-process HTTP driver
 // can serve requests through.
 async fn runtime() -> Result<Runtime<Bundle>> {
-    let manifest = common::skeleton_manifest("source:echo")?;
+    let manifest = crate::common::skeleton_manifest("source:echo")?;
     let mut deployment = DeploymentBuilder::new()
         .config(manifest.path().to_path_buf())
         .build::<StoreCtx<Bundle>>()

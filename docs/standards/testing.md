@@ -1,18 +1,16 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over the binary, **one integration binary per crate** (each crate's `tests/it.rs` pulls every area in as a `#[path]` submodule), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. A ratchet gate (`tests/rust_quality.rs`, seeded by `tests/rust_quality_budget.toml`) holds the per-crate `src` unit-test count down — the lever is designing tests against the public surface, not widening it. Read this before adding a new test or harness.
+Integration-first test posture: `cargo nextest` over the binary, auto-discovered per-area test binaries (`crates/<name>/tests/<area>.rs`), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. A ratchet gate (`tests/rust_quality.rs`, seeded by `tests/rust_quality_budget.toml`) holds the per-crate `src` unit-test count down — the lever is designing tests against the public surface, not widening it. Read this before adding a new test or harness.
 
 ## Posture
 
 Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly.
 
-`cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — but a missing `[[test]]` declaration that should exist will silently produce no output. Cross-check `cargo test` output if you suspect a target is being skipped.
+`cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each crate exposes **one** integration binary, `tests/it.rs`, which pulls every area in as a `#[path]` submodule (`mod plan_schema;`, `mod workspace;`, …). The per-area files stay on disk — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — but they are modules of `it`, not standalone binaries. The repo-root `tests/` carries only the dev-gate binaries (`tests/framework/`, `tests/rust_quality.rs`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig is parked at `harness/runtime/tests/` and runs on demand, not in the gate (see `harness/README.md`). Test targets are declared explicitly because each crate sets `autotests = false` in its `Cargo.toml` to suppress per-file auto-discovery.
-
-One integration binary per crate is the intentional layout — see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-one-binary-per-crate-path-submodules). The crate-under-test links once per crate instead of once per area, which is the build cost the per-area layout paid 31 times over; the per-crate `it` keeps `cargo test -p <crate>` and nextest's `-E 'test(<area>::)'` module filters useful for local iteration, so consolidation does not cost the per-area selectivity the earlier mega-binary attempt would have. Never group across crates — each crate's `tests/` is its own compilation unit, so `workflow`, `schema`, and `artifacts` each own a distinct `it`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses (see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-auto-discovered-per-area-binaries)). Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries only the dev-gate binaries (`tests/framework/`, `tests/rust_quality.rs`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig (`harness/runtime`, `harness/fixtures`) is a workspace member excluded from `default-members` and runs on demand, not in the gate (see `harness/README.md`).
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatcher contract"](./handler-shape.md#dispatcher-contract).
 
@@ -24,7 +22,7 @@ Every behavior gets a home in exactly one of three layers. Decide the layer **be
 | ----- | -------- | ------------- | -------------- |
 | **Kernel unit** | `#[cfg(test)] mod tests` (or a sibling `tests.rs`) next to the code | The branch is genuinely unreachable through the CLI (an error variant no flag can trigger, a defensive guard), **or** the behavior is a dense parse/projection edge matrix whose case-per-cell integration port would inflate the 4-wide subprocess pool | The behavior is reachable through the binary and an integration test already covers it — or could, without a matrix explosion |
 | **Crate integration** | `crates/<name>/tests/` | The behavior spans modules within one crate and is unreachable (or impractical to reach) through the binary — internal invariants, filesystem-shape corner cases, registry-pinned schema compilation | The same observable behavior is already asserted through the binary; if a CLI test exists, the crate test must cover a *different* edge, not re-derive the happy path in-process |
-| **Binary integration** | `tests/it.rs`, area module `tests/<area>.rs` | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, journal events, filesystem effects of a verb | The assertion re-tests kernel logic already covered unit-side — binary tests buy wiring confidence, not rule-by-rule behavior matrices |
+| **Binary integration** | `tests/<area>.rs` | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, journal events, filesystem effects of a verb | The assertion re-tests kernel logic already covered unit-side — binary tests buy wiring confidence, not rule-by-rule behavior matrices |
 
 Rules of thumb:
 
@@ -65,7 +63,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 
 ## Test naming
 
-Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `<area>` module of `tests/it.rs` supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 40-char cap below counts the bare `fn` identifier, not the (now deeper) `it::<area>::…` module path, so consolidation does not change the budget — but a merge that renames an area module is a good moment to drop any tokens the new module path already supplies.
+Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 40-char cap below counts the bare `fn` identifier, not the module path.
 
 - Drop tokens the binary name or enclosing module already supplies: in `layout.rs`, write `different_skeletons_error`, not `layout_different_skeletons_is_an_error`.
 - Group a cluster that shares a subject under a nested `mod <subject>` rather than repeating the subject as a prefix: six `mark_complete_*` tests become `mod mark_complete { fn idempotent() … }`.
@@ -76,7 +74,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common.rs` and follow the fake-forge bare-repo patterns in `crates/workflow/tests/workspace.rs` for multi-repo / fake-forge work; do not invent a parallel harness.
+- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common/mod.rs` and follow the fake-forge bare-repo patterns in `crates/workflow/tests/workspace.rs` for multi-repo / fake-forge work; do not invent a parallel harness.
 - Compare structured output against checked-in goldens (the merge-engine goldens under `tests/fixtures/merge/`, the wire-schema fixtures under `tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
@@ -89,4 +87,4 @@ The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestra
 
 ## Test-side gotchas
 
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or the stamped-outcome helpers in `crates/workflow/tests/common.rs` when a test needs a stamped phase outcome.
+- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or the stamped-outcome helpers in `crates/workflow/tests/common/mod.rs` when a test needs a stamped phase outcome.

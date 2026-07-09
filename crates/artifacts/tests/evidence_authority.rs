@@ -1,3 +1,5 @@
+//! Authority-class wire and resolution matrix (`artifacts::evidence::authority`).
+
 use artifacts::evidence::authority::*;
 
 #[test]

@@ -10,6 +10,8 @@
 //! binary so its stdout can be compared byte-for-byte against the
 //! native grammar's script (the shared clap tree is the equivalence).
 
+#![cfg(not(target_arch = "wasm32"))]
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -18,7 +20,7 @@ use omnia::{DeploymentBuilder, ExitStatus, Mode};
 use omnia_testkit::{TempManifest, temp_manifest};
 use tempfile::TempDir;
 
-use crate::common::{self, CacheGuard, ECHO_WASM, Quiet, SPECIFY_WASM, StubBundle, scoped_cache};
+use crate::common::{CacheGuard, ECHO_WASM, Quiet, SPECIFY_WASM, StubBundle, scoped_cache};
 
 /// A throw-away project tree the composed deployment mounts at `"."`,
 /// with the hermetic per-project cache pinned beneath the tempdir —
@@ -62,8 +64,8 @@ impl Project {
 /// adapter-contract links without needing the sibling adapters
 /// checkout — no test here dispatches a seam call.
 fn manifest(mount: &Path) -> Result<TempManifest> {
-    let workflow = common::guest_wasm(SPECIFY_WASM);
-    let echo = common::guest_wasm(ECHO_WASM);
+    let workflow = crate::common::guest_wasm(SPECIFY_WASM);
+    let echo = crate::common::guest_wasm(ECHO_WASM);
     let cache = schema::cache::project_cache_dir(mount);
     fs::create_dir_all(&cache)?;
     temp_manifest(&format!(
@@ -270,7 +272,7 @@ async fn scaffold_regular() -> Result<()> {
 // offers.
 #[test]
 fn completions_matches_native() -> Result<()> {
-    let engine = common::workspace_root();
+    let engine = crate::common::workspace_root();
     let project = Project::bare();
     let manifest = manifest(&project.root)?;
 

@@ -105,7 +105,7 @@ fn failure_status() -> ExitStatus {
 // `dead_code` — covered by the module-level expectation — instead of an
 // unused `pub use`. The `workspace` area reaches `run_git` as
 // `crate::common::run_git`.
-#[path = "../../../tests/fs_git.rs"]
+#[path = "../../../../tests/fs_git.rs"]
 mod fs_git;
 pub fn copy_dir(src: &std::path::Path, dst: &std::path::Path) {
     fs_git::copy_dir(src, dst);

@@ -5,12 +5,11 @@
 use std::collections::BTreeMap;
 
 use artifacts::evidence::{AuthorityClass, ClaimKind};
+use testkit::MockModel;
 use workflow::change::{ProposalKind, ProposalRequest};
 use workflow::judgment::synthesize::Kernel;
 use workflow::judgment::{propose, synthesize};
 use workflow::slice::{BaselineIndex, ProjectionHeader, SynthesisInputs};
-
-use crate::mock::MockModel;
 
 fn request() -> ProposalRequest {
     serde_json::from_value(serde_json::json!({

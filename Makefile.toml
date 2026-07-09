@@ -37,7 +37,7 @@ args = ["clean"]
 # Deny
 [tasks.deny]
 command = "cargo"
-args = ["deny", "--workspace", "check"]
+args = ["deny", "check"]
 install_crate = "cargo-deny"
 
 # Deps
@@ -49,24 +49,24 @@ install_crate = "cargo-udeps"
 
 # Fmt (mutating; local convenience)
 [tasks.fmt]
-script = "cargo +nightly fmt --all"
+script = "cargo +nightly fmt"
 
 # Fmt check (non-mutating; the gate `check` / `ci` run — a mutating
 # `fmt` inside a gate silently rewrites violations instead of failing)
 [tasks.fmt-check]
-script = "cargo +nightly fmt --all -- --check"
+script = "cargo +nightly fmt -- --check"
 
 # Lint
 [tasks.lint]
 command = "cargo"
-args = ["clippy", "--locked", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"]
+args = ["clippy", "--locked", "--all-targets", "--all-features", "--", "-D", "warnings"]
 install_crate = { rustup_component_name = "clippy" }
 
 # Outdated (advisory — never part of `ci`: any upstream release would
 # fail the gate for unrelated changes; run it on demand or scheduled)
 [tasks.outdated]
 script = '''
-cargo outdated --workspace --depth 1
+cargo outdated --depth 1
 '''
 install_crate = "cargo-outdated"
 
@@ -89,8 +89,8 @@ env = { RUSTFLAGS = "-Dwarnings" }
 #
 # The core `specify` guest as a wasm32-wasip2 component — the dev build
 # the repo-root omnia.toml replay manifest points at. The parked test
-# rig's fixture guests build from inside harness/ (its own standalone
-# workspace; `cargo make build-guests` there builds both).
+# rig's echo fixture guests build on demand via `cargo make build-guests`
+# inside harness/ (see harness/README.md).
 [tasks.build-guests]
 command = "cargo"
 args = ["build", "-p", "specify", "--target", "wasm32-wasip2"]
@@ -101,24 +101,24 @@ args = ["build", "-p", "specify", "--target", "wasm32-wasip2"]
 # `RUSTFLAGS=-Dwarnings` override already differs from the default
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
-# The parked test rig under harness/ is its own standalone workspace
-# (excluded from this one), so no root-workspace task — test, lint,
-# doc, vet, deny — ever touches it; it runs manually from inside
-# harness/ (see harness/README.md).
+# The parked test rig (`harness/runtime`, `harness/fixtures`) is a
+# workspace member but excluded from `default-members`, so no root gate
+# task — test, lint, doc, vet, deny, fmt — ever touches it; it runs
+# manually via `cargo make` inside harness/ (see harness/README.md).
 [tasks.test]
 command = "cargo"
-args = ["nextest", "run", "--workspace", "--all-features", "--no-tests=pass"]
+args = ["nextest", "run", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
 # Test Doc
 [tasks.test-docs]
 command = "cargo"
-args = ["test", "--doc", "--all-features", "--workspace"]
+args = ["test", "--doc", "--all-features"]
 
 # Docs
 [tasks.doc]
 command = "cargo"
-args = ["doc", "--no-deps", "--workspace", "--all-features", "--locked"]
+args = ["doc", "--no-deps", "--all-features", "--locked"]
 env = { RUSTDOCFLAGS = "-Dwarnings" }
 
 # Miri

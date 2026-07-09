@@ -20,7 +20,7 @@ use workflow::orchestrate::{self, ExecuteOutcome};
 use workflow::seam::{Evidence, Lead, MockSourceSeam, MockTargetSeam, WorkingTree};
 use workflow::slice::{BuildReport, BuildStatus, SLICES_DIR_NAME, UiSurface};
 
-use crate::common;
+mod common;
 
 fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
@@ -235,7 +235,7 @@ async fn execute_drains_two_entry_plan() {
     project.seed_discovery(&["feature-x", "feature-y"]).await;
     let survey_events = project.journal_event_ids().len();
 
-    let model = crate::mock::MockModel::answering([
+    let model = testkit::MockModel::answering([
         Box::leak(
             synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
         ) as &'static str,
@@ -334,7 +334,7 @@ async fn execute_refuses_unapproved_plan() {
     let project = Project::new();
     project.seed_plan(&APPROVED_PLAN.replace("lifecycle: approved\n", ""));
 
-    let model = crate::mock::MockModel::answering([]);
+    let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
 
@@ -365,7 +365,7 @@ async fn build_failure_stops_typed_entry_kept() {
     project.seed_plan(APPROVED_PLAN);
     project.seed_discovery(&["feature-x", "feature-y"]).await;
 
-    let model = crate::mock::MockModel::answering([Box::leak(
+    let model = testkit::MockModel::answering([Box::leak(
         synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
     ) as &'static str]);
     let sources =
@@ -408,7 +408,7 @@ async fn build_failure_stops_typed_entry_kept() {
     // Re-entry: a fresh execute (no phases scripted — nothing should
     // dispatch) re-reports the same typed stop from the journal
     // overlay.
-    let model = crate::mock::MockModel::answering([]);
+    let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let outcome =
@@ -431,7 +431,7 @@ async fn refine_breakout_skips_entry_claim() {
     project.seed_discovery(&["feature-x", "feature-y"]).await;
     let survey_events = project.journal_event_ids().len();
 
-    let model = crate::mock::MockModel::answering([Box::leak(
+    let model = testkit::MockModel::answering([Box::leak(
         synthesis_response("feature-x", "greeting", "greeting.fix", "REQ-001").into_boxed_str(),
     ) as &'static str]);
     let sources =
@@ -487,7 +487,7 @@ async fn refine_breakout_refuses_done_entry() {
         "  - name: feature-x\n    status: done\n",
     ));
 
-    let model = crate::mock::MockModel::answering([]);
+    let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::refine_breakout(
@@ -512,7 +512,7 @@ async fn refine_breakout_refuses_unknown_entry() {
     let project = Project::new();
     project.seed_plan(APPROVED_PLAN);
 
-    let model = crate::mock::MockModel::answering([]);
+    let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::refine_breakout(
@@ -538,7 +538,7 @@ async fn workspace_routed_plan_refused() {
             .replace("  - name: feature-x\n", "  - name: feature-x\n    project: demo-app\n"),
     );
 
-    let model = crate::mock::MockModel::answering([]);
+    let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err =
@@ -565,7 +565,7 @@ async fn held_marker_refused_and_named() {
     // recover.
     fs::write(project.marker_path(), "pid=999\nhostname=other\n").expect("pre-create marker");
 
-    let model = crate::mock::MockModel::answering([]);
+    let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err =

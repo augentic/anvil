@@ -17,7 +17,7 @@ use error::Error;
 use workflow::hydrate::{ResolvedAdapter, collect_refs, hydrate};
 use workflow::init::AdapterPackage;
 
-use crate::common;
+mod common;
 
 /// `.specify/adapters.lock` under `root`.
 fn lock_path(root: &Path) -> PathBuf {

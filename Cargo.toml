@@ -48,12 +48,14 @@ path = "tests/framework/main.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*"]
-# The parked composed-deployment test rig is its own standalone
-# workspace — never built, linted, tested, vetted, or documented by any
-# root-workspace invocation. Run it manually from inside harness/
-# (see harness/README.md).
-exclude = ["harness"]
+members = ["crates/*", "harness/runtime", "harness/fixtures"]
+# The parked composed-deployment rig (`runtime`, `fixtures`) is a
+# workspace member for shared lockfile and path deps, but excluded from
+# every automatic gate — see `default-members` and harness/README.md.
+default-members = [
+    ".",
+    "crates/*",
+]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -148,7 +150,9 @@ verbose_file_reads = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.11"
+assert_cmd = "2.1.1"
 base16ct = { version = "1.0.0", features = ["alloc"] }
+cfg-if = "1.0.1"
 clap = { version = "4.5.33", features = ["derive", "env"] }
 clap_complete = "4.0.2"
 glob = "0.3.3"
@@ -176,6 +180,7 @@ workflow = { path = "crates/workflow", default-features = false }
 artifacts = { path = "crates/artifacts" }
 dispatch = { path = "crates/dispatch" }
 error = { path = "crates/error" }
+testkit = { path = "crates/testkit" }
 
 omnia = "0.35.0"
 omnia-guest = "0.35.0"
@@ -186,6 +191,7 @@ omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 omnia-cursor = "0.28.0"
+omnia-testkit = "0.35.0"
 
 [patch.crates-io]
 omnia = { path = "../omnia/crates/omnia" }
@@ -197,6 +203,7 @@ omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 omnia-cursor = { path = "../backends/crates/cursor" }
+omnia-testkit = { path = "../omnia/crates/testkit" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }

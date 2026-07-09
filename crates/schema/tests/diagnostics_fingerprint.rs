@@ -10,6 +10,8 @@ use serde_json::json;
 
 use crate::diagnostics_support::sample_diagnostic;
 
+mod diagnostics_support;
+
 #[test]
 fn fp_is_deterministic() {
     let d = sample_diagnostic();

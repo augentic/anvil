@@ -31,6 +31,8 @@ fn symlink_dir(target: &Path, link: &Path) {
     std::os::windows::fs::symlink_dir(target, link).expect("symlink");
 }
 
+mod common;
+
 use crate::common::run_git;
 
 const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";
@@ -710,7 +712,7 @@ fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {
     let slot_specify = slot.join(".specify");
     fs::create_dir_all(&slot_specify).unwrap();
     fs::write(slot_specify.join("project.yaml"), project_yaml).unwrap();
-    crate::common::register_describe_stub();
+    common::register_describe_stub();
     let entry = schema::cache::adapter_store_entry("omnia", "1.0.0");
     fs::create_dir_all(entry.parent().unwrap()).unwrap();
     fs::write(&entry, "{}").unwrap();
@@ -726,7 +728,7 @@ fn topology_lock_projects_baseline() {
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
     let _cache = scoped_cache(project_dir);
-    let _store = crate::common::scoped_store(&project_dir.join("adapter-store"));
+    let _store = common::scoped_store(&project_dir.join("adapter-store"));
     // A stale `capabilities:` key is silently ignored; routing
     // identity is derived from the slot's baseline, not re-authored.
     stage_topology_slot(
@@ -800,7 +802,7 @@ fn topology_lock_projects_decisions() {
     let tmp = TempDir::new().unwrap();
     let project_dir = tmp.path();
     let _cache = scoped_cache(project_dir);
-    let _store = crate::common::scoped_store(&project_dir.join("adapter-store"));
+    let _store = common::scoped_store(&project_dir.join("adapter-store"));
     stage_topology_slot(
         project_dir,
         "alpha",

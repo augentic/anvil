@@ -13,6 +13,7 @@ artifacts                # depends on {error,schema} (artifact types + parsers: 
 workflow                 # workflow layer — depends on {error,schema,artifacts} (also owns workflow::agents — init-time AGENTS.md context-fence generation); no wasmtime in its graph
 dispatch                 # wasm-clean dispatch boundary — shared by the native binary and the specify guest
 specify                  # wasm32 wasi:cli/run core guest — depends on dispatch + workflow
+testkit                  # dev-only shared test support (the scripted Model mock); [dev-dependencies] only, never shipped
 specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-* crate
 ```
 

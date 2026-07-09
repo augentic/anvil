@@ -12,19 +12,18 @@ skip_rust_env_info = true
 # Build guests
 #
 # wasm32-wasip2 guest components loaded by the composed runtime
-# integration tests in runtime/tests/: the core `specify` guest (a
-# root-workspace member, built from the repo root) plus the echo
-# adapter fixtures (cdylib examples of the `fixtures` package, landing
-# under target/wasm32-wasip2/debug/examples/). Two invocations:
+# integration tests in runtime/tests/: the core `specify` guest plus the
+# echo adapter fixtures (cdylib examples of the `fixtures` package,
+# landing under target/wasm32-wasip2/debug/examples/). Two invocations:
 # `--examples` narrows target selection to example targets only, so the
-# core guest's lib needs its own build. Both land in the shared
-# repo-root target/ (see .cargo/config.toml).
+# core guest's lib needs its own build.
 [tasks.build-guests]
 script_runner = "bash"
 script = '''
 set -euo pipefail
-(cd .. && cargo build -p specify --target wasm32-wasip2)
-cargo build -p fixtures --examples --target wasm32-wasip2
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo build -p specify --target wasm32-wasip2)
+(cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
 '''
 
 # Fetch adapters
@@ -32,7 +31,7 @@ cargo build -p fixtures --examples --target wasm32-wasip2
 # Populate the global adapter store with the pinned published adapter
 # components the composed runtime tests resolve (store-first; the dev
 # sibling checkout's release build is the fallback — see
-# runtime/tests/common.rs `adapter_component_wasm`). The version pin is
+# runtime/tests/common/mod.rs `adapter_component_wasm`). The version pin is
 # the single source of truth at runtime/tests/adapters.pin, shared with
 # the test harness. Idempotent and offline-safe: an existing store
 # entry is never re-fetched, so a warm store needs neither network nor
@@ -75,11 +74,21 @@ done
 # bare run works; the explicit dependency keeps the build visible).
 [tasks.test]
 command = "cargo"
-args = ["nextest", "run", "--workspace", "--no-tests=pass"]
+args = ["nextest", "run", "-p", "runtime", "--no-tests=pass"]
 dependencies = ["build-guests"]
 
 # Lint — the rig is not covered by the root workspace's clippy gate;
 # run this before reviving or extending it.
 [tasks.lint]
 command = "cargo"
-args = ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]
+args = [
+    "clippy",
+    "-p",
+    "runtime",
+    "-p",
+    "fixtures",
+    "--all-targets",
+    "--",
+    "-D",
+    "warnings",
+]

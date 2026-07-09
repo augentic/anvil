@@ -1,3 +1,5 @@
+//! `spec.md` parser tests over the shared merge fixtures (`artifacts::spec`).
+
 use artifacts::spec::*;
 
 // ---------------------------------------------------------------------------

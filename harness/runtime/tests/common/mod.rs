@@ -64,28 +64,21 @@ pub fn guest_wasm(file: &str) -> PathBuf {
 }
 
 // Build the guest artifacts once per test process — the core `specify`
-// guest (a root-workspace member, built from the repo root) plus the
-// echo fixtures (a member of this standalone harness workspace, built
-// from harness/); cargo's own build lock serializes concurrent
+// guest plus the echo fixtures (both root-workspace members, built from
+// the repo root); cargo's own build lock serializes concurrent
 // invocations across test binaries.
 fn build_guests() {
     static GUESTS: OnceLock<()> = OnceLock::new();
     GUESTS.get_or_init(|| {
-        let harness_dir = workspace_root().join("harness");
-        for (args, cwd) in [
-            (
-                ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
-                workspace_root(),
-            ),
-            (
-                ["build", "-p", "fixtures", "--examples", "--target", "wasm32-wasip2"].as_slice(),
-                harness_dir,
-            ),
+        let root = workspace_root();
+        for args in [
+            ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
+            ["build", "-p", "fixtures", "--examples", "--target", "wasm32-wasip2"].as_slice(),
         ] {
             let status = Command::new("cargo")
                 .env("CARGO_TARGET_DIR", target_dir())
                 .args(args)
-                .current_dir(cwd)
+                .current_dir(&root)
                 .status()
                 .expect("spawning guest build");
             assert!(status.success(), "guest build failed with status {status}");
@@ -108,7 +101,7 @@ fn target_dir() -> PathBuf {
 /// from the global adapter store. Single source of truth shared with
 /// the `fetch-adapters` make task (which reads the same file).
 fn adapters_pin() -> &'static str {
-    include_str!("adapters.pin").trim()
+    include_str!("../adapters.pin").trim()
 }
 
 // The sibling `augentic/specify-adapters` checkout — the development

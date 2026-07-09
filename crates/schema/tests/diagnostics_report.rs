@@ -7,6 +7,8 @@ use schema::diagnostics::{
 
 use crate::diagnostics_support::diagnostic;
 
+mod diagnostics_support;
+
 #[test]
 fn blocking_tiers_and_kind() {
     assert!(blocking(&diagnostic("a", Severity::Critical)));

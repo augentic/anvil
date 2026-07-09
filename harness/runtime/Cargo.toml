@@ -36,13 +36,14 @@ artifacts.workspace = true
 schema.workspace = true
 workflow = { workspace = true, features = ["native"] }
 tempfile.workspace = true
+testkit.workspace = true
 
 [lints]
 workspace = true
 
 # The replay sibling of the `specify` binary: the same `omnia::runtime!`
 # macro over `WasiModel: ModelDefault` instead of the cursor backend, for
-# component-level tests and CI — not an operational mode.
+# the parked composed-deployment rig — not an operational mode.
 [[bin]]
 name = "runtime-replay"
 path = "src/bin/replay.rs"

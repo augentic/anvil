@@ -471,7 +471,7 @@ fn flags_archaeology_in_line_comments() {
     let dir = tempfile::tempdir().expect("tempdir");
     // Line comments in root `tests/` are in scope alongside doc comments
     // in `crates/`; string literals carrying a marker never fire.
-    let test_file = dir.path().join("tests/it.rs");
+    let test_file = dir.path().join("tests/example.rs");
     fs::create_dir_all(test_file.parent().expect("parent")).expect("mkdir");
     fs::write(&test_file, "// Collapsed from the former unit module.\nfn a() {}\n").expect("write");
     let literal_file = dir.path().join("crates/demo/src/lib.rs");
@@ -485,7 +485,7 @@ fn flags_archaeology_in_line_comments() {
         .map(|f| f.message.as_str())
         .collect();
     assert_eq!(archaeology.len(), 1, "exactly the line comment fires: {archaeology:?}");
-    assert!(archaeology[0].contains("tests/it.rs:1"), "{archaeology:?}");
+    assert!(archaeology[0].contains("tests/example.rs:1"), "{archaeology:?}");
 }
 
 #[test]
@@ -575,7 +575,7 @@ fn counts_src_unit_tests_by_scope() {
     fs::create_dir_all(crate_src.parent().expect("parent")).expect("mkdir");
     fs::write(&crate_src, "#[test]\nfn a() {}\n#[tokio::test]\nasync fn b() {}\n").expect("write");
     // Integration tests under tests/ must never be counted.
-    let crate_it = root.join("crates/demo/tests/it.rs");
+    let crate_it = root.join("crates/demo/tests/example.rs");
     fs::create_dir_all(crate_it.parent().expect("parent")).expect("mkdir");
     fs::write(&crate_it, "#[test]\nfn c() {}\n").expect("write");
     // Root-binary src/ keys to `specify-cli`.

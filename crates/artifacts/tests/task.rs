@@ -1,3 +1,5 @@
+//! `tasks.md` parser edge matrix (`artifacts::task`).
+
 use artifacts::task::*;
 use error::Error;
 

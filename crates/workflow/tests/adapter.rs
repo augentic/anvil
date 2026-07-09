@@ -24,7 +24,7 @@ use workflow::adapter::{
     component_cache_entry,
 };
 
-use crate::common;
+mod common;
 
 /// Register the shared JSON-body describe stub (see
 /// [`common::register_describe_stub`]): the fixture component's bytes

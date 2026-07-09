@@ -9,7 +9,7 @@ use schema::diagnostics::DiagnosticKind;
 use tempfile::TempDir;
 use workflow::slice::SLICES_DIR_NAME;
 
-use crate::common;
+mod common;
 
 fn repo_root() -> PathBuf {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

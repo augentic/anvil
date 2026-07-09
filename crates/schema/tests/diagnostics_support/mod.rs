@@ -1,4 +1,6 @@
-//! Shared diagnostic fixtures consumed by the sibling integration modules.
+//! Shared diagnostic fixtures consumed by the sibling integration binaries.
+
+#![expect(dead_code, reason = "shared fixtures; each consuming binary uses a subset")]
 
 use schema::diagnostics::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence,

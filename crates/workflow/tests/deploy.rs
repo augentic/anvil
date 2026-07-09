@@ -15,7 +15,7 @@ use error::Error;
 use workflow::adapter::Axis;
 use workflow::deploy::{DeployGuest, generate, manifest_path};
 
-use crate::common;
+mod common;
 
 fn component(dir: &Path, name: &str) -> PathBuf {
     let path = dir.join(name);

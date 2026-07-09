@@ -1,3 +1,5 @@
+//! Decision-document parser edge matrix (`artifacts::decision`).
+
 use artifacts::decision::*;
 
 const VALID: &str = "---\n\
