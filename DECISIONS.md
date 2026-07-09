@@ -12,12 +12,12 @@ Each entry records the decision, why it was taken, and the consequences a change
 
 The binary commits to a four-slot exit-code table. `Exit::from(&Error)` in `crates/cli/src/output.rs` is the single source of truth; every dispatcher routes its error through it. `Exit::Code(u8)` is reserved for the guest leg's exit-code passthrough.
 
-| Code | Name                     | When                                                                                                   |
-| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| 0    | `EXIT_SUCCESS`           | Command succeeded.                                                                                     |
-| 1    | `EXIT_GENERIC_FAILURE`   | Any `Error` variant not listed below (I/O, YAML, schema, merge, ...).                                  |
-| 2    | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`.                                           |
-| 3    | `EXIT_VERSION_TOO_OLD`   | `Error::CliTooOld` / `Error::AdapterCliTooOld` — a floor is newer than the running binary.             |
+| Code | Name                     | When                                                                                       |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------ |
+| 0    | `EXIT_SUCCESS`           | Command succeeded.                                                                         |
+| 1    | `EXIT_GENERIC_FAILURE`   | Any `Error` variant not listed below (I/O, YAML, schema, merge, ...).                      |
+| 2    | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`.                               |
+| 3    | `EXIT_VERSION_TOO_OLD`   | `Error::CliTooOld` / `Error::AdapterCliTooOld` — a floor is newer than the running binary. |
 
 `Exit::ArgumentError` and `Exit::ValidationFailed` are distinct Rust variants that share code `2`, keeping the wire contract four-slot while preserving dispatcher-side clarity — anything actionable by the operator is in the JSON envelope's `code` discriminant, and per-finding detail is on the stdout `DiagnosticReport`. A pin **newer** than the binary is exit `3` (the binary must catch up); a pin *older* than the binary loads fine — pre-1.0 there are no compatibility shims and no migration framework (see [§"Bootstrap and upgrade lifecycle"](#bootstrap-and-upgrade-lifecycle)). The validate surfaces (`slice validate`, plan validation) return `2` only on a blocking finding (`kind: violation` AND `severity ∈ {critical, important}`); there is no lint verb on the CLI (see [§"Framework checks are cargo tests"](#framework-checks-are-cargo-tests)).
 
@@ -183,7 +183,7 @@ The adapter artifact is a single WebAssembly component: no manifest file, no pac
 
 - **Describe-driven resolve with a resolve-time cache.** Non-identity metadata comes from the deterministic `describe` export on the component's axis interface (a plain WIT `func` — deterministic metadata cannot fail, so no `result` wrapper). `workflow` stays wasmtime-free behind a process-global `DescribeRunner` function-pointer seam (`adapter/describe.rs`); the guest shim registers its runner at startup, routing each dispatch through the deployment's WIT `source` / `target` imports by adapter id. The answer persists as a `<component>.describe.json` sidecar keyed by the component file's SHA-256, so a store entry is described once per install and a development build once per rebuild. An unregistered runner is the typed `adapter-describe-unavailable`.
 - **Axis by binding, mismatch at the dispatch seam.** The store carries no axis segment and there is no manifest `axis` field: the routed adapter id is `<axis>:<name>`, and a component deployed on the wrong axis exports no interface for that id — the dispatch fails at the Omnia seam.
-- **wasm-pkg transport.** Publish is `wkg publish` in the adapters repo; consumers pull the same identity over wasm-pkg/OCI (see [§"Publishing and distribution: one transport, idempotent legs"](#publishing-and-distribution-one-transport-idempotent-legs)).
+- **wasm-pkg transport.** Publish is `wkg publish` in the adapters repo; consumers pull the same identity over wasm-pkg/OCI (see [§"Publishing and distribution: one transport, manual publish"](#publishing-and-distribution-one-transport-manual-publish)).
 - **No committed artifacts.** No adapter tree commits a built component. Development resolution probes the release build under the project then the sibling checkout; a development component carries no package identity and resolves as the honest `0.0.0` placeholder in topology projections and envelopes.
 
 ## Composed-test fixtures and adapter acquisition
@@ -241,13 +241,13 @@ Deterministic commands emit their own events. Agent-orchestrated phases that hav
 
 Per-entry status writes route to exactly one CLI verb. Skill bodies never write status by hand; the CLI is the single source of truth for each transition:
 
-| State                     | Writer                                    | Trigger                                                                                        |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `pending` (per-entry)     | `specify plan add` / `specify plan amend` | Operator (or `/spec:plan`) authors / edits a slice row.                                        |
-| `in-progress` (per-entry) | `specify plan next`                       | Sole writer; the plan execute loop calls it once per slice.                                    |
-| `done` (per-entry)        | `specify slice merge`                     | The merge orchestration stamps it through the shared transition kernel on a successful merge.  |
-| `pending` (plan-level)    | `specify plan create`                     | `/spec:plan` scaffolds the plan in `pending`.                                                  |
-| `approved` (plan-level)   | `specify plan transition <plan> approved` | Operator-only (Gate 1). The CLI is ungated; `/spec:plan` MUST NOT call this verb.              |
+| State                     | Writer                                    | Trigger                                                                                       |
+| ------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `pending` (per-entry)     | `specify plan add` / `specify plan amend` | Operator (or `/spec:plan`) authors / edits a slice row.                                       |
+| `in-progress` (per-entry) | `specify plan next`                       | Sole writer; the plan execute loop calls it once per slice.                                   |
+| `done` (per-entry)        | `specify slice merge`                     | The merge orchestration stamps it through the shared transition kernel on a successful merge. |
+| `pending` (plan-level)    | `specify plan create`                     | `/spec:plan` scaffolds the plan in `pending`.                                                 |
+| `approved` (plan-level)   | `specify plan transition <plan> approved` | Operator-only (Gate 1). The CLI is ungated; `/spec:plan` MUST NOT call this verb.             |
 
 The plan-level `approved` row is the lightest-touch shape the workflow allows: a wholly operator-driven stamp with no CLI-side authentication. Skills that drift from this contract get caught at review time.
 
@@ -445,13 +445,14 @@ Three properties of the native inventory drove the pin: it is wide (~20 git subc
 - **Rejected: the model backend's agent.** Routing `git push` through a judgment leg makes a deterministic, mechanical operation non-deterministic, unauditable, and model-priced; it requires model access in CI for what is a subprocess call; and it inverts the architecture — judgment legs exist for judgment, not transport. Rejected without reservation.
 - **Not landed yet.** The workspace verbs parse in the shared grammar but are refused by the guest router (see [§"One `specify` binary"](#one-specify-binary)); `wit/specify.wit` imports no git capability today. They come alive in the change that lands `wasi-git` and the world import; `crates/workflow/src/cmd.rs` is the port seam — the `CmdRunner` boundary lowers to the capability import on `wasm32`, so the workspace modules port without rewriting call sites. A later consequence: the guest merge's skipped git commit leg (§"Deterministic guest merge") regains its commit through the same capability.
 
-## Publishing and distribution: one transport, idempotent legs
+## Publishing and distribution: one transport, manual publish
 
 **Decision (2026-07).** Every wasm-shaped artifact — the adapter components, the core guest, the WIT contract — publishes over **one transport**: wasm-pkg/OCI behind the static well-known file at `https://augentic.io/.well-known/wasm-pkg/registry.json`. There is no registry service: the well-known file maps the first-party namespace to the backing OCI registry, consumers (plain `wkg get` included) resolve it automatically, and first-party packages are public and pull anonymously. The backing registry is an implementation detail; `augentic.io` and the `specify:` identities are the stable surface, and migrating hosts is editing one JSON file and re-pushing packages.
 
-- **Idempotency is the immutability enforcement.** Every publish leg is probe-first (`scripts/wkg-publish-idempotent.sh`; a semantically identical sibling copy lives in `specify-adapters`): probe the registry for the exact identity, skip when present, build-and-push only on a definitive not-found. The probe must distinguish *absent* from *unreachable*: only a not-found fingerprint grants permission to publish; any other failure aborts non-zero. The fingerprints are coupled to `wkg`'s error text, so CI pins the `wkg` install — revalidate the fingerprints when bumping.
-- **The binary↔core lockstep.** The `v*` tag publishes `specify:core@<VERSION>` (a job-level guard asserts the tag matches the `VERSION` file) and the release job carries `needs: [build, publish-core]`: a release whose core push failed never attaches binaries. `publish-wit` gates nothing: the WIT versions independently and most tags no-op that leg.
-- **Publish auth is `GITHUB_TOKEN` only.** Both repos' workflows write a wkg config from `permissions: packages: write` + `GITHUB_TOKEN`. Every publish leg lives in a `cargo make publish-*` task and the workflow is a thin caller, so local emergency publishing is the same code path with a developer's own token.
+- **Publishing is manual.** A maintainer runs `wkg publish` by hand ([docs/release.md](docs/release.md#publishing-the-wasm-pkg-packages); [wit/README.md](wit/README.md) for the contract); CI builds and attaches the binaries only — no workflow pushes packages. This supersedes the earlier CI publish jobs and their probe-first idempotency script.
+- **Immutability is the maintainer's invariant.** Registry identities are immutable: never re-publish an existing version. Bumping the version declaration (`VERSION` for the core, the WIT `package` declaration for the contract) is the release action for each package.
+- **The binary↔core pairing.** The published core identity always equals the binary version (`specify:core@<VERSION>`): a released binary consumes exactly `specify:core@<its own version>`, so publishing the core is part of cutting a release. The WIT versions independently and publishes only when its `package` declaration moved.
+- **Publish auth is a GitHub token** with `packages: write` in the maintainer's wkg config; there are no registry username/password secrets, and pulls stay anonymous.
 - **WIT ownership.** This repo owns and publishes `specify:adapter` from `wit/specify.wit`; `specify-adapters` vendors the published package, pinned in exactly one place (its `WIT_PIN`) and refreshed by `cargo make wit-vendor`. One owner; everything else consumes.
 
 ## Adapter hydration, the committed lock, and the generated deployment
@@ -477,7 +478,7 @@ Three properties of the native inventory drove the pin: it is wide (~20 git subc
 
 ## Core versioned by the binary
 
-**Decision (2026-07).** The workflow (core) guest is **resolved by the binary's own version**, not embedded: the identity is `specify:core@<CARGO_PKG_VERSION>` — the binary version *is* the core version, one knob, no pin surface for a project to drift on. Nothing is embedded, so guest-reachable code changes need no regeneration step. The `publish-core` release leg is load-bearing — a released binary consumes exactly the identity its tag published, and the `needs: [build, publish-core]` lockstep guarantees the pair ships together.
+**Decision (2026-07).** The workflow (core) guest is **resolved by the binary's own version**, not embedded: the identity is `specify:core@<CARGO_PKG_VERSION>` — the binary version *is* the core version, one knob, no pin surface for a project to drift on. Nothing is embedded, so guest-reachable code changes need no regeneration step. The manual `specify:core@<VERSION>` publish is load-bearing — a released binary consumes exactly the identity published under its own version, so publishing the core is part of cutting a release (see [§"Publishing and distribution: one transport, manual publish"](#publishing-and-distribution-one-transport-manual-publish)).
 
 - **Interim resolution.** The native core-resolution leg (`resolve_core`, the `SPECIFY_CORE_PATH` override) retired with the provisioning front; until the in-guest provisioning story lands, the development posture is the repo-root `omnia.toml` naming the in-repo `specify.wasm` build (omnia.toml-wins). When resolution returns it keeps the same shape: dev override first, then the global store entry `core@<binary version>.wasm` through the same verification pair every pinned adapter passes; a miss never fetches at drive time.
 - **The embed option stays open.** When Omnia's generic `runtime!` embed lands, opting in removes hydration and the manifest's core entry without touching the generator (`deploy::generate` takes the core as a plain path) — two interchangeable modes.

@@ -1,6 +1,6 @@
 # Release process
 
-A Specify release ships three artifacts from one `v*` tag: the **platform binaries** (the archives `release-binaries.yaml` attaches to the GitHub release), the **core guest** published as the wasm-pkg package `specify:core@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>` (`DECISIONS.md` §"Publishing and distribution: one transport, idempotent legs"). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. See `DECISIONS.md` §"Release identity". This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
+A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **core guest** published as the wasm-pkg package `specify:core@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>` (`DECISIONS.md` §"Publishing and distribution: one transport, manual publish"). CI builds and attaches the binaries; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. See `DECISIONS.md` §"Release identity". This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
 
 ## Before tagging
 
@@ -21,19 +21,26 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
    Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
 
-2. **`publish-core`.** Publishes the core guest as `specify:core@<version>` through `cargo make publish-core`, where `<version>` is the `VERSION` file — the job guards that the tag matches `VERSION`, so the published core identity always equals the binary version. The task builds `workflow` for `wasm32-wasip2` and pushes it over the wasm-pkg transport; the `specify:` namespace resolves through `https://augentic.io/.well-known/wasm-pkg/registry.json` to the backing registry. This leg is **load-bearing** (`DECISIONS.md` §"Core versioned by the binary"): a released binary consumes exactly the core identity its tag published — `specify:core@<its own version>` — and carries no embedded guest (store-backed resolution rides the in-guest provisioning story, `DECISIONS.md` §"One `specify` binary").
-
-3. **`publish-wit`.** Publishes the adapter contract as `specify:adapter@<wit version>` through `cargo make publish-wit`, parsing the version from `wit/specify.wit`'s `package` declaration. There is no separate version-changed guard: a tag that did not bump the WIT version finds the identity already published and the leg no-ops (see idempotency below). `specify-adapters` consumes the published package as its vendored pin.
-
-4. **`release`.** Waits for the matrix legs **and `publish-core`**, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`). The `needs: [build, publish-core]` edge is the **binary↔core-guest lockstep** (`DECISIONS.md` §"Publishing and distribution: one transport, idempotent legs"): a release whose `specify:core` push failed is a failed release — the binaries are never attached without the core published under the same version. `publish-wit` deliberately gates nothing: the WIT versions independently of the binary and most tags no-op that leg.
-
-Both publish legs run through the probe-first `scripts/wkg-publish-idempotent.sh`: the registry is probed for the exact identity before anything is built or pushed, a present identity is skipped (registry identities are immutable — skip-if-present is what makes a re-run against an already-published tag a safe no-op that pushes nothing), and a probe that cannot distinguish *absent* from *unreachable* (network failure, auth, timeout) aborts the leg rather than risk re-publishing. Auth is `GITHUB_TOKEN` only — `permissions: packages: write` plus a workflow-written wkg config; there are no registry username/password secrets. CI pins `wkg` at 0.15.0 because the probe's not-found fingerprints are coupled to its error text — revalidate them when bumping. Local emergency publishing runs the same `cargo make publish-*` task with a developer's own token in their wkg config: one code path, two invocation surfaces.
+2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
 The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/main.rs`, DECISIONS.md §"One `specify` binary"), so there is no second binary to build or package. The `runtime-replay` binary target (in the parked `harness/runtime` rig) is a dev/test surface and is never packaged.
 
+## Publishing the wasm-pkg packages
+
+Both wasm-pkg packages are published manually with `wkg publish` by a maintainer whose wkg config maps the `specify:` namespace to `augentic.io` with a GitHub token carrying `packages: write` (see [`wit/README.md`](../wit/README.md) for the config shape). Registry identities are immutable — never re-publish an existing version; bump the version first.
+
+- **Core guest.** After tagging, publish the release-built workflow component as `specify:core@<version>`, where `<version>` is the `VERSION` file — the published core identity must equal the binary version (`DECISIONS.md` §"Core versioned by the binary"): a released binary consumes exactly `specify:core@<its own version>` and carries no embedded guest.
+
+```bash
+cargo build -p specify --release --target wasm32-wasip2
+wkg publish target/wasm32-wasip2/release/specify.wasm --package "specify:core@$(cat VERSION)"
+```
+
+- **Adapter contract.** When a contract change bumps the `package specify:adapter@<ver>;` declaration in `wit/specify.wit`, publish it as `specify:adapter@<ver>` — the WIT versions independently of the binary. See [`wit/README.md`](../wit/README.md) for the exact commands. `specify-adapters` consumes the published package as its vendored pin.
+
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/specify-adapters` and are published as immutable registry artifacts (`specify:<name>@<version>`) by that repo's own release workflow — the same idempotent, `GITHUB_TOKEN`-authenticated posture as the publish legs here (its `cargo make publish-adapters` probes each identity and pushes only what a tag actually bumped). The `specify` binary resolves them from the global adapter store; operators only need the runtime binary.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/specify-adapters` and are published as immutable registry artifacts (`specify:<name>@<version>`) over the same wasm-pkg transport. The `specify` binary resolves them from the global adapter store; operators only need the runtime binary.
 
 ## Installing a release
 
@@ -56,5 +63,4 @@ A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work —
 
 - **`cross` installation fails.** Pin to a known-good commit in the `Install cross` step.
 - **Archive SHA256 drift.** Always regenerate after tagging — never hand-edit. The `.sha256` companion files uploaded by `release-binaries.yaml` are authoritative.
-- **A publish leg aborts with "cannot distinguish absent from unreachable".** The identity probe failed for a reason other than a definitive not-found (registry outage, auth, timeout). Nothing was pushed; re-run the job once the registry is reachable — the probe-first design makes the re-run safe.
-- **`publish-core` fails on the VERSION guard.** The tag and the `VERSION` file disagree; the release PR should have bumped `VERSION` to match. Fix the tree and re-release — never re-point a tag at different bytes.
+- **`wkg publish` rejects or the identity already exists.** Registry identities are immutable — never re-push different bytes into an existing version. Bump the version (the `VERSION` file for the core, the WIT `package` declaration for the contract) and publish the new identity instead.

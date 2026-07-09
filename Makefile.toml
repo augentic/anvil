@@ -79,9 +79,12 @@ install_crate = "cargo-outdated"
 command = "cargo"
 args = [
     "check",
-    "-p", "specify",
-    "-p", "cli",
-    "--target", "wasm32-wasip2",
+    "-p",
+    "specify",
+    "-p",
+    "cli",
+    "--target",
+    "wasm32-wasip2",
 ]
 env = { RUSTFLAGS = "-Dwarnings" }
 
@@ -151,62 +154,10 @@ install_crate = "cargo-vet"
 command = "cargo"
 args = ["publish", "--registry=augentic", "--allow-dirty", "--dry-run"]
 
-# Publish core guest
-#
-# Publish the release-built workflow component as
-# `specify:core@<version>`, where <version> is the VERSION file — the
-# published identity IS the binary version, one knob (VERSION and the
-# workspace Cargo.toml version move together via release.yaml). This
-# leg is load-bearing (standalone deployment): a released binary resolves its
-# core from the store entry `specify init` / `specify adapters sync`
-# hydrate from exactly this published identity. The probe-first
-# idempotency (skip-if-present, abort when absent-vs-unreachable is
-# undecidable) lives in scripts/wkg-publish-idempotent.sh, which builds
-# the component only when the identity is definitively absent. Requires
-# `wkg` on PATH and a wasm-pkg config mapping the `specify` namespace
-# (the release workflow writes one; local emergency publishing supplies
-# a developer token the same way).
-[tasks.publish-core]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-version="$(tr -d '[:space:]' < VERSION)"
-scripts/wkg-publish-idempotent.sh "specify:core@${version}" \
-    target/wasm32-wasip2/release/specify.wasm \
-    cargo build -p specify --release --target wasm32-wasip2
-'''
-
-# Publish WIT contract
-#
-# Publish wit/specify.wit as `specify:adapter@<ver>`, parsing
-# <ver> from the WIT `package` declaration — the single version
-# declaration for the contract. The skip-if-present probe in
-# scripts/wkg-publish-idempotent.sh IS the version-changed guard: a tag
-# that did not bump the WIT package version finds the identity already
-# published and no-ops. `wkg wit build` needs no --config here: the
-# contract's `use` statements are all intra-package (omnia:model appears
-# only in doc prose), so nothing external is fetched; the wkg.lock it
-# drops in the cwd is empty scaffolding and is removed to keep the tree
-# clean for local runs.
-[tasks.publish-wit]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-version="$(sed -n 's/^package specify:adapter@\(.*\);$/\1/p' wit/specify.wit)"
-if [ -z "${version}" ]; then
-    echo "error: no 'package specify:adapter@<ver>;' declaration in wit/specify.wit" >&2
-    exit 1
-fi
-out_dir="$(mktemp -d)"
-trap 'rm -rf "${out_dir}"' EXIT
-scripts/wkg-publish-idempotent.sh "specify:adapter@${version}" \
-    "${out_dir}/specify-adapter.wasm" \
-    wkg wit build --wit-dir wit --output "${out_dir}/specify-adapter.wasm"
-rm -f wkg.lock
-'''
-
+# wasm-shaped artifacts (the core guest `specify:core@<VERSION>` and the
+# WIT contract `specify:adapter@<ver>`) are published manually with
+# `wkg publish` — see wit/README.md and docs/release.md.
 
 # -------------------------------------
 # Auxiliary tasks
 # -------------------------------------
-
