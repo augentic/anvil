@@ -17,7 +17,7 @@ testkit                  # dev-only shared test support (the scripted Model mock
 specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-* crate
 ```
 
-The framework authoring checks run as plain cargo tests at [`tests/framework/`](../../tests/framework/) (with the Rust-quality siblings in `tests/rust_quality.rs`); there is no lint engine or `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).
+The framework authoring checks run as plain cargo tests at [`tests/framework/`](../../tests/framework/); there is no lint engine or `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).
 
 The artifact validation rule registry (`artifacts::validate`) sits on `artifacts`, which depends on neither `workflow` nor anything named lint, so an artifact rule cannot reach workflow lifecycle types. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry the workflow layer reads, alongside `schema` and `error` at the bottom. The neutral `Diagnostic` substrate lives at `schema::diagnostics`, so every check producer mints findings without depending on anything named `lint` — see [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate) and [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout).
 

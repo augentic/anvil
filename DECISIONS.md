@@ -53,7 +53,7 @@ The crate graph (leaf → root, with per-crate roles) is pinned in [AGENTS.md §
 
 SHA-256 digest encoding lives in `schema::digest` (the `schema` leaf), so sibling crates share one digest implementation without depending on anything wasmtime-bearing. The neutral diagnostic substrate lives beside it at `schema::diagnostics` (see [§"Standards chain moved to the adapters; `diagnostics` merged into `schema`"](#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema)). `artifacts` exists so the artifact types and parsers sit on a lifecycle-free leaf; it also holds the artifact validation rule registry (`artifacts::validate`) and depends on neither `workflow` nor anything named lint, so a validation rule physically cannot reach a slice transition or plan stamp. The init-time `AGENTS.md` context-fence generation lives in `workflow::agents` (its native init consumer retired with the provisioning front; it awaits the in-guest init — see [§"One `specify` binary"](#one-specify-binary)). The dev-only `testkit` crate carries the shared scripted `Model` mock, reached exclusively through `[dev-dependencies]` (justified under [§"Integration tests: auto-discovered per-area binaries"](#integration-tests-auto-discovered-per-area-binaries)).
 
-There is no lint engine and no `Check` substrate in any shipped crate: framework checks over the prose surfaces are plain cargo tests at `tests/framework/`, and the repo-local Rust-quality predicates live dev-only at `tests/rust_quality.rs` — see [§"Framework checks are cargo tests"](#framework-checks-are-cargo-tests). Engineering-standards rules ship inside the target adapters (see [§"Standards chain moved to the adapters; `diagnostics` merged into `schema`"](#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema)).
+There is no lint engine and no `Check` substrate in any shipped crate: framework checks over the prose surfaces are plain cargo tests at `tests/framework/` — see [§"Framework checks are cargo tests"](#framework-checks-are-cargo-tests). Engineering-standards rules ship inside the target adapters (see [§"Standards chain moved to the adapters; `diagnostics` merged into `schema`"](#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema)).
 
 ### New workspace crates
 
@@ -65,7 +65,7 @@ New functionality lands in an existing module by default. A new workspace crate 
 
 Shared helpers use the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery; the sole `mod.rs` exception blessed in coding-standards) and each consuming binary declares them with `mod <helper>;`. Cross-package test support — the scripted `Model` mock consumed by both `workflow` and `harness/runtime` — lives in the dev-only `testkit` workspace crate rather than duplicated `mod` includes; see [§"New workspace crates"](#new-workspace-crates) below for the justification. The workspace-shared `GIT_ENV` / `run_git` / `copy_dir` trio stays single-sourced at the repo-root `tests/fs_git.rs` via a `#[path]` include.
 
-Goldens refresh through `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>`. The root `specify-cli` crate keeps `autotests = false` with explicit `[[test]]` targets (`rust_quality`, `framework`): its `tests/` tree carries shared fixture files (`tests/fs_git.rs`) that must not compile as binaries.
+Goldens refresh through `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>`. The root `specify-cli` crate keeps `autotests = false` with an explicit `[[test]]` target (`framework`): its `tests/` tree carries shared fixture files (`tests/fs_git.rs`) that must not compile as binaries.
 
 The `testkit` crate (per the new-workspace-crate bar): test-support code shared across two packages cannot live in either package's `tests/` tree (test trees are not importable across packages), and homing it in `workflow`'s public API would ship test code in the library. `testkit` is `publish = false`, depends only on `omnia-guest`, and is reachable exclusively through `[dev-dependencies]`, so no shipped crate's dependency graph changes.
 
@@ -75,8 +75,6 @@ The `testkit` crate (per the new-workspace-crate bar): test-support code shared 
 
 - **Collapse, don't enumerate.** A unit test that walks a closed `(input → code)` set is one table-driven `#[test]` with a block per case, not one `#[test]` per case.
 - **Coverage is the brake.** `cargo llvm-cov nextest -p <crate> --summary-only` runs before and after a reduction; a `TOTAL` drop on still-live lines blocks the deletion until an integration assertion backfills it. `nextest` (not bare `cargo test`) is mandatory — its per-test process isolation is what lets the CWD/env-mutating suites pass, and it is the runner CI uses.
-
-The src unit-test ratchet (`unit_test_budget_holds` in `tests/rust_quality.rs`, budget in `tests/rust_quality_budget.toml`) enforces the posture in CI.
 
 ## Framework checks are cargo tests
 

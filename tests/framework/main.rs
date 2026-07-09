@@ -2,8 +2,7 @@
 //! and manifest surfaces (links, skills, scenarios, plugins, docs).
 //!
 //! Run with `cargo test --test framework`. Any finding fails CI.
-//! Plain cargo tests per the `tests/rust_quality.rs` pattern: policy
-//! lives as constants in each module, failures are test failures.
+//! Policy lives as constants in each module; failures are test failures.
 
 mod links;
 mod prose;

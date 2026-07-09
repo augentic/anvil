@@ -1,11 +1,10 @@
 # Consistency Checks
 
-Framework invariants over this repo's prose and manifest surfaces are plain cargo tests: `tests/framework/` (links, skills, scenarios, plugins, docs prose) and `tests/rust_quality.rs` (repo-local Rust-quality predicates). Both run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
+Framework invariants over this repo's prose and manifest surfaces are plain cargo tests at `tests/framework/` (links, skills, scenarios, plugins, docs prose). They run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
 
 ```bash
 cargo test --test framework   # prose/manifest invariants only
-cargo test --test rust_quality        # Rust-quality predicates only
-cargo make ci                         # the full gate (fmt, clippy, all tests, docs, vet, deny)
+cargo make ci                 # the full gate (fmt, clippy, all tests, docs, vet, deny)
 ```
 
 ## Editor-first vs cargo tests
@@ -88,14 +87,12 @@ Eval scenario files (opt-in by frontmatter, discovered under `evals/scenarios/`,
 
 Add the predicate to the owning module under `tests/framework/` (or a new module wired into `main.rs::run_all`), with its policy as module constants. Then add a known-bad fixture case to the matching `*_checks_fire_on_bad_fixtures` test in `main.rs`, proving the check fires. There is no rule file, no `config:` plumbing, and no registration step — a check that compiles and runs is enforced.
 
-Repo-local Rust predicates (test-fn naming, archaeology, `#[allow]` hygiene, the unit-test ratchet) belong in `tests/rust_quality.rs` instead; see [testing.md](../standards/testing.md).
-
 ## CLI checks
 
 The Rust workspace at the repo root runs everything via `cargo-make` (from the repo root):
 
 ```bash
-cargo make ci     # fmt-check + clippy + all tests (incl. framework, rust_quality) + docs + vet + deny
+cargo make ci     # fmt-check + clippy + all tests (incl. framework) + docs + vet + deny
 cargo make check  # the pre-commit subset
 ```
 

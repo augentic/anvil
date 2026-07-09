@@ -117,14 +117,14 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Design against the public surface:** before adding a unit test, ask whether integration can reach the behavior — reachable through a CLI input or `pub` fn, observable at a public boundary (stdout JSON, exit code, filesystem), and affordable to assert there without a subprocess explosion. If yes, write the integration test; the unit test is redundant.
 - **Default to Deletion:** a `src` unit test survives only when it is reachable and observable but cheap *only* in-process against a **private** kernel (a proptest or dense matrix), or covers a genuinely CLI-unreachable branch. If the kernel is already `pub`, re-home the test to `crates/<name>/tests/` instead.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
-- **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. A ratchet gate enforces this in the engine repo (`tests/rust_quality.rs`); adapter posture is enforced by the WIT contract plus each adapter crate's `tests/` suite and the adapters repo's composed-deployment tests (the `composed` test target in `evals/`). `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations.
+- **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced by the WIT contract plus each adapter crate's `tests/` suite and the adapters repo's composed-deployment tests (the `composed` test target in `evals/`).
 
 ## Commands
 
 All commands are run from the repository root:
 
 - `cargo test --test framework` — the documentation and workflow consistency checks over the prose and manifest surfaces (plain cargo tests at `tests/framework/`). Only a Rust toolchain is required.
-- `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the framework-quality and Rust-quality test suites.
+- `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the framework-quality test suite.
 - `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
 
 CI is one job: `.github/workflows/ci.yaml` runs `cargo make ci` from the repo root (no sibling checkout required — the engine embeds no adapter-authored prose). See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
@@ -185,7 +185,7 @@ Modules of note across the workspace (workflow layer):
 - `crates/workflow/src/{upgrade,plugins}.rs` — the bootstrap lifecycle kernels, gated behind the workflow crate's `native` feature (the verbs parse in the shared `cli` grammar but are refused by the guest router until their in-guest implementations land). `upgrade.rs` owns `InstallChannel::detect()` and the channel-native upgrade plan; `plugins.rs` owns Cursor plugin-cache discovery and the `doctor` / `refresh` reports. There is no migration framework: pre-1.0 majors are re-init, not migration. See [`DECISIONS.md` §"Bootstrap and upgrade lifecycle"](./DECISIONS.md#bootstrap-and-upgrade-lifecycle).
 - `crates/schema/src/` — embedded JSON Schema constants (`PLAN_JSON_SCHEMA`, `EVIDENCE_JSON_SCHEMA`, `LEAD_JSON_SCHEMA`, `PROPOSAL_JSON_SCHEMA`, `SLICE_MODEL_JSON_SCHEMA`, `SYNTHESIS_JSON_SCHEMA`, `PROVENANCE_JSON_SCHEMA`, `DECISION_JSON_SCHEMA`, `TOPOLOGY_LOCK_JSON_SCHEMA`, `BUILD_REQUEST_JSON_SCHEMA`, `BUILD_REPORT_JSON_SCHEMA`, `COMPONENTS_JSON_SCHEMA`, `DIAGNOSTIC_JSON_SCHEMA`, `DIAGNOSTIC_REPORT_JSON_SCHEMA`, `SKILL_JSON_SCHEMA`, `SCENARIO_JSON_SCHEMA`, `MARKETPLACE_JSON_SCHEMA`) and the shared `jsonschema::Validator` plumbing (`compile_schema`, `validate_value`, `validate_serialisable`, `read_yaml_as_json`). Every consumer reaches schemas through this crate; nobody else embeds `include_str!`'d schema JSON. The `crates/schema/tests/schemas.rs` parity test asserts each embedded constant byte-matches its on-disk `schemas/` source.
 - `crates/schema/src/diagnostics/` — the neutral `Diagnostic` substrate: the `Diagnostic` / `DiagnosticReport` / `DiagnosticSummary` types with the orthogonal `source` (`deterministic | model-assisted | hybrid | human | tool`) and `kind` (`violation | review`) axes, the fingerprint algorithm, `validate_diagnostic`, and the `blocking` predicate. Import it from `schema::diagnostics`.
-- **No lint engine, no `Check` substrate.** Framework checks over the prose and manifest surfaces are plain cargo tests at [`tests/framework/`](./tests/framework/) (`links`, `skills`, `scenarios`, `prose` modules; policy as module constants, failures as test failures). The repo-local Rust-quality predicates live dev-only at `tests/rust_quality.rs` behind this repo's `cargo test --test rust_quality` gate. Contributor model: [docs/contributing/checks.md](./docs/contributing/checks.md).
+- **No lint engine, no `Check` substrate.** Framework checks over the prose and manifest surfaces are plain cargo tests at [`tests/framework/`](./tests/framework/) (`links`, `skills`, `scenarios`, `prose` modules; policy as module constants, failures as test failures). Contributor model: [docs/contributing/checks.md](./docs/contributing/checks.md).
 - `crates/workflow/src/agents/` — init-time `AGENTS.md` context-fence generation (`workflow::agents`), housed in the workflow crate so its pure logic carries unit tests. Public modules: `detect` (shallow root-marker detection), `render` (deterministic Markdown body + `Input` struct), `fences` (byte-preserving `parse_document` / `plan_agents_write` write planner), `fingerprint` (`InputCollector` + canonical aggregate digest), `lock` (`context.lock` sidecar). All `Ctx`-free. Carries a module-scoped `missing_docs` / `pedantic` / `nursery` allow that preserves the original (binary-internal) lint posture.
 
 The two **adapter validators** (`contract`, `vectis`) are in-guest adapter library code inside each adapter's published component in `augentic/specify-adapters` — the host dispatches no adapter WASI tool. Crux shell presence and launcher-icon heuristics live **only** in the vectis adapter's in-guest core: the host performs no plan-time shell detection.
@@ -202,8 +202,8 @@ crates/cli/              shared clap grammar, envelopes, exit contract, pure ver
 crates/workflow/         workflow domain logic
 crates/specify/          wasm32 core guest shim
 harness/                 PARKED composed-deployment test rig — workspace members excluded from `default-members`, manual-only (runtime + echo fixtures; harness/README.md)
-tests/rust_quality.rs    dev-only Rust-quality predicates + gate
-tests/framework/ prose/manifest framework checks as cargo tests
+tests/framework/         prose/manifest framework checks as cargo tests
+tests/fixtures/          shared fixture trees referenced by crate-level suites
 ```
 
 | Code | Name                     | When                                                                                                          |
@@ -241,9 +241,7 @@ Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standar
 
 **Naming:** The module path is context — `registry::show`, not `show_registry`. Test function names are short identifiers; put the narrative in the test body ([testing.md](./docs/standards/testing.md#test-naming)).
 
-**Lint suppressions:** Refactor first. Use `#[expect(lint, reason = "…")]` at the smallest scope. `#![allow]` only at module root when the lint applies to every item below and the reason is contract-locked. `#[allow]` without `reason` fails CI.
-
-**Rust-quality CI:** `cargo test --test rust_quality` runs the dev-only predicates in `tests/rust_quality.rs` over this repo (long test fn names, archaeology in comments, bare `#[allow]`, workflow clock reads) plus the **src unit-test ratchet** `unit_test_budget_holds`, which holds each crate's `src` `#[test]` / `#[tokio::test]` count to the committed budget in [`tests/rust_quality_budget.toml`](./tests/rust_quality_budget.toml): adding a `src` unit test fails CI unless the budget is raised with a review justification, and removing one fails until the budget is ratcheted down. See [testing.md](./docs/standards/testing.md).
+**Lint suppressions:** Refactor first. Use `#[expect(lint, reason = "…")]` at the smallest scope. `#![allow]` only at module root when the lint applies to every item below and the reason is contract-locked. Prefer `#[expect]` with a reason over bare `#[allow]`.
 
 | Do not                                                    | Do instead                                                        | See                                                                                                           |
 | --------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |

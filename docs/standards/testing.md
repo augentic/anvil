@@ -1,6 +1,6 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over the binary, auto-discovered per-area test binaries (`crates/<name>/tests/<area>.rs`), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. A ratchet gate (`tests/rust_quality.rs`, seeded by `tests/rust_quality_budget.toml`) holds the per-crate `src` unit-test count down — the lever is designing tests against the public surface, not widening it. Read this before adding a new test or harness.
+Integration-first test posture: `cargo nextest` over the binary, auto-discovered per-area test binaries (`crates/<name>/tests/<area>.rs`), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a new test or harness.
 
 ## Posture
 
@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses (see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-auto-discovered-per-area-binaries)). Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries only the dev-gate binaries (`tests/framework/`, `tests/rust_quality.rs`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig (`harness/runtime`, `harness/fixtures`) is a workspace member excluded from `default-members` and runs on demand, not in the gate (see `harness/README.md`).
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses (see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-auto-discovered-per-area-binaries)). Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig (`harness/runtime`, `harness/fixtures`) is a workspace member excluded from `default-members` and runs on demand, not in the gate (see `harness/README.md`).
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatcher contract"](./handler-shape.md#dispatcher-contract).
 
@@ -43,13 +43,7 @@ Before writing a unit test, decide whether integration can reach the behavior. A
 - **Reachable + observable but cheap only in-process** (proptests, dense matrices) → if the kernel is already `pub`, relocate the test to `crates/<crate>/tests/`; if it is private, **collapse and keep** a table-driven unit test in place.
 - **Unreachable or unobservable** → it is dead code or an implementation detail: make the state un-representable (`unreachable!`, typestate) or delete the assertion. Don't test it.
 
-**Widening production API to test a private kernel is a last resort, not the lever.** It trades durable public-surface stability for coverage you already have, so prefer collapse-and-keep over widening. The target is *near-zero* `src` unit tests — no redundant or integration-reachable ones — not literal zero.
-
-This is enforced by a strict ratchet in [`tests/rust_quality.rs`](../../tests/rust_quality.rs): `unit_test_budget_holds` holds each crate's `src` `#[test]` / `#[tokio::test]` count to the committed budget in [`tests/rust_quality_budget.toml`](../../tests/rust_quality_budget.toml). Adding a `src` unit test fails CI unless you raise the budget (a reviewable edit that must be justified); removing one fails until you ratchet the number down. The gate counts tests; `cargo llvm-cov` still guards behavior — they are independent and both stay.
-
-### Phase 2 (deferred): per-test waiver markers
-
-The count budgets are the phase-1 ratchet — they catch *new* `src` unit tests but don't force a justification for each surviving one. Once the residue is small (the re-triaged `Keep` set from the unit-test reduction review), phase 2 swaps the numeric budgets for a per-test marker: every surviving `src` `#[cfg(test)]` must carry a `// rust-quality:allow(unit-test) reason: …` line saying why integration cannot get the same signal. The gate then flags any unmarked `src` `#[test]` as `rust.unit-test-missing-waiver`, and the `rust_quality_budget.toml` files retire. This trades a coarse per-crate count for a reviewable per-test rationale. It is **not built yet** — it waits on the reduction reaching the residue.
+**Widening production API to test a private kernel is a last resort, not the lever.** It trades durable public-surface stability for coverage you already have, so prefer collapse-and-keep over widening. The target is *near-zero* `src` unit tests — no redundant or integration-reachable ones — not literal zero. `cargo llvm-cov nextest` is the brake that guards behavior when deleting unit tests.
 
 ### Coverage is the brake on deletion
 
@@ -70,7 +64,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the test body or a `//` comment above the `fn`, not the identifier.
 
-`module_name_repetitions` does not fire on `#[test]` fns, so the dev-only predicate in `tests/rust_quality.rs` enforces a 40-char cap instead. It scans an upward attribute window, so `#[tokio::test]` / `async fn` and tests behind intervening attributes (`#[ignore]`, `#[case(..)]`) are covered. `tests/rust_quality.rs::no_gated_rust_quality_findings` fails CI on any `rust.test-fn-name-too-long` finding.
+`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway — the 40-char guidance above is a house-style cap, not a separate CI gate.
 
 ## Patterns to follow
 

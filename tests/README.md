@@ -11,9 +11,8 @@ cli grammar, routing, and verb handlers in `crates/cli/tests/`
 and the workflow orchestrations in `crates/workflow/tests/`), with the
 parked composed-deployment rig at `harness/` available on demand for
 the wasm seams (see `harness/README.md`). The root `tests/` tree holds
-the dev-only Rust-quality gate (`rust_quality.rs`), the framework
-checks (`framework/`), and the shared `fixtures/` referenced by
-crate-level suites.
+the framework checks (`framework/`) and the shared `fixtures/` referenced
+by crate-level suites.
 
 ## Canonical golden regeneration
 
