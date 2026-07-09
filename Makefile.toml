@@ -89,16 +89,16 @@ env = { RUSTFLAGS = "-Dwarnings" }
 #
 # wasm32-wasip2 guest components loaded by the composed runtime
 # integration tests in crates/runtime/tests/: the core `specify` guest
-# plus the echo adapter fixtures (cdylib examples of the runtime crate,
-# landing under target/wasm32-wasip2/debug/examples/). Two invocations:
-# `--examples` narrows target selection to example targets only, so the
-# core guest's lib needs its own build.
+# plus the echo adapter fixtures (cdylib examples of the top-level
+# `examples` package, landing under target/wasm32-wasip2/debug/examples/).
+# Two invocations: `--examples` narrows target selection to example
+# targets only, so the core guest's lib needs its own build.
 [tasks.build-guests]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 cargo build -p specify --target wasm32-wasip2
-cargo build -p runtime --examples --target wasm32-wasip2
+cargo build -p examples --examples --target wasm32-wasip2
 '''
 
 # Fetch adapters

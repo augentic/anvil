@@ -24,7 +24,7 @@ mod bindings {
 
     wit_bindgen::generate!({
         world: "source-adapter",
-        path: "../../wit",
+        path: "../wit",
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s (judgment legs await the async `omnia:model`
         // import mid-call) and async-lift; `describe` is a plain `func`

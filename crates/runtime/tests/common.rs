@@ -2,9 +2,9 @@
 //!
 //! Owns guest-artifact building/locating (this workspace's counterpart to
 //! `omnia_testkit::find_guest`, pointed at the `specify` guest crate and the
-//! echo example fixtures of this crate), the hand-rolled backend bundles
-//! mirroring what the host binaries' `runtime!` macros generate, and the
-//! skeleton manifest the tests deploy.
+//! echo fixtures in the top-level `examples` package), the hand-rolled
+//! backend bundles mirroring what the host binaries' `runtime!` macros
+//! generate, and the skeleton manifest the tests deploy.
 //!
 //! **Test-only in-process harness.** The product path is the `specify`
 //! binary — one `omnia::runtime!` invocation over the cursor-bound
@@ -28,7 +28,8 @@ use omnia_wasi_model::{
 };
 
 /// Built artifact name of the echo source-adapter guest (a cdylib
-/// example of this crate, landing under `examples/`).
+/// example of the top-level `examples` package, landing under the
+/// target dir's `examples/` subdirectory).
 pub const ECHO_WASM: &str = "examples/echo_source.wasm";
 
 /// Built artifact name of the workflow (`wasi:cli/run`) guest.
@@ -63,14 +64,14 @@ pub fn guest_wasm(file: &str) -> PathBuf {
 }
 
 // Build the guest artifacts once per test process — the core `specify`
-// guest plus the echo example fixtures of this crate; cargo's own build
-// lock serializes concurrent invocations across test binaries.
+// guest plus the echo fixtures in the `examples` package; cargo's own
+// build lock serializes concurrent invocations across test binaries.
 fn build_guests() {
     static GUESTS: OnceLock<()> = OnceLock::new();
     GUESTS.get_or_init(|| {
         for args in [
             ["build", "-p", "specify", "--target", "wasm32-wasip2"].as_slice(),
-            ["build", "-p", "runtime", "--examples", "--target", "wasm32-wasip2"].as_slice(),
+            ["build", "-p", "examples", "--examples", "--target", "wasm32-wasip2"].as_slice(),
         ] {
             let status = Command::new("cargo")
                 .env("CARGO_TARGET_DIR", target_dir())

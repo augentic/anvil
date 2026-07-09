@@ -165,7 +165,8 @@ standards                # standards layer — depends on {error,schema,diagnost
 workflow                 # workflow layer — depends on {error,schema,artifacts,diagnostics,omnia-guest} (also owns workflow::agents — init-time AGENTS.md context-fence generation — workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability (WASI-backed on wasm32; native tests bind the scripted mock in each test binary) — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on standards (no wasmtime in its graph)
 dispatch                 # wasm-clean dispatch boundary — clap grammar, envelopes, exit contract, pure verb handlers; shared by the native binary and the specify guest
 specify                  # wasm32 wasi:cli/run shim over dispatch + workflow (the core guest — published as specify:core@<binary version> on release; no committed artifact)
-runtime                  # dev-only: the runtime-replay binary (the same runtime! macro over ModelDefault, for CI) + the composed-deployment integration tests + the echo adapter guests (skeleton source/target fixtures as cdylib examples)
+runtime                  # dev-only: the runtime-replay binary (the same runtime! macro over ModelDefault, for CI) + the composed-deployment integration tests
+examples (top-level)     # example guest components, omnia's examples/ pattern: the echo adapter fixtures (skeleton source/target guests as cdylib examples) the composed tests load
 specify-cli (root crate) # the one binary: a single omnia::runtime! command-mode invocation over the cursor-bound backends — no Specify vocabulary; every verb runs in the specify guest
 ```
 
@@ -201,6 +202,7 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`src/runtime/output.rs`]
 src/runtime/             the provisioning front (native verb set + blind forwarding)
 crates/workflow/         workflow domain logic
 crates/specify/          wasm32 core guest shim
+examples/                example guest components (echo adapter fixtures, omnia's examples/ pattern)
 tests/rust_quality.rs    dev-only Rust-quality predicates + gate
 tests/framework_quality/ prose/manifest framework checks as cargo tests
 ```

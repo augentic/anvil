@@ -58,6 +58,7 @@ members = [
     "crates/workflow",
     "crates/specify",
     "crates/runtime",
+    "examples",
 ]
 
 [workspace.package]

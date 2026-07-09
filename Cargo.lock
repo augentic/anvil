@@ -1267,6 +1267,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "examples"
+version = "0.27.2"
+dependencies = [
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.58.0",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3613,8 +3624,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
- "wasip3",
- "wit-bindgen 0.58.0",
  "workflow",
 ]
 

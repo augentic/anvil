@@ -27,7 +27,7 @@ mod bindings {
 
     wit_bindgen::generate!({
         world: "target-adapter",
-        path: "../../wit",
+        path: "../wit",
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s and async-lift; `describe` is a plain `func`
         // (deterministic, effect-free) and sync-lifts — forcing it
