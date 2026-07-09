@@ -2,7 +2,7 @@
 
 This directory holds the **parked** end-to-end test rig for the shipped wasm surface: it composes the built `specify.wasm` core guest (plus adapter components) into a real Omnia deployment and drives it, proving the WASI wiring the native test suites cannot reach.
 
-`harness/runtime` and `harness/fixtures` are **workspace members** of the root cargo workspace (shared lockfile, path deps, lint tables) but are **excluded from `default-members`**, so no root gate — `cargo make ci`, `test`, `lint`, `doc`, `vet`, `deny`, `fmt` — ever builds, lints, tests, or audits them. The rig runs only when invoked manually via `cargo make` from this directory. The deterministic dispatch contract it used to gate — grammar, routing, envelopes, exit codes — is covered natively by `crates/dispatch/tests/`; wasmtime and omnia own the argv/exit plumbing itself, and re-proving that on every commit is not worth the wasm build cost.
+`harness/runtime` and `harness/fixtures` are **workspace members** of the root cargo workspace (shared lockfile, path deps, lint tables) but are **excluded from `default-members`**, so no root gate — `cargo make ci`, `test`, `lint`, `doc`, `vet`, `deny`, `fmt` — ever builds, lints, tests, or audits them. The rig runs only when invoked manually via `cargo make` from this directory. The deterministic cli contract it used to gate — grammar, routing, envelopes, exit codes — is covered natively by `crates/cli/tests/`; wasmtime and omnia own the argv/exit plumbing itself, and re-proving that on every commit is not worth the wasm build cost.
 
 Run the rig on demand when touching the WIT contract, the guest shim (`crates/specify`), or the omnia pin — all commands from inside `harness/`:
 

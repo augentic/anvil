@@ -4,7 +4,7 @@ The contract every CLI command handler obeys: how `Ctx` is constructed, how outp
 
 ## Ctx construction
 
-Handlers take `&Ctx`, whose module path `dispatch::context::Ctx` carries the noun. `Ctx` exposes the resolved project dir, layout, output format, and a few thin facade methods for handler ergonomics; everything else flows through workspace crates. `Layout<'a>` lives on `Ctx` rather than at call sites so path helpers stay anchored in `workflow` — see [architecture.md §"Layout boundary"](./architecture.md#layout-boundary).
+Handlers take `&Ctx`, whose module path `cli::context::Ctx` carries the noun. `Ctx` exposes the resolved project dir, layout, output format, and a few thin facade methods for handler ergonomics; everything else flows through workspace crates. `Layout<'a>` lives on `Ctx` rather than at call sites so path helpers stay anchored in `workflow` — see [architecture.md §"Layout boundary"](./architecture.md#layout-boundary).
 
 ## Default handler signature
 
@@ -23,7 +23,7 @@ pub(crate) fn handle(ctx: &Ctx, args: &SomeArgs) -> Result<()> {
 pub(crate) fn handle(ctx: &Ctx) -> Result<Exit, Error> { /* ... */ }
 ```
 
-A free `fn ... -> Result<Exit>` belongs in `crates/dispatch/src/commands.rs`. Elsewhere, default to `Result<()>` and let the dispatcher collapse the success path.
+A free `fn ... -> Result<Exit>` belongs in `crates/cli/src/commands.rs`. Elsewhere, default to `Result<()>` and let the dispatcher collapse the success path.
 
 ## ctx.write, output::write, and emit
 
@@ -48,29 +48,29 @@ The four-slot CLI exit-code table is fixed:
 | 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
 | 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old` in JSON) |
 
-`Exit::from(&Error)` in [`crates/dispatch/src/output.rs`](../../crates/dispatch/src/output.rs) is the single source of truth. Every dispatcher in `crates/dispatch/src/commands/*` routes its terminal error through `report`, which calls `Exit::from`. Do not invent new exit codes. The long-form decision (including `Exit::Code(u8)`'s WASI passthrough role) lives in [DECISIONS.md §"Exit codes"](../../DECISIONS.md#exit-codes).
+`Exit::from(&Error)` in [`crates/cli/src/output.rs`](../../crates/cli/src/output.rs) is the single source of truth. Every dispatcher in `crates/cli/src/commands/*` routes its terminal error through `report`, which calls `Exit::from`. Do not invent new exit codes. The long-form decision (including `Exit::Code(u8)`'s WASI passthrough role) lives in [DECISIONS.md §"Exit codes"](../../DECISIONS.md#exit-codes).
 
 ## Dispatcher contract
 
-`crates/dispatch/src/cli.rs` declares the clap derive surface. Every command has a doc comment that doubles as `--help` output — keep it accurate and operator-facing (no internal jargon or historical labels). Add new commands as enum variants on `Commands` with a nested action enum where the verb has subactions; mirror existing groups (`SliceAction`, `PlanAction`, `SourceAction`, `TargetAction`, …).
+`crates/cli/src/cli.rs` declares the clap derive surface. Every command has a doc comment that doubles as `--help` output — keep it accurate and operator-facing (no internal jargon or historical labels). Add new commands as enum variants on `Commands` with a nested action enum where the verb has subactions; mirror existing groups (`SliceAction`, `PlanAction`, `SourceAction`, `TargetAction`, …).
 
 `--source key=value` arguments are parsed via the typed `SourceArg` (`impl FromStr for SourceArg`) so call sites read named fields instead of tuple positions.
 
-Dispatchers live in `crates/dispatch/src/commands/<verb>.rs` and call back into the workspace crates. The discipline is:
+Dispatchers live in `crates/cli/src/commands/<verb>.rs` and call back into the workspace crates. The discipline is:
 
 1. Clap parses argv → `Commands` enum.
-2. `crates/dispatch/src/commands.rs` matches the variant and calls the dispatcher in `crates/dispatch/src/commands/<verb>.rs`.
+2. `crates/cli/src/commands.rs` matches the variant and calls the dispatcher in `crates/cli/src/commands/<verb>.rs`.
 3. The dispatcher loads `ProjectConfig` (which enforces the `specify` version floor for free) and any other state it needs.
 4. The dispatcher delegates the deterministic work to a workspace crate (`specify_slice`, `specify_change`, etc.) and converts the result to a `*Body` for `ctx.write(&body, write_text)`.
 
-Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `crates/dispatch/src/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope.
+Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `crates/cli/src/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope.
 
-Never put domain logic in `dispatch`. If a function needs unit tests, it belongs in a workspace domain crate. `dispatch` owns argv parsing, formatting, and dispatch only. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `cli`. If a function needs unit tests, it belongs in a workspace domain crate. `cli` owns argv parsing, formatting, and dispatch only. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Adapter-resolve verb shapes
 
 `source resolve <name>` and `target resolve <value>` are format-only
-handlers — both clap arms in `crates/dispatch/src/commands.rs` dispatch to a single
+handlers — both clap arms in `crates/cli/src/commands.rs` dispatch to a single
 private `commands::resolve_adapter(format, axis, value, project_dir)`
 helper that takes a bare `Format` plus the project dir, switches on
 `axis` to invoke `workflow::adapter::SourceAdapter::resolve(name,

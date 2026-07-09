@@ -8,12 +8,12 @@
 //! `verbs` area; these tests pin the seam the workflow guest
 //! depends on.
 
-use dispatch::guest::{Orchestration, Route, Verb, parse, route};
-use dispatch::output::Exit;
+use cli::guest::{Orchestration, Route, Verb, parse, route};
+use cli::output::Exit;
 
 /// Parse one argv line (program name included) through the shared
 /// grammar, panicking on parse failure.
-fn parse_ok(argv: &[&str]) -> dispatch::cli::Cli {
+fn parse_ok(argv: &[&str]) -> cli::cli::Cli {
     parse(argv.iter().map(ToString::to_string)).unwrap_or_else(|exit| {
         panic!("argv {argv:?} failed to parse (exit {})", exit.code());
     })

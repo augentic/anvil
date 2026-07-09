@@ -1,6 +1,6 @@
 //! End-to-end coverage of the pure project-scoped verbs through the
 //! shared grammar and the guest route table: argv parses via
-//! [`dispatch::guest::parse`], routes via [`dispatch::guest::route`],
+//! [`cli::guest::parse`], routes via [`cli::guest::route`],
 //! and the handler's filesystem effects and exit code are asserted
 //! against a throw-away project tree.
 //!
@@ -14,8 +14,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use dispatch::guest::{Route, parse, route};
-use dispatch::output::Exit;
+use cli::guest::{Route, parse, route};
+use cli::output::Exit;
 use tempfile::TempDir;
 
 /// A throw-away project tree the routed verbs run against, with the

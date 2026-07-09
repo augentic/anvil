@@ -1,6 +1,6 @@
 //! Embedded JSON Schemas, the JSON-Schema validation plumbing, and the
 //! neutral [`diagnostics`] substrate shared by the workspace crates
-//! (`artifacts`, `workflow`, `dispatch`).
+//! (`artifacts`, `workflow`, `cli`).
 //!
 //! Schemas are bundled at compile time via `include_str!` so the binary
 //! carries them with no runtime filesystem lookup. The helpers in

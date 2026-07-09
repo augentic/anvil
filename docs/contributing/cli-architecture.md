@@ -4,13 +4,13 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary, one guest
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/main.rs`): it parses no verbs itself. Every verb — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `dispatch` grammar; envelopes and exit codes pass through verbatim. Provisioning verbs (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest router until their in-guest implementations land (DECISIONS.md §"One `specify` binary").
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/main.rs`): it parses no verbs itself. Every verb — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `cli` grammar; envelopes and exit codes pass through verbatim. Provisioning verbs (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest router until their in-guest implementations land (DECISIONS.md §"One `specify` binary").
 
 The core guest identity is versioned by the binary (`specify:core@<binary version>`, DECISIONS.md §"Core versioned by the binary"); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `dispatch` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `workflow` shim; `workflow` owns the workflow domain and stays wasmtime-free; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `cli` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `workflow` shim; `workflow` owns the workflow domain and stays wasmtime-free; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
@@ -21,10 +21,10 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/main.rs  →  omnia::runtime! (command mode)  →  specify guest (crates/specify)  →  dispatch::guest::parse + route
+src/main.rs  →  omnia::runtime! (command mode)  →  specify guest (crates/specify)  →  cli::guest::parse + route
 ```
 
-The full operator grammar — provisioning verbs included — lives in `dispatch` (`crates/dispatch/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Verb handlers live under `crates/dispatch/src/commands/`; the handler contract (`Ctx`, `Out` / `Render` / `emit`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The full operator grammar — provisioning verbs included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Verb handlers live under `crates/cli/src/commands/`; the handler contract (`Ctx`, `Out` / `Render` / `emit`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
 ## JSON envelope contract
 
@@ -38,7 +38,7 @@ The `--format text|json` flag controls output shape; `SPECIFY_FORMAT=json` is th
 
 ## Exit codes
 
-The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/dispatch/src/output.rs` is the single source of truth:
+The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/cli/src/output.rs` is the single source of truth:
 
 | Code | Constant | Meaning |
 |------|----------|---------|

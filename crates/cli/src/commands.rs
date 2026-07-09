@@ -44,7 +44,7 @@ use crate::output::{self, Exit, report};
 /// Dispatch the `specify source {resolve, survey, extract}` family.
 ///
 /// Only `resolve` runs through the shared table (project-context-free,
-/// [`dispatch`]); `survey` / `extract` are guest-owned collapsed
+/// [`cli`]); `survey` / `extract` are guest-owned collapsed
 /// orchestrations peeled off by both dispatchers before this table —
 /// the defensive arms keep the match exhaustive and never collapse a
 /// real run to a misleading success.

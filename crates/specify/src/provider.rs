@@ -5,7 +5,7 @@
 //! imports.
 //!
 //! The mapping layer between the WIT records and the seam DTOs lives
-//! here in full, so `workflow` and `dispatch` stay
+//! here in full, so `workflow` and `cli` stay
 //! wasm-clean. Two mappings are judgment-free but deliberately shaped:
 //!
 //! - **Claims** cross as raw JSON objects (the evidence schema leaves

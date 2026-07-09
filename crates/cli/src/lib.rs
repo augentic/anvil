@@ -1,4 +1,4 @@
-//! Wasm-clean `specify` CLI dispatch.
+//! Wasm-clean `specify` CLI surface.
 //!
 //! Owns the full clap argv grammar ([`cli::Cli`] / [`cli::Commands`]),
 //! the output envelopes ([`output::Format`] / [`output::emit`]), the

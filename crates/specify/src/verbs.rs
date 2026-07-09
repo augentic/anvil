@@ -1,7 +1,7 @@
 //! Drive the collapsed orchestrator verbs against the WIT-backed
 //! [`Provider`].
 //!
-//! `dispatch::guest::route` parses these verbs but cannot run
+//! `cli::guest::route` parses these verbs but cannot run
 //! them — the seam lives here, where the WIT bindings are. Each arm
 //! loads the shared [`Ctx`] (the `"."` preopen is the project root),
 //! reads the clock once at the boundary, drives the matching
@@ -18,10 +18,10 @@
 
 use std::path::PathBuf;
 
-use dispatch::commands::slice::artifact_classes;
-use dispatch::context::Ctx;
-use dispatch::guest::{Orchestration, Verb};
-use dispatch::output::{Exit, Format, report};
+use cli::commands::slice::artifact_classes;
+use cli::context::Ctx;
+use cli::guest::{Orchestration, Verb};
+use cli::output::{Exit, Format, report};
 use error::Error;
 use serde::Serialize;
 use workflow::change::LoopStep;

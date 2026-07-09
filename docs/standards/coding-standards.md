@@ -88,7 +88,7 @@ The codebase optimises for short reading over short writing. Concretely:
 
 ## Format dispatch
 
-Handlers do **not** open-code `match ctx.format { Json, Text }`. There is one entry point — `ctx.write(&body, write_text)?` for success bodies, and `report(ctx.format, &err)` (which dispatches `ErrorBody` to stderr) for failures. The underlying `emit` function lives in `crates/dispatch/src/output.rs`; handlers never spell it, and they never pick a sink directly. `emit_err` / `emit_response` / `emit_error` / `emit_json_error` have all been collapsed into this single surface. See [handler-shape.md](./handler-shape.md) for how `Ctx` and the free `output::write` compose.
+Handlers do **not** open-code `match ctx.format { Json, Text }`. There is one entry point — `ctx.write(&body, write_text)?` for success bodies, and `report(ctx.format, &err)` (which dispatches `ErrorBody` to stderr) for failures. The underlying `emit` function lives in `crates/cli/src/output.rs`; handlers never spell it, and they never pick a sink directly. `emit_err` / `emit_response` / `emit_error` / `emit_json_error` have all been collapsed into this single surface. See [handler-shape.md](./handler-shape.md) for how `Ctx` and the free `output::write` compose.
 
 ```rust
 // BAD
@@ -107,7 +107,7 @@ The `write_text` closure receives `(&mut dyn Write, &Body)` and renders the text
 
 ## One emit path
 
-Success bodies leave handlers via `ctx.write(&body, write_text)?;` (or the free `output::write(format, &body, write_text)?;` for the rare `Ctx`-less verb). Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `crates/dispatch/src/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to the output module (`crates/dispatch/src/output.rs`); handlers never call it directly.
+Success bodies leave handlers via `ctx.write(&body, write_text)?;` (or the free `output::write(format, &body, write_text)?;` for the rare `Ctx`-less verb). Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `crates/cli/src/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to the output module (`crates/cli/src/output.rs`); handlers never call it directly.
 
 ## DTOs
 

@@ -16,5 +16,5 @@
 [crate]
 workflow = 59
 schema = 10
-dispatch = 1
+cli = 1
 artifacts = 1

@@ -674,6 +674,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
+name = "cli"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "clap",
+ "clap_complete",
+ "error",
+ "jiff",
+ "schema",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "workflow",
+]
+
+[[package]]
 name = "cmake"
 version = "0.1.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1132,25 +1151,6 @@ dependencies = [
  "block-buffer 0.12.1",
  "const-oid",
  "crypto-common 0.2.2",
-]
-
-[[package]]
-name = "dispatch"
-version = "0.27.2"
-dependencies = [
- "artifacts",
- "clap",
- "clap_complete",
- "error",
- "jiff",
- "schema",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum",
- "tempfile",
- "workflow",
 ]
 
 [[package]]
@@ -3652,7 +3652,7 @@ dependencies = [
  "cfg-if",
  "clap",
  "clap_complete",
- "dispatch",
+ "cli",
  "jiff",
  "omnia",
  "omnia-guest",
@@ -4137,7 +4137,7 @@ name = "specify"
 version = "0.27.2"
 dependencies = [
  "artifacts",
- "dispatch",
+ "cli",
  "error",
  "omnia-guest",
  "schema",

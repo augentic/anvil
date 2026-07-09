@@ -31,7 +31,7 @@ jiff.workspace = true
 omnia-guest.workspace = true
 omnia-testkit.workspace = true
 serde_json.workspace = true
-dispatch.workspace = true
+cli.workspace = true
 artifacts.workspace = true
 schema.workspace = true
 workflow = { workspace = true, features = ["native"] }

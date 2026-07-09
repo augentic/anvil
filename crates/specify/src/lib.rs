@@ -1,11 +1,11 @@
 //! The specify guest: the deployment's only `wasi:cli/run` exporter.
 //!
 //! Argv arrives through wasip3 and parses through the shared
-//! `dispatch` grammar — the exact clap tree the native binary
+//! `cli` grammar — the exact clap tree the native binary
 //! parses, so every shared verb is argv- and envelope-compatible with
-//! native. `dispatch::guest::route` runs pure workflow verbs
+//! native. `cli::guest::route` runs pure workflow verbs
 //! in-process; the four collapsed orchestrator verbs come back as a
-//! `dispatch::guest::Orchestration` and `verbs::drive` runs
+//! `cli::guest::Orchestration` and `verbs::drive` runs
 //! them against `provider::Provider` — the WIT-backed
 //! `Model + SourceSeam + TargetSeam` implementation over this world's
 //! `source` / `target` imports (satisfied at runtime by Omnia's
@@ -46,8 +46,8 @@ mod bindings {
 mod provider;
 mod verbs;
 
-use dispatch::guest::{self, Route};
-use dispatch::output::Exit;
+use cli::guest::{self, Route};
+use cli::output::Exit;
 
 struct CliGuest;
 wasip3::cli::command::export!(CliGuest);

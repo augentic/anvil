@@ -1,6 +1,6 @@
 [package]
-name = "dispatch"
-description = "Wasm-clean `specify` CLI dispatch: argv grammar, output envelopes, exit mapping, and the pure workflow verb handlers consumed by the specify guest"
+name = "cli"
+description = "Wasm-clean `specify` CLI surface: argv grammar, output envelopes, exit mapping, and the pure workflow verb handlers consumed by the specify guest"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

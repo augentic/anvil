@@ -22,6 +22,8 @@ use tempfile::TempDir;
 
 use crate::common::{CacheGuard, ECHO_WASM, Quiet, SPECIFY_WASM, StubBundle, scoped_cache};
 
+mod common;
+
 /// A throw-away project tree the composed deployment mounts at `"."`,
 /// with the hermetic per-project cache pinned beneath the tempdir —
 /// the cache is mounted alongside `"."` exactly as the generated
@@ -64,8 +66,8 @@ impl Project {
 /// adapter-contract links without needing the sibling adapters
 /// checkout — no test here dispatches a seam call.
 fn manifest(mount: &Path) -> Result<TempManifest> {
-    let workflow = crate::common::guest_wasm(SPECIFY_WASM);
-    let echo = crate::common::guest_wasm(ECHO_WASM);
+    let workflow = common::guest_wasm(SPECIFY_WASM);
+    let echo = common::guest_wasm(ECHO_WASM);
     let cache = schema::cache::project_cache_dir(mount);
     fs::create_dir_all(&cache)?;
     temp_manifest(&format!(
@@ -272,7 +274,7 @@ async fn scaffold_regular() -> Result<()> {
 // offers.
 #[test]
 fn completions_matches_native() -> Result<()> {
-    let engine = crate::common::workspace_root();
+    let engine = common::workspace_root();
     let project = Project::bare();
     let manifest = manifest(&project.root)?;
 
@@ -293,7 +295,7 @@ fn completions_matches_native() -> Result<()> {
     );
 
     let mut native = Vec::new();
-    let mut cmd = <dispatch::cli::Cli as clap::CommandFactory>::command();
+    let mut cmd = <cli::cli::Cli as clap::CommandFactory>::command();
     clap_complete::generate(clap_complete::Shell::Zsh, &mut cmd, "specify", &mut native);
     assert!(!native.is_empty(), "the native grammar renders a script");
     assert_eq!(

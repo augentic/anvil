@@ -178,7 +178,7 @@ wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 workflow = { path = "crates/workflow", default-features = false }
 artifacts = { path = "crates/artifacts" }
-dispatch = { path = "crates/dispatch" }
+cli = { path = "crates/cli" }
 error = { path = "crates/error" }
 testkit = { path = "crates/testkit" }
 
