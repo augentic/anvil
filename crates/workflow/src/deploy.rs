@@ -142,8 +142,7 @@ fn dangling_component(adapter: &DeployGuest) -> Error {
 /// adapter-contract link allow-list, one `[[guest]]` + `[[route.http]]`
 /// per adapter, the writable `"."` mount, the per-project derived
 /// cache mounted at [`schema::cache::GUEST_CACHE_MOUNT`]
-/// (guest routing: the guest's `rules export` reads the codex tenant
-/// and init's scaffold leg writes the component and codex tenants),
+/// (guest routing: init's scaffold leg writes the component tenant),
 /// the global adapter store mounted **read-only** at
 /// [`schema::cache::GUEST_STORE_MOUNT`] (forwarded verbs
 /// resolve pinned identities in-guest; hydration stays native), and

@@ -12,7 +12,7 @@ use jiff::Timestamp;
 use crate::adapter::TargetAdapter;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_uri::adapter_ref_from_value;
-use crate::init::cache::{ComponentMeta, cache_adapter, cache_codex};
+use crate::init::cache::{ComponentMeta, cache_adapter};
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
     upsert_gitignore, validate_platforms,
@@ -40,7 +40,7 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
     // `.specify/specs/` is retained as a per-project convention used
     // by the bundled `omnia` adapter.
     // The memoization cache is out-of-tree (OS cache, created on demand
-    // by `cache_adapter` / `cache_codex`), so it is not scaffolded here.
+    // by `cache_adapter`), so it is not scaffolded here.
     for dir in [
         layout.specify_dir(),
         layout.slices_dir(),
@@ -55,9 +55,6 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
     }
 
     let source = cache_adapter(adapter, opts.project_dir, now)?;
-    // Materialize the shared codex from the pack embedded in this
-    // binary; a cache stamped by an older binary re-materializes.
-    cache_codex(opts.project_dir, now)?;
     let adapter_value = source.adapter_value;
     let adapter_ref = adapter_ref_from_value(&adapter_value);
     let resolved = TargetAdapter::resolve(&adapter_ref, opts.project_dir)?;
@@ -99,7 +96,6 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
         config_path,
         adapter_name,
         cache_present,
-        codex_present: true,
         directories_created,
         scaffolded_rule_keys,
         specify_version,

@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use diagnostics::blocking_present;
 use error::Error;
+use schema::diagnostics::blocking_present;
 use serde::Serialize;
 
 use super::model::{Entry, Plan, SliceSourceBinding, Status};

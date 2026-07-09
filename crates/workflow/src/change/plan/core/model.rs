@@ -1,6 +1,6 @@
 //! Type definitions for `plan.yaml` (`Plan`, `Entry`, `EntryPatch`,
 //! `Status`, `Lifecycle`). Validation findings are emitted on the
-//! neutral [`diagnostics::Diagnostic`] currency by the sibling
+//! neutral [`schema::diagnostics::Diagnostic`] currency by the sibling
 //! `validate` / `doctor` modules. Behaviour lives in the sibling
 //! submodules.
 

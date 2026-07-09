@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use diagnostics::Diagnostic;
+use schema::diagnostics::Diagnostic;
 use serde::{Deserialize, Serialize};
 
 use super::core::Plan;

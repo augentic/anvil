@@ -14,7 +14,6 @@ use crate::commands::journal::cli::JournalAction;
 use crate::commands::plan::cli::PlanAction;
 use crate::commands::plugins::cli::PluginsAction;
 use crate::commands::registry::cli::RegistryAction;
-use crate::commands::rules::cli::RulesAction;
 use crate::commands::slice::cli::SliceAction;
 use crate::commands::source::cli::SourceAction;
 use crate::commands::target::cli::TargetAction;
@@ -99,16 +98,6 @@ pub enum Commands {
         /// Nested action for this verb family.
         #[command(subcommand)]
         action: TargetAction,
-    },
-
-    /// Rules resolution operations. Read-only: no
-    /// `.specify/` writes, no journal events. Today the only verb is
-    /// `export`, which streams a `ResolvedRules` JSON envelope built
-    /// from the shared / source / target codex overlay tree.
-    Rules {
-        /// Nested action for this verb family.
-        #[command(subcommand)]
-        action: RulesAction,
     },
 
     /// Slice lifecycle operations — one `refine → build → merge` loop.

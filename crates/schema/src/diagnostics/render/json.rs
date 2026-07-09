@@ -1,17 +1,17 @@
 //! Diagnostic-report wire envelope formatter.
 //!
 //! This is the only [`super::Format`] that validates against
-//! [`schema::DIAGNOSTIC_REPORT_JSON_SCHEMA`] before emit; the other
+//! [`crate::DIAGNOSTIC_REPORT_JSON_SCHEMA`] before emit; the other
 //! formatters are presentation layers driven by the same in-memory
 //! [`DiagnosticReport`]. Pretty-printed JSON with a single trailing
 //! newline keeps the output stable for byte-diff goldens.
 
 use jsonschema::{Registry, Resource};
-use schema::{DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA};
 use serde_json::Value;
 
 use super::RenderError;
-use crate::diagnostic::DiagnosticReport;
+use crate::diagnostics::diagnostic::DiagnosticReport;
+use crate::{DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA};
 
 const FINDING_SCHEMA_URL: &str =
     "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json";
@@ -21,7 +21,7 @@ const FINDING_SCHEMA_URL: &str =
 /// # Errors
 ///
 /// - [`RenderError::JsonSchemaValidation`] when the serialised
-///   envelope fails [`schema::DIAGNOSTIC_REPORT_JSON_SCHEMA`].
+///   envelope fails [`crate::DIAGNOSTIC_REPORT_JSON_SCHEMA`].
 /// - [`RenderError::JsonSerialise`] when JSON (de)serialisation fails.
 pub fn render(report: &DiagnosticReport) -> Result<String, RenderError> {
     let value = serde_json::to_value(report)?;

@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 
 use artifacts::discovery::Discovery;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
-use diagnostics::{Artifact, Diagnostic};
 use error::{Error, Result};
+use schema::diagnostics::{Artifact, Diagnostic};
 
 use super::catalog::collect_catalog_drift_findings;
 use super::decisions::collect_decision_gates;

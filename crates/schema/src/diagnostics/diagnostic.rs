@@ -36,7 +36,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// < Suggestion < Optional`.
 ///
 /// ```
-/// use diagnostics::Severity;
+/// use schema::diagnostics::Severity;
 ///
 /// assert!(Severity::Critical < Severity::Suggestion);
 /// ```
@@ -222,7 +222,7 @@ pub struct FindingLocation {
 /// by serde's `tag = "kind"` with `additionalProperties: false` per
 /// branch validated schema-side. The diagnostic contract caps the
 /// serialized evidence payload at 16 `KiB`, enforced by
-/// [`crate::validate::validate_evidence_size`], not here.
+/// [`crate::diagnostics::validate::validate_evidence_size`], not here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum FindingEvidence {
@@ -376,7 +376,7 @@ impl Diagnostic {
             status: None,
             disposition: None,
         };
-        diagnostic.fingerprint = crate::fingerprint::fingerprint(&diagnostic);
+        diagnostic.fingerprint = crate::diagnostics::fingerprint::fingerprint(&diagnostic);
         diagnostic
     }
 
@@ -384,7 +384,7 @@ impl Diagnostic {
     /// the default shape for a structural workflow invariant breach.
     ///
     /// ```
-    /// use diagnostics::{Artifact, Diagnostic, Severity};
+    /// use schema::diagnostics::{Artifact, Diagnostic, Severity};
     ///
     /// let finding = Diagnostic::violation(
     ///     "spec.requirement-id-missing",
@@ -535,7 +535,9 @@ impl DiagnosticSummary {
 /// emitted by every check producer.
 ///
 /// ```
-/// use diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary, Format, render};
+/// use schema::diagnostics::{
+///     Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary, Format, render,
+/// };
 ///
 /// let findings = vec![Diagnostic::violation(
 ///     "spec.requirement-id-missing",

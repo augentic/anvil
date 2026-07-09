@@ -14,7 +14,7 @@ use error::Error;
 use crate::adapter::TargetAdapter;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_uri::{adapter_name_from_value, adapter_ref_from_value};
-use crate::init::cache::{CodexMeta, ComponentMeta};
+use crate::init::cache::ComponentMeta;
 use crate::init::{InitOptions, InitResult, resolve_version, validate_platforms};
 
 /// Run the re-entry version bump.
@@ -79,7 +79,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         config_path,
         adapter_name,
         cache_present: ComponentMeta::path(opts.project_dir).exists(),
-        codex_present: CodexMeta::path(opts.project_dir).exists(),
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
         specify_version: target,

@@ -18,8 +18,8 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 use artifacts::atomic::yaml_write;
-use diagnostics::{Diagnostic, Severity};
 use error::Error;
+use schema::diagnostics::{Diagnostic, Severity};
 use serde::{Deserialize, Serialize};
 
 use crate::Platform;

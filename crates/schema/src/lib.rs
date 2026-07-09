@@ -1,6 +1,6 @@
-//! Embedded JSON Schemas and the JSON-Schema validation plumbing
-//! shared between `workflow` (workflow artifacts) and
-//! `standards` (the standards layer).
+//! Embedded JSON Schemas, the JSON-Schema validation plumbing, and the
+//! neutral [`diagnostics`] substrate shared by the workspace crates
+//! (`artifacts`, `workflow`, `dispatch`).
 //!
 //! Schemas are bundled at compile time via `include_str!` so the binary
 //! carries them with no runtime filesystem lookup. The helpers in
@@ -13,6 +13,7 @@
 pub mod answers;
 pub mod cache;
 pub mod constants;
+pub mod diagnostics;
 pub mod digest;
 pub mod validate;
 
@@ -21,9 +22,8 @@ pub use constants::{
     DECISION_JSON_SCHEMA, DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA, EMBEDDED_SCHEMAS,
     EVIDENCE_ANSWER_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, LEAD_JSON_SCHEMA, LEADS_ANSWER_JSON_SCHEMA,
     MARKETPLACE_JSON_SCHEMA, PARTS_JSON_SCHEMA, PLAN_JSON_SCHEMA, PROPOSAL_JSON_SCHEMA,
-    PROVENANCE_JSON_SCHEMA, REPORT_ANSWER_JSON_SCHEMA, RESOLVED_RULES_JSON_SCHEMA,
-    RULE_JSON_SCHEMA, SCENARIO_JSON_SCHEMA, SKILL_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA,
-    SYNTHESIS_JSON_SCHEMA, TOPOLOGY_LOCK_JSON_SCHEMA,
+    PROVENANCE_JSON_SCHEMA, REPORT_ANSWER_JSON_SCHEMA, SCENARIO_JSON_SCHEMA, SKILL_JSON_SCHEMA,
+    SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA, TOPOLOGY_LOCK_JSON_SCHEMA,
 };
 pub use validate::{
     ValidationStatus, ValidationSummary, cached_validator, compile_schema, join_details,

@@ -1,14 +1,14 @@
 //! `v1` fingerprint algorithm: determinism, the excluded/included
 //! field matrix, `verify_fingerprint`, and canonical JSON.
 
-use diagnostics::{
+use proptest::prelude::*;
+use schema::diagnostics::{
     Confidence, DiagnosticKind, FindingEvidence, FindingLocation, FindingStatus, Severity,
     canonical_json, fingerprint, verify_fingerprint,
 };
-use proptest::prelude::*;
 use serde_json::json;
 
-use crate::test_support::sample_diagnostic;
+use crate::diagnostics_support::sample_diagnostic;
 
 #[test]
 fn fp_is_deterministic() {

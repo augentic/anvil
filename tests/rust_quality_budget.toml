@@ -14,7 +14,6 @@
 # Crates absent from this table have an implicit budget of 0. See
 # docs/standards/testing.md and unit-test-reduction.md.
 [crate]
-standards = 6
 workflow = 59
 schema = 10
 dispatch = 1

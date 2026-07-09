@@ -7,7 +7,7 @@
 //! gates, build reports) cannot drift.
 //!
 //! Only the [`Format::Json`] formatter validates against
-//! [`schema::DIAGNOSTIC_REPORT_JSON_SCHEMA`] before emit; the other
+//! [`crate::DIAGNOSTIC_REPORT_JSON_SCHEMA`] before emit; the other
 //! three are presentation layers over the same in-memory
 //! [`DiagnosticReport`].
 
@@ -18,7 +18,7 @@ pub mod pretty;
 
 use thiserror::Error;
 
-use crate::diagnostic::DiagnosticReport;
+use crate::diagnostics::diagnostic::DiagnosticReport;
 
 /// Closed formatter discriminant.
 ///
@@ -44,7 +44,7 @@ pub enum Format {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum RenderError {
-    /// JSON envelope failed [`schema::DIAGNOSTIC_REPORT_JSON_SCHEMA`].
+    /// JSON envelope failed [`crate::DIAGNOSTIC_REPORT_JSON_SCHEMA`].
     #[error("diagnostic-report envelope failed schema validation: {detail}")]
     JsonSchemaValidation {
         /// Joined `; `-separated validator error list.

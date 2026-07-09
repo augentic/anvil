@@ -8,12 +8,6 @@ INSTALL_DIR ?= $(HOME)/.local/bin
 CURSOR_HOME ?= $(HOME)/.cursor
 MARKETPLACE := augentic
 
-# Cross-target UNI-* rules are authored in specify-adapters. The workflow
-# crate embeds them at build time from this checkout (sibling layout or
-# CI nested checkout).
-ADAPTERS_ROOT ?= $(firstword $(wildcard $(CURDIR)/../specify-adapters) $(wildcard $(CURDIR)/specify-adapters))
-export SPECIFY_ADAPTERS := $(ADAPTERS_ROOT)
-
 .PHONY: ci install-cli use-local-plugins use-team-plugins
 
 # Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the

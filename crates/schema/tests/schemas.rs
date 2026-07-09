@@ -7,8 +7,8 @@ use jsonschema::{Registry, Resource};
 use schema::{
     BUILD_REPORT_JSON_SCHEMA, BUILD_REQUEST_JSON_SCHEMA, DECISION_JSON_SCHEMA,
     DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA, EMBEDDED_SCHEMAS, PARTS_JSON_SCHEMA,
-    RESOLVED_RULES_JSON_SCHEMA, RULE_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA,
-    ValidationStatus, compile_schema, validate_value,
+    SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA, ValidationStatus, compile_schema,
+    validate_value,
 };
 use serde_json::{Value, json};
 
@@ -509,77 +509,6 @@ fn build_report_failure_with_findings() {
     });
     let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
     assert!(errors.is_empty(), "failure-with-findings report must validate; errors: {errors:?}");
-}
-
-/// A minimal codex-rule frontmatter validates cleanly, and the retired
-/// `rule_hints` key is rejected — the schema is closed over the
-/// prose-only rule shape.
-#[test]
-fn codex_rule_minimal_shape() {
-    let instance = json!({
-        "id": "UNI-014",
-        "title": "Minimal rule fixture",
-        "severity": "important",
-        "trigger": "Minimal rule shape smoke fixture."
-    });
-    let summaries = validate_value(&instance, RULE_JSON_SCHEMA, "rule", "minimal rule fixture");
-    assert!(
-        summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
-        "minimal rule must validate; got {summaries:?}"
-    );
-
-    let with_hints = json!({
-        "id": "UNI-014",
-        "title": "Retired hints fixture",
-        "severity": "important",
-        "trigger": "Retired rule_hints key must be rejected.",
-        "rule_hints": [{ "kind": "regex", "value": "placeholder" }]
-    });
-    let summaries =
-        validate_value(&with_hints, RULE_JSON_SCHEMA, "rule", "retired rule_hints fixture");
-    assert!(
-        summaries.iter().any(|s| !matches!(s.status, ValidationStatus::Pass)),
-        "rule_hints must be rejected by the closed schema; got {summaries:?}"
-    );
-}
-
-/// The `UNI-014` example for the `ResolvedRules` export validates
-/// cleanly against the resolved-codex schema.
-#[test]
-fn resolved_codex_accepts_example() {
-    let instance = json!({
-        "version": 1,
-        "target-adapter": "omnia",
-        "source-adapters": ["typescript"],
-        "rules": [
-            {
-                "rule-id": "UNI-014",
-                "title": "Hardcoded Configuration",
-                "severity": "important",
-                "trigger": "Generated code embeds environment-specific configuration instead of routing it through declared configuration.",
-                "origin": "shared",
-                "path-root": "rules-root",
-                "path": "codex/rules/universal/hardcoded-configuration.md",
-                "applicability": {
-                    "adapters": ["omnia"],
-                    "languages": ["rust"],
-                    "artifacts": ["code"]
-                },
-                "references": [
-                    {
-                        "label": "Omnia guardrails",
-                        "path": "adapters/targets/omnia/prose/references/guardrails.md"
-                    }
-                ],
-                "body": "## Rule\n\nConfiguration values that vary between deployments must not be hardcoded in generated code.\n",
-                "deprecated": null
-            }
-        ]
-    });
-    let validator =
-        compile_schema(RESOLVED_RULES_JSON_SCHEMA).expect("resolved codex schema compiles");
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|e| e.to_string()).collect();
-    assert!(errors.is_empty(), "UNI-014 example must validate; errors: {errors:?}");
 }
 
 /// The `FIND-0001` example for structured lint findings validates

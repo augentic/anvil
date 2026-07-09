@@ -13,7 +13,7 @@ The core guest resolves from the global adapter store by the binary's own versio
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `dispatch` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `workflow` shim; `workflow` owns the workflow domain and stays wasmtime-free; `standards` is its sibling (neither imports the other); the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `dispatch` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `workflow` shim; `workflow` owns the workflow domain and stays wasmtime-free; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
 
 Adapter deterministic helpers no longer live in a sibling `wasi-tools/` workspace; they sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 

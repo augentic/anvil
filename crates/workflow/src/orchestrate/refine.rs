@@ -21,10 +21,10 @@
 
 use std::path::{Path, PathBuf};
 
-use diagnostics::blocking_present;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
+use schema::diagnostics::blocking_present;
 
 use super::synthesize::SynthesizeRequest;
 use crate::change::{Entry, Plan, Status, resolve_target, resolve_topology};
@@ -272,7 +272,7 @@ fn validate(
             if blocking_present(&findings) {
                 let rules: Vec<&str> = findings
                     .iter()
-                    .filter(|finding| diagnostics::blocking(finding))
+                    .filter(|finding| schema::diagnostics::blocking(finding))
                     .map(|finding| finding.rule_id.as_deref().unwrap_or("unnamed-rule"))
                     .collect();
                 return Err(Error::validation_failed(

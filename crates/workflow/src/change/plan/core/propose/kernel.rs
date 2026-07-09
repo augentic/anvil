@@ -6,11 +6,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use artifacts::discovery::Discovery;
-use diagnostics::{
-    Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, blocking, fingerprint,
-};
 use error::{Error, Result, is_kebab};
 use petgraph::algo::tarjan_scc;
+use schema::diagnostics::{
+    Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, blocking, fingerprint,
+};
 
 use super::super::model::{
     Entry, Plan, SliceAuthorityOverride, SliceSourceBinding, Status, TargetRef,

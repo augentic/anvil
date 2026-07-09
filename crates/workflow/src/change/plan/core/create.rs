@@ -3,8 +3,8 @@
 
 use std::collections::BTreeMap;
 
-use diagnostics::blocking;
 use error::Error;
+use schema::diagnostics::blocking;
 
 use super::model::{Entry, Lifecycle, Plan, SourceBinding, Status};
 use crate::change::detect;

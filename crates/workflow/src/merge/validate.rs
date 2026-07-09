@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use artifacts::spec::{REQ_ID_PATTERN, REQ_ID_PREFIX, SCENARIO_HEADING, parse_baseline};
-use diagnostics::{Artifact, Diagnostic};
 use regex::Regex;
+use schema::diagnostics::{Artifact, Diagnostic};
 
 fn fail(rule_id: &str, rule: &str, detail: String) -> Diagnostic {
     Diagnostic::violation(rule_id, rule, detail, Artifact::Specs, None)

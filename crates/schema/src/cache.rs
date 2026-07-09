@@ -1,18 +1,16 @@
 //! Out-of-tree per-project cache root resolution.
 //!
-//! The adapter manifest mirror and the distributed codex pack are
-//! regenerable, machine-owned state — never committed, never authored.
-//! Rather than scatter them through the repository under
-//! `.specify/cache/`, they live in a per-project directory inside the
-//! user's OS cache, keyed by a stable digest of the canonicalised
-//! project path. Each checkout — including each materialised workspace
-//! slot — gets its own collision-free cache that survives `git clean`
-//! and never pollutes the working tree.
+//! The adapter manifest mirror and component mirror are regenerable,
+//! machine-owned state — never committed, never authored. Rather than
+//! scatter them through the repository under `.specify/cache/`, they
+//! live in a per-project directory inside the user's OS cache, keyed
+//! by a stable digest of the canonicalised project path. Each checkout
+//! — including each materialised workspace slot — gets its own
+//! collision-free cache that survives `git clean` and never pollutes
+//! the working tree.
 //!
-//! Lives on the `schema` leaf so both `workflow` (which
-//! populates the cache at init/sync) and `standards` (which
-//! reads it during rule resolution) resolve the same root without a
-//! cross-layer dependency.
+//! Lives on the `schema` leaf so every consumer resolves the same
+//! root without a cross-layer dependency.
 //!
 //! The global adapter store also resolves here, but it is an install
 //! store, not an evictable cache: entries are immutable,
@@ -74,10 +72,10 @@ fn mirrors_root() -> PathBuf {
 ///
 /// The generated deployment manifest mounts the host's
 /// [`project_cache_dir`] under this name (guest routing: the guest
-/// runs `rules export` and init's scaffold leg, both of which read or
-/// write cache tenants), and the wasm32 build of [`project_cache_dir`]
-/// resolves to it directly — one project per deployment, so no
-/// project-id keying is needed in-guest.
+/// runs init's scaffold leg, which writes cache tenants), and the
+/// wasm32 build of [`project_cache_dir`] resolves to it directly —
+/// one project per deployment, so no project-id keying is needed
+/// in-guest.
 pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
 
 /// Absolute path to the out-of-tree cache directory for `project_dir` —
@@ -85,8 +83,8 @@ pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
 ///
 /// `<project-id>` is the lowercase SHA-256 hex of the canonicalised
 /// project path, so the root is stable across invocations and unique
-/// per checkout. Tenants (`manifests/`, `codex/`, …) are created by the
-/// caller beneath the returned directory.
+/// per checkout. Tenants (`manifests/`, `components/`, …) are created
+/// by the caller beneath the returned directory.
 ///
 /// Infallible by design: cache path helpers across the workflow and
 /// standards layers are infallible, and a regenerable cache must never

@@ -133,8 +133,8 @@ impl Drop for CacheGuard {
     }
 }
 
-/// Pin the out-of-tree project cache root inside `dir` so adapter /
-/// codex cache writes are hermetic and auto-cleaned with the tempdir.
+/// Pin the out-of-tree project cache root inside `dir` so adapter
+/// cache writes are hermetic and auto-cleaned with the tempdir.
 #[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
 pub fn scoped_cache(dir: &std::path::Path) -> CacheGuard {
     let prev = std::env::var_os(CACHE_ENV);

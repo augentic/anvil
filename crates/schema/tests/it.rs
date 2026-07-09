@@ -6,6 +6,12 @@
 
 #[path = "answers.rs"]
 mod answers;
+#[path = "diagnostics_fingerprint.rs"]
+mod diagnostics_fingerprint;
+#[path = "diagnostics_report.rs"]
+mod diagnostics_report;
+#[path = "diagnostics_support.rs"]
+mod diagnostics_support;
 #[path = "schemas.rs"]
 mod schemas;
 #[path = "wire_fixtures.rs"]

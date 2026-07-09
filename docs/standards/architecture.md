@@ -4,15 +4,13 @@ Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>
 
 ## Workspace layout
 
-Binary crate (`name = "specify-cli"`) at the repo root. [`src/main.rs`](../../src/main.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest (`crates/specify`) through the shared dispatch grammar (`crates/dispatch`); engineering standards reach consumer projects through `specify rules export`. Workspace member crates live under `crates/`; the dependency direction is leaf → root:
+Binary crate (`name = "specify-cli"`) at the repo root. [`src/main.rs`](../../src/main.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest (`crates/specify`) through the shared dispatch grammar (`crates/dispatch`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
 
 ```text
 error                    # leaf — thiserror + serde-saphyr only
-schema                   # depends on error (embedded JSON Schemas + jsonschema plumbing; also owns schema::digest — SHA-256 hex via sha2 + base16ct)
-diagnostics              # depends on {error,schema} (Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
-artifacts                    # depends on {error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
-standards                # standards layer — depends on {error,schema,diagnostics}; NOT on workflow
-workflow                 # workflow layer — depends on {error,schema,artifacts,diagnostics} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and config::tools, the parse-clean project-scope tools[] DTOs); NOT on standards (no wasmtime in its graph)
+schema                   # depends on error (embedded JSON Schemas + jsonschema plumbing; owns schema::digest — SHA-256 hex via sha2 + base16ct — and schema::diagnostics, the neutral Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
+artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
+workflow                 # workflow layer — depends on {error,schema,artifacts} (also owns workflow::agents — init-time AGENTS.md context-fence generation — and config::tools, the parse-clean project-scope tools[] DTOs); no wasmtime in its graph
 dispatch                 # wasm-clean dispatch boundary — shared by the native binary and the specify guest
 specify                  # wasm32 wasi:cli/run core guest — depends on dispatch + workflow
 specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-* crate
@@ -20,11 +18,11 @@ specify-cli (root crate) # the omnia::runtime! binary — depends on no specify-
 
 The framework authoring checks run as plain cargo tests at [`tests/framework/`](../../tests/framework/) (with the Rust-quality siblings in `tests/rust_quality.rs`); there is no lint engine or `Check` substrate (see [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout)).
 
-`standards` (standards) and `workflow` (workflow) are siblings: they never import each other. The artifact validation rule registry (`artifacts::validate`) is the validation analog: it sits on `artifacts`, which depends on neither `workflow` nor anything named lint, so an artifact rule cannot reach workflow lifecycle types — the same no-lifecycle-authority invariant `standards` enforces. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry both `standards` and `workflow` read, alongside `schema` and `error` at the bottom. The Phase 1B collapse from 13 crates and the standards-layer split that re-introduced `standards` and `schema` are logged in [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout) and [DECISIONS.md §"Standards layer split into `standards` and `schema`"](../../DECISIONS.md#standards-layer-split-into-standards-and-schema).
+The artifact validation rule registry (`artifacts::validate`) sits on `artifacts`, which depends on neither `workflow` nor anything named lint, so an artifact rule cannot reach workflow lifecycle types. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry the workflow layer reads, alongside `schema` and `error` at the bottom. The neutral `Diagnostic` substrate lives at `schema::diagnostics` (originally its own `diagnostics` crate), so every check producer mints findings without depending on anything named `lint` — see [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate). The Phase 1B collapse from 13 crates, the standards-layer split, and the later deletion of the `standards` crate plus the `diagnostics`→`schema` merge are logged in [DECISIONS.md §"Crate layout"](../../DECISIONS.md#crate-layout) and [DECISIONS.md §"Standards chain moved to the adapters; `diagnostics` merged into `schema`"](../../DECISIONS.md#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema).
 
-### Standards layer vs workflow layer
+### Engineering standards live in the adapters
 
-`standards` (standards) and `workflow` (workflow) are deliberately siblings. The §"Principles" / "No lifecycle authority in review" rule from [DECISIONS.md §"Standards layer split into `standards` and `schema`"](../../DECISIONS.md#standards-layer-split-into-standards-and-schema) is a type-system invariant rather than a coding convention: `workflow` MUST NOT depend on `standards` (review code never reaches workflow lifecycle types), and `standards` MUST NOT depend on `workflow` (review code cannot transition a slice or stamp a plan). Both depend on `schema` so the embedded JSON Schemas live in one place, and both depend on the `diagnostics` leaf for the neutral `Diagnostic` substrate — so a workflow validator mints findings without `workflow` ever depending on anything named `lint`. See [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate). Refer to [DECISIONS.md §"Standards layer split into `standards` and `schema`"](../../DECISIONS.md#standards-layer-split-into-standards-and-schema).
+There is no standards crate: engineering-standards rules (`UNI-*` and per-adapter overlays) are authored in `augentic/specify-adapters` and ship embedded in each target adapter's component, applied by its build review prompts. The "no lifecycle authority in review" rule is structural — no engine crate parses or resolves rules, so standards prose cannot reach slice or plan transitions. See [DECISIONS.md §"Standards chain moved to the adapters; `diagnostics` merged into `schema`"](../../DECISIONS.md#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema).
 
 Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-version = "1.95"`, MIT/Apache-2.0) and the shared `[workspace.lints]` block in the root `Cargo.toml` (clippy `all`/`cargo`/`nursery`/`pedantic` warned, plus a hand-picked `restriction` subset and a tightened rust lint set — `missing_debug_implementations`, `single_use_lifetimes`, `redundant_lifetimes`).
 
@@ -33,12 +31,6 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 **New workspace crates** are an exception, not the default. See [DECISIONS.md §"New workspace crates"](../../DECISIONS.md#new-workspace-crates) for the bar a new crate must clear.
 
 The root `specify` crate is a binary-only package (`src/main.rs`, the `omnia::runtime!` invocation). The whole `specify` dispatch tree lives in `crates/dispatch`; clap introspection for shell completions lives in [`crates/dispatch/src/commands.rs`](../../crates/dispatch/src/commands.rs) via `Cli::command()`.
-
-## standards layer modules
-
-One `standards` module tree carries the standards-layer contract; touching it requires a cross-repo `rg` sweep per [AGENTS.md §"When working in this repo"](../../AGENTS.md#when-working-in-this-repo).
-
-- **`crates/standards/src/rules/`** — rules parser and resolver pipeline (`parse.rs`, `resolve.rs`, `resolve/{filter,sort}.rs`). The fingerprint algorithm and finding validators live in the `diagnostics` leaf — import them from there directly. The resolver walks the shared `codex/rules/universal/` pack (`Origin::Shared`) plus per-adapter overlays (`Origin::{SourceOverlay,TargetOverlay}`) and tags every resolved rule with its origin for `specify rules export`. The four formatters live in the neutral `diagnostics` leaf (`crates/diagnostics/src/render/{json,pretty,github,compact}.rs`) and consume the closed `Diagnostic` shape every surface emits.
 
 ## workflow domain modules
 

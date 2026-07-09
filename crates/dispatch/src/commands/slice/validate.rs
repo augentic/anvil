@@ -10,8 +10,8 @@
 //! 2.
 
 use artifacts::validate::validate_slice;
-use diagnostics::{Diagnostic, blocking_present};
 use error::{Error, Result};
+use schema::diagnostics::{Diagnostic, blocking_present};
 use workflow::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
 
 use crate::context::Ctx;
@@ -77,10 +77,10 @@ fn fail_with(ctx: &Ctx, code: &'static str, findings: Vec<Diagnostic>) -> Result
 fn format_finding_line(d: &Diagnostic) -> String {
     let rule = d.rule_id.as_deref().unwrap_or("<unknown>");
     match d.kind {
-        diagnostics::DiagnosticKind::Violation => {
+        schema::diagnostics::DiagnosticKind::Violation => {
             format!("[fail] {}: {}", rule, d.impact)
         }
-        diagnostics::DiagnosticKind::Review => {
+        schema::diagnostics::DiagnosticKind::Review => {
             format!("[review] {} ({})", rule, d.impact)
         }
     }

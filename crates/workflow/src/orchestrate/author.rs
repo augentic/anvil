@@ -24,10 +24,10 @@ use std::collections::BTreeMap;
 
 use artifacts::atomic::bytes_write;
 use artifacts::discovery::Discovery;
-use diagnostics::blocking_present;
 use error::{Error, is_kebab};
 use jiff::Timestamp;
 use omnia_guest::Model;
+use schema::diagnostics::blocking_present;
 
 use super::SurveyedSource;
 use crate::change::{

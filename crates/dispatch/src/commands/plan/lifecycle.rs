@@ -1,7 +1,7 @@
 use std::io::Write;
 
-use diagnostics::{Diagnostic, Severity, blocking, blocking_present};
 use error::{Error, Result};
+use schema::diagnostics::{Diagnostic, Severity, blocking, blocking_present};
 use serde::Serialize;
 use workflow::change::{
     Lifecycle, NextActionKind, NextBody, NextReason, Plan, Status, StatusBody, drained_line,

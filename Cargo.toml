@@ -49,9 +49,7 @@ workspace = true
 
 [workspace]
 members = [
-    "crates/diagnostics",
     "crates/dispatch",
-    "crates/standards",
     "crates/error",
     "crates/artifacts",
     "crates/schema",
@@ -164,7 +162,6 @@ jiff = { version = "0.2", default-features = false, features = ["serde", "std"] 
 jsonschema = { version = "0.46", default-features = false }
 
 artifacts = { path = "crates/artifacts" }
-diagnostics = { path = "crates/diagnostics" }
 dispatch = { path = "crates/dispatch" }
 error = { path = "crates/error" }
 petgraph = "0.8"
@@ -176,7 +173,6 @@ serde = { version = "1", features = ["derive"] }
 serde-saphyr = "0.0.26"
 serde_json = "1"
 sha2 = "0.11"
-standards = { path = "crates/standards" }
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"

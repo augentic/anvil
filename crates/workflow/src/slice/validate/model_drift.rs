@@ -6,8 +6,8 @@ use std::path::Path;
 use artifacts::evidence::ClaimKind;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementStatus};
 use artifacts::spec::{is_req_id, is_task_id};
-use diagnostics::{Artifact, Diagnostic};
 use error::{Error, Result};
+use schema::diagnostics::{Artifact, Diagnostic};
 use serde_json::Value as JsonValue;
 
 use crate::change::Plan;

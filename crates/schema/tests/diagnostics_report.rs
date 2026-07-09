@@ -2,12 +2,12 @@
 //! `blocking_present`, the severity tally, `count_status`, and
 //! `renumber`.
 
-use diagnostics::{
+use schema::diagnostics::{
     DiagnosticKind, DiagnosticSummary, FindingStatus, Severity, blocking, blocking_present,
     count_status, renumber,
 };
 
-use crate::test_support::diagnostic;
+use crate::diagnostics_support::diagnostic;
 
 #[test]
 fn blocking_tiers_and_kind() {

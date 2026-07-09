@@ -1,8 +1,8 @@
 //! SHA-256 digest helpers shared across cache, fingerprint, and tool paths.
 //!
-//! Lives on the `schema` leaf so siblings (`diagnostics`,
-//! `standards`, `specify-tool`, …) share one digest implementation
-//! without each depending on `sha2` directly or pulling a heavier graph.
+//! Lives on the `schema` leaf so sibling crates (`workflow`, …) and the
+//! in-crate [`crate::diagnostics`] fingerprint share one digest
+//! implementation without each depending on `sha2` directly.
 
 use sha2::{Digest, Sha256};
 

@@ -93,7 +93,7 @@ fn generates_manifest_into_project_cache() {
     assert_eq!(mounts[0]["path"].as_str(), Some(project.display().to_string().as_str()));
     assert_eq!(mounts[0]["writable"].as_bool(), Some(true));
     // guest routing: the per-project derived cache is mounted so the
-    // guest's `rules export` / scaffold leg reach the cache tenants.
+    // guest's scaffold leg reaches the cache tenants.
     assert_eq!(mounts[1]["name"].as_str(), Some(schema::cache::GUEST_CACHE_MOUNT));
     assert_eq!(
         mounts[1]["path"].as_str(),

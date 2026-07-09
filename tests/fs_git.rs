@@ -2,7 +2,7 @@
 //!
 //! Single source for the `GIT_ENV` / `run_git` / `copy_dir` trio that
 //! the binary integration tests (`tests/common/mod.rs`) and the
-//! `workflow` / `standards` crate test trees all need.
+//! `workflow` crate test tree all need.
 //! Crate test trees pull it in with a `#[path]` module declaration.
 
 #![allow(

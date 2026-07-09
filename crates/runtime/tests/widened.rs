@@ -1,8 +1,8 @@
 //! Composed-runtime coverage for the widened guest surface (guest
 //! routing): every project-scoped pure verb runs in the workflow guest
 //! against a mounted project tree — `registry {validate,add,remove}`,
-//! `archive prune`, `rules export`, `completions`, and init's scaffold
-//! leg (`init --scaffold-only`).
+//! `archive prune`, `completions`, and init's scaffold leg
+//! (`init --scaffold-only`).
 //!
 //! Guest stdout is inherited in-process, so the in-process runs assert
 //! exit codes plus the filesystem effects on the `"."` mount and the
@@ -53,10 +53,6 @@ impl Project {
         )
         .expect("write project.yaml");
         project
-    }
-
-    fn cache_dir(&self) -> PathBuf {
-        schema::cache::project_cache_dir(&self.root)
     }
 }
 
@@ -213,34 +209,6 @@ async fn archive_prune_requires_bound() -> Result<()> {
     Ok(())
 }
 
-// `rules export` in-guest: the shared codex materialized into the
-// per-project cache natively is resolved by the guest through the
-// derived-cache mount — proving the cache tenants are reachable
-// in-guest.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn rules_export_reads_cache_mount() -> Result<()> {
-    let project = Project::initialised();
-    let now = "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses");
-    workflow::init::sync_codex(&project.root, now).expect("sync codex");
-
-    let status =
-        run(&project.root, &["rules", "export", "--target", "demo", "--format", "json"]).await?;
-    assert_eq!(status.code(), 0, "the guest resolves the codex through the cache mount");
-    Ok(())
-}
-
-// Without a codex anywhere the guest probe fails with the same
-// `rules-root-required` validation exit (2) the native run produces.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn rules_export_without_codex() -> Result<()> {
-    let project = Project::initialised();
-
-    let status =
-        run(&project.root, &["rules", "export", "--target", "demo", "--format", "json"]).await?;
-    assert_eq!(status.code(), 2, "no codex anywhere is rules-root-required (exit 2)");
-    Ok(())
-}
-
 // The scaffold leg on a bare directory, workspace mode: the guest
 // writes `.specify/project.yaml { workspace: true }` and mints
 // `registry.yaml` on the `"."` mount.
@@ -264,9 +232,8 @@ async fn scaffold_workspace() -> Result<()> {
 // The scaffold leg on a bare directory, regular mode: the guest
 // resolves the bare-name adapter against the staged development build
 // under the mount (metadata from the pre-warmed describe sidecar — the
-// guest dispatches no describe), scaffolds `.specify/`, records the
-// adapter on `project.yaml`, and materializes the shared codex through
-// the derived-cache mount.
+// guest dispatches no describe), scaffolds `.specify/`, and records
+// the adapter on `project.yaml`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn scaffold_regular() -> Result<()> {
     let project = Project::bare();
@@ -294,10 +261,6 @@ async fn scaffold_regular() -> Result<()> {
         fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
     assert!(config.contains("adapter: demo"), "the adapter is recorded:\n{config}");
     assert!(project.root.join(".specify/slices").is_dir(), "the slice tree is scaffolded");
-    assert!(
-        project.cache_dir().join("codex/codex/rules/universal").is_dir(),
-        "the shared codex materialized through the derived-cache mount"
-    );
     Ok(())
 }
 

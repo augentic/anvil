@@ -31,7 +31,6 @@ use crate::cli::{Cli, Commands, Format, SourceArg};
 use crate::commands::init::ScaffoldArgs;
 use crate::commands::journal::cli::JournalAction;
 use crate::commands::plan::cli::PlanAction;
-use crate::commands::rules::cli::RulesAction;
 use crate::commands::slice::cli::{SliceAction, SliceMergeAction};
 use crate::commands::source::cli::SourceAction;
 use crate::commands::{self, journal};
@@ -257,11 +256,6 @@ pub fn route(cli: Cli) -> Route {
         )),
         Commands::Init(_) => Route::Handled(unsupported(format, "init")),
         Commands::Adapters { .. } => Route::Handled(unsupported(format, "adapters")),
-        Commands::Rules { action } => Route::Handled(match action {
-            RulesAction::Export(args) => {
-                commands::dispatch(format, || commands::rules::export::run(format, &args))
-            }
-        }),
         Commands::Archive { action } => {
             Route::Handled(scoped(format, plan_dir, |ctx| commands::archive::run(ctx, &action)))
         }

@@ -13,7 +13,7 @@
 use std::fmt::Write as _;
 
 use super::RenderError;
-use crate::diagnostic::{Diagnostic, DiagnosticReport, Severity};
+use crate::diagnostics::diagnostic::{Diagnostic, DiagnosticReport, Severity};
 
 /// Render `report` as one GitHub workflow-annotation line per
 /// diagnostic.

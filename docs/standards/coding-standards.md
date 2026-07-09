@@ -26,10 +26,12 @@ fn step(...) { ... }
 fn step(...) { ... }
 
 // GOOD — module-root waiver that legitimately covers every item below
-// crates/standards/src/rules.rs
+// crates/workflow/src/agents.rs
 #![allow(
-    clippy::module_name_repetitions,
-    reason = "The public wire contract uses the names Rule and ResolvedRules; renaming to avoid the codex prefix would obscure the schema mapping."
+    missing_docs,
+    clippy::pedantic,
+    clippy::nursery,
+    reason = "binary-internal context-fence code consumed only by the `agents` command; documenting ~30 internal fields adds noise, not API surface"
 )]
 ```
 

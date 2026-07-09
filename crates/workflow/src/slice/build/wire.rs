@@ -7,8 +7,8 @@
 
 use std::path::{Path, PathBuf};
 
-use diagnostics::{Diagnostic, blocking};
 use error::{Error, Result};
+use schema::diagnostics::{Diagnostic, blocking};
 use serde::{Deserialize, Serialize};
 
 use crate::platform::Platform;

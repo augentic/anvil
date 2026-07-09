@@ -1,11 +1,11 @@
 //! Validation rule registry and runner.
 //!
 //! `Rule` / `CrossRule` declare their `Classification`; [`validate_slice`]
-//! returns a `Vec<Diagnostic>` — the neutral currency from the
-//! `diagnostics` leaf. Structural `Fail` outcomes become deterministic
+//! returns a `Vec<Diagnostic>` — the neutral currency from
+//! `schema::diagnostics`. Structural `Fail` outcomes become deterministic
 //! `violation` diagnostics (`important`, blocking); semantic rules become
 //! non-blocking `review` diagnostics (`suggestion`,
-//! [`diagnostics::DiagnosticKind::Review`]) that ask the agent to
+//! [`schema::diagnostics::DiagnosticKind::Review`]) that ask the agent to
 //! apply judgment. Passing structural rules emit no diagnostic — the
 //! report carries only findings, never the full pass checklist.
 

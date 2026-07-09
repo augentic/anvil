@@ -11,10 +11,10 @@
 
 use std::sync::LazyLock;
 
-use schema::{DIAGNOSTIC_JSON_SCHEMA, compile_schema};
 use serde_json::Value as JsonValue;
 
-use crate::diagnostic::Diagnostic;
+use crate::diagnostics::diagnostic::Diagnostic;
+use crate::{DIAGNOSTIC_JSON_SCHEMA, compile_schema};
 
 /// 16 `KiB` cap on the serialized evidence object.
 const EVIDENCE_MAX_BYTES: usize = 16 * 1024;

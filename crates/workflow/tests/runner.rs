@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use artifacts::validate::validate_slice;
-use diagnostics::DiagnosticKind;
+use schema::diagnostics::DiagnosticKind;
 use tempfile::TempDir;
 use workflow::slice::SLICES_DIR_NAME;
 

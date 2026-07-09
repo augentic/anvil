@@ -62,7 +62,7 @@ impl Drop for CacheGuard {
 }
 
 /// Pin the out-of-tree project cache and Git mirror roots inside `dir` so
-/// adapter / codex cache writes and remote-peer mirror clones are hermetic
+/// adapter cache writes and remote-peer mirror clones are hermetic
 /// and auto-cleaned with the tempdir.
 #[expect(unsafe_code, reason = "pin the cache-root env vars into the test tempdir")]
 fn scoped_cache(dir: &Path) -> CacheGuard {

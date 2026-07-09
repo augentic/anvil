@@ -3,8 +3,8 @@
 //!
 //! The scaffold writes project-scoped state only — `.specify/`,
 //! `project.yaml`, `registry.yaml` (workspace mode), `.gitignore`
-//! lines, and the per-project derived cache tenants (component mirror,
-//! codex packs) — so it runs on both sides of the seam. Everything
+//! lines, and the per-project derived component-mirror cache tenant —
+//! so it runs on both sides of the seam. Everything
 //! the full native `init` adds around it (hydration, deployment-
 //! manifest generation, `AGENTS.md` context generation, the workspace
 //! sync chain) stays native: the provisioning front invokes this leg
@@ -83,7 +83,6 @@ struct Body {
     /// Resolved adapter name (or `"workspace"` for workspace init).
     adapter_name: String,
     cache_present: bool,
-    codex_present: bool,
     directories_created: Vec<String>,
     scaffolded_rule_keys: Vec<String>,
     specify_version: String,
@@ -107,7 +106,6 @@ fn emit_scaffold_result(format: Format, result: &InitResult) -> Result<()> {
         config_path: canonical(&result.config_path),
         adapter_name: result.adapter_name.clone(),
         cache_present: result.cache_present,
-        codex_present: result.codex_present,
         directories_created: result.directories_created.iter().map(|p| canonical(p)).collect(),
         scaffolded_rule_keys: result.scaffolded_rule_keys.clone(),
         specify_version: result.specify_version.clone(),

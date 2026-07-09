@@ -23,9 +23,9 @@
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::RequirementTag;
-use diagnostics::Diagnostic;
 use error::{Error, Result};
 use jiff::Timestamp;
+use schema::diagnostics::Diagnostic;
 
 use crate::config::Layout;
 use crate::journal::{Event, EventKind, append_batch};

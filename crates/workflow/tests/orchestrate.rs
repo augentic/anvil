@@ -8,10 +8,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use diagnostics::{
+use jiff::Timestamp;
+use schema::diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity as DiagSeverity,
 };
-use jiff::Timestamp;
 use serde_json::{Value, json};
 use tempfile::TempDir;
 use workflow::config::Layout;

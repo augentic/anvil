@@ -1,7 +1,7 @@
 //! Cycle detection for the `cycle-in-depends-on` diagnostic.
 
-use diagnostics::{Diagnostic, Severity};
 use petgraph::algo::tarjan_scc;
+use schema::diagnostics::{Diagnostic, Severity};
 
 use super::CYCLE;
 use crate::change::plan::core::Entry;

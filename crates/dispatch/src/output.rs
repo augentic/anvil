@@ -138,7 +138,7 @@ impl From<&Error> for Exit {
 /// always [`ErrorBody`]. `Error::Validation` is payload-free — its
 /// `code` becomes the wire `error` discriminant and its `detail` the
 /// `message`; per-finding rows are rendered by the producing handler on
-/// stdout as a [`diagnostics::DiagnosticReport`] before the
+/// stdout as a [`schema::diagnostics::DiagnosticReport`] before the
 /// payload-free error is returned.
 pub fn report(format: Format, err: &Error) -> Exit {
     let code = Exit::from(err);
@@ -157,7 +157,7 @@ pub fn report(format: Format, err: &Error) -> Exit {
 /// discriminant (the `code` for `Error::Validation`), `message` the
 /// rendered detail, and `exit-code` the numeric exit. Per-finding rows
 /// are no longer part of the error body — handlers render
-/// [`diagnostics::DiagnosticReport`] on stdout before
+/// [`schema::diagnostics::DiagnosticReport`] on stdout before
 /// returning the payload-free error.
 ///
 /// Construct via `ErrorBody::from(&err)` — the variant is the only

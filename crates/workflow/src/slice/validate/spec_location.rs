@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use diagnostics::{Artifact, Diagnostic};
+use schema::diagnostics::{Artifact, Diagnostic};
 
 use super::collect_spec_files;
 

@@ -17,7 +17,6 @@ pub mod journal;
 pub mod plan;
 pub mod plugins;
 pub mod registry;
-pub mod rules;
 pub mod slice;
 pub mod source;
 pub mod target;
@@ -26,11 +25,11 @@ pub mod workspace;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use diagnostics::{
+use error::Result;
+use schema::diagnostics::{
     Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, blocking_present,
     renumber,
 };
-use error::Result;
 use serde::Serialize;
 use workflow::adapter::{Axis, SourceAdapter, TargetAdapter};
 use workflow::init::adapter_ref_from_value;

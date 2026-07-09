@@ -2,7 +2,7 @@
 //!
 //! Emits a severity tag, rule id, title, source location, and an
 //! indented impact/remediation block per diagnostic plus a tally
-//! footer mirroring [`crate::diagnostic::DiagnosticSummary`].
+//! footer mirroring [`crate::diagnostics::diagnostic::DiagnosticSummary`].
 //!
 //! ANSI escape codes are hand-written so the crate avoids a colour
 //! dependency. The `NO_COLOR` environment variable, when set
@@ -12,7 +12,9 @@
 use std::fmt::Write as _;
 
 use super::RenderError;
-use crate::diagnostic::{Diagnostic, DiagnosticReport, FindingLocation, FindingStatus, Severity};
+use crate::diagnostics::diagnostic::{
+    Diagnostic, DiagnosticReport, FindingLocation, FindingStatus, Severity,
+};
 
 /// Render `report` as colourised terminal output.
 ///

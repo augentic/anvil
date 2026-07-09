@@ -17,8 +17,8 @@ path end to end?
 The audit is hand-curated and is intended to be re-run whenever a new skill
 or scenario lands. The checked-in fixtures under
 [`evals/fixtures/{sources,targets,skills}/`](../../evals/fixtures/) document
-representative inputs and expected artifact shapes, while the compact Rust
-suite in `crates/standards/tests/` focuses on checker
+representative inputs and expected artifact shapes, while the framework
+checks at `tests/framework/` cover authoring-shape
 regressions. The eval scenarios under
 [`evals/scenarios/`](../../evals/scenarios/) cover the LLM-driven body bytes that the
 Rust harness intentionally does not pin.

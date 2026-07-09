@@ -1,6 +1,6 @@
 //! Specify neutral diagnostic substrate.
 //!
-//! This leaf crate owns the [`Diagnostic`] currency shared by both
+//! This module owns the [`Diagnostic`] currency shared by both
 //! Specify check surfaces — the advisory review surface and the
 //! workflow-gating `validate` surface — together with the
 //! fingerprint algorithm, the validators, and the four renderers.
@@ -11,11 +11,11 @@
 //! without importing the other surface's code: `artifacts` (which
 //! holds the `validate` registry) depends on this leaf.
 //!
-//! Dependency posture: depends only on `error` and
-//! `schema` (plus `serde`/`serde_json`/`jsonschema`). The
-//! SHA-256 fingerprint digest comes through `schema::digest`.
-//! It carries no workflow lifecycle types, so every higher layer can
-//! build on it without inheriting a heavier graph.
+//! Lives on the `schema` leaf beside the embedded diagnostic JSON
+//! Schemas it validates against and the `digest` module that backs the
+//! SHA-256 fingerprint. It carries no workflow lifecycle types, so
+//! every higher layer can build on it without inheriting a heavier
+//! graph.
 
 pub mod diagnostic;
 pub mod fingerprint;

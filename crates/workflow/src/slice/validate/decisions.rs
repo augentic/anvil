@@ -6,8 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use artifacts::decision::{DecisionRecord, parse_decision};
-use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use error::{Error, Result};
+use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 use super::path_hint;
 use crate::config::Layout;

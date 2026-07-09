@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use diagnostics::{Diagnostic, Severity};
+use schema::diagnostics::{Diagnostic, Severity};
 
 use super::{CloneSignature, STALE_CLONE, StaleReason};
 use crate::change::plan::core::validate::plan_finding_structured;

@@ -1,10 +1,9 @@
 //! Embedded JSON Schemas.
 //!
 //! Each constant is the verbatim contents of a file under
-//! `specify/schemas/` baked into the binary at compile time. See
-//! `ResolvedRules` export contract and §"Structured lint finding
-//! schema" for the standards-layer schemas; the workflow schemas are
-//! pinned by the workflow contract under `docs/standards/workflow.md`.
+//! `specify/schemas/` baked into the binary at compile time. The
+//! workflow schemas are pinned by the workflow contract under
+//! `docs/standards/workflow.md`.
 
 /// Schema for `plan.yaml` (workflow contract — `slices[].sources[]`
 /// bindings, `target`, slice-level `divergence` enum).
@@ -79,14 +78,6 @@ pub const COMPONENTS_JSON_SCHEMA: &str =
 /// fragment that seeds inference with naming and promotion authority.
 pub const PARTS_JSON_SCHEMA: &str =
     include_str!("../../../schemas/design-system/parts.schema.json");
-
-/// Schema for the `specify rules export` payload — the resolved rules
-/// tree consumed by lint tooling. See `ResolvedRules` export contract.
-pub const RESOLVED_RULES_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/rules/resolved.schema.json");
-
-/// Schema for a single rule frontmatter block. See the rule file shape contract.
-pub const RULE_JSON_SCHEMA: &str = include_str!("../../../schemas/rules/rule.schema.json");
 
 /// Schema for the neutral `Diagnostic` wire shape produced by every
 /// check surface (validate and review alike) and validated at the
@@ -175,12 +166,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         COMPONENTS_JSON_SCHEMA,
     ),
     ("PARTS_JSON_SCHEMA", "schemas/design-system/parts.schema.json", PARTS_JSON_SCHEMA),
-    (
-        "RESOLVED_RULES_JSON_SCHEMA",
-        "schemas/rules/resolved.schema.json",
-        RESOLVED_RULES_JSON_SCHEMA,
-    ),
-    ("RULE_JSON_SCHEMA", "schemas/rules/rule.schema.json", RULE_JSON_SCHEMA),
     (
         "DIAGNOSTIC_JSON_SCHEMA",
         "schemas/diagnostics/diagnostic.schema.json",

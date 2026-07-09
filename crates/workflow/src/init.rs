@@ -14,7 +14,7 @@ pub use adapter_uri::{
     AdapterPackage, adapter_name_from_value, adapter_ref_from_value, recognize_package,
 };
 use artifacts::atomic::bytes_write;
-pub use cache::{CodexMeta, ComponentMeta, codex_cache_root};
+pub use cache::ComponentMeta;
 use error::Error;
 use jiff::Timestamp;
 
@@ -69,10 +69,6 @@ pub struct InitOptions<'a> {
 /// Structured summary of what `init` did, returned for downstream
 /// rendering by both the JSON and text CLI paths.
 #[derive(Debug, Clone)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each bool is an independent on-disk fact the renderer surfaces separately on the init result."
-)]
 pub struct InitResult {
     /// Path to the written `project.yaml`.
     pub config_path: PathBuf,
@@ -82,11 +78,6 @@ pub struct InitResult {
     pub adapter_name: String,
     /// Whether `components/component-meta.yaml` exists in the per-project cache.
     pub cache_present: bool,
-    /// Whether the shared codex is materialized in the out-of-tree
-    /// `<project-cache>/codex/`. Always `true` for regular init (the
-    /// packs are embedded in the binary, so materialization cannot
-    /// miss); `false` for workspace init, which distributes no codex.
-    pub codex_present: bool,
     /// Directories that were newly created (empty on re-init).
     pub directories_created: Vec<PathBuf>,
     /// Brief IDs scaffolded into the `rules:` map.
@@ -143,27 +134,6 @@ pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> 
         return workspace::run(opts);
     }
     regular::run(opts, now)
-}
-
-/// Materialize (or refresh) the shared codex for a project from the
-/// pack embedded in this binary.
-///
-/// Writes `codex/rules/universal/` into the out-of-tree
-/// `<project-cache>/codex/`, pinned to the binary version. A cache
-/// already stamped by this version is a no-op; a stale stamp
-/// re-materializes.
-///
-/// This is the engine behind `specify rules sync`. `init` materializes
-/// the codex inline via the private `cache::cache_codex` path; this
-/// entry point lets a refresh run stand alone without re-running init.
-/// Returns the stamped [`CodexMeta`]; `now` stamps
-/// [`CodexMeta::fetched_at`] on a rewrite.
-///
-/// # Errors
-///
-/// Bubbles up filesystem errors from writing the cache.
-pub fn sync_codex(project_dir: &Path, now: Timestamp) -> Result<CodexMeta, Error> {
-    cache::cache_codex(project_dir, now)
 }
 
 pub(crate) fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {

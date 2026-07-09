@@ -2,8 +2,8 @@
 //! directive on the slice's Evidence claims against the project-level
 //! component catalog (`.specify/design-system/components.yaml`).
 
-use diagnostics::{Artifact, Diagnostic};
 use error::Result;
+use schema::diagnostics::{Artifact, Diagnostic};
 use serde_json::Value as JsonValue;
 
 use crate::config::Layout;
