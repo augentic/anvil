@@ -24,7 +24,7 @@ This directory contains JSON Schemas and bundled workflow fixtures used by the `
 
 ## Generated judgment-answer schemas
 
-The documents under [`answers/`](answers/) are **generated** — never hand-edited. Each is the `format: schema(...)` payload an adapter guest sends with a judgment `omnia:model/completion.create` call (RFC-61), derived from a canonical schema above by `schema`'s `answers` module: call-scoped envelope fields the caller already knows are stripped (their property schemas become `false`), and cross-file `$ref`s are inlined so one self-contained document rides the model call. Regenerate via `REGENERATE_GOLDENS=1 cargo nextest run -p schema` from the repo root; the `answers` parity test keeps the copies byte-exact.
+The documents under [`answers/`](answers/) are **generated** — never hand-edited. Each is the `format: schema(...)` payload an adapter guest sends with a judgment `omnia:model/completion.create` call, derived from a canonical schema above by `schema`'s `answers` module: call-scoped envelope fields the caller already knows are stripped (their property schemas become `false`), and cross-file `$ref`s are inlined so one self-contained document rides the model call. Regenerate via `REGENERATE_GOLDENS=1 cargo nextest run -p schema` from the repo root; the `answers` parity test keeps the copies byte-exact.
 
 | Schema                                                         | Derived from                                                                                 | Answer for                           |
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -32,6 +32,6 @@ The documents under [`answers/`](answers/) are **generated** — never hand-edit
 | [`answers/evidence.schema.json`](answers/evidence.schema.json) | `evidence.schema.json` (minus `lead`)                                                        | source `extract`                     |
 | [`answers/report.schema.json`](answers/report.schema.json)     | `target/build-report.schema.json` (minus `version` / `slice` / `target`, diagnostic inlined) | target `build` / `merge`             |
 
-## Bundled workflow schema
+## Adapter schemas
 
-The published Specify workflow target adapters live in `augentic/specify` under `adapters/targets/omnia`, `adapters/targets/vectis`, and `adapters/targets/contracts`. The CLI carries a minimal [`tests/fixtures/adapters/targets/omnia/`](../tests/fixtures/adapters/targets/omnia) workflow-contract fixture for its own integration tests.
+The published Specify target adapters live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) under `targets/omnia`, `targets/vectis`, and `targets/contracts`; each vendors the answer schemas it needs from this directory.

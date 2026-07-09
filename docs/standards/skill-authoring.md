@@ -31,7 +31,7 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 - **Body line count** ≤ **200 lines**. Strictly enforced — no per-file grandfathering.
 - **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Strictly enforced — no per-file grandfathering.
 
-The body and per-section caps are authoring conventions enforced at review time — the declarative line-count rules (the retired CORE-005 / CORE-045) were deleted with the Omnia-migration lint shrink, since invoke-and-relay skill bodies no longer approach the caps.
+The body and per-section caps are authoring conventions enforced at review time, not by a declarative check — invoke-and-relay skill bodies do not approach the caps.
 
 All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across schema and docs by the numeric-cap check in [`tests/framework/prose.rs`](../../tests/framework/prose.rs).
 
@@ -97,7 +97,7 @@ A 5th phase lands as one new `build/<phase>.md` file plus three lines added to t
 
 ## Envelope examples and wire contract
 
-CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope (a review-time convention — the declarative envelope-fence rule, the retired CORE-037, was deleted with the Omnia-migration lint shrink). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine.
+CLI envelope shapes (the `envelope-version` + `data` / `error` wrapper) live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope (a review-time convention). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine.
 
 The wire contract itself — exit codes, kebab-case `error` discriminants, the `envelope-version` floor — is owned by the CLI repo. See [cli-contract.md](cli-contract.md) for the surface skills depend on and the link to the authoritative exit-code table.
 

@@ -28,8 +28,6 @@ pub fn diagnostic(id: &str, severity: Severity) -> Diagnostic {
         confidence: Some(Confidence::High),
         fingerprint: "sha256:0000000000000000000000000000000000000000000000000000000000000000"
             .into(),
-        status: None,
-        disposition: None,
     }
 }
 
@@ -66,7 +64,5 @@ pub fn sample_diagnostic() -> Diagnostic {
                 .into(),
         confidence: Some(Confidence::High),
         fingerprint: String::new(),
-        status: None,
-        disposition: None,
     }
 }

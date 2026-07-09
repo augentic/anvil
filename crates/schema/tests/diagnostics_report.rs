@@ -1,10 +1,8 @@
 //! Triage predicates over diagnostic slices: `blocking`,
-//! `blocking_present`, the severity tally, `count_status`, and
-//! `renumber`.
+//! `blocking_present`, the severity tally, and `renumber`.
 
 use schema::diagnostics::{
-    DiagnosticKind, DiagnosticSummary, FindingStatus, Severity, blocking, blocking_present,
-    count_status, renumber,
+    DiagnosticKind, DiagnosticSummary, Severity, blocking, blocking_present, renumber,
 };
 
 use crate::diagnostics_support::diagnostic;
@@ -19,24 +17,6 @@ fn blocking_tiers_and_kind() {
     let mut review = diagnostic("a", Severity::Critical);
     review.kind = DiagnosticKind::Review;
     assert!(!blocking(&review), "a review request never gates");
-}
-
-#[test]
-fn blocking_respects_status() {
-    for demoted in [
-        FindingStatus::Ignored,
-        FindingStatus::Fixed,
-        FindingStatus::Accepted,
-        FindingStatus::FalsePositive,
-    ] {
-        let mut d = diagnostic("a", Severity::Critical);
-        d.status = Some(demoted);
-        assert!(!blocking(&d), "{demoted:?} must not block");
-    }
-
-    let mut open = diagnostic("a", Severity::Critical);
-    open.status = Some(FindingStatus::Open);
-    assert!(blocking(&open), "explicit open still blocks");
 }
 
 #[test]
@@ -65,21 +45,6 @@ fn summary_tallies_by_severity() {
             optional: 0
         }
     );
-}
-
-#[test]
-fn count_status_open_bucket() {
-    let mut diags = [
-        diagnostic("a", Severity::Critical),
-        diagnostic("b", Severity::Critical),
-        diagnostic("c", Severity::Critical),
-    ];
-    diags[1].status = Some(FindingStatus::Open);
-    diags[2].status = Some(FindingStatus::Accepted);
-
-    assert_eq!(count_status(&diags, None), 2, "None counts unset + open");
-    assert_eq!(count_status(&diags, Some(FindingStatus::Accepted)), 1);
-    assert_eq!(count_status(&diags, Some(FindingStatus::Fixed)), 0);
 }
 
 #[test]

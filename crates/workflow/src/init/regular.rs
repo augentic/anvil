@@ -77,7 +77,6 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
         adapters: Vec::new(),
         specify_version: Some(specify_version.clone()),
         rules,
-        tools: Vec::new(),
         platforms: validated_platforms,
         workspace: false,
     };

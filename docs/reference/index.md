@@ -18,8 +18,6 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### CLI
 
 - [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
-- [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) — historical record of the first-party helper migration (helpers are in-guest adapter library code today).
-
 ### Plugins
 
 - [Plugins](plugins/index.md) — specialist skills organized by plugin (Specify, Capture, Client).
@@ -34,8 +32,6 @@ The reference section is the lookup table for Specify. Use it when you need prec
 - [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `metadata.yaml`.
 
 ### Engineering standards
-
-- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar and status taxonomy.
 
 ## Finding what you need
 

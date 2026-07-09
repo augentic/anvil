@@ -129,5 +129,5 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and the `pushed`
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
-- [specify plan execute](../change-skills/execute.md) -- the guest-routed driver loop
+- [specify plan execute](plan.md#specify-plan-execute) -- the guest-routed driver loop
 - [`specify plan archive`](plan.md) -- archive verb used by `/spec:finalize` after PRs are operator-merged

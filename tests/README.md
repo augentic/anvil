@@ -5,13 +5,12 @@ checked-in goldens, the fixture directories they read, and the one canonical
 way to regenerate those goldens. See [`docs/standards/testing.md`](../docs/standards/testing.md)
 for the integration-first policy, golden discipline, and test-naming rules.
 
-The root crate's CLI test suite retired with the native provisioning
-surface: the `specify` binary is now a single `omnia::runtime!`
-invocation, and the operational surface is covered by the
-composed-deployment tests in `crates/runtime/tests/` (driving the
-workflow guest through the omnia runtime) plus each crate's own
-`tests/`. The root `tests/` tree keeps only the dev-only Rust-quality
-gate (`rust_quality.rs`) and the shared `fixtures/` referenced by
+The `specify` binary is a single `omnia::runtime!` invocation; the
+operational surface is covered by the composed-deployment tests in
+`crates/runtime/tests/` (driving the workflow guest through the omnia
+runtime) plus each crate's own `tests/`. The root `tests/` tree holds
+the dev-only Rust-quality gate (`rust_quality.rs`), the framework
+checks (`framework/`), and the shared `fixtures/` referenced by
 crate-level suites.
 
 ## Canonical golden regeneration

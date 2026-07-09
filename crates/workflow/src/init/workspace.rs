@@ -86,7 +86,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         adapters: Vec::new(),
         specify_version: Some(specify_version.clone()),
         rules: BTreeMap::new(),
-        tools: Vec::new(),
         workspace: true,
         platforms: Vec::new(),
     };

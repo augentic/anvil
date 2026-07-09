@@ -205,9 +205,9 @@ The runtime acquires its guests one way — hydration into the **global single-f
 - **Core versioned by the binary**: the workflow (core) guest resolves as `specify:core@<the binary's own version>` from the same store — the binary version *is* the core version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_CORE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves core-guest iteration; it is a development affordance, never a release mode.
 - **Generated deployment manifest**: provisioning renders the manifest into the per-project derived cache from the resolved store entries — one `[[guest]]` per component, the writable `"."` project mount, per-adapter MCP routes, and the core's link allow-list. It is derived, never committed, never hand-edited; the host layer reads nothing else.
 
-## The incremental path
+## Deferred relatives
 
-The migration was sequenced by RFC-61 (completed and removed from the tree; recoverable from git history): the runtime binary and a walking skeleton, one real adapter guest (contracts) as the pattern-setter, the remaining adapters, the workflow guest, and finally the retirement of the bespoke host — coexisting in place with the native CLI over the same `.specify/` state until the last cutover. RFC-65 (completed and removed from the tree; recoverable from git history) then landed the standalone deployment described above: the provisioning / runtime split, the hydration kernel and store-root move, the generated manifest, and the binary-versioned core guest, retiring RFC-61's workflow-verb triage and embedded-guest posture. The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring; the Omnia runtime, the `wasi-model` host (`create`), and the cursor / genai / replay model backends landed in a changed shape, so those RFCs were likewise removed. [RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) remain deferred, not superseded.
+[RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) are deferred, not superseded.
 
 ## Key trade-offs
 

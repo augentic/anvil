@@ -34,7 +34,7 @@ Enforcement splits by audience, not by rule id:
 | Rule shape          | The adapters repo's `rule_shape` cargo test | `augentic/specify-adapters` contributors | Frontmatter fields, `## Rule` heading, id uniqueness, namespace ownership |
 | Build-time judgment | Target `build/review.md` briefs | Active slice during `/spec:build`    | Model-assisted application of codex policy → human `REVIEW.md`     |
 
-There is no lint verb on the CLI: the framework checks are cargo tests here, and the deterministic consumer-project scanner (`specify lint project`) retired from the operational surface — if it earns its way back, it returns as developer tooling. The rules themselves reach consumer projects inside the target adapter components: each target embeds the universal pack plus its own overlays and its build review prompts apply them. Standards enforcement is **not** a workflow phase either way: findings may block a pipeline but never call `specify slice transition` or write lifecycle fields. Phase skills already use deterministic CLI gates where lifecycle depends on them (`specify slice validate` during refine; verify-repair during build).
+There is no lint verb on the CLI: the framework checks are cargo tests here, and there is no deterministic consumer-project scanner — if one earns its way in, it lands as developer tooling. The rules themselves reach consumer projects inside the target adapter components: each target embeds the universal pack plus its own overlays and its build review prompts apply them. Standards enforcement is **not** a workflow phase either way: findings may block a pipeline but never call `specify slice transition` or write lifecycle fields. Phase skills already use deterministic CLI gates where lifecycle depends on them (`specify slice validate` during refine; verify-repair during build).
 
 Plan **Gate 1** (`specify plan transition <name> approved`) is operator approval of a *plan*, not engineering-standards enforcement. Reserve **review** for build-time judgment (`REVIEW.md`, `build/review.md` briefs).
 
@@ -48,4 +48,3 @@ Plan **Gate 1** (`specify plan transition <name> approved`) is operator approval
 - [Artifacts in depth](artifacts.md) — artifact responsibilities
 - [Consistency checks](../contributing/checks.md) — the framework-repo authoring checks
 - [Shared UNI-* codex inventory](https://github.com/augentic/specify-adapters/blob/main/codex/rules/universal/README.md)
-- [Ignore directives](../reference/ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and exit semantics

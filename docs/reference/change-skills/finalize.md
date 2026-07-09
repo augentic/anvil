@@ -6,7 +6,7 @@ Close a drained change: push the prepared branches, then archive the plan. Openi
 
 ## See also
 
-- [specify plan execute](execute.md) — drives slices until drain
+- [specify plan](../cli/plan.md#specify-plan-execute) — `plan execute` drives slices until drain
 - [Cross-repo changes tutorial](../../tutorials/cross-repo-change.md) — workspace push and PR flow
 - [specify plan](../cli/plan.md) — `plan archive`
 - [Registry](../registry.md) — multi-repo platform setup

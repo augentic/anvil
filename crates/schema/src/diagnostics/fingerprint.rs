@@ -30,12 +30,11 @@
 //!   canonical_json(evidence.data)` for `kind: structured`.
 //!
 //! Producer-side fields — `id`, `title`, `severity`, `kind`,
-//! `confidence`, `status`, `disposition`, `change`, `slice`,
-//! `target-adapter`, `source-adapter`, `related-rule-ids` — are
-//! excluded so that regrading severity, flipping the kind axis,
-//! stamping a triage status, attaching slice/change context, or
-//! rephrasing a title cannot duplicate diagnostics for the same
-//! underlying issue.
+//! `confidence`, `change`, `slice`, `target-adapter`,
+//! `source-adapter`, `related-rule-ids` — are excluded so that
+//! regrading severity, flipping the kind axis, attaching slice/change
+//! context, or rephrasing a title cannot duplicate diagnostics for the
+//! same underlying issue.
 
 use serde_json::Value;
 

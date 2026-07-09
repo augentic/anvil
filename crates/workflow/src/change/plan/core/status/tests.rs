@@ -62,10 +62,9 @@ mod next_action {
 
     // The base happy-path dispatch arms (pending-stops, fresh-active-refine,
     // lifecycle refine/build/merge, drained, eligible-pending preview) are
-    // asserted end-to-end by `tests/plan.rs::status_*` /
-    // `plan_next_picks_first_pending_json` (with full-body goldens). What
-    // stays here is the dispatch that has no CLI status fixture: a stuck
-    // dependency graph and a dropped slice.
+    // asserted end-to-end through the composed-deployment tests in
+    // `crates/runtime/tests/`. What stays here is the dispatch that has no
+    // CLI status fixture: a stuck dependency graph and a dropped slice.
 
     #[test]
     fn stuck_when_deps_unmet() {
@@ -89,12 +88,11 @@ mod next_action {
 mod failure_overlay {
     use super::*;
 
-    // The build-failure overlay is asserted end-to-end by
-    // `plan.rs::status_build_failure_stops` (incl. the `status-build-failed`
-    // golden). The remaining overlay classifications below have no CLI
-    // status fixture: merge-conflict / refine-failed mapping, newest-marker
-    // precedence, stale / pre-claim shadowing, and the torn merge-incomplete
-    // state.
+    // The build-failure overlay is asserted end-to-end through the
+    // composed-deployment tests in `crates/runtime/tests/`. The remaining
+    // overlay classifications below have no CLI status fixture:
+    // merge-conflict / refine-failed mapping, newest-marker precedence,
+    // stale / pre-claim shadowing, and the torn merge-incomplete state.
 
     #[test]
     fn merge_failure_maps_to_conflict() {
@@ -235,12 +233,11 @@ mod re_entry {
     use super::*;
 
     // The dispatch + resume projection for the fresh-refine and
-    // refined/build-failed scenarios is captured by the full-body
-    // `status-refine` / `status-build-failed` goldens in
-    // `tests/plan.rs`. The re-entry overlays with no CLI fixture
-    // remain: the torn merge-incomplete resume, the drained finalize
-    // resume, the Gate-1 approved-stamp resume, and the repair-shaped
-    // stops that carry no resume.
+    // refined/build-failed scenarios is exercised end-to-end through the
+    // composed-deployment tests in `crates/runtime/tests/`. The re-entry
+    // overlays with no CLI fixture remain: the torn merge-incomplete
+    // resume, the drained finalize resume, the Gate-1 approved-stamp
+    // resume, and the repair-shaped stops that carry no resume.
 
     #[test]
     fn merge_incomplete_resumes_at_done_stamp() {

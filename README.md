@@ -13,19 +13,19 @@ Read the [Developer Guide](docs/index.md) in this order:
 3. [Quick start tutorial](docs/tutorials/quick-start.md)
 4. [Core concepts](docs/explanation/concepts.md)
 
-Initialize a project in Cursor Agent chat with a adapter:
+Initialize a project in Cursor Agent chat with an adapter:
 
 ```text
-/spec:init https://github.com/augentic/specify/adapters/targets/omnia
+/spec:init omnia@1.0.0
 ```
 
-Common targets:
+An adapter is named by a package reference (`specify:omnia@1.0.0`), the first-party shorthand (`omnia@1.0.0`), or the bare development shorthand (`omnia`, resolving a sibling checkout's release build). Common targets:
 
-| Target      | URL                                                              | Use case                                                      |
-| ----------- | ---------------------------------------------------------------- | ------------------------------------------------------------- |
-| `omnia`     | `https://github.com/augentic/specify/adapters/targets/omnia`     | [Omnia](https://omnia.host) Rust WASM services                |
-| `vectis`    | `https://github.com/augentic/specify/adapters/targets/vectis`    | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
-| `contracts` | `https://github.com/augentic/specify/adapters/targets/contracts` | API/interface contract work                                   |
+| Target      | Use case                                                      |
+| ----------- | ------------------------------------------------------------- |
+| `omnia`     | [Omnia](https://omnia.host) Rust WASM services                |
+| `vectis`    | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | API/interface contract work                                   |
 
 Then work through a slice:
 
@@ -108,14 +108,7 @@ make use-team-plugins   # clear cache; Cursor refetches from server on restart
 
 #### Testing adapter changes
 
-Adapters are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on adapters in a separate project, symlink them from this repo:
-
-```bash
-SPECIFY_REPO="path/to/augentic/specify"
-ln -sf "$SPECIFY_REPO/adapters" adapters
-```
-
-Adapter edits take effect immediately — no cache clear or restart needed.
+Adapters live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). For local iteration, run `cargo make release` there and initialise the consuming project with the bare development shorthand (`/spec:init omnia`) — a bare name resolves the sibling checkout's release build at `target/wasm32-wasip2/release/<name>.wasm`. Rebuild the component to pick up changes; no cache clear or restart is needed.
 
 #### Publishing a new plugin
 

@@ -34,13 +34,6 @@ allow = [
   "Zlib",
 ]
 
-exceptions = [
-  { name = "bitmaps", allow = ["MPL-2.0"] },
-  { name = "im-rc", allow = ["MPL-2.0"] },
-  { name = "option-ext", allow = ["MPL-2.0"] },
-  { name = "sized-chunks", allow = ["MPL-2.0"] },
-]
-
 [licenses.private]
 ignore = true
 

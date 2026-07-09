@@ -15,7 +15,6 @@ pub struct Input {
     pub description: Option<String>,
     pub adapter: Option<Adapter>,
     pub rule_overrides: Vec<Rule>,
-    pub declared_tools: Vec<Extension>,
     pub active_slices: Vec<String>,
     pub workspace_peers: Vec<Peer>,
     pub dependencies: Vec<Dep>,
@@ -34,13 +33,6 @@ pub struct Adapter {
 pub struct Rule {
     pub brief_id: String,
     pub path: String,
-}
-
-/// One project-scoped WASI tool declaration.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Extension {
-    pub name: String,
-    pub version: String,
 }
 
 /// One materialized registry workspace slot.
@@ -164,17 +156,6 @@ fn boundaries_bullets(input: &Input) -> Vec<String> {
         bullets
             .push(format!("adapter `{}` owns generated artifact layout.", one_line(&adapter.name)));
     }
-    if input.declared_tools.is_empty() {
-        bullets.push("no project-scoped WASI tools declared.".to_string());
-    } else {
-        for tool in &input.declared_tools {
-            bullets.push(format!(
-                "declared WASI tool `{}` at version `{}`.",
-                one_line(&tool.name),
-                one_line(&tool.version)
-            ));
-        }
-    }
     bullets
 }
 
@@ -229,10 +210,6 @@ mod tests {
             rule_overrides: vec![Rule {
                 brief_id: "proposal".to_string(),
                 path: ".specify/rules/proposal.md".to_string(),
-            }],
-            declared_tools: vec![Extension {
-                name: "demo-tool".to_string(),
-                version: "1.0.0".to_string(),
             }],
             active_slices: vec!["alpha".to_string(), "zeta".to_string()],
             workspace_peers: Vec::new(),

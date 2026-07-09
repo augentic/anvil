@@ -40,7 +40,6 @@
 - [Artifacts in depth](explanation/artifacts.md)
 - [From sources to slices](explanation/reconciliation.md)
 - [Anatomy of an adapter](explanation/adapter-anatomy.md)
-- [Tool declarations](explanation/tool-declarations.md)
 - [Component factoring (Vectis)](explanation/components.md)
 
 ---
@@ -54,7 +53,6 @@
 - [Directory layout](reference/directory-layout.md)
 - [Change skills](reference/change-skills/index.md)
   - [/spec:plan](reference/change-skills/plan.md)
-  - [specify plan execute](reference/change-skills/execute.md)
   - [/spec:finalize](reference/change-skills/finalize.md)
 - [Slice skills](reference/slice-skills/index.md)
 - [CLI reference](reference/cli/index.md)
@@ -76,8 +74,6 @@
   - [Contracts](reference/targets/contracts.md)
 - [Registry](reference/registry.md)
 - [Configuration files](reference/configuration.md)
-- [Ignore directives](reference/ignore-directives.md)
-- [Declared tool helper inventory](reference/declared-tool-helper-inventory.md)
 - [Review team protocol](reference/review-team-protocol.md)
 
 ---

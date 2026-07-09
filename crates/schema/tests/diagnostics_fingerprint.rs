@@ -3,8 +3,8 @@
 
 use proptest::prelude::*;
 use schema::diagnostics::{
-    Confidence, DiagnosticKind, FindingEvidence, FindingLocation, FindingStatus, Severity,
-    canonical_json, fingerprint, verify_fingerprint,
+    Confidence, DiagnosticKind, FindingEvidence, FindingLocation, Severity, canonical_json,
+    fingerprint, verify_fingerprint,
 };
 use serde_json::json;
 
@@ -32,7 +32,7 @@ fn fp_excludes_producer_fields() {
     flipped.kind = DiagnosticKind::Review;
     assert_eq!(fingerprint(&flipped), expected, "kind axis is excluded");
 
-    let mut reworded = base.clone();
+    let mut reworded = base;
     reworded.title = "totally different title".into();
     reworded.id = "DIAG-9999".into();
     reworded.slice = Some("other-slice".into());
@@ -40,10 +40,6 @@ fn fp_excludes_producer_fields() {
     reworded.target_adapter = Some("vectis".into());
     reworded.confidence = Some(Confidence::Low);
     assert_eq!(fingerprint(&reworded), expected, "context is excluded");
-
-    let mut triaged = base;
-    triaged.status = Some(FindingStatus::Accepted);
-    assert_eq!(fingerprint(&triaged), expected, "status is excluded");
 }
 
 #[test]

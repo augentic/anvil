@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`tests/fixtures/plan/`](../../tests/fixtures/plan/) and [`tests/fixtures/e2e/goldens/`](../../tests/fixtures/e2e/goldens/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command. For the wire-schema accept/reject variant set, browse the canonical fixtures in [`tests/fixtures/plan/v2/`](../../tests/fixtures/plan/v2/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
 ### `specify plan create`
 

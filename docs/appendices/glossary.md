@@ -190,7 +190,7 @@ An Augentic product: a target that applies spec-first generation to cross-platfo
 ## W
 
 **WASI**
-The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Specify runs adapter operations and declared tools under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
+The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Specify runs adapter operations under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
 
 **Workspace**
 The top-level `workspace/` directory holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specify workspace sync` from `registry.yaml`. Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.

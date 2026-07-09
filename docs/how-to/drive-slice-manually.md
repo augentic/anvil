@@ -94,7 +94,7 @@ The `specify plan execute` loop holds the create-exclusive `.specify/guest.lock`
 <div class="see-also">
 <strong>See also</strong>
 
-- [specify plan execute](../reference/change-skills/execute.md) — stop conditions and re-entry
+- [specify plan execute](../reference/cli/plan.md#specify-plan-execute) — stop conditions and re-entry
 - [Drop down a layer](drop-down-a-layer.md) — full manual Layer 2 control
 - [Slice skills](../reference/slice-skills/index.md) — refine, build, merge reference
 </div>

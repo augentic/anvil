@@ -22,7 +22,7 @@ Each row below links to a per-phase stub; the skills are ultrathin wrappers, and
 | Skill | Purpose | Reads | Writes |
 | ----- | ------- | ----- | ------ |
 | [/spec:plan](plan.md) | Survey sources, propose slices, exit at `pending` | Bound sources, `project.yaml` | `change.md`, `plan.yaml`, `discovery.md` |
-| [specify plan execute](execute.md) | Drive approved plan through refine → build → merge (CLI verb, no skill wrapper) | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
+| [specify plan execute](../cli/plan.md#specify-plan-execute) | Drive approved plan through refine → build → merge (CLI verb, no skill wrapper) | `plan.yaml`, slice metadata | Per-entry `in-progress`; merge writes `done` |
 | [/spec:finalize](finalize.md) | Push branches, archive plan | Drained plan, workspace slots | Archived plan; no direct `.specify/` writes |
 
 ## How skills delegate

@@ -22,7 +22,7 @@ There is no manifest file. Identity is the guest crate's `(name, version)` — t
 | `inputs`        | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `specify slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
 | `platforms`     | no       | `{ required, allowed, default }` platforms capability; see [Anatomy of an adapter](../../explanation/adapter-anatomy.md). |
 
-Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration or host-dispatched helper. See [Tool declarations](../../explanation/tool-declarations.md).
+Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration or host-dispatched helper.
 
 ## How a target adapter participates in the loop
 

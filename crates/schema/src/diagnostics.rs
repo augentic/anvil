@@ -3,7 +3,7 @@
 //! This module owns the [`Diagnostic`] currency shared by both
 //! Specify check surfaces — the advisory review surface and the
 //! workflow-gating `validate` surface — together with the
-//! fingerprint algorithm, the validators, and the four renderers.
+//! fingerprint algorithm and the validators.
 //!
 //! The two surfaces stay conceptually distinct (they differ in gate
 //! policy, not in currency). Naming the substrate neutrally — rather
@@ -19,17 +19,14 @@
 
 pub mod diagnostic;
 pub mod fingerprint;
-pub mod render;
 pub mod validate;
 
 pub use diagnostic::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticReport, DiagnosticReportVersion,
-    DiagnosticSource, DiagnosticSummary, DirectiveDisposition, DispositionSource,
-    FindingDisposition, FindingEvidence, FindingLocation, FindingStatus, Severity, blocking,
-    blocking_present, count_status, renumber,
+    DiagnosticSource, DiagnosticSummary, FindingEvidence, FindingLocation, Severity, blocking,
+    blocking_present, renumber,
 };
 pub use fingerprint::{canonical_json, fingerprint, verify_fingerprint};
-pub use render::{Format, RenderError, render};
 pub use validate::{
     DiagnosticError, validate_diagnostic, validate_diagnostic_json, validate_evidence_size,
 };

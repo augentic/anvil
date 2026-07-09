@@ -52,9 +52,9 @@ none (it owns the registry of many). Mixing the two would produce a
 treat the project as an adapter source or as a registry root, and
 different verbs would disagree. Supplying both is a clap conflict
 (exit 2); supplying neither engages the elicitation layer — a TTY
-prompt, or the typed `init-adapter-required` — with the historical
-`init-requires-adapter-or-workspace` discriminant surviving as the
-workflow layer's defence-in-depth check.
+prompt, or the typed `init-adapter-required` — with the
+`init-requires-adapter-or-workspace` discriminant as the workflow
+layer's defence-in-depth check.
 
 ## Re-entry
 

@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../DECISIONS.md)) - Architecture: an SLM model backend behind the `wasi-model` boundary (RFC-61) — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
+> Status: Draft - Depends: the durable enforcement decisions in [`DECISIONS.md`](../../DECISIONS.md) - Architecture: an SLM model backend behind the `wasi-model` boundary — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 
@@ -124,7 +124,7 @@ The assistant output starts with the implementation plan because the existing Om
 
 ### Workflow Integration
 
-The Omnia adapter guest continues to drive the `build/crate.md` brief through `create` (RFC-61). The only new behavior is backend selection behind the `wasi-model` host — and RFC-61's compile-time-binding constraint rules out a per-call router, so the SLM slots in either as a dedicated deployment binding or as routing internal to one backend; decide which at activation time. The existing repair loop remains unchanged:
+The Omnia adapter guest continues to drive the `build/crate.md` prompt through `create`. The only new behavior is backend selection behind the `wasi-model` host — the compile-time-binding constraint rules out a per-call router, so the SLM slots in either as a dedicated deployment binding or as routing internal to one backend; decide which at activation time. The existing repair loop remains unchanged:
 
 ```text
 generate -> score -> repair -> score -> fallback if still failing
@@ -177,7 +177,6 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- RFC-28 — [DECISIONS.md §Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
-- RFC-32 — [DECISIONS.md §Standards layer split](../../DECISIONS.md#standards-layer-split-into-standards-and-schema)
-- RFC-10 / RFC-13
-- [`adapters/targets/omnia/prose/briefs/build/crate.md`](../../adapters/targets/omnia/prose/briefs/build/crate.md)
+- [DECISIONS.md §Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- [DECISIONS.md §Standards chain moved to the adapters](../../DECISIONS.md#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema)
+- [`targets/omnia/prose/prompts/build/crate.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md)

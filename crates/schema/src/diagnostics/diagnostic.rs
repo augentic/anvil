@@ -129,71 +129,6 @@ pub enum Confidence {
     Low,
 }
 
-/// Triage status for a [`Diagnostic`]. Omitted by raw scanners and
-/// populated by review reports, the directive post-pass, or
-/// CI state.
-///
-/// `Ignored` is set by the directive pass when a `specify-ignore`
-/// directive matches a diagnostic; `FalsePositive` is set by the same
-/// pass when the directive's rationale begins with `false-positive:`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum FindingStatus {
-    /// Untriaged; default for fresh diagnostics and the only
-    /// default-blocking value at exit time.
-    Open,
-    /// Demoted by a matching `specify-ignore` directive.
-    Ignored,
-    /// Resolved by a code change.
-    Fixed,
-    /// Operator-acknowledged; will not be fixed.
-    Accepted,
-    /// Producer-mistaken; the diagnostic does not apply.
-    FalsePositive,
-}
-
-/// Origin of a non-`open` `status` on a [`Diagnostic`].
-///
-/// Closed discriminator for the `disposition.source` wire field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum DispositionSource {
-    /// `specify-ignore` directive in the scanned source.
-    Directive,
-}
-
-/// `disposition.directive` payload populated when
-/// [`FindingDisposition::source`] is [`DispositionSource::Directive`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct DirectiveDisposition {
-    /// Project-relative path of the source file containing the
-    /// directive comment.
-    pub path: String,
-    /// 1-based line of the directive comment itself (not the target
-    /// line the directive applies to).
-    pub line: u32,
-    /// Free-form rationale captured verbatim from the directive
-    /// comment.
-    pub rationale: String,
-}
-
-/// Origin of a non-`open` finding status on a [`Diagnostic`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", deny_unknown_fields)]
-pub struct FindingDisposition {
-    /// Closed discriminator naming the disposition's origin.
-    pub source: DispositionSource,
-    /// Directive payload, populated when `source` is
-    /// [`DispositionSource::Directive`].
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub directive: Option<DirectiveDisposition>,
-    /// Optional free-form marker indicating when the disposition took
-    /// effect (commit hash, ISO-8601 timestamp, release tag, …).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub since: Option<String>,
-}
-
 /// File path plus optional line/column range carried by a
 /// [`Diagnostic`] or by a `digest`/`structured` evidence variant.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,14 +250,6 @@ pub struct Diagnostic {
     /// Stable hash over `(rule-id, location, evidence-payload)`.
     /// Format `sha256:<64 hex chars>`.
     pub fingerprint: String,
-    /// Triage status. Omitted by raw scanners; populated by review
-    /// reports, the directive post-pass, or CI state.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub status: Option<FindingStatus>,
-    /// Origin of a non-`open` `status`. Unset when `status` is `open`
-    /// or absent. Excluded from the fingerprint.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub disposition: Option<FindingDisposition>,
 }
 
 impl Diagnostic {
@@ -373,8 +300,6 @@ impl Diagnostic {
             remediation: title,
             confidence,
             fingerprint: String::new(),
-            status: None,
-            disposition: None,
         };
         diagnostic.fingerprint = crate::diagnostics::fingerprint::fingerprint(&diagnostic);
         diagnostic
@@ -457,15 +382,12 @@ pub fn renumber(findings: &mut [Diagnostic]) {
 /// Whether a diagnostic blocks at exit time.
 ///
 /// A diagnostic blocks only when it is a [`DiagnosticKind::Violation`]
-/// (a `review` request never gates), its severity is the blocking tier
-/// (`critical` or `important`), and its status is untriaged (`open` or
-/// unset). Demoted statuses (`ignored`, `accepted`, `fixed`,
-/// `false-positive`) never block.
+/// (a `review` request never gates) and its severity is the blocking
+/// tier (`critical` or `important`).
 #[must_use]
 pub const fn blocking(diagnostic: &Diagnostic) -> bool {
     matches!(diagnostic.kind, DiagnosticKind::Violation)
         && matches!(diagnostic.severity, Severity::Critical | Severity::Important)
-        && matches!(diagnostic.status, None | Some(FindingStatus::Open))
 }
 
 /// Whether any diagnostic in `diagnostics` blocks per [`blocking`].
@@ -535,9 +457,7 @@ impl DiagnosticSummary {
 /// emitted by every check producer.
 ///
 /// ```
-/// use schema::diagnostics::{
-///     Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary, Format, render,
-/// };
+/// use schema::diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary};
 ///
 /// let findings = vec![Diagnostic::violation(
 ///     "spec.requirement-id-missing",
@@ -551,8 +471,8 @@ impl DiagnosticSummary {
 ///     summary: DiagnosticSummary::from_diagnostics(&findings),
 ///     findings,
 /// };
-/// let compact = render(Format::Compact, &report).unwrap();
-/// assert!(compact.contains("spec.requirement-id-missing"));
+/// let wire = serde_json::to_string(&report).unwrap();
+/// assert!(wire.contains("spec.requirement-id-missing"));
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -562,25 +482,6 @@ pub struct DiagnosticReport {
     /// Diagnostic tally by severity.
     pub summary: DiagnosticSummary,
     /// Byte-stable list of structured diagnostics. Ordering is the
-    /// producer's responsibility; this crate preserves the input order
-    /// on every formatter.
+    /// producer's responsibility and is preserved on the wire.
     pub findings: Vec<Diagnostic>,
-}
-
-/// Count diagnostics whose `status` matches `target`.
-///
-/// Passing `None` counts the `open` bucket — an unset `status` is
-/// treated as `Open`.
-#[must_use]
-pub fn count_status(diagnostics: &[Diagnostic], target: Option<FindingStatus>) -> u32 {
-    let count = diagnostics
-        .iter()
-        .filter(|d| {
-            target.map_or_else(
-                || matches!(d.status, None | Some(FindingStatus::Open)),
-                |want| d.status == Some(want),
-            )
-        })
-        .count();
-    u32::try_from(count).unwrap_or(u32::MAX)
 }

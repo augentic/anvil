@@ -3,7 +3,6 @@
 //! path helper the CLI reaches for.
 
 mod atomic;
-pub mod tools;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -62,11 +61,6 @@ pub struct ProjectConfig {
     /// `pipeline.define` brief by `specify init`.
     #[serde(default)]
     pub rules: BTreeMap<String, String>,
-
-    /// Project-scope WASI tool declarations ([`tools::Extension`]).
-    /// Parse-clean only: no verb resolves or runs declared tools today.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub tools: Vec<tools::Extension>,
 
     /// Target platforms this project builds for (e.g. `core`, `ios`,
     /// `android`). Set at `specify init --platforms` and changeable via

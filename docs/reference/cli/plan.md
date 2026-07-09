@@ -8,7 +8,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 |------|-------------|
 | [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the repo root. Refuses to overwrite an existing plan. |
 | `author` | Guest-routed authoring orchestration: scaffold, survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/spec:plan`. |
-| `execute` | Guest-routed driver loop over an approved plan: claim → refine → build → merge per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.specify/guest.lock` marker. |
+| [`execute`](#specify-plan-execute) | Guest-routed driver loop over an approved plan: claim → refine → build → merge per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.specify/guest.lock` marker. |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state. |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
@@ -57,6 +57,18 @@ Health diagnostics layered on top — first triage step when `specify plan execu
 JSON output (`--format json`) is the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate` — see [`schemas/diagnostics/diagnostic-report.schema.json`](../../../schemas/diagnostics/diagnostic-report.schema.json). Each finding carries `rule-id` (kebab-case, e.g. `duplicate-name` / `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. The three health diagnostics attach their machine-readable payload to `evidence` as `{ "kind": "structured", "data": … }`; base validate findings carry a plain `snippet` evidence.
 
 Exit code: `0` when no blocking finding fires (suggestions are non-fatal); `2` when any blocking (`critical` / `important`) finding fires.
+
+### specify plan execute
+
+Drive an approved plan through refine → build → merge per entry under the guest lock.
+
+```bash
+specify plan execute
+```
+
+The loop claims the next eligible entry, runs the refine, build, and merge orchestrations, and repeats until `specify plan status` projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). It refuses unless the plan lifecycle is `approved`, and it holds the create-exclusive `.specify/guest.lock` marker for the run's lifetime — a second driver session exits with `guest-marker-held`.
+
+Stops render the `specify plan status` projection verbatim: the closed reason (`plan-not-approved`, `refine-failed`, `build-failed`, `merge-conflict`, `slice-dropped`, `merge-incomplete`, `stuck`), the failure detail from the journal, a one-line hint, and the literal resume command. Re-running `specify plan execute` after a stop resumes from the same active entry.
 
 ### specify plan next
 
@@ -128,7 +140,7 @@ Refuses with `plan-remove-plan-not-replaceable` when the plan is approved or any
 
 ### Lead reconciliation (inside `specify plan author`)
 
-The reconcile leg inside the guest-routed `specify plan author` groups the surveyed `discovery.md` leads into the plan's `slices[]` rows (the standalone two-phase envelope verb retired at the Omnia-migration cutover).
+The reconcile leg inside the guest-routed `specify plan author` groups the surveyed `discovery.md` leads into the plan's `slices[]` rows.
 
 - The **request** side is a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter).
 - The **write** side is the **only slice writer**. It schema-validates the judgment response (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates the explicit slice names, binds projects (auto-binding the sole project and deriving each slice's `target` from the bound project), atomically replaces `plan.yaml.slices[]`, then emits a single `plan.reconcile.completed` journal event. It never trusts a stale snapshot — `discovery.md` and the topology are re-read every invocation.
@@ -184,6 +196,5 @@ Moves `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/<YYYYM
 
 - [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
 - [/spec:plan](../change-skills/plan.md) -- skill that authors plans
-- [specify plan execute](../change-skills/execute.md) -- the guest-routed driver loop
 - [/spec:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
 - [Configuration Files](../configuration.md) -- plan.yaml and registry format

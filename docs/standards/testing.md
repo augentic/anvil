@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all
 
 ## Integration-first policy
 
-Integration tests under `tests/` use `assert_cmd::Command::cargo_bin("specify")`, drive the binary through clap, and assert against stdout JSON or filesystem state. Each crate exposes **one** integration binary, `tests/it.rs`, which pulls every area in as a `#[path]` submodule (`mod plan;`, `mod slice;`, …). The per-area files stay on disk — `tests/archive.rs`, `tests/plan.rs`, `tests/workspace.rs`, and so on — but they are modules of `it`, not standalone binaries; areas with several themed suites collapse their submodules under a sibling `tests/<area>/` directory via `#[path]` (e.g. `tests/slice/`, `tests/source/`, `tests/plan/`; a hub may also pull submodules from more than one such directory, as `plan` does from both `tests/plan/` and `tests/workflow/`). `tests/rust_quality/` stays a separate dev-gate binary. Both targets are declared explicitly because each crate sets `autotests = false` in its `Cargo.toml` to suppress per-file auto-discovery.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each crate exposes **one** integration binary, `tests/it.rs`, which pulls every area in as a `#[path]` submodule (`mod plan_schema;`, `mod workspace;`, …). The per-area files stay on disk — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — but they are modules of `it`, not standalone binaries. The repo-root `tests/` carries only the dev-gate binaries (`tests/framework/`, `tests/rust_quality.rs`) and the shared fixture trees under `tests/fixtures/`; end-to-end composed-deployment coverage lives in `crates/runtime/tests/`. Test targets are declared explicitly because each crate sets `autotests = false` in its `Cargo.toml` to suppress per-file auto-discovery.
 
 One integration binary per crate is the intentional layout — see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-one-binary-per-crate-path-submodules). The crate-under-test links once per crate instead of once per area, which is the build cost the per-area layout paid 31 times over; the per-crate `it` keeps `cargo test -p <crate>` and nextest's `-E 'test(<area>::)'` module filters useful for local iteration, so consolidation does not cost the per-area selectivity the earlier mega-binary attempt would have. Never group across crates — each crate's `tests/` is its own compilation unit, so `workflow`, `schema`, and `artifacts` each own a distinct `it`.
 
@@ -76,12 +76,12 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real `specify init` in a `tempfile::TempDir`. Reach for the shared helpers in `tests/common.rs` (`init_workspace`, `copy_dir`, `run_git`/`GIT_ENV`) and follow the fake-forge bare-repo patterns in `tests/workspace.rs` for multi-repo / fake-forge work; do not invent a parallel harness.
-- Compare stdout JSON against checked-in goldens under `tests/fixtures/e2e/goldens/`. Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -E 'test(e2e::)'` and `git diff` before committing. The harness substitutes tempdir paths to `<TEMPDIR>` so goldens stay machine-independent.
+- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common.rs` and follow the fake-forge bare-repo patterns in `crates/workflow/tests/workspace.rs` for multi-repo / fake-forge work; do not invent a parallel harness.
+- Compare structured output against checked-in goldens (the merge-engine goldens under `tests/fixtures/merge/`, the wire-schema fixtures under `tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
-- Tests that need git operations set the four `GIT_*` env vars from `tests/common::GIT_ENV` so authorship is deterministic.
+- Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
-The end-to-end fan-in-twice / fan-out-once path now runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice) and the guest-routing tests in `tests/guest.rs`; the exhaustive reconcile-code coverage over the same fan-out shape lives in `tests/workflow/`.
+The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice) and the composed-deployment tests in `crates/runtime/tests/`.
 
 ## Golden file discipline
 
@@ -89,4 +89,4 @@ The end-to-end fan-in-twice / fan-out-once path now runs through the guest orche
 
 ## Test-side gotchas
 
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or `stamp_slice_outcome` in `tests/common.rs` when a test needs a stamped phase outcome. The tests in `tests/slice.rs` are the canonical patterns.
+- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or the stamped-outcome helpers in `crates/workflow/tests/common.rs` when a test needs a stamped phase outcome.
