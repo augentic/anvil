@@ -1,0 +1,3 @@
+FAIL: Duplicate ID: REQ-001
+FAIL: Requirement 'Orphan requirement without ID line' has no ID: line
+FAIL: Requirement 'Missing scenario' (REQ-004) has no #### Scenario: section

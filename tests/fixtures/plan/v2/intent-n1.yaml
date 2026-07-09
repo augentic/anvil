@@ -1,0 +1,11 @@
+name: add-search-filter
+
+sources:
+  intent:
+    adapter: intent
+    value: "Add a search filter to the user list."
+
+slices:
+  - name: add-search-filter
+    sources: [intent]
+    status: pending
