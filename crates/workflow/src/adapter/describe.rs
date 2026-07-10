@@ -5,7 +5,7 @@
 //! lives in the component's own deterministic `describe` export, not in
 //! an on-disk manifest. The resolver obtains it through this module:
 //!
-//! - **Dispatch** runs through a process-global [`DescribeRunner`] seam
+//! - **Dispatch** runs through a process-global [`Runner`] seam
 //!   (`workflow` stays wasmtime-free); the specify guest shim registers
 //!   its runner at startup, routing each request through the
 //!   deployment's WIT `source` / `target` imports by adapter id. An
@@ -57,14 +57,14 @@ pub struct DescribeRequest<'a> {
 }
 
 /// The process-global describe dispatcher the guest shim registers.
-pub type DescribeRunner = fn(&DescribeRequest<'_>) -> Result<DescribeAnswer, Error>;
+pub type Runner = fn(&DescribeRequest<'_>) -> Result<DescribeAnswer, Error>;
 
-static RUNNER: OnceLock<DescribeRunner> = OnceLock::new();
+static RUNNER: OnceLock<Runner> = OnceLock::new();
 
 /// Register the process-global describe dispatcher. First registration
 /// wins; later calls are no-ops (the guest shim registers exactly one
 /// runner at startup, and tests may register a stub).
-pub fn register_describe_runner(runner: DescribeRunner) {
+pub fn register(runner: Runner) {
     let _ = RUNNER.set(runner);
 }
 

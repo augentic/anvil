@@ -24,9 +24,9 @@ The binary entry point is thin:
 src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  cli::parse + src/argv.rs
 ```
 
-The full operator grammar — provisioning commands included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's argv route table (`src/argv.rs`) converts each parsed clap action into the matching `Input` DTO and drives it through `cli::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
+The full operator grammar — provisioning commands included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's argv route table (`src/argv.rs`) is structurally symmetric with `src/http.rs` — explicit `Guest` impl + `export!` on wasm, shared `route(cli)` / `router(client)` match tables, one line per command. Each arm names only the handler type and passes a parsed `Input` through `cli::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
 
-The guest also exports `wasi:http/incoming-handler`: a hand-written route table in `src/http.rs` served through `omnia_wasi_http::serve` / `axum::serve` against the same provider, so every routed command is reachable over HTTP with the identical handler body and JSON envelope.
+The guest exports both transports explicitly from `argv.rs` and `http.rs` — no `guest!` macro in `lib.rs`.
 
 ## JSON envelope contract
 

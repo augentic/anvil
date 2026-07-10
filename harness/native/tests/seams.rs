@@ -5,7 +5,7 @@
 //! runner answers both axes.
 
 use serde_json::json;
-use specify_dev::provider::{NativeProvider, describe_runner};
+use specify_dev::provider::{NativeProvider, describe};
 use tempfile::TempDir;
 use testkit::MockModel;
 use workflow::adapter::Axis;
@@ -132,7 +132,7 @@ async fn unlinked_adapter_refused() {
 #[test]
 fn describe_answers_both_axes() {
     let component = std::path::Path::new("unused.wasm");
-    let source = describe_runner(&DescribeRequest {
+    let source = describe(&DescribeRequest {
         component,
         axis: Axis::Source,
         adapter_id: "source:intent",
@@ -141,7 +141,7 @@ fn describe_answers_both_axes() {
     assert_eq!(source.specify_floor, None);
     assert!(source.inputs.is_empty());
 
-    let target = describe_runner(&DescribeRequest {
+    let target = describe(&DescribeRequest {
         component,
         axis: Axis::Target,
         adapter_id: "target:omnia",
@@ -149,7 +149,7 @@ fn describe_answers_both_axes() {
     .expect("omnia describes");
     assert!(target.platforms.is_none());
 
-    let err = describe_runner(&DescribeRequest {
+    let err = describe(&DescribeRequest {
         component,
         axis: Axis::Source,
         adapter_id: "source:unknown",

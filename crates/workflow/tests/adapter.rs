@@ -27,10 +27,10 @@ use workflow::adapter::{
 mod common;
 
 /// Register the shared JSON-body describe stub (see
-/// [`common::register_describe_stub`]): the fixture component's bytes
+/// [`common::register_stub`]): the fixture component's bytes
 /// are the JSON `DescribeAnswer` itself.
 fn register_stub() {
-    common::register_describe_stub();
+    common::register_stub();
 }
 
 /// Stage a store entry for `(name, version)` whose bytes are `answer`

@@ -43,9 +43,7 @@ impl Project {
     /// describe runner, not the stub bytes).
     #[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
     pub fn new() -> Self {
-        workflow::adapter::describe::register_describe_runner(
-            specify_dev::provider::describe_runner,
-        );
+        workflow::adapter::describe::register(specify_dev::provider::describe);
         let tmp = TempDir::new().expect("tempdir");
         let root = tmp.path().canonicalize().expect("canonical tempdir");
         let prev = std::env::var_os(CACHE_ENV);

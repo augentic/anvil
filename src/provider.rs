@@ -125,7 +125,7 @@ impl TargetSeam for Provider {
 /// Infallible today: WIT `describe` carries no error channel, so a
 /// dispatch to an id absent from the deployment fails at the Omnia
 /// seam, not here.
-pub fn describe_runner(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
+pub fn describe(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
     Ok(match request.axis {
         Axis::Source => {
             let manifest = source::describe(request.adapter_id);

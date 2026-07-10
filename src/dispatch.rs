@@ -39,7 +39,7 @@ pub async fn main(argv: Vec<String>) -> u8 {
     // Adapter describe dispatch routes through this world's WIT
     // imports, so the resolvers work in-guest against the read-only
     // store and cache mounts.
-    adapter::describe::register_describe_runner(crate::provider::describe_runner);
+    adapter::describe::register(crate::provider::describe);
     let cli = match parse(argv) {
         Ok(cli) => cli,
         Err(exit) => return exit.code(),

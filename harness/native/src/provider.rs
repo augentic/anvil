@@ -194,7 +194,7 @@ impl<M: Model> TargetSeam for NativeProvider<M> {
 ///
 /// `adapter-describe-failed` when the request names an adapter this
 /// shim does not link.
-pub fn describe_runner(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
+pub fn describe(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
     match request.axis {
         Axis::Source => {
             let manifest = match request.adapter_id {

@@ -77,9 +77,13 @@ Each shim owns a hand-written axum `Router` in `http.rs`. The wasm guest builds 
 
 ## Dispatch contract (`argv.rs`)
 
-Each shim owns an exhaustive argv route table in `argv.rs` — deliberately duplicated per shim (the wasm guest's `src/argv.rs`, the native `specify-dev` binary's `harness/native/src/argv.rs`) so the compiler checks each shim's coverage of the grammar. HTTP routing lives symmetrically in `http.rs`. Target discipline per leaf arm:
+Each shim owns an exhaustive argv route table in `argv.rs` — deliberately duplicated per shim (the wasm guest's `src/argv.rs`, the native `specify-dev` binary's `harness/native/src/argv.rs`) so the compiler checks each shim's coverage of the grammar. HTTP routing lives symmetrically in `http.rs`.
 
-1. `preflight` — `register_describe_runner`, `check_plan_dir`
+On wasm, `argv.rs` exports `wasi:cli/run` explicitly — `struct Cli`, `wasip3::cli::command::export!(Cli)`, `impl Guest for Cli` — matching `http.rs`'s `struct Http` + `Guest::handle` and the Omnia `examples/cli/guest.rs` pattern. Do not hide CLI behind `guest!({ command: … })`. The clap parser root is `cli::Cli` (qualified); native `argv.rs` exposes `run(argv) -> u8` that calls the same `route(cli: cli::Cli)` function.
+
+Target discipline per leaf arm:
+
+1. `preflight` — `adapter::describe::register`, `check_plan_dir`
 2. `cli::parse` parses argv → `Commands` enum (leaf variants already hold `Input`)
 3. `cli::post::<R, _, _>` or `cli::get::<R, _, _>(format, provider, input)` — names only `R`, passes parsed `input`
 4. Shim policy at the edges: `refuse` for provisioning commands, `completions` for shell scripts

@@ -706,13 +706,13 @@ fn c07_push_wrong_branch_no_checkout() {
 /// The slot pins `omnia@1.0.0`, which resolves the single-file global
 /// store entry (the caller pins `SPECIFY_ADAPTER_STORE` via
 /// `common::scoped_store`); the describe answer is stubbed through the
-/// JSON-body runner registered by `common::register_describe_stub`.
+/// JSON-body runner registered by `common::register_stub`.
 fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {
     let slot = project_dir.join("workspace").join(name);
     let slot_specify = slot.join(".specify");
     fs::create_dir_all(&slot_specify).unwrap();
     fs::write(slot_specify.join("project.yaml"), project_yaml).unwrap();
-    common::register_describe_stub();
+    common::register_stub();
     let entry = schema::cache::adapter_store_entry("omnia", "1.0.0");
     fs::create_dir_all(entry.parent().unwrap()).unwrap();
     fs::write(&entry, "{}").unwrap();
