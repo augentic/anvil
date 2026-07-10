@@ -27,7 +27,7 @@ Authority is set on the **Evidence document** during `extract`; the table above 
 
 ## Identity and metadata
 
-There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name (unique across both axes) and the exact-semver `Cargo.toml` version, published as `specify:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export; for sources it carries only the optional `specify-floor` host-CLI compatibility floor.
+There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name (unique across both axes) and the exact-semver `Cargo.toml` version, published as `specify:<name>@<semver>`. Metadata is the WIT `metadata` record returned by the component's deterministic `metadata` export; for sources it carries only the optional `specify-floor` host-CLI compatibility floor.
 
 The operation set is not declared anywhere on the wire — it derives from the closed WIT contract (`wit/specify.wit`: `survey`, `extract`), and the prompts are compiled into the adapter component.
 
@@ -42,7 +42,7 @@ Both operations run sandboxed under the WASI Preview 2 posture — directory pre
 
 ## Validation
 
-The metadata shape is the WIT `manifest` record on the `source` interface (`wit/specify.wit`) — typed at the component boundary, so there is no wire schema to validate against. `specify source resolve <name>` locates the component and dispatches `describe` on first use; `specify source survey` / `specify source extract` run the bound operation as one guest orchestration each.
+The metadata shape is the WIT `metadata` record on the `source` interface (`wit/specify.wit`) — typed at the component boundary, so there is no wire schema to validate against. `specify source resolve <name>` locates the component and dispatches `metadata` on first use; `specify source survey` / `specify source extract` run the bound operation as one guest orchestration each.
 
 ## See also
 

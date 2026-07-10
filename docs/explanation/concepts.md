@@ -146,7 +146,7 @@ A **source adapter** is the input role. It reads external material (operator int
 
 A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `guidance` (idiom guidance read by core synthesis), `build` (writes code), `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
 
-Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `describe` export. See [Anatomy of an adapter](adapter-anatomy.md).
+Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export. See [Anatomy of an adapter](adapter-anatomy.md).
 
 You pick the target at scaffolding time (`/spec:init <target>`). You bind sources per change (`/spec:plan <name> source legacy=./repo source docs=./design-notes`).
 

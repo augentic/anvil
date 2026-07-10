@@ -3,9 +3,9 @@
 //! Exports the `specify:adapter` `target-adapter` world with trivial,
 //! model-free operations plus `wasi:http/incoming-handler` serving a
 //! compiled-in single-document MCP references. The component
-//! exists so host-side tests (init platform gates, describe-driven
+//! exists so host-side tests (init platform gates, metadata-driven
 //! resolve, guest-leg discovery) can exercise a *real* target
-//! component: `describe` keys its platforms capability off the routed
+//! component: `metadata` keys its platforms capability off the routed
 //! `adapter-id`, letting one binary stand in for both a
 //! platform-agnostic target and a platforms-requiring one.
 #![cfg(target_arch = "wasm32")]
@@ -29,7 +29,7 @@ mod bindings {
         world: "target-adapter",
         path: "../wit",
         // Asyncness follows the WIT declarations: the judgment operations
-        // are `async func`s and async-lift; `describe` is a plain `func`
+        // are `async func`s and async-lift; `metadata` is a plain `func`
         // (deterministic, effect-free) and sync-lifts — forcing it
         // async would fail component validation at load.
         generate_all,
@@ -39,7 +39,7 @@ mod bindings {
 }
 
 use bindings::exports::specify::adapter::target::{
-    AdapterId, Changeset, Error, Guest, Input, Manifest, Platform, PlatformsCapability, Report,
+    AdapterId, Changeset, Error, Guest, Input, Metadata, Platform, PlatformsCapability, Report,
     Status, WorkingTree,
 };
 use omnia_guest::mcp::{
@@ -51,7 +51,7 @@ use wasip3::http::types as http;
 struct EchoTarget;
 
 impl Guest for EchoTarget {
-    fn describe(id: AdapterId) -> Manifest {
+    fn metadata(id: AdapterId) -> Metadata {
         // Deterministic per identity — fixture-only branching so one
         // binary stands in for several capability shapes (real adapters
         // compile in one answer):
@@ -73,7 +73,7 @@ impl Guest for EchoTarget {
         } else {
             None
         };
-        Manifest {
+        Metadata {
             specify_floor: None,
             inputs: Vec::new(),
             platforms,

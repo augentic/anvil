@@ -16,7 +16,7 @@ Layer 0 is the static project configuration plus the adapter manifests every hig
 The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
-- **Adapter components** — each source / target adapter is a single WebAssembly component whose metadata is its own `describe` export (no manifest file; operations derive from the WIT contract per axis).
+- **Adapter components** — each source / target adapter is a single WebAssembly component whose metadata is its own `metadata` export (no manifest file; operations derive from the WIT contract per axis).
 - **JSON Schemas** — the authoritative `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary, with sources in-tree under [`schemas/`](../../schemas).
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 

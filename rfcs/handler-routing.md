@@ -119,7 +119,7 @@ harness/native/src/           # native shim
   http.rs                     # serve() → same router(client) as the guest
 ```
 
-`**argv.rs**` — not `cli.rs` — avoids a name collision with the workspace `cli` crate (`use cli::parse`, `cli::front::run`, …). Reserve **dispatch** for adapter/host dispatch (describe runner, Omnia dispatch-by-id); shim filenames use **argv** / **http** for transport routing.
+`**argv.rs**` — not `cli.rs` — avoids a name collision with the workspace `cli` crate (`use cli::parse`, `cli::front::run`, …). Reserve **dispatch** for adapter/host dispatch (metadata runner, Omnia dispatch-by-id); shim filenames use **argv** / **http** for transport routing.
 
 ### Symmetric transport files
 
@@ -161,7 +161,7 @@ wasip3::cli::command::export!(Cli);
 
 impl wasip3::exports::cli::run::Guest for Cli {
     async fn run() -> Result<(), ()> {
-        adapter::describe::register(crate::provider::describe);
+        adapter::metadata::register(crate::provider::metadata);
         let argv = wasip3::cli::environment::get_arguments();
         let cli = match cli::parse(argv) {
             Ok(cli) => cli,
@@ -190,7 +190,7 @@ Native has no WASI `Guest` trait; `harness/native/src/argv.rs` exposes a process
 ```rust
 // harness/native/src/argv.rs — native transport entry
 pub async fn run(argv: Vec<String>) -> u8 {
-    adapter::describe::register(crate::provider::describe);
+    adapter::metadata::register(crate::provider::metadata);
     let cli = match cli::parse(argv) {
         Ok(cli) => cli,
         Err(exit) => return exit.code(),
@@ -259,7 +259,7 @@ Nesting in the grammar is for **namespacing only** (`Commands` → `SliceAction`
 
 Stay at the edges — not mixed into per-command routing:
 
-- **`preflight`** — `adapter::describe::register` (idempotent `OnceLock`), `check_plan_dir`
+- **`preflight`** — `adapter::metadata::register` (idempotent `OnceLock`), `check_plan_dir`
 - `**refuse**` — provisioning commands with no guest impl (`init` without `--scaffold-only`, `adapters`, `workspace`, `upgrade`, `plugins`)
 - `**completions**` — argv-transport sugar; not a `Handler`
 
@@ -282,7 +282,7 @@ wasip3::http::service::export!(Http);
 
 impl wasip3::exports::http::handler::Guest for Http {
     async fn handle(request: Request) -> Result<Response, ErrorCode> {
-        adapter::describe::register(crate::provider::describe);
+        adapter::metadata::register(crate::provider::metadata);
         let client = Client::new("specify").provider(Provider);
         omnia_wasi_http::serve(router(client), request).await
     }

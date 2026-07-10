@@ -181,19 +181,19 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
 /// Register the JSON-body describe stub (idempotent; nextest gives each
 /// test its own process, so the process-global registration is
 /// per-test). The stub parses the component file's bytes as a JSON
-/// `DescribeAnswer`, so a test controls its adapter's metadata by
+/// `Metadata`, so a test controls its adapter's metadata by
 /// writing the fixture component (`{}` for an empty answer).
 pub fn register_stub() {
     use error::Error;
-    use workflow::adapter::describe::{DescribeAnswer, DescribeRequest, register};
+    use workflow::adapter::metadata::{Metadata, MetadataRequest, register};
 
-    fn stub(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
+    fn stub(request: &MetadataRequest<'_>) -> Result<Metadata, Error> {
         let raw = std::fs::read_to_string(request.component).map_err(|err| Error::Diag {
-            code: "adapter-describe-failed",
+            code: "adapter-metadata-failed",
             detail: format!("stub read {}: {err}", request.component.display()),
         })?;
         serde_json::from_str(&raw).map_err(|err| Error::Diag {
-            code: "adapter-describe-failed",
+            code: "adapter-metadata-failed",
             detail: format!("stub parse {}: {err}", request.component.display()),
         })
     }
@@ -205,7 +205,7 @@ pub fn register_stub() {
 /// development probe (`<root>/target/wasm32-wasip2/release/
 /// <name>.wasm`) and register the JSON-body describe stub, so a
 /// bare-name resolve inside `root` succeeds with an empty
-/// `DescribeAnswer`.
+/// `Metadata`.
 pub fn stage_dev_component(root: &std::path::Path, name: &str) {
     register_stub();
     let dev_dir = root.join("target/wasm32-wasip2/release");

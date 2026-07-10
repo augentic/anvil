@@ -21,7 +21,7 @@ use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Reply, Request};
 use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use workflow::adapter::describe::{DescribeAnswer, DescribeRequest};
+use workflow::adapter::metadata::{Metadata, MetadataRequest};
 use workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
 use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
 use workflow::slice::build::wire::BUILD_VERSION;
@@ -183,44 +183,44 @@ impl<M: Model> TargetSeam for NativeProvider<M> {
     }
 }
 
-/// In-process describe dispatch.
+/// In-process metadata dispatch.
 ///
-/// The resolvers' [`DescribeRequest`] is answered by calling each
-/// linked adapter's `operations::describe()` directly — the native
+/// The resolvers' [`MetadataRequest`] is answered by calling each
+/// linked adapter's `operations::metadata()` directly — the native
 /// counterpart of the guest shim's WIT-routed runner. Registered by
 /// `specify-dev` at startup.
 ///
 /// # Errors
 ///
-/// `adapter-describe-failed` when the request names an adapter this
+/// `adapter-metadata-failed` when the request names an adapter this
 /// shim does not link.
-pub fn describe(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> {
+pub fn metadata(request: &MetadataRequest<'_>) -> Result<Metadata, Error> {
     match request.axis {
         Axis::Source => {
-            let manifest = match request.adapter_id {
-                "source:captures" => captures::operations::describe(),
-                "source:documentation" => documentation::operations::describe(),
-                "source:intent" => intent::operations::describe(),
-                "source:screenshots" => screenshots::operations::describe(),
-                "source:typescript" => typescript::operations::describe(),
+            let record = match request.adapter_id {
+                "source:captures" => captures::operations::metadata(),
+                "source:documentation" => documentation::operations::metadata(),
+                "source:intent" => intent::operations::metadata(),
+                "source:screenshots" => screenshots::operations::metadata(),
+                "source:typescript" => typescript::operations::metadata(),
                 other => return Err(not_linked(other)),
             };
-            Ok(DescribeAnswer {
-                specify_floor: manifest.specify_floor,
+            Ok(Metadata {
+                specify_floor: record.specify_floor,
                 inputs: Vec::new(),
                 platforms: None,
             })
         }
         Axis::Target => {
-            let manifest = match request.adapter_id {
-                "target:contracts" => contracts::operations::describe(),
-                "target:omnia" => omnia_target::operations::describe(),
-                "target:vectis" => vectis::operations::describe(),
+            let record = match request.adapter_id {
+                "target:contracts" => contracts::operations::metadata(),
+                "target:omnia" => omnia_target::operations::metadata(),
+                "target:vectis" => vectis::operations::metadata(),
                 other => return Err(not_linked(other)),
             };
-            Ok(DescribeAnswer {
-                specify_floor: manifest.specify_floor,
-                inputs: manifest
+            Ok(Metadata {
+                specify_floor: record.specify_floor,
+                inputs: record
                     .inputs
                     .into_iter()
                     .map(|input| BuildInputDeclaration {
@@ -228,7 +228,7 @@ pub fn describe(request: &DescribeRequest<'_>) -> Result<DescribeAnswer, Error> 
                         required: input.required,
                     })
                     .collect(),
-                platforms: manifest.platforms.map(|capability| PlatformsCapability {
+                platforms: record.platforms.map(|capability| PlatformsCapability {
                     required: capability.required,
                     allowed: capability.allowed.into_iter().map(map_platform).collect(),
                     default: capability.default.into_iter().map(map_platform).collect(),
@@ -243,10 +243,10 @@ fn unlinked(id: &str) -> seam::Error {
     seam::Error::InvalidRequest(format!("adapter `{id}` is not linked into the native shim"))
 }
 
-/// The describe-time flavour of [`unlinked`].
+/// The metadata-time flavour of [`unlinked`].
 fn not_linked(id: &str) -> Error {
     Error::Diag {
-        code: "adapter-describe-failed",
+        code: "adapter-metadata-failed",
         detail: format!("adapter `{id}` is not linked into the native shim"),
     }
 }

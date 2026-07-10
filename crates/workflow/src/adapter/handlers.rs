@@ -97,7 +97,7 @@ fn project_dir(input: &ResolveInput, provider: &impl Anchor) -> PathBuf {
 pub struct ResolveBody {
     /// Axis directory segment (`sources` / `targets`).
     pub axis: &'static str,
-    /// Adapter name from the component's `describe` metadata.
+    /// Adapter name from the component's metadata.
     pub name: String,
     /// Adapter version.
     pub version: String,

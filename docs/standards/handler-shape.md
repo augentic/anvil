@@ -83,7 +83,7 @@ On wasm, `argv.rs` exports `wasi:cli/run` explicitly — `struct Cli`, `wasip3::
 
 Target discipline per leaf arm:
 
-1. `preflight` — `adapter::describe::register`, `check_plan_dir`
+1. `preflight` — `adapter::metadata::register`, `check_plan_dir`
 2. `cli::parse` parses argv → `Commands` enum (leaf variants already hold `Input`)
 3. `cli::post::<R, _, _>` or `cli::get::<R, _, _>(format, provider, input)` — names only `R`, passes parsed `input`
 4. Shim policy at the edges: `refuse` for provisioning commands, `completions` for shell scripts

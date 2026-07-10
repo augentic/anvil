@@ -7,7 +7,7 @@ Echo WASI guest components, following the same layout as [omnia's `examples/`](h
 The echo adapter guests — skeleton `specify:adapter` components usable in composed deployments so the WIT imports resolve without the sibling adapters checkout:
 
 - **`echo_source`** ([`echo/source.rs`](echo/source.rs)) exports the `source-adapter` world: `survey` returns one hardcoded lead and `extract` one trivial claim, plus a compiled-in single-document MCP references over `wasi:http`.
-- **`echo_target`** ([`echo/target.rs`](echo/target.rs)) exports the `target-adapter` world with trivial, model-free operations; `describe` keys its platforms capability off the routed `adapter-id` so one binary stands in for several capability shapes.
+- **`echo_target`** ([`echo/target.rs`](echo/target.rs)) exports the `target-adapter` world with trivial, model-free operations; `metadata` keys its platforms capability off the routed `adapter-id` so one binary stands in for several capability shapes.
 
 Both compile against this repo's own [`wit/`](../../wit/) — the fixtures that let a contract revision and its seam tests land in one engine PR — and are deliberately model-free: they exercise the runtime seams, not Specify logic. Build them from inside `harness/` with:
 

@@ -39,7 +39,7 @@ async fn main() -> ExitCode {
     // Adapter describe dispatch calls the linked adapter crates'
     // `describe()` directly, so the resolvers work without a wasm
     // runtime.
-    adapter::describe::register(provider::describe);
+    adapter::metadata::register(provider::metadata);
 
     let argv: Vec<String> = std::env::args().collect();
     let outcome = if argv.get(1).map(String::as_str) == Some("serve") {

@@ -1,15 +1,15 @@
 //! Seam-level coverage of [`NativeProvider`]: the in-process dispatch
 //! table reaches the real adapter operations (scripted through
 //! `testkit::MockModel`), the DTO mappings match the guest shim's WIT
-//! projections (claim JSON keys, report widening), and the describe
+//! projections (claim JSON keys, report widening), and the metadata
 //! runner answers both axes.
 
 use serde_json::json;
-use specify_dev::provider::{NativeProvider, describe};
+use specify_dev::provider::{NativeProvider, metadata};
 use tempfile::TempDir;
 use testkit::MockModel;
 use workflow::adapter::Axis;
-use workflow::adapter::describe::DescribeRequest;
+use workflow::adapter::metadata::MetadataRequest;
 use workflow::seam::{Error, Input, Lead, SourceSeam as _, TargetSeam as _, WorkingTree};
 use workflow::slice::BuildStatus;
 
@@ -130,26 +130,26 @@ async fn unlinked_adapter_refused() {
 }
 
 #[test]
-fn describe_answers_both_axes() {
+fn metadata_answers_both_axes() {
     let component = std::path::Path::new("unused.wasm");
-    let source = describe(&DescribeRequest {
+    let source = metadata(&MetadataRequest {
         component,
         axis: Axis::Source,
         adapter_id: "source:intent",
     })
-    .expect("intent describes");
+    .expect("intent metadata");
     assert_eq!(source.specify_floor, None);
     assert!(source.inputs.is_empty());
 
-    let target = describe(&DescribeRequest {
+    let target = metadata(&MetadataRequest {
         component,
         axis: Axis::Target,
         adapter_id: "target:omnia",
     })
-    .expect("omnia describes");
+    .expect("omnia metadata");
     assert!(target.platforms.is_none());
 
-    let err = describe(&DescribeRequest {
+    let err = metadata(&MetadataRequest {
         component,
         axis: Axis::Source,
         adapter_id: "source:unknown",

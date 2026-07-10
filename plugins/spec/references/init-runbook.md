@@ -171,7 +171,7 @@ Store the result as `$PROFILE`. Do not pre-populate the out-of-tree per-project 
 
 ### 4b. Elicit platforms *(regular only — skip in workspace mode)*
 
-When the target adapter declares `platforms.required` (e.g. vectis), prompt the operator for the platform set before invoking `specify init`. The `default` and `allowed` sets come from the adapter's `describe` answer (available from the `--format json` output of a dry-run resolve).
+When the target adapter declares `platforms.required` (e.g. vectis), prompt the operator for the platform set before invoking `specify init`. The `default` and `allowed` sets come from the adapter's `metadata` answer (available from the `--format json` output of a dry-run resolve).
 
 Use the **AskQuestion tool** to elicit the set:
 

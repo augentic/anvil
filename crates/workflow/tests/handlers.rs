@@ -240,7 +240,7 @@ mod scaffold {
         fs::write(&component, b"\0asm-component").expect("stage component");
         let digest = schema::cache::file_content_digest(&component);
         fs::write(
-            dev_dir.join("demo.wasm.describe.json"),
+            dev_dir.join("demo.wasm.metadata.json"),
             format!("{{ \"digest\": \"{digest}\", \"manifest\": {{}} }}"),
         )
         .expect("stage describe sidecar");

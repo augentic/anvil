@@ -33,13 +33,13 @@ use workflow::{adapter, init, journal, orchestrate, registry, slice};
 use crate::provider::Provider;
 
 /// The `command:` trigger's dispatch body: parse argv through the
-/// shared grammar, register the in-guest describe runner, and drive
+/// shared grammar, register the in-guest metadata runner, and drive
 /// the matched command to its numeric exit code.
 pub async fn main(argv: Vec<String>) -> u8 {
-    // Adapter describe dispatch routes through this world's WIT
+    // Adapter metadata dispatch routes through this world's WIT
     // imports, so the resolvers work in-guest against the read-only
     // store and cache mounts.
-    adapter::describe::register(crate::provider::describe);
+    adapter::metadata::register(crate::provider::metadata);
     let cli = match parse(argv) {
         Ok(cli) => cli,
         Err(exit) => return exit.code(),

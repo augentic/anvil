@@ -27,7 +27,7 @@ mod bindings {
         path: "../wit",
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s (judgment legs await the async `omnia:model`
-        // import mid-call) and async-lift; `describe` is a plain `func`
+        // import mid-call) and async-lift; `metadata` is a plain `func`
         // (deterministic, effect-free) and sync-lifts — forcing it
         // async would fail component validation at load.
         generate_all,
@@ -37,7 +37,7 @@ mod bindings {
 }
 
 use bindings::exports::specify::adapter::source::{
-    AdapterId, Authority, Claim, ClaimKind, Error, Evidence, Guest, Lead, Manifest,
+    AdapterId, Authority, Claim, ClaimKind, Error, Evidence, Guest, Lead, Metadata,
 };
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
@@ -48,8 +48,8 @@ use wasip3::http::types as http;
 struct EchoAdapter;
 
 impl Guest for EchoAdapter {
-    fn describe(_id: AdapterId) -> Manifest {
-        Manifest { specify_floor: None }
+    fn metadata(_id: AdapterId) -> Metadata {
+        Metadata { specify_floor: None }
     }
 
     async fn survey(id: AdapterId) -> Result<Vec<Lead>, Error> {

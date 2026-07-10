@@ -8,7 +8,7 @@ Two adapter roles — `source` (operations: `survey`, `extract`) and `target` (o
 
 ## Adapter implementation shape
 
-An adapter is one `.wasm` component. Identity (`name`, `version`) is carried by the artifact's location — the store entry filename for a pinned identity, the guest crate's `Cargo.toml` version at publish time. Non-identity metadata — an optional `specify` compatibility floor and (targets) an optional `platforms` capability and `inputs[]` list — is the WIT `manifest` record returned by the component's deterministic `describe` export, dispatched host-side at resolve time and cached against the component's digest. The closed operation set derives from the binding axis per the WIT contract; operation behaviour (prompts included) is compiled into the component. Implementation: [`crates/workflow/src/adapter/`](../../crates/workflow/src/adapter); the WIT contract at [`wit/specify.wit`](../../wit/specify.wit).
+An adapter is one `.wasm` component. Identity (`name`, `version`) is carried by the artifact's location — the store entry filename for a pinned identity, the guest crate's `Cargo.toml` version at publish time. Non-identity metadata — an optional `specify` compatibility floor and (targets) an optional `platforms` capability and `inputs[]` list — is the WIT `metadata` record returned by the component's deterministic `metadata` export, dispatched host-side at resolve time and cached against the component's digest. The closed operation set derives from the binding axis per the WIT contract; operation behaviour (prompts included) is compiled into the component. Implementation: [`crates/workflow/src/adapter/`](../../crates/workflow/src/adapter); the WIT contract at [`wit/specify.wit`](../../wit/specify.wit).
 
 ## Source adapter contract
 
@@ -18,7 +18,7 @@ The WIT `source` interface; the closed operation set `{extract, survey}` derives
 
 ## Target adapter contract
 
-The WIT `target` interface; the closed operation set `{guidance, build, merge}` derives from the WIT contract. `guidance` is read by core synthesis; `build` and `merge` are agent-driven. The optional `inputs[]` in the target's `describe` answer (a flat `{ path, required }` list, paths relative to the build request's `inputs.root`) declares the target-specific build inputs the CLI assembles into `inputs.artifacts.additional[]`.
+The WIT `target` interface; the closed operation set `{guidance, build, merge}` derives from the WIT contract. `guidance` is read by core synthesis; `build` and `merge` are agent-driven. The optional `inputs[]` in the target's `metadata` answer (a flat `{ path, required }` list, paths relative to the build request's `inputs.root`) declares the target-specific build inputs the CLI assembles into `inputs.artifacts.additional[]`.
 
 `specify slice build <slice> [--format json]` is the guest-routed target build runner (`orchestrate::build`). It is the symmetric target-side twin of `specify source survey` / `extract`: the orchestrator owns request assembly, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `built` transition gate, while the bound target's `build` prompt (compiled into the adapter guest) owns only code generation. It resolves the target from the slice's bound project — `plan.yaml` stores the slice's `project`, not a resolved `target`. The orchestration assembles + schema-validates the request, writes `.specify/slices/<slice>/build/request.yaml`, emits `target.execution.agent`, drives the adapter guest's `build` judgment leg (any build prelude, e.g. vectis asset materialization, is in-guest adapter code), validates the resulting `build/report.yaml`, rejects a `success` report carrying a blocking finding, gates the `Refined → Built` transition, and journals `slice.build.succeeded` / `slice.build.failed`.
 
@@ -43,7 +43,7 @@ The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `v
 
 ## Adapter name uniqueness
 
-Adapter names remain unique across axes — one component exports exactly one axis interface, and a name identifies one published package. A component bound on the wrong axis fails resolve with the typed `adapter-axis-mismatch` (the `describe` dispatch verifies the expected axis export before the call).
+Adapter names remain unique across axes — one component exports exactly one axis interface, and a name identifies one published package. A component bound on the wrong axis fails resolve with the typed `adapter-axis-mismatch` (the metadata dispatch verifies the expected axis export before the call).
 
 ## Discovery handshake
 

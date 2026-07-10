@@ -24,7 +24,7 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/schemas/plan/plan.schema.json
 ```
 
-Workflow and consumer schemas (`plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`) all ship in-tree under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json). (Adapters have no manifest file — adapter metadata comes from the component's `describe` export, so there is no adapter schema to bind.)
+Workflow and consumer schemas (`plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`) all ship in-tree under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json). (Adapters have no manifest file — adapter metadata comes from the component's `metadata` export, so there is no adapter schema to bind.)
 
 **Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. The framework-quality tests extract the leading `---` block from `SKILL.md` and scenario Markdown files and validate it against the same JSON Schemas under `schemas/authoring/`.
 

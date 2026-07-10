@@ -14,7 +14,7 @@ Target adapters do not own `spec.md` or `design.md` synthesis — that is **core
 
 ## Identity and metadata
 
-There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name and the exact-semver `Cargo.toml` version, published as `specify:<name>@<semver>`. Metadata is the WIT `manifest` record returned by the component's deterministic `describe` export:
+There is no manifest file. Identity is the guest crate's `(name, version)` — the kebab-case package name and the exact-semver `Cargo.toml` version, published as `specify:<name>@<semver>`. Metadata is the WIT `metadata` record returned by the component's deterministic `metadata` export:
 
 | Field           | Required | Meaning |
 | --------------- | -------- | ------- |
@@ -59,7 +59,7 @@ Shared material used by multiple adapters lives outside the adapter roots under 
 
 ## Validation
 
-The metadata shape is the WIT `manifest` record on the `target` interface (`wit/specify.wit`) — typed at the component boundary, so there is no wire schema to validate against. `specify target resolve <value>` locates the component and dispatches `describe` on first use.
+The metadata shape is the WIT `metadata` record on the `target` interface (`wit/specify.wit`) — typed at the component boundary, so there is no wire schema to validate against. `specify target resolve <value>` locates the component and dispatches `metadata` on first use.
 
 ## See also
 

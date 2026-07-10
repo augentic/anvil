@@ -5,11 +5,11 @@
 //! - pinned identities resolving the single-file store entry
 //!   (`<store-root>/<name>@<version>.wasm`), verify-on-read included.
 //! - bare names resolving the project component cache.
-//! - describe-driven metadata: floor gate, malformed floor, target
-//!   inputs + platforms, and the digest-keyed describe sidecar cache.
+//! - metadata-driven resolution: floor gate, malformed floor, target
+//!   inputs + platforms, and the digest-keyed metadata sidecar cache.
 //!
-//! Describe dispatch is stubbed with a registered runner that parses
-//! the component file's bytes as a JSON `DescribeAnswer` — each test
+//! Metadata dispatch is stubbed with a registered runner that parses
+//! the component file's bytes as a JSON `Metadata` — each test
 //! controls its adapter's answer by writing the fixture component.
 //! (nextest runs each test in its own process, so the process-global
 //! runner registration is per-test.)
@@ -18,7 +18,7 @@ use std::fs;
 use std::path::Path;
 
 use error::Error;
-use workflow::adapter::describe::describe_cache_path;
+use workflow::adapter::metadata::metadata_cache_path;
 use workflow::adapter::{
     AdapterLocation, AdapterRef, SourceAdapter, SourceOperation, TargetAdapter, TargetOperation,
     component_cache_entry,
@@ -28,7 +28,7 @@ mod common;
 
 /// Register the shared JSON-body describe stub (see
 /// [`common::register_stub`]): the fixture component's bytes
-/// are the JSON `DescribeAnswer` itself.
+/// are the JSON `Metadata` itself.
 fn register_stub() {
     common::register_stub();
 }
@@ -71,11 +71,11 @@ fn pinned_resolves_from_store() {
 
     // The describe answer is cached against the component digest as a
     // sidecar beside the entry.
-    assert!(describe_cache_path(&entry).is_file(), "describe sidecar recorded beside the entry");
+    assert!(metadata_cache_path(&entry).is_file(), "metadata sidecar recorded beside the entry");
 }
 
 #[test]
-fn describe_cache_short_circuits() {
+fn metadata_cache_short_circuits() {
     register_stub();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
@@ -89,11 +89,11 @@ fn describe_cache_short_circuits() {
     // Rewrite the cached sidecar with a different answer under the same
     // digest: a second resolve must return the sidecar answer without
     // re-dispatching (the stub would have returned an empty answer).
-    let sidecar = describe_cache_path(&entry);
+    let sidecar = metadata_cache_path(&entry);
     let digest = schema::cache::file_content_digest(&entry);
     fs::write(
         &sidecar,
-        format!(r#"{{ "digest": "{digest}", "manifest": {{ "specify-floor": "0.1.0" }} }}"#),
+        format!(r#"{{ "digest": "{digest}", "metadata": {{ "specify-floor": "0.1.0" }} }}"#),
     )
     .expect("rewrite sidecar");
 
@@ -194,7 +194,7 @@ fn store_entry_digest_mismatch_refused() {
 }
 
 #[test]
-fn floor_gate_from_describe_answer() {
+fn floor_gate_from_metadata() {
     register_stub();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
@@ -225,7 +225,7 @@ fn floor_gate_from_describe_answer() {
 }
 
 #[test]
-fn target_metadata_from_describe_answer() {
+fn target_metadata_from_metadata_answer() {
     register_stub();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
@@ -252,7 +252,7 @@ fn target_metadata_from_describe_answer() {
         &AdapterRef::pinned("vectis", semver::Version::new(1, 0, 4)),
         &project,
     )
-    .expect("target adapter resolves with describe metadata");
+    .expect("target adapter resolves with metadata");
     assert_eq!(resolved.manifest.inputs.len(), 2, "both declared inputs survive");
     assert_eq!(resolved.manifest.inputs[0].path, "tokens.yaml");
     assert!(resolved.manifest.inputs[0].required);
@@ -273,7 +273,7 @@ fn target_metadata_from_describe_answer() {
         &AdapterRef::pinned("omnia", semver::Version::new(1, 0, 0)),
         &project,
     )
-    .expect("target adapter with empty describe answer resolves");
+    .expect("target adapter with empty metadata answer resolves");
     assert!(resolved.manifest.inputs.is_empty(), "absent inputs default to empty");
     assert!(resolved.manifest.platforms.is_none(), "absent platforms default to None");
 }

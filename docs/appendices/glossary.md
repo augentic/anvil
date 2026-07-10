@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `describe` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Action**
 A grammar leaf in the `specify` CLI — the subcommand token after the command group (`build` in `specify slice build`, `emit` in `specify journal emit`). Declared as clap action enums (`SliceAction`, `JournalAction`, …). See [Handler routing](../../rfcs/handler-routing.md).

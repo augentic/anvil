@@ -7,7 +7,7 @@ use crate::Platform;
 
 // These tests exercise the `pub(super)` post-resolve gates that cannot
 // move to an integration suite (identity comes from the
-// package reference, metadata from the component's `describe` answer —
+// package reference, metadata from the component's `metadata` answer —
 // there is no manifest to parse). Adapter-specific invariants belong in
 // the adapter's own suite under `specify-adapters`.
 

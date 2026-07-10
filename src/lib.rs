@@ -141,7 +141,7 @@ mod http {
         async fn handle(
             request: wasip3::http::types::Request,
         ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-            adapter::describe::register(crate::provider::describe);
+            adapter::metadata::register(crate::provider::metadata);
             let client = Client::new("specify").provider(Provider);
             omnia_wasi_http::serve(router(client), request).await
         }

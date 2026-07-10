@@ -78,7 +78,7 @@ The regenerable **cache** lives outside the working tree, in a per-project direc
 $XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
 ├── components/                                   # Project component cache
 │   ├── <name>.wasm                               # Local adapter component mirrored at init
-│   ├── <name>.wasm.describe.json                 # Digest-keyed describe answer sidecar
+│   ├── <name>.wasm.metadata.json                 # Digest-keyed describe answer sidecar
 │   └── component-meta.yaml                       # Component mirror provenance stamp
 └── deployment/                                   # Generated deployment manifest (omnia.toml)
 
