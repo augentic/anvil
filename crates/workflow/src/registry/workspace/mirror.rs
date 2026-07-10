@@ -1,7 +1,6 @@
 //! Slot adapter provisioning: mirror the workspace's project component
 //! cache into a synced slot's component cache so slot-side bare-name
-//! resolution stays project-local (workflow §"Resolver and cache"). See
-//! [DECISIONS.md §"Slot adapter provisioning via workspace sync"].
+//! resolution stays project-local (workflow §"Resolver and cache").
 //!
 //! An adapter is one `.wasm` component: pinned identities
 //! resolve from the *global* content-addressed store (shared across
@@ -9,8 +8,6 @@
 //! release build live. The only workspace-owned state a slot cannot
 //! reach on its own is the workspace's mirrored local components at
 //! `<ws-cache>/components/*.wasm`, so that is all the mirror copies.
-//!
-//! [DECISIONS.md §"Slot adapter provisioning via workspace sync"]: ../../../../../DECISIONS.md#slot-adapter-provisioning-via-workspace-sync
 
 use std::path::Path;
 

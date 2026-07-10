@@ -7,16 +7,19 @@
 //!
 //! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
-//! best-effort emit helpers in `emit`. This root owns the read side
-//! (forward [`read`], backward [`read_recent`], and the filtered
-//! [`show`] projection behind `specify journal show`) and re-exports
-//! the public surface so callers keep importing `crate::journal::*`.
+//! best-effort emit helpers in `emit`; the `specify journal {emit,
+//! show}` verb handlers in [`verbs`]. This root owns the read side
+//! (forward [`read`], backward [`read_recent`], and the private
+//! filtered `show` projection behind `specify journal show`) and
+//! re-exports the public surface so callers keep importing
+//! `crate::journal::*`.
 //!
 //! [workflow §Observability]: ../../../../docs/standards/workflow.md#observability
 
 mod append;
 mod emit;
 mod event;
+pub mod verbs;
 
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
@@ -84,7 +87,7 @@ const TAIL_CHUNK: usize = 8192;
 /// [`read`], so a journal written by a newer binary still yields the
 /// matches this binary understands. A missing journal yields an empty
 /// vector. This is the read side the identity projection
-/// (`recent[]`) and [`show`] consume.
+/// (`recent[]`) and `show` consume.
 ///
 /// # Errors
 ///
@@ -123,11 +126,12 @@ pub fn read_recent<T>(
 /// so the bytes touched stay bounded by the limit rather than total
 /// history. Reader leniency matches [`read`]: blank and unparseable
 /// lines are skipped and a missing journal yields an empty vector.
+/// Private: the only consumer is the [`verbs::Show`] handler.
 ///
 /// # Errors
 ///
 /// Propagates I/O failures other than a missing file.
-pub fn show(
+fn show(
     layout: Layout<'_>, filter: Option<&str>, limit: Option<usize>,
 ) -> Result<Vec<Event>, Error> {
     let keep = |event: &Event| filter.is_none_or(|prefix| wire_id(&event.kind).starts_with(prefix));

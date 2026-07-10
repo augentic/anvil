@@ -2,8 +2,7 @@
 //! success-blocking gate.
 //!
 //! Both envelopes are schema-validated (`validate_build_request_json` /
-//! `validate_build_report_json`) before the verb deserialises here. See
-//! DECISIONS.md §"Target build envelope (D6, D9 target side, D7 proof)".
+//! `validate_build_report_json`) before the verb deserialises here.
 
 use std::path::{Path, PathBuf};
 

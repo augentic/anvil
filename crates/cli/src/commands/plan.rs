@@ -1,120 +1,88 @@
-//! Dispatcher for the `specify plan *` verbs plus the shared plan-file helpers.
-//!
-//! `plan author` / `plan execute` are guest-owned collapsed orchestrations —
-//! only their clap surface lives in `cli`.
+//! `specify plan *` grammar plus the clap-to-`Input` conversions the
+//! dispatch matches use to feed the `workflow::change::plan::verbs` handlers.
 
-mod add;
-mod amend;
-pub(crate) mod args;
 pub mod cli;
-mod create;
-mod entry;
-mod lifecycle;
-mod remove;
 
-use std::path::{Path, PathBuf};
+use std::collections::BTreeMap;
 
 use error::{Error, Result};
-use serde::Serialize;
-use workflow::change::Plan;
-use workflow::registry::Registry;
+use workflow::change::SourceBinding;
 
-use self::cli::PlanAction;
-use crate::context::Ctx;
+use crate::cli::{AuthorityOverrideKindAssign, SliceSourceArg, SourceArg};
 
-/// Dispatch one parsed `specify plan` action against the loaded `ctx`.
+impl From<SliceSourceArg> for workflow::change::plan::verbs::BindingArg {
+    fn from(arg: SliceSourceArg) -> Self {
+        Self {
+            key: arg.key,
+            lead: arg.lead,
+        }
+    }
+}
+
+impl From<AuthorityOverrideKindAssign> for workflow::change::plan::verbs::KindAssign {
+    fn from(assign: AuthorityOverrideKindAssign) -> Self {
+        Self {
+            kind: assign.kind,
+            source: assign.source,
+        }
+    }
+}
+
+/// Convert repeated `--sources` / `--add-source` values into the wire
+/// [`workflow::change::plan::verbs::BindingArg`] list.
+#[must_use]
+pub fn bindings(args: Vec<SliceSourceArg>) -> Vec<workflow::change::plan::verbs::BindingArg> {
+    args.into_iter().map(Into::into).collect()
+}
+
+/// Convert repeated `--authority-override <kind>=<source>` values into
+/// the wire [`workflow::change::plan::verbs::KindAssign`] list.
+#[must_use]
+pub fn assigns(args: Vec<AuthorityOverrideKindAssign>) -> Vec<workflow::change::plan::verbs::KindAssign> {
+    args.into_iter().map(Into::into).collect()
+}
+
+/// Desugar the `plan create` / `plan author` source surface into the
+/// structured binding map [`workflow::change::Plan::init`] expects.
+///
+/// `--intent <string>` appends the value-bound intent binding before
+/// the duplicate-key gate, so an explicit `--source intent=...` in
+/// the same invocation trips `plan-source-duplicate-key` — the same
+/// refusal two conflicting `--source intent=...` occurrences get.
 ///
 /// # Errors
 ///
-/// Propagates the invoked handler's failure.
-pub fn run(ctx: &Ctx, action: PlanAction) -> Result<()> {
-    match action {
-        PlanAction::Create {
-            name,
-            sources,
-            intent,
-            auto_approve,
-            authority_override,
-        } => create::create(ctx, name, sources, intent, auto_approve, &authority_override),
-        PlanAction::Validate => lifecycle::validate(ctx),
-        PlanAction::Next => lifecycle::next(ctx),
-        PlanAction::Status => lifecycle::status(ctx),
-        PlanAction::Add(args) => add::add(ctx, args),
-        PlanAction::Amend(args) => amend::amend(ctx, args),
-        PlanAction::Remove { name } => remove::remove(ctx, name),
-        PlanAction::Transition {
-            name,
-            target,
-            undo,
-            actor,
-        } => lifecycle::transition(ctx, name, target, undo, &actor),
-        PlanAction::Archive { force } => lifecycle::archive(ctx, force),
-        // `plan execute` / `plan author` are guest-owned collapsed
-        // orchestrations peeled off by both dispatchers before this
-        // table (the native triage routes them to the guest leg; the
-        // guest router routes them to `workflow::orchestrate`).
-        // The defensive arms keep the match exhaustive and never
-        // collapse a real run to a misleading success.
-        PlanAction::Execute => Err(Error::Argument {
-            flag: "<command>",
-            detail: "`specify plan execute` dispatches outside the shared verb table".to_string(),
-        }),
-        PlanAction::Author { .. } => Err(Error::Argument {
-            flag: "<command>",
-            detail: "`specify plan author` dispatches outside the shared verb table".to_string(),
-        }),
+/// `Error::Diag` with the stable `plan-source-duplicate-key`
+/// discriminant on a duplicate source key.
+pub fn source_map(
+    mut sources: Vec<SourceArg>, intent: Option<String>,
+) -> Result<BTreeMap<String, SourceBinding>> {
+    if let Some(value) = intent {
+        sources.push(SourceArg::intent(value));
     }
-}
-
-// ---- Shared helpers used across submodules ----
-
-/// Ensure the plan file exists before we try to load it. Error text is
-/// the stable "plan file not found: plan.yaml" string that skill
-/// authors match on. Resolves through `ctx.layout()` so the global
-/// `--plan-dir` plan-root override applies.
-pub(super) fn require_file(ctx: &Ctx) -> Result<PathBuf> {
-    let path = ctx.layout().plan_path();
-    if !path.exists() {
-        return Err(Error::ArtifactNotFound {
-            kind: "plan.yaml",
-            path,
-        });
-    }
-    Ok(path)
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub(super) struct Ref {
-    pub name: String,
-    pub path: String,
-}
-
-pub(super) fn plan_ref(plan: &Plan, plan_path: &Path) -> Ref {
-    Ref {
-        name: plan.name.to_string(),
-        path: plan_path.display().to_string(),
-    }
-}
-
-/// Verify that `project_name` appears in `registry.yaml`.
-pub(super) fn check_project(project_dir: &Path, project_name: &str) -> Result<()> {
-    match Registry::load(project_dir) {
-        Ok(Some(registry)) => {
-            if !registry.projects.iter().any(|p| p.name == project_name) {
-                return Err(Error::Diag {
-                    code: "plan-project-unknown",
-                    detail: format!(
-                        "--project '{project_name}' does not match any project in registry.yaml"
-                    ),
-                });
-            }
-            Ok(())
+    let mut map: BTreeMap<String, SourceBinding> = BTreeMap::new();
+    for SourceArg {
+        key,
+        adapter,
+        path,
+        value,
+    } in sources
+    {
+        if map.contains_key(&key) {
+            return Err(Error::Diag {
+                code: "plan-source-duplicate-key",
+                detail: format!("duplicate key `{key}` in --source arguments"),
+            });
         }
-        Ok(None) => Err(Error::Diag {
-            code: "plan-project-no-registry",
-            detail: "--project was specified but no registry.yaml exists".to_string(),
-        }),
-        Err(err) => Err(err),
+        map.insert(
+            key,
+            SourceBinding {
+                adapter,
+                version: None,
+                path,
+                value,
+            },
+        );
     }
+    Ok(map)
 }

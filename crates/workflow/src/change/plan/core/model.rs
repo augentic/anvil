@@ -188,8 +188,7 @@ pub struct Entry {
 ///
 /// Closed `none | likely | accepted | rejected` taxonomy on
 /// `plan.yaml.slices[].divergence`, written only by `specify plan
-/// amend`. See DECISIONS.md §"`Divergence` enum" for the on-disk/journal
-/// serialisation and writer-ownership contract.
+/// amend`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

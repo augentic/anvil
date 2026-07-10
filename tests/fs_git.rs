@@ -29,6 +29,7 @@ pub const GIT_ENV: [(&str, &str); 4] = [
 /// # Panics
 ///
 /// Panics if git fails to start or exits non-zero.
+#[must_use]
 pub fn run_git(root: &Path, args: &[&str]) -> String {
     let output = Command::new("git")
         .current_dir(root)

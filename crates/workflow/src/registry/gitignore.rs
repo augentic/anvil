@@ -16,8 +16,7 @@ use error::Error;
 /// durable system of record) and `.specify/archive/` (the prunable
 /// outcome cache). Both stay committable so git history of the baseline
 /// — together with the `slice.archive.created` outcome ledger in
-/// `journal.jsonl` — is the record of merged work (DECISIONS.md
-/// §"History via git plus an outcome ledger"). The adapter cache
+/// `journal.jsonl` — is the record of merged work. The adapter cache
 /// lives in the out-of-tree OS cache, so it needs no entry here.
 const SPECIFY_GITIGNORE_ENTRIES: &[&str] = &[".specify/scratch/", "workspace/"];
 

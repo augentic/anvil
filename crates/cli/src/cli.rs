@@ -1,6 +1,8 @@
-//! Top-level clap derive surface for the `specify` binary. Owns the
-//! umbrella types ([`Cli`], [`Commands`], [`Format`], [`SourceArg`],
-//! [`SliceSourceArg`]) and re-exports the per-verb action enums.
+//! Top-level clap derive surface for the `specify` binary.
+//!
+//! Owns the umbrella types ([`Cli`], [`Commands`], [`Format`],
+//! [`SourceArg`], [`SliceSourceArg`]), the shared [`parse`] entry
+//! point, and the re-exports of the per-verb action enums.
 
 use std::str::FromStr;
 
@@ -18,6 +20,7 @@ use crate::commands::slice::cli::SliceAction;
 use crate::commands::source::cli::SourceAction;
 use crate::commands::target::cli::TargetAction;
 use crate::commands::workspace::cli::WorkspaceAction;
+use crate::output::Exit;
 pub use crate::output::Format;
 
 /// The one-line `about` string shared by the full grammar here and the
@@ -470,4 +473,45 @@ impl FromStr for SliceSourceArg {
             })
         }
     }
+}
+
+/// Parse argv through the shared grammar.
+///
+/// This is the exact clap tree the operator's `specify` invocation
+/// forwards into, so `--help`, error text, and usage exits match on
+/// every shim. A host may supply `argv[0]` as something other than
+/// the binary name (the wasm deployment's guest id), so it is
+/// replaced with `specify` before parsing — clap renders `argv[0]`
+/// into every usage line, and the operator typed `specify`.
+///
+/// The parse is `try_parse` on purpose: `clap::Error::exit_code()`
+/// travels back as an [`Exit`] the shim hands to its exit surface.
+/// `parse()`'s internal `process::exit` would land on the p2 exit in
+/// a wasm guest, which carries only success/failure and would
+/// collapse clap's usage-error code `2` to `1`.
+///
+/// # Errors
+///
+/// On a parse failure (or `--help` / `--version`) clap's rendering is
+/// written to the conventional sink (stdout for help/version, stderr
+/// for usage errors) and the matching process exit code comes back as
+/// an [`Exit`] for passthrough.
+pub fn parse(argv: impl IntoIterator<Item = String>) -> Result<Cli, Exit> {
+    let forwarded = std::iter::once("specify".to_string()).chain(argv.into_iter().skip(1));
+    Cli::try_parse_from(forwarded).map_err(|err| {
+        // clap's own printer keeps help on stdout and errors on
+        // stderr; a sink failure leaves nothing better to do than
+        // carry the exit code through.
+        drop(err.print());
+        Exit::Code(u8::try_from(err.exit_code()).unwrap_or(1))
+    })
+}
+
+/// Print the shell-completion script for `shell` to stdout — pure
+/// stdout from the shared clap grammar, so the output is
+/// byte-identical on every shim.
+pub fn completions(shell: Shell) -> Exit {
+    let mut cmd = <Cli as clap::CommandFactory>::command();
+    clap_complete::generate(shell, &mut cmd, "specify", &mut std::io::stdout());
+    Exit::Success
 }

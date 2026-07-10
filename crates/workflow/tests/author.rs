@@ -160,6 +160,10 @@ async fn author_walks_to_pending_with_gate_prose() {
     assert_eq!(plan.entries[0].name, "user-registration");
     assert_eq!(plan.entries[0].status, Status::Pending);
     assert_eq!(plan.entries[0].sources.len(), 2);
+    // A sole-project topology writes no `project` key: an explicit
+    // value would trip the execute loop's workspace-routing refusal,
+    // deadlocking the default author → approve → execute rhythm.
+    assert_eq!(plan.entries[0].project, None);
 
     // Outcome: both surveys in plan-binding order, the projected slice,
     // and the literal Gate 1 hint.

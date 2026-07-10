@@ -1,6 +1,6 @@
 # Release process
 
-A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **core guest** published as the wasm-pkg package `specify:core@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>` (`DECISIONS.md` §"Publishing and distribution: one transport, manual publish"). CI builds and attaches the binaries; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. See `DECISIONS.md` §"Release identity". This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
+A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **core guest** published as the wasm-pkg package `specify:core@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. CI builds and attaches the binaries; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
 
 ## Before tagging
 
@@ -23,13 +23,13 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
-The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `core/runtime.rs`, DECISIONS.md §"One `specify` binary"), so there is no second binary to build or package. The `runtime-replay` binary target (co-located at `core/replay.rs`) is a dev/test surface and is never packaged.
+The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/runtime.rs`), so there is no second binary to build or package.
 
 ## Publishing the wasm-pkg packages
 
 Both wasm-pkg packages are published manually with `wkg publish` by a maintainer whose wkg config maps the `specify:` namespace to `augentic.io` with a GitHub token carrying `packages: write` (see [`wit/README.md`](../wit/README.md) for the config shape). Registry identities are immutable — never re-publish an existing version; bump the version first.
 
-- **Core guest.** After tagging, publish the release-built workflow component as `specify:core@<version>`, where `<version>` is the `VERSION` file — the published core identity must equal the binary version (`DECISIONS.md` §"Core versioned by the binary"): a released binary consumes exactly `specify:core@<its own version>` and carries no embedded guest.
+- **Core guest.** After tagging, publish the release-built workflow component as `specify:core@<version>`, where `<version>` is the `VERSION` file — the published core identity must equal the binary version: a released binary consumes exactly `specify:core@<its own version>` and carries no embedded guest.
 
 ```bash
 cargo build --lib -p specify-cli --release --target wasm32-wasip2
@@ -51,7 +51,7 @@ Two supported install paths:
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
 
-`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest resolves by the binary's own version, `specify:core@<binary version>` (`DECISIONS.md` §"Core versioned by the binary").
+`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest resolves by the binary's own version, `specify:core@<binary version>`.
 
 ## Adding a new target triple
 

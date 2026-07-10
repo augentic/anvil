@@ -4,3 +4,4 @@
 
 pub(super) mod core;
 pub(super) mod doctor;
+pub mod verbs;

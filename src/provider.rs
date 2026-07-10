@@ -46,6 +46,16 @@ pub struct Provider;
 /// the call site.
 impl omnia_guest::Model for Provider {}
 
+/// Project-scoped verbs anchor at the `"."` mount preopen — the mount
+/// that carries the project root. WASI resolves relative paths against
+/// it, so `workflow::verb::Ctx::load` finds `.specify/project.yaml` exactly as
+/// a native run from the project root would.
+impl workflow::verb::Anchor for Provider {
+    fn project_root(&self) -> &std::path::Path {
+        std::path::Path::new(".")
+    }
+}
+
 impl SourceSeam for Provider {
     fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
         async move {

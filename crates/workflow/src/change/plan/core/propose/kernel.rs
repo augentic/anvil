@@ -1,7 +1,6 @@
 //! Projects a schema-validated agent reconciliation response onto
 //! `plan.yaml.slices[]`, enforcing the semantic invariants the schema
-//! gate (`validate_proposal_json`) cannot express. See DECISIONS.md
-//! §"Lead reconciliation".
+//! gate (`validate_proposal_json`) cannot express.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -43,7 +42,7 @@ pub struct ProposeOutcome {
 
 impl Plan {
     /// Project a validated agent reconciliation response onto
-    /// `plan.yaml.slices[]` (DECISIONS.md §"Lead reconciliation").
+    /// `plan.yaml.slices[]`.
     ///
     /// `response` is assumed to have already passed JSON-Schema
     /// validation (`validate_proposal_json`) at the CLI boundary, so this
@@ -91,7 +90,7 @@ impl Plan {
         // until both leads and decisions carry topics.
         let topic_overlaps = topic_overlaps(slices, discovery, &bound);
 
-        let new_entries = build_entries(response.slices, &names, &bound);
+        let new_entries = build_entries(response.slices, &names, &bound, topology.len() == 1);
 
         if has_dependency_cycle(&new_entries) {
             return Err(Error::validation_failed(
@@ -380,17 +379,22 @@ fn check_name_collisions(names: &[String]) -> Result<()> {
 /// response order, consuming the response's slices.
 ///
 /// Each entry binds only its `project`; the target adapter is resolved
-/// on demand from the topology via [`resolve_target`] and is not written
-/// to disk.
+/// on demand from the topology via [`resolve_target`] and is not
+/// written to disk. A sole-project topology (`sole_project: true`)
+/// writes no `project` key at all — the documented on-disk convention
+/// ([`Entry::project`]): an omitted value auto-binds the single
+/// project, and the execute loop reads an explicit `project` as
+/// workspace routing, which a single regular project must never
+/// trigger.
 fn build_entries(
-    slices: Vec<ResponseSlice>, names: &[String], bound: &[&ProjectRef],
+    slices: Vec<ResponseSlice>, names: &[String], bound: &[&ProjectRef], sole_project: bool,
 ) -> Vec<Entry> {
     slices
         .into_iter()
         .enumerate()
         .map(|(idx, slice)| Entry {
             name: names[idx].clone().into(),
-            project: Some(bound[idx].name.clone()),
+            project: (!sole_project).then(|| bound[idx].name.clone()),
             status: Status::Pending,
             depends_on: slice.depends_on.into_iter().map(Into::into).collect(),
             sources: slice

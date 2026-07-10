@@ -6,6 +6,7 @@ mod adapter_uri;
 mod cache;
 mod regular;
 mod upgrade;
+pub mod verbs;
 mod workspace;
 
 use std::path::{Path, PathBuf};

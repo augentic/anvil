@@ -236,7 +236,7 @@ impl<'a> Layout<'a> {
     /// working tree, keyed by a digest of the project path, so deleting
     /// it costs recomputation only and it never pollutes git. Transient
     /// per-run working state lives in-tree under `.specify/scratch/`
-    /// (gitignored at init; see DECISIONS.md §"Cache layout").
+    /// (gitignored at init).
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
         schema::cache::project_cache_dir(self.project_dir)

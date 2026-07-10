@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-description = "Wasm-clean `specify` CLI surface: argv grammar, output envelopes, exit mapping, and the pure workflow verb handlers consumed by the specify guest"
+description = "Wasm-clean `specify` CLI front-end: argv grammar, clap-to-Input conversions, output envelopes, and the exit-code contract consumed by the shims"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,16 +11,13 @@ publish = false
 [dependencies]
 clap.workspace = true
 clap_complete.workspace = true
-jiff.workspace = true
-semver.workspace = true
 serde.workspace = true
-serde-saphyr.workspace = true
 serde_json.workspace = true
 error.workspace = true
 artifacts.workspace = true
-schema.workspace = true
 workflow.workspace = true
 strum.workspace = true
+omnia-guest.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

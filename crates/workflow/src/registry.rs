@@ -7,6 +7,7 @@ pub mod gitignore;
 pub mod identity;
 pub mod topology;
 pub mod validate;
+pub mod verbs;
 pub mod workspace;
 
 pub use catalog::{ContractRoles, GreenfieldSeed, Registry, RegistryProject};

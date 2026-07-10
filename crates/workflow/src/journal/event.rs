@@ -357,8 +357,7 @@ pub enum EventKind {
         slice_names: Vec<SliceName>,
     },
     /// A slice merged into the baseline and its working directory was
-    /// archived. This is the durable **outcome-ledger** entry
-    /// (DECISIONS.md §"History via git plus an outcome ledger"): the
+    /// archived. This is the durable **outcome-ledger** entry: the
     /// append-only journal records what merged, when, which baseline
     /// specs it touched, a one-line outcome summary, and the git SHA
     /// the baseline sat at. The archived slice folder under

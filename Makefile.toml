@@ -92,9 +92,9 @@ env = { RUSTFLAGS = "-Dwarnings" }
 # Build guests
 #
 # The core `specify` guest as a wasm32-wasip2 component — the dev build
-# the repo-root omnia.toml replay manifest points at. The parked test
-# rig's echo fixture guests build on demand via `cargo make build-guests`
-# inside harness/ (see harness/README.md).
+# the repo-root omnia.toml manifest points at. The echo fixture guests
+# build on demand via `cargo make build-guests` inside harness/ (see
+# harness/README.md).
 [tasks.build-guests]
 command = "cargo"
 args = ["build", "--lib", "-p", "specify-cli", "--target", "wasm32-wasip2"]
@@ -105,9 +105,6 @@ args = ["build", "--lib", "-p", "specify-cli", "--target", "wasm32-wasip2"]
 # `RUSTFLAGS=-Dwarnings` override already differs from the default
 # profile, so cargo rebuilds the workspace under these flags regardless,
 # making a `cargo clean` cold rebuild redundant cost on every run.
-# The parked composed-deployment rig (`core/tests/`, `harness/fixtures`) is
-# excluded from the root gate via `.config/nextest.toml`; it runs manually
-# via `cargo make` inside harness/ (see harness/README.md).
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--all-features", "--no-tests=pass"]

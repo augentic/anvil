@@ -342,6 +342,13 @@ impl GuestMarker {
 /// process table), so the guest records `0`: the staleness posture never
 /// probes the recorded pid, and `0` is unambiguous prose for "no pid on
 /// this platform".
+#[cfg_attr(
+    target_arch = "wasm32",
+    expect(
+        clippy::missing_const_for_fn,
+        reason = "const only on wasm32 (the literal-0 arm); the native body calls process::id()"
+    )
+)]
 fn holder_pid() -> u32 {
     #[cfg(target_arch = "wasm32")]
     {

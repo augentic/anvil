@@ -1,6 +1,4 @@
-# DEV-ONLY replay manifest — not an operator template, and no test
-# consumes it (the parked composed tests render their own manifests over
-# store-resolved components; see core/tests/common/mod.rs).
+# DEV-ONLY manifest — not an operator template, and no test consumes it.
 # Debug-built guest paths and sibling-checkout adapter paths below only
 # resolve in a development environment; running a guest verb with cwd =
 # the repo root picks this file up wholesale (omnia.toml-wins), which is
@@ -16,11 +14,7 @@
 # checkout — run `cargo make release` there once (and after
 # any adapter change) to populate its `target/wasm32-wasip2/release/`.
 # The `specify` binary's guest leg honors a project-root omnia.toml like
-# this one over the generated manifest in the project cache
-# (DECISIONS.md §"One `specify`
-# binary"); the replay sibling drives the manifest without
-# `cursor-agent` (args after `--` become the guest's argv):
-#   cargo run --bin runtime-replay -- run --config omnia.toml -- --version
+# this one over the generated manifest in the project cache.
 
 [[guest]]
 id = "workflow"
@@ -63,7 +57,7 @@ source.path = "../specify-adapters/target/wasm32-wasip2/release/vectis.wasm"
 
 [[mount]]
 name = "."
-path = "core/workspace"
+path = "harness/workspace"
 writable = true
 
 [[route.http]]

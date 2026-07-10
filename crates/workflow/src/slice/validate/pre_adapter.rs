@@ -114,7 +114,7 @@ pub(super) fn collect_pre_adapter_gates(
     Ok(findings)
 }
 
-/// Synopsis content-floor advisory (DECISIONS §Lead reconciliation). Loads
+/// Synopsis content-floor advisory. Loads
 /// `<project_dir>/discovery.md` when present and emits one
 /// non-blocking `discovery-lead-synopsis-thin` finding per lead whose
 /// `synopsis` falls below a contentfulness heuristic. Absent
@@ -157,7 +157,7 @@ pub(super) fn synopsis_thin(layout: Layout<'_>) -> Result<Vec<Diagnostic>> {
         .collect())
 }
 
-/// Contentfulness heuristic for a lead `synopsis` (DECISIONS §Lead reconciliation).
+/// Contentfulness heuristic for a lead `synopsis`.
 /// A synopsis is "thin" when it carries fewer than
 /// [`SYNOPSIS_MIN_WORDS`] whitespace-delimited words OR fewer than
 /// [`SYNOPSIS_MIN_CHARS`] non-whitespace characters once trimmed — too

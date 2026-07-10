@@ -1,6 +1,6 @@
-# Manual entry points for the parked composed-deployment test rig.
-# Run from inside harness/ (`cargo make <task>`); nothing here is wired
-# into the root workspace's CI tasks.
+# Manual entry points for the harness surfaces. Run from inside
+# harness/ (`cargo make <task>`); nothing here is wired into the root
+# workspace's CI tasks.
 
 [config]
 default_to_workspace = false
@@ -11,8 +11,7 @@ skip_rust_env_info = true
 
 # Build guests
 #
-# wasm32-wasip2 guest components loaded by the composed runtime
-# integration tests in runtime/tests/: the core `specify` guest plus the
+# wasm32-wasip2 guest components: the core `specify` guest plus the
 # echo adapter fixtures (cdylib examples of the `fixtures` package,
 # landing under target/wasm32-wasip2/debug/examples/). Two invocations:
 # `--examples` narrows target selection to example targets only, so the
@@ -22,71 +21,39 @@ script_runner = "bash"
 script = '''
 set -euo pipefail
 root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
-(cd "${root}" && cargo build -p specify --target wasm32-wasip2)
+(cd "${root}" && cargo build -p specify-cli --lib --target wasm32-wasip2)
 (cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
 '''
 
-# Fetch adapters
+# Dev shim
 #
-# Populate the global adapter store with the pinned published adapter
-# components the composed runtime tests resolve (store-first; the dev
-# sibling checkout's release build is the fallback — see
-# runtime/tests/common/mod.rs `adapter_component_wasm`). The version pin is
-# the single source of truth at runtime/tests/adapters.pin, shared with
-# the test harness. Idempotent and offline-safe: an existing store
-# entry is never re-fetched, so a warm store needs neither network nor
-# `wkg`. On miss, requires `wkg` on PATH. The store root honours
-# `$SPECIFY_ADAPTER_STORE` (else `$HOME/.specify/adapters`) and the
-# registry host `$SPECIFY_REGISTRY` (else augentic.io), matching the
-# release workflow. The sidecar written beside each entry is the
-# verify-on-read record `schema::cache::verify_store_entry` checks.
-[tasks.fetch-adapters]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-pin="$(tr -d '[:space:]' < runtime/tests/adapters.pin)"
-store="${SPECIFY_ADAPTER_STORE:-${HOME}/.specify/adapters}"
-registry="${SPECIFY_REGISTRY:-augentic.io}"
-mkdir -p "${store}"
-config="$(mktemp)"
-trap 'rm -f "${config}"' EXIT
-printf '[namespace_registries]\nspecify = "%s"\n' "${registry}" > "${config}"
-for name in intent omnia; do
-    entry="${store}/${name}@${pin}.wasm"
-    meta="${store}/${name}@${pin}.meta"
-    if [ -f "${entry}" ]; then
-        echo "${name}@${pin} already in store; skipping"
-        continue
-    fi
-    echo "fetching specify:${name}@${pin} into ${entry}"
-    wkg get "specify:${name}@${pin}" --output "${entry}" --config "${config}"
-    if command -v sha256sum >/dev/null 2>&1; then
-        digest="$(sha256sum "${entry}" | awk '{print $1}')"
-    else
-        digest="$(shasum -a 256 "${entry}" | awk '{print $1}')"
-    fi
-    printf 'tree_digest: sha256:%s\n' "${digest}" > "${meta}"
-    chmod a-w "${entry}"
-done
-'''
-
-# Test — the whole rig (the composed tests self-build the guests, so a
-# bare run works; the explicit dependency keeps the build visible).
-[tasks.test]
+# Run the native `specify-dev` binary — the same verb handlers as the
+# wasm guest against the NativeProvider (in-process adapter dispatch,
+# cursor-agent model). Requires the ../specify-adapters sibling
+# checkout. Forward arguments after `--`:
+#   cargo make dev -- plan status
+#   cargo make dev -- serve --port 7737
+[tasks.dev]
 command = "cargo"
-args = ["nextest", "run", "-p", "runtime", "--no-tests=pass"]
-dependencies = ["build-guests"]
+args = ["run", "-p", "specify-dev", "${@}"]
 
-# Lint — the rig is not covered by the root workspace's clippy gate;
-# run this before reviving or extending it.
+# Native harness suite — the full-loop, seam, replay, and MCP-shelf
+# tests over the real adapter operations with scripted models; no wasm
+# builds. On-demand until the sibling checkout is guaranteed in CI.
+[tasks.test-native]
+command = "cargo"
+args = ["nextest", "run", "-p", "specify-dev"]
+
+# Lint — the harness crates are not covered by the root workspace's
+# clippy gate; run this before extending them.
 [tasks.lint]
 command = "cargo"
 args = [
     "clippy",
     "-p",
-    "runtime",
-    "-p",
     "fixtures",
+    "-p",
+    "specify-dev",
     "--all-targets",
     "--",
     "-D",

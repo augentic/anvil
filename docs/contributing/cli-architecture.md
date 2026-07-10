@@ -4,13 +4,13 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary, one guest
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`core/runtime.rs`): it parses no verbs itself. Every verb — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `cli` grammar; envelopes and exit codes pass through verbatim. Provisioning verbs (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest router until their in-guest implementations land (DECISIONS.md §"One `specify` binary").
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every command — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `cli` grammar; envelopes and exit codes pass through verbatim. Provisioning commands (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest dispatch until their in-guest implementations land.
 
-The core guest identity is versioned by the binary (`specify:core@<binary version>`, DECISIONS.md §"Core versioned by the binary"); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
+The core guest identity is versioned by the binary (`specify:core@<binary version>`); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `cli` carries the full clap grammar, envelopes, and pure verb handlers consumed by the `workflow` shim; `workflow` owns the workflow domain and stays wasmtime-free; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `workflow` owns the workflow domain and every command handler (`Handler<P>` impl in `workflow::<domain>::handlers`, shared plumbing in `workflow::handler`); `cli` is the pure front-end (clap grammar, conversions, envelopes, exit contract); the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
@@ -21,10 +21,12 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-core/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (core/lib.rs)  →  cli::guest::parse + route
+src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  cli::parse + src/dispatch.rs
 ```
 
-The full operator grammar — provisioning verbs included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Verb handlers live under `crates/cli/src/commands/`; the handler contract (`Ctx`, `Out` / `Render` / `emit`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The full operator grammar — provisioning commands included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's exhaustive dispatch match (`src/dispatch.rs`) converts each parsed clap action into the matching `Input` DTO and drives it through `cli::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
+
+The guest also exports `wasi:http/incoming-handler`: a hand-written route table in each shim (`src/lib.rs` for the wasm guest, `specify-dev serve` for the native shim) served through `omnia_wasi_http::serve` / `axum::serve` against the same provider, so every routed command is reachable over HTTP with the identical handler body and JSON envelope.
 
 ## JSON envelope contract
 
@@ -47,7 +49,7 @@ The exit-code contract is part of the public interface for skill authors; `Exit:
 | `2` | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors |
 | `3` | `EXIT_VERSION_TOO_OLD` | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
 
-Guest verbs inherit the same contract: the guest shim forwards `clap::Error::exit_code()` and handler exits through the WASI exit, and the binary passes them through verbatim.
+Guest commands inherit the same contract: the guest shim forwards `clap::Error::exit_code()` and handler exits through the WASI exit, and the binary passes them through verbatim.
 
 ## Error handling
 

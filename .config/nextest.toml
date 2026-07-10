@@ -1,5 +1,1 @@
-# The composed-deployment rig (`core/tests/`) is co-located with the
-# deployment unit but excluded from the root CI gate — run it on demand
-# via `cargo make` inside `harness/` (see harness/README.md).
 [profile.default]
-filter = 'not binary(composed) & not binary(composed_workflow) & not binary(composed_widened) & not binary(composed_mcp)'

@@ -20,6 +20,7 @@ mod refine;
 mod source;
 mod synthesize;
 mod target;
+pub mod verbs;
 
 use error::Error;
 

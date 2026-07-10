@@ -7,6 +7,9 @@ Canonical definitions for terms used throughout Specify.
 **Adapter**
 A versioned Specify extension. Specify splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `describe` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
+**Action**
+A grammar leaf in the `specify` CLI — the subcommand token after the command group (`build` in `specify slice build`, `emit` in `specify journal emit`). Declared as clap action enums (`SliceAction`, `JournalAction`, …). See [Handler routing](../../rfcs/handler-routing.md).
+
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
 
@@ -40,6 +43,12 @@ The operator-defined umbrella that coordinates one or more slices through `chang
 
 **Change branch**
 The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `specify plan execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
+
+**Command**
+One operator-facing `specify` invocation (`specify slice build my-slice`). Implemented by exactly one **handler**. Distinct from a shell command, an adapter **operation**, and a slash **skill**. See [Handler routing](../../rfcs/handler-routing.md).
+
+**Command group**
+The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `specify slice *` is the slice command group.
 
 **Claim**
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
@@ -87,6 +96,11 @@ The closure skill (`/spec:finalize`) that pushes the prepared branches with `spe
 
 **Gate 1**
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
+
+## H
+
+**Handler**
+The `omnia_guest::api::Handler<P>` implementation for one **command**: a flat `Input` DTO, `from_input` validation, and a `handle` body returning `Out<Body>`. Handlers live in `workflow::<domain>::handlers` submodules beside their kernels; shared plumbing is in `workflow::handler`. See [Handler routing](../../rfcs/handler-routing.md).
 
 ## I
 

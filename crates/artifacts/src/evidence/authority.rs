@@ -5,8 +5,7 @@
 //!
 //! Authority resolves at document level via the per-Evidence
 //! `authority:` field, with one operator override surface — the
-//! per-slice `authority-override` on `plan.yaml`, keyed by claim kind
-//! (DECISIONS.md §"Authority: document-level plus one override (v1)").
+//! per-slice `authority-override` on `plan.yaml`, keyed by claim kind.
 //! A per-Evidence `authority-overrides` map is deferred to a future
 //! RFC.
 

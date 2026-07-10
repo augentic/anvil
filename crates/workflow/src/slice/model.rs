@@ -8,9 +8,7 @@
 //! projection (normalize, never reject). Provenance is carried inline
 //! on each requirement, so the provenance view is *projected* on
 //! demand by `specify slice provenance` rather than persisted as a
-//! second file. See [`DECISIONS.md` §"Single slice-model artifact"][model-artifact].
-//!
-//! [model-artifact]: ../../../../DECISIONS.md#single-slice-model-artifact
+//! second file.
 
 use std::collections::BTreeMap;
 use std::path::Path;

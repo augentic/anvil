@@ -8,11 +8,9 @@ for the integration-first policy, golden discipline, and test-naming rules.
 The `specify` binary is a single `omnia::runtime!` invocation; the
 operational surface is covered by each crate's own `tests/` (the
 cli grammar, routing, and verb handlers in `crates/cli/tests/`
-and the workflow orchestrations in `crates/workflow/tests/`), with the
-parked composed-deployment rig at `harness/` available on demand for
-the wasm seams (see `harness/README.md`). The root `tests/` tree holds
-the framework checks (`framework/`) and the shared `fixtures/` referenced
-by crate-level suites.
+and the workflow orchestrations in `crates/workflow/tests/`). The
+root `tests/` tree holds the framework checks (`framework/`) and the
+shared `fixtures/` referenced by crate-level suites.
 
 ## Canonical golden regeneration
 
@@ -46,12 +44,10 @@ declared per test binary with `mod <helper>;`:
 - `workflow`: `crates/workflow/tests/common/mod.rs` — `MockCmd`, scaffold and
   stamped-outcome helpers.
 - `schema`: `crates/schema/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
-- `specify-cli` (root): `core/tests/common/mod.rs` — guest-artifact
-  building and the in-process deployment bundles.
 
 Cross-package test support lives in the dev-only `testkit` workspace crate
 (`crates/testkit`): the scripted `Model` mock (`testkit::MockModel`) consumed by
-the `workflow` and `core/tests` composed suites.
+the `workflow` suites.
 
 The `GIT_ENV` / `run_git` / `copy_dir` trio is single-sourced at
 `tests/fs_git.rs` and pulled into each crate's `tests/common` via a

@@ -3,7 +3,7 @@
 //! guest.
 //!
 //! `Exit::from(&Error)` is the single source of truth for the failure
-//! mapping; see the engine workspace's DECISIONS.md §"Exit codes".
+//! mapping.
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -52,7 +52,7 @@ pub fn emit<T: Serialize>(
 /// Process exit code the CLI returns, mapped from a handler result.
 ///
 /// [`Exit::from`] (`&Error`) is the single source of truth for the
-/// failure mapping; see DECISIONS.md §"Exit codes".
+/// failure mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use]
 pub enum Exit {
@@ -68,8 +68,7 @@ pub enum Exit {
     /// arguments; we mirror that for argument errors discovered after
     /// parsing (kebab-case checks, mutually exclusive payloads, etc.).
     ArgumentError,
-    /// WASI tool exit-code passthrough; see
-    /// [DECISIONS.md §"Exit codes"](../../DECISIONS.md#exit-codes).
+    /// WASI tool exit-code passthrough.
     Code(u8),
 }
 
@@ -138,7 +137,7 @@ impl From<&Error> for Exit {
 /// always [`ErrorBody`]. `Error::Validation` is payload-free — its
 /// `code` becomes the wire `error` discriminant and its `detail` the
 /// `message`; per-finding rows are rendered by the producing handler on
-/// stdout as a [`schema::diagnostics::DiagnosticReport`] before the
+/// stdout as a `schema::diagnostics::DiagnosticReport` before the
 /// payload-free error is returned.
 pub fn report(format: Format, err: &Error) -> Exit {
     let code = Exit::from(err);
@@ -157,7 +156,7 @@ pub fn report(format: Format, err: &Error) -> Exit {
 /// discriminant (the `code` for `Error::Validation`), `message` the
 /// rendered detail, and `exit-code` the numeric exit. The error body
 /// carries no per-finding rows — handlers render
-/// [`schema::diagnostics::DiagnosticReport`] on stdout before
+/// `schema::diagnostics::DiagnosticReport` on stdout before
 /// returning the payload-free error.
 ///
 /// Construct via `ErrorBody::from(&err)` — the variant is the only

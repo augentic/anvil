@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses (see [DECISIONS.md "Integration tests"](../../DECISIONS.md#integration-tests-auto-discovered-per-area-binaries)). Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the end-to-end composed-deployment rig (`core/tests/`, `harness/fixtures`) runs on demand via `harness/`, not in the gate (see `harness/README.md`).
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the retired composed-deployment rig is replaced by the native harness (`harness/`, see `harness/README.md`), which sits outside the gate.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatcher contract"](./handler-shape.md#dispatcher-contract).
 
@@ -73,11 +73,11 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
-The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice), with the parked composed-deployment rig at `core/tests/` available on demand for the wasm seams.
+The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice); the wasm-only seams (WIT bindings, dispatch-by-id, mount/preopen wiring) stay with the shipped guest and targeted adapter tests.
 
 ## Golden file discipline
 
-`REGENERATE_GOLDENS=1` is the single supported regeneration switch. After regenerating, run `git diff` on the goldens and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors) and [DECISIONS.md §"Wire compatibility"](../../DECISIONS.md#wire-compatibility)).
+`REGENERATE_GOLDENS=1` is the single supported regeneration switch. After regenerating, run `git diff` on the goldens and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors)).
 
 ## Test-side gotchas
 

@@ -1,22 +1,24 @@
-//! Wasm-clean `specify` CLI surface.
+//! Wasm-clean `specify` CLI front-end.
 //!
 //! Owns the full clap argv grammar ([`cli::Cli`] / [`cli::Commands`]),
-//! the output envelopes ([`output::Format`] / [`output::emit`]), the
-//! exit-code contract ([`output::Exit`] / [`output::report`]), the
-//! project context ([`context::Ctx`]), and the handlers for every pure
-//! workflow verb (`plan`, `slice`, `source`, `target`, `journal`).
+//! the clap-to-`Input` conversions the dispatch matches use to feed
+//! the transport-neutral verb handlers in `workflow`, the output
+//! envelopes ([`output::Format`] / [`output::emit`]), the exit-code
+//! contract ([`output::Exit`] / [`output::report`]), and the
+//! [`front::run`] bridge that drives one verb `Handler` and renders
+//! its `Reply` (or failure) onto stdout/stderr.
 //!
-//! One consumer: the workflow guest shim (`crates/workflow`)
-//! parses argv through [`guest::route`], runs the pure verbs
-//! in-process, and drives the [`guest::Orchestration`] verbs against
-//! its WIT-provided seam. The `specify` binary itself is a generic
-//! Omnia runtime and never links this crate.
+//! The verb bodies themselves live in `workflow`'s domain modules
+//! (each family in a `verbs` submodule beside its kernels); the
+//! exhaustive per-shim dispatch matches live in the shims (the wasm
+//! guest in `src/lib.rs`, the native `specify-dev` binary) —
+//! deliberately duplicated so the compiler checks each shim's
+//! coverage of [`cli::Commands`].
 //!
 //! Wasm specifics stay out: this crate never depends on wit-bindgen,
 //! wasip3, or wasmtime — the guest shim owns all WIT binding.
 
 pub mod cli;
 pub mod commands;
-pub mod context;
-pub mod guest;
+pub mod front;
 pub mod output;

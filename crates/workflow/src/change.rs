@@ -1,7 +1,7 @@
 //! Specify change orchestration: plan-driven multi-slice changes, the
 //! operator-facing `change.md` brief, and the `plan.yaml` state machine.
 
-mod plan;
+pub mod plan;
 
 pub use plan::core::{
     Divergence, Entry, EntryPatch, GateProse, LeadCatalog, LeadCatalogEntry, Lifecycle, LoopStep,

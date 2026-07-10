@@ -1,16 +1,20 @@
-//! Dev-only shared test support for the Specify workspace.
+//! Dev-only shared test support for the Specify workspace and the
+//! sibling `specify-adapters` suites.
 //!
 //! Home of the scripted [`omnia_guest::Model`] mock consumed by the
-//! `workflow` and `core/tests` composed suites. A library crate (not a
-//! per-suite `mod` include) so every test binary shares one copy and
-//! partially-used helpers never trip `dead_code`. Never a dependency of
-//! shipped code — consumers reach it through `[dev-dependencies]` only.
+//! `workflow` suites and the adapter crates' `tests/`. A library crate
+//! (not a per-suite `mod` include) so every test binary shares one copy
+//! and partially-used helpers never trip `dead_code`. Never a dependency
+//! of shipped code — consumers reach it through `[dev-dependencies]`
+//! only, and it never compiles for the guest wasm32 targets.
+
+#![cfg(not(target_arch = "wasm32"))]
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
 use omnia_guest::Model;
-use omnia_guest::model::{Error, Reply, Request};
+use omnia_guest::model::{Error, McpGrant, Reply, Request, Tool};
 
 /// Scripted [`Model`] provider for native tests: replies are served in
 /// FIFO order and every request is recorded for assertion.
@@ -62,4 +66,17 @@ impl Model for MockModel {
             .pop_front()
             .expect("MockModel exhausted: script more replies")
     }
+}
+
+/// The MCP grants a recorded request offered, in tool order.
+#[must_use]
+pub fn mcp_grants(request: &Request) -> Vec<&McpGrant> {
+    request
+        .tools
+        .iter()
+        .filter_map(|tool| match tool {
+            Tool::Mcp(grant) => Some(grant),
+            Tool::Function(_) => None,
+        })
+        .collect()
 }

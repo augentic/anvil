@@ -20,7 +20,7 @@ use crate::init::{
 
 /// canonical refine-time artifact set. Hardcoded — refine synthesises
 /// the canonical set directly rather than reading it from the target
-/// adapter (see `DECISIONS.md` §"Adapter loader axis routing"). The
+/// adapter. The
 /// exact scaffold keys mirror the validation registry namespaces in
 /// `artifacts::validate::registry::rules_for`.
 const SCAFFOLDED_RULE_KEYS: &[&str] = &["proposal", "specs", "design", "tasks"];

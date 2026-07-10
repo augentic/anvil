@@ -162,7 +162,7 @@ fn lead_rejects_source_id_tentative() {
     let v = load(LEAD_JSON_SCHEMA);
     assert_invalid(&v, &yaml(LEAD_INVALID_MISSING_SOURCE_KEY), "lead/missing-source");
     assert_invalid(&v, &yaml(LEAD_INVALID_BAD_ID), "lead/bad-id");
-    // `tentative` is not a lead field (DECISIONS §Lead reconciliation D2.3); the schema
+    // `tentative` is not a lead field; the schema
     // is `additionalProperties: false`, so a lead carrying it fails.
     assert_invalid(&v, &yaml(LEAD_INVALID_TENTATIVE_REMOVED), "lead/retired-tentative");
     // `aliases` is not a lead field; the schema is `additionalProperties: false`, so a

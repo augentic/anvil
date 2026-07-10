@@ -28,6 +28,7 @@ pub mod seam;
 pub mod slice;
 #[cfg(feature = "native")]
 pub mod upgrade;
+pub mod verb;
 
 #[cfg(test)]
 pub(crate) mod test_cache;

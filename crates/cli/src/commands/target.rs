@@ -1,9 +1,4 @@
-//! `specify target {resolve}` — target adapter operations.
-//!
-//! Target adapters carry `axis: target` and the `guidance` + `build` +
-//! `merge` capabilities. The run-side dispatch lives on the unified
-//! `commands::resolve_plugin` helper (it is byte-identical to the
-//! source-axis path apart from the `@version` peel); this module only
-//! owns the clap derive surface under [`cli`].
+//! `specify target {resolve}` grammar. The handler lives in
+//! `workflow::adapter::verbs`; only the clap surface is carried here.
 
 pub mod cli;

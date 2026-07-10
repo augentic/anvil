@@ -45,7 +45,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Source / target adapters
 
-- `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. There is no declared-tool surface (see [DECISIONS.md §"Project-scope `tools[]`"](../../DECISIONS.md#project-scope-tools)); adapter helpers are in-guest library code.
+- `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. There is no declared-tool surface; adapter helpers are in-guest library code.
 
 ### Journal
 

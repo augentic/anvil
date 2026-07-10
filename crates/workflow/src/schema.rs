@@ -2,7 +2,7 @@
 //! artifacts.
 //!
 //! The raw JSON-Schema plumbing and embedded constants live in
-//! [`schema`] per [DECISIONS.md § Standards chain moved to the adapters](../../DECISIONS.md#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema); this module holds
+//! [`schema`]; this module holds
 //! the workflow-aware wrappers — they import [`crate::change::Plan`],
 //! aggregate per-file findings into a single
 //! [`error::Error::Validation`] payload, and pin the wire
@@ -397,9 +397,8 @@ pub fn validate_parts_yaml(content: &str, source_path: &Path) -> Result<()> {
 /// Validate a single Evidence document (already read into `content`)
 /// against the embedded `schemas/evidence.schema.json`.
 ///
-/// This is the `extract` validate-before-visible gate (
-/// DECISIONS.md §"Source operations"): the runner reads the agent-
-/// or tool-produced Evidence,
+/// This is the `extract` validate-before-visible gate: the runner
+/// reads the agent- or tool-produced Evidence,
 /// runs it through this check, and only persists it to
 /// `.specify/slices/<slice>/evidence/<source>.yaml` on success — a
 /// schema failure writes no Evidence file. `source_path` labels error
@@ -426,8 +425,7 @@ pub fn validate_evidence(content: &str, source_path: &Path) -> Result<()> {
 /// Validate every lead in `leads` against the embedded
 /// `schemas/discovery/lead.schema.json`.
 ///
-/// This is the `survey` validate-before-visible gate (
-/// DECISIONS.md §"Source operations"): the
+/// This is the `survey` validate-before-visible gate: the
 /// `survey` runner parses the agent- or tool-produced lead set, runs it
 /// through this check, and only calls
 /// [`crate::change`]-side [`artifacts::discovery::Discovery::merge_survey`]

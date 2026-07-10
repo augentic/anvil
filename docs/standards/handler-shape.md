@@ -1,41 +1,56 @@
 # Handler shape
 
-The contract every CLI command handler obeys: how `Ctx` is constructed, how output flows through `ctx.write` / `output::write` / `emit`, which exit code a terminal `Error` maps to, and what the dispatcher between `clap` and the workspace crates is allowed to do.
+The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/workflow`, how `Ctx` is constructed from the provider's `Anchor`, how output flows through the typed `Out<Body>` wrapper and its `Render` impl, which exit code a terminal `Error` maps to, and what the per-shim dispatch matches are allowed to do. Vocabulary and routing layout: [handler-routing.md](../../rfcs/handler-routing.md).
 
-## Ctx construction
+## The handler layer (`workflow::handler`)
 
-Handlers take `&Ctx`, whose module path `cli::context::Ctx` carries the noun. `Ctx` exposes the resolved project dir, layout, output format, and a few thin facade methods for handler ergonomics; everything else flows through workspace crates. `Layout<'a>` lives on `Ctx` rather than at call sites so path helpers stay anchored in `workflow` — see [architecture.md §"Layout boundary"](./architecture.md#layout-boundary).
+Every command is implemented by one request type implementing `omnia_guest::api::Handler<P>`:
 
-## Default handler signature
+- **`Input`** is a flat serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields) — the wire shape shared by every transport. It also derives `Parser` for argv; the HTTP transport deserialises the same fields from path/query/body. See [handler-routing.md §"Transport model"](../../rfcs/handler-routing.md#transport-model).
+- **`from_input`** carries input-shape validation only (e.g. `slice transition` refusing `merged`). Everything project-dependent waits for `handle`.
+- **`handle(self, ctx: Context<'_, P>)`** is the handler body: load `Ctx` from `ctx.provider`, delegate the deterministic work to a workspace kernel, and return `Reply::ok(Out(Body))`.
+- **`type Error = workflow::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Command handlers default to `Result<()>` (success-path conversion happens at the dispatcher boundary). Surface non-success exits through typed errors that `Exit::from(&Error)` maps to the five-slot exit table — do **not** return `Result<Exit>` to thread a non-zero code by hand.
+Deterministic handlers bound `P: Anchor` only. The orchestration handlers (`orchestrate::handlers`) additionally bound the seams they drive: `P: Anchor + Model + SourceSeam + TargetSeam` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted seams.
 
 ```rust
 // GOOD — default shape
-pub(crate) fn handle(ctx: &Ctx, args: &SomeArgs) -> Result<()> {
-    let body = some_crate::do_work(ctx.layout(), args)?;
-    ctx.write(&SomeBody::from(&body), write_text)?;
-    Ok(())
-}
+impl<P: Anchor> Handler<P> for Frob {
+    type Error = crate::handler::Error;
+    type Input = FrobInput;
+    type Output = Out<FrobBody>;
 
-// GOOD — explicit Result<Exit> only when the handler needs a
-// non-success exit and a typed *ErrBody (rare — workspace::push is one).
-pub(crate) fn handle(ctx: &Ctx) -> Result<Exit, Error> { /* ... */ }
+    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
+        Ok(Self { input })
+    }
+
+    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
+        let cx = Ctx::load(ctx.provider)?;
+        let outcome = some_crate::do_work(cx.layout(), &self.input)?;
+        Ok(Reply::ok(Out(FrobBody::from(&outcome))))
+    }
+}
 ```
 
-A free `fn ... -> Result<Exit>` belongs in `crates/cli/src/commands.rs`. Elsewhere, default to `Result<()>` and let the dispatcher collapse the success path.
+Handlers live in each domain module's `handlers` submodule beside its kernels (see [handler-routing.md §"Where handlers live"](../../rfcs/handler-routing.md#where-handlers-live)).
 
-## ctx.write, output::write, and emit
+## Ctx construction and the Anchor
 
-Success bodies leave handlers via `ctx.write(&body, write_text)?;`. `Ctx::write` chooses the JSON vs text path based on `Format`; the handler never sees the branch. The `write_text` closure has signature `FnOnce(&mut dyn Write, &T) -> std::io::Result<()>` and is colocated with each handler so the response shape stays in a single block of code; the JSON path goes through `serde::Serialize` automatically.
+Handlers construct `workflow::handler::Ctx` inside `handle` via `Ctx::load(ctx.provider)`. The project location comes from the provider's `workflow::handler::Anchor` — the guest provider answers `"."` (the project-root mount preopen); a native provider answers its configured root. Handlers never read the process CWD themselves. `Ctx` exposes the resolved project dir, config, layout, and the single handler-boundary `now()` clock read; everything else flows through workspace crates. `Layout<'a>` lives on `Ctx` rather than at call sites so path helpers stay anchored in `workflow` — see [architecture.md §"Layout boundary"](./architecture.md#layout-boundary).
 
-Handlers never pick a stdout/stderr sink directly — `Ctx::write` (the success path), `output::report` (the failure path), and the free `output::emit` (the rare format-only path) are the sink-bearing entry points. Format-only handlers that run before (or outside of) a `Ctx` — `commands::init::run` and the unified `commands::resolve_adapter` shared by `source resolve` / `target resolve` (the source/target adapter resolve verbs) — receive a bare `Format` and call `output::emit(&mut std::io::stdout().lock(), format, &body, write_text)?;` directly because `Ctx::write` is not available.
+The scaffold command (`init --scaffold-only`) is the one handler that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `Ctx`.
 
-For the full DTO and dispatch rules see [coding-standards.md §"Format dispatch"](./coding-standards.md#format-dispatch), [§"One emit path"](./coding-standards.md#one-emit-path), and [§"DTOs"](./coding-standards.md#dtos).
+## Output: `Out<Body>` and `Render`
 
-### Gate handlers render, then fail payload-free
+Handlers never write to stdout. Each handler returns a typed `*Body` wrapped in `workflow::handler::Out` — the local wrapper that gives every body the HTTP transport's `IntoBody` (JSON) encoding without orphan-rule friction. The text rendering lives on the body itself via the `workflow::handler::Render` trait, colocated with the `Serialize` derive so the response shape stays in a single block of code. The CLI front-end calls `Render` for `--format text` and serde for `--format json`; the HTTP transport serialises the same body as JSON and never calls `Render`.
 
-Check surfaces that gate on findings — `slice validate` — own their rendering. They collect `Vec<Diagnostic>`, assemble a `DiagnosticReport`, and render it on **stdout** via `ctx.write` (the success sink), then, if any diagnostic blocks, return a payload-free `Error::validation_failed(code, detail)` purely to carry exit 2 and the discriminant on stderr. `Error::Validation` is `{ code, detail }` with no findings payload — the rich report already went to stdout. Single operational errors that are not findings (e.g. `tool-not-declared`, `discovery-lead-unknown`) take the same payload-free shape but render no report. The blocking decision uses the uniform predicate (`kind == violation && severity ∈ {critical, important}`); `kind: review` diagnostics surface but never block. See [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
+### Gate handlers ride the error
+
+Check surfaces that gate on findings — `slice validate`, `plan validate` — return `Out<ReportBody>` on success and `Error::Report { body, source }` on failure. The transport renders the `ReportBody` (the `DiagnosticReport` wire envelope plus the per-finding text row hook) on **stdout**, then the payload-free `source` error on **stderr** — findings on the success channel, the discriminant and exit 2 on the failure channel, exactly the two-channel contract skills consume. `Error::Validation` stays `{ code, detail }` with no findings payload. The blocking decision uses the uniform predicate (`kind == violation && severity ∈ {critical, important}`); `kind: review` diagnostics surface but never block.
+
+## Errors and their projections
+
+`workflow::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. It carries the **single** taxonomy → HTTP status projection (`Error::status()`: validation/argument → 422, version floor → 426, everything else → 500) and the `From<workflow::handler::Error> for omnia_guest::Error` conversion the HTTP transport consumes. `Exit` stays in `crates/cli` — there is no second exit table.
 
 ## Exit codes
 
@@ -48,62 +63,37 @@ The four-slot CLI exit-code table is fixed:
 | 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
 | 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old` in JSON) |
 
-`Exit::from(&Error)` in [`crates/cli/src/output.rs`](../../crates/cli/src/output.rs) is the single source of truth. Every dispatcher in `crates/cli/src/commands/*` routes its terminal error through `report`, which calls `Exit::from`. Do not invent new exit codes. The long-form decision (including `Exit::Code(u8)`'s WASI passthrough role) lives in [DECISIONS.md §"Exit codes"](../../DECISIONS.md#exit-codes).
+`Exit::from(&Error)` in [`crates/cli/src/output.rs`](../../crates/cli/src/output.rs) is the single source of truth. `cli::front::run` routes every terminal error through `output::report`, which calls `Exit::from`. Do not invent new exit codes. `Exit::Code(u8)` is reserved for the guest leg's exit-code passthrough.
 
-## Dispatcher contract
+## The CLI front-end (`crates/cli`)
 
-`crates/cli/src/cli.rs` declares the clap derive surface. Every command has a doc comment that doubles as `--help` output — keep it accurate and operator-facing (no internal jargon or historical labels). Add new commands as enum variants on `Commands` with a nested action enum where the verb has subactions; mirror existing groups (`SliceAction`, `PlanAction`, `SourceAction`, `TargetAction`, …).
+`crates/cli` is a pure front-end library: the clap grammar (`cli::Cli` / `cli::Commands`), the shared `cli::parse` entry point (`try_parse` with exit-code passthrough), the output envelopes (`output::{Format, emit}`), the exit contract (`output::{Exit, report}`), and `front::run` (aliases `cli::post` / `cli::get`) — the generic body that drives a `Handler` against a provider and renders its `Reply` or failure.
 
-`--source key=value` arguments are parsed via the typed `SourceArg` (`impl FromStr for SourceArg`) so call sites read named fields instead of tuple positions.
+`crates/cli/src/cli.rs` declares the clap derive surface. Leaf variants carry handler `Input` directly (`Build(BuildInput)`), not anonymous fields the shim maps later. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Input`. Global flags (`--format`, `--plan-dir`) stay on `Cli`, not on `Input`. See [handler-routing.md §"CLI routing"](../../rfcs/handler-routing.md#cli-routing).
 
-Dispatchers live in `crates/cli/src/commands/<verb>.rs` and call back into the workspace crates. The discipline is:
+## The HTTP route table (per shim)
 
-1. Clap parses argv → `Commands` enum.
-2. `crates/cli/src/commands.rs` matches the variant and calls the dispatcher in `crates/cli/src/commands/<verb>.rs`.
-3. The dispatcher loads `ProjectConfig` (which enforces the `specify` version floor for free) and any other state it needs.
-4. The dispatcher delegates the deterministic work to a workspace crate (`specify_slice`, `specify_change`, etc.) and converts the result to a `*Body` for `ctx.write(&body, write_text)`.
+Each shim owns a hand-written axum `Router`. The wasm guest builds it inside `handle()` (instance-per-call — no `static`); `specify-dev serve` builds once at startup. Both use omnia's generic route constructors (`route::get::<R, P>()` / `route::post::<R, P>()`), with the `Client` (owner + provider) as router state. GET for pure reads (path + query args), POST for writes and judgment (JSON bodies), the noun in the path (`POST /slice/{name}/build`). One line per routed command; parity between CLI and HTTP comes from both transports driving the same `Handler` impls, not from shared table code. See [handler-routing.md §"HTTP routing"](../../rfcs/handler-routing.md#http-routing).
 
-Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `crates/cli/src/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope.
+## Dispatch contract (the argv shims)
 
-Never put domain logic in `cli`. If a function needs unit tests, it belongs in a workspace domain crate. `cli` owns argv parsing, formatting, and dispatch only. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Each shim owns an exhaustive dispatch match over `Commands` — deliberately duplicated per shim (the wasm guest's `src/dispatch.rs`, the native `specify-dev` binary) so the compiler checks each shim's coverage of the grammar. Target discipline per leaf arm:
 
-## Adapter-resolve verb shapes
+1. `preflight` — `register_describe_runner`, `check_plan_dir`
+2. `cli::parse` parses argv → `Commands` enum (leaf variants already hold `Input`)
+3. `cli::post::<R, _, _>` or `cli::get::<R, _, _>(format, provider, input)` — names only `R`, passes parsed `input`
+4. Shim policy at the edges: `refuse` for provisioning commands, `completions` for shell scripts
 
-`source resolve <name>` and `target resolve <value>` are format-only
-handlers — both clap arms in `crates/cli/src/commands.rs` dispatch to a single
-private `commands::resolve_adapter(format, axis, value, project_dir)`
-helper that takes a bare `Format` plus the project dir, switches on
-`axis` to invoke `workflow::adapter::SourceAdapter::resolve(name,
-project_dir)?` or `TargetAdapter::resolve(name, project_dir)?`, and
-emits a `ResolveBody { axis, name, resolved_path, location,
-operations, description }` via the direct `output::emit` path
-described above. They never load a `Ctx`, because adapter resolution
-is read-only and runs before any project mutation. The unified helper
-peels an opaque `@version` suffix only on `Axis::Target` (per the workflow contract
-§CLI surface); the axis discriminator is otherwise the sole branch,
-so adding a third axis later is a one-extra-arm addition to the
-existing `match`.
+Never put domain logic in `cli` or a shim's dispatch match. Manual `Input { … }` construction in a dispatch arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
-`plan amend` extends the canonical `with_state::<Plan, _, _>(...)`
-handler shape with the three `--sources` flag families
-axis: `--sources <binding>...` (wholesale replace), `--add-source
-<binding>` (repeatable), `--remove-source <key>` (repeatable). The
-parser routes `--add-source` / `--remove-source` *after* the
-wholesale `Plan::amend(name, patch)` call so wholesale replacement
-plus targeted edits compose cleanly in a single invocation. The
-`--divergence` flag accepts only `accepted | rejected` from the
-wire and emits a `plan.amend.divergence` journal event when (and
-only when) the field flips — see [DECISIONS.md §"Journal event
-names"](../../DECISIONS.md#journal-event-names).
+## Handler-shape notes
 
-`plan transition <name> <target>` is one verb that dispatches on
-the operands: `<plan-name> approved` is the Gate 1 stamp and emits
-a `plan.transition.approved` journal event; `<entry-name> done` is
-the per-entry close (`/spec:merge` is the canonical caller).
-Anything else is an `Error::Argument` (exit 2). The journal append
-runs *after* `with_state` returns so the plan write and the journal
-append cannot interleave on failure.
+`source resolve <name>` and `target resolve <value>` never load a `Ctx`, because adapter resolution is read-only and runs before any project mutation; they anchor the default project dir on the provider's `Anchor`. The two axes share one input shape; the axis is the request type. The target axis peels an opaque `@version` suffix (per the workflow contract §CLI surface).
+
+`plan amend` extends the canonical `with_state::<Plan, _, _>(...)` handler shape with the three `--sources` flag families: `--sources <binding>...` (wholesale replace), `--add-source <binding>` (repeatable), `--remove-source <key>` (repeatable). The handler routes `--add-source` / `--remove-source` *after* the wholesale `Plan::amend(name, patch)` call so wholesale replacement plus targeted edits compose cleanly in a single invocation. The `--divergence` flag accepts only `likely | accepted | rejected` from the wire and emits a `plan.amend.divergence` journal event when (and only when) the field flips.
+
+`plan transition <name> <target>` is one handler that dispatches on the operands: `<plan-name> approved` is the Gate 1 stamp and emits a `plan.transition.approved` journal event; `<entry-name> done` is the per-entry close (`/spec:merge` is the canonical caller). Anything else is an `Error::Argument` (exit 2). The journal append runs *after* `with_state` returns so the plan write and the journal append cannot interleave on failure.
 
 ## Gotcha — `specify init` and the version floor
 
-`specify init` bypasses the `specify` version floor check (the file doesn't exist yet); every other project-aware verb inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a subcommand site.
+`specify init` bypasses the `specify` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a subcommand site.

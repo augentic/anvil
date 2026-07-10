@@ -1,0 +1,107 @@
+//! [`Ctx`] — the shared project context every project-scoped verb
+//! handler loads once inside `handle`.
+
+use std::path::PathBuf;
+
+use error::Error;
+use jiff::Timestamp;
+
+use super::Anchor;
+use crate::adapter::{ResolvedTargetAdapter, TargetAdapter};
+use crate::config::{Layout, ProjectConfig};
+use crate::init::adapter_ref_from_value;
+
+/// Shared context for every verb that operates inside an initialised
+/// `.specify/` project. Created at the top of each `handle` body via
+/// [`Ctx::load`] against the provider's [`Anchor`].
+#[derive(Debug)]
+pub struct Ctx {
+    /// Resolved project root — the nearest ancestor of the anchor
+    /// carrying `.specify/project.yaml`.
+    pub project_dir: PathBuf,
+    /// Loaded `.specify/project.yaml`.
+    pub config: ProjectConfig,
+    /// Plan root override from the provider anchor: the initiating
+    /// workspace root while phase verbs run inside a workspace slot.
+    /// `None` anchors plan artifacts at the project root as usual.
+    pub plan_dir: Option<PathBuf>,
+}
+
+impl Ctx {
+    /// Resolve the project root from the provider's anchor, load
+    /// `.specify/project.yaml`, and bundle everything into a `Ctx`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(Error)` when no project root is found walking up
+    /// from the anchor or the project config fails to load.
+    pub fn load(anchor: &impl Anchor) -> Result<Self, Error> {
+        let project_dir =
+            ProjectConfig::find_root(anchor.project_root()).ok_or(Error::NotInitialized)?;
+        let config = ProjectConfig::load(&project_dir)?;
+        Ok(Self {
+            project_dir,
+            config,
+            plan_dir: anchor.plan_dir().map(PathBuf::from),
+        })
+    }
+
+    /// Resolve this project's target adapter into a
+    /// [`ResolvedTargetAdapter`].
+    ///
+    /// Workspace projects (`workspace: true`, `adapter:` omitted) do not declare
+    /// an adapter, so this returns a `workspace-no-adapter` diagnostic
+    /// naming the workspace case rather than a stray adapter-resolution
+    /// error lower down the stack.
+    ///
+    /// # Errors
+    ///
+    /// Returns `workspace-no-adapter` for adapter-less workspace
+    /// projects, and propagates adapter-resolution failures.
+    pub fn resolve_target_adapter(&self) -> Result<ResolvedTargetAdapter, Error> {
+        let Some(adapter_value) = self.config.adapter.as_deref() else {
+            return Err(Error::Diag {
+                code: "workspace-no-adapter",
+                detail: "this project has no adapter declared (workspaces do not run \
+                         per-target operations); only `specify registry` and `specify plan` \
+                         verbs are supported on workspaces"
+                    .to_string(),
+            });
+        };
+        let adapter_ref = adapter_ref_from_value(adapter_value);
+        TargetAdapter::resolve(&adapter_ref, &self.project_dir)
+    }
+
+    /// Typed view over `.specify/`-anchored paths. Hand this to
+    /// [`crate::config::with_state`] in handlers that mutate
+    /// `plan.yaml` / `registry.yaml`.
+    #[must_use]
+    pub fn layout(&self) -> Layout<'_> {
+        Layout::new(&self.project_dir).with_plan_dir(self.plan_dir.as_deref())
+    }
+
+    /// Single handler-boundary read of the wall clock. Library crates
+    /// never call `Timestamp::now()` (architecture §Time injection); a
+    /// handler reads `now` here once and threads it into the workflow
+    /// functions that stamp serialised artifacts, so tests pin time by
+    /// driving those functions with a fixed `Timestamp`.
+    // Deliberately a method (not an associated fn), so a future
+    // injected test clock has one named home and handler call sites
+    // stay uniform (`ctx.now()`).
+    #[must_use]
+    pub fn now(&self) -> Timestamp {
+        Timestamp::now()
+    }
+
+    /// `.specify/slices/` under the project root.
+    #[must_use]
+    pub fn slices_dir(&self) -> PathBuf {
+        self.layout().slices_dir()
+    }
+
+    /// `.specify/archive/` under the project root.
+    #[must_use]
+    pub fn archive_dir(&self) -> PathBuf {
+        self.layout().archive_dir()
+    }
+}
