@@ -30,8 +30,22 @@ use cli::commands::target::cli::TargetAction;
 use cli::output::{Exit, Format, report};
 use error::Error;
 use omnia_guest::wasip3;
-use workflow::change::plan;
-use workflow::{adapter, init, journal, orchestrate, registry, slice};
+use workflow::adapter;
+use workflow::adapter::handlers::{SourceResolve, TargetResolve};
+use workflow::change::plan::handlers::{
+    Add as PlanAdd, Amend, Archive, Create as PlanCreate, Next, Remove as PlanRemove, Status,
+    Transition as PlanTransition, Validate as PlanValidate,
+};
+use workflow::init::handlers::Scaffold;
+use workflow::journal::handlers::{Emit, Show};
+use workflow::orchestrate::handlers::{Author, Build, Execute, Extract, MergeRun, Refine, Survey};
+use workflow::registry::handlers::{
+    Add as RegistryAdd, Remove as RegistryRemove, Validate as RegistryValidate,
+};
+use workflow::slice::handlers::{
+    ConflictCheck, Create, Drop, ModelShow, Overlap, Preview, Prune, Provenance, TaskMark,
+    TaskProgress, Transition, TouchedSpecs, Validate,
+};
 
 use crate::provider::Provider;
 
@@ -86,130 +100,68 @@ async fn route(cli: cli::cli::Cli) -> Exit {
     let p = &Provider;
     match cli.command {
         Commands::Source { action } => match action {
-            SourceAction::Resolve(args) => {
-                cli::get::<adapter::handlers::SourceResolve, _, _>(format, p, args).await
-            }
-            SourceAction::Survey(args) => {
-                cli::post::<orchestrate::handlers::Survey, _, _>(format, p, args).await
-            }
-            SourceAction::Extract(args) => {
-                cli::post::<orchestrate::handlers::Extract, _, _>(format, p, args).await
-            }
+            SourceAction::Resolve(args) => cli::get::<SourceResolve, _, _>(format, p, args).await,
+            SourceAction::Survey(args) => cli::post::<Survey, _, _>(format, p, args).await,
+            SourceAction::Extract(args) => cli::post::<Extract, _, _>(format, p, args).await,
         },
         Commands::Target { action } => match action {
-            TargetAction::Resolve(args) => {
-                cli::get::<adapter::handlers::TargetResolve, _, _>(format, p, args).await
-            }
+            TargetAction::Resolve(args) => cli::get::<TargetResolve, _, _>(format, p, args).await,
         },
         Commands::Slice { action } => match action {
-            SliceAction::Create(args) => {
-                cli::post::<slice::handlers::Create, _, _>(format, p, args).await
-            }
-            SliceAction::Validate(args) => {
-                cli::get::<slice::handlers::Validate, _, _>(format, p, args).await
-            }
-            SliceAction::Provenance(args) => {
-                cli::get::<slice::handlers::Provenance, _, _>(format, p, args).await
-            }
+            SliceAction::Create(args) => cli::post::<Create, _, _>(format, p, args).await,
+            SliceAction::Validate(args) => cli::get::<Validate, _, _>(format, p, args).await,
+            SliceAction::Provenance(args) => cli::get::<Provenance, _, _>(format, p, args).await,
             SliceAction::Model { action } => match action {
-                SliceModelAction::Show(args) => {
-                    cli::get::<slice::handlers::ModelShow, _, _>(format, p, args).await
-                }
+                SliceModelAction::Show(args) => cli::get::<ModelShow, _, _>(format, p, args).await,
             },
-            SliceAction::Refine(args) => {
-                cli::post::<orchestrate::handlers::Refine, _, _>(format, p, args).await
-            }
-            SliceAction::Build(args) => {
-                cli::post::<orchestrate::handlers::Build, _, _>(format, p, args).await
-            }
+            SliceAction::Refine(args) => cli::post::<Refine, _, _>(format, p, args).await,
+            SliceAction::Build(args) => cli::post::<Build, _, _>(format, p, args).await,
             SliceAction::Merge { action } => match action {
-                SliceMergeAction::Run(args) => {
-                    cli::post::<orchestrate::handlers::MergeRun, _, _>(format, p, args).await
-                }
-                SliceMergeAction::Preview(args) => {
-                    cli::get::<slice::handlers::Preview, _, _>(format, p, args).await
-                }
+                SliceMergeAction::Run(args) => cli::post::<MergeRun, _, _>(format, p, args).await,
+                SliceMergeAction::Preview(args) => cli::get::<Preview, _, _>(format, p, args).await,
                 SliceMergeAction::ConflictCheck(args) => {
-                    cli::get::<slice::handlers::ConflictCheck, _, _>(format, p, args).await
+                    cli::get::<ConflictCheck, _, _>(format, p, args).await
                 }
             },
             SliceAction::Task { action } => match action {
                 SliceTaskAction::Progress(args) => {
-                    cli::get::<slice::handlers::TaskProgress, _, _>(format, p, args).await
+                    cli::get::<TaskProgress, _, _>(format, p, args).await
                 }
-                SliceTaskAction::Mark(args) => {
-                    cli::post::<slice::handlers::TaskMark, _, _>(format, p, args).await
-                }
+                SliceTaskAction::Mark(args) => cli::post::<TaskMark, _, _>(format, p, args).await,
             },
-            SliceAction::Transition(args) => {
-                cli::post::<slice::handlers::Transition, _, _>(format, p, args).await
-            }
+            SliceAction::Transition(args) => cli::post::<Transition, _, _>(format, p, args).await,
             SliceAction::TouchedSpecs(args) => {
-                cli::post::<slice::handlers::TouchedSpecs, _, _>(format, p, args).await
+                cli::post::<TouchedSpecs, _, _>(format, p, args).await
             }
-            SliceAction::Overlap(args) => {
-                cli::get::<slice::handlers::Overlap, _, _>(format, p, args).await
-            }
-            SliceAction::Drop(args) => {
-                cli::post::<slice::handlers::Drop, _, _>(format, p, args).await
-            }
+            SliceAction::Overlap(args) => cli::get::<Overlap, _, _>(format, p, args).await,
+            SliceAction::Drop(args) => cli::post::<Drop, _, _>(format, p, args).await,
         },
         Commands::Plan { action } => match action {
-            PlanAction::Create(args) => {
-                cli::post::<plan::handlers::Create, _, _>(format, p, args).await
-            }
-            PlanAction::Validate(args) => {
-                cli::get::<plan::handlers::Validate, _, _>(format, p, args).await
-            }
-            PlanAction::Next(args) => {
-                cli::post::<plan::handlers::Next, _, _>(format, p, args).await
-            }
-            PlanAction::Status(args) => {
-                cli::get::<plan::handlers::Status, _, _>(format, p, args).await
-            }
-            PlanAction::Add(args) => cli::post::<plan::handlers::Add, _, _>(format, p, args).await,
-            PlanAction::Amend(args) => {
-                cli::post::<plan::handlers::Amend, _, _>(format, p, args).await
-            }
-            PlanAction::Remove(args) => {
-                cli::post::<plan::handlers::Remove, _, _>(format, p, args).await
-            }
-            PlanAction::Transition(args) => {
-                cli::post::<plan::handlers::Transition, _, _>(format, p, args).await
-            }
-            PlanAction::Author(args) => {
-                cli::post::<orchestrate::handlers::Author, _, _>(format, p, args).await
-            }
-            PlanAction::Execute(args) => {
-                cli::post::<orchestrate::handlers::Execute, _, _>(format, p, args).await
-            }
-            PlanAction::Archive(args) => {
-                cli::post::<plan::handlers::Archive, _, _>(format, p, args).await
-            }
+            PlanAction::Create(args) => cli::post::<PlanCreate, _, _>(format, p, args).await,
+            PlanAction::Validate(args) => cli::get::<PlanValidate, _, _>(format, p, args).await,
+            PlanAction::Next(args) => cli::post::<Next, _, _>(format, p, args).await,
+            PlanAction::Status(args) => cli::get::<Status, _, _>(format, p, args).await,
+            PlanAction::Add(args) => cli::post::<PlanAdd, _, _>(format, p, args).await,
+            PlanAction::Amend(args) => cli::post::<Amend, _, _>(format, p, args).await,
+            PlanAction::Remove(args) => cli::post::<PlanRemove, _, _>(format, p, args).await,
+            PlanAction::Transition(args) => cli::post::<PlanTransition, _, _>(format, p, args).await,
+            PlanAction::Author(args) => cli::post::<Author, _, _>(format, p, args).await,
+            PlanAction::Execute(args) => cli::post::<Execute, _, _>(format, p, args).await,
+            PlanAction::Archive(args) => cli::post::<Archive, _, _>(format, p, args).await,
         },
         Commands::Journal { action } => match action {
-            JournalAction::Emit(args) => {
-                cli::post::<journal::handlers::Emit, _, _>(format, p, args).await
-            }
-            JournalAction::Show(args) => {
-                cli::get::<journal::handlers::Show, _, _>(format, p, args).await
-            }
+            JournalAction::Emit(args) => cli::post::<Emit, _, _>(format, p, args).await,
+            JournalAction::Show(args) => cli::get::<Show, _, _>(format, p, args).await,
         },
         Commands::Registry { action } => match action {
             RegistryAction::Validate(args) => {
-                cli::get::<registry::handlers::Validate, _, _>(format, p, args).await
+                cli::get::<RegistryValidate, _, _>(format, p, args).await
             }
-            RegistryAction::Add(args) => {
-                cli::post::<registry::handlers::Add, _, _>(format, p, args).await
-            }
-            RegistryAction::Remove(args) => {
-                cli::post::<registry::handlers::Remove, _, _>(format, p, args).await
-            }
+            RegistryAction::Add(args) => cli::post::<RegistryAdd, _, _>(format, p, args).await,
+            RegistryAction::Remove(args) => cli::post::<RegistryRemove, _, _>(format, p, args).await,
         },
         Commands::Archive { action } => match action {
-            ArchiveAction::Prune(args) => {
-                cli::post::<slice::handlers::Prune, _, _>(format, p, args).await
-            }
+            ArchiveAction::Prune(args) => cli::post::<Prune, _, _>(format, p, args).await,
         },
         // The scaffold leg is the guest-invocable half of `init`:
         // project-scoped writes only, anchored at the `"."` mount
@@ -217,7 +169,7 @@ async fn route(cli: cli::cli::Cli) -> Exit {
         // hydration, manifest generation) has no guest implementation
         // and refuses below.
         Commands::Init(args) if args.scaffold_only => {
-            cli::post::<init::handlers::Scaffold, _, _>(format, p, args).await
+            cli::post::<Scaffold, _, _>(format, p, args).await
         }
         Commands::Init(_) => unsupported(format, "init"),
         Commands::Adapters { .. } => unsupported(format, "adapters"),
