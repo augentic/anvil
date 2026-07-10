@@ -3,7 +3,8 @@
 
 use std::path::PathBuf;
 
-use clap::Subcommand;
+use clap::{Args, Subcommand};
+use serde::Serialize;
 
 /// Verbs under `specify source`.
 #[derive(Debug, Subcommand)]
@@ -14,15 +15,7 @@ pub enum SourceAction {
     /// store entry for a pinned identity, else the project component
     /// cache / development release build for a bare name. Emits the
     /// resolved component path plus the axis's closed operation set.
-    Resolve {
-        /// Kebab-case source-adapter name (e.g. `intent`,
-        /// `documentation`, `typescript`, `screenshots`).
-        name: String,
-        /// Project directory containing `.specify/` (defaults to the
-        /// current directory).
-        #[arg(long, default_value = ".")]
-        project_dir: PathBuf,
-    },
+    Resolve(ResolveArgs),
 
     /// Run a source adapter's `survey` against a plan-bound source and
     /// merge the resulting lead set into `discovery.md`.
@@ -32,13 +25,7 @@ pub enum SourceAction {
     /// collapsed survey orchestration in the workflow guest — one call
     /// covering the source dispatch, `leads.md` validation, and the
     /// `discovery.md` merge.
-    Survey {
-        /// Source key from `plan.yaml.sources.<key>`.
-        source: String,
-        /// Plan name guard. When set, must match `plan.yaml.name`.
-        #[arg(long)]
-        plan: Option<String>,
-    },
+    Survey(SurveyArgs),
 
     /// Run a source adapter's `extract` for one `(source, lead)`
     /// pair and persist the resulting Evidence to
@@ -49,14 +36,47 @@ pub enum SourceAction {
     /// collapsed extract orchestration in the workflow guest — one
     /// call covering the source dispatch, the Evidence schema gate
     /// (`schemas/evidence.schema.json`), and the persist.
-    Extract {
-        /// Source key from `plan.yaml.sources.<key>`.
-        source: String,
-        /// Lead id (from `discovery.md`) the Evidence is bound to.
-        lead: String,
-        /// Slice the Evidence is extracted into; keys the
-        /// `.specify/slices/<slice>/evidence/` target.
-        #[arg(long)]
-        slice: String,
-    },
+    Extract(ExtractArgs),
+}
+
+/// Argv mirror of `source resolve`'s wire input
+/// (`workflow::adapter::handlers::ResolveInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ResolveArgs {
+    /// Kebab-case source-adapter name (e.g. `intent`,
+    /// `documentation`, `typescript`, `screenshots`).
+    #[arg(value_name = "NAME")]
+    pub value: String,
+    /// Project directory containing `.specify/` (defaults to the
+    /// current directory).
+    #[arg(long, default_value = ".")]
+    pub project_dir: Option<PathBuf>,
+}
+
+/// Argv mirror of `source survey`'s wire input
+/// (`workflow::orchestrate::handlers::SurveyInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct SurveyArgs {
+    /// Source key from `plan.yaml.sources.<key>`.
+    pub source: String,
+    /// Plan name guard. When set, must match `plan.yaml.name`.
+    #[arg(long)]
+    pub plan: Option<String>,
+}
+
+/// Argv mirror of `source extract`'s wire input
+/// (`workflow::orchestrate::handlers::ExtractInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExtractArgs {
+    /// Source key from `plan.yaml.sources.<key>`.
+    pub source: String,
+    /// Lead id (from `discovery.md`) the Evidence is bound to.
+    pub lead: String,
+    /// Slice the Evidence is extracted into; keys the
+    /// `.specify/slices/<slice>/evidence/` target.
+    #[arg(long)]
+    pub slice: String,
 }

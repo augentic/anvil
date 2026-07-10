@@ -37,7 +37,7 @@ mod bindings {
 }
 
 use bindings::exports::specify::adapter::source::{
-    AdapterId, Authority, Claim, ClaimKind, Error, Evidence, Guest, Lead, Metadata,
+    AdapterId, AdapterMetadata, Authority, Claim, ClaimKind, Error, Evidence, Guest, Lead,
 };
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
@@ -48,8 +48,8 @@ use wasip3::http::types as http;
 struct EchoAdapter;
 
 impl Guest for EchoAdapter {
-    fn metadata(_id: AdapterId) -> Metadata {
-        Metadata { specify_floor: None }
+    fn metadata(_id: AdapterId) -> AdapterMetadata {
+        AdapterMetadata { specify_floor: None }
     }
 
     async fn survey(id: AdapterId) -> Result<Vec<Lead>, Error> {

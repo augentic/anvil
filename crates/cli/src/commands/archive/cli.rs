@@ -1,6 +1,7 @@
 //! Clap derive surface for `specify archive *`.
 
-use clap::Subcommand;
+use clap::{Args, Subcommand};
+use serde::Serialize;
 
 /// Verbs under `specify archive`.
 #[derive(Clone, Copy, Debug, Subcommand)]
@@ -14,15 +15,21 @@ pub enum ArchiveAction {
     /// `--keep` / `--older-than` is required; a folder is pruned when it
     /// falls outside the newest-`--keep` window or is older than
     /// `--older-than` days.
-    Prune {
-        /// Keep at most this many most-recent archived slices.
-        #[arg(long)]
-        keep: Option<usize>,
-        /// Prune archived slices older than this many days.
-        #[arg(long = "older-than")]
-        older_than: Option<i64>,
-        /// Report what would be pruned without removing anything.
-        #[arg(long)]
-        dry_run: bool,
-    },
+    Prune(PruneArgs),
+}
+
+/// Argv mirror of `archive prune`'s wire input
+/// (`workflow::slice::handlers::PruneInput`).
+#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PruneArgs {
+    /// Keep at most this many most-recent archived slices.
+    #[arg(long)]
+    pub keep: Option<usize>,
+    /// Prune archived slices older than this many days.
+    #[arg(long = "older-than")]
+    pub older_than: Option<i64>,
+    /// Report what would be pruned without removing anything.
+    #[arg(long)]
+    pub dry_run: bool,
 }

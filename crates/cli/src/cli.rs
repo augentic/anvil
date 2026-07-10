@@ -1,12 +1,12 @@
 //! Top-level clap derive surface for the `specify` binary.
 //!
-//! Owns the umbrella types ([`Cli`], [`Commands`], [`Format`],
-//! [`SourceArg`], [`SliceSourceArg`]), the shared [`parse`] entry
-//! point, and the re-exports of the per-verb action enums.
+//! Owns the umbrella types ([`Cli`], [`Commands`], [`Format`]), the
+//! shared [`parse`] entry point, and the re-exports of the per-verb
+//! action enums. Custom field grammars (`SourceAssign`,
+//! `BindingArg`, `KindAssign`) live in
+//! `workflow::change::plan::handlers` — one type per grammar carrying
+//! both the clap `FromStr` and the serde wire form.
 
-use std::str::FromStr;
-
-use artifacts::evidence::ClaimKind;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 
@@ -195,7 +195,13 @@ pub enum Commands {
 /// argv (the binary executes the verb; this grammar carries it for
 /// `--help` and completions, with the guest refusing everything but
 /// the hidden `--scaffold-only` leg).
-#[derive(Debug, Args)]
+///
+/// Doubles as the argv mirror of the scaffold leg's wire input
+/// (`workflow::init::handlers::ScaffoldInput`): the routing arms pass
+/// it whole and the extra provisioning flags (`upgrade`,
+/// `scaffold-only`) are ignored keys on the wire.
+#[derive(Debug, Args, serde::Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct InitArgs {
     /// Adapter identifier. A package reference
     /// (`specify:omnia@1.0.0`) or the first-party shorthand
@@ -279,200 +285,6 @@ pub enum ChannelArg {
     Brew,
     /// Force the release-archive (binary) strategy.
     Binary,
-}
-
-/// Typed `--source <key>=<adapter>:<binding>` CLI value (top-level
-/// plan source binding).
-///
-/// Wire grammar (locked):
-///
-/// - `--source <key>=<adapter>:<path>` — path-bound binding. The
-///   adapter is the substring up to the first `:` after `=`; the
-///   path is everything after that first `:` (URLs containing
-///   `:` such as `git@github.com:org/foo.git` round-trip cleanly).
-/// - `--source <key>=<adapter>:value:<literal>` — value-bound
-///   binding. The `value:` sentinel after the adapter switches the
-///   parser to literal mode; the literal payload is everything
-///   after the second `:` and may contain anything (newlines,
-///   colons, equals signs).
-///
-/// Materialises as [`workflow::change::SourceBinding`] under
-/// the structured `{ adapter, path?, value? }` wire form. Every
-/// binding carries an explicit adapter name; there is no bare-string
-/// `--source <key>=<path>` form.
-///
-/// The [`FromStr`] impl returns a `String` error on malformed input
-/// so clap surfaces a standard usage diagnostic (exit code 2).
-#[derive(Clone, Debug)]
-pub struct SourceArg {
-    /// Source key (left of `=`).
-    pub(crate) key: String,
-    /// Kebab-case source-adapter name (parsed out of the `<adapter>:…`
-    /// prefix after `=`).
-    pub(crate) adapter: String,
-    /// Mutually exclusive with `value`. `Some(path)` for the
-    /// `<adapter>:<path>` form.
-    pub(crate) path: Option<String>,
-    /// Mutually exclusive with `path`. `Some(literal)` for the
-    /// `<adapter>:value:<literal>` form.
-    pub(crate) value: Option<String>,
-}
-
-impl SourceArg {
-    /// The desugared `plan create --intent <string>` binding —
-    /// byte-identical to parsing `intent=intent:value:<string>`.
-    #[must_use]
-    pub(crate) fn intent(value: String) -> Self {
-        Self {
-            key: "intent".to_string(),
-            adapter: "intent".to_string(),
-            path: None,
-            value: Some(value),
-        }
-    }
-}
-
-impl FromStr for SourceArg {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (key, rest) = s.split_once('=').ok_or_else(|| {
-            format!(
-                "--source must be <key>=<adapter>:<path> or <key>=<adapter>:value:<literal>, got \
-                 `{s}`"
-            )
-        })?;
-        if key.is_empty() {
-            return Err(format!("--source key must be non-empty, got `{s}`"));
-        }
-        let (adapter, body) = rest.split_once(':').ok_or_else(|| {
-            format!(
-                "--source value must be <adapter>:<path> or <adapter>:value:<literal>, got \
-                 `{rest}` for key `{key}`"
-            )
-        })?;
-        if adapter.is_empty() {
-            return Err(format!("--source adapter must be non-empty, got `{s}`"));
-        }
-        if body.is_empty() {
-            return Err(format!(
-                "--source binding (path or `value:<literal>`) must be non-empty, got `{s}`"
-            ));
-        }
-        let (path, value) = if let Some(literal) = body.strip_prefix("value:") {
-            if literal.is_empty() {
-                return Err(format!(
-                    "--source value-literal must be non-empty after `value:`, got `{s}`"
-                ));
-            }
-            (None, Some(literal.to_string()))
-        } else {
-            (Some(body.to_string()), None)
-        };
-        Ok(Self {
-            key: key.to_string(),
-            adapter: adapter.to_string(),
-            path,
-            value,
-        })
-    }
-}
-
-/// Typed value for the per-slice `--sources` / `--add-source` /
-/// `--remove-source` flags.
-///
-/// Wire forms (workflow §`Slice.sources`):
-///
-/// - `<key>=<lead>` — structured binding; both sides are
-///   non-empty kebab identifiers. Materialises via
-///   [`workflow::change::SliceSourceBinding::structured`].
-/// - `<key>` — bare-string shorthand; sugar for
-///   `{ key: <key>, lead: <slice.name> }`. Materialises via
-///   [`workflow::change::SliceSourceBinding::bare`].
-///
-/// Malformed inputs (empty key, empty lead, dangling `=`, more
-/// than one `=`) produce a `FromStr` error that clap surfaces as a
-/// standard usage diagnostic (exit code 2 via `Error::Argument` at
-/// the handler boundary).
-#[derive(Clone, Debug)]
-pub struct SliceSourceArg {
-    pub(crate) key: String,
-    /// `None` when the operator wrote the bare-string shorthand;
-    /// `Some(lead)` otherwise. The handler downconverts to the
-    /// bare wire form when `lead == slice.name` so the on-disk
-    /// `plan.yaml` stays minimal.
-    pub(crate) lead: Option<String>,
-}
-
-/// Typed value for the per-slice `--authority-override <kind>=<key>`
-/// flag on `specify plan add` (where the slice context is implicit
-/// from the command's positional `name`).
-///
-/// Wire form is `<claim-kind>=<source>`; both sides must be
-/// non-empty and kebab-case (`source` is validated at the
-/// `specify slice validate` stage via the orphan-key check).
-/// `claim-kind` is parsed at the CLI boundary against the closed
-/// [`ClaimKind`] enum so misspellings fail before any plan mutation
-/// runs (clap exits 2 with its standard usage diagnostic).
-#[derive(Clone, Debug)]
-pub struct AuthorityOverrideKindAssign {
-    pub(crate) kind: ClaimKind,
-    pub(crate) source: String,
-}
-
-impl FromStr for AuthorityOverrideKindAssign {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (raw_kind, source) = s
-            .split_once('=')
-            .ok_or_else(|| format!("--authority-override must be <kind>=<source>, got `{s}`"))?;
-        if raw_kind.is_empty() || source.is_empty() {
-            return Err(format!(
-                "--authority-override kind and source must both be non-empty, got `{s}`"
-            ));
-        }
-        if source.contains('=') {
-            return Err(format!(
-                "--authority-override value `{s}` must contain exactly one `=` separator between \
-                 kind and source"
-            ));
-        }
-        let kind: ClaimKind = raw_kind.parse()?;
-        Ok(Self {
-            kind,
-            source: source.to_string(),
-        })
-    }
-}
-
-impl FromStr for SliceSourceArg {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.is_empty() {
-            return Err("--sources value must be non-empty".to_string());
-        }
-        if let Some((k, v)) = s.split_once('=') {
-            if v.contains('=') {
-                return Err(format!(
-                    "--sources value `{s}` must be <key>=<lead> with at most one `=`"
-                ));
-            }
-            if k.is_empty() || v.is_empty() {
-                return Err(format!("--sources key and lead must both be non-empty, got `{s}`"));
-            }
-            Ok(Self {
-                key: k.to_string(),
-                lead: Some(v.to_string()),
-            })
-        } else {
-            Ok(Self {
-                key: s.to_string(),
-                lead: None,
-            })
-        }
-    }
 }
 
 /// Parse argv through the shared grammar.

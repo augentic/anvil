@@ -11,7 +11,7 @@ use error::{Error, is_kebab};
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
 
-use super::args::parse_override_assigns;
+use super::args::{SourceAssign, parse_override_assigns, source_map};
 use crate::change::{
     Lifecycle, Plan, SourceBinding, mutate_authority_overrides, reject_orphan_overrides,
 };
@@ -20,19 +20,26 @@ use crate::journal;
 
 /// Wire input for `plan create`.
 ///
-/// `--source` / `--intent` desugar to the structured `sources` map at
-/// the CLI boundary (the map shape is the `plan.yaml.sources` wire
-/// form, so HTTP callers pass it directly); `--authority-override`
-/// rides as the raw interleaved `<slice> <kind>=<key>` pair list and
-/// parses here, keeping the diagnostic identical on every transport.
+/// Carries the raw source surface on every transport: `sources` is
+/// the [`SourceAssign`] list (`--source` repeats) and `intent` the
+/// `--intent` sugar. The desugaring into the structured
+/// `plan.yaml.sources` map — including the duplicate-key gate — runs
+/// in `from_input`, so argv and HTTP callers get identical
+/// diagnostics. `--authority-override` rides as the raw interleaved
+/// `<slice> <kind>=<key>` pair list and parses in `handle` for the
+/// same reason.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateInput {
     /// Kebab-case change name.
     pub name: String,
-    /// Structured source bindings (`plan.yaml.sources` shape).
+    /// Raw source bindings (the `--source` repeat list).
     #[serde(default)]
-    pub sources: BTreeMap<String, SourceBinding>,
+    pub sources: Vec<SourceAssign>,
+    /// Operator intent literal — sugar for
+    /// `--source intent=intent:value:<string>`.
+    #[serde(default)]
+    pub intent: Option<String>,
     /// Stamp `lifecycle: approved` atomically with create
     /// (auto-approve Gate-1 contract).
     #[serde(default)]
@@ -59,7 +66,10 @@ pub struct CreateInput {
 /// untouched.
 #[derive(Debug)]
 pub struct Create {
-    input: CreateInput,
+    name: String,
+    sources: BTreeMap<String, SourceBinding>,
+    auto_approve: bool,
+    authority_override: Vec<String>,
 }
 
 impl<P: Anchor> Handler<P> for Create {
@@ -68,17 +78,23 @@ impl<P: Anchor> Handler<P> for Create {
     type Output = Out<CreateBody>;
 
     fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
+        let sources = source_map(input.sources, input.intent)?;
+        Ok(Self {
+            name: input.name,
+            sources,
+            auto_approve: input.auto_approve,
+            authority_override: input.authority_override,
+        })
     }
 
     async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
         let cx = Ctx::load(ctx.provider)?;
-        let CreateInput {
+        let Self {
             name,
             sources,
             auto_approve,
             authority_override,
-        } = self.input;
+        } = self;
 
         if !is_kebab(&name) {
             return Err(Error::Diag {

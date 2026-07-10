@@ -1,6 +1,6 @@
 //! In-process coverage of the shared grammar seam: the [`parse`]
-//! entry point's exit-code contract and the clap-to-`Input`
-//! conversions the shim dispatch matches rely on.
+//! entry point's exit-code contract and the argv → `Input` extraction
+//! the routing arms rely on (the `front::extract` serde round-trip).
 //!
 //! The full per-verb behaviour (filesystem effects, typed failures)
 //! is driven through the `Handler` layer by `crates/workflow/tests`;
@@ -8,7 +8,8 @@
 
 use cli::cli::{Cli, Commands, parse};
 use cli::commands::plan::cli::PlanAction;
-use cli::commands::plan::source_map;
+use workflow::change::plan::handlers::source_map;
+use workflow::orchestrate::handlers::AuthorInput;
 
 /// Parse one argv line (program name included) through the shared
 /// grammar, panicking on parse failure.
@@ -40,7 +41,7 @@ fn parse_replaces_argv0() {
         matches!(
             cli.command,
             Commands::Plan {
-                action: PlanAction::Status
+                action: PlanAction::Status(_)
             }
         ),
         "argv[0] is replaced before parsing"
@@ -49,8 +50,9 @@ fn parse_replaces_argv0() {
 
 #[test]
 fn author_sources_desugar() {
-    // `--source` + `--intent` desugar through the same source_map the
-    // dispatch matches use for `plan create` and `plan author`.
+    // `--source` + `--intent` ride raw onto `AuthorInput` through the
+    // one bridge extraction, then desugar through the same source_map
+    // `from_input` runs for `plan create` and `plan author`.
     let cli = parse_ok(&[
         "specify",
         "plan",
@@ -62,12 +64,13 @@ fn author_sources_desugar() {
         "revamp the account area",
     ]);
     let Commands::Plan {
-        action: PlanAction::Author { sources, intent, .. },
+        action: PlanAction::Author(args),
     } = cli.command
     else {
         panic!("plan author parses to its action");
     };
-    let map = source_map(sources, intent).expect("bindings desugar");
+    let input: AuthorInput = cli::front::extract(args).expect("mirror extracts");
+    let map = source_map(input.sources, input.intent).expect("bindings desugar");
     assert_eq!(map.len(), 2, "docs plus the desugared intent binding");
     assert_eq!(map["intent"].adapter, "intent");
     assert_eq!(map["intent"].value.as_deref(), Some("revamp the account area"));
@@ -88,12 +91,13 @@ fn duplicate_intent_binding_refused() {
         "sugared",
     ]);
     let Commands::Plan {
-        action: PlanAction::Author { sources, intent, .. },
+        action: PlanAction::Author(args),
     } = cli.command
     else {
         panic!("plan author parses to its action");
     };
-    let err = source_map(sources, intent).expect_err("duplicate intent key refused");
+    let input: AuthorInput = cli::front::extract(args).expect("mirror extracts");
+    let err = source_map(input.sources, input.intent).expect_err("duplicate intent key refused");
     assert!(
         matches!(err, error::Error::Diag { code, .. } if code == "plan-source-duplicate-key"),
         "the duplicate-key gate names its stable discriminant"

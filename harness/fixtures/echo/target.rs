@@ -39,8 +39,8 @@ mod bindings {
 }
 
 use bindings::exports::specify::adapter::target::{
-    AdapterId, Changeset, Error, Guest, Input, Metadata, Platform, PlatformsCapability, Report,
-    Status, WorkingTree,
+    AdapterId, AdapterMetadata, Changeset, Error, Guest, Input, Platform, PlatformsCapability,
+    Report, Status, WorkingTree,
 };
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
@@ -51,7 +51,7 @@ use wasip3::http::types as http;
 struct EchoTarget;
 
 impl Guest for EchoTarget {
-    fn metadata(id: AdapterId) -> Metadata {
+    fn metadata(id: AdapterId) -> AdapterMetadata {
         // Deterministic per identity — fixture-only branching so one
         // binary stands in for several capability shapes (real adapters
         // compile in one answer):
@@ -73,7 +73,7 @@ impl Guest for EchoTarget {
         } else {
             None
         };
-        Metadata {
+        AdapterMetadata {
             specify_floor: None,
             inputs: Vec::new(),
             platforms,

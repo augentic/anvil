@@ -198,8 +198,8 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/cli/src/output.r
 src/runtime.rs           shipped binary — omnia::runtime! command mode over cursor backends
 src/lib.rs               wasm32 core guest shim (mod argv; mod http; mod provider;)
 src/provider.rs          WIT-backed Provider (Anchor + Model + SourceSeam + TargetSeam over the world's imports)
-src/argv.rs              struct Cli + Guest::run + route(cli) (target; dispatch.rs today)
-src/http.rs              HTTP route table (target; inline mod http in lib.rs today)
+src/argv.rs              struct Cli + Guest::run + route(cli)
+src/http.rs              struct Http + Guest impl + the HTTP route table
 crates/cli/              shared clap grammar, conversions, envelopes, exit contract
 crates/workflow/         workflow domain logic
 harness/fixtures/        echo adapter fixtures (skeleton specify:adapter components)

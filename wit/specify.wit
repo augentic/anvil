@@ -169,7 +169,7 @@ interface source {
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world,
   /// so only the compatibility floor remains on the record.
-  record metadata {
+  record adapter-metadata {
     /// Optional host-CLI compatibility floor: the exact minimum
     /// `specify` platform version this adapter needs. The host compares
     /// it against the running binary at resolve time and aborts when
@@ -181,7 +181,7 @@ interface source {
   /// and cached against the artifact digest. Metadata, not judgment:
   /// effect-free and answerable from compiled-in constants — no model
   /// call, no filesystem access.
-  metadata: func(id: adapter-id) -> metadata;
+  metadata: func(id: adapter-id) -> adapter-metadata;
 
   /// Lightly survey the source to create a map of its contents (decompose
   /// into leads). An `async func` like every judgment operation: the guest
@@ -326,7 +326,7 @@ interface target {
   /// in the wasm-pkg package reference and axis in the exported world;
   /// the record carries the compatibility floor plus the target's
   /// declared build inputs and platform capability.
-  record metadata {
+  record adapter-metadata {
     /// Optional host-CLI compatibility floor: the exact minimum
     /// `specify` platform version this adapter needs. The host compares
     /// it against the running binary at resolve time and aborts when
@@ -345,7 +345,7 @@ interface target {
   /// and cached against the artifact digest. Metadata, not judgment:
   /// effect-free and answerable from compiled-in constants — no model
   /// call, no filesystem access.
-  metadata: func(id: adapter-id) -> metadata;
+  metadata: func(id: adapter-id) -> adapter-metadata;
 
   /// Guidance on the expected build artifacts for this target, read by core
   /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary

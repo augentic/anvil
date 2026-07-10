@@ -10,13 +10,26 @@ use serde::Serialize;
 use crate::slice::{LifecycleStatus, SliceMetadata};
 
 /// What to do when [`create`] finds an existing directory at the
-/// target path.
+/// target path. Rides the wire typed on both transports (kebab-case
+/// values), matching the CLI mirror's value parser.
 #[derive(
-    Debug, Copy, Clone, PartialEq, Eq, strum::Display, strum::EnumString, strum::VariantNames,
+    Debug,
+    Copy,
+    Clone,
+    Default,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    strum::Display,
+    strum::EnumString,
+    strum::VariantNames,
 )]
+#[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum CreateIfExists {
     /// Refuse when the directory exists (default).
+    #[default]
     Fail,
     /// Reuse the existing directory — requires a valid `metadata.yaml`.
     /// Intended for the define skill's "continue in-flight slice" flow.

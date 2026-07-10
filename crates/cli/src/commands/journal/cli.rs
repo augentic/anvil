@@ -1,7 +1,8 @@
 //! Clap derive surface for `specify journal *`. The umbrella `cli.rs`
 //! re-exports `JournalAction`.
 
-use clap::Subcommand;
+use clap::{Args, Subcommand};
+use serde::Serialize;
 
 /// Verbs under `specify journal`.
 #[derive(Debug, Subcommand)]
@@ -17,16 +18,7 @@ pub enum JournalAction {
     /// variant's field schema exits `2` with
     /// `journal-emit-payload-schema`. On success the CLI stamps a
     /// second-precision UTC timestamp and appends exactly one line.
-    Emit {
-        /// Dotted-kebab event id (e.g. `slice.build.started`).
-        event: String,
-
-        /// JSON object carrying the event's payload fields (e.g.
-        /// `{"source":"runtime","adapter":"captures",...}`).
-        /// Omit for events with no payload fields.
-        #[arg(long)]
-        payload: Option<String>,
-    },
+    Emit(EmitArgs),
 
     /// Read events from `.specify/journal.jsonl` in append order.
     ///
@@ -36,14 +28,35 @@ pub enum JournalAction {
     /// wraps the same events in the standard envelope. Blank and
     /// unparseable lines are skipped, matching every other journal
     /// reader; a missing journal yields no events.
-    Show {
-        /// Keep only events whose dotted-kebab id starts with this
-        /// prefix (e.g. `slice.build` or `plan.entry.advanced`).
-        #[arg(long)]
-        filter: Option<String>,
+    Show(ShowArgs),
+}
 
-        /// Keep only the most recent N matching events.
-        #[arg(long)]
-        limit: Option<usize>,
-    },
+/// Argv mirror of `journal emit`'s wire input
+/// (`workflow::journal::handlers::EmitInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct EmitArgs {
+    /// Dotted-kebab event id (e.g. `slice.build.started`).
+    pub event: String,
+
+    /// JSON object carrying the event's payload fields (e.g.
+    /// `{"source":"runtime","adapter":"captures",...}`).
+    /// Omit for events with no payload fields.
+    #[arg(long)]
+    pub payload: Option<String>,
+}
+
+/// Argv mirror of `journal show`'s wire input
+/// (`workflow::journal::handlers::ShowInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ShowArgs {
+    /// Keep only events whose dotted-kebab id starts with this
+    /// prefix (e.g. `slice.build` or `plan.entry.advanced`).
+    #[arg(long)]
+    pub filter: Option<String>,
+
+    /// Keep only the most recent N matching events.
+    #[arg(long)]
+    pub limit: Option<usize>,
 }

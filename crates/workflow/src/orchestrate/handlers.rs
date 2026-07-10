@@ -19,6 +19,7 @@ use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
 
 use super::{self as orchestrate, ExecuteOutcome};
+use crate::change::plan::handlers::{SourceAssign, source_map};
 use crate::change::{LoopStep, SourceBinding};
 use crate::handler::{Anchor, Ctx, Out, Render};
 use crate::merge::artifact_classes;
@@ -324,17 +325,24 @@ impl Render for MergeBody {
 // plan author
 // ---------------------------------------------------------------------------
 
-/// Wire input for `plan author`. `--source` / `--intent` desugar to
-/// the structured `sources` map at the CLI boundary — the same
-/// `plan.yaml.sources` wire form `plan create` takes.
+/// Wire input for `plan author`.
+///
+/// Carries the raw source surface on every transport — the same
+/// [`SourceAssign`] list + `intent` sugar `plan create` takes; the
+/// desugaring into the structured `plan.yaml.sources` map runs in
+/// `from_input`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AuthorInput {
     /// Kebab-case change name.
     pub name: String,
-    /// Structured source bindings (`plan.yaml.sources` shape).
+    /// Raw source bindings (the `--source` repeat list).
     #[serde(default)]
-    pub sources: std::collections::BTreeMap<String, SourceBinding>,
+    pub sources: Vec<SourceAssign>,
+    /// Operator intent literal — sugar for
+    /// `--source intent=intent:value:<string>`.
+    #[serde(default)]
+    pub intent: Option<String>,
 }
 
 /// `specify plan author <name> [--source ...]` →
@@ -342,7 +350,8 @@ pub struct AuthorInput {
 /// at `lifecycle: pending`.
 #[derive(Debug)]
 pub struct Author {
-    input: AuthorInput,
+    name: String,
+    sources: std::collections::BTreeMap<String, SourceBinding>,
 }
 
 impl<P: Anchor + Model + SourceSeam> Handler<P> for Author {
@@ -351,7 +360,11 @@ impl<P: Anchor + Model + SourceSeam> Handler<P> for Author {
     type Output = Out<AuthorBody>;
 
     fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
+        let sources = source_map(input.sources, input.intent)?;
+        Ok(Self {
+            name: input.name,
+            sources,
+        })
     }
 
     async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
@@ -361,8 +374,8 @@ impl<P: Anchor + Model + SourceSeam> Handler<P> for Author {
             ctx.provider,
             cx.layout(),
             cx.now(),
-            &self.input.name,
-            self.input.sources,
+            &self.name,
+            self.sources,
         )
         .await?;
         Ok(Reply::ok(Out(AuthorBody {

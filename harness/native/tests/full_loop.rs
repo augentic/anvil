@@ -5,14 +5,14 @@
 //! and omnia adapter operations (prompts, schema gates, validation
 //! tails) run in-process with only the model scripted. No wasm builds.
 
-use std::collections::BTreeMap;
 use std::fs;
 
 use omnia_guest::api::Handler;
 use serde_json::json;
 use specify_dev::provider::NativeProvider;
 use testkit::MockModel;
-use workflow::change::{LoopStep, SourceBinding, Status, plan};
+use workflow::change::plan::handlers::SourceAssign;
+use workflow::change::{LoopStep, Status, plan};
 use workflow::orchestrate;
 
 mod common;
@@ -34,12 +34,14 @@ where
     Ok(reply.body.0)
 }
 
-/// The single intent binding `plan author` desugars from `--intent`.
-fn bindings() -> BTreeMap<String, SourceBinding> {
-    let intent: SourceBinding =
-        serde_json::from_value(json!({ "adapter": "intent", "value": "Fix the greeting." }))
-            .expect("intent binding parses");
-    BTreeMap::from([("intent".to_string(), intent)])
+/// The single raw intent binding `plan author` carries on the wire
+/// (`from_input` desugars it into the structured sources map).
+fn bindings() -> Vec<SourceAssign> {
+    let intent: SourceAssign = serde_json::from_value(
+        json!({ "key": "intent", "adapter": "intent", "value": "Fix the greeting." }),
+    )
+    .expect("intent binding parses");
+    vec![intent]
 }
 
 /// The scripted judgment answers for the whole loop, in dispatch
@@ -112,6 +114,7 @@ async fn author_approve_execute_drains() {
         orchestrate::handlers::AuthorInput {
             name: "demo".to_string(),
             sources: bindings(),
+            intent: None,
         },
     )
     .await

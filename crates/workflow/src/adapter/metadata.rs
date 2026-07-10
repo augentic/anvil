@@ -100,9 +100,7 @@ pub fn metadata_cache_path(component: &Path) -> PathBuf {
 ///   process.
 /// - Any error from the runner itself (`adapter-metadata-failed`,
 ///   `adapter-axis-mismatch`).
-pub fn metadata(
-    location: &AdapterLocation, axis: Axis, name: &str,
-) -> Result<Metadata, Error> {
+pub fn metadata(location: &AdapterLocation, axis: Axis, name: &str) -> Result<Metadata, Error> {
     let component = location.path();
     let digest = schema::cache::file_content_digest(component);
     let cache_path = metadata_cache_path(component);

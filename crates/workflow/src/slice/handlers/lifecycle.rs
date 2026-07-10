@@ -25,13 +25,10 @@ pub struct CreateInput {
     #[serde(default)]
     pub target: Option<String>,
     /// Behaviour when `<slices_dir>/<name>/` already exists — `fail`
-    /// (default), `continue`, or `restart`.
-    #[serde(default = "default_if_exists")]
-    pub if_exists: String,
-}
-
-fn default_if_exists() -> String {
-    "fail".to_string()
+    /// (default), `continue`, or `restart`. Typed on both transports;
+    /// an unknown value fails the one deserialize path.
+    #[serde(default)]
+    pub if_exists: CreateIfExists,
 }
 
 /// `specify slice create <name>` — create a slice directory with an
@@ -49,19 +46,10 @@ impl<P: Anchor> Handler<P> for Create {
     type Output = Out<Created>;
 
     fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        let if_exists: CreateIfExists =
-            input.if_exists.parse().map_err(|_ignored| Error::Argument {
-                flag: "--if-exists",
-                detail: format!(
-                    "`{}` is not a valid if-exists value; expected `fail`, `continue`, or \
-                     `restart`",
-                    input.if_exists
-                ),
-            })?;
         Ok(Self {
             name: input.name,
             target: input.target,
-            if_exists,
+            if_exists: input.if_exists,
         })
     }
 

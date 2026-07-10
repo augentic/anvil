@@ -22,3 +22,10 @@ pub mod cli;
 pub mod commands;
 pub mod front;
 pub mod output;
+
+/// Alias over [`front::run`] documenting write intent on a routing
+/// arm — the argv counterpart of `route::post` on the HTTP side.
+pub use front::run as post;
+/// Alias over [`front::run`] documenting read intent on a routing
+/// arm — the argv counterpart of `route::get` on the HTTP side.
+pub use front::run as get;

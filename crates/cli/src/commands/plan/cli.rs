@@ -1,77 +1,32 @@
 //! Clap derive surface for the `specify plan *` verbs. The umbrella
 //! `cli.rs` re-exports [`PlanAction`].
+//!
+//! The custom-grammar field types ([`SourceAssign`], [`BindingArg`],
+//! [`KindAssign`]) come from `workflow`'s plan handlers: each carries
+//! the `FromStr` clap parses with and the serde form the wire
+//! carries, so the mirror structs here stay field-identical to their
+//! handler `Input`s.
 
 use clap::{ArgAction, Args, Subcommand};
-
-use crate::cli::{AuthorityOverrideKindAssign, SliceSourceArg, SourceArg};
+use serde::Serialize;
+use workflow::change::plan::handlers::{BindingArg, KindAssign, SourceAssign};
 
 /// Plan-authoring verbs (`specify plan *`).
 #[derive(Debug, Subcommand)]
 pub enum PlanAction {
     /// Scaffold an empty `plan.yaml` at the repo root. Refuses to
     /// overwrite an existing plan.
-    Create {
-        /// Kebab-case change name
-        name: String,
-        /// Named source binding, repeatable. Wire grammar:
-        /// `--source <key>=<adapter>:<path>` for path-bound bindings,
-        /// or `--source <key>=<adapter>:value:<literal>` for
-        /// value-bound bindings (used by `intent`). Recorded in the
-        /// plan's `sources:` map as the structured
-        /// `{ adapter, path?, value? }` shape per workflow §Source.
-        #[arg(long = "source")]
-        sources: Vec<SourceArg>,
-        /// Operator intent as a literal string — pure sugar for
-        /// `--source intent=intent:value:<string>` (the N=1 entry
-        /// point without hand-writing the binding grammar).
-        /// Combining it with an explicit `--source intent=...`
-        /// binding fails on the duplicate-key gate
-        /// (`plan-source-duplicate-key`), the same refusal two
-        /// conflicting `--source intent=...` occurrences get.
-        #[arg(long = "intent", value_name = "STRING")]
-        intent: Option<String>,
-        /// Stamp `lifecycle: approved` atomically with create
-        /// (auto-approve Gate-1 contract). Typing this flag *is* the operator's
-        /// Gate-1 consent — the CLI runs the same validation it
-        /// runs on the post-create path, refuses the create on
-        /// failure regardless of the flag, and on success writes a
-        /// single atomic `plan.yaml` carrying `lifecycle: approved`
-        /// plus the matching `plan.transition.approved` journal
-        /// event. Valid on any plan shape (empty scaffold,
-        /// single-slice, multi-slice).
-        #[arg(long = "auto-approve", action = ArgAction::SetTrue)]
-        auto_approve: bool,
-        /// Pre-seed a per-slice `authority-override` entry on a
-        /// named slice (per-slice authority override). Each occurrence takes two
-        /// positional values: the slice name and a
-        /// `<claim-kind>=<source>` assignment. Repeatable; later
-        /// occurrences override earlier ones on the same
-        /// `(slice, kind)` tuple. The slice MUST already exist in
-        /// the plan being created (unknown names short-circuit with
-        /// `plan-authority-override-unknown-slice`); the source key
-        /// is validated at `specify slice validate` time via the
-        /// orphan-key check. One
-        /// `plan.amend.authority-override` journal event fires per
-        /// resolved entry in the same batched append as
-        /// `--auto-approve`.
-        #[arg(
-            long = "authority-override",
-            value_names = ["SLICE", "KIND=KEY"],
-            num_args = 2,
-            action = ArgAction::Append,
-        )]
-        authority_override: Vec<String>,
-    },
+    Create(CreateArgs),
     /// Validate plan.yaml (structure + plan/change consistency).
     ///
     /// Includes the three health diagnostics — `cycle-in-depends-on`,
     /// `orphan-source`, and `stale-workspace-clone` — alongside
     /// the base shape rules.
-    Validate,
+    Validate(ValidateArgs),
     /// Return the active in-progress entry, or transition the next eligible
     /// `Pending` entry to `InProgress` and return it. `plan next` is the
     /// only writer of per-entry `in-progress` (workflow §CLI surface).
-    Next,
+    Next(NextArgs),
     /// Read-only projection of the plan's execution state into a
     /// deterministic `next-action` — `refine|build|merge <slice>`,
     /// `stop <reason>`, or `drained`.
@@ -85,7 +40,7 @@ pub enum PlanAction {
     /// `slice.merge.failed` journal events scoped to the active
     /// entry's claim window. Writes nothing — `plan next` stays the
     /// only writer of per-entry `in-progress`.
-    Status,
+    Status(StatusArgs),
     /// Add a new plan entry (status: pending)
     Add(AddArgs),
     /// Edit non-status fields on an existing plan entry.
@@ -106,10 +61,7 @@ pub enum PlanAction {
     /// Remove a pending plan entry while the plan is still replaceable
     /// (`lifecycle: pending` and every entry `pending`). Gate 1 curation
     /// only — defers a lead without re-surveying `discovery.md`.
-    Remove {
-        /// Kebab-case entry name to remove
-        name: String,
-    },
+    Remove(RemoveArgs),
     /// Apply a validated status transition.
     ///
     /// Two transition shapes share this verb (workflow §CLI surface):
@@ -127,32 +79,7 @@ pub enum PlanAction {
     /// per-entry `in-progress` is written only by `plan next`. v1 has
     /// no per-entry `blocked`, `failed`, or `skipped` state — build
     /// failures and merge conflicts leave the active entry `in-progress`.
-    Transition {
-        /// Plan name (for plan-level `approved`) or kebab-case entry
-        /// name (for per-entry `done` / `--undo`).
-        name: String,
-        /// Transition target — `approved` (plan-level) or `done`
-        /// (per-entry). Omit when `--undo` is set.
-        #[arg(required_unless_present = "undo")]
-        target: Option<String>,
-        /// Walk one rung backwards on per-entry status. Legal rungs:
-        /// `done → in-progress`, `in-progress → pending`. The flag
-        /// refuses to skip rungs — undoing a `done` entry to
-        /// `pending` MUST run twice so the journal records each step
-        /// independently. Fires one `plan.transition.undone` event
-        /// per call. Plan-level `approved` cannot be undone; un-stamp
-        /// by editing `plan.yaml` directly (out of scope for v1).
-        #[arg(long = "undo", action = ArgAction::SetTrue, conflicts_with = "target")]
-        undo: bool,
-        /// Who is driving this invocation — `operator` (default) or
-        /// `agent`. Recorded on the `plan.transition.approved`
-        /// journal event so eval probes can grade
-        /// `gate-1-not-auto-stamped` mechanically; self-reported
-        /// evidence, not an enforcement gate. Ignored on per-entry
-        /// and `--undo` transitions.
-        #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
-        actor: String,
-    },
+    Transition(TransitionArgs),
     /// Author a plan end-to-end in the workflow guest: scaffold
     /// `plan.yaml` (`plan create` semantics), survey every bound
     /// source into `discovery.md`, reconcile the leads into
@@ -163,20 +90,7 @@ pub enum PlanAction {
     ///
     /// Guest-only through the composed-deployment leg: the `/spec:plan`
     /// skill invokes this single verb and relays its output.
-    Author {
-        /// Kebab-case change name
-        name: String,
-        /// Named source binding, repeatable — the `plan create`
-        /// grammar verbatim: `--source <key>=<adapter>:<path>` or
-        /// `--source <key>=<adapter>:value:<literal>`.
-        #[arg(long = "source")]
-        sources: Vec<SourceArg>,
-        /// Operator intent as a literal string — pure sugar for
-        /// `--source intent=intent:value:<string>`, exactly as on
-        /// `plan create`.
-        #[arg(long = "intent", value_name = "STRING")]
-        intent: Option<String>,
-    },
+    Author(AuthorArgs),
     /// Run the drained execute loop in the workflow guest: claim →
     /// refine → build → merge per entry until the plan projects
     /// `drained` or a stop condition halts it (exit 2,
@@ -185,19 +99,174 @@ pub enum PlanAction {
     /// Guest-only through the composed-deployment leg: the loop holds
     /// the create-exclusive `.specify/guest.lock` marker
     /// (guest-vs-guest refusal only) while it drives the phases.
-    Execute,
+    Execute(ExecuteArgs),
     /// Archive the current plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`
-    Archive {
-        /// Archive even when the plan has pending or in-progress entries.
-        /// Without --force, these non-terminal statuses block the archive.
-        #[arg(long)]
-        force: bool,
-    },
+    Archive(ArchiveArgs),
 }
 
-/// Flag surface for `specify plan add`. Grouped into one struct so the
-/// handler threads a single owned value instead of a positional list.
-#[derive(Debug, Args)]
+/// Argv mirror of `plan create`'s wire input
+/// (`workflow::change::plan::handlers::CreateInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct CreateArgs {
+    /// Kebab-case change name
+    pub name: String,
+    /// Named source binding, repeatable. Wire grammar:
+    /// `--source <key>=<adapter>:<path>` for path-bound bindings,
+    /// or `--source <key>=<adapter>:value:<literal>` for
+    /// value-bound bindings (used by `intent`). Recorded in the
+    /// plan's `sources:` map as the structured
+    /// `{ adapter, path?, value? }` shape per workflow §Source.
+    #[arg(long = "source")]
+    pub sources: Vec<SourceAssign>,
+    /// Operator intent as a literal string — pure sugar for
+    /// `--source intent=intent:value:<string>` (the N=1 entry
+    /// point without hand-writing the binding grammar).
+    /// Combining it with an explicit `--source intent=...`
+    /// binding fails on the duplicate-key gate
+    /// (`plan-source-duplicate-key`), the same refusal two
+    /// conflicting `--source intent=...` occurrences get.
+    #[arg(long = "intent", value_name = "STRING")]
+    pub intent: Option<String>,
+    /// Stamp `lifecycle: approved` atomically with create
+    /// (auto-approve Gate-1 contract). Typing this flag *is* the operator's
+    /// Gate-1 consent — the CLI runs the same validation it
+    /// runs on the post-create path, refuses the create on
+    /// failure regardless of the flag, and on success writes a
+    /// single atomic `plan.yaml` carrying `lifecycle: approved`
+    /// plus the matching `plan.transition.approved` journal
+    /// event. Valid on any plan shape (empty scaffold,
+    /// single-slice, multi-slice).
+    #[arg(long = "auto-approve", action = ArgAction::SetTrue)]
+    pub auto_approve: bool,
+    /// Pre-seed a per-slice `authority-override` entry on a
+    /// named slice (per-slice authority override). Each occurrence takes two
+    /// positional values: the slice name and a
+    /// `<claim-kind>=<source>` assignment. Repeatable; later
+    /// occurrences override earlier ones on the same
+    /// `(slice, kind)` tuple. The slice MUST already exist in
+    /// the plan being created (unknown names short-circuit with
+    /// `plan-authority-override-unknown-slice`); the source key
+    /// is validated at `specify slice validate` time via the
+    /// orphan-key check. One
+    /// `plan.amend.authority-override` journal event fires per
+    /// resolved entry in the same batched append as
+    /// `--auto-approve`.
+    #[arg(
+        long = "authority-override",
+        value_names = ["SLICE", "KIND=KEY"],
+        num_args = 2,
+        action = ArgAction::Append,
+    )]
+    pub authority_override: Vec<String>,
+}
+
+/// Argv mirror of `plan validate`'s wire input (no fields).
+#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+)]
+pub struct ValidateArgs {}
+
+/// Argv mirror of `plan next`'s wire input (no fields).
+#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+)]
+pub struct NextArgs {}
+
+/// Argv mirror of `plan status`' wire input (no fields).
+#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+)]
+pub struct StatusArgs {}
+
+/// Argv mirror of `plan execute`'s wire input (no fields).
+#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+)]
+pub struct ExecuteArgs {}
+
+/// Argv mirror of `plan remove`'s wire input
+/// (`workflow::change::plan::handlers::RemoveInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct RemoveArgs {
+    /// Kebab-case entry name to remove
+    pub name: String,
+}
+
+/// Argv mirror of `plan transition`'s wire input
+/// (`workflow::change::plan::handlers::TransitionInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct TransitionArgs {
+    /// Plan name (for plan-level `approved`) or kebab-case entry
+    /// name (for per-entry `done` / `--undo`).
+    pub name: String,
+    /// Transition target — `approved` (plan-level) or `done`
+    /// (per-entry). Omit when `--undo` is set.
+    #[arg(required_unless_present = "undo")]
+    pub target: Option<String>,
+    /// Walk one rung backwards on per-entry status. Legal rungs:
+    /// `done → in-progress`, `in-progress → pending`. The flag
+    /// refuses to skip rungs — undoing a `done` entry to
+    /// `pending` MUST run twice so the journal records each step
+    /// independently. Fires one `plan.transition.undone` event
+    /// per call. Plan-level `approved` cannot be undone; un-stamp
+    /// by editing `plan.yaml` directly (out of scope for v1).
+    #[arg(long = "undo", action = ArgAction::SetTrue, conflicts_with = "target")]
+    pub undo: bool,
+    /// Who is driving this invocation — `operator` (default) or
+    /// `agent`. Recorded on the `plan.transition.approved`
+    /// journal event so eval probes can grade
+    /// `gate-1-not-auto-stamped` mechanically; self-reported
+    /// evidence, not an enforcement gate. Ignored on per-entry
+    /// and `--undo` transitions.
+    #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
+    pub actor: String,
+}
+
+/// Argv mirror of `plan author`'s wire input
+/// (`workflow::orchestrate::handlers::AuthorInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AuthorArgs {
+    /// Kebab-case change name
+    pub name: String,
+    /// Named source binding, repeatable — the `plan create`
+    /// grammar verbatim: `--source <key>=<adapter>:<path>` or
+    /// `--source <key>=<adapter>:value:<literal>`.
+    #[arg(long = "source")]
+    pub sources: Vec<SourceAssign>,
+    /// Operator intent as a literal string — pure sugar for
+    /// `--source intent=intent:value:<string>`, exactly as on
+    /// `plan create`.
+    #[arg(long = "intent", value_name = "STRING")]
+    pub intent: Option<String>,
+}
+
+/// Argv mirror of `plan archive`'s wire input
+/// (`workflow::change::plan::handlers::ArchiveInput`).
+#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ArchiveArgs {
+    /// Archive even when the plan has pending or in-progress entries.
+    /// Without --force, these non-terminal statuses block the archive.
+    #[arg(long)]
+    pub force: bool,
+}
+
+/// Argv mirror of `plan add`'s wire input
+/// (`workflow::change::plan::handlers::AddInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct AddArgs {
     /// Kebab-case plan entry (slice) name for the new row under `plan.yaml.slices[]`.
     pub name: String,
@@ -211,7 +280,7 @@ pub struct AddArgs {
     /// shorthand for `{ key: <key>, lead: <slice.name> }`
     /// per workflow §`Slice.sources`.
     #[arg(long = "sources", action = ArgAction::Append)]
-    pub sources: Vec<SliceSourceArg>,
+    pub sources: Vec<BindingArg>,
     /// Free-text scoping hint for the define step
     #[arg(long)]
     pub description: Option<String>,
@@ -232,12 +301,13 @@ pub struct AddArgs {
     /// `plan.amend.authority-override` event fires per resolved
     /// entry.
     #[arg(long = "authority-override", action = ArgAction::Append)]
-    pub authority_override: Vec<AuthorityOverrideKindAssign>,
+    pub authority_override: Vec<KindAssign>,
 }
 
-/// Flag surface for `specify plan amend`. Grouped into one struct so the
-/// handler threads a single owned value instead of a positional list.
-#[derive(Debug, Args)]
+/// Argv mirror of `plan amend`'s wire input
+/// (`workflow::change::plan::handlers::AmendInput`).
+#[derive(Debug, Args, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct AmendArgs {
     /// Kebab-case plan entry (slice) name — the row under `plan.yaml.slices[]`
     /// being edited. There is one active plan file; this is not the plan name.
@@ -252,12 +322,12 @@ pub struct AmendArgs {
     /// Pass `--sources` (no value) to clear; omit to leave
     /// unchanged.
     #[arg(long = "sources", num_args = 0.., value_delimiter = ',')]
-    pub sources: Option<Vec<SliceSourceArg>>,
+    pub sources: Option<Vec<BindingArg>>,
     /// Add a single per-slice source binding (repeatable). Each
     /// value is `<key>=<lead>` or the bare `<key>`
     /// shorthand per workflow §`Slice.sources`.
     #[arg(long = "add-source", action = ArgAction::Append)]
-    pub add_source: Vec<SliceSourceArg>,
+    pub add_source: Vec<BindingArg>,
     /// Remove a per-slice source binding by key (repeatable).
     /// Fails with `plan-binding-not-found` when no such binding
     /// exists on the slice.

@@ -5,6 +5,7 @@
 //! handler hands to [`crate::change::Plan`]; the handlers
 //! themselves stay free of parsing chatter.
 
+use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use artifacts::discovery::{Discovery, DiscoveryResolveError};
@@ -12,12 +13,178 @@ use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::change::{Divergence, SliceSourceBinding};
+use crate::change::{Divergence, SliceSourceBinding, SourceBinding};
 use crate::config::Layout;
+
+/// One top-level plan source binding as it crosses the wire.
+///
+/// Carries the key from `plan.yaml.sources.<key>` plus the adapter and
+/// its path- or value-binding — the raw `plan create` / `plan author`
+/// sources shape on both transports; [`source_map`] desugars the list
+/// into the structured `plan.yaml.sources` map inside `from_input`.
+///
+/// Argv grammar (locked), carried by the [`FromStr`] impl so clap
+/// parses `--source` values directly into this type:
+///
+/// - `--source <key>=<adapter>:<path>` — path-bound binding. The
+///   adapter is the substring up to the first `:` after `=`; the
+///   path is everything after that first `:` (URLs containing
+///   `:` such as `git@github.com:org/foo.git` round-trip cleanly).
+/// - `--source <key>=<adapter>:value:<literal>` — value-bound
+///   binding. The `value:` sentinel after the adapter switches the
+///   parser to literal mode; the literal payload is everything
+///   after the second `:` and may contain anything (newlines,
+///   colons, equals signs).
+///
+/// Materialises as [`SourceBinding`] under the structured
+/// `{ adapter, path?, value? }` wire form. Every binding carries an
+/// explicit adapter name; there is no bare-string
+/// `--source <key>=<path>` form.
+///
+/// The [`FromStr`] impl returns a `String` error on malformed input
+/// so clap surfaces a standard usage diagnostic (exit code 2).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct SourceAssign {
+    /// Source key (left of `=`).
+    pub key: String,
+    /// Kebab-case source-adapter name (parsed out of the `<adapter>:…`
+    /// prefix after `=`).
+    pub adapter: String,
+    /// Mutually exclusive with `value`. `Some(path)` for the
+    /// `<adapter>:<path>` form.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Mutually exclusive with `path`. `Some(literal)` for the
+    /// `<adapter>:value:<literal>` form.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+impl SourceAssign {
+    /// The desugared `plan create --intent <string>` binding —
+    /// byte-identical to parsing `intent=intent:value:<string>`.
+    #[must_use]
+    pub fn intent(value: String) -> Self {
+        Self {
+            key: "intent".to_string(),
+            adapter: "intent".to_string(),
+            path: None,
+            value: Some(value),
+        }
+    }
+}
+
+impl FromStr for SourceAssign {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (key, rest) = s.split_once('=').ok_or_else(|| {
+            format!(
+                "--source must be <key>=<adapter>:<path> or <key>=<adapter>:value:<literal>, got \
+                 `{s}`"
+            )
+        })?;
+        if key.is_empty() {
+            return Err(format!("--source key must be non-empty, got `{s}`"));
+        }
+        let (adapter, body) = rest.split_once(':').ok_or_else(|| {
+            format!(
+                "--source value must be <adapter>:<path> or <adapter>:value:<literal>, got \
+                 `{rest}` for key `{key}`"
+            )
+        })?;
+        if adapter.is_empty() {
+            return Err(format!("--source adapter must be non-empty, got `{s}`"));
+        }
+        if body.is_empty() {
+            return Err(format!(
+                "--source binding (path or `value:<literal>`) must be non-empty, got `{s}`"
+            ));
+        }
+        let (path, value) = if let Some(literal) = body.strip_prefix("value:") {
+            if literal.is_empty() {
+                return Err(format!(
+                    "--source value-literal must be non-empty after `value:`, got `{s}`"
+                ));
+            }
+            (None, Some(literal.to_string()))
+        } else {
+            (Some(body.to_string()), None)
+        };
+        Ok(Self {
+            key: key.to_string(),
+            adapter: adapter.to_string(),
+            path,
+            value,
+        })
+    }
+}
+
+/// Desugar the `plan create` / `plan author` raw source surface into
+/// the structured binding map [`crate::change::Plan::init`] expects.
+///
+/// Runs inside `from_input` so both transports share the duplicate-key
+/// gate and the `--intent` sugar.
+///
+/// `intent` appends the value-bound intent binding before the
+/// duplicate-key gate, so an explicit `--source intent=...` in the
+/// same invocation trips `plan-source-duplicate-key` — the same
+/// refusal two conflicting `--source intent=...` occurrences get.
+///
+/// # Errors
+///
+/// `Error::Diag` with the stable `plan-source-duplicate-key`
+/// discriminant on a duplicate source key.
+pub fn source_map(
+    mut sources: Vec<SourceAssign>, intent: Option<String>,
+) -> Result<BTreeMap<String, SourceBinding>> {
+    if let Some(value) = intent {
+        sources.push(SourceAssign::intent(value));
+    }
+    let mut map: BTreeMap<String, SourceBinding> = BTreeMap::new();
+    for SourceAssign {
+        key,
+        adapter,
+        path,
+        value,
+    } in sources
+    {
+        if map.contains_key(&key) {
+            return Err(Error::Diag {
+                code: "plan-source-duplicate-key",
+                detail: format!("duplicate key `{key}` in --source arguments"),
+            });
+        }
+        map.insert(
+            key,
+            SourceBinding {
+                adapter,
+                version: None,
+                path,
+                value,
+            },
+        );
+    }
+    Ok(map)
+}
 
 /// One per-slice source binding as it crosses the wire: the key from
 /// `plan.yaml.sources.<key>` plus an optional lead id. `lead: None` is
 /// the bare-string shorthand (`{ key, lead: <slice.name> }`).
+///
+/// Argv wire forms (workflow §`Slice.sources`), carried by the
+/// [`FromStr`] impl so clap parses `--sources` / `--add-source`
+/// values directly into this type:
+///
+/// - `<key>=<lead>` — structured binding; both sides are non-empty
+///   kebab identifiers.
+/// - `<key>` — bare-string shorthand; sugar for
+///   `{ key: <key>, lead: <slice.name> }`.
+///
+/// Malformed inputs (empty key, empty lead, dangling `=`, more than
+/// one `=`) produce a `FromStr` error that clap surfaces as a
+/// standard usage diagnostic (exit code 2).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BindingArg {
@@ -26,6 +193,35 @@ pub struct BindingArg {
     /// Lead id from `discovery.md`; `None` for the bare shorthand.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lead: Option<String>,
+}
+
+impl FromStr for BindingArg {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err("--sources value must be non-empty".to_string());
+        }
+        if let Some((k, v)) = s.split_once('=') {
+            if v.contains('=') {
+                return Err(format!(
+                    "--sources value `{s}` must be <key>=<lead> with at most one `=`"
+                ));
+            }
+            if k.is_empty() || v.is_empty() {
+                return Err(format!("--sources key and lead must both be non-empty, got `{s}`"));
+            }
+            Ok(Self {
+                key: k.to_string(),
+                lead: Some(v.to_string()),
+            })
+        } else {
+            Ok(Self {
+                key: s.to_string(),
+                lead: None,
+            })
+        }
+    }
 }
 
 /// One `<claim-kind>=<source>` authority-override assignment where the

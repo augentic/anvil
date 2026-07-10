@@ -20,8 +20,8 @@
 //! or the sibling `specify-adapters` checkout.
 
 mod core;
-pub mod metadata;
 pub mod handlers;
+pub mod metadata;
 pub(crate) mod operation;
 mod resolve;
 

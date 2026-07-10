@@ -18,7 +18,7 @@ use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
 pub use self::amend::{Amend, AmendInput};
-pub use self::args::{BindingArg, KindAssign};
+pub use self::args::{BindingArg, KindAssign, SourceAssign, source_map};
 pub use self::create::{Create, CreateInput};
 pub use self::entry::EntryBody;
 pub use self::lifecycle::{
