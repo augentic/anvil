@@ -1,14 +1,15 @@
 //! `specify plan remove` — drop one pending plan entry while the plan
 //! is still replaceable (Gate 1 curation).
 
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::{plan_ref, require_file};
 use crate::change::Plan;
 use crate::config::with_state;
-use crate::handler::{Anchor, Ctx, Out};
+use crate::handler::{Anchor, Ctx};
 use crate::schema::validate_plan;
 
 /// Wire input for `plan remove`.
@@ -20,23 +21,19 @@ pub struct RemoveInput {
 }
 
 /// `specify plan remove <name>`.
-#[derive(Debug)]
-pub struct Remove {
-    input: RemoveInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Remove;
 
-impl<P: Anchor> Handler<P> for Remove {
+impl<P: Anchor> Operation<P> for Remove {
     type Error = crate::handler::Error;
     type Input = RemoveInput;
-    type Output = Out<EntryBody>;
+    type Output = EntryBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let name = self.input.name;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let name = input.name;
         let plan_path = require_file(&cx)?;
         let body = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
             let removed =
@@ -55,6 +52,6 @@ impl<P: Anchor> Handler<P> for Remove {
             })
         })?;
 
-        Ok(Reply::ok(Out(body)))
+        Ok(body)
     }
 }

@@ -1,18 +1,9 @@
-//! Transport-level coverage of the HTTP seam: assemble a route table
-//! over a tempdir-anchored provider (the same `route::get` / `post`
-//! constructor lines the shims' hand-written tables use) and drive
-//! real requests through it, asserting path/query/body extraction
-//! reaches the same `Handler` impls the argv transport drives and
-//! that failures ride the taxonomy → status projection.
-//!
-//! The provider's judgment seams (`Model`, `SourceSeam`, `TargetSeam`)
-//! are erroring stubs — they exist to satisfy the route constructors'
-//! bounds; the deterministic verbs exercised here never touch them.
+//! Transport-level coverage of Specify's shared HTTP router.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use omnia_guest::api::{Client, route};
+use omnia_guest::api::invoke::Invoker;
 use omnia_guest::axum::Router;
 use omnia_guest::axum::body::{Body, to_bytes};
 use omnia_guest::http::{Method, Request, StatusCode};
@@ -21,18 +12,13 @@ use tempfile::TempDir;
 use tower::ServiceExt as _;
 use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
 use workflow::slice::BuildReport;
-use workflow::{registry, slice};
 
-/// An initialised throw-away project tree. The tempdir stays owned by
-/// the test — the provider moves into the router's state and drops
-/// with it, so it must not carry the directory's lifetime.
 struct Project {
     _tmp: TempDir,
     root: PathBuf,
 }
 
 impl Project {
-    /// An initialised project (`.specify/project.yaml` present).
     fn initialised() -> Self {
         let tmp = TempDir::new().expect("tempdir");
         let root = tmp.path().canonicalize().expect("canonical tempdir");
@@ -42,23 +28,17 @@ impl Project {
         Self { _tmp: tmp, root }
     }
 
-    /// A route table anchored at this project's root, covering the
-    /// verbs this suite drives — the same constructor lines the shims'
-    /// full tables carry.
     fn router(&self) -> Router {
-        let provider = Provider {
-            root: self.root.clone(),
-        };
-        Router::new()
-            .route("/registry/validate", route::get::<registry::handlers::Validate, Provider>())
-            .route("/registry", route::post::<registry::handlers::Add, Provider>())
-            .route("/registry/{name}/remove", route::post::<registry::handlers::Remove, Provider>())
-            .route("/archive/prune", route::post::<slice::handlers::Prune, Provider>())
-            .with_state(Client::new("specify").provider(provider))
+        argv::http::router(Invoker::new(
+            "specify",
+            Provider {
+                root: self.root.clone(),
+            },
+        ))
+        .into_axum()
     }
 }
 
-/// Root-anchored provider satisfying the router's full seam bound.
 struct Provider {
     root: PathBuf,
 }
@@ -97,8 +77,6 @@ impl TargetSeam for Provider {
     }
 }
 
-/// Send one request, returning the status and the parsed JSON body
-/// (`Null` when the body is not JSON).
 async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json::Value) {
     let response = router.oneshot(request).await.expect("router serves the request");
     let status = response.status();
@@ -107,7 +85,6 @@ async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json
     (status, value)
 }
 
-/// Stage a one-project `registry.yaml` at the project root.
 fn stage_registry(root: &Path) {
     fs::write(
         root.join("registry.yaml"),
@@ -130,7 +107,7 @@ async fn get_serves_json_body() {
 }
 
 #[tokio::test]
-async fn post_body_reaches_handler() {
+async fn post_body_reaches_operation() {
     let project = Project::initialised();
     let request = Request::builder()
         .method(Method::POST)
@@ -145,7 +122,7 @@ async fn post_body_reaches_handler() {
 }
 
 #[tokio::test]
-async fn path_param_reaches_handler() {
+async fn path_param_reaches_operation() {
     let project = Project::initialised();
     stage_registry(&project.root);
     let request = Request::builder()
@@ -161,9 +138,6 @@ async fn path_param_reaches_handler() {
 
 #[tokio::test]
 async fn taxonomy_failure_maps_to_error_envelope() {
-    // A bound-less prune refuses with `Error::Argument` — the argv
-    // transport exits 2; here the same failure must surface as the
-    // 422 error envelope from the one taxonomy → status projection.
     let project = Project::initialised();
     let request = Request::builder()
         .method(Method::POST)

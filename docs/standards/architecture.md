@@ -4,16 +4,16 @@ Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>
 
 ## Workspace layout
 
-Binary crate (`name = "specify-cli"`) at the repo root. [`src/runtime.rs`](../../src/runtime.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest ([`src/lib.rs`](../../src/lib.rs)) through the shared argv grammar (`crates/argv`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
+Deployment crate (`name = "specify"`) at the repo root. [`src/runtime.rs`](../../src/runtime.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest ([`src/lib.rs`](../../src/lib.rs)) through the shared argv grammar (`crates/argv`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
 
 ```text
 error                    # leaf — thiserror + serde-saphyr only
 schema                   # depends on error (embedded JSON Schemas + jsonschema plumbing; owns schema::digest — SHA-256 hex via sha2 + base16ct — and schema::diagnostics, the neutral Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
-workflow                 # workflow layer — depends on {error,schema,artifacts} (also owns workflow::agents — init-time AGENTS.md context-fence generation); no wasmtime in its graph
-argv                     # wasm-clean argv transport — shared by the specify guest and native shims
+workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest}; owns transport-neutral Operation implementations and workflow::agents; no wasmtime in its graph
+argv                     # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract
 testkit                  # dev-only shared test support (the scripted Model mock); [dev-dependencies] only, never shipped
-specify-cli (root crate) # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
+specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 
 The framework authoring checks run as plain cargo tests at [`tests/framework/`](../../tests/framework/); there is no lint engine or `Check` substrate.
@@ -30,7 +30,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-The root `specify-cli` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, argv routing in `src/command.rs`, and HTTP routing in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `command.rs` (`struct Cli` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`struct Http` + `Guest::handle` + `omnia_wasi_http::serve`). `lib.rs` is module wiring only — no `guest!` macro. The command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `workflow::handler`); the whole `specify` clap tree lives in `crates/argv`, whose `argv::cli::completions` serves shell completions via `Cli::command()`. See [rfcs/handler-routing.md](../../rfcs/handler-routing.md) for the routing design.
+The root `specify` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, command entry in `src/command.rs`, and HTTP entry in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `command.rs` (`CliGuest` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`Http` + `Guest::handle` + `omnia_guest::api::http::serve`). `lib.rs` is module wiring only — no `guest!` macro. Commands live in `crates/workflow` as transport-neutral `Operation<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `workflow::handler`). `crates/argv/src/router.rs` and `crates/argv/src/http.rs` own the explicit typed command and HTTP route inventories over `Invoker<P>`; the WASI and native shims only construct invokers and adapt transport output. See [rfcs/handler-routing.md](../../rfcs/handler-routing.md) for the routing design.
 
 ## workflow domain modules
 
@@ -59,7 +59,7 @@ The framework checks over this repo's prose are not WASI components either — t
 
 ## Time injection
 
-Functions that record a timestamp into a serialised artifact accept `now: jiff::Timestamp` from the dispatcher boundary. Library crates do not call `Timestamp::now()`; the call sites live in the `cli` handlers so tests can pin time deterministically. The current carve-out — `slice_actions::*` and friends still consume an injected `now` argument — is the canonical shape to follow.
+Functions that record a timestamp into a serialised artifact accept `now: jiff::Timestamp` from the operation boundary. Domain kernels do not call `Timestamp::now()`; operation call sites inject time so tests can pin it deterministically. The current carve-out — `slice_actions::*` and friends still consume an injected `now` argument — is the canonical shape to follow.
 
 ## ureq fetch hardening
 

@@ -15,7 +15,7 @@ evals/fixtures/targets/omnia/
 ├── README.md
 ├── input/                       # synthesised slice artifacts (post-shape-injection)
 │   ├── spec.md                  # requirement blocks with ID / Sources / Status
-│   ├── design.md                # provider trait deps, handler delegation, validation table
+│   ├── design.md                # provider trait deps, operation delegation, validation table
 │   └── tasks.md                 # build sequence the build brief expects
 └── expected/
     ├── shape-evidence.md        # checklist of shape-derived sections present in spec/design

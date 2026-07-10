@@ -1,10 +1,8 @@
-//! The native shim's HTTP transport: `specify-dev serve` — this
-//! shim's hand-written HTTP route table merged with the `/mcp/<name>`
-//! shelves on one `TcpListener`, the native counterpart of the
-//! guest's `wasi:http/incoming-handler` export. Structurally
-//! symmetric with `command.rs`: a transport entry ([`serve`]) calling a
-//! route-table function. Mutating dispatch is serialized behind a
-//! process-wide write lock; GETs stay concurrent.
+//! The native shim's HTTP transport: `specify-dev serve` — the shared
+//! typed HTTP router merged with the `/mcp/<name>` shelves on one
+//! `TcpListener`, the native counterpart of the guest's
+//! `wasi:http/incoming-handler` export. Mutating invocation is
+//! serialized behind a process-wide write lock; GETs stay concurrent.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -14,15 +12,13 @@ use axum::extract::Request;
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use clap::Parser;
-use omnia_guest::api::{Client, route};
+use omnia_guest::api::invoke::Invoker;
 use omnia_guest::http::Method;
 use specify_dev::mcp;
 use specify_dev::model::DevModel;
 use specify_dev::provider::NativeProvider;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
-use workflow::change::plan;
-use workflow::{adapter, init, journal, orchestrate, registry, slice};
 
 /// `specify-dev serve` — the native HTTP transport.
 #[derive(Debug, Parser)]
@@ -50,66 +46,13 @@ pub async fn serve(argv: &[String]) -> Result<ExitCode> {
 
     let model = DevModel::from_env(&project_dir)?;
     let provider = NativeProvider::new(project_dir, model).mcp_base(base);
-    let client = Client::new("specify").provider(provider);
-    let router = router(client).layer(middleware::from_fn(serialize_writes)).merge(mcp::router());
+    let router = argv::http::router(Invoker::new("specify", provider))
+        .into_axum()
+        .layer(middleware::from_fn(serialize_writes))
+        .merge(mcp::router());
 
     axum::serve(listener, router).await.context("serving")?;
     Ok(ExitCode::SUCCESS)
-}
-
-/// The served provider type — the state every route line binds.
-type P = NativeProvider<DevModel>;
-
-/// This shim's HTTP route table, one line per routed command — GET for
-/// pure reads (path + query args), POST for writes and judgment (JSON
-/// bodies), the noun in the path. Deliberately a hand-maintained copy
-/// of the guest table in the repo root's `src/http.rs`: parity between
-/// transports comes from both routing to the same `Handler` impls,
-/// not from shared table code. Grammar leaves with no route here are
-/// the provisioning commands and `completions`.
-fn router(client: Client<P>) -> axum::Router {
-    axum::Router::new()
-        .route("/init/scaffold", route::post::<init::handlers::Scaffold, P>())
-        .route("/source/resolve", route::get::<adapter::handlers::SourceResolve, P>())
-        .route("/source/{source}/survey", route::post::<orchestrate::handlers::Survey, P>())
-        .route("/source/{source}/extract", route::post::<orchestrate::handlers::Extract, P>())
-        .route("/target/resolve", route::get::<adapter::handlers::TargetResolve, P>())
-        .route("/slice/{name}/create", route::post::<slice::handlers::Create, P>())
-        .route("/slice/{name}/validate", route::get::<slice::handlers::Validate, P>())
-        .route("/slice/{name}/provenance", route::get::<slice::handlers::Provenance, P>())
-        .route("/slice/{name}/model", route::get::<slice::handlers::ModelShow, P>())
-        .route("/slice/{name}/refine", route::post::<orchestrate::handlers::Refine, P>())
-        .route("/slice/{name}/build", route::post::<orchestrate::handlers::Build, P>())
-        .route("/slice/{name}/merge", route::post::<orchestrate::handlers::MergeRun, P>())
-        .route("/slice/{name}/merge/preview", route::get::<slice::handlers::Preview, P>())
-        .route(
-            "/slice/{name}/merge/conflict-check",
-            route::get::<slice::handlers::ConflictCheck, P>(),
-        )
-        .route("/slice/{name}/tasks", route::get::<slice::handlers::TaskProgress, P>())
-        .route("/slice/{name}/tasks/{task-number}", route::post::<slice::handlers::TaskMark, P>())
-        .route("/slice/{name}/transition", route::post::<slice::handlers::Transition, P>())
-        .route("/slice/{name}/touched-specs", route::post::<slice::handlers::TouchedSpecs, P>())
-        .route("/slice/{name}/overlap", route::get::<slice::handlers::Overlap, P>())
-        .route("/slice/{name}/drop", route::post::<slice::handlers::Drop, P>())
-        .route("/archive/prune", route::post::<slice::handlers::Prune, P>())
-        .route("/plan/{name}/create", route::post::<plan::handlers::Create, P>())
-        .route("/plan/validate", route::get::<plan::handlers::Validate, P>())
-        .route("/plan/next", route::post::<plan::handlers::Next, P>())
-        .route("/plan/status", route::get::<plan::handlers::Status, P>())
-        .route("/plan/{name}/add", route::post::<plan::handlers::Add, P>())
-        .route("/plan/{name}/amend", route::post::<plan::handlers::Amend, P>())
-        .route("/plan/{name}/remove", route::post::<plan::handlers::Remove, P>())
-        .route("/plan/{name}/transition", route::post::<plan::handlers::Transition, P>())
-        .route("/plan/{name}/author", route::post::<orchestrate::handlers::Author, P>())
-        .route("/plan/execute", route::post::<orchestrate::handlers::Execute, P>())
-        .route("/plan/archive", route::post::<plan::handlers::Archive, P>())
-        .route("/journal", route::post::<journal::handlers::Emit, P>())
-        .route("/journal", route::get::<journal::handlers::Show, P>())
-        .route("/registry/validate", route::get::<registry::handlers::Validate, P>())
-        .route("/registry", route::post::<registry::handlers::Add, P>())
-        .route("/registry/{name}/remove", route::post::<registry::handlers::Remove, P>())
-        .with_state(client)
 }
 
 /// `.specify/` assumes a single writer: atomic writes protect files,

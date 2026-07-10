@@ -1,43 +1,15 @@
-//! Transport-neutral output currency.
+//! Transport-neutral output rendering.
 //!
-//! The [`Out`] body wrapper every verb returns, the [`Render`]
-//! text-rendering trait the CLI front-end consumes, and the shared
-//! [`ReportBody`] diagnostic-report envelope.
+//! The [`Render`] text-rendering trait and shared [`ReportBody`]
+//! diagnostic-report envelope.
 
-use std::fmt;
 use std::io::Write;
 
 use schema::diagnostics::{
     Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, blocking_present,
     renumber,
 };
-use serde::{Serialize, Serializer};
-
-/// Uniform `Handler::Output` wrapper.
-///
-/// A local wrapper lets every verb body — verbs-local structs and
-/// re-used `workflow` projections alike — satisfy the HTTP transport's
-/// `IntoBody` bound without orphan-rule friction: `Out<T>` is local,
-/// so the blanket JSON encoding lives here once.
-pub struct Out<T>(pub T);
-
-impl<T> fmt::Debug for Out<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("Out(..)")
-    }
-}
-
-impl<T: Serialize> Serialize for Out<T> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.0.serialize(serializer)
-    }
-}
-
-impl<T: Serialize + Send + Sync> omnia_guest::api::IntoBody for Out<T> {
-    fn into_body(self) -> anyhow::Result<Vec<u8>> {
-        Ok(serde_json::to_vec(&self.0)?)
-    }
-}
+use serde::Serialize;
 
 /// Text rendering for a verb body.
 ///

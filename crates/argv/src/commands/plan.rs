@@ -1,9 +1,10 @@
 //! `specify plan *` grammar.
 //!
-//! The mirror `*Args` structs live in [`cli`]; the custom field
-//! grammars ([`SourceAssign`], [`BindingArg`], [`KindAssign`]) and the
-//! `--source` / `--intent` desugaring live in
-//! `workflow::change::plan::handlers` so both transports share them.
+//! The concrete command `*Args` structs live in [`cli`]. Custom field
+//! grammars ([`SourceAssign`], [`BindingArg`], [`KindAssign`]) remain
+//! transport-neutral, explicit `TryFrom<Args>` conversions live in the
+//! typed command router, and operation-level desugaring lives in
+//! `workflow::change::plan::handlers`.
 //!
 //! [`SourceAssign`]: workflow::change::plan::handlers::SourceAssign
 //! [`BindingArg`]: workflow::change::plan::handlers::BindingArg

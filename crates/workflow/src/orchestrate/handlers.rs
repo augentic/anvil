@@ -7,7 +7,7 @@
 //! [`Anchor`] alone, the judgment verbs additionally bound the seam
 //! traits ([`omnia_guest::Model`], [`SourceSeam`], [`TargetSeam`]) they
 //! consume — `ctx.provider` replaces the shim's concrete `&Provider`,
-//! so the same `Handler` impl serves the wasm guest, the native dev
+//! so the same operation serves the wasm guest, the native dev
 //! shim, and tests against a scripted mock.
 
 use std::io::Write;
@@ -15,13 +15,14 @@ use std::path::PathBuf;
 
 use error::Error;
 use omnia_guest::Model;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{self as orchestrate, ExecuteOutcome};
+use crate::change::LoopStep;
 use crate::change::plan::handlers::{SourceAssign, source_map};
-use crate::change::{LoopStep, SourceBinding};
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::merge::artifact_classes;
 use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 use crate::slice::BuildStatus;
@@ -52,35 +53,31 @@ pub struct SurveyInput {
 }
 
 /// `specify source survey <source>` → [`orchestrate::survey`].
-#[derive(Debug)]
-pub struct Survey {
-    input: SurveyInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Survey;
 
-impl<P: Anchor + SourceSeam> Handler<P> for Survey {
+impl<P: Anchor + SourceSeam> Operation<P> for Survey {
     type Error = crate::handler::Error;
     type Input = SurveyInput;
-    type Output = Out<SurveyBody>;
+    type Output = SurveyBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::survey(
-            ctx.provider,
+            context.provider,
             cx.layout(),
             cx.now(),
-            &self.input.source,
-            self.input.plan.as_deref(),
+            &input.source,
+            input.plan.as_deref(),
         )
         .await?;
-        Ok(Reply::ok(Out(SurveyBody {
+        Ok(SurveyBody {
             source: outcome.source,
             adapter: outcome.adapter,
             leads: outcome.leads,
-        })))
+        })
     }
 }
 
@@ -124,36 +121,32 @@ pub struct ExtractInput {
 
 /// `specify source extract <source> <lead> --slice <slice>` →
 /// [`orchestrate::extract`].
-#[derive(Debug)]
-pub struct Extract {
-    input: ExtractInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Extract;
 
-impl<P: Anchor + SourceSeam> Handler<P> for Extract {
+impl<P: Anchor + SourceSeam> Operation<P> for Extract {
     type Error = crate::handler::Error;
     type Input = ExtractInput;
-    type Output = Out<ExtractBody>;
+    type Output = ExtractBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::extract(
-            ctx.provider,
+            context.provider,
             cx.layout(),
             cx.now(),
-            &self.input.source,
-            &self.input.lead,
-            &self.input.slice,
+            &input.source,
+            &input.lead,
+            &input.slice,
         )
         .await?;
-        Ok(Reply::ok(Out(ExtractBody {
+        Ok(ExtractBody {
             source: outcome.source,
             adapter: outcome.adapter,
             evidence: outcome.evidence,
-        })))
+        })
     }
 }
 
@@ -189,38 +182,34 @@ pub struct BuildInput {
 }
 
 /// `specify slice build <name>` → [`orchestrate::build`].
-#[derive(Debug)]
-pub struct Build {
-    input: BuildInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Build;
 
-impl<P: Anchor + TargetSeam> Handler<P> for Build {
+impl<P: Anchor + TargetSeam> Operation<P> for Build {
     type Error = crate::handler::Error;
     type Input = BuildInput;
-    type Output = Out<BuildBody>;
+    type Output = BuildBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let manifest_inputs = cx.resolve_target_adapter()?.manifest.inputs;
         let outcome = orchestrate::build(
-            ctx.provider,
+            context.provider,
             cx.layout(),
             cx.now(),
-            &self.input.name,
+            &input.name,
             &manifest_inputs,
             live_tree(),
         )
         .await?;
-        Ok(Reply::ok(Out(BuildBody {
+        Ok(BuildBody {
             slice: outcome.slice,
             target: outcome.target,
             status: outcome.status,
             findings: outcome.findings,
-        })))
+        })
     }
 }
 
@@ -262,35 +251,31 @@ pub struct MergeRunInput {
 /// `specify slice merge run <name>` → [`orchestrate::merge`]
 /// (deterministic-only; grouped with the orchestrators so every
 /// behavioural divergence between shims lives in one place).
-#[derive(Debug)]
-pub struct MergeRun {
-    input: MergeRunInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct MergeRun;
 
-impl<P: Anchor> Handler<P> for MergeRun {
+impl<P: Anchor> Operation<P> for MergeRun {
     type Error = crate::handler::Error;
     type Input = MergeRunInput;
-    type Output = Out<MergeBody>;
+    type Output = MergeBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let MergeRunInput {
             name,
             allow_composition_replace,
-        } = self.input;
+        } = input;
         let classes = artifact_classes(&cx.project_dir, &cx.slices_dir().join(&name));
         let outcome =
             orchestrate::merge(cx.layout(), cx.now(), &name, &classes, allow_composition_replace)?;
-        Ok(Reply::ok(Out(MergeBody {
+        Ok(MergeBody {
             slice: name,
             merged: outcome.merged.into_iter().map(|entry| entry.name).collect(),
             decisions: outcome.decisions,
             archive_path: outcome.archive_path,
-        })))
+        })
     }
 }
 
@@ -329,8 +314,8 @@ impl Render for MergeBody {
 ///
 /// Carries the raw source surface on every transport — the same
 /// [`SourceAssign`] list + `intent` sugar `plan create` takes; the
-/// desugaring into the structured `plan.yaml.sources` map runs in
-/// `from_input`.
+/// desugaring into the structured `plan.yaml.sources` map runs at the
+/// operation boundary.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AuthorInput {
@@ -348,37 +333,34 @@ pub struct AuthorInput {
 /// `specify plan author <name> [--source ...]` →
 /// [`orchestrate::author`] — the collapsed `/spec:plan` flow exiting
 /// at `lifecycle: pending`.
-#[derive(Debug)]
-pub struct Author {
-    name: String,
-    sources: std::collections::BTreeMap<String, SourceBinding>,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Author;
 
-impl<P: Anchor + Model + SourceSeam> Handler<P> for Author {
+impl<P: Anchor + Model + SourceSeam> Operation<P> for Author {
     type Error = crate::handler::Error;
     type Input = AuthorInput;
-    type Output = Out<AuthorBody>;
+    type Output = AuthorBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        let sources = source_map(input.sources, input.intent)?;
-        Ok(Self {
-            name: input.name,
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let AuthorInput {
+            name,
             sources,
-        })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+            intent,
+        } = input;
+        let sources = source_map(sources, intent)?;
         let outcome = orchestrate::author(
-            ctx.provider,
-            ctx.provider,
+            context.provider,
+            context.provider,
             cx.layout(),
             cx.now(),
-            &self.name,
-            self.sources,
+            &name,
+            sources,
         )
         .await?;
-        Ok(Reply::ok(Out(AuthorBody {
+        Ok(AuthorBody {
             plan: outcome.plan,
             lifecycle: "pending",
             surveyed: outcome
@@ -392,7 +374,7 @@ impl<P: Anchor + Model + SourceSeam> Handler<P> for Author {
                 .collect(),
             slices: outcome.slices,
             hint: outcome.hint,
-        })))
+        })
     }
 }
 
@@ -456,32 +438,28 @@ pub struct RefineInput {
 
 /// `specify slice refine <name>` → [`orchestrate::refine_breakout`] —
 /// the `/spec:refine` breakout outside the execute loop.
-#[derive(Debug)]
-pub struct Refine {
-    input: RefineInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Refine;
 
-impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Refine {
+impl<P: Anchor + Model + SourceSeam + TargetSeam> Operation<P> for Refine {
     type Error = crate::handler::Error;
     type Input = RefineInput;
-    type Output = Out<RefineBody>;
+    type Output = RefineBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::refine_breakout(
-            ctx.provider,
-            ctx.provider,
-            ctx.provider,
+            context.provider,
+            context.provider,
+            context.provider,
             cx.layout(),
             cx.now(),
-            &self.input.name,
+            &input.name,
         )
         .await?;
-        Ok(Reply::ok(Out(RefineBody {
+        Ok(RefineBody {
             slice: outcome.slice,
             artifacts: outcome.artifacts,
             extracted: outcome
@@ -489,7 +467,7 @@ impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Refine {
                 .into_iter()
                 .map(|(source, lead)| RefineExtract { source, lead })
                 .collect(),
-        })))
+        })
     }
 }
 
@@ -545,23 +523,21 @@ pub struct ExecuteInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
-impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Execute {
+impl<P: Anchor + Model + SourceSeam + TargetSeam> Operation<P> for Execute {
     type Error = crate::handler::Error;
     type Input = ExecuteInput;
-    type Output = Out<ExecuteBody>;
+    type Output = ExecuteBody;
 
-    fn from_input(_: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self)
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        _input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let manifest_inputs = cx.resolve_target_adapter()?.manifest.inputs;
         let tree = live_tree();
         let outcome = orchestrate::execute(
-            ctx.provider,
-            ctx.provider,
-            ctx.provider,
+            context.provider,
+            context.provider,
+            context.provider,
             cx.layout(),
             cx.now(),
             &manifest_inputs,
@@ -569,7 +545,7 @@ impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Execute {
         )
         .await?;
         match outcome {
-            ExecuteOutcome::Drained { phases } => Ok(Reply::ok(Out(ExecuteBody {
+            ExecuteOutcome::Drained { phases } => Ok(ExecuteBody {
                 status: "drained",
                 phases: phases
                     .into_iter()
@@ -578,7 +554,7 @@ impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Execute {
                         step: run.step,
                     })
                     .collect(),
-            }))),
+            }),
             // A stop is the loop's typed halt — surface it on the
             // error envelope (exit 2 / 422) so a driver can tell a
             // parked loop from a drained one without parsing prose.

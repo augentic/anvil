@@ -1,21 +1,19 @@
 //! `specify plan create` — scaffold an empty `plan.yaml`. Composes the
 //! shared argument parsers in [`super::args`] with the domain
 //! authority-override engine in
-//! [`crate::change::mutate_authority_overrides`] so the handler
+//! [`crate::change::mutate_authority_overrides`] so the operation
 //! stays declarative.
 
-use std::collections::BTreeMap;
 use std::io::Write;
 
 use error::{Error, is_kebab};
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::args::{SourceAssign, parse_override_assigns, source_map};
-use crate::change::{
-    Lifecycle, Plan, SourceBinding, mutate_authority_overrides, reject_orphan_overrides,
-};
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::change::{Lifecycle, Plan, mutate_authority_overrides, reject_orphan_overrides};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::journal;
 
 /// Wire input for `plan create`.
@@ -24,9 +22,8 @@ use crate::journal;
 /// the [`SourceAssign`] list (`--source` repeats) and `intent` the
 /// `--intent` sugar. The desugaring into the structured
 /// `plan.yaml.sources` map — including the duplicate-key gate — runs
-/// in `from_input`, so argv and HTTP callers get identical
-/// diagnostics. `--authority-override` rides as the raw interleaved
-/// `<slice> <kind>=<key>` pair list and parses in `handle` for the
+/// at the operation boundary. `--authority-override` rides as the raw interleaved
+/// `<slice> <kind>=<key>` pair list and parses in `call` for the
 /// same reason.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -64,37 +61,26 @@ pub struct CreateInput {
 /// produced; validation failures (kebab-case name, orphan source key)
 /// refuse the create with or without the flag and leave the journal
 /// untouched.
-#[derive(Debug)]
-pub struct Create {
-    name: String,
-    sources: BTreeMap<String, SourceBinding>,
-    auto_approve: bool,
-    authority_override: Vec<String>,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Create;
 
-impl<P: Anchor> Handler<P> for Create {
+impl<P: Anchor> Operation<P> for Create {
     type Error = crate::handler::Error;
     type Input = CreateInput;
-    type Output = Out<CreateBody>;
+    type Output = CreateBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        let sources = source_map(input.sources, input.intent)?;
-        Ok(Self {
-            name: input.name,
-            sources,
-            auto_approve: input.auto_approve,
-            authority_override: input.authority_override,
-        })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let Self {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let CreateInput {
             name,
             sources,
+            intent,
             auto_approve,
             authority_override,
-        } = self;
+        } = input;
+        let sources = source_map(sources, intent)?;
 
         if !is_kebab(&name) {
             return Err(Error::Diag {
@@ -159,11 +145,11 @@ impl<P: Anchor> Handler<P> for Create {
         events.extend(override_events);
         journal::append_batch(cx.layout(), &events)?;
 
-        Ok(Reply::ok(Out(CreateBody {
+        Ok(CreateBody {
             name,
             plan: plan_path.display().to_string(),
             lifecycle: plan.lifecycle,
-        })))
+        })
     }
 }
 

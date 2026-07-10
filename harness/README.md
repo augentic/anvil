@@ -7,7 +7,7 @@ This directory holds workspace surfaces that sit outside the root CI gates: they
 | Path | What |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fixtures/` | The echo adapter guests — skeleton `specify:adapter` components usable in composed deployments so the WIT imports resolve without the sibling adapters checkout. |
-| `native/` | The Rust-native shim: the `specify-dev` binary and its NativeProvider — the same verb handlers as the wasm guest over in-process adapter dispatch, with cursor / replay / mock model backends and the per-adapter MCP reference shelves. Requires the `../specify-adapters` sibling checkout. |
+| `native/` | The Rust-native shim: the `specify-dev` binary and its `NativeProvider` — the same typed command/HTTP routers and workflow operations as the wasm guest, with cursor / replay / mock model backends and the per-adapter MCP reference shelves. Requires the `../specify-adapters` sibling checkout. |
 
 The composed-deployment rig that previously lived at `harness/runtime/` is retired: the native harness (`harness/native/`) owns the dev loop and full-loop integration coverage, and the crate-level suites keep the deterministic coverage.
 

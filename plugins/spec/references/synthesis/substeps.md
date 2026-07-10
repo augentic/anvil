@@ -37,7 +37,7 @@ Technical implementation guidance. Folds in the target `guidance` prompt (`adapt
 1. `## Domain model` — types, IDs, newtypes. Drawn from `type` claims on code Evidence and from `requirement` claim subjects on documentation Evidence; shaped by the target's `guidance` (Omnia provider DI, Vectis Crux idioms, contracts format choice).
 2. `## APIs and integrations` — external surfaces (HTTP routes, message topics, WebSocket exports, contract endpoints). Drawn from `excerpt` and `call` claims and from `requirement` claims that name an external surface.
 3. `## Configuration` — every config key the slice reads. For Omnia targets the guidance prompt enumerates the closed `Config::get` surface; for Vectis it lists tokens / asset bindings; for contracts it lists baseline-directory inputs.
-4. `## Technical logic` — handler delegation, validation placement (edge vs core), error mapping. Folds in `excerpt` claims that show behaviour the requirements abstract over.
+4. `## Technical logic` — operation delegation, validation placement (edge vs core), error mapping. Folds in `excerpt` claims that show behaviour the requirements abstract over.
 5. `## UI / layout` — required only when spatial Evidence (`region` / `container` / `leaf` claims from the `screenshots` source adapter) contributes. Carries the region / container / leaf tree per claim; the Vectis target's `build` prompt reads this section to regenerate `composition.yaml`. Targets that do not consume spatial Evidence omit this H2.
 6. `## Observability` — metrics, traces, log shapes the target guidance prompt prescribes.
 

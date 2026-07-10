@@ -8,7 +8,7 @@
 //! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
 //! best-effort emit helpers in `emit`; the `specify journal {emit,
-//! show}` verb handlers in [`handlers`]. This root owns the read side
+//! show}` operations in [`handlers`]. This root owns the read side
 //! (forward [`read`], backward [`read_recent`], and the private
 //! filtered `show` projection behind `specify journal show`) and
 //! re-exports the public surface so callers keep importing

@@ -15,11 +15,12 @@ use std::io::Write;
 use std::path::Path;
 
 use error::Error;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{InitOptions, InitResult, init};
-use crate::handler::{Anchor, Out, Render};
+use crate::handler::{Anchor, Render};
 use crate::platform::parse_platforms_csv;
 
 /// Wire input for the scaffold leg — the `init` argument surface minus
@@ -48,28 +49,24 @@ pub struct ScaffoldInput {
 /// `specify init --scaffold-only` against the provider's anchor root
 /// (`"."` on both sides: the guest's mount preopen, the native
 /// process CWD).
-#[derive(Debug)]
-pub struct Scaffold {
-    input: ScaffoldInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Scaffold;
 
-impl<P: Anchor> Handler<P> for Scaffold {
+impl<P: Anchor> Operation<P> for Scaffold {
     type Error = crate::handler::Error;
     type Input = ScaffoldInput;
-    type Output = Out<ScaffoldBody>;
+    type Output = ScaffoldBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
         let ScaffoldInput {
             adapter,
             name,
             description,
             workspace,
             platforms,
-        } = self.input;
+        } = input;
         let parsed_platforms =
             platforms.as_deref().map(parse_platforms_csv).transpose().map_err(|e| {
                 Error::Argument {
@@ -79,7 +76,7 @@ impl<P: Anchor> Handler<P> for Scaffold {
             })?;
 
         let opts = InitOptions {
-            project_dir: ctx.provider.project_root(),
+            project_dir: context.provider.project_root(),
             adapter: adapter.as_deref(),
             name: name.as_deref(),
             description: description.as_deref(),
@@ -88,7 +85,7 @@ impl<P: Anchor> Handler<P> for Scaffold {
             upgrade: false,
         };
         let result = init(opts, jiff::Timestamp::now())?;
-        Ok(Reply::ok(Out(ScaffoldBody::from(&result))))
+        Ok(ScaffoldBody::from(&result))
     }
 }
 

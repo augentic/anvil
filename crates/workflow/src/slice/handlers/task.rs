@@ -6,10 +6,11 @@ use std::path::{Path, PathBuf};
 use artifacts::atomic::bytes_write;
 use artifacts::task::{Task, mark_complete, parse_tasks};
 use error::{Error, Result};
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::slice::SliceMetadata;
 
 // ---------------------------------------------------------------------------
@@ -26,33 +27,29 @@ pub struct TaskProgressInput {
 
 /// `specify slice task progress <name>` — report task completion
 /// counts.
-#[derive(Debug)]
-pub struct TaskProgress {
-    input: TaskProgressInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct TaskProgress;
 
-impl<P: Anchor> Handler<P> for TaskProgress {
+impl<P: Anchor> Operation<P> for TaskProgress {
     type Error = crate::handler::Error;
     type Input = TaskProgressInput;
-    type Output = Out<ProgressBody>;
+    type Output = ProgressBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let slice_dir = cx.slices_dir().join(&self.input.name);
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let slice_dir = cx.slices_dir().join(&input.name);
         let tasks_path = resolve_tasks_path(&slice_dir)?;
-        let content = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
-        let progress = parse_tasks(&content);
+        let tasks = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
+        let progress = parse_tasks(&tasks);
 
-        Ok(Reply::ok(Out(ProgressBody {
+        Ok(ProgressBody {
             total: progress.total,
             complete: progress.complete,
             pending: progress.total.saturating_sub(progress.complete),
             tasks: progress.tasks,
-        })))
+        })
     }
 }
 
@@ -97,23 +94,19 @@ pub struct TaskMarkInput {
 
 /// `specify slice task mark <name> <task-number>` — mark a task
 /// complete (idempotent).
-#[derive(Debug)]
-pub struct TaskMark {
-    input: TaskMarkInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct TaskMark;
 
-impl<P: Anchor> Handler<P> for TaskMark {
+impl<P: Anchor> Operation<P> for TaskMark {
     type Error = crate::handler::Error;
     type Input = TaskMarkInput;
-    type Output = Out<MarkBody>;
+    type Output = MarkBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let TaskMarkInput { name, task_number } = self.input;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let TaskMarkInput { name, task_number } = input;
         let slice_dir = cx.slices_dir().join(&name);
         let tasks_path = resolve_tasks_path(&slice_dir)?;
         let original = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
@@ -123,11 +116,11 @@ impl<P: Anchor> Handler<P> for TaskMark {
             bytes_write(&tasks_path, updated.as_bytes())?;
         }
 
-        Ok(Reply::ok(Out(MarkBody {
+        Ok(MarkBody {
             marked: task_number,
             new_content_path: tasks_path.display().to_string(),
             idempotent,
-        })))
+        })
     }
 }
 

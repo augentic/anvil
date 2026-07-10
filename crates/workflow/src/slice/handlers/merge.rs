@@ -4,11 +4,12 @@
 
 use std::io::Write;
 
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::artifact_classes;
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::merge::{
     BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, conflict_check, slice,
     summarise_operations,
@@ -28,23 +29,19 @@ pub struct PreviewInput {
 
 /// `specify slice merge preview <name>` — show the merge operations
 /// that would be applied, without writing.
-#[derive(Debug)]
-pub struct Preview {
-    input: PreviewInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Preview;
 
-impl<P: Anchor> Handler<P> for Preview {
+impl<P: Anchor> Operation<P> for Preview {
     type Error = crate::handler::Error;
     type Input = PreviewInput;
-    type Output = Out<PreviewBody>;
+    type Output = PreviewBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let slice_dir = cx.slices_dir().join(&self.input.name);
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let slice_dir = cx.slices_dir().join(&input.name);
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let result = slice::preview(&slice_dir, &classes)?;
 
@@ -64,11 +61,11 @@ impl<P: Anchor> Handler<P> for Preview {
             })
             .collect();
 
-        Ok(Reply::ok(Out(PreviewBody {
+        Ok(PreviewBody {
             slice_dir: slice_dir.display().to_string(),
             specs,
             contracts,
-        })))
+        })
     }
 }
 
@@ -134,30 +131,26 @@ pub struct ConflictCheckInput {
 
 /// `specify slice merge conflict-check <name>` — report `type:
 /// modified` baselines modified after this slice's `defined_at`.
-#[derive(Debug)]
-pub struct ConflictCheck {
-    input: ConflictCheckInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct ConflictCheck;
 
-impl<P: Anchor> Handler<P> for ConflictCheck {
+impl<P: Anchor> Operation<P> for ConflictCheck {
     type Error = crate::handler::Error;
     type Input = ConflictCheckInput;
-    type Output = Out<ConflictCheckBody>;
+    type Output = ConflictCheckBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let slice_dir = cx.slices_dir().join(&self.input.name);
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let slice_dir = cx.slices_dir().join(&input.name);
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let conflicts = conflict_check(&slice_dir, &classes)?;
 
-        Ok(Reply::ok(Out(ConflictCheckBody {
+        Ok(ConflictCheckBody {
             slice_dir: slice_dir.display().to_string(),
             conflicts,
-        })))
+        })
     }
 }
 

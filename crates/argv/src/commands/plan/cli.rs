@@ -1,5 +1,4 @@
-//! Clap derive surface for the `specify plan *` verbs. The umbrella
-//! `cli.rs` re-exports [`PlanAction`].
+//! Clap argument types for the `specify plan *` routes.
 //!
 //! The custom-grammar field types ([`SourceAssign`], [`BindingArg`],
 //! [`KindAssign`]) come from `workflow`'s plan handlers: each carries
@@ -7,102 +6,9 @@
 //! carries, so the mirror structs here stay field-identical to their
 //! handler `Input`s.
 
-use clap::{ArgAction, Args, Subcommand};
+use clap::{ArgAction, Args};
 use serde::Serialize;
 use workflow::change::plan::handlers::{BindingArg, KindAssign, SourceAssign};
-
-/// Plan-authoring verbs (`specify plan *`).
-#[derive(Debug, Subcommand)]
-pub enum PlanAction {
-    /// Scaffold an empty `plan.yaml` at the repo root. Refuses to
-    /// overwrite an existing plan.
-    Create(CreateArgs),
-    /// Validate plan.yaml (structure + plan/change consistency).
-    ///
-    /// Includes the three health diagnostics — `cycle-in-depends-on`,
-    /// `orphan-source`, and `stale-workspace-clone` — alongside
-    /// the base shape rules.
-    Validate(ValidateArgs),
-    /// Return the active in-progress entry, or transition the next eligible
-    /// `Pending` entry to `InProgress` and return it. `plan next` is the
-    /// only writer of per-entry `in-progress` (workflow §CLI surface).
-    Next(NextArgs),
-    /// Read-only projection of the plan's execution state into a
-    /// deterministic `next-action` — `refine|build|merge <slice>`,
-    /// `stop <reason>`, or `drained`.
-    ///
-    /// Projects `plan.yaml` entries, the candidate slice's
-    /// `metadata.yaml` lifecycle (slot-aware in workspace mode), and
-    /// the journal tail. Stop reasons (`plan-not-approved`,
-    /// `refine-failed`, `build-failed`, `merge-conflict`,
-    /// `slice-dropped`, `merge-incomplete`, `stuck`) are classified
-    /// from `slice.synthesize.failed` / `slice.build.failed` /
-    /// `slice.merge.failed` journal events scoped to the active
-    /// entry's claim window. Writes nothing — `plan next` stays the
-    /// only writer of per-entry `in-progress`.
-    Status(StatusArgs),
-    /// Add a new plan entry (status: pending)
-    Add(AddArgs),
-    /// Edit non-status fields on an existing plan entry.
-    ///
-    /// Three orthogonal flag families operate on `sources`:
-    ///
-    /// - `--sources <binding>` (with `num_args = 0..`) replaces the
-    ///   slice's `sources` array wholesale.
-    /// - `--add-source <binding>` (repeatable) adds a single binding.
-    /// - `--remove-source <key>` (repeatable) removes a binding by
-    ///   key; fails with `plan-binding-not-found` when no binding
-    ///   matches.
-    ///
-    /// `--add-source` and `--remove-source` apply after `--sources`,
-    /// so wholesale replacement plus targeted edits can be combined
-    /// in a single invocation when needed.
-    Amend(AmendArgs),
-    /// Remove a pending plan entry while the plan is still replaceable
-    /// (`lifecycle: pending` and every entry `pending`). Gate 1 curation
-    /// only — defers a lead without re-surveying `discovery.md`.
-    Remove(RemoveArgs),
-    /// Apply a validated status transition.
-    ///
-    /// Two transition shapes share this verb (workflow §CLI surface):
-    ///
-    /// - **Plan-level Gate 1 stamp** — `<name>` is the plan name and
-    ///   `<target>` is `approved`. Operator-only — `/spec:plan` MUST
-    ///   NOT call this verb; skill bodies stop at `pending` and print
-    ///   the literal `specify plan transition <name> approved`
-    ///   command in their closing hint for the operator to run.
-    /// - **Per-entry close** — `<name>` is a plan-entry name and
-    ///   `<target>` is `done`. The `/spec:merge` skill is the
-    ///   canonical caller.
-    ///
-    /// Per-entry `pending` is written only by `plan add` / `plan amend`;
-    /// per-entry `in-progress` is written only by `plan next`. v1 has
-    /// no per-entry `blocked`, `failed`, or `skipped` state — build
-    /// failures and merge conflicts leave the active entry `in-progress`.
-    Transition(TransitionArgs),
-    /// Author a plan end-to-end in the workflow guest: scaffold
-    /// `plan.yaml` (`plan create` semantics), survey every bound
-    /// source into `discovery.md`, reconcile the leads into
-    /// `plan.yaml.slices[]` through the judgment leg, persist the
-    /// Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and
-    /// `## Source inventory`), validate, and exit at `pending` with
-    /// the literal Gate 1 transition hint.
-    ///
-    /// Guest-only through the composed-deployment leg: the `/spec:plan`
-    /// skill invokes this single verb and relays its output.
-    Author(AuthorArgs),
-    /// Run the drained execute loop in the workflow guest: claim →
-    /// refine → build → merge per entry until the plan projects
-    /// `drained` or a stop condition halts it (exit 2,
-    /// `plan-execute-stopped`).
-    ///
-    /// Guest-only through the composed-deployment leg: the loop holds
-    /// the create-exclusive `.specify/guest.lock` marker
-    /// (guest-vs-guest refusal only) while it drives the phases.
-    Execute(ExecuteArgs),
-    /// Archive the current plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`
-    Archive(ArchiveArgs),
-}
 
 /// Argv mirror of `plan create`'s wire input
 /// (`workflow::change::plan::handlers::CreateInput`).

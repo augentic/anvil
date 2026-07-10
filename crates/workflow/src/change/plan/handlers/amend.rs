@@ -5,7 +5,8 @@
 
 use artifacts::evidence::ClaimKind;
 use error::Error;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::args::{
@@ -19,7 +20,7 @@ use crate::change::{
     reject_duplicate_source_keys, reject_orphan_overrides,
 };
 use crate::config::with_state;
-use crate::handler::{Anchor, Ctx, Out};
+use crate::handler::{Anchor, Ctx};
 use crate::journal;
 use crate::schema::validate_plan;
 
@@ -72,22 +73,18 @@ pub struct AmendInput {
 
 /// `specify plan amend <name> [flags]` — edit non-status fields on an
 /// existing plan entry.
-#[derive(Debug)]
-pub struct Amend {
-    input: AmendInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Amend;
 
-impl<P: Anchor> Handler<P> for Amend {
+impl<P: Anchor> Operation<P> for Amend {
     type Error = crate::handler::Error;
     type Input = AmendInput;
-    type Output = Out<EntryBody>;
+    type Output = EntryBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let AmendInput {
             name,
             depends_on,
@@ -101,7 +98,7 @@ impl<P: Anchor> Handler<P> for Amend {
             authority_override,
             clear_authority_override,
             clear_authority_overrides,
-        } = self.input;
+        } = input;
 
         if let Some(proj) = &project
             && !proj.is_empty()
@@ -190,7 +187,7 @@ impl<P: Anchor> Handler<P> for Amend {
             })?;
         journal::append_batch(cx.layout(), &journal_events)?;
 
-        Ok(Reply::ok(Out(body)))
+        Ok(body)
     }
 }
 

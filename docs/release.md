@@ -32,7 +32,7 @@ Both wasm-pkg packages are published manually with `wkg publish` by a maintainer
 - **Core guest.** After tagging, publish the release-built workflow component as `specify:core@<version>`, where `<version>` is the `VERSION` file — the published core identity must equal the binary version: a released binary consumes exactly `specify:core@<its own version>` and carries no embedded guest.
 
 ```bash
-cargo build --lib -p specify-cli --release --target wasm32-wasip2
+cargo build --lib -p specify --release --target wasm32-wasip2
 wkg publish target/wasm32-wasip2/release/specify.wasm --package "specify:core@$(cat VERSION)"
 ```
 

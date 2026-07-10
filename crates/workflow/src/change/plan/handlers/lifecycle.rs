@@ -4,7 +4,8 @@
 use std::io::Write;
 
 use error::{Error, Result};
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use schema::diagnostics::{Diagnostic, Severity, blocking, blocking_present};
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +15,7 @@ use crate::change::{
     drained_line, plan_doctor, plan_finding, plan_next_body, plan_status_body,
 };
 use crate::config::with_state;
-use crate::handler::{Anchor, Ctx, Out, Render, ReportBody};
+use crate::handler::{Anchor, Ctx, Render, ReportBody};
 use crate::registry::Registry;
 
 // ---------------------------------------------------------------------------
@@ -35,17 +36,15 @@ pub struct ValidateInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Validate;
 
-impl<P: Anchor> Handler<P> for Validate {
+impl<P: Anchor> Operation<P> for Validate {
     type Error = crate::handler::Error;
     type Input = ValidateInput;
-    type Output = Out<ReportBody>;
+    type Output = ReportBody;
 
-    fn from_input(_: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self)
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        _input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
         let slices_dir = cx.layout().slices_dir();
@@ -87,7 +86,7 @@ impl<P: Anchor> Handler<P> for Validate {
                 ),
             })
         } else {
-            Ok(Reply::ok(Out(body)))
+            Ok(body)
         }
     }
 }
@@ -119,13 +118,15 @@ pub struct NextInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Next;
 
-impl<P: Anchor> Handler<P> for Next {
+impl<P: Anchor> Operation<P> for Next {
     type Error = crate::handler::Error;
     type Input = NextInput;
-    type Output = Out<NextBody>;
+    type Output = NextBody;
 
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        _input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         // The slice's target adapter is resolved on demand from the bound
         // project's topology, so the
         // topology inputs (`config` / `project_dir`) ride into the state
@@ -155,11 +156,7 @@ impl<P: Anchor> Handler<P> for Next {
             );
             crate::journal::append_batch(cx.layout(), std::slice::from_ref(&event))?;
         }
-        Ok(Reply::ok(Out(body)))
-    }
-
-    fn from_input(_: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self)
+        Ok(body)
     }
 }
 
@@ -201,21 +198,19 @@ pub struct StatusInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Status;
 
-impl<P: Anchor> Handler<P> for Status {
+impl<P: Anchor> Operation<P> for Status {
     type Error = crate::handler::Error;
     type Input = StatusInput;
-    type Output = Out<StatusBody>;
+    type Output = StatusBody;
 
-    fn from_input(_: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self)
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        _input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
         let body = plan_status_body(&plan, cx.layout())?;
-        Ok(Reply::ok(Out(body)))
+        Ok(body)
     }
 }
 
@@ -300,28 +295,24 @@ fn default_actor() -> String {
 /// `actor` (default `operator`) is recorded on the
 /// `plan.transition.approved` event only — self-reported grading
 /// evidence for eval probes, ignored on per-entry and undo paths.
-#[derive(Debug)]
-pub struct Transition {
-    input: TransitionInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Transition;
 
-impl<P: Anchor> Handler<P> for Transition {
+impl<P: Anchor> Operation<P> for Transition {
     type Error = crate::handler::Error;
     type Input = TransitionInput;
-    type Output = Out<TransitionBody>;
+    type Output = TransitionBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let TransitionInput {
             name,
             target,
             undo,
             actor,
-        } = self.input;
+        } = input;
         let actor: crate::journal::Actor = actor.parse().map_err(|detail| Error::Argument {
             flag: "--actor",
             detail,
@@ -374,7 +365,7 @@ impl<P: Anchor> Handler<P> for Transition {
             }
             _ => {}
         }
-        Ok(Reply::ok(Out(body)))
+        Ok(body)
     }
 }
 
@@ -603,21 +594,17 @@ pub struct ArchiveInput {
 /// `specify plan archive` — move the current plan to
 /// `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`.
 #[derive(Clone, Copy, Debug)]
-pub struct Archive {
-    input: ArchiveInput,
-}
+pub struct Archive;
 
-impl<P: Anchor> Handler<P> for Archive {
+impl<P: Anchor> Operation<P> for Archive {
     type Error = crate::handler::Error;
     type Input = ArchiveInput;
-    type Output = Out<ArchiveBody>;
+    type Output = ArchiveBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let layout = cx.layout();
         let plan_path = layout.plan_path();
         if !plan_path.exists() {
@@ -632,12 +619,12 @@ impl<P: Anchor> Handler<P> for Archive {
         let plan_name = Plan::load(&plan_path)?.name.into_string();
 
         let (archived, archived_plans_dir) =
-            Plan::archive(&plan_path, &brief_path, &archive_dir, self.input.force, cx.now())?;
-        Ok(Reply::ok(Out(ArchiveBody {
+            Plan::archive(&plan_path, &brief_path, &archive_dir, input.force, cx.now())?;
+        Ok(ArchiveBody {
             archived: archived.display().to_string(),
             archived_plans_dir: archived_plans_dir.as_deref().map(|p| p.display().to_string()),
             plan: ArchivedPlan { name: plan_name },
-        })))
+        })
     }
 }
 

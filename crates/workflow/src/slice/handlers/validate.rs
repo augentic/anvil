@@ -14,11 +14,12 @@ use std::io::Write;
 
 use artifacts::validate::validate_slice;
 use error::Error;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use schema::diagnostics::{Diagnostic, blocking_present};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Out, ReportBody};
+use crate::handler::{Anchor, Ctx, ReportBody};
 use crate::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
 
 /// Wire input for `slice validate`.
@@ -30,23 +31,19 @@ pub struct ValidateInput {
 }
 
 /// `specify slice validate <name>`.
-#[derive(Debug)]
-pub struct Validate {
-    input: ValidateInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Validate;
 
-impl<P: Anchor> Handler<P> for Validate {
+impl<P: Anchor> Operation<P> for Validate {
     type Error = crate::handler::Error;
     type Input = ValidateInput;
-    type Output = Out<ReportBody>;
+    type Output = ReportBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let name = &self.input.name;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let name = &input.name;
         match pre_adapter_gates(cx.layout(), name)? {
             PreAdapter::Gate { code, findings } => Err(fail_with(code, findings)),
             PreAdapter::Proceed {
@@ -76,7 +73,7 @@ impl<P: Anchor> Handler<P> for Validate {
                     // `slice.synthesis.{conflict,divergence,unknown}` emit
                     // once per tagged requirement after a successful validate.
                     append_synthesis_journal(cx.layout(), cx.now(), name, synthesis_tags)?;
-                    Ok(Reply::ok(Out(body)))
+                    Ok(body)
                 }
             }
         }

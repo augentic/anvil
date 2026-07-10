@@ -21,7 +21,7 @@ script_runner = "bash"
 script = '''
 set -euo pipefail
 root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
-(cd "${root}" && cargo build -p specify-cli --lib --target wasm32-wasip2)
+(cd "${root}" && cargo build -p specify --lib --target wasm32-wasip2)
 (cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
 '''
 

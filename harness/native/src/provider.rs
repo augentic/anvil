@@ -1,4 +1,4 @@
-//! [`NativeProvider`] — the native seam the verb handlers run against.
+//! [`NativeProvider`] — the native seam command operations run against.
 //!
 //! Project anchoring, judgment (delegated to the configured [`Model`]
 //! backend), and `SourceSeam` / `TargetSeam` as an in-process dispatch
@@ -77,7 +77,7 @@ impl<M> NativeProvider<M> {
     }
 }
 
-impl<M: Send + Sync> workflow::handler::Anchor for NativeProvider<M> {
+impl<M: Send + Sync + 'static> workflow::handler::Anchor for NativeProvider<M> {
     fn project_root(&self) -> &Path {
         &self.project_dir
     }

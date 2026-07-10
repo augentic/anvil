@@ -1,388 +1,162 @@
-# Handler Routing
+# Operation routing
 
-One routing mechanism — the `omnia_guest::api::Handler` trait — under two transports (CLI and HTTP) and two shims (the wasm guest at `src/`, the native `specify-dev` at `harness/native/`). This document is the design of record for how a `specify` command is implemented, where its handler lives, and how each transport reaches it. It supersedes RFC-61, which is implemented and removed.
+Specify has one transport-neutral execution contract — `omnia_guest::api::operation::Operation<P>` — and two explicit typed transport routers, command and HTTP. Both routers invoke the same operations through `omnia_guest::api::invoke::Invoker<P>`. This document is the design of record for command implementation and routing.
 
 ## Vocabulary
 
-Specify overloads several nearby terms; this RFC uses one sense per layer:
+| Layer | Term | Example |
+|---|---|---|
+| Operator surface | **command** | `specify slice build my-slice` |
+| Command grammar | **route** | `["slice", "build"]` plus `slice::cli::BuildArgs` |
+| Implementation | **operation** | `orchestrate::handlers::Build: Operation<P>` |
+| Wire input | **Input** | `BuildInput`, the transport-neutral operation payload |
+| Command input | **Args** | `BuildArgs`, the clap parser for one command route |
+| Invocation | **Invoker** | owner + provider supplied to either typed router |
+| Projection | **projector** | maps typed output/error to command channels or an HTTP response |
 
+A command is implemented by exactly one operation. The `handlers` module name remains the domain-module convention for co-locating operation types; it does not imply the retired Omnia `Handler` trait.
 
-| Layer            | Term              | Example                                                                                      |
-| ---------------- | ----------------- | -------------------------------------------------------------------------------------------- |
-| Operator surface | **command**       | `specify slice build my-slice`                                                               |
-| Grammar leaf     | **action**        | `build`, `emit`, `transition` (the clap subcommand enums: `SliceAction`, `JournalAction`, …) |
-| Implementation   | **handler**       | one `Handler<P>` impl with a flat `Input` DTO, `from_input`, and `handle`                    |
-| Resource prefix  | **command group** | slice commands, plan commands, journal commands                                              |
-| Wire shape       | `**Input**`       | the flat serde DTO shared by every transport for one command                                 |
-| Argv mirror      | `**Args**`        | the clap struct in `crates/argv` that parses the leaf and serializes onto `Input`             |
-
-
-A **command** is one operator-facing invocation. Each command is implemented by exactly one **handler** with exactly one `**Input`** and, on the argv side, exactly one mirror `**Args**` struct. **Actions** are the leaves in the clap grammar; **command groups** are the resource prefixes (`slice`, `plan`, `journal`) that namespace them.
-
-Reserve **verb** for unrelated grammar elsewhere (skill-description imperatives, breakout slash skills) — not for handlers or commands.
-
-## Transport model
-
-Every command crosses four layers. HTTP already keeps layers 3–4 generic; CLI must do the same.
+## Design
 
 ```text
-Operator surface     specify slice build my-slice --format json
-        ↓
-Grammar / registry   which command? (path + read/write kind)
-        ↓
-Extraction           argv or HTTP request → Handler::Input
-        ↓
-Execution            Handler::from_input → handle → render
+command argv ──→ typed command Router ──→ TryFrom<Args> ─┐
+                                                        ├─→ Invoker<P> ─→ Operation::call
+HTTP request ─→ typed HTTP Router ─────→ Input decode ──┘                    │
+                                                                             └─→ typed Output / Error
 ```
 
+The hard-cut invariants are:
 
-| Layer      | HTTP today                                                     | CLI target                                                                               |
-| ---------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Registry   | `.route("/slice/{name}/build", route::post::<Build, P>())`     | `SliceAction::Build(args) => argv::post::<Build, _>(…, args)`                             |
-| Extraction | `route::post` merges path + JSON body → `BuildInput` via serde | clap parses leaf args into `BuildArgs`; `front::run` serde-round-trips into `BuildInput` |
-| Execution  | `Handler::from_input` → `handle` → JSON body                   | `argv::front::run` → stdout envelope / text                                               |
+1. Every workflow command is a stateless `Operation<P>` with associated `Input`, `Output`, and `Error` types.
+2. `Invoker<P>` is the only execution seam used by command and HTTP routing.
+3. `crates/argv/src/router.rs` is the complete typed command inventory.
+4. `crates/argv/src/http.rs` is the complete typed HTTP inventory.
+5. Command conversion is explicit and exhaustive through `TryFrom<Args> for Input`; there is no serde round-trip between command args and operation input.
+6. The WASI and native shims construct providers and invokers, call the shared routers, and adapt terminal transport output. They do not own route inventories or domain conversions.
+7. Operation outputs are typed values implementing `Serialize`; command-visible outputs also implement `workflow::handler::Render`.
 
+## Operation contract
 
-**The invariant:** the leaf parser serializes to the wire map. `Input` is the only command payload; transports extract, they do not translate. HTTP deserializes `Input` directly from the merged request; argv parses into the leaf's mirror `*Args` struct, which serde-round-trips onto `Input` through one generic bridge in `argv::front::run`. If a shim arm constructs `FooInput { field: x, … }` by hand, the shape is wrong — the arm passes the parsed `*Args` whole.
+Operations live beside their domain kernels in `crates/workflow`:
 
-### Global transport context (not in `Input`)
+```rust
+impl<P: Anchor> Operation<P> for Build {
+    type Error = workflow::handler::Error;
+    type Input = BuildInput;
+    type Output = BuildBody;
 
-Mirror HTTP's split between request metadata and body:
+    async fn call(
+        input: Self::Input,
+        context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        // Delegate to the domain kernel and return a typed body.
+    }
+}
+```
 
+`Input` is a flat serde DTO using kebab-case wire names. HTTP decodes it from merged path, query, and body values. Command routing reaches the same type through an explicit `TryFrom<Args>` implementation. Shape validation may therefore occur in either transport decoding/conversion or at the start of `Operation::call`; project-dependent validation belongs in the operation or its domain kernel.
 
-| HTTP                        | CLI                                                |
-| --------------------------- | -------------------------------------------------- |
-| `Client` (owner + provider) | `&Provider` in the shim                            |
-| `HeaderMap`                 | (none today)                                       |
-| —                           | `cli.format` (`--format` / `SPECIFY_FORMAT`)       |
-| —                           | `cli.plan_dir` (`--plan-dir` / `SPECIFY_PLAN_DIR`) |
+Provider bounds state the capabilities an operation consumes. Deterministic operations usually require `P: Anchor`; orchestration operations add `Model`, `SourceSeam`, or `TargetSeam` as needed.
 
+`workflow::handler` retains its name as shared operation plumbing. It owns `Anchor`, `Ctx`, `Render`, `ReportBody`, and the operation-layer `Error`. It contains no transport parser, stdout writer, or exit table.
 
-`argv::front::run` (alias `argv::post` / `argv::get` for naming symmetry with `route::post` / `route::get`) takes `format`, `provider`, and the parsed `*Args` separately. Global flags stay on `Cli`, not on handler `Input`.
+## Command router
 
-### Command registry (one row per command)
+`crates/argv/src/router.rs` assembles an `omnia_guest::api::command::Router<P, Globals>` from concrete route paths, concrete `Args`, concrete workflow operations, and `SpecifyProjector`.
 
-HTTP and CLI are two projections of the same registry. Paths are isomorphic; handler and `Input` are identical on both sides.
+```rust
+route!(
+    ["slice", "build"],
+    slice::cli::BuildArgs,
+    workflow::orchestrate::handlers::Build,
+    "Build a slice"
+);
+```
 
+Each command leaf has a clap-only `Args` type under `crates/argv/src/commands/**/cli.rs`. Global flags such as `--format` and `--plan-dir` stay in `Globals`. Each supported leaf has an exhaustive conversion:
 
-| CLI path       | HTTP path                  | Kind | Handler              | `Input`       |
-| -------------- | -------------------------- | ---- | -------------------- | ------------- |
-| `journal emit` | `POST /journal`            | POST | `journal::Emit`      | `EmitInput`   |
-| `journal show` | `GET /journal`             | GET  | `journal::Show`      | `ShowInput`   |
-| `slice build`  | `POST /slice/{name}/build` | POST | `orchestrate::Build` | `BuildInput`  |
-| `plan status`  | `GET /plan/status`         | GET  | `plan::Status`       | `StatusInput` |
+```rust
+impl TryFrom<BuildArgs> for BuildInput {
+    type Error = error::Error;
 
+    fn try_from(args: BuildArgs) -> Result<Self, Self::Error> {
+        Ok(Self { name: args.name })
+    }
+}
+```
 
-The table is the design artifact. It may stay hand-maintained in this RFC and in the shim sources; codegen is an optimization only after the shapes are correct.
+The conversion is the intentional transport boundary. It handles command-specific desugaring and can reject invalid flag combinations with `error::Error`. Compiler errors expose field drift; router tests cover paths, conversion failures, projections, help, and completions.
 
-## Principles
+`SpecifyProjector` maps:
 
-1. **Start simple, iterate.** Ship the smallest symmetric shim first — explicit WASI exports, hand-written route tables, one line per command — then tighten wire shapes and add tests. Do not front-load macros, codegen, or shared registry machinery before the mirror-serialization invariant holds.
-2. `**Input` is the wire contract.** One flat serde DTO per command (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). It is the shape HTTP deserializes into and the shape the CLI's mirror `*Args` serializes onto. Validation of input *shape* lives in `from_input` — one deserialize path for both transports; project-dependent checks wait for `handle`.
-3. **The mirror is dumb and the bridge is generic.** Each routed leaf carries a `*Args` struct in `crates/argv` — field-identical to `Input`, `#[derive(clap::Args, Serialize)]`, kebab-case serialization — and `argv::front::run` converts with one serde round-trip. No per-command conversion code, and `workflow` never links clap: the flag surface and operator help prose stay in `crates/argv`. Mirror parity is guarded by the per-command extraction test, not the compiler; unifying the two shapes (deriving clap on `Input` itself) is the deferred strong-typing iteration.
-4. **The `Handler` impl is the command handler.** `from_input`, `handle`, typed `Out<Body>` the transports render (JSON verbatim, text via `Render`).
-5. **Handlers are co-located with the code that implements them.** Each domain module in `crates/workflow` owns its family's handlers in a `handlers` submodule beside its kernels. A kernel whose only consumer is one handler goes private in the domain module; shared kernels stay `pub` where they are. There is no separate command-layer crate.
-6. **Routing lives in the shims, in the open.** Each shim carries a symmetric `command.rs` / `http.rs` pair. Both files export a WASI `Guest` impl on wasm (or a process entry on native) and a shared `route` / `router` function holding the match table. Arms name only the handler type `R` and pass the parsed `*Args` — no field mapping. Duplication across shims is deliberate: the compiler checks CLI coverage; HTTP drift is a review catch.
-7. **No routing machinery (yet).** No route-table macro, no route/refusal parity data, no parity framework test. A new command is wired by hand into each shim. Macros, codegen, and the strong-typing unification come only after the mirror shapes are stable.
+- operation output to JSON or `Render` text on stdout with exit 0;
+- `workflow::handler::Error` to the fixed error/exit contract;
+- `Args → Input` conversion failure to the same error/exit contract.
 
-## Where handlers live
+Unsupported provisioning commands remain typed routes to a private `Unsupported` operation so they participate in normal grammar and projection. Completions are router-owned synthetic behavior.
 
+## HTTP router
 
-| Commands                                                                                | Handlers                           | Beside                                                |
-| --------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------- |
-| `journal emit` / `show`                                                                 | `workflow::journal::handlers`      | the append kernel and the (private) `show` projection |
-| `slice create/transition/drop/validate/…` and `archive prune`                           | `workflow::slice::handlers`        | `slice::actions`, `slice::validate`, `slice::model`   |
-| `plan create/add/amend/remove/validate/…`                                               | `workflow::change::plan::handlers` | the `plan.yaml` state machine (`plan::core`)          |
-| `source survey/extract`, `slice refine/build`, `slice merge run`, `plan author/execute` | `workflow::orchestrate::handlers`  | the orchestrators they drive                          |
-| `registry validate/add/remove`                                                          | `workflow::registry::handlers`     | the `registry.yaml` catalog types                     |
-| `source resolve` / `target resolve`                                                     | `workflow::handlers`               | the axis resolvers                                    |
-| `init --scaffold-only`                                                                  | `workflow::init::handlers`         | the scaffold kernel                                   |
+`crates/argv/src/http.rs` assembles one `omnia_guest::api::http::Router<P>` with typed `get_with` and `post_with` routes:
 
+```rust
+Router::new(invoker)
+    .route(
+        "/slice/{name}/build",
+        post_with::<workflow::orchestrate::handlers::Build, P, SpecifyProjector>(
+            SpecifyProjector,
+        ),
+    )
+```
 
-Shared plumbing every handler uses lives once, in `workflow::handler`: the `Anchor` provider capability (project root + plan-dir override), `Ctx` (config + layout + clock, loaded at the top of each `handle`), `Out` / `Render` / `ReportBody` (output currency), and the handler-layer `Error` with the single taxonomy → HTTP status projection.
+The HTTP router merges route parameters, query values, and request-body fields into `Operation::Input`, invokes the operation through the same `Invoker<P>`, and projects `Output` or `workflow::handler::Error` to JSON. The HTTP `SpecifyProjector` is the single taxonomy-to-status table.
 
-`crates/argv` owns the clap grammar (operator UX, `--help`, completions) — including every mirror `*Args` struct and its help prose — plus `try_parse` exit-code passthrough and `front::run`, the generic execution bridge carrying the argv-side serde round-trip from `*Args` onto `Input`. It is a transport front-end library, not the home of any handler; `workflow` never links clap.
+GET is used for reads; POST is used for mutation and judgment. HTTP route paths are explicit and auditable. Native converts the typed router with `into_axum()`, adds the process-wide mutation lock, and merges MCP shelves.
 
-## Shim layout
+## Shim responsibilities
 
-Each shim (wasm guest at `src/`, native `specify-dev` at `harness/native/`) exposes the same two transports through a **symmetric file pair**. `lib.rs` / `main.rs` stay thin — module wiring and mode switch only; no macro-owned exports.
+The WASI guest and native harness share router assemblies rather than duplicating route tables.
 
 ```text
-src/                          # wasm guest shim
-  lib.rs                      # mod command; mod http; mod provider;
-  provider.rs                 # WIT-backed Provider
-  command.rs                  # struct Cli + wasi:cli/run export + route(cli)
-  http.rs                     # struct Http + wasi:http export + router(client)
-
-harness/native/src/           # native shim
-  main.rs                     # argv mode vs `serve` mode switch
-  provider.rs                 # NativeProvider
-  command.rs                  # run(argv) → same route(cli) as the guest
-  http.rs                     # serve() → same router(client) as the guest
+src/command.rs              construct Invoker → argv::router::router → command::execute_wasi
+src/http.rs                 construct Invoker → argv::http::router → http::serve
+harness/native/command.rs   construct Invoker → shared command Router::execute → write channels
+harness/native/http.rs      construct Invoker → shared HTTP Router::into_axum → lock + MCP merge
 ```
 
-`**command.rs**` — not `argv.rs` — avoids a name collision with the workspace `argv` crate (`use argv::parse`, `argv::front::run`, …). Reserve **dispatch** for adapter/host dispatch (metadata runner, Omnia dispatch-by-id); shim filenames use **command** / **http** for transport routing.
+`src/command.rs` and `src/http.rs` explicitly export `wasi:cli/run` and `wasi:http/incoming-handler`. `src/lib.rs` is module wiring only. The shims register guest-only metadata where required, but carry no per-command match arms.
 
-### Symmetric transport files
+## Where operations live
 
-Both transport files follow the same shape: a **route table function** plus a **transport entry** that calls it. On wasm the entry is an explicit `Guest` impl and `export!` macro — not a hidden macro module.
-
-
-|              | `command.rs`                                      | `http.rs`                                                |
-| ------------ | ------------------------------------------------- | -------------------------------------------------------- |
-| Route table  | `async fn route(cli: argv::cli::Cli) -> Exit`     | `fn router(client: Client<P>) -> Router`                 |
-| Wasm export  | `struct Cli; wasip3::cli::command::export!(Cli);` | `struct Http; wasip3::http::service::export!(Http);`     |
-| Wasm entry   | `impl Guest for Cli { async fn run() { … } }`     | `impl Guest for Http { async fn handle(request) { … } }` |
-| Native entry | `pub async fn run(argv: Vec<String>) -> u8`       | `pub async fn serve(listener, provider)`                 |
-
-
-Do **not** wire CLI through `omnia_guest::guest!({ command: … })`. That macro hides the `Cli` struct and `Guest::run` impl in a generated `mod command`, which breaks structural symmetry with `http.rs`. Specify already hand-writes HTTP routes; both transports should be equally visible in source.
-
-The WASI export struct is `Cli` (like the Omnia `examples/cli/guest.rs` pattern); the file stays `command.rs` to avoid colliding with the workspace `argv` crate name. The clap parser root is always `argv::cli::Cli` — qualified, never imported at the same scope as the export struct.
-
-### `lib.rs` (wasm)
-
-```rust
-mod command;
-mod http;
-mod provider;
-```
-
-No `guest!` block. The two `export!` macros in `command.rs` and `http.rs` are the only WASI surface exports.
-
-## CLI routing
-
-### WASI seam (instance-per-call)
-
-The guest exports `wasi:cli/run` explicitly from `src/command.rs` — the same structural pattern as `http.rs` and the Omnia CLI example (`examples/cli/guest.rs`). One trigger, one instance, no cross-call state.
-
-```rust
-// src/command.rs (guest shim) — transport entry (symmetric with http.rs)
-struct Cli;
-wasip3::cli::command::export!(Cli);
-
-impl wasip3::exports::cli::run::Guest for Cli {
-    async fn run() -> Result<(), ()> {
-        let argv = wasip3::cli::environment::get_arguments();
-        let cli = match argv::parse(argv) {
-            Ok(cli) => cli,
-            Err(exit) => {
-                wasip3::cli::exit::exit_with_code(exit.code());
-                unreachable!("exit_with_code does not return");
-            }
-        };
-        let exit = route(cli).await;
-        if exit.code() == 0 {
-            Ok(())
-        } else {
-            wasip3::cli::exit::exit_with_code(exit.code());
-            unreachable!("exit_with_code does not return");
-        }
-    }
-}
-```
-
-Use `argv::parse` (`try_parse` under the hood — not `parse()` — so clap's usage-error exit `2` survives the p2/p3 exit seam). Parse errors print usage and call `exit_with_code` before routing.
-
-### Native entry
-
-Native has no WASI `Guest` trait; `harness/native/src/command.rs` exposes a process entry that calls the same `route(cli)`:
-
-```rust
-// harness/native/src/command.rs — native transport entry
-pub async fn run(argv: Vec<String>) -> u8 {
-    let cli = match argv::parse(argv) {
-        Ok(cli) => cli,
-        Err(exit) => return exit.code(),
-    };
-    route(cli).await.code()
-}
-```
-
-`main.rs` calls `argv::run(std::env::args().collect()).await` and `process::exit(code)`.
-
-### Target shape: mirror `*Args` structs, one generic bridge
-
-Each routed leaf in the clap grammar carries a mirror `*Args` struct as its payload — not anonymous fields that the shim copies later. The mirror is field-identical to the handler's `Input`, derives `clap::Args` + `Serialize`, and serializes kebab-case so its wire rendering is exactly the map `Input` deserializes from.
-
-```rust
-// crates/argv — leaf variants carry the mirror Args struct
-#[derive(Debug, Subcommand)]
-enum SliceAction {
-    Build(BuildArgs),
-    Refine(RefineArgs),
-    Merge(MergeAction),
-    // …
-}
-
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct BuildArgs {
-    /// Slice name.
-    pub name: String,
-}
-```
-
-`Input` stays a serde-only DTO in the owning `workflow` handlers module. The compiler checks each struct internally, but nothing relates `BuildArgs` to `BuildInput` — the per-command argv → `Input` extraction test is the parity guard, which is why it is required per routed command, not optional.
-
-Field-level parsers (`SourceArg`, `FromStr` for closed enums, `value_parser` for `if-exists`) live on the `*Args` struct. A field type with custom argv grammar keeps its `FromStr` for clap and derives `Serialize`; whatever it serializes to *is* the wire form, and `Input`'s `Deserialize` is the single shape validator for both transports. Closed enums ride typed on both sides — a `ValueEnum` on the mirror, the matching serde enum on `Input`, agreeing on kebab-case wire values — never `.to_string()` bridges.
-
-Cross-field desugaring (`plan create --intent`, today's `source_map` / `bindings` / `assigns` helpers in the shim) moves handler-side: the mirror stays a dumb derived `Serialize`, `Input` carries the raw fields (`sources`, `intent`), and `from_input` builds the desugared form. The HTTP body accepts the same raw fields, so the desugaring runs identically on both transports. Complex commands (`plan amend` and its `--sources` / `--add-source` families) put every flag on `AmendArgs`, mirrored one-for-one by `AmendInput`.
-
-### Target shape: one-line routing arms
-
-The shared `route(cli)` function is an exhaustive match that only names `R` and passes the parsed `*Args`. No `FooInput { x: action.x, … }` construction. Wasm and native duplicate this function deliberately.
-
-```rust
-// src/command.rs (and harness/native/src/command.rs) — route table
-async fn route(cli: cli::Cli) -> Exit {
-    if let Err(err) = preflight(&cli) {
-        return report(cli.format, &err);
-    }
-    let format = cli.format;
-    let provider = &Provider;
-
-    match cli.command {
-        Commands::Journal { action } => match action {
-            JournalAction::Emit(args) => argv::post::<journal::handlers::Emit, _>(format, provider, args).await,
-            JournalAction::Show(args) => argv::get::<journal::handlers::Show, _>(format, provider, args).await,
-        },
-        Commands::Slice { action } => match action {
-            SliceAction::Build(args) => argv::post::<orchestrate::handlers::Build, _>(format, provider, args).await,
-            // … one line per leaf
-        },
-        Commands::Upgrade(_) => refuse("upgrade"),
-        Commands::Completions { shell } => completions(shell),
-    }
-}
-```
-
-`argv::post` / `argv::get` are thin aliases over `argv::front::run` documenting read/write intent; they mirror `route::post` / `route::get`. The bridge inside `front::run` is the only argv-side conversion in the codebase:
-
-```rust
-// crates/argv/src/front.rs — the one generic argv → Input bridge
-pub async fn run<R, P, B>(format: Format, provider: &P, args: impl Serialize) -> Exit
-where
-    R: Handler<P, Output = Out<B>, Error = workflow::handler::Error>,
-    R::Input: DeserializeOwned,
-    P: Provider,
-    B: Render + Send + Sync,
-{
-    let input: R::Input = match serde_json::to_value(&args).and_then(serde_json::from_value) {
-        Ok(input) => input,
-        Err(err) => return report(format, &bridge_error(&err)),
-    };
-    // … existing body: R::handler(input) → handle → emit / report
-}
-```
-
-A bridge failure is mirror drift — a programming error, not operator error — surfaced on the standard failure envelope; the per-command extraction tests exist to make it unreachable.
-
-Nesting in the grammar is for **namespacing only** (`Commands` → `SliceAction` → `MergeAction`). The leaf variant always carries its mirror: `MergeRun(MergeRunArgs)`, not `MergeRun { name, … }`.
-
-### Shim policy (not handlers)
-
-Stay at the edges — not mixed into per-command routing:
-
-- **`preflight`** — `adapter::metadata::register` (idempotent `OnceLock`), `check_plan_dir`
-- `**refuse**` — provisioning commands with no guest impl (`init` without `--scaffold-only`, `adapters`, `workspace`, `upgrade`, `plugins`)
-- `**completions**` — argv-transport sugar; not a `Handler`
-
-### Extraction tests
-
-Beside HTTP's parameter-merge tests in `omnia-guest::api::route`, add one argv → `Input` test per routed command: sample argv in, parse through the grammar, run the bridge, assert the resulting `Input`. Factor the round-trip as a small pub fn in `argv::front` (`fn extract<I: DeserializeOwned>(args: impl Serialize) -> Result<I, Error>`) so tests exercise exactly the conversion `run` performs without a provider. These tests are the mirror-parity guard — the compiler does not relate `*Args` to `Input`, so they are required for every routed command, not just non-trivial parsers. Cover type coercion on GET-side fields too (query strings arrive stringly; `limit=5` → `usize`). Handler tests in `crates/workflow/tests` stay transport-free: `R::handler(input)?.owner("specify").provider(&anchor).handle().await`.
-
-## HTTP routing
-
-`http.rs` is structurally symmetric with `command.rs`: same registry rows, same handler types, different extractor (`route::get` / `route::post` instead of clap). Both files own an explicit `struct` + `export!` + `Guest` impl on wasm. Routing splits by shim lifetime. Omnia instantiates a fresh wasm instance per HTTP trigger ([architecture.md §"Guest instantiation"](architecture.md#guest-instantiation)), so the guest builds its table inside `handle()` — no `static`, no `LazyLock`. The native `specify-dev serve` process is long-lived and builds once at startup.
-
-### Wasm guest — router per request
-
-The route table lives in `src/http.rs`. `handle()` builds a plain axum `Router` from omnia's generic route constructors (`route::get::<R, P>()` / `route::post::<R, P>()`). Path parameters, query pairs (GET), and JSON body fields (POST) merge into one flat map and deserialize into `R::Input` via serde — the same `Input` struct the argv bridge serializes onto. GET for pure reads, POST for writes and judgment, the noun in the path.
-
-```rust
-// src/http.rs (guest shim) — transport entry (symmetric with command.rs)
-struct Http;
-wasip3::http::service::export!(Http);
-
-impl wasip3::exports::http::handler::Guest for Http {
-    async fn handle(request: Request) -> Result<Response, ErrorCode> {
-        adapter::metadata::register(crate::provider::metadata);
-        let client = Client::new("specify").provider(Provider);
-        omnia_wasi_http::serve(router(client), request).await
-    }
-}
-
-fn router(client: Client<Provider>) -> axum::Router {
-    Router::new()
-        .route("/journal", route::post::<journal::handlers::Emit, Provider>())
-        .route("/journal", route::get::<journal::handlers::Show, Provider>())
-        .route("/slice/{name}/build", route::post::<orchestrate::handlers::Build, Provider>())
-        .route("/plan/status", route::get::<plan::handlers::Status, Provider>())
-        // … one line per routed command (same registry rows as command.rs)
-        .with_state(client)
-}
-```
-
-### Native shim — router at `serve` boot
-
-`harness/native/src/http.rs` owns `serve()` and the route table. `main.rs` delegates `specify-dev serve` here. The listener binds once; the router is built at startup (merged with the `/mcp/<name>` reference shelves), not a `static`.
-
-```rust
-// harness/native/src/http.rs — native HTTP transport
-pub async fn serve(listener: TcpListener, provider: NativeProvider) -> Result<()> {
-    let client = Client::new("specify").provider(provider);
-    let router = router(client).merge(mcp::router());
-    axum::serve(listener, router).await
-}
-
-fn router(client: Client<NativeProvider>) -> axum::Router {
-    Router::new()
-        .route("/journal", route::post::<journal::handlers::Emit, NativeProvider>())
-        // … same paths as src/http.rs
-        .with_state(client)
-}
-```
-
-Host-level prefix → guest routing for adapter MCP shelves lives in the deployment manifest (`omnia.toml` `[[route.http]]`), not in guest `static`s.
-
-## Wire contract (unchanged)
-
-The JSON envelope, kebab-case error discriminants, exit codes, and the taxonomy → status projection (validation/argument → 422, version floor → 426, else → 500) are unchanged; see [cli-architecture.md](../docs/contributing/cli-architecture.md). `Exit` stays in `crates/argv`; `workflow::handler::Error::status` is the only HTTP status table.
-
-One body-shape carve-out: commands whose shim arms desugared cross-field flags (`plan create` / `plan author` and the `source_map` merge) now carry the raw fields (`sources`, `intent`) on the wire, with `from_input` desugaring identically on both transports.
+| Commands | Operations | Beside |
+|---|---|---|
+| `journal emit/show` | `workflow::journal::handlers` | journal append and projection kernels |
+| `slice create/transition/drop/validate/...`, `archive prune` | `workflow::slice::handlers` | slice actions, validation, model, merge kernels |
+| `plan create/add/amend/remove/validate/...` | `workflow::change::plan::handlers` | the plan state machine |
+| `source survey/extract`, `slice refine/build/merge run`, `plan author/execute` | `workflow::orchestrate::handlers` | orchestration kernels |
+| `registry validate/add/remove` | `workflow::registry::handlers` | registry types and mutation kernels |
+| `source resolve`, `target resolve` | `workflow::adapter::handlers` | axis-specific resolvers |
+| `init --scaffold-only` | `workflow::init::handlers` | scaffold kernel |
 
 ## Adding a command
 
-1. **Define `Input`** in the owning domain module's `handlers` submodule: `#[derive(Serialize, Deserialize)]`, flat kebab-case fields, no clap. Implement `Handler`, `Body`, and `Render`; shape validation and any cross-field desugaring live in `from_input`. Call the domain kernel beside you; if the kernel is new and single-consumer, keep it private.
-2. **Mirror the grammar** in `crates/argv`: a `*Args` struct field-identical to `Input` — `#[derive(clap::Args, Serialize)]`, kebab-case serialization, operator help prose on the doc comments, field parsers for any non-scalar argv grammar — and a leaf variant carrying it directly (`Build(BuildArgs)`), not anonymous fields.
-3. **Register in both shims**: one argv arm in `command.rs` — `argv::post::<R, _>(format, provider, args)` (or `argv::get`); one HTTP line in `http.rs` — `.route(…, route::post::<R, P>())` (or `route::get`). Add a registry row to this RFC's table (or keep the shim sources as the living table). Refuse or omit where a shim cannot implement the command.
-4. **Test**: handler directly in `crates/workflow/tests`; the argv → `Input` extraction test in `crates/argv/tests` (required — it is the mirror-parity guard).
+1. Define the operation `Input`, typed output body, and stateless operation type in the owning workflow domain's `handlers` module. Implement `Operation<P>` and `Render` for command-visible output.
+2. Define the concrete clap `Args` under `crates/argv/src/commands/**/cli.rs`.
+3. Add an explicit `TryFrom<Args> for Input`.
+4. Register the command in `crates/argv/src/router.rs` with its path, args, operation, and help.
+5. If HTTP-exposed, register the same operation in `crates/argv/src/http.rs` with an explicit path and method.
+6. Test domain behavior through the operation public surface and transport behavior through `crates/argv/tests/router.rs` or the native full-loop tests.
 
-## Migration posture
+## Hard-cut exclusions
 
-The migration is complete: both shims carry the symmetric `command.rs` / `http.rs` layout with explicit `Cli` + `Http` exports, every leaf variant carries its mirror `*Args` struct, the routing arms are one-liners through the generic bridge, and the per-command extraction tests in `crates/argv/tests/extract.rs` guard mirror parity. Any reintroduction of the transitional shapes (a `guest!` macro, anonymous leaf fields, manual `Input` construction in a shim arm) is debt against this RFC.
+The following shapes are retired and must not return:
 
-### Order of work (simple first, iterate)
+- `omnia_guest::api::Handler`, `Handler::from_input`, or `Handler::handle`;
+- `Reply<T>` and transport-shaped `Out<T>` as operation output currency;
+- `crates/argv/src/front.rs`, `argv::front::run`, or an argv serde round-trip;
+- command route tables duplicated in WASI and native shims;
+- per-command `Input` construction in shim match arms;
+- a hidden `guest!` command export.
 
-1. **Symmetric shim skeleton.** Rename `dispatch.rs` → `command.rs`, extract `http.rs`, drop `guest!`. Wire explicit `Cli` + `Http` `Guest` impls. Keep the existing match table as-is — mechanical rename only.
-2. **One command group at a time.** Give each leaf a mirror `*Args` (`Build(BuildArgs)`); collapse the corresponding argv arms to one-liners through the bridge; delete manual `Input { … }` construction and the per-command conversion helpers (`source_map`, `bindings`, `assigns`) for that group, moving any cross-field desugaring into `from_input`.
-3. **Tests per group.** Add one argv → `Input` extraction test per command as its group lands (the mirror-parity guard); handler tests stay transport-free.
-4. **Registry hygiene.** Keep the shim route tables and this RFC's registry table aligned as groups land.
-5. *Then* iterate to strong typing if mirror drift demonstrably hurts: derive clap on `Input` itself so the mirror disappears and field parity becomes structural. That step moves clap — and the operator help prose — into `workflow`; take it deliberately, only after steps 1–4 are stable.
-
-Do not add new manual mapping arms during migration.
-
-### Do not
-
-
-| Temptation                                          | Why                                                                                                                                           |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `guest!({ command: … })` for CLI                    | Hides the `Cli` export; breaks symmetry with `http.rs`                                                                                        |
-| Runtime command registry with dynamic dispatch      | Loses monomorphization, typed errors, and compile-time CLI coverage                                                                           |
-| Permanent `commands/*/convert.rs` shims             | End state is one generic serde bridge; per-command converters are migration-only                                                              |
-| Derive clap on `workflow` `Input` DTOs (yet)        | That is the deferred strong-typing iteration — it moves clap and help prose into `workflow`; take it deliberately after the mirrors stabilize |
-| Macro-generated match before the mirrors are stable | Optimizes boilerplate before the wire shape is correct                                                                                        |
-| Flatten CLI to `specify POST /slice/foo/build`      | Breaks the operator CLI contract                                                                                                              |
-
-
+This is a hard cut, not a compatibility layer. Old traits, bridges, fixtures, and explanatory prose are removed rather than aliased.

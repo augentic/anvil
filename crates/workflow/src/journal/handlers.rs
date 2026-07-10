@@ -13,12 +13,13 @@
 use std::io::Write;
 
 use error::Error;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::{Event, EventKind};
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 
 // ---------------------------------------------------------------------------
 // journal emit
@@ -50,23 +51,19 @@ pub struct EmitInput {
 /// a variant in the closed taxonomy; `journal-emit-payload-schema`
 /// (exit 2) when `payload` is not valid JSON or does not satisfy the
 /// named variant's field schema.
-#[derive(Debug)]
-pub struct Emit {
-    input: EmitInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Emit;
 
-impl<P: Anchor> Handler<P> for Emit {
+impl<P: Anchor> Operation<P> for Emit {
     type Error = crate::handler::Error;
     type Input = EmitInput;
-    type Output = Out<EmitBody>;
+    type Output = EmitBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let EmitInput { event, payload } = self.input;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let EmitInput { event, payload } = input;
         // The `--payload` body defaults to an empty object so the single
         // round-trip below surfaces a `journal-emit-payload-schema`
         // missing-field failure for variants that require fields.
@@ -87,7 +84,7 @@ impl<P: Anchor> Handler<P> for Emit {
         let journal_event = Event::new(cx.now(), kind);
         super::append_batch(cx.layout(), std::slice::from_ref(&journal_event))?;
 
-        Ok(Reply::ok(Out(EmitBody { event })))
+        Ok(EmitBody { event })
     }
 }
 
@@ -155,27 +152,23 @@ pub struct ShowInput {
 /// event, payload }` object per event — pipeable, replacing ad-hoc
 /// `jq` bridges over the file); JSON wraps the same events in the
 /// standard envelope as `{ count, events }`.
-#[derive(Debug)]
-pub struct Show {
-    input: ShowInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Show;
 
-impl<P: Anchor> Handler<P> for Show {
+impl<P: Anchor> Operation<P> for Show {
     type Error = crate::handler::Error;
     type Input = ShowInput;
-    type Output = Out<ShowBody>;
+    type Output = ShowBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let events = super::show(cx.layout(), self.input.filter.as_deref(), self.input.limit)?;
-        Ok(Reply::ok(Out(ShowBody {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let events = super::show(cx.layout(), input.filter.as_deref(), input.limit)?;
+        Ok(ShowBody {
             count: events.len(),
             events,
-        })))
+        })
     }
 }
 

@@ -5,7 +5,8 @@
 
 use std::collections::BTreeMap;
 
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::args::{BindingArg, KindAssign, bindings_from_args, load_discovery};
@@ -15,7 +16,7 @@ use crate::change::{
     Entry, Plan, SliceAuthorityOverride, Status, emit_authority_override_seed_events, entry_mut,
 };
 use crate::config::with_state;
-use crate::handler::{Anchor, Ctx, Out};
+use crate::handler::{Anchor, Ctx};
 use crate::journal;
 use crate::schema::validate_plan;
 
@@ -48,22 +49,18 @@ pub struct AddInput {
 }
 
 /// `specify plan add <name> [flags]` — append one `pending` entry.
-#[derive(Debug)]
-pub struct Add {
-    input: AddInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Add;
 
-impl<P: Anchor> Handler<P> for Add {
+impl<P: Anchor> Operation<P> for Add {
     type Error = crate::handler::Error;
     type Input = AddInput;
-    type Output = Out<EntryBody>;
+    type Output = EntryBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let AddInput {
             name,
             depends_on,
@@ -72,7 +69,7 @@ impl<P: Anchor> Handler<P> for Add {
             project,
             context,
             authority_override,
-        } = self.input;
+        } = input;
         let name = name.as_str();
 
         if let Some(proj) = &project {
@@ -125,6 +122,6 @@ impl<P: Anchor> Handler<P> for Add {
             })?;
 
         journal::append_batch(cx.layout(), &override_events)?;
-        Ok(Reply::ok(Out(body)))
+        Ok(body)
     }
 }

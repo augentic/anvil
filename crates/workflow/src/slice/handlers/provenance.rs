@@ -11,11 +11,12 @@ use std::io::Write;
 
 use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use crate::change::Plan;
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::slice::SliceModel;
 use crate::slice::provenance::ProvenanceIndex;
 
@@ -53,23 +54,19 @@ pub struct ProvenanceInput {
 }
 
 /// `specify slice provenance <name>`.
-#[derive(Debug)]
-pub struct Provenance {
-    input: ProvenanceInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Provenance;
 
-impl<P: Anchor> Handler<P> for Provenance {
+impl<P: Anchor> Operation<P> for Provenance {
     type Error = crate::handler::Error;
     type Input = ProvenanceInput;
-    type Output = Out<ProvenanceIndex>;
+    type Output = ProvenanceIndex;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let name = &self.input.name;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let name = &input.name;
         let slice_dir = cx.slices_dir().join(name);
         let model_path = slice_dir.join("model.yaml");
         if !model_path.is_file() {
@@ -87,7 +84,7 @@ impl<P: Anchor> Handler<P> for Provenance {
         let model = SliceModel::load(&model_path)?;
         let overrides = slice_overrides(&cx, name)?;
         let index = model.to_provenance_index(&slice_dir, &overrides, cx.now(), generator())?;
-        Ok(Reply::ok(Out(index)))
+        Ok(index)
     }
 }
 

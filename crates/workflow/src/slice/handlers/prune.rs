@@ -5,10 +5,11 @@
 use std::io::Write;
 
 use error::Error;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::slice::actions::{Retention, prune};
 
 /// Wire input for `archive prune`.
@@ -36,16 +37,16 @@ pub struct PruneInput {
 /// outside the newest-`keep` window or is older than `older_than`
 /// days.
 #[derive(Clone, Copy, Debug)]
-pub struct Prune {
-    input: PruneInput,
-}
+pub struct Prune;
 
-impl<P: Anchor> Handler<P> for Prune {
+impl<P: Anchor> Operation<P> for Prune {
     type Error = crate::handler::Error;
     type Input = PruneInput;
-    type Output = Out<PruneBody>;
+    type Output = PruneBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
         if input.keep.is_none() && input.older_than.is_none() {
             return Err(Error::Argument {
                 flag: "--keep/--older-than",
@@ -55,16 +56,12 @@ impl<P: Anchor> Handler<P> for Prune {
             }
             .into());
         }
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+        let cx = Ctx::load(context.provider)?;
         let PruneInput {
             keep,
             older_than,
             dry_run,
-        } = self.input;
+        } = input;
         let retention = Retention {
             keep,
             max_age_days: older_than,
@@ -76,7 +73,7 @@ impl<P: Anchor> Handler<P> for Prune {
         }
         let pruned: Vec<String> = candidates.into_iter().map(|e| e.name).collect();
 
-        Ok(Reply::ok(Out(PruneBody { dry_run, pruned })))
+        Ok(PruneBody { dry_run, pruned })
     }
 }
 

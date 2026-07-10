@@ -4,10 +4,11 @@ use std::io::Write;
 
 use error::Error;
 use jiff::Timestamp;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::slice::{CreateIfExists, Created, LifecycleStatus, actions as slice_actions};
 
 // ---------------------------------------------------------------------------
@@ -33,29 +34,24 @@ pub struct CreateInput {
 
 /// `specify slice create <name>` — create a slice directory with an
 /// initial `metadata.yaml`.
-#[derive(Debug)]
-pub struct Create {
-    name: String,
-    target: Option<String>,
-    if_exists: CreateIfExists,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Create;
 
-impl<P: Anchor> Handler<P> for Create {
+impl<P: Anchor> Operation<P> for Create {
     type Error = crate::handler::Error;
     type Input = CreateInput;
-    type Output = Out<Created>;
+    type Output = Created;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self {
-            name: input.name,
-            target: input.target,
-            if_exists: input.if_exists,
-        })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let target_value = self.target.map_or_else(
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let CreateInput {
+            name,
+            target,
+            if_exists,
+        } = input;
+        let target_value = target.map_or_else(
             || {
                 cx.config.adapter.clone().ok_or_else(|| Error::Diag {
                     code: "slice-create-target-missing",
@@ -70,14 +66,9 @@ impl<P: Anchor> Handler<P> for Create {
         let slices_dir = cx.slices_dir();
         std::fs::create_dir_all(&slices_dir).map_err(Error::Io)?;
 
-        let outcome = slice_actions::create(
-            &slices_dir,
-            &self.name,
-            &target_value,
-            self.if_exists,
-            cx.now(),
-        )?;
-        Ok(Reply::ok(Out(outcome)))
+        let outcome =
+            slice_actions::create(&slices_dir, &name, &target_value, if_exists, cx.now())?;
+        Ok(outcome)
     }
 }
 
@@ -117,40 +108,36 @@ pub struct TransitionInput {
 /// target: the only legal writer of `Merged` is `specify slice merge
 /// run`, which performs the spec merge, status transition, and archive
 /// move atomically.
-#[derive(Debug)]
-pub struct Transition {
-    input: TransitionInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Transition;
 
-impl<P: Anchor> Handler<P> for Transition {
+impl<P: Anchor> Operation<P> for Transition {
     type Error = crate::handler::Error;
     type Input = TransitionInput;
-    type Output = Out<TransitionBody>;
+    type Output = TransitionBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        if matches!(input.target, LifecycleStatus::Merged) {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let TransitionInput { name, target } = input;
+        if matches!(target, LifecycleStatus::Merged) {
             return Err(Error::Argument {
                 flag: "<target>",
                 detail: "use `specify slice merge run` to reach `merged`".to_string(),
             }
             .into());
         }
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let TransitionInput { name, target } = self.input;
         let slice_dir = cx.slices_dir().join(&name);
         let metadata = slice_actions::transition(&slice_dir, target, cx.now())?;
-        Ok(Reply::ok(Out(TransitionBody {
+        Ok(TransitionBody {
             name,
             status: metadata.status,
             defined_at: metadata.defined_at,
             completed_at: metadata.completed_at,
             merged_at: metadata.merged_at,
             dropped_at: metadata.dropped_at,
-        })))
+        })
     }
 }
 
@@ -200,33 +187,29 @@ pub struct DropInput {
 
 /// `specify slice drop <name>` — transition a slice to `dropped` and
 /// archive it.
-#[derive(Debug)]
-pub struct Drop {
-    input: DropInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Drop;
 
-impl<P: Anchor> Handler<P> for Drop {
+impl<P: Anchor> Operation<P> for Drop {
     type Error = crate::handler::Error;
     type Input = DropInput;
-    type Output = Out<DropBody>;
+    type Output = DropBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let DropInput { name, reason } = self.input;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let DropInput { name, reason } = input;
         let slice_dir = cx.slices_dir().join(&name);
         let archive_dir = cx.archive_dir();
         let (metadata, archive_path) =
             slice_actions::discard(&slice_dir, &archive_dir, reason.as_deref(), cx.now())?;
-        Ok(Reply::ok(Out(DropBody {
+        Ok(DropBody {
             name,
             status: metadata.status,
             archive_path: archive_path.display().to_string(),
             drop_reason: metadata.drop_reason,
-        })))
+        })
     }
 }
 

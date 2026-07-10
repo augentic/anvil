@@ -153,13 +153,14 @@ version = "0.27.2"
 dependencies = [
  "artifacts",
  "clap",
- "clap_complete",
  "error",
  "omnia-guest",
  "serde",
  "serde_json",
  "strum",
  "tempfile",
+ "tokio",
+ "tower",
  "workflow",
 ]
 
@@ -2741,6 +2742,8 @@ dependencies = [
  "bon",
  "bytes",
  "chrono",
+ "clap",
+ "clap_complete",
  "http",
  "http-body",
  "omnia-guest-macros",

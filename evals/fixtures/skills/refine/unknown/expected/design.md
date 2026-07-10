@@ -16,9 +16,9 @@
 
 - `AUDIT_TRAIL_RETENTION_DURATION` — `Config::get` key for the retention window. The default value is unresolved while REQ-001 is `[unknown]`.
 
-## Handler delegation
+## Operation delegation
 
-- Not applicable; this slice is configuration + a scheduled worker. Concrete handler shape follows once REQ-001 is settled.
+- Not applicable; this slice is configuration + a scheduled worker. Concrete operation shape follows once REQ-001 is settled.
 
 ## Error mapping
 

@@ -4,13 +4,13 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary, one guest
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every command — `--help` / `--version` included — runs in the specify (core) guest, which parses argv through the shared `cli` grammar; envelopes and exit codes pass through verbatim. Provisioning commands (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) parse in the grammar but are refused by the guest dispatch until their in-guest implementations land.
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Provisioning commands (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) remain typed routes to the standard unsupported operation until their in-guest implementations land.
 
 The core guest identity is versioned by the binary (`specify:core@<binary version>`); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `workflow` owns the workflow domain and every command handler (`Handler<P>` impl in `workflow::<domain>::handlers`, shared plumbing in `workflow::handler`); `cli` is the pure front-end (clap grammar, conversions, envelopes, exit contract); the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `workflow` owns the workflow domain and every command operation (`Operation<P>` impl in `workflow::<domain>::handlers`, shared plumbing in `workflow::handler`); `argv` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
@@ -21,12 +21,12 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  argv::parse + src/command.rs
+src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest  →  typed argv router
 ```
 
-The full operator grammar — provisioning commands included — lives in `argv` (`crates/argv/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's argv route table (`src/command.rs`) is structurally symmetric with `src/http.rs` — explicit `Guest` impl + `export!` on wasm, shared `route(cli)` / `router(client)` match tables, one line per command. Each arm names only the handler type and passes a parsed `Input` through `argv::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
+The full operator grammar — unsupported provisioning commands included — is assembled in `crates/argv/src/router.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/argv/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
-The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`.
+The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`. Each shim constructs an `Invoker`; the route inventories remain in `crates/argv`.
 
 ## JSON envelope contract
 
@@ -49,18 +49,18 @@ The exit-code contract is part of the public interface for skill authors; `Exit:
 | `2` | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors |
 | `3` | `EXIT_VERSION_TOO_OLD` | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
 
-Guest commands inherit the same contract: the guest shim forwards `clap::Error::exit_code()` and handler exits through the WASI exit, and the binary passes them through verbatim.
+Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI seam forwards its exit and the binary passes it through verbatim.
 
 ## Error handling
 
 Most commands use `error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, permission failures, runtime failures, and more.
 
-The pattern for a command handler:
+The pattern for a command operation:
 
 1. Call into a library crate function that returns `Result<T, error::Error>`
-2. On success, format the result as text or JSON depending on `--format`
-3. On error, emit the error envelope and return the appropriate `Exit`
+2. Return a typed body implementing `Serialize + Render`
+3. Let the command or HTTP projector render success or apply the shared error contract
 
 ## Public Rust API
 
-The root `specify-cli` package is a binary-only crate. It does not expose a public library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `workflow::Plan`, `workflow::ProjectConfig`, or `error::Error`.
+The root `specify` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `workflow::Plan`, `workflow::ProjectConfig`, or `error::Error`.

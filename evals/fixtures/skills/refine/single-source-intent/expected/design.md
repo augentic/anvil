@@ -7,19 +7,19 @@
 
 ## Provider trait dependencies
 
-- `list_users` handler depends on `TableStore` (read).
+- `ListUsers` operation depends on `TableStore` (read).
 
 ## APIs and integrations
 
-- HTTP `GET /users?query={query}` — list handler; `query` is optional.
+- HTTP `GET /users?query={query}` — list operation; `query` is optional.
 
 ## Configuration
 
 - `USERS_TABLE_NAME` — `Config::get` key for the underlying table name.
 
-## Handler delegation
+## Operation delegation
 
-- `ListUsersRequest` implements `Handler<P>`; `from_input` parses the optional `query` into `Option<SearchQuery>`; `handle` reads the user table via `TableStore` and filters in-process.
+- `ListUsers` implements `Operation<P>` with `ListUsersRequest` as its typed input; `Operation::call` constructs `Option<SearchQuery>`, then delegates the `TableStore` read and in-process filtering to the domain function.
 
 ## Error mapping
 
@@ -28,8 +28,8 @@
 
 ## Validation placement
 
-- Structural validation in `from_input`: trim, non-empty when present.
-- No temporal validation; the handler is pure-read.
+- Structural validation in `Operation::call`: trim, non-empty when present.
+- No temporal validation; the operation is pure-read.
 
 ## Observability
 

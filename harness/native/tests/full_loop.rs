@@ -1,13 +1,15 @@
 //! The native loop end to end: `plan author`
 //! → the operator's `approved` stamp → `plan execute`, driven through
-//! the same transport-neutral verb handlers the `specify-dev` binary
+//! the same transport-neutral operations the `specify-dev` binary
 //! dispatches, against one [`NativeProvider`] — so the *real* intent
 //! and omnia adapter operations (prompts, schema gates, validation
 //! tails) run in-process with only the model scripted. No wasm builds.
 
 use std::fs;
 
-use omnia_guest::api::Handler;
+use omnia_guest::api::invocation::Invocation;
+use omnia_guest::api::invoke::Invoker;
+use omnia_guest::api::operation::Operation;
 use serde_json::json;
 use specify_dev::provider::NativeProvider;
 use testkit::MockModel;
@@ -17,25 +19,19 @@ use workflow::orchestrate;
 
 mod common;
 
-/// Drive one verb handler against the provider, returning the typed
-/// body or the verb-layer failure — the same path both transports take.
+/// Invoke one operation against the shared provider.
 async fn run<R, B>(
-    provider: &NativeProvider<MockModel>, input: R::Input,
+    invoker: &Invoker<NativeProvider<MockModel>>, input: R::Input,
 ) -> Result<B, workflow::handler::Error>
 where
-    R: Handler<
-            NativeProvider<MockModel>,
-            Output = workflow::handler::Out<B>,
-            Error = workflow::handler::Error,
-        >,
-    B: Send + Sync,
+    R: Operation<NativeProvider<MockModel>, Output = B, Error = workflow::handler::Error>,
+    B: Send,
 {
-    let reply = R::handler(input)?.owner("specify").provider(provider).handle().await?;
-    Ok(reply.body.0)
+    invoker.invoke::<R>(Invocation::new(input)).await
 }
 
 /// The single raw intent binding `plan author` carries on the wire
-/// (`from_input` desugars it into the structured sources map).
+/// (the operation desugars it into the structured sources map).
 fn bindings() -> Vec<SourceAssign> {
     let intent: SourceAssign = serde_json::from_value(
         json!({ "key": "intent", "adapter": "intent", "value": "Fix the greeting." }),
@@ -105,12 +101,15 @@ fn scripted_answers() -> Vec<&'static str> {
 #[tokio::test]
 async fn author_approve_execute_drains() {
     let project = common::Project::new();
-    let provider = NativeProvider::new(project.root(), MockModel::answering(scripted_answers()));
+    let invoker = Invoker::new(
+        "specify",
+        NativeProvider::new(project.root(), MockModel::answering(scripted_answers())),
+    );
 
     // `plan author` — survey through the real intent adapter, the
     // reconciliation judgment leg, Gate 1 prose — exits at `pending`.
     let authored = run::<orchestrate::handlers::Author, _>(
-        &provider,
+        &invoker,
         orchestrate::handlers::AuthorInput {
             name: "demo".to_string(),
             sources: bindings(),
@@ -126,7 +125,7 @@ async fn author_approve_execute_drains() {
     // Gate 1 — the operator-only stamp, through the same verb the CLI
     // routes.
     run::<plan::handlers::Transition, _>(
-        &provider,
+        &invoker,
         plan::handlers::TransitionInput {
             name: "demo".to_string(),
             target: Some("approved".to_string()),
@@ -140,7 +139,7 @@ async fn author_approve_execute_drains() {
     // `plan execute` — the drained refine → build → merge loop over
     // the real adapter operations.
     let executed =
-        run::<orchestrate::handlers::Execute, _>(&provider, orchestrate::handlers::ExecuteInput {})
+        run::<orchestrate::handlers::Execute, _>(&invoker, orchestrate::handlers::ExecuteInput {})
             .await
             .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
@@ -166,7 +165,7 @@ async fn author_approve_execute_drains() {
 
     // Every scripted leg consumed — the real adapters dispatched
     // exactly the expected judgment cadence.
-    let requests = provider.model().requests();
+    let requests = invoker.provider().model().requests();
     assert_eq!(requests.len(), 8, "survey, reconcile, extract, synthesis, and four build legs");
     assert!(requests[4].lend_workspace, "the omnia generation leg lends the workspace");
 }

@@ -9,10 +9,11 @@
 use std::io::Write;
 
 use error::Error;
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::slice::SliceModel;
 
 /// Wire input for `slice model show`.
@@ -24,23 +25,19 @@ pub struct ModelShowInput {
 }
 
 /// `specify slice model show <name>`.
-#[derive(Debug)]
-pub struct ModelShow {
-    input: ModelShowInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct ModelShow;
 
-impl<P: Anchor> Handler<P> for ModelShow {
+impl<P: Anchor> Operation<P> for ModelShow {
     type Error = crate::handler::Error;
     type Input = ModelShowInput;
-    type Output = Out<SliceModel>;
+    type Output = SliceModel;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let name = &self.input.name;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let name = &input.name;
         let model_path = cx.slices_dir().join(name).join("model.yaml");
         if !model_path.is_file() {
             return Err(Error::validation_failed(
@@ -55,7 +52,7 @@ impl<P: Anchor> Handler<P> for ModelShow {
             .into());
         }
         let model = SliceModel::load(&model_path)?;
-        Ok(Reply::ok(Out(model)))
+        Ok(model)
     }
 }
 

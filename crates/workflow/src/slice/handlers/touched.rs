@@ -3,11 +3,12 @@
 use std::io::Write;
 
 use error::{Error, Result};
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::artifact_classes;
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 use crate::merge::MergeStrategy;
 use crate::slice::{
     Overlap as SliceOverlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions,
@@ -34,23 +35,19 @@ pub struct TouchedSpecsInput {
 
 /// `specify slice touched-specs <name>` — scan or overwrite
 /// `touched_specs` on `metadata.yaml`.
-#[derive(Debug)]
-pub struct TouchedSpecs {
-    input: TouchedSpecsInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct TouchedSpecs;
 
-impl<P: Anchor> Handler<P> for TouchedSpecs {
+impl<P: Anchor> Operation<P> for TouchedSpecs {
     type Error = crate::handler::Error;
     type Input = TouchedSpecsInput;
-    type Output = Out<SpecsBody>;
+    type Output = SpecsBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let TouchedSpecsInput { name, scan, set } = self.input;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let TouchedSpecsInput { name, scan, set } = input;
         let slice_dir = cx.slices_dir().join(&name);
 
         let entries = if !set.is_empty() {
@@ -78,10 +75,10 @@ impl<P: Anchor> Handler<P> for TouchedSpecs {
             metadata.touched_specs
         };
 
-        Ok(Reply::ok(Out(SpecsBody {
+        Ok(SpecsBody {
             name,
             touched_specs: entries,
-        })))
+        })
     }
 }
 
@@ -150,27 +147,23 @@ pub struct OverlapInput {
 
 /// `specify slice overlap <name>` — report overlapping
 /// `touched_specs` with other active slices.
-#[derive(Debug)]
-pub struct Overlap {
-    input: OverlapInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Overlap;
 
-impl<P: Anchor> Handler<P> for Overlap {
+impl<P: Anchor> Operation<P> for Overlap {
     type Error = crate::handler::Error;
     type Input = OverlapInput;
-    type Output = Out<OverlapBody>;
+    type Output = OverlapBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let name = self.input.name;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let name = input.name;
         let slices_dir = cx.slices_dir();
         let overlaps = slice_actions::overlap(&slices_dir, &name)?;
 
-        Ok(Reply::ok(Out(OverlapBody { name, overlaps })))
+        Ok(OverlapBody { name, overlaps })
     }
 }
 

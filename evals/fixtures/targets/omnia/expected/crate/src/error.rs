@@ -1,4 +1,4 @@
-use omnia_sdk::Error as SdkError;
+use omnia_guest::Error as GuestError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -18,14 +18,14 @@ impl ResetError {
     }
 }
 
-impl From<ResetError> for SdkError {
+impl From<ResetError> for GuestError {
     fn from(err: ResetError) -> Self {
         match &err {
-            ResetError::InvalidEmail => SdkError::BadRequest {
+            ResetError::InvalidEmail => GuestError::BadRequest {
                 code: err.code().to_string(),
                 description: err.to_string(),
             },
-            ResetError::PublishUnavailable(_) => SdkError::BadGateway {
+            ResetError::PublishUnavailable(_) => GuestError::BadGateway {
                 code: err.code().to_string(),
                 description: err.to_string(),
             },

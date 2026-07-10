@@ -8,7 +8,7 @@ Canonical definitions for terms used throughout Specify.
 A versioned Specify extension. Specify splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Action**
-A grammar leaf in the `specify` CLI — the subcommand token after the command group (`build` in `specify slice build`, `emit` in `specify journal emit`). Declared as clap action enums (`SliceAction`, `JournalAction`, …). See [Handler routing](../../rfcs/handler-routing.md).
+A grammar leaf in the `specify` CLI — the executable command path (`slice build`, `journal emit`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -45,7 +45,7 @@ The operator-defined umbrella that coordinates one or more slices through `chang
 The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `specify plan execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
 
 **Command**
-One operator-facing `specify` invocation (`specify slice build my-slice`). Implemented by exactly one **handler**. Distinct from a shell command, an adapter **operation**, and a slash **skill**. See [Handler routing](../../rfcs/handler-routing.md).
+One operator-facing `specify` invocation (`specify slice build my-slice`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation routing](../../rfcs/handler-routing.md).
 
 **Command group**
 The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `specify slice *` is the slice command group.
@@ -97,11 +97,6 @@ The closure skill (`/spec:finalize`) that pushes the prepared branches with `spe
 **Gate 1**
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
-## H
-
-**Handler**
-The `omnia_guest::api::Handler<P>` implementation for one **command**: a flat `Input` DTO, `from_input` validation, and a `handle` body returning `Out<Body>`. Handlers live in `workflow::<domain>::handlers` submodules beside their kernels; shared plumbing is in `workflow::handler`. See [Handler routing](../../rfcs/handler-routing.md).
-
 ## I
 
 **Intent**
@@ -122,6 +117,11 @@ The slice phase that applies spec deltas to the baseline, archives the slice, an
 
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
+
+## O
+
+**Operation**
+The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `workflow::<domain>::handlers` submodules beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation routing](../../rfcs/handler-routing.md).
 
 **model.yaml**
 The single structured artifact per refined slice, at `.specify/slices/<slice>/model.yaml`. Holds the requirement set with **inline provenance** (per requirement: contributing claims and the winning one), the task list, and a small header. Validated by `specify slice validate`; the audit `provenance` view is projected from it on demand (there is no persisted `provenance.yaml`). See [From sources to slices](../explanation/reconciliation.md).

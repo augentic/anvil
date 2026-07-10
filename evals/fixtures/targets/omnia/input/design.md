@@ -18,20 +18,20 @@ Reset link expiry is encoded as `expires_at = issued_at + Duration::minutes(30)`
 
 ## Provider trait dependencies
 
-| Handler        | Traits consumed         |
+| Operation      | Traits consumed         |
 |----------------|--------------------------|
 | `ResetRequest` | `Config`, `Publish`     |
 
-## Handler delegation
+## Operation delegation
 
-`ResetRequest` implements `Handler<P> where P: Config + Publish` and delegates to a standalone:
+`Reset` implements `Operation<P> where P: Config + Publish`, takes `ResetRequest` as its typed input, and delegates to a standalone:
 
 ```rust
-async fn handle<P>(owner: &str, request: ResetRequest, provider: &P) -> Result<Reply<ResetAck>>
+async fn reset<P>(request: ResetRequest, provider: &P) -> Result<ResetAck>
 where P: Config + Publish { ... }
 ```
 
-`type Input = Vec<u8>` (HTTP POST body); `from_input` deserialises JSON into `ResetRequest` and runs RFC-5322 email validation. `Utc::now()` is called inside `handle`, never `from_input`.
+`type Input = ResetRequest`; the typed HTTP router deserialises the POST body and `Operation::call` performs RFC-5322 email validation before delegation. `Utc::now()` is called by the runtime operation path, never during transport decoding.
 
 ## External surfaces
 
@@ -57,14 +57,14 @@ pub enum ResetError {
     PublishUnavailable(String),
 }
 
-impl From<ResetError> for omnia_sdk::Error {
+impl From<ResetError> for omnia_guest::Error {
     fn from(err: ResetError) -> Self {
         match &err {
-            ResetError::InvalidEmail => omnia_sdk::Error::BadRequest {
+            ResetError::InvalidEmail => omnia_guest::Error::BadRequest {
                 code: "invalid_email".into(),
                 description: err.to_string(),
             },
-            ResetError::PublishUnavailable(_) => omnia_sdk::Error::BadGateway {
+            ResetError::PublishUnavailable(_) => omnia_guest::Error::BadGateway {
                 code: "publish_unavailable".into(),
                 description: err.to_string(),
             },
@@ -77,9 +77,9 @@ impl From<ResetError> for omnia_sdk::Error {
 
 | Check                          | Location           | Reason                                  |
 |--------------------------------|--------------------|------------------------------------------|
-| Email is non-empty             | `from_input()`     | Structural; depends only on parse result. |
-| Email matches RFC-5322         | `from_input()`     | Structural; constant pattern.            |
-| `Utc::now()` for `issued_at`   | `handle()`         | Runtime time; not parse-time.            |
+| Email is non-empty             | `Operation::call`  | Structural; depends only on typed input. |
+| Email matches RFC-5322         | `Operation::call`  | Structural; constant pattern.            |
+| `Utc::now()` for `issued_at`   | delegated runtime function | Runtime time; not decode-time. |
 
 ## Observability
 

@@ -6,17 +6,17 @@
 
 ## Provider trait dependencies
 
-- The expiry-emitting handler depends on `Config` (read of the TTL key).
+- The expiry-emitting operation depends on `Config` (read of the TTL key).
 
 ## APIs and integrations
 
-- No external surface in this slice — the TTL value is read by the password-reset handler authored elsewhere.
+- No external surface in this slice — the TTL value is read by the password-reset operation authored elsewhere.
 
 ## Configuration
 
 - `PASSWORD_RESET_EXPIRY_MINUTES` — `Config::get` key for the TTL value. The numeric default is unresolved while REQ-001 is `[conflict]`; downstream code must read the value through `Config::get` rather than hard-coding the literal.
 
-## Handler delegation
+## Operation delegation
 
 - Not applicable; this slice settles configuration only.
 
@@ -30,4 +30,4 @@
 
 ## Observability
 
-- `tracing::info!(gauge.password_reset_expiry_minutes = <value>)` once at first handler invocation per process.
+- `tracing::info!(gauge.password_reset_expiry_minutes = <value>)` once at first operation invocation per process.

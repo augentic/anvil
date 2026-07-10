@@ -1,6 +1,6 @@
 //! End-to-end coverage of the pure project-scoped verbs through the
-//! transport-neutral `Handler` layer: each test builds the wire input
-//! DTO, drives the handler against a tempdir-anchored provider, and
+//! transport-neutral `Operation` layer: each test builds the wire input
+//! DTO, invokes the operation against a tempdir-anchored provider, and
 //! asserts the filesystem effects and the typed failure taxonomy.
 //!
 //! This is the always-on native home of the widened-verb coverage:
@@ -11,15 +11,19 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use omnia_guest::api::Handler;
+use omnia_guest::api::invocation::Invocation;
+use omnia_guest::api::invoke::Invoker;
+use omnia_guest::api::operation::Operation;
 use tempfile::TempDir;
 
 /// A throw-away project tree the verbs run against: the provider
 /// anchor points at its root, and the derived project cache is pinned
 /// beneath it so cache writes are hermetic.
+#[derive(Clone)]
 struct Project {
-    _tmp: TempDir,
+    _tmp: Arc<TempDir>,
     root: PathBuf,
 }
 
@@ -39,7 +43,10 @@ impl Project {
         // other thread observes the env mutation.
         unsafe { std::env::set_var("SPECIFY_PROJECT_CACHE", root.join("project-cache")) };
         std::env::set_current_dir(&root).expect("enter project root");
-        Self { _tmp: tmp, root }
+        Self {
+            _tmp: Arc::new(tmp),
+            root,
+        }
     }
 
     /// An initialised project (`.specify/project.yaml` present).
@@ -55,15 +62,13 @@ impl Project {
     }
 }
 
-/// Drive one verb handler against the project anchor, returning the
-/// typed body or the verb-layer failure.
+/// Invoke one operation against the project anchor.
 async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, workflow::handler::Error>
 where
-    R: Handler<Project, Output = workflow::handler::Out<B>, Error = workflow::handler::Error>,
-    B: Send + Sync,
+    R: Operation<Project, Output = B, Error = workflow::handler::Error>,
+    B: Send,
 {
-    let reply = R::handler(input)?.owner("specify").provider(project).handle().await?;
-    Ok(reply.body.0)
+    Invoker::new("specify", project.clone()).invoke::<R>(Invocation::new(input)).await
 }
 
 /// Stage a one-project `registry.yaml` at the project root.

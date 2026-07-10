@@ -8,11 +8,12 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{Axis, SourceAdapter, TargetAdapter};
-use crate::handler::{Anchor, Out, Render};
+use crate::handler::{Anchor, Render};
 use crate::init::adapter_ref_from_value;
 
 /// Wire input for `source resolve` / `target resolve`.
@@ -28,62 +29,52 @@ pub struct ResolveInput {
 }
 
 /// `specify source resolve <name>`.
-#[derive(Debug)]
-pub struct SourceResolve {
-    input: ResolveInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct SourceResolve;
 
-impl<P: Anchor> Handler<P> for SourceResolve {
+impl<P: Anchor> Operation<P> for SourceResolve {
     type Error = crate::handler::Error;
     type Input = ResolveInput;
-    type Output = Out<ResolveBody>;
+    type Output = ResolveBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let project_dir = project_dir(&self.input, ctx.provider);
-        let resolved =
-            SourceAdapter::resolve(&adapter_ref_from_value(&self.input.value), &project_dir)?;
-        Ok(Reply::ok(Out(ResolveBody {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let project_dir = project_dir(&input, context.provider);
+        let resolved = SourceAdapter::resolve(&adapter_ref_from_value(&input.value), &project_dir)?;
+        Ok(ResolveBody {
             axis: Axis::Source.dir_segment(),
             name: resolved.manifest.name.clone(),
             version: resolved.manifest.version.to_string(),
             resolved_path: resolved.location.path().display().to_string(),
             location: resolved.location.label(),
             operations: resolved.manifest.operations().map(ToString::to_string).collect(),
-        })))
+        })
     }
 }
 
 /// `specify target resolve <value>`.
-#[derive(Debug)]
-pub struct TargetResolve {
-    input: ResolveInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct TargetResolve;
 
-impl<P: Anchor> Handler<P> for TargetResolve {
+impl<P: Anchor> Operation<P> for TargetResolve {
     type Error = crate::handler::Error;
     type Input = ResolveInput;
-    type Output = Out<ResolveBody>;
+    type Output = ResolveBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let project_dir = project_dir(&self.input, ctx.provider);
-        let resolved =
-            TargetAdapter::resolve(&adapter_ref_from_value(&self.input.value), &project_dir)?;
-        Ok(Reply::ok(Out(ResolveBody {
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let project_dir = project_dir(&input, context.provider);
+        let resolved = TargetAdapter::resolve(&adapter_ref_from_value(&input.value), &project_dir)?;
+        Ok(ResolveBody {
             axis: Axis::Target.dir_segment(),
             name: resolved.manifest.name.clone(),
             version: resolved.manifest.version.to_string(),
             resolved_path: resolved.location.path().display().to_string(),
             location: resolved.location.label(),
             operations: resolved.manifest.operations().map(ToString::to_string).collect(),
-        })))
+        })
     }
 }
 

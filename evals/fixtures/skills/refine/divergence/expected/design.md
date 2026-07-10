@@ -7,12 +7,12 @@
 
 ## Provider trait dependencies
 
-- `request_password_reset` handler depends on `TableStore` (read for the user row, write for the reset token row), `Publish` (dispatch the reset email), and `Config` (expiry window, token table name, email topic).
+- `RequestPasswordReset` operation depends on `TableStore` (read for the user row, write for the reset token row), `Publish` (dispatch the reset email), and `Config` (expiry window, token table name, email topic).
 
 ## APIs and integrations
 
-- HTTP `POST /password-reset` — request handler; request body `{ email }`, response `202` in both branches so unknown emails cannot be enumerated.
-- Internal: handler publishes a `password-reset.requested` message carrying the persisted token id; the email dispatcher subscribes elsewhere.
+- HTTP `POST /password-reset` — request operation; request body `{ email }`, response `202` in both branches so unknown emails cannot be enumerated.
+- Internal: the operation publishes a `password-reset.requested` message carrying the persisted token id; the email dispatcher subscribes elsewhere.
 
 ## Configuration
 
@@ -20,9 +20,9 @@
 - `PASSWORD_RESET_EXPIRY_MINUTES` — `Config::get` key for the expiry window; default `30` per the design-notes requirement.
 - `PASSWORD_RESET_EMAIL_TOPIC` — `Config::get` key for the email-dispatch topic.
 
-## Handler delegation
+## Operation delegation
 
-- `RequestPasswordResetRequest` implements `Handler<P>`; `from_input` parses and validates the email; `handle` looks up the user, persists the token when found, publishes the email-dispatch event, and returns `202` in both branches.
+- `RequestPasswordReset` implements `Operation<P>` with `RequestPasswordResetRequest` as its typed input; `Operation::call` validates the email, then delegates the user lookup, conditional token persistence, email-dispatch publish, and opaque accepted response.
 
 ## Error mapping
 
@@ -31,8 +31,8 @@
 
 ## Validation placement
 
-- Structural validation in `from_input`: email present and RFC-5322 valid.
-- Temporal validation in `handle`: compute `expires_at = Utc::now() + PASSWORD_RESET_EXPIRY_MINUTES`.
+- Structural validation in typed decoding and `Operation::call`: email present and RFC-5322 valid.
+- Temporal work in delegated domain logic: compute `expires_at = Utc::now() + PASSWORD_RESET_EXPIRY_MINUTES`.
 
 ## Observability
 

@@ -81,7 +81,7 @@ args = [
     "check",
     "--lib",
     "-p",
-    "specify-cli",
+    "specify",
     "-p",
     "argv",
     "--target",
@@ -97,7 +97,7 @@ env = { RUSTFLAGS = "-Dwarnings" }
 # harness/README.md).
 [tasks.build-guests]
 command = "cargo"
-args = ["build", "--lib", "-p", "specify-cli", "--target", "wasm32-wasip2"]
+args = ["build", "--lib", "-p", "specify", "--target", "wasm32-wasip2"]
 
 # Test
 #

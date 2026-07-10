@@ -21,7 +21,7 @@ use crate::config::Layout;
 /// Carries the key from `plan.yaml.sources.<key>` plus the adapter and
 /// its path- or value-binding — the raw `plan create` / `plan author`
 /// sources shape on both transports; [`source_map`] desugars the list
-/// into the structured `plan.yaml.sources` map inside `from_input`.
+/// into the structured `plan.yaml.sources` map at the operation boundary.
 ///
 /// Argv grammar (locked), carried by the [`FromStr`] impl so clap
 /// parses `--source` values directly into this type:
@@ -124,8 +124,8 @@ impl FromStr for SourceAssign {
 /// Desugar the `plan create` / `plan author` raw source surface into
 /// the structured binding map [`crate::change::Plan::init`] expects.
 ///
-/// Runs inside `from_input` so both transports share the duplicate-key
-/// gate and the `--intent` sugar.
+/// Runs at the operation boundary so every transport shares the
+/// duplicate-key gate and the `--intent` sugar.
 ///
 /// `intent` appends the value-bound intent binding before the
 /// duplicate-key gate, so an explicit `--source intent=...` in the

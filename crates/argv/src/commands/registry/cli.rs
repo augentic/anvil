@@ -1,21 +1,7 @@
-//! Clap derive surface for `specify registry *`. The umbrella
-//! `cli.rs` re-exports `RegistryAction`.
+//! Clap argument types for `specify registry *`.
 
-use clap::{Args, Subcommand};
+use clap::Args;
 use serde::Serialize;
-
-/// Registry operations on `registry.yaml`.
-/// Verbs under `specify registry`.
-#[derive(Debug, Subcommand)]
-pub enum RegistryAction {
-    /// Validate `registry.yaml` shape. Absent file exits 0.
-    Validate(ValidateArgs),
-    /// Append a new project entry to `registry.yaml`. Creates the file
-    /// when absent.
-    Add(AddArgs),
-    /// Remove an existing project entry. Warns when `plan.yaml` references it.
-    Remove(RemoveArgs),
-}
 
 /// Argv mirror of `registry validate`'s wire input (no fields).
 #[derive(Clone, Copy, Debug, Args, Serialize)]

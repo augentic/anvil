@@ -7,13 +7,14 @@ use std::path::Path;
 
 use artifacts::atomic::yaml_write;
 use error::{Error, Result};
-use omnia_guest::api::{Context, Handler, Reply};
+use omnia_guest::api::invoke::CallContext;
+use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{Registry, RegistryProject};
 use crate::change::Plan;
 use crate::config::{Layout, ProjectConfig, with_state};
-use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Render};
 
 // ---------------------------------------------------------------------------
 // registry validate
@@ -32,17 +33,15 @@ pub struct ValidateInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Validate;
 
-impl<P: Anchor> Handler<P> for Validate {
+impl<P: Anchor> Operation<P> for Validate {
     type Error = crate::handler::Error;
     type Input = ValidateInput;
-    type Output = Out<ValidateBody>;
+    type Output = ValidateBody;
 
-    fn from_input(_: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self)
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        _input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let path = Registry::path(&cx.project_dir).display().to_string();
         // Workspaces opt into the stricter shape via `project.yaml:workspace:
         // true`. Tolerate a missing/unparseable project.yaml here —
@@ -54,11 +53,11 @@ impl<P: Anchor> Handler<P> for Validate {
         if workspace_mode && let Some(reg) = registry.as_ref() {
             reg.validate_shape_workspace()?;
         }
-        Ok(Reply::ok(Out(ValidateBody {
+        Ok(ValidateBody {
             registry,
             path,
             workspace_mode,
-        })))
+        })
     }
 }
 
@@ -112,28 +111,24 @@ pub struct AddInput {
 
 /// `specify registry add <name> --url <url>` — append a new project
 /// entry to `registry.yaml`, creating the file when absent.
-#[derive(Debug)]
-pub struct Add {
-    input: AddInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Add;
 
-impl<P: Anchor> Handler<P> for Add {
+impl<P: Anchor> Operation<P> for Add {
     type Error = crate::handler::Error;
     type Input = AddInput;
-    type Output = Out<AddBody>;
+    type Output = AddBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
         let AddInput {
             name,
             url,
             adapter,
             description,
-        } = self.input;
+        } = input;
         if !error::is_kebab(&name) {
             return Err(Error::Diag {
                 code: "registry-add-name-not-kebab",
@@ -195,11 +190,11 @@ impl<P: Anchor> Handler<P> for Add {
 
         yaml_write(&registry_path, &registry)?;
 
-        Ok(Reply::ok(Out(AddBody {
+        Ok(AddBody {
             registry,
             path,
             added,
-        })))
+        })
     }
 }
 
@@ -236,23 +231,19 @@ pub struct RemoveInput {
 
 /// `specify registry remove <name>` — remove an existing project
 /// entry. Warns when `plan.yaml` references it.
-#[derive(Debug)]
-pub struct Remove {
-    input: RemoveInput,
-}
+#[derive(Clone, Copy, Debug)]
+pub struct Remove;
 
-impl<P: Anchor> Handler<P> for Remove {
+impl<P: Anchor> Operation<P> for Remove {
     type Error = crate::handler::Error;
     type Input = RemoveInput;
-    type Output = Out<RemoveBody>;
+    type Output = RemoveBody;
 
-    fn from_input(input: Self::Input) -> Result<Self, Self::Error> {
-        Ok(Self { input })
-    }
-
-    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<Self::Output>, Self::Error> {
-        let cx = Ctx::load(ctx.provider)?;
-        let name = self.input.name;
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let name = input.name;
         let path_buf = Registry::path(&cx.project_dir);
         let path = path_buf.display().to_string();
         let workspace_mode = cx.config.workspace;
@@ -298,7 +289,7 @@ impl<P: Anchor> Handler<P> for Remove {
             })
         })?;
 
-        Ok(Reply::ok(Out(body)))
+        Ok(body)
     }
 }
 

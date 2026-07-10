@@ -1,22 +1,7 @@
 //! Clap derive surface for `specify archive *`.
 
-use clap::{Args, Subcommand};
+use clap::Args;
 use serde::Serialize;
-
-/// Verbs under `specify archive`.
-#[derive(Clone, Copy, Debug, Subcommand)]
-pub enum ArchiveAction {
-    /// Prune archived slice folders under `.specify/archive/` that fall
-    /// outside the supplied retention bounds.
-    ///
-    /// The archive is a prunable convenience cache, not the system of
-    /// record — git history of `.specify/specs/` plus the
-    /// `slice.archive.created` journal entries are. At least one of
-    /// `--keep` / `--older-than` is required; a folder is pruned when it
-    /// falls outside the newest-`--keep` window or is older than
-    /// `--older-than` days.
-    Prune(PruneArgs),
-}
 
 /// Argv mirror of `archive prune`'s wire input
 /// (`workflow::slice::handlers::PruneInput`).

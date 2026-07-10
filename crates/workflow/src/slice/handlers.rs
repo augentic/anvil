@@ -1,4 +1,4 @@
-//! The `specify slice *` command handlers, plus `archive prune`.
+//! The `specify slice *` command operations, plus `archive prune`.
 //!
 //! The prune kernel lives in [`super::actions::prune`]. `slice build`
 //! / `slice refine` / `slice merge run` are orchestration commands

@@ -1,17 +1,15 @@
-//! Shared plumbing for the command handlers.
+//! Shared plumbing for workflow operations.
 //!
-//! Every `specify` command is an [`omnia_guest::api::Handler`] impl
-//! co-located with the domain module that owns its kernel (each
-//! domain's `handlers` submodule). This module carries the pieces all
-//! of them share: the [`Anchor`] provider capability, the
-//! per-invocation [`Ctx`], the [`Out`] / [`Render`] output currency,
-//! the shared [`ReportBody`] diagnostic envelope, and the
-//! handler-layer [`Error`] with its single HTTP status projection.
+//! Every `specify` command is an
+//! [`omnia_guest::api::operation::Operation`] implementation
+//! co-located with the domain module that owns its kernel. This module
+//! carries the pieces they share: the [`Anchor`] provider capability,
+//! per-invocation [`Ctx`], [`Render`] output rendering, shared
+//! [`ReportBody`] diagnostic envelope, and operation-layer [`Error`].
 //!
 //! The transports stay out: no clap, no stdout, no exit codes here.
-//! `crates/argv` owns the argv grammar and the `Reply` → JSON/text
-//! rendering; each shim owns its own dispatch match and HTTP route
-//! table.
+//! `crates/argv` owns the typed command/HTTP routers, command grammar,
+//! explicit input conversions, and JSON/text projection.
 
 mod anchor;
 mod ctx;
@@ -21,9 +19,9 @@ mod output;
 pub use anchor::Anchor;
 pub use ctx::Ctx;
 pub use error::Error;
-pub use output::{Out, Render, ReportBody, ReportRow};
+pub use output::{Render, ReportBody, ReportRow};
 
-/// Result alias for handler bodies: any `error::Error` coerces via
+/// Result alias for operation bodies: any `error::Error` coerces via
 /// `From`, and the report-carrying failures construct
 /// [`Error::Report`] explicitly.
 pub type Result<T, E = Error> = std::result::Result<T, E>;

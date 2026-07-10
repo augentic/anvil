@@ -11,7 +11,7 @@ The Omnia target implements exactly three operations — `guidance`, `build`, `m
 
 ### guidance
 
-`guidance` is idiom guidance read into context when core synthesis writes `proposal.md`, `spec.md`, and `design.md` for a `target: omnia` slice — see [`adapters/targets/omnia/prose/prompts/guidance.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/guidance.md). The prompt is input to synthesis: it does not read sources or write artifacts. It carries the Omnia idioms the synthesiser must fold into the canonical artifacts — provider-based dependency injection (the closed provider-trait set), `wasm32-wasip2` guardrails (forbidden crates / std APIs, statelessness), `omnia_sdk::Error` variant conventions, edge-vs-core validation placement, and the required `design.md` heading order (domain model, provider trait dependencies, handler delegation, external surfaces, configuration, error mapping, validation placement, observability).
+`guidance` is idiom guidance read into context when core synthesis writes `proposal.md`, `spec.md`, and `design.md` for a `target: omnia` slice — see [`targets/omnia/prose/prompts/guidance.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/guidance.md). The prompt is input to synthesis: it does not read sources or write artifacts. It carries the Omnia idioms the synthesiser must fold into the canonical artifacts — provider-based dependency injection (the closed provider-trait set), `wasm32-wasip2` guardrails (forbidden crates / std APIs, statelessness), `omnia_guest::Error` variant conventions, typed `Operation<P>` delegation, edge-vs-core validation placement, and the required `design.md` heading order (domain model, provider trait dependencies, operation delegation, external surfaces, configuration, error mapping, validation placement, observability).
 
 When a plan entry has `sources`, core synthesis reads `Evidence[]` from each bound source (e.g. `typescript`) and reconciles claims into `spec.md` requirements with `Sources:` provenance lines. The same `guidance` prompt applies whether the slice's evidence is pure intent, documentation, or code.
 
@@ -23,7 +23,7 @@ The build prompt drives implementation work directly through phase sub-prompts �
 
 | Sub-prompt | Purpose |
 |-----------|---------|
-| [`build/crate.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md) | Generate or update the Rust crate (provider DI, handler delegation, error variants). |
+| [`build/crate.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md) | Generate or update the Rust crate (provider DI, operation delegation, error variants). |
 | [`build/test.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/test.md) | Generate or update the test suite (MockProvider patterns, scenario-to-test mapping). |
 | [`build/guest.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/guest.md) | Scaffold the WASM guest wrapper (HTTP, messaging, WebSocket; create mode only). |
 | [`build/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/review.md) | Agent-team code review (security, correctness, quality, antagonist) and remediation. |
