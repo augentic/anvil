@@ -21,12 +21,12 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  cli::parse + src/argv.rs
+src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  argv::parse + src/command.rs
 ```
 
-The full operator grammar — provisioning commands included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's argv route table (`src/argv.rs`) is structurally symmetric with `src/http.rs` — explicit `Guest` impl + `export!` on wasm, shared `route(cli)` / `router(client)` match tables, one line per command. Each arm names only the handler type and passes a parsed `Input` through `cli::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
+The full operator grammar — provisioning commands included — lives in `argv` (`crates/argv/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's argv route table (`src/command.rs`) is structurally symmetric with `src/http.rs` — explicit `Guest` impl + `export!` on wasm, shared `route(cli)` / `router(client)` match tables, one line per command. Each arm names only the handler type and passes a parsed `Input` through `argv::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
 
-The guest exports both transports explicitly from `argv.rs` and `http.rs` — no `guest!` macro in `lib.rs`.
+The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`.
 
 ## JSON envelope contract
 
@@ -40,7 +40,7 @@ The `--format text|json` flag controls output shape; `SPECIFY_FORMAT=json` is th
 
 ## Exit codes
 
-The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/cli/src/output.rs` is the single source of truth:
+The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/argv/src/output.rs` is the single source of truth:
 
 | Code | Constant | Meaning |
 |------|----------|---------|

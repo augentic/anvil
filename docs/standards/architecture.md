@@ -4,14 +4,14 @@ Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>
 
 ## Workspace layout
 
-Binary crate (`name = "specify-cli"`) at the repo root. [`src/runtime.rs`](../../src/runtime.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest ([`src/lib.rs`](../../src/lib.rs)) through the shared cli grammar (`crates/cli`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
+Binary crate (`name = "specify-cli"`) at the repo root. [`src/runtime.rs`](../../src/runtime.rs) is a single `omnia::runtime!` invocation in command mode over the cursor-bound backends — the binary carries no Specify vocabulary. Every verb runs in the specify guest ([`src/lib.rs`](../../src/lib.rs)) through the shared argv grammar (`crates/argv`). Workspace member crates live under `crates/`; the dependency direction is leaf → root:
 
 ```text
 error                    # leaf — thiserror + serde-saphyr only
 schema                   # depends on error (embedded JSON Schemas + jsonschema plumbing; owns schema::digest — SHA-256 hex via sha2 + base16ct — and schema::diagnostics, the neutral Diagnostic substrate: report, fingerprint, validator, renderers, blocking)
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts} (also owns workflow::agents — init-time AGENTS.md context-fence generation); no wasmtime in its graph
-cli                      # wasm-clean CLI surface — shared by the specify guest and native tests
+argv                     # wasm-clean argv transport — shared by the specify guest and native shims
 testkit                  # dev-only shared test support (the scripted Model mock); [dev-dependencies] only, never shipped
 specify-cli (root crate) # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
@@ -30,7 +30,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-The root `specify-cli` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, argv routing in `src/argv.rs`, and HTTP routing in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `argv.rs` (`struct Cli` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`struct Http` + `Guest::handle` + `omnia_wasi_http::serve`). `lib.rs` is module wiring only — no `guest!` macro. The command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `workflow::handler`); the whole `specify` clap tree lives in `crates/cli`, whose `cli::completions` serves shell completions via `Cli::command()`. See [rfcs/handler-routing.md](../../rfcs/handler-routing.md) for the routing design.
+The root `specify-cli` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, argv routing in `src/command.rs`, and HTTP routing in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `command.rs` (`struct Cli` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`struct Http` + `Guest::handle` + `omnia_wasi_http::serve`). `lib.rs` is module wiring only — no `guest!` macro. The command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `workflow::handler`); the whole `specify` clap tree lives in `crates/argv`, whose `argv::cli::completions` serves shell completions via `Cli::command()`. See [rfcs/handler-routing.md](../../rfcs/handler-routing.md) for the routing design.
 
 ## workflow domain modules
 

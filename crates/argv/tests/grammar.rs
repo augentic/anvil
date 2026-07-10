@@ -6,8 +6,8 @@
 //! is driven through the `Handler` layer by `crates/workflow/tests`;
 //! these tests pin the argv boundary the shims depend on.
 
-use cli::cli::{Cli, Commands, parse};
-use cli::commands::plan::cli::PlanAction;
+use argv::cli::{Cli, Commands, parse};
+use argv::commands::plan::cli::PlanAction;
 use workflow::change::plan::handlers::source_map;
 use workflow::orchestrate::handlers::AuthorInput;
 
@@ -69,7 +69,7 @@ fn author_sources_desugar() {
     else {
         panic!("plan author parses to its action");
     };
-    let input: AuthorInput = cli::front::extract(args).expect("mirror extracts");
+    let input: AuthorInput = argv::front::extract(args).expect("mirror extracts");
     let map = source_map(input.sources, input.intent).expect("bindings desugar");
     assert_eq!(map.len(), 2, "docs plus the desugared intent binding");
     assert_eq!(map["intent"].adapter, "intent");
@@ -96,7 +96,7 @@ fn duplicate_intent_binding_refused() {
     else {
         panic!("plan author parses to its action");
     };
-    let input: AuthorInput = cli::front::extract(args).expect("mirror extracts");
+    let input: AuthorInput = argv::front::extract(args).expect("mirror extracts");
     let err = source_map(input.sources, input.intent).expect_err("duplicate intent key refused");
     assert!(
         matches!(err, error::Error::Diag { code, .. } if code == "plan-source-duplicate-key"),

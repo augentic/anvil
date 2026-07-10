@@ -1,6 +1,6 @@
 [package]
-name = "cli"
-description = "Wasm-clean `specify` CLI front-end: argv grammar, clap-to-Input conversions, output envelopes, and the exit-code contract consumed by the shims"
+name = "argv"
+description = "Wasm-clean `specify` argv transport: clap grammar, clap-to-Input conversions, output envelopes, and the exit-code contract consumed by the shims"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

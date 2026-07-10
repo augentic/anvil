@@ -9,7 +9,7 @@
 //! HTTP statuses derive solely from [`Error::status`] — the
 //! taxonomy → status projection the plan locks (validation/argument →
 //! 422, version floor → 426, everything else → 500). `Exit` stays in
-//! `crates/cli`; there is no second table.
+//! `crates/argv`; there is no second table.
 
 use super::output::ReportBody;
 

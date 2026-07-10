@@ -148,6 +148,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 
 [[package]]
+name = "argv"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "clap",
+ "clap_complete",
+ "error",
+ "omnia-guest",
+ "serde",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "workflow",
+]
+
+[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -717,22 +733,6 @@ name = "clap_lex"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
-
-[[package]]
-name = "cli"
-version = "0.27.2"
-dependencies = [
- "artifacts",
- "clap",
- "clap_complete",
- "error",
- "omnia-guest",
- "serde",
- "serde_json",
- "strum",
- "tempfile",
- "workflow",
-]
 
 [[package]]
 name = "cmake"
@@ -4372,16 +4372,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "specify-cli"
+name = "specify"
 version = "0.27.2"
 dependencies = [
  "anyhow",
+ "argv",
  "artifacts",
  "assert_cmd",
  "cfg-if",
  "clap",
  "clap_complete",
- "cli",
  "error",
  "jiff",
  "omnia 0.35.0",
@@ -4410,11 +4410,11 @@ version = "0.27.2"
 dependencies = [
  "adapter",
  "anyhow",
+ "argv",
  "artifacts",
  "axum",
  "captures",
  "clap",
- "cli",
  "contracts",
  "documentation",
  "error",

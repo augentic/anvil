@@ -7,7 +7,7 @@ for the integration-first policy, golden discipline, and test-naming rules.
 
 The `specify` binary is a single `omnia::runtime!` invocation; the
 operational surface is covered by each crate's own `tests/` (the
-cli grammar, routing, and verb handlers in `crates/cli/tests/`
+cli grammar, routing, and verb handlers in `crates/argv/tests/`
 and the workflow orchestrations in `crates/workflow/tests/`). The
 root `tests/` tree holds the framework checks (`framework/`) and the
 shared `fixtures/` referenced by crate-level suites.

@@ -1,5 +1,5 @@
 [package]
-name = "specify-cli"
+name = "specify"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -33,7 +33,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 omnia-guest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-cli.workspace = true
+argv.workspace = true
 error.workspace = true
 schema.workspace = true
 artifacts.workspace = true
@@ -45,7 +45,7 @@ wit-bindgen.workspace = true
 assert_cmd.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
-cli.workspace = true
+argv.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 omnia-testkit.workspace = true
@@ -195,7 +195,7 @@ wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 workflow = { path = "crates/workflow", default-features = false }
 artifacts = { path = "crates/artifacts" }
-cli = { path = "crates/cli" }
+argv = { path = "crates/argv" }
 error = { path = "crates/error" }
 testkit = { path = "crates/testkit" }
 

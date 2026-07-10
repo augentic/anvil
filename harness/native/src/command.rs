@@ -3,8 +3,8 @@
 //!
 //! Structurally symmetric with `http.rs` — a transport entry
 //! ([`run`]) calling a route-table function. One line per routed
-//! leaf: the parsed mirror `*Args` rides whole into `cli::post` /
-//! `cli::get` (the [`cli::front::run`] bridge), which
+//! leaf: the parsed mirror `*Args` rides whole into `argv::post` /
+//! `argv::get` (the [`argv::front::run`] bridge), which
 //! serde-round-trips it onto the handler `Input` and drives the
 //! handler against a [`NativeProvider`]. The refusal set is the
 //! guest's exactly (parity-or-less): `init` without
@@ -12,22 +12,22 @@
 //! `plugins` refuse on the standard argument-error surface.
 //!
 //! The match is deliberately duplicated per shim (the wasm guest's
-//! lives in the repo root's `src/argv.rs`) so the compiler checks
+//! lives in the repo root's `src/command.rs`) so the compiler checks
 //! each shim's coverage of the grammar — there is no shared route
 //! table.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use cli::cli::{Commands, completions, parse};
-use cli::commands::archive::cli::ArchiveAction;
-use cli::commands::journal::cli::JournalAction;
-use cli::commands::plan::cli::PlanAction;
-use cli::commands::registry::cli::RegistryAction;
-use cli::commands::slice::cli::{SliceAction, SliceMergeAction, SliceModelAction, SliceTaskAction};
-use cli::commands::source::cli::SourceAction;
-use cli::commands::target::cli::TargetAction;
-use cli::output::{Exit, Format, report};
+use argv::cli::{Commands, completions, parse};
+use argv::commands::archive::cli::ArchiveAction;
+use argv::commands::journal::cli::JournalAction;
+use argv::commands::plan::cli::PlanAction;
+use argv::commands::registry::cli::RegistryAction;
+use argv::commands::slice::cli::{SliceAction, SliceMergeAction, SliceModelAction, SliceTaskAction};
+use argv::commands::source::cli::SourceAction;
+use argv::commands::target::cli::TargetAction;
+use argv::output::{Exit, Format, report};
 use error::Error;
 use specify_dev::mcp;
 use specify_dev::model::DevModel;
@@ -84,7 +84,7 @@ async fn shelves() -> Option<String> {
 /// command's input DTO and run the handler; refuse the provisioning
 /// commands.
 #[expect(clippy::too_many_lines, reason = "one arm per grammar leaf, exhaustive by design")]
-async fn route(cli: cli::cli::Cli, p: &NativeProvider<DevModel>) -> Exit {
+async fn route(cli: argv::cli::Cli, p: &NativeProvider<DevModel>) -> Exit {
     let format = cli.format;
     if let Err(err) = check_plan_dir(cli.plan_dir.as_deref()) {
         return report(format, &err);
@@ -92,128 +92,128 @@ async fn route(cli: cli::cli::Cli, p: &NativeProvider<DevModel>) -> Exit {
     match cli.command {
         Commands::Source { action } => match action {
             SourceAction::Resolve(args) => {
-                cli::get::<adapter::handlers::SourceResolve, _, _>(format, p, args).await
+                argv::get::<adapter::handlers::SourceResolve, _, _>(format, p, args).await
             }
             SourceAction::Survey(args) => {
-                cli::post::<orchestrate::handlers::Survey, _, _>(format, p, args).await
+                argv::post::<orchestrate::handlers::Survey, _, _>(format, p, args).await
             }
             SourceAction::Extract(args) => {
-                cli::post::<orchestrate::handlers::Extract, _, _>(format, p, args).await
+                argv::post::<orchestrate::handlers::Extract, _, _>(format, p, args).await
             }
         },
         Commands::Target { action } => match action {
             TargetAction::Resolve(args) => {
-                cli::get::<adapter::handlers::TargetResolve, _, _>(format, p, args).await
+                argv::get::<adapter::handlers::TargetResolve, _, _>(format, p, args).await
             }
         },
         Commands::Slice { action } => match action {
             SliceAction::Create(args) => {
-                cli::post::<slice::handlers::Create, _, _>(format, p, args).await
+                argv::post::<slice::handlers::Create, _, _>(format, p, args).await
             }
             SliceAction::Validate(args) => {
-                cli::get::<slice::handlers::Validate, _, _>(format, p, args).await
+                argv::get::<slice::handlers::Validate, _, _>(format, p, args).await
             }
             SliceAction::Provenance(args) => {
-                cli::get::<slice::handlers::Provenance, _, _>(format, p, args).await
+                argv::get::<slice::handlers::Provenance, _, _>(format, p, args).await
             }
             SliceAction::Model { action } => match action {
                 SliceModelAction::Show(args) => {
-                    cli::get::<slice::handlers::ModelShow, _, _>(format, p, args).await
+                    argv::get::<slice::handlers::ModelShow, _, _>(format, p, args).await
                 }
             },
             SliceAction::Refine(args) => {
-                cli::post::<orchestrate::handlers::Refine, _, _>(format, p, args).await
+                argv::post::<orchestrate::handlers::Refine, _, _>(format, p, args).await
             }
             SliceAction::Build(args) => {
-                cli::post::<orchestrate::handlers::Build, _, _>(format, p, args).await
+                argv::post::<orchestrate::handlers::Build, _, _>(format, p, args).await
             }
             SliceAction::Merge { action } => match action {
                 SliceMergeAction::Run(args) => {
-                    cli::post::<orchestrate::handlers::MergeRun, _, _>(format, p, args).await
+                    argv::post::<orchestrate::handlers::MergeRun, _, _>(format, p, args).await
                 }
                 SliceMergeAction::Preview(args) => {
-                    cli::get::<slice::handlers::Preview, _, _>(format, p, args).await
+                    argv::get::<slice::handlers::Preview, _, _>(format, p, args).await
                 }
                 SliceMergeAction::ConflictCheck(args) => {
-                    cli::get::<slice::handlers::ConflictCheck, _, _>(format, p, args).await
+                    argv::get::<slice::handlers::ConflictCheck, _, _>(format, p, args).await
                 }
             },
             SliceAction::Task { action } => match action {
                 SliceTaskAction::Progress(args) => {
-                    cli::get::<slice::handlers::TaskProgress, _, _>(format, p, args).await
+                    argv::get::<slice::handlers::TaskProgress, _, _>(format, p, args).await
                 }
                 SliceTaskAction::Mark(args) => {
-                    cli::post::<slice::handlers::TaskMark, _, _>(format, p, args).await
+                    argv::post::<slice::handlers::TaskMark, _, _>(format, p, args).await
                 }
             },
             SliceAction::Transition(args) => {
-                cli::post::<slice::handlers::Transition, _, _>(format, p, args).await
+                argv::post::<slice::handlers::Transition, _, _>(format, p, args).await
             }
             SliceAction::TouchedSpecs(args) => {
-                cli::post::<slice::handlers::TouchedSpecs, _, _>(format, p, args).await
+                argv::post::<slice::handlers::TouchedSpecs, _, _>(format, p, args).await
             }
             SliceAction::Overlap(args) => {
-                cli::get::<slice::handlers::Overlap, _, _>(format, p, args).await
+                argv::get::<slice::handlers::Overlap, _, _>(format, p, args).await
             }
             SliceAction::Drop(args) => {
-                cli::post::<slice::handlers::Drop, _, _>(format, p, args).await
+                argv::post::<slice::handlers::Drop, _, _>(format, p, args).await
             }
         },
         Commands::Plan { action } => match action {
             PlanAction::Create(args) => {
-                cli::post::<plan::handlers::Create, _, _>(format, p, args).await
+                argv::post::<plan::handlers::Create, _, _>(format, p, args).await
             }
             PlanAction::Validate(args) => {
-                cli::get::<plan::handlers::Validate, _, _>(format, p, args).await
+                argv::get::<plan::handlers::Validate, _, _>(format, p, args).await
             }
             PlanAction::Next(args) => {
-                cli::post::<plan::handlers::Next, _, _>(format, p, args).await
+                argv::post::<plan::handlers::Next, _, _>(format, p, args).await
             }
             PlanAction::Status(args) => {
-                cli::get::<plan::handlers::Status, _, _>(format, p, args).await
+                argv::get::<plan::handlers::Status, _, _>(format, p, args).await
             }
-            PlanAction::Add(args) => cli::post::<plan::handlers::Add, _, _>(format, p, args).await,
+            PlanAction::Add(args) => argv::post::<plan::handlers::Add, _, _>(format, p, args).await,
             PlanAction::Amend(args) => {
-                cli::post::<plan::handlers::Amend, _, _>(format, p, args).await
+                argv::post::<plan::handlers::Amend, _, _>(format, p, args).await
             }
             PlanAction::Remove(args) => {
-                cli::post::<plan::handlers::Remove, _, _>(format, p, args).await
+                argv::post::<plan::handlers::Remove, _, _>(format, p, args).await
             }
             PlanAction::Transition(args) => {
-                cli::post::<plan::handlers::Transition, _, _>(format, p, args).await
+                argv::post::<plan::handlers::Transition, _, _>(format, p, args).await
             }
             PlanAction::Author(args) => {
-                cli::post::<orchestrate::handlers::Author, _, _>(format, p, args).await
+                argv::post::<orchestrate::handlers::Author, _, _>(format, p, args).await
             }
             PlanAction::Execute(args) => {
-                cli::post::<orchestrate::handlers::Execute, _, _>(format, p, args).await
+                argv::post::<orchestrate::handlers::Execute, _, _>(format, p, args).await
             }
             PlanAction::Archive(args) => {
-                cli::post::<plan::handlers::Archive, _, _>(format, p, args).await
+                argv::post::<plan::handlers::Archive, _, _>(format, p, args).await
             }
         },
         Commands::Journal { action } => match action {
             JournalAction::Emit(args) => {
-                cli::post::<journal::handlers::Emit, _, _>(format, p, args).await
+                argv::post::<journal::handlers::Emit, _, _>(format, p, args).await
             }
             JournalAction::Show(args) => {
-                cli::get::<journal::handlers::Show, _, _>(format, p, args).await
+                argv::get::<journal::handlers::Show, _, _>(format, p, args).await
             }
         },
         Commands::Registry { action } => match action {
             RegistryAction::Validate(args) => {
-                cli::get::<registry::handlers::Validate, _, _>(format, p, args).await
+                argv::get::<registry::handlers::Validate, _, _>(format, p, args).await
             }
             RegistryAction::Add(args) => {
-                cli::post::<registry::handlers::Add, _, _>(format, p, args).await
+                argv::post::<registry::handlers::Add, _, _>(format, p, args).await
             }
             RegistryAction::Remove(args) => {
-                cli::post::<registry::handlers::Remove, _, _>(format, p, args).await
+                argv::post::<registry::handlers::Remove, _, _>(format, p, args).await
             }
         },
         Commands::Archive { action } => match action {
             ArchiveAction::Prune(args) => {
-                cli::post::<slice::handlers::Prune, _, _>(format, p, args).await
+                argv::post::<slice::handlers::Prune, _, _>(format, p, args).await
             }
         },
         // The scaffold leg only, matching the guest: the provisioning
@@ -221,7 +221,7 @@ async fn route(cli: cli::cli::Cli, p: &NativeProvider<DevModel>) -> Exit {
         // path — a dev-shim-only implementation would fork the
         // operational surface off the wasm path.
         Commands::Init(args) if args.scaffold_only => {
-            cli::post::<init::handlers::Scaffold, _, _>(format, p, args).await
+            argv::post::<init::handlers::Scaffold, _, _>(format, p, args).await
         }
         Commands::Init(_) => unsupported(format, "init"),
         Commands::Adapters { .. } => unsupported(format, "adapters"),

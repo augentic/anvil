@@ -3,8 +3,8 @@
 //! Two modes over the same handler layer the wasm guest serves, each
 //! owned by a symmetric transport module:
 //!
-//! - **CLI mode** (default, [`argv`]): the shared argv contract —
-//!   `cli::parse`, then this shim's own exhaustive route match against
+//! - **CLI mode** (default, [`command`]): the shared argv contract —
+//!   `argv::parse`, then this shim's own exhaustive route match against
 //!   a `NativeProvider`, with the same provisioning refusals as the
 //!   guest (parity-or-less, never parity-plus). An ephemeral MCP
 //!   listener serves the adapter reference shelves so judgment legs
@@ -14,7 +14,7 @@
 //!   `TcpListener` — the native counterpart of the guest's
 //!   `wasi:http/incoming-handler` export.
 
-mod argv;
+mod command;
 mod http;
 
 use std::process::ExitCode;
@@ -39,6 +39,6 @@ async fn main() -> ExitCode {
             }
         }
     } else {
-        ExitCode::from(argv::run(argv).await)
+        ExitCode::from(command::run(argv).await)
     }
 }

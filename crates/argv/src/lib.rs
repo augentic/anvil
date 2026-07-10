@@ -1,4 +1,4 @@
-//! Wasm-clean `specify` CLI front-end.
+//! Wasm-clean `specify` argv transport.
 //!
 //! Owns the full clap argv grammar ([`cli::Cli`] / [`cli::Commands`]),
 //! the clap-to-`Input` conversions the dispatch matches use to feed
@@ -23,9 +23,10 @@ pub mod commands;
 pub mod front;
 pub mod output;
 
-/// Alias over [`front::run`] documenting write intent on a routing
-/// arm — the argv counterpart of `route::post` on the HTTP side.
-pub use front::run as post;
-/// Alias over [`front::run`] documenting read intent on a routing
-/// arm — the argv counterpart of `route::get` on the HTTP side.
-pub use front::run as get;
+// /// Alias over [`front::run`] documenting write intent on a routing
+// /// arm — the argv counterpart of `route::post` on the HTTP side.
+// pub use front::run as post;
+// /// Alias over [`front::run`] documenting read intent on a routing
+// /// arm — the argv counterpart of `route::get` on the HTTP side.
+// pub use front::run as get;
+pub use front::run;

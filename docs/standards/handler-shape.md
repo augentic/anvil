@@ -1,6 +1,6 @@
 # Handler shape
 
-The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/workflow`, how `Ctx` is constructed from the provider's `Anchor`, how output flows through the typed `Out<Body>` wrapper and its `Render` impl, which exit code a terminal `Error` maps to, and what the per-shim route tables in `argv.rs` / `http.rs` are allowed to do. Vocabulary and routing layout: [handler-routing.md](../../rfcs/handler-routing.md).
+The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/workflow`, how `Ctx` is constructed from the provider's `Anchor`, how output flows through the typed `Out<Body>` wrapper and its `Render` impl, which exit code a terminal `Error` maps to, and what the per-shim route tables in `command.rs` / `http.rs` are allowed to do. Vocabulary and routing layout: [handler-routing.md](../../rfcs/handler-routing.md).
 
 ## The handler layer (`workflow::handler`)
 
@@ -50,7 +50,7 @@ Check surfaces that gate on findings — `slice validate`, `plan validate` — r
 
 ## Errors and their projections
 
-`workflow::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. It carries the **single** taxonomy → HTTP status projection (`Error::status()`: validation/argument → 422, version floor → 426, everything else → 500) and the `From<workflow::handler::Error> for omnia_guest::Error` conversion the HTTP transport consumes. `Exit` stays in `crates/cli` — there is no second exit table.
+`workflow::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. It carries the **single** taxonomy → HTTP status projection (`Error::status()`: validation/argument → 422, version floor → 426, everything else → 500) and the `From<workflow::handler::Error> for omnia_guest::Error` conversion the HTTP transport consumes. `Exit` stays in `crates/argv` — there is no second exit table.
 
 ## Exit codes
 
@@ -63,32 +63,32 @@ The four-slot CLI exit-code table is fixed:
 | 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
 | 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old` in JSON) |
 
-`Exit::from(&Error)` in [`crates/cli/src/output.rs`](../../crates/cli/src/output.rs) is the single source of truth. `cli::front::run` routes every terminal error through `output::report`, which calls `Exit::from`. Do not invent new exit codes. `Exit::Code(u8)` is reserved for the guest leg's exit-code passthrough.
+`Exit::from(&Error)` in [`crates/argv/src/output.rs`](../../crates/argv/src/output.rs) is the single source of truth. `argv::front::run` routes every terminal error through `output::report`, which calls `Exit::from`. Do not invent new exit codes. `Exit::Code(u8)` is reserved for the guest leg's exit-code passthrough.
 
-## The CLI front-end (`crates/cli`)
+## The argv transport (`crates/argv`)
 
-`crates/cli` is a pure front-end library: the clap grammar (`cli::Cli` / `cli::Commands`), the shared `cli::parse` entry point (`try_parse` with exit-code passthrough), the output envelopes (`output::{Format, emit}`), the exit contract (`output::{Exit, report}`), and `front::run` (aliases `cli::post` / `cli::get`) — the generic body that drives a `Handler` against a provider and renders its `Reply` or failure.
+`crates/argv` is a pure transport library: the clap grammar (`argv::cli::Cli` / `argv::cli::Commands`), the shared `argv::parse` entry point (`try_parse` with exit-code passthrough), the output envelopes (`output::{Format, emit}`), the exit contract (`output::{Exit, report}`), and `front::run` (aliases `argv::post` / `argv::get`) — the generic body that drives a `Handler` against a provider and renders its `Reply` or failure.
 
-`crates/cli/src/cli.rs` declares the clap derive surface. Leaf variants carry handler `Input` directly (`Build(BuildInput)`), not anonymous fields the shim maps later. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Input`. Global flags (`--format`, `--plan-dir`) stay on `Cli`, not on `Input`. See [handler-routing.md §"CLI routing"](../../rfcs/handler-routing.md#cli-routing).
+`crates/argv/src/cli.rs` declares the clap derive surface. Leaf variants carry handler `Input` directly (`Build(BuildInput)`), not anonymous fields the shim maps later. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Input`. Global flags (`--format`, `--plan-dir`) stay on `Cli`, not on `Input`. See [handler-routing.md §"CLI routing"](../../rfcs/handler-routing.md#cli-routing).
 
 ## The HTTP route table (`http.rs`)
 
 Each shim owns a hand-written axum `Router` in `http.rs`. The wasm guest builds it inside `handle()` (instance-per-call — no `static`); `specify-dev serve` builds once at startup in `harness/native/src/http.rs`. Both use omnia's generic route constructors (`route::get::<R, P>()` / `route::post::<R, P>()`), with the `Client` (owner + provider) as router state. GET for pure reads (path + query args), POST for writes and judgment (JSON bodies), the noun in the path (`POST /slice/{name}/build`). One line per routed command; parity between CLI and HTTP comes from both transports driving the same `Handler` impls, not from shared table code. See [handler-routing.md §"HTTP routing"](../../rfcs/handler-routing.md#http-routing).
 
-## Dispatch contract (`argv.rs`)
+## Dispatch contract (`command.rs`)
 
-Each shim owns an exhaustive argv route table in `argv.rs` — deliberately duplicated per shim (the wasm guest's `src/argv.rs`, the native `specify-dev` binary's `harness/native/src/argv.rs`) so the compiler checks each shim's coverage of the grammar. HTTP routing lives symmetrically in `http.rs`.
+Each shim owns an exhaustive argv route table in `command.rs` — deliberately duplicated per shim (the wasm guest's `src/command.rs`, the native `specify-dev` binary's `harness/native/src/command.rs`) so the compiler checks each shim's coverage of the grammar. HTTP routing lives symmetrically in `http.rs`.
 
-On wasm, `argv.rs` exports `wasi:cli/run` explicitly — `struct Cli`, `wasip3::cli::command::export!(Cli)`, `impl Guest for Cli` — matching `http.rs`'s `struct Http` + `Guest::handle` and the Omnia `examples/cli/guest.rs` pattern. Do not hide CLI behind `guest!({ command: … })`. The clap parser root is `cli::Cli` (qualified); native `argv.rs` exposes `run(argv) -> u8` that calls the same `route(cli: cli::Cli)` function.
+On wasm, `command.rs` exports `wasi:cli/run` explicitly — `struct Cli`, `wasip3::cli::command::export!(Cli)`, `impl Guest for Cli` — matching `http.rs`'s `struct Http` + `Guest::handle` and the Omnia `examples/cli/guest.rs` pattern. Do not hide CLI behind `guest!({ command: … })`. The clap parser root is `argv::cli::Cli` (qualified); native `command.rs` exposes `run(argv) -> u8` that calls the same `route(cli: argv::cli::Cli)` function.
 
 Target discipline per leaf arm:
 
 1. `preflight` — `adapter::metadata::register`, `check_plan_dir`
-2. `cli::parse` parses argv → `Commands` enum (leaf variants already hold `Input`)
-3. `cli::post::<R, _, _>` or `cli::get::<R, _, _>(format, provider, input)` — names only `R`, passes parsed `input`
+2. `argv::parse` parses argv → `Commands` enum (leaf variants already hold `Input`)
+3. `argv::post::<R, _, _>` or `argv::get::<R, _, _>(format, provider, input)` — names only `R`, passes parsed `input`
 4. Shim policy at the edges: `refuse` for provisioning commands, `completions` for shell scripts
 
-Never put domain logic in `cli` or a shim's route match. Manual `Input { … }` construction in an `argv.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `argv` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Handler-shape notes
 

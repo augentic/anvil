@@ -9,7 +9,7 @@
 //! handler-layer [`Error`] with its single HTTP status projection.
 //!
 //! The transports stay out: no clap, no stdout, no exit codes here.
-//! `crates/cli` owns the argv grammar and the `Reply` → JSON/text
+//! `crates/argv` owns the argv grammar and the `Reply` → JSON/text
 //! rendering; each shim owns its own dispatch match and HTTP route
 //! table.
 

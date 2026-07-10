@@ -2,7 +2,7 @@
 //! shim's hand-written HTTP route table merged with the `/mcp/<name>`
 //! shelves on one `TcpListener`, the native counterpart of the
 //! guest's `wasi:http/incoming-handler` export. Structurally
-//! symmetric with `argv.rs`: a transport entry ([`serve`]) calling a
+//! symmetric with `command.rs`: a transport entry ([`serve`]) calling a
 //! route-table function. Mutating dispatch is serialized behind a
 //! process-wide write lock; GETs stay concurrent.
 

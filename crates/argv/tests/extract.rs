@@ -1,9 +1,9 @@
 //! Mirror-parity guard: one argv → `Input` extraction per routed
 //! command.
 //!
-//! Every routing arm in the shims is `cli::post::<Handler, _, _>(…,
-//! args)` / `cli::get` over a mirror `*Args` struct; the bridge's one
-//! serde round-trip ([`cli::front::extract`]) is the only conversion.
+//! Every routing arm in the shims is `argv::post::<Handler, _, _>(…,
+//! args)` / `argv::get` over a mirror `*Args` struct; the bridge's one
+//! serde round-trip ([`argv::front::extract`]) is the only conversion.
 //! These tests parse a sample argv line through the shared grammar,
 //! run exactly that extraction, and assert the resulting handler
 //! `Input` — so a mirror field drifting from its `Input` (a rename, a
@@ -13,14 +13,14 @@
 //! Handler behaviour stays out: `crates/workflow/tests` drives the
 //! `Handler` layer transport-free.
 
-use cli::cli::{Commands, parse};
-use cli::commands::archive::cli::ArchiveAction;
-use cli::commands::journal::cli::JournalAction;
-use cli::commands::plan::cli::PlanAction;
-use cli::commands::registry::cli::RegistryAction;
-use cli::commands::slice::cli::{SliceAction, SliceMergeAction, SliceModelAction, SliceTaskAction};
-use cli::commands::source::cli::SourceAction;
-use cli::commands::target::cli::TargetAction;
+use argv::cli::{Commands, parse};
+use argv::commands::archive::cli::ArchiveAction;
+use argv::commands::journal::cli::JournalAction;
+use argv::commands::plan::cli::PlanAction;
+use argv::commands::registry::cli::RegistryAction;
+use argv::commands::slice::cli::{SliceAction, SliceMergeAction, SliceModelAction, SliceTaskAction};
+use argv::commands::source::cli::SourceAction;
+use argv::commands::target::cli::TargetAction;
 
 /// Parse one argv line (program name included), match the expected
 /// action variant (the pattern binds the mirror as `args`), and run
@@ -34,7 +34,7 @@ macro_rules! extract {
         let $pat = cli.command else {
             panic!("argv {argv:?} parsed to an unexpected variant");
         };
-        let input: $input = cli::front::extract($args).expect("mirror extracts onto Input");
+        let input: $input = argv::front::extract($args).expect("mirror extracts onto Input");
         input
     }};
 }
