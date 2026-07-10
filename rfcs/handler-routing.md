@@ -36,11 +36,11 @@ Execution            Handler::from_input → handle → render
 ```
 
 
-| Layer      | HTTP today                                                     | CLI target                                                     |
-| ---------- | -------------------------------------------------------------- | -------------------------------------------------------------- |
-| Registry   | `.route("/slice/{name}/build", route::post::<Build, P>())`     | `SliceAction::Build(args) => cli::post::<Build, _>(…, args)`   |
+| Layer      | HTTP today                                                     | CLI target                                                                               |
+| ---------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Registry   | `.route("/slice/{name}/build", route::post::<Build, P>())`     | `SliceAction::Build(args) => cli::post::<Build, _>(…, args)`                             |
 | Extraction | `route::post` merges path + JSON body → `BuildInput` via serde | clap parses leaf args into `BuildArgs`; `front::run` serde-round-trips into `BuildInput` |
-| Execution  | `Handler::from_input` → `handle` → JSON body                   | `cli::front::run` → stdout envelope / text                     |
+| Execution  | `Handler::from_input` → `handle` → JSON body                   | `cli::front::run` → stdout envelope / text                                               |
 
 
 **The invariant:** the leaf parser serializes to the wire map. `Input` is the only command payload; transports extract, they do not translate. HTTP deserializes `Input` directly from the merged request; argv parses into the leaf's mirror `*Args` struct, which serde-round-trips onto `Input` through one generic bridge in `cli::front::run`. If a shim arm constructs `FooInput { field: x, … }` by hand, the shape is wrong — the arm passes the parsed `*Args` whole.
@@ -95,7 +95,7 @@ The table is the design artifact. It may stay hand-maintained in this RFC and in
 | `plan create/add/amend/remove/validate/…`                                               | `workflow::change::plan::handlers` | the `plan.yaml` state machine (`plan::core`)          |
 | `source survey/extract`, `slice refine/build`, `slice merge run`, `plan author/execute` | `workflow::orchestrate::handlers`  | the orchestrators they drive                          |
 | `registry validate/add/remove`                                                          | `workflow::registry::handlers`     | the `registry.yaml` catalog types                     |
-| `source resolve` / `target resolve`                                                     | `workflow::adapter::handlers`      | the axis resolvers                                    |
+| `source resolve` / `target resolve`                                                     | `workflow::handlers`               | the axis resolvers                                    |
 | `init --scaffold-only`                                                                  | `workflow::init::handlers`         | the scaffold kernel                                   |
 
 
@@ -376,13 +376,13 @@ Do not add new manual mapping arms during migration.
 ### Do not
 
 
-| Temptation                                     | Why                                                                 |
-| ---------------------------------------------- | ------------------------------------------------------------------- |
-| `guest!({ command: … })` for CLI               | Hides the `Cli` export; breaks symmetry with `http.rs`              |
-| Runtime command registry with dynamic dispatch | Loses monomorphization, typed errors, and compile-time CLI coverage |
-| Permanent `commands/*/convert.rs` shims        | End state is one generic serde bridge; per-command converters are migration-only |
-| Derive clap on `workflow` `Input` DTOs (yet)   | That is the deferred strong-typing iteration — it moves clap and help prose into `workflow`; take it deliberately after the mirrors stabilize |
-| Macro-generated match before the mirrors are stable | Optimizes boilerplate before the wire shape is correct         |
-| Flatten CLI to `specify POST /slice/foo/build` | Breaks the operator CLI contract                                    |
+| Temptation                                          | Why                                                                                                                                           |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `guest!({ command: … })` for CLI                    | Hides the `Cli` export; breaks symmetry with `http.rs`                                                                                        |
+| Runtime command registry with dynamic dispatch      | Loses monomorphization, typed errors, and compile-time CLI coverage                                                                           |
+| Permanent `commands/*/convert.rs` shims             | End state is one generic serde bridge; per-command converters are migration-only                                                              |
+| Derive clap on `workflow` `Input` DTOs (yet)        | That is the deferred strong-typing iteration — it moves clap and help prose into `workflow`; take it deliberately after the mirrors stabilize |
+| Macro-generated match before the mirrors are stable | Optimizes boilerplate before the wire shape is correct                                                                                        |
+| Flatten CLI to `specify POST /slice/foo/build`      | Breaks the operator CLI contract                                                                                                              |
 
 
