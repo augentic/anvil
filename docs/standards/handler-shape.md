@@ -1,6 +1,6 @@
 # Handler shape
 
-The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/workflow`, how `Ctx` is constructed from the provider's `Anchor`, how output flows through the typed `Out<Body>` wrapper and its `Render` impl, which exit code a terminal `Error` maps to, and what the per-shim dispatch matches are allowed to do. Vocabulary and routing layout: [handler-routing.md](../../rfcs/handler-routing.md).
+The contract every command handler obeys: how a command becomes an `omnia_guest::api::Handler<P>` in `crates/workflow`, how `Ctx` is constructed from the provider's `Anchor`, how output flows through the typed `Out<Body>` wrapper and its `Render` impl, which exit code a terminal `Error` maps to, and what the per-shim route tables in `argv.rs` / `http.rs` are allowed to do. Vocabulary and routing layout: [handler-routing.md](../../rfcs/handler-routing.md).
 
 ## The handler layer (`workflow::handler`)
 
@@ -71,20 +71,20 @@ The four-slot CLI exit-code table is fixed:
 
 `crates/cli/src/cli.rs` declares the clap derive surface. Leaf variants carry handler `Input` directly (`Build(BuildInput)`), not anonymous fields the shim maps later. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Input`. Global flags (`--format`, `--plan-dir`) stay on `Cli`, not on `Input`. See [handler-routing.md §"CLI routing"](../../rfcs/handler-routing.md#cli-routing).
 
-## The HTTP route table (per shim)
+## The HTTP route table (`http.rs`)
 
-Each shim owns a hand-written axum `Router`. The wasm guest builds it inside `handle()` (instance-per-call — no `static`); `specify-dev serve` builds once at startup. Both use omnia's generic route constructors (`route::get::<R, P>()` / `route::post::<R, P>()`), with the `Client` (owner + provider) as router state. GET for pure reads (path + query args), POST for writes and judgment (JSON bodies), the noun in the path (`POST /slice/{name}/build`). One line per routed command; parity between CLI and HTTP comes from both transports driving the same `Handler` impls, not from shared table code. See [handler-routing.md §"HTTP routing"](../../rfcs/handler-routing.md#http-routing).
+Each shim owns a hand-written axum `Router` in `http.rs`. The wasm guest builds it inside `handle()` (instance-per-call — no `static`); `specify-dev serve` builds once at startup in `harness/native/src/http.rs`. Both use omnia's generic route constructors (`route::get::<R, P>()` / `route::post::<R, P>()`), with the `Client` (owner + provider) as router state. GET for pure reads (path + query args), POST for writes and judgment (JSON bodies), the noun in the path (`POST /slice/{name}/build`). One line per routed command; parity between CLI and HTTP comes from both transports driving the same `Handler` impls, not from shared table code. See [handler-routing.md §"HTTP routing"](../../rfcs/handler-routing.md#http-routing).
 
-## Dispatch contract (the argv shims)
+## Dispatch contract (`argv.rs`)
 
-Each shim owns an exhaustive dispatch match over `Commands` — deliberately duplicated per shim (the wasm guest's `src/dispatch.rs`, the native `specify-dev` binary) so the compiler checks each shim's coverage of the grammar. Target discipline per leaf arm:
+Each shim owns an exhaustive argv route table in `argv.rs` — deliberately duplicated per shim (the wasm guest's `src/argv.rs`, the native `specify-dev` binary's `harness/native/src/argv.rs`) so the compiler checks each shim's coverage of the grammar. HTTP routing lives symmetrically in `http.rs`. Target discipline per leaf arm:
 
 1. `preflight` — `register_describe_runner`, `check_plan_dir`
 2. `cli::parse` parses argv → `Commands` enum (leaf variants already hold `Input`)
 3. `cli::post::<R, _, _>` or `cli::get::<R, _, _>(format, provider, input)` — names only `R`, passes parsed `input`
 4. Shim policy at the edges: `refuse` for provisioning commands, `completions` for shell scripts
 
-Never put domain logic in `cli` or a shim's dispatch match. Manual `Input { … }` construction in a dispatch arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `cli` or a shim's route match. Manual `Input { … }` construction in an `argv.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Handler-shape notes
 

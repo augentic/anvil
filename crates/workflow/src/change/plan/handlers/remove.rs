@@ -3,15 +3,13 @@
 
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
-use crate::change::Plan;
-use crate::config::with_state;
-use crate::schema::validate_plan;
 
 use super::entry::{Action, EntryBody};
 use super::{plan_ref, require_file};
-use crate::verb::Anchor;
-use crate::verb::Ctx;
-use crate::verb::Out;
+use crate::change::Plan;
+use crate::config::with_state;
+use crate::handler::{Anchor, Ctx, Out};
+use crate::schema::validate_plan;
 
 /// Wire input for `plan remove`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,7 +26,7 @@ pub struct Remove {
 }
 
 impl<P: Anchor> Handler<P> for Remove {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = RemoveInput;
     type Output = Out<EntryBody>;
 

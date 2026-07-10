@@ -7,13 +7,6 @@ use artifacts::evidence::ClaimKind;
 use error::Error;
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
-use crate::change::{
-    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, entry_mut, mutate_authority_overrides,
-    reject_duplicate_source_keys, reject_orphan_overrides,
-};
-use crate::config::with_state;
-use crate::journal;
-use crate::schema::validate_plan;
 
 use super::args::{
     BindingArg, bindings_from_args, load_discovery, parse_divergence, parse_override_assigns,
@@ -21,9 +14,14 @@ use super::args::{
 };
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
-use crate::verb::Anchor;
-use crate::verb::Ctx;
-use crate::verb::Out;
+use crate::change::{
+    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, entry_mut, mutate_authority_overrides,
+    reject_duplicate_source_keys, reject_orphan_overrides,
+};
+use crate::config::with_state;
+use crate::handler::{Anchor, Ctx, Out};
+use crate::journal;
+use crate::schema::validate_plan;
 
 /// Wire input for `plan amend`. Option-typed fields distinguish
 /// "leave unchanged" (`None`) from "replace/clear" (`Some`), matching
@@ -80,7 +78,7 @@ pub struct Amend {
 }
 
 impl<P: Anchor> Handler<P> for Amend {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = AmendInput;
     type Output = Out<EntryBody>;
 

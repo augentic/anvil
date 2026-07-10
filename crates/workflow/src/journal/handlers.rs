@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::{Event, EventKind};
-use crate::verb::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Out, Render};
 
 // ---------------------------------------------------------------------------
 // journal emit
@@ -44,7 +44,7 @@ pub struct EmitInput {
 /// validates both the id and the payload fields. The verb then stamps
 /// a second-precision UTC timestamp (the [`Event`] serde format
 /// truncates `Timestamp::now()` to seconds) and appends exactly one
-/// line to `.specify/journal.jsonl` via [`journal::append_batch`].
+/// line to `.specify/journal.jsonl` via [`super::append_batch`].
 ///
 /// Failures: `journal-emit-unknown-event` (exit 2) when `event` is not
 /// a variant in the closed taxonomy; `journal-emit-payload-schema`
@@ -56,7 +56,7 @@ pub struct Emit {
 }
 
 impl<P: Anchor> Handler<P> for Emit {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = EmitInput;
     type Output = Out<EmitBody>;
 
@@ -161,7 +161,7 @@ pub struct Show {
 }
 
 impl<P: Anchor> Handler<P> for Show {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ShowInput;
     type Output = Out<ShowBody>;
 

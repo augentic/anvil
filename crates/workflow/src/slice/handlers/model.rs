@@ -11,10 +11,9 @@ use std::io::Write;
 use error::Error;
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
-use crate::slice::SliceModel;
 
-use crate::verb::{Anchor, Ctx};
-use crate::verb::{Out, Render};
+use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::slice::SliceModel;
 
 /// Wire input for `slice model show`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,7 +30,7 @@ pub struct ModelShow {
 }
 
 impl<P: Anchor> Handler<P> for ModelShow {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ModelShowInput;
     type Output = Out<SliceModel>;
 

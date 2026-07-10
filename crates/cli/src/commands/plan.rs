@@ -1,5 +1,5 @@
 //! `specify plan *` grammar plus the clap-to-`Input` conversions the
-//! dispatch matches use to feed the `workflow::change::plan::verbs` handlers.
+//! dispatch matches use to feed the `workflow::change::plan::handlers` handlers.
 
 pub mod cli;
 
@@ -10,7 +10,7 @@ use workflow::change::SourceBinding;
 
 use crate::cli::{AuthorityOverrideKindAssign, SliceSourceArg, SourceArg};
 
-impl From<SliceSourceArg> for workflow::change::plan::verbs::BindingArg {
+impl From<SliceSourceArg> for workflow::change::plan::handlers::BindingArg {
     fn from(arg: SliceSourceArg) -> Self {
         Self {
             key: arg.key,
@@ -19,7 +19,7 @@ impl From<SliceSourceArg> for workflow::change::plan::verbs::BindingArg {
     }
 }
 
-impl From<AuthorityOverrideKindAssign> for workflow::change::plan::verbs::KindAssign {
+impl From<AuthorityOverrideKindAssign> for workflow::change::plan::handlers::KindAssign {
     fn from(assign: AuthorityOverrideKindAssign) -> Self {
         Self {
             kind: assign.kind,
@@ -29,16 +29,18 @@ impl From<AuthorityOverrideKindAssign> for workflow::change::plan::verbs::KindAs
 }
 
 /// Convert repeated `--sources` / `--add-source` values into the wire
-/// [`workflow::change::plan::verbs::BindingArg`] list.
+/// [`workflow::change::plan::handlers::BindingArg`] list.
 #[must_use]
-pub fn bindings(args: Vec<SliceSourceArg>) -> Vec<workflow::change::plan::verbs::BindingArg> {
+pub fn bindings(args: Vec<SliceSourceArg>) -> Vec<workflow::change::plan::handlers::BindingArg> {
     args.into_iter().map(Into::into).collect()
 }
 
 /// Convert repeated `--authority-override <kind>=<source>` values into
-/// the wire [`workflow::change::plan::verbs::KindAssign`] list.
+/// the wire [`workflow::change::plan::handlers::KindAssign`] list.
 #[must_use]
-pub fn assigns(args: Vec<AuthorityOverrideKindAssign>) -> Vec<workflow::change::plan::verbs::KindAssign> {
+pub fn assigns(
+    args: Vec<AuthorityOverrideKindAssign>,
+) -> Vec<workflow::change::plan::handlers::KindAssign> {
     args.into_iter().map(Into::into).collect()
 }
 

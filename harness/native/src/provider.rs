@@ -77,7 +77,7 @@ impl<M> NativeProvider<M> {
     }
 }
 
-impl<M: Send + Sync> workflow::verb::Anchor for NativeProvider<M> {
+impl<M: Send + Sync> workflow::handler::Anchor for NativeProvider<M> {
     fn project_root(&self) -> &Path {
         &self.project_dir
     }

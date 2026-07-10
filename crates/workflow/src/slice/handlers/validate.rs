@@ -7,7 +7,7 @@
 //! [`crate::slice::validate`]; this verb orchestrates it against
 //! the adapter rules (`artifacts::validate::validate_slice`), returns
 //! the report body, and carries the blocking decision on
-//! [`crate::verb::Error::Report`] so the transports render findings and the
+//! [`crate::handler::Error::Report`] so the transports render findings and the
 //! failure envelope on their own channels.
 
 use std::io::Write;
@@ -17,10 +17,9 @@ use error::Error;
 use omnia_guest::api::{Context, Handler, Reply};
 use schema::diagnostics::{Diagnostic, blocking_present};
 use serde::{Deserialize, Serialize};
-use crate::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
 
-use crate::verb::{Anchor, Ctx};
-use crate::verb::{Out, ReportBody};
+use crate::handler::{Anchor, Ctx, Out, ReportBody};
+use crate::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
 
 /// Wire input for `slice validate`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,7 +36,7 @@ pub struct Validate {
 }
 
 impl<P: Anchor> Handler<P> for Validate {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ValidateInput;
     type Output = Out<ReportBody>;
 
@@ -65,7 +64,7 @@ impl<P: Anchor> Handler<P> for Validate {
                 let body = ReportBody::new(findings, None, write_finding_row);
 
                 if blocking {
-                    Err(crate::verb::Error::Report {
+                    Err(crate::handler::Error::Report {
                         body,
                         source: Error::validation_failed(
                             "slice-validation-failed",
@@ -87,9 +86,9 @@ impl<P: Anchor> Handler<P> for Validate {
 /// Bundle `findings` with the payload-free [`Error::Validation`] keyed
 /// on `code`. Used by every pre-adapter gate so the operator sees the
 /// full diagnostic surface before the gate fails the command.
-fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> crate::verb::Error {
+fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> crate::handler::Error {
     let count = findings.len();
-    crate::verb::Error::Report {
+    crate::handler::Error::Report {
         body: ReportBody::new(findings, None, write_finding_row),
         source: Error::validation_failed(
             code,

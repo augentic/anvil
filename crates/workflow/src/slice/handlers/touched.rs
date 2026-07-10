@@ -5,14 +5,13 @@ use std::io::Write;
 use error::{Error, Result};
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
+
+use super::artifact_classes;
+use crate::handler::{Anchor, Ctx, Out, Render};
 use crate::merge::MergeStrategy;
 use crate::slice::{
     Overlap as SliceOverlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions,
 };
-
-use super::artifact_classes;
-use crate::verb::{Anchor, Ctx};
-use crate::verb::{Out, Render};
 
 // ---------------------------------------------------------------------------
 // slice touched-specs
@@ -41,7 +40,7 @@ pub struct TouchedSpecs {
 }
 
 impl<P: Anchor> Handler<P> for TouchedSpecs {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = TouchedSpecsInput;
     type Output = Out<SpecsBody>;
 
@@ -157,7 +156,7 @@ pub struct Overlap {
 }
 
 impl<P: Anchor> Handler<P> for Overlap {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = OverlapInput;
     type Output = Out<OverlapBody>;
 

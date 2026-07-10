@@ -4,9 +4,9 @@
 
 mod adapter_uri;
 mod cache;
+pub mod handlers;
 mod regular;
 mod upgrade;
-pub mod verbs;
 mod workspace;
 
 use std::path::{Path, PathBuf};

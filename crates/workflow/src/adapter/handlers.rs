@@ -3,16 +3,17 @@
 //!
 //! Project-context-free: the resolvers take the project directory from
 //! the input (defaulting to the provider anchor), so the verbs never
-//! load [`crate::verb::Ctx`].
+//! load [`crate::handler::Ctx`].
 
 use std::io::Write;
 use std::path::PathBuf;
 
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
+
 use super::{Axis, SourceAdapter, TargetAdapter};
+use crate::handler::{Anchor, Out, Render};
 use crate::init::adapter_ref_from_value;
-use crate::verb::{Anchor, Out, Render};
 
 /// Wire input for `source resolve` / `target resolve`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,7 +34,7 @@ pub struct SourceResolve {
 }
 
 impl<P: Anchor> Handler<P> for SourceResolve {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ResolveInput;
     type Output = Out<ResolveBody>;
 
@@ -63,7 +64,7 @@ pub struct TargetResolve {
 }
 
 impl<P: Anchor> Handler<P> for TargetResolve {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ResolveInput;
     type Output = Out<ResolveBody>;
 

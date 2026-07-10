@@ -6,14 +6,13 @@ use std::io::Write;
 
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
+
+use super::artifact_classes;
+use crate::handler::{Anchor, Ctx, Out, Render};
 use crate::merge::{
     BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, conflict_check, slice,
     summarise_operations,
 };
-
-use super::artifact_classes;
-use crate::verb::{Anchor, Ctx};
-use crate::verb::{Out, Render};
 
 // ---------------------------------------------------------------------------
 // slice merge preview
@@ -35,7 +34,7 @@ pub struct Preview {
 }
 
 impl<P: Anchor> Handler<P> for Preview {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = PreviewInput;
     type Output = Out<PreviewBody>;
 
@@ -141,7 +140,7 @@ pub struct ConflictCheck {
 }
 
 impl<P: Anchor> Handler<P> for ConflictCheck {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ConflictCheckInput;
     type Output = Out<ConflictCheckBody>;
 

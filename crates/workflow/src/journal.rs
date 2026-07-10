@@ -8,7 +8,7 @@
 //! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
 //! best-effort emit helpers in `emit`; the `specify journal {emit,
-//! show}` verb handlers in [`verbs`]. This root owns the read side
+//! show}` verb handlers in [`handlers`]. This root owns the read side
 //! (forward [`read`], backward [`read_recent`], and the private
 //! filtered `show` projection behind `specify journal show`) and
 //! re-exports the public surface so callers keep importing
@@ -19,7 +19,7 @@
 mod append;
 mod emit;
 mod event;
-pub mod verbs;
+pub mod handlers;
 
 use std::fs::File;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
@@ -126,7 +126,7 @@ pub fn read_recent<T>(
 /// so the bytes touched stay bounded by the limit rather than total
 /// history. Reader leniency matches [`read`]: blank and unparseable
 /// lines are skipped and a missing journal yields an empty vector.
-/// Private: the only consumer is the [`verbs::Show`] handler.
+/// Private: the only consumer is the [`handlers::Show`] handler.
 ///
 /// # Errors
 ///

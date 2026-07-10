@@ -19,9 +19,15 @@ mod common;
 
 /// Drive one verb handler against the provider, returning the typed
 /// body or the verb-layer failure — the same path both transports take.
-async fn run<R, B>(provider: &NativeProvider<MockModel>, input: R::Input) -> Result<B, workflow::verb::Error>
+async fn run<R, B>(
+    provider: &NativeProvider<MockModel>, input: R::Input,
+) -> Result<B, workflow::handler::Error>
 where
-    R: Handler<NativeProvider<MockModel>, Output = workflow::verb::Out<B>, Error = workflow::verb::Error>,
+    R: Handler<
+            NativeProvider<MockModel>,
+            Output = workflow::handler::Out<B>,
+            Error = workflow::handler::Error,
+        >,
     B: Send + Sync,
 {
     let reply = R::handler(input)?.owner("specify").provider(provider).handle().await?;
@@ -101,9 +107,9 @@ async fn author_approve_execute_drains() {
 
     // `plan author` — survey through the real intent adapter, the
     // reconciliation judgment leg, Gate 1 prose — exits at `pending`.
-    let authored = run::<orchestrate::verbs::Author, _>(
+    let authored = run::<orchestrate::handlers::Author, _>(
         &provider,
-        orchestrate::verbs::AuthorInput {
+        orchestrate::handlers::AuthorInput {
             name: "demo".to_string(),
             sources: bindings(),
         },
@@ -116,9 +122,9 @@ async fn author_approve_execute_drains() {
 
     // Gate 1 — the operator-only stamp, through the same verb the CLI
     // routes.
-    run::<plan::verbs::Transition, _>(
+    run::<plan::handlers::Transition, _>(
         &provider,
-        plan::verbs::TransitionInput {
+        plan::handlers::TransitionInput {
             name: "demo".to_string(),
             target: Some("approved".to_string()),
             undo: false,
@@ -131,7 +137,7 @@ async fn author_approve_execute_drains() {
     // `plan execute` — the drained refine → build → merge loop over
     // the real adapter operations.
     let executed =
-        run::<orchestrate::verbs::Execute, _>(&provider, orchestrate::verbs::ExecuteInput {})
+        run::<orchestrate::handlers::Execute, _>(&provider, orchestrate::handlers::ExecuteInput {})
             .await
             .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");

@@ -9,7 +9,7 @@
 //!
 //! Unlike the project-scoped verbs, the scaffold runs *before* a
 //! project exists, so it anchors at the provider's raw
-//! [`Anchor::project_root`] instead of loading [`crate::verb::Ctx`].
+//! [`Anchor::project_root`] instead of loading [`crate::handler::Ctx`].
 
 use std::io::Write;
 use std::path::Path;
@@ -17,9 +17,10 @@ use std::path::Path;
 use error::Error;
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
+
 use super::{InitOptions, InitResult, init};
+use crate::handler::{Anchor, Out, Render};
 use crate::platform::parse_platforms_csv;
-use crate::verb::{Anchor, Out, Render};
 
 /// Wire input for the scaffold leg — the `init` argument surface minus
 /// nothing: the same flags parse, only the provisioning legs are
@@ -53,7 +54,7 @@ pub struct Scaffold {
 }
 
 impl<P: Anchor> Handler<P> for Scaffold {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ScaffoldInput;
     type Output = Out<ScaffoldBody>;
 

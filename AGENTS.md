@@ -160,7 +160,7 @@ The workspace is leaf → root. `error` is the dependency leaf and depends on no
 error                    # leaf — thiserror + serde-saphyr only
 schema                   # depends on error (embedded JSON Schemas + jsonschema plumbing; owns schema::digest — SHA-256 hex via sha2 + base16ct — and schema::diagnostics, the neutral Diagnostic substrate: report, fingerprint, validator, blocking)
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
-workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest} (owns the verb handlers too: each domain module carries its family in a `verbs` submodule — journal::verbs, slice::verbs, change::plan::verbs, orchestrate::verbs, registry::verbs, adapter::verbs, init::verbs — as omnia_guest::api::Handler<P> impls over flat serde Input DTOs, with the shared plumbing in workflow::verb: Anchor, Ctx, Out<Body> + Render, and the verb Error with the HTTP status projection; also owns workflow::agents — init-time AGENTS.md context-fence generation — and workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability (WASI-backed on wasm32; native tests bind testkit's scripted mock)); no wasmtime in its graph
+workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest} (owns the command handlers too: each domain module carries its family in a `handlers` submodule — journal::handlers, slice::handlers, change::plan::handlers, orchestrate::handlers, registry::handlers, adapter::handlers, init::handlers — as omnia_guest::api::Handler<P> impls over flat serde Input DTOs, with the shared plumbing in workflow::handler: Anchor, Ctx, Out<Body> + Render, and the handler-layer Error with the HTTP status projection; also owns workflow::agents — init-time AGENTS.md context-fence generation — and workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability (WASI-backed on wasm32; native tests bind testkit's scripted mock)); no wasmtime in its graph
 cli                      # wasm-clean CLI front-end — clap grammar, clap-to-Input conversions, envelopes, exit contract, front::run; shared by the specify guest and native shims
 testkit                  # dev-only shared test support (the scripted omnia_guest::Model mock); reached exclusively through [dev-dependencies], never by shipped code
 harness/fixtures         # echo adapter fixtures (skeleton specify:adapter components for composed deployments)
@@ -196,9 +196,10 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/cli/src/output.r
 
 ```text
 src/runtime.rs           shipped binary — omnia::runtime! command mode over cursor backends
-src/lib.rs               wasm32 core guest shim (wasi:cli/run via the guest! command trigger + wasi:http serving the shim's hand-written route table)
+src/lib.rs               wasm32 core guest shim (guest! wiring; wasi:cli/run + wasi:http exports)
 src/provider.rs          WIT-backed Provider (Anchor + Model + SourceSeam + TargetSeam over the world's imports)
-src/dispatch.rs          the guest's exhaustive dispatch match over Commands
+src/argv.rs              argv route table (target; dispatch.rs today)
+src/http.rs              HTTP route table (target; inline mod http in lib.rs today)
 crates/cli/              shared clap grammar, conversions, envelopes, exit contract
 crates/workflow/         workflow domain logic
 harness/fixtures/        echo adapter fixtures (skeleton specify:adapter components)

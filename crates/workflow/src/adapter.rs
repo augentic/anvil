@@ -21,9 +21,9 @@
 
 mod core;
 pub mod describe;
+pub mod handlers;
 pub(crate) mod operation;
 mod resolve;
-pub mod verbs;
 
 pub use core::{
     AdapterLocation, AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability,

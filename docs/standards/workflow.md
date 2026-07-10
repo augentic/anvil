@@ -79,7 +79,7 @@ Closed enum `intent > documentation > behaviour`. v1 resolution order per `(sour
 
 ## Refinement
 
-The guest `slice refine` orchestration runs `extract` per bound source and drives the synthesis kernel (§"Slice synthesis") to produce `proposal.md` / `spec.md` / `design.md` / `tasks.md` / `model.yaml` (provenance is carried inline in the single `model.yaml` artifact, projected on demand by `specify slice provenance`), and transitions the slice to `refined`. Validators live in [`crates/artifacts/src/validate/`](../../crates/artifacts/src/validate/) and [`crates/workflow/src/slice/verbs/validate.rs`](../../crates/workflow/src/slice/verbs/validate.rs).
+The guest `slice refine` orchestration runs `extract` per bound source and drives the synthesis kernel (§"Slice synthesis") to produce `proposal.md` / `spec.md` / `design.md` / `tasks.md` / `model.yaml` (provenance is carried inline in the single `model.yaml` artifact, projected on demand by `specify slice provenance`), and transitions the slice to `refined`. Validators live in [`crates/artifacts/src/validate/`](../../crates/artifacts/src/validate/) and [`crates/workflow/src/slice/handlers/validate.rs`](../../crates/workflow/src/slice/handlers/validate.rs).
 
 ## Slice synthesis
 

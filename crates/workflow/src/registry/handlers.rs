@@ -9,10 +9,11 @@ use artifacts::atomic::yaml_write;
 use error::{Error, Result};
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
+
 use super::{Registry, RegistryProject};
 use crate::change::Plan;
 use crate::config::{Layout, ProjectConfig, with_state};
-use crate::verb::{Anchor, Ctx, Out, Render};
+use crate::handler::{Anchor, Ctx, Out, Render};
 
 // ---------------------------------------------------------------------------
 // registry validate
@@ -32,7 +33,7 @@ pub struct ValidateInput {}
 pub struct Validate;
 
 impl<P: Anchor> Handler<P> for Validate {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ValidateInput;
     type Output = Out<ValidateBody>;
 
@@ -117,7 +118,7 @@ pub struct Add {
 }
 
 impl<P: Anchor> Handler<P> for Add {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = AddInput;
     type Output = Out<AddBody>;
 
@@ -241,7 +242,7 @@ pub struct Remove {
 }
 
 impl<P: Anchor> Handler<P> for Remove {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = RemoveInput;
     type Output = Out<RemoveBody>;
 

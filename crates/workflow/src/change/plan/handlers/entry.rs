@@ -7,10 +7,10 @@
 use std::io::Write;
 
 use serde::Serialize;
-use crate::change::Entry;
 
 use super::Ref;
-use crate::verb::Render;
+use crate::change::Entry;
+use crate::handler::Render;
 
 /// Which mutating verb produced an [`EntryBody`].
 #[derive(Clone, Copy, Debug, Serialize)]

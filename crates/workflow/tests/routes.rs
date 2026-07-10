@@ -50,10 +50,10 @@ impl Project {
             root: self.root.clone(),
         };
         Router::new()
-            .route("/registry/validate", route::get::<registry::verbs::Validate, Provider>())
-            .route("/registry", route::post::<registry::verbs::Add, Provider>())
-            .route("/registry/{name}/remove", route::post::<registry::verbs::Remove, Provider>())
-            .route("/archive/prune", route::post::<slice::verbs::Prune, Provider>())
+            .route("/registry/validate", route::get::<registry::handlers::Validate, Provider>())
+            .route("/registry", route::post::<registry::handlers::Add, Provider>())
+            .route("/registry/{name}/remove", route::post::<registry::handlers::Remove, Provider>())
+            .route("/archive/prune", route::post::<slice::handlers::Prune, Provider>())
             .with_state(Client::new("specify").provider(provider))
     }
 }
@@ -63,7 +63,7 @@ struct Provider {
     root: PathBuf,
 }
 
-impl workflow::verb::Anchor for Provider {
+impl workflow::handler::Anchor for Provider {
     fn project_root(&self) -> &Path {
         &self.root
     }

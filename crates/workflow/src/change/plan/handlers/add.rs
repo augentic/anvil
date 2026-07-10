@@ -7,19 +7,17 @@ use std::collections::BTreeMap;
 
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
-use crate::change::{
-    Entry, Plan, SliceAuthorityOverride, Status, emit_authority_override_seed_events, entry_mut,
-};
-use crate::config::with_state;
-use crate::journal;
-use crate::schema::validate_plan;
 
 use super::args::{BindingArg, KindAssign, bindings_from_args, load_discovery};
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
-use crate::verb::Anchor;
-use crate::verb::Ctx;
-use crate::verb::Out;
+use crate::change::{
+    Entry, Plan, SliceAuthorityOverride, Status, emit_authority_override_seed_events, entry_mut,
+};
+use crate::config::with_state;
+use crate::handler::{Anchor, Ctx, Out};
+use crate::journal;
+use crate::schema::validate_plan;
 
 /// Wire input for `plan add`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,7 +54,7 @@ pub struct Add {
 }
 
 impl<P: Anchor> Handler<P> for Add {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = AddInput;
     type Output = Out<EntryBody>;
 

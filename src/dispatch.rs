@@ -1,9 +1,9 @@
 //! The guest shim's exhaustive dispatch match over [`Commands`].
 //!
-//! One arm per leaf verb, each converting the parsed clap action into
-//! the matching verb input DTO and driving the handler through
+//! One arm per leaf command, each converting the parsed clap action into
+//! the matching handler `Input` DTO and driving the handler through
 //! [`cli::front::run`] against [`Provider`] — the WIT-backed `Anchor +
-//! Model + SourceSeam + TargetSeam` implementation. Provisioning verbs
+//! Model + SourceSeam + TargetSeam` implementation. Provisioning commands
 //! (`init` without `--scaffold-only`, `adapters`, `workspace`,
 //! `upgrade`, `plugins`) have no guest implementation and refuse with
 //! `Error::Argument` (exit 2).
@@ -34,7 +34,7 @@ use crate::provider::Provider;
 
 /// The `command:` trigger's dispatch body: parse argv through the
 /// shared grammar, register the in-guest describe runner, and drive
-/// the matched verb to its numeric exit code.
+/// the matched command to its numeric exit code.
 pub async fn main(argv: Vec<String>) -> u8 {
     // Adapter describe dispatch routes through this world's WIT
     // imports, so the resolvers work in-guest against the read-only
@@ -47,8 +47,7 @@ pub async fn main(argv: Vec<String>) -> u8 {
     dispatch(cli).await.code()
 }
 
-/// Route one parsed invocation: convert the clap action to the verb's
-/// input DTO and run the handler; refuse the provisioning verbs.
+/// Route one parsed invocation: convert the clap action to the command's/// input DTO and run the handler; refuse the provisioning commands.
 async fn dispatch(cli: Cli) -> Exit {
     let format = cli.format;
     if let Err(err) = check_plan_dir(cli.plan_dir.as_deref()) {
@@ -58,10 +57,10 @@ async fn dispatch(cli: Cli) -> Exit {
     match cli.command {
         Commands::Source { action } => match action {
             SourceAction::Resolve { name, project_dir } => {
-                run::<adapter::verbs::SourceResolve, _, _>(
+                run::<adapter::handlers::SourceResolve, _, _>(
                     format,
                     p,
-                    adapter::verbs::ResolveInput {
+                    adapter::handlers::ResolveInput {
                         value: name,
                         project_dir: Some(project_dir),
                     },
@@ -69,28 +68,28 @@ async fn dispatch(cli: Cli) -> Exit {
                 .await
             }
             SourceAction::Survey { source, plan } => {
-                run::<orchestrate::verbs::Survey, _, _>(
+                run::<orchestrate::handlers::Survey, _, _>(
                     format,
                     p,
-                    orchestrate::verbs::SurveyInput { source, plan },
+                    orchestrate::handlers::SurveyInput { source, plan },
                 )
                 .await
             }
             SourceAction::Extract { source, lead, slice } => {
-                run::<orchestrate::verbs::Extract, _, _>(
+                run::<orchestrate::handlers::Extract, _, _>(
                     format,
                     p,
-                    orchestrate::verbs::ExtractInput { source, lead, slice },
+                    orchestrate::handlers::ExtractInput { source, lead, slice },
                 )
                 .await
             }
         },
         Commands::Target { action } => match action {
             TargetAction::Resolve { value, project_dir } => {
-                run::<adapter::verbs::TargetResolve, _, _>(
+                run::<adapter::handlers::TargetResolve, _, _>(
                     format,
                     p,
-                    adapter::verbs::ResolveInput {
+                    adapter::handlers::ResolveInput {
                         value,
                         project_dir: Some(project_dir),
                     },
@@ -104,10 +103,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 target,
                 if_exists,
             } => {
-                run::<slice::verbs::Create, _, _>(
+                run::<slice::handlers::Create, _, _>(
                     format,
                     p,
-                    slice::verbs::CreateInput {
+                    slice::handlers::CreateInput {
                         name,
                         target,
                         if_exists: if_exists.to_string(),
@@ -116,40 +115,44 @@ async fn dispatch(cli: Cli) -> Exit {
                 .await
             }
             SliceAction::Validate { name } => {
-                run::<slice::verbs::Validate, _, _>(format, p, slice::verbs::ValidateInput { name })
-                    .await
-            }
-            SliceAction::Provenance { name } => {
-                run::<slice::verbs::Provenance, _, _>(
+                run::<slice::handlers::Validate, _, _>(
                     format,
                     p,
-                    slice::verbs::ProvenanceInput { name },
+                    slice::handlers::ValidateInput { name },
+                )
+                .await
+            }
+            SliceAction::Provenance { name } => {
+                run::<slice::handlers::Provenance, _, _>(
+                    format,
+                    p,
+                    slice::handlers::ProvenanceInput { name },
                 )
                 .await
             }
             SliceAction::Model { action } => match action {
                 SliceModelAction::Show { name } => {
-                    run::<slice::verbs::ModelShow, _, _>(
+                    run::<slice::handlers::ModelShow, _, _>(
                         format,
                         p,
-                        slice::verbs::ModelShowInput { name },
+                        slice::handlers::ModelShowInput { name },
                     )
                     .await
                 }
             },
             SliceAction::Refine { name } => {
-                run::<orchestrate::verbs::Refine, _, _>(
+                run::<orchestrate::handlers::Refine, _, _>(
                     format,
                     p,
-                    orchestrate::verbs::RefineInput { name },
+                    orchestrate::handlers::RefineInput { name },
                 )
                 .await
             }
             SliceAction::Build { name } => {
-                run::<orchestrate::verbs::Build, _, _>(
+                run::<orchestrate::handlers::Build, _, _>(
                     format,
                     p,
-                    orchestrate::verbs::BuildInput { name },
+                    orchestrate::handlers::BuildInput { name },
                 )
                 .await
             }
@@ -158,10 +161,10 @@ async fn dispatch(cli: Cli) -> Exit {
                     name,
                     allow_composition_replace,
                 } => {
-                    run::<orchestrate::verbs::MergeRun, _, _>(
+                    run::<orchestrate::handlers::MergeRun, _, _>(
                         format,
                         p,
-                        orchestrate::verbs::MergeRunInput {
+                        orchestrate::handlers::MergeRunInput {
                             name,
                             allow_composition_replace,
                         },
@@ -169,63 +172,71 @@ async fn dispatch(cli: Cli) -> Exit {
                     .await
                 }
                 SliceMergeAction::Preview { name } => {
-                    run::<slice::verbs::Preview, _, _>(
+                    run::<slice::handlers::Preview, _, _>(
                         format,
                         p,
-                        slice::verbs::PreviewInput { name },
+                        slice::handlers::PreviewInput { name },
                     )
                     .await
                 }
                 SliceMergeAction::ConflictCheck { name } => {
-                    run::<slice::verbs::ConflictCheck, _, _>(
+                    run::<slice::handlers::ConflictCheck, _, _>(
                         format,
                         p,
-                        slice::verbs::ConflictCheckInput { name },
+                        slice::handlers::ConflictCheckInput { name },
                     )
                     .await
                 }
             },
             SliceAction::Task { action } => match action {
                 SliceTaskAction::Progress { name } => {
-                    run::<slice::verbs::TaskProgress, _, _>(
+                    run::<slice::handlers::TaskProgress, _, _>(
                         format,
                         p,
-                        slice::verbs::TaskProgressInput { name },
+                        slice::handlers::TaskProgressInput { name },
                     )
                     .await
                 }
                 SliceTaskAction::Mark { name, task_number } => {
-                    run::<slice::verbs::TaskMark, _, _>(
+                    run::<slice::handlers::TaskMark, _, _>(
                         format,
                         p,
-                        slice::verbs::TaskMarkInput { name, task_number },
+                        slice::handlers::TaskMarkInput { name, task_number },
                     )
                     .await
                 }
             },
             SliceAction::Transition { name, target } => {
-                run::<slice::verbs::Transition, _, _>(
+                run::<slice::handlers::Transition, _, _>(
                     format,
                     p,
-                    slice::verbs::TransitionInput { name, target },
+                    slice::handlers::TransitionInput { name, target },
                 )
                 .await
             }
             SliceAction::TouchedSpecs { name, scan, set } => {
-                run::<slice::verbs::TouchedSpecs, _, _>(
+                run::<slice::handlers::TouchedSpecs, _, _>(
                     format,
                     p,
-                    slice::verbs::TouchedSpecsInput { name, scan, set },
+                    slice::handlers::TouchedSpecsInput { name, scan, set },
                 )
                 .await
             }
             SliceAction::Overlap { name } => {
-                run::<slice::verbs::Overlap, _, _>(format, p, slice::verbs::OverlapInput { name })
-                    .await
+                run::<slice::handlers::Overlap, _, _>(
+                    format,
+                    p,
+                    slice::handlers::OverlapInput { name },
+                )
+                .await
             }
             SliceAction::Drop { name, reason } => {
-                run::<slice::verbs::Drop, _, _>(format, p, slice::verbs::DropInput { name, reason })
-                    .await
+                run::<slice::handlers::Drop, _, _>(
+                    format,
+                    p,
+                    slice::handlers::DropInput { name, reason },
+                )
+                .await
             }
         },
         Commands::Plan { action } => match action {
@@ -237,10 +248,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 authority_override,
             } => match source_map(sources, intent) {
                 Ok(sources) => {
-                    run::<plan::verbs::Create, _, _>(
+                    run::<plan::handlers::Create, _, _>(
                         format,
                         p,
-                        plan::verbs::CreateInput {
+                        plan::handlers::CreateInput {
                             name,
                             sources,
                             auto_approve,
@@ -252,19 +263,20 @@ async fn dispatch(cli: Cli) -> Exit {
                 Err(err) => report(format, &err),
             },
             PlanAction::Validate => {
-                run::<plan::verbs::Validate, _, _>(format, p, plan::verbs::ValidateInput {}).await
+                run::<plan::handlers::Validate, _, _>(format, p, plan::handlers::ValidateInput {})
+                    .await
             }
             PlanAction::Next => {
-                run::<plan::verbs::Next, _, _>(format, p, plan::verbs::NextInput {}).await
+                run::<plan::handlers::Next, _, _>(format, p, plan::handlers::NextInput {}).await
             }
             PlanAction::Status => {
-                run::<plan::verbs::Status, _, _>(format, p, plan::verbs::StatusInput {}).await
+                run::<plan::handlers::Status, _, _>(format, p, plan::handlers::StatusInput {}).await
             }
             PlanAction::Add(args) => {
-                run::<plan::verbs::Add, _, _>(
+                run::<plan::handlers::Add, _, _>(
                     format,
                     p,
-                    plan::verbs::AddInput {
+                    plan::handlers::AddInput {
                         name: args.name,
                         depends_on: args.depends_on,
                         sources: bindings(args.sources),
@@ -277,10 +289,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 .await
             }
             PlanAction::Amend(args) => {
-                run::<plan::verbs::Amend, _, _>(
+                run::<plan::handlers::Amend, _, _>(
                     format,
                     p,
-                    plan::verbs::AmendInput {
+                    plan::handlers::AmendInput {
                         name: args.name,
                         depends_on: args.depends_on,
                         sources: args.sources.map(bindings),
@@ -298,7 +310,8 @@ async fn dispatch(cli: Cli) -> Exit {
                 .await
             }
             PlanAction::Remove { name } => {
-                run::<plan::verbs::Remove, _, _>(format, p, plan::verbs::RemoveInput { name }).await
+                run::<plan::handlers::Remove, _, _>(format, p, plan::handlers::RemoveInput { name })
+                    .await
             }
             PlanAction::Transition {
                 name,
@@ -306,10 +319,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 undo,
                 actor,
             } => {
-                run::<plan::verbs::Transition, _, _>(
+                run::<plan::handlers::Transition, _, _>(
                     format,
                     p,
-                    plan::verbs::TransitionInput {
+                    plan::handlers::TransitionInput {
                         name,
                         target,
                         undo,
@@ -324,50 +337,58 @@ async fn dispatch(cli: Cli) -> Exit {
                 intent,
             } => match source_map(sources, intent) {
                 Ok(sources) => {
-                    run::<orchestrate::verbs::Author, _, _>(
+                    run::<orchestrate::handlers::Author, _, _>(
                         format,
                         p,
-                        orchestrate::verbs::AuthorInput { name, sources },
+                        orchestrate::handlers::AuthorInput { name, sources },
                     )
                     .await
                 }
                 Err(err) => report(format, &err),
             },
             PlanAction::Execute => {
-                run::<orchestrate::verbs::Execute, _, _>(
+                run::<orchestrate::handlers::Execute, _, _>(
                     format,
                     p,
-                    orchestrate::verbs::ExecuteInput {},
+                    orchestrate::handlers::ExecuteInput {},
                 )
                 .await
             }
             PlanAction::Archive { force } => {
-                run::<plan::verbs::Archive, _, _>(format, p, plan::verbs::ArchiveInput { force })
-                    .await
+                run::<plan::handlers::Archive, _, _>(
+                    format,
+                    p,
+                    plan::handlers::ArchiveInput { force },
+                )
+                .await
             }
         },
         Commands::Journal { action } => match action {
             JournalAction::Emit { event, payload } => {
-                run::<journal::verbs::Emit, _, _>(
+                run::<journal::handlers::Emit, _, _>(
                     format,
                     p,
-                    journal::verbs::EmitInput { event, payload },
+                    journal::handlers::EmitInput { event, payload },
                 )
                 .await
             }
             JournalAction::Show { filter, limit } => {
-                run::<journal::verbs::Show, _, _>(
+                run::<journal::handlers::Show, _, _>(
                     format,
                     p,
-                    journal::verbs::ShowInput { filter, limit },
+                    journal::handlers::ShowInput { filter, limit },
                 )
                 .await
             }
         },
         Commands::Registry { action } => match action {
             RegistryAction::Validate => {
-                run::<registry::verbs::Validate, _, _>(format, p, registry::verbs::ValidateInput {})
-                    .await
+                run::<registry::handlers::Validate, _, _>(
+                    format,
+                    p,
+                    registry::handlers::ValidateInput {},
+                )
+                .await
             }
             RegistryAction::Add {
                 name,
@@ -375,10 +396,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 adapter,
                 description,
             } => {
-                run::<registry::verbs::Add, _, _>(
+                run::<registry::handlers::Add, _, _>(
                     format,
                     p,
-                    registry::verbs::AddInput {
+                    registry::handlers::AddInput {
                         name,
                         url,
                         adapter,
@@ -388,10 +409,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 .await
             }
             RegistryAction::Remove { name } => {
-                run::<registry::verbs::Remove, _, _>(
+                run::<registry::handlers::Remove, _, _>(
                     format,
                     p,
-                    registry::verbs::RemoveInput { name },
+                    registry::handlers::RemoveInput { name },
                 )
                 .await
             }
@@ -402,10 +423,10 @@ async fn dispatch(cli: Cli) -> Exit {
                 older_than,
                 dry_run,
             } => {
-                run::<slice::verbs::Prune, _, _>(
+                run::<slice::handlers::Prune, _, _>(
                     format,
                     p,
-                    slice::verbs::PruneInput {
+                    slice::handlers::PruneInput {
                         keep,
                         older_than,
                         dry_run,
@@ -420,10 +441,10 @@ async fn dispatch(cli: Cli) -> Exit {
         // hydration, manifest generation) has no guest implementation
         // and refuses below.
         Commands::Init(args) if args.scaffold_only => {
-            run::<init::verbs::Scaffold, _, _>(
+            run::<init::handlers::Scaffold, _, _>(
                 format,
                 p,
-                init::verbs::ScaffoldInput {
+                init::handlers::ScaffoldInput {
                     adapter: args.adapter,
                     name: args.name,
                     description: args.description,
@@ -467,15 +488,15 @@ fn check_plan_dir(plan_dir: Option<&Path>) -> Result<(), Error> {
     })
 }
 
-/// Refuse a provisioning verb on the standard argument-error surface
-/// (wire code `argument`, exit 2) — no new wire code. These verbs have
+/// Refuse a provisioning command on the standard argument-error surface
+/// (wire code `argument`, exit 2) — no new wire code. These commands have
 /// no in-guest implementation yet.
-fn unsupported(format: Format, verb: &'static str) -> Exit {
+fn unsupported(format: Format, command: &'static str) -> Exit {
     report(
         format,
         &Error::Argument {
             flag: "<command>",
-            detail: format!("`specify {verb}` has no guest implementation yet"),
+            detail: format!("`specify {command}` has no guest implementation yet"),
         },
     )
 }

@@ -2,14 +2,14 @@
 //!
 //! Owns the full clap argv grammar ([`cli::Cli`] / [`cli::Commands`]),
 //! the clap-to-`Input` conversions the dispatch matches use to feed
-//! the transport-neutral verb handlers in `workflow`, the output
+//! the transport-neutral command handlers in `workflow`, the output
 //! envelopes ([`output::Format`] / [`output::emit`]), the exit-code
 //! contract ([`output::Exit`] / [`output::report`]), and the
-//! [`front::run`] bridge that drives one verb `Handler` and renders
+//! [`front::run`] bridge that drives one command `Handler` and renders
 //! its `Reply` (or failure) onto stdout/stderr.
 //!
-//! The verb bodies themselves live in `workflow`'s domain modules
-//! (each family in a `verbs` submodule beside its kernels); the
+//! The handler bodies themselves live in `workflow`'s domain modules
+//! (each family in a `handlers` submodule beside its kernels); the
 //! exhaustive per-shim dispatch matches live in the shims (the wasm
 //! guest in `src/lib.rs`, the native `specify-dev` binary) —
 //! deliberately duplicated so the compiler checks each shim's

@@ -12,6 +12,7 @@ pub mod config;
 pub mod decisions;
 pub mod deploy;
 pub mod design_system;
+pub mod handler;
 pub mod hydrate;
 pub mod init;
 pub mod journal;
@@ -28,7 +29,6 @@ pub mod seam;
 pub mod slice;
 #[cfg(feature = "native")]
 pub mod upgrade;
-pub mod verb;
 
 #[cfg(test)]
 pub(crate) mod test_cache;

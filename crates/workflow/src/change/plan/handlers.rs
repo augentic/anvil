@@ -15,8 +15,6 @@ use std::path::{Path, PathBuf};
 
 use error::{Error, Result};
 use serde::Serialize;
-use crate::change::Plan;
-use crate::registry::Registry;
 
 pub use self::add::{Add, AddInput};
 pub use self::amend::{Amend, AmendInput};
@@ -28,7 +26,9 @@ pub use self::lifecycle::{
     Validate, ValidateInput,
 };
 pub use self::remove::{Remove, RemoveInput};
-use crate::verb::Ctx;
+use crate::change::Plan;
+use crate::handler::Ctx;
+use crate::registry::Registry;
 
 // ---- Shared helpers used across submodules ----
 

@@ -3,8 +3,8 @@
 //! Each family module carries its clap action enum under `cli` (so
 //! the full [`crate::cli::Commands`] tree parses everywhere) and,
 //! where the wire shapes differ, the conversions from clap value
-//! types to the matching verb input DTOs. The verb bodies live in
-//! `workflow`'s domain modules (each family in a `verbs` submodule);
+//! types to the matching handler `Input` DTOs. The handler bodies live in
+//! `workflow`'s domain modules (each family in a `handlers` submodule);
 //! the exhaustive dispatch matches live in the shims.
 
 pub mod adapters;

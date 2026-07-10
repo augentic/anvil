@@ -48,9 +48,9 @@ impl omnia_guest::Model for Provider {}
 
 /// Project-scoped verbs anchor at the `"."` mount preopen — the mount
 /// that carries the project root. WASI resolves relative paths against
-/// it, so `workflow::verb::Ctx::load` finds `.specify/project.yaml` exactly as
+/// it, so `workflow::handler::Ctx::load` finds `.specify/project.yaml` exactly as
 /// a native run from the project root would.
-impl workflow::verb::Anchor for Provider {
+impl workflow::handler::Anchor for Provider {
     fn project_root(&self) -> &std::path::Path {
         std::path::Path::new(".")
     }

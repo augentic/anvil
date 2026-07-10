@@ -15,12 +15,12 @@
 
 mod author;
 mod execute;
+pub mod handlers;
 mod merge;
 mod refine;
 mod source;
 mod synthesize;
 mod target;
-pub mod verbs;
 
 use error::Error;
 

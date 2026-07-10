@@ -4,10 +4,10 @@
 pub mod branch;
 pub mod catalog;
 pub mod gitignore;
+pub mod handlers;
 pub mod identity;
 pub mod topology;
 pub mod validate;
-pub mod verbs;
 pub mod workspace;
 
 pub use catalog::{ContractRoles, GreenfieldSeed, Registry, RegistryProject};

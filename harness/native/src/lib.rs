@@ -2,10 +2,10 @@
 //!
 //! The wasm guest crosses the `specify:adapter` WIT boundary for its
 //! judgment seams; this crate binds the same capabilities natively so
-//! the whole workflow — verbs, orchestrators, adapter operations — runs
+//! the whole workflow — handlers, orchestrators, adapter operations — runs
 //! without a wasm runtime:
 //!
-//! - [`provider`] — [`provider::NativeProvider`]: `workflow::verb::Anchor` +
+//! - [`provider`] — [`provider::NativeProvider`]: `workflow::handler::Anchor` +
 //!   `omnia_guest::Model` + `SourceSeam` / `TargetSeam` as an
 //!   in-process dispatch table over the sibling adapter crates'
 //!   `operations` modules, plus the matching describe runner.

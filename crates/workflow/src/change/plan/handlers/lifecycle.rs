@@ -7,17 +7,15 @@ use error::{Error, Result};
 use omnia_guest::api::{Context, Handler, Reply};
 use schema::diagnostics::{Diagnostic, Severity, blocking, blocking_present};
 use serde::{Deserialize, Serialize};
+
+use super::{Ref, plan_ref, require_file};
 use crate::change::{
     Lifecycle, NextActionKind, NextBody, NextReason, Plan, Status as EntryStatus, StatusBody,
     drained_line, plan_doctor, plan_finding, plan_next_body, plan_status_body,
 };
 use crate::config::with_state;
+use crate::handler::{Anchor, Ctx, Out, Render, ReportBody};
 use crate::registry::Registry;
-
-use super::{Ref, plan_ref, require_file};
-use crate::verb::Anchor;
-use crate::verb::Ctx;
-use crate::verb::{Out, Render, ReportBody};
 
 // ---------------------------------------------------------------------------
 // plan validate
@@ -38,7 +36,7 @@ pub struct ValidateInput {}
 pub struct Validate;
 
 impl<P: Anchor> Handler<P> for Validate {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ValidateInput;
     type Output = Out<ReportBody>;
 
@@ -80,7 +78,7 @@ impl<P: Anchor> Handler<P> for Validate {
         let has_errors = blocking_present(&results);
         let body = ReportBody::new(results, Some("Plan OK"), write_validate_row_text);
         if has_errors {
-            Err(crate::verb::Error::Report {
+            Err(crate::handler::Error::Report {
                 body,
                 source: Error::validation_failed(
                     "plan-structural-errors",
@@ -122,7 +120,7 @@ pub struct NextInput {}
 pub struct Next;
 
 impl<P: Anchor> Handler<P> for Next {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = NextInput;
     type Output = Out<NextBody>;
 
@@ -204,7 +202,7 @@ pub struct StatusInput {}
 pub struct Status;
 
 impl<P: Anchor> Handler<P> for Status {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = StatusInput;
     type Output = Out<StatusBody>;
 
@@ -308,7 +306,7 @@ pub struct Transition {
 }
 
 impl<P: Anchor> Handler<P> for Transition {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = TransitionInput;
     type Output = Out<TransitionBody>;
 
@@ -610,7 +608,7 @@ pub struct Archive {
 }
 
 impl<P: Anchor> Handler<P> for Archive {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ArchiveInput;
     type Output = Out<ArchiveBody>;
 

@@ -11,6 +11,7 @@ use artifacts::discovery::{Discovery, DiscoveryResolveError};
 use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
 use serde::{Deserialize, Serialize};
+
 use crate::change::{Divergence, SliceSourceBinding};
 use crate::config::Layout;
 

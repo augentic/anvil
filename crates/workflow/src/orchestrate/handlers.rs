@@ -2,7 +2,7 @@
 //! extract`, `slice build` / `slice refine` / `slice merge run`, and
 //! `plan author` / `plan execute`.
 //!
-//! Each verb drives the matching [`workflow::orchestrate`] entry point
+//! Each command drives the matching [`crate::orchestrate`] entry point
 //! against the provider's seam: the deterministic verbs bound
 //! [`Anchor`] alone, the judgment verbs additionally bound the seam
 //! traits ([`omnia_guest::Model`], [`SourceSeam`], [`TargetSeam`]) they
@@ -20,10 +20,10 @@ use serde::{Deserialize, Serialize};
 
 use super::{self as orchestrate, ExecuteOutcome};
 use crate::change::{LoopStep, SourceBinding};
+use crate::handler::{Anchor, Ctx, Out, Render};
 use crate::merge::artifact_classes;
 use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 use crate::slice::BuildStatus;
-use crate::verb::{Anchor, Ctx, Out, Render};
 
 /// The live shared mount every build applies against (deployments
 /// share one live tree) — the caller-resolved working tree the native
@@ -57,7 +57,7 @@ pub struct Survey {
 }
 
 impl<P: Anchor + SourceSeam> Handler<P> for Survey {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = SurveyInput;
     type Output = Out<SurveyBody>;
 
@@ -129,7 +129,7 @@ pub struct Extract {
 }
 
 impl<P: Anchor + SourceSeam> Handler<P> for Extract {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ExtractInput;
     type Output = Out<ExtractBody>;
 
@@ -194,7 +194,7 @@ pub struct Build {
 }
 
 impl<P: Anchor + TargetSeam> Handler<P> for Build {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = BuildInput;
     type Output = Out<BuildBody>;
 
@@ -267,7 +267,7 @@ pub struct MergeRun {
 }
 
 impl<P: Anchor> Handler<P> for MergeRun {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = MergeRunInput;
     type Output = Out<MergeBody>;
 
@@ -346,7 +346,7 @@ pub struct Author {
 }
 
 impl<P: Anchor + Model + SourceSeam> Handler<P> for Author {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = AuthorInput;
     type Output = Out<AuthorBody>;
 
@@ -449,7 +449,7 @@ pub struct Refine {
 }
 
 impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Refine {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = RefineInput;
     type Output = Out<RefineBody>;
 
@@ -533,7 +533,7 @@ pub struct ExecuteInput {}
 pub struct Execute;
 
 impl<P: Anchor + Model + SourceSeam + TargetSeam> Handler<P> for Execute {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = ExecuteInput;
     type Output = Out<ExecuteBody>;
 

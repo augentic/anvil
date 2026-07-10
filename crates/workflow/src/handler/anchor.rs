@@ -1,5 +1,5 @@
 //! [`Anchor`] — the provider-supplied project anchoring every
-//! project-scoped verb loads its [`crate::verb::Ctx`] from.
+//! project-scoped verb loads its [`crate::handler::Ctx`] from.
 
 use std::path::Path;
 

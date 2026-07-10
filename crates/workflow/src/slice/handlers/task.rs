@@ -8,10 +8,9 @@ use artifacts::task::{Task, mark_complete, parse_tasks};
 use error::{Error, Result};
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
-use crate::slice::SliceMetadata;
 
-use crate::verb::{Anchor, Ctx};
-use crate::verb::{Out, Render};
+use crate::handler::{Anchor, Ctx, Out, Render};
+use crate::slice::SliceMetadata;
 
 // ---------------------------------------------------------------------------
 // slice task progress
@@ -33,7 +32,7 @@ pub struct TaskProgress {
 }
 
 impl<P: Anchor> Handler<P> for TaskProgress {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = TaskProgressInput;
     type Output = Out<ProgressBody>;
 
@@ -104,7 +103,7 @@ pub struct TaskMark {
 }
 
 impl<P: Anchor> Handler<P> for TaskMark {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = TaskMarkInput;
     type Output = Out<MarkBody>;
 

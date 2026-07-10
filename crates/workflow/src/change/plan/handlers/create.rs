@@ -10,15 +10,13 @@ use std::io::Write;
 use error::{Error, is_kebab};
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
+
+use super::args::parse_override_assigns;
 use crate::change::{
     Lifecycle, Plan, SourceBinding, mutate_authority_overrides, reject_orphan_overrides,
 };
+use crate::handler::{Anchor, Ctx, Out, Render};
 use crate::journal;
-
-use super::args::parse_override_assigns;
-use crate::verb::Anchor;
-use crate::verb::Ctx;
-use crate::verb::{Out, Render};
 
 /// Wire input for `plan create`.
 ///
@@ -65,7 +63,7 @@ pub struct Create {
 }
 
 impl<P: Anchor> Handler<P> for Create {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = CreateInput;
     type Output = Out<CreateBody>;
 

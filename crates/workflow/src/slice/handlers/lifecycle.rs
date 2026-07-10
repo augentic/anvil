@@ -7,8 +7,8 @@ use jiff::Timestamp;
 use omnia_guest::api::{Context, Handler, Reply};
 use serde::{Deserialize, Serialize};
 
+use crate::handler::{Anchor, Ctx, Out, Render};
 use crate::slice::{CreateIfExists, Created, LifecycleStatus, actions as slice_actions};
-use crate::verb::{Anchor, Ctx, Out, Render};
 
 // ---------------------------------------------------------------------------
 // slice create
@@ -44,7 +44,7 @@ pub struct Create {
 }
 
 impl<P: Anchor> Handler<P> for Create {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = CreateInput;
     type Output = Out<Created>;
 
@@ -135,7 +135,7 @@ pub struct Transition {
 }
 
 impl<P: Anchor> Handler<P> for Transition {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = TransitionInput;
     type Output = Out<TransitionBody>;
 
@@ -218,7 +218,7 @@ pub struct Drop {
 }
 
 impl<P: Anchor> Handler<P> for Drop {
-    type Error = crate::verb::Error;
+    type Error = crate::handler::Error;
     type Input = DropInput;
     type Output = Out<DropBody>;
 

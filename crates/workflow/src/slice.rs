@@ -4,6 +4,7 @@
 
 pub mod actions;
 pub mod build;
+pub mod handlers;
 pub mod lifecycle;
 pub mod metadata;
 pub mod model;
@@ -11,7 +12,6 @@ pub mod outcome;
 pub mod provenance;
 pub mod synthesis;
 pub mod validate;
-pub mod verbs;
 
 pub use actions::{CreateIfExists, Created, Overlap};
 pub use build::assemble::build_request;

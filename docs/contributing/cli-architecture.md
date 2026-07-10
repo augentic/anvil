@@ -21,12 +21,12 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  cli::parse + src/dispatch.rs
+src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest (src/lib.rs)  →  cli::parse + src/argv.rs
 ```
 
-The full operator grammar — provisioning commands included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's exhaustive dispatch match (`src/dispatch.rs`) converts each parsed clap action into the matching `Input` DTO and drives it through `cli::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
+The full operator grammar — provisioning commands included — lives in `cli` (`crates/cli/src/cli.rs`), so `--help`, usage errors, and completions are served by the guest with the real binary name. Command handlers live in `crates/workflow` as transport-neutral `Handler<P>` implementations co-located with their kernels; the guest's argv route table (`src/argv.rs`) converts each parsed clap action into the matching `Input` DTO and drives it through `cli::front::run` against the WIT-backed provider. The handler contract (`Handler<P>`, `Ctx`, `Out` / `Render`, exit-code mapping) is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md). Routing layout and vocabulary: [rfcs/handler-routing.md](../../rfcs/handler-routing.md).
 
-The guest also exports `wasi:http/incoming-handler`: a hand-written route table in each shim (`src/lib.rs` for the wasm guest, `specify-dev serve` for the native shim) served through `omnia_wasi_http::serve` / `axum::serve` against the same provider, so every routed command is reachable over HTTP with the identical handler body and JSON envelope.
+The guest also exports `wasi:http/incoming-handler`: a hand-written route table in `src/http.rs` served through `omnia_wasi_http::serve` / `axum::serve` against the same provider, so every routed command is reachable over HTTP with the identical handler body and JSON envelope.
 
 ## JSON envelope contract
 

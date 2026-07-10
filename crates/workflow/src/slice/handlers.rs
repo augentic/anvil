@@ -1,7 +1,8 @@
-//! The `specify slice *` verb family (plus `archive prune`, whose
-//! kernel lives in [`super::actions::prune`]). `slice build` / `slice
-//! refine` / `slice merge run` are orchestration verbs and live in
-//! [`crate::orchestrate::verbs`].
+//! The `specify slice *` command handlers, plus `archive prune`.
+//!
+//! The prune kernel lives in [`super::actions::prune`]. `slice build`
+//! / `slice refine` / `slice merge run` are orchestration commands
+//! and live in [`crate::orchestrate::handlers`].
 
 mod lifecycle;
 mod merge;
@@ -11,10 +12,6 @@ mod prune;
 mod task;
 mod touched;
 mod validate;
-
-/// Re-exported so the verb submodules and orchestration callers keep
-/// one import path to the merge synthesiser's class table.
-pub use crate::merge::artifact_classes;
 
 pub use self::lifecycle::{
     Create, CreateInput, Drop, DropBody, DropInput, Transition, TransitionBody, TransitionInput,
@@ -32,3 +29,6 @@ pub use self::touched::{
     Overlap, OverlapBody, OverlapInput, SpecsBody, TouchedSpecs, TouchedSpecsInput,
 };
 pub use self::validate::{Validate, ValidateInput};
+/// Re-exported so the handler submodules and orchestration callers
+/// keep one import path to the merge synthesiser's class table.
+pub use crate::merge::artifact_classes;

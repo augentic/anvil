@@ -23,7 +23,7 @@ struct Project {
     root: PathBuf,
 }
 
-impl workflow::verb::Anchor for Project {
+impl workflow::handler::Anchor for Project {
     fn project_root(&self) -> &Path {
         &self.root
     }
@@ -57,9 +57,9 @@ impl Project {
 
 /// Drive one verb handler against the project anchor, returning the
 /// typed body or the verb-layer failure.
-async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, workflow::verb::Error>
+async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, workflow::handler::Error>
 where
-    R: Handler<Project, Output = workflow::verb::Out<B>, Error = workflow::verb::Error>,
+    R: Handler<Project, Output = workflow::handler::Out<B>, Error = workflow::handler::Error>,
     B: Send + Sync,
 {
     let reply = R::handler(input)?.owner("specify").provider(project).handle().await?;
@@ -81,9 +81,9 @@ mod registry {
     #[tokio::test]
     async fn add_mints_registry() {
         let project = Project::initialised();
-        let body = run::<workflow::registry::verbs::Add, _>(
+        let body = run::<workflow::registry::handlers::Add, _>(
             &project,
-            workflow::registry::verbs::AddInput {
+            workflow::registry::handlers::AddInput {
                 name: "alpha".into(),
                 url: "git@example.com:org/alpha.git".into(),
                 adapter: None,
@@ -102,9 +102,9 @@ mod registry {
     async fn duplicate_add_fails() {
         let project = Project::initialised();
         stage_registry(&project.root);
-        let err = run::<workflow::registry::verbs::Add, _>(
+        let err = run::<workflow::registry::handlers::Add, _>(
             &project,
-            workflow::registry::verbs::AddInput {
+            workflow::registry::handlers::AddInput {
                 name: "alpha".into(),
                 url: "git@example.com:org/alpha.git".into(),
                 adapter: None,
@@ -123,18 +123,21 @@ mod registry {
     async fn validate_staged_catalogue() {
         let project = Project::initialised();
         stage_registry(&project.root);
-        run::<workflow::registry::verbs::Validate, _>(&project, workflow::registry::verbs::ValidateInput {})
-            .await
-            .expect("staged catalogue validates");
+        run::<workflow::registry::handlers::Validate, _>(
+            &project,
+            workflow::registry::handlers::ValidateInput {},
+        )
+        .await
+        .expect("staged catalogue validates");
     }
 
     #[tokio::test]
     async fn remove_drops_entry() {
         let project = Project::initialised();
         stage_registry(&project.root);
-        run::<workflow::registry::verbs::Remove, _>(
+        run::<workflow::registry::handlers::Remove, _>(
             &project,
-            workflow::registry::verbs::RemoveInput { name: "alpha".into() },
+            workflow::registry::handlers::RemoveInput { name: "alpha".into() },
         )
         .await
         .expect("remove succeeds");
@@ -161,9 +164,9 @@ mod archive {
     async fn prune_keeps_newest() {
         let project = Project::initialised();
         let archive = stage(&project.root);
-        let body = run::<workflow::slice::verbs::Prune, _>(
+        let body = run::<workflow::slice::handlers::Prune, _>(
             &project,
-            workflow::slice::verbs::PruneInput {
+            workflow::slice::handlers::PruneInput {
                 keep: Some(1),
                 older_than: None,
                 dry_run: false,
@@ -180,9 +183,9 @@ mod archive {
     async fn prune_requires_bound() {
         let project = Project::initialised();
         stage(&project.root);
-        let err = run::<workflow::slice::verbs::Prune, _>(
+        let err = run::<workflow::slice::handlers::Prune, _>(
             &project,
-            workflow::slice::verbs::PruneInput {
+            workflow::slice::handlers::PruneInput {
                 keep: None,
                 older_than: None,
                 dry_run: false,
@@ -203,9 +206,9 @@ mod scaffold {
     #[tokio::test]
     async fn workspace_mode() {
         let project = Project::bare();
-        let body = run::<workflow::init::verbs::Scaffold, _>(
+        let body = run::<workflow::init::handlers::Scaffold, _>(
             &project,
-            workflow::init::verbs::ScaffoldInput {
+            workflow::init::handlers::ScaffoldInput {
                 adapter: None,
                 name: Some("demo-workspace".into()),
                 description: None,
@@ -242,9 +245,9 @@ mod scaffold {
         )
         .expect("stage describe sidecar");
 
-        let body = run::<workflow::init::verbs::Scaffold, _>(
+        let body = run::<workflow::init::handlers::Scaffold, _>(
             &project,
-            workflow::init::verbs::ScaffoldInput {
+            workflow::init::handlers::ScaffoldInput {
                 adapter: Some("demo".into()),
                 name: Some("demo-project".into()),
                 description: None,
@@ -268,9 +271,9 @@ mod journal {
     #[tokio::test]
     async fn emit_appends_line() {
         let project = Project::initialised();
-        let body = run::<workflow::journal::verbs::Emit, _>(
+        let body = run::<workflow::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::verbs::EmitInput {
+            workflow::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some(r#"{"slice-name":"billing"}"#.into()),
             },
@@ -289,9 +292,9 @@ mod journal {
     #[tokio::test]
     async fn emit_unknown_event_refused() {
         let project = Project::initialised();
-        let err = run::<workflow::journal::verbs::Emit, _>(
+        let err = run::<workflow::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::verbs::EmitInput {
+            workflow::journal::handlers::EmitInput {
                 event: "no.such.event".into(),
                 payload: None,
             },
@@ -307,9 +310,9 @@ mod journal {
     #[tokio::test]
     async fn emit_bad_payload_refused() {
         let project = Project::initialised();
-        let err = run::<workflow::journal::verbs::Emit, _>(
+        let err = run::<workflow::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::verbs::EmitInput {
+            workflow::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some("{}".into()),
             },
@@ -329,18 +332,18 @@ mod journal {
     #[tokio::test]
     async fn show_reads_filtered() {
         let project = Project::initialised();
-        run::<workflow::journal::verbs::Emit, _>(
+        run::<workflow::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::verbs::EmitInput {
+            workflow::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some(r#"{"slice-name":"billing"}"#.into()),
             },
         )
         .await
         .expect("emit succeeds");
-        let matched = run::<workflow::journal::verbs::Show, _>(
+        let matched = run::<workflow::journal::handlers::Show, _>(
             &project,
-            workflow::journal::verbs::ShowInput {
+            workflow::journal::handlers::ShowInput {
                 filter: Some("slice.build".into()),
                 limit: None,
             },
@@ -348,9 +351,9 @@ mod journal {
         .await
         .expect("show succeeds");
         assert_eq!(matched.count, 1, "the emitted event matches its prefix");
-        let unmatched = run::<workflow::journal::verbs::Show, _>(
+        let unmatched = run::<workflow::journal::handlers::Show, _>(
             &project,
-            workflow::journal::verbs::ShowInput {
+            workflow::journal::handlers::ShowInput {
                 filter: Some("plan.".into()),
                 limit: None,
             },
