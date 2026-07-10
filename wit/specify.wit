@@ -165,11 +165,11 @@ interface source {
     claims: list<claim>,
   }
 
-  /// The adapter's deterministic self-description (RFC-64) — the facts
+  /// The adapter's deterministic metadata (RFC-64) — the facts
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world,
   /// so only the compatibility floor remains on the record.
-  record manifest {
+  record metadata {
     /// Optional host-CLI compatibility floor: the exact minimum
     /// `specify` platform version this adapter needs. The host compares
     /// it against the running binary at resolve time and aborts when
@@ -177,11 +177,11 @@ interface source {
     specify-floor: option<string>,
   }
 
-  /// Deterministic self-description, read by the host at resolve time
+  /// Deterministic adapter metadata, read by the host at resolve time
   /// and cached against the artifact digest. Metadata, not judgment:
   /// effect-free and answerable from compiled-in constants — no model
   /// call, no filesystem access.
-  describe: func(id: adapter-id) -> manifest;
+  metadata: func(id: adapter-id) -> metadata;
 
   /// Lightly survey the source to create a map of its contents (decompose
   /// into leads). An `async func` like every judgment operation: the guest
@@ -321,12 +321,12 @@ interface target {
     default: list<platform>,
   }
 
-  /// The adapter's deterministic self-description (RFC-64) — the facts
+  /// The adapter's deterministic metadata (RFC-64) — the facts
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world;
   /// the record carries the compatibility floor plus the target's
   /// declared build inputs and platform capability.
-  record manifest {
+  record metadata {
     /// Optional host-CLI compatibility floor: the exact minimum
     /// `specify` platform version this adapter needs. The host compares
     /// it against the running binary at resolve time and aborts when
@@ -341,11 +341,11 @@ interface target {
     platforms: option<platforms-capability>,
   }
 
-  /// Deterministic self-description, read by the host at resolve time
+  /// Deterministic adapter metadata, read by the host at resolve time
   /// and cached against the artifact digest. Metadata, not judgment:
   /// effect-free and answerable from compiled-in constants — no model
   /// call, no filesystem access.
-  describe: func(id: adapter-id) -> manifest;
+  metadata: func(id: adapter-id) -> metadata;
 
   /// Guidance on the expected build artifacts for this target, read by core
   /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary

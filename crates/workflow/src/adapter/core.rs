@@ -4,8 +4,8 @@
 //! lives in the wasm-pkg package reference (`specify:<name>@<semver>`),
 //! axis in the exported world (`source` xor `target`), and the
 //! remaining metadata (compatibility floor, build inputs, platforms
-//! capability) in the component's own deterministic `describe` answer
-//! (see [`super::describe`]). There is no on-disk manifest.
+//! in the component's own deterministic `metadata` export
+//! (see [`super::metadata`]). There is no on-disk manifest.
 //!
 //! Resolution lives in [`super::resolve`]; this module owns the typed
 //! identity structs, the location enum, and the post-resolve floor
@@ -23,7 +23,7 @@ use crate::adapter::operation::{SourceOperation, TargetOperation};
 ///
 /// Source vs target — see workflow §Adapter vocabulary. The closed enum
 /// routes the resolver dispatcher (`commands::resolve_adapter`) and the
-/// describe dispatch; the in-memory adapters themselves are axis-typed
+/// metadata dispatch; the in-memory adapters themselves are axis-typed
 /// ([`SourceAdapter`] / [`TargetAdapter`]) so internal call sites no
 /// longer carry the `axis` argument forward past the resolver boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
@@ -48,7 +48,7 @@ impl Axis {
     }
 
     /// The `specify:adapter` axis interface a component of this axis
-    /// exports — the instance name the describe dispatch invokes.
+    /// exports — the instance name the metadata dispatch invokes.
     #[must_use]
     pub const fn interface(self) -> &'static str {
         match self {
@@ -58,7 +58,7 @@ impl Axis {
     }
 }
 
-/// One adapter-declared build input from the target's `describe`
+/// One adapter-declared build input from the target's `metadata`
 /// answer.
 ///
 /// Each entry names a path the target's `build` operation consumes,
@@ -76,7 +76,7 @@ pub struct BuildInputDeclaration {
     pub required: bool,
 }
 
-/// Declarative platforms capability from a target's `describe` answer.
+/// Declarative platforms capability from a target's metadata answer.
 ///
 /// When a target declares `platforms`, the CLI uses this to enforce
 /// platform requirements at `specify init` time and to scaffold
@@ -252,7 +252,7 @@ pub const fn dev_version() -> semver::Version {
 ///
 /// Constructed by [`SourceAdapter::resolve`]: `name`/`version` from the
 /// [`AdapterRef`] identity, `requires_specify` from the component's
-/// cached `describe` answer.
+/// cached metadata answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceAdapter {
     /// Kebab-case adapter name from the resolved identity.
@@ -260,7 +260,7 @@ pub struct SourceAdapter {
     /// Semver adapter version: the pin for store-resolved identities,
     /// [`dev_version`] for development artifacts.
     pub version: semver::Version,
-    /// Optional host-CLI compatibility floor from the `describe`
+    /// Optional host-CLI compatibility floor from the metadata
     /// answer's `specify-floor`. The resolver compares it against the
     /// running binary (`check_requires_specify`) and aborts with
     /// `adapter-cli-too-old` (exit 3) when the binary is older.
@@ -271,7 +271,7 @@ pub struct SourceAdapter {
 ///
 /// Constructed by [`TargetAdapter::resolve`]: `name`/`version` from the
 /// [`AdapterRef`] identity, the rest from the component's cached
-/// `describe` answer.
+/// metadata answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetAdapter {
     /// Kebab-case adapter name from the resolved identity.
@@ -279,17 +279,17 @@ pub struct TargetAdapter {
     /// Semver adapter version: the pin for store-resolved identities,
     /// [`dev_version`] for development artifacts.
     pub version: semver::Version,
-    /// Optional host-CLI compatibility floor from the `describe`
+    /// Optional host-CLI compatibility floor from the metadata
     /// answer's `specify-floor`. The resolver compares it against the
     /// running binary (`check_requires_specify`) and aborts with
     /// `adapter-cli-too-old` (exit 3) when the binary is older.
     pub requires_specify: Option<semver::Version>,
-    /// Adapter-declared build inputs from the `describe` answer. Each
+    /// Adapter-declared build inputs from the metadata answer. Each
     /// entry is a path relative to the build request's `inputs.root`,
     /// flagged `required`; the guest build orchestrator assembles
     /// `inputs.artifacts.additional[]` from this list.
     pub inputs: Vec<BuildInputDeclaration>,
-    /// Optional platforms capability from the `describe` answer. When
+    /// Optional platforms capability from the metadata answer. When
     /// present the target declares the closed set of [`Platform`]
     /// tokens it accepts, whether projects must declare platforms, and
     /// the default set for greenfield scaffolding.
@@ -301,7 +301,7 @@ pub struct TargetAdapter {
 /// is reachable through [`AdapterLocation::path`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSourceAdapter {
-    /// Identity + describe-derived metadata.
+    /// Identity + metadata-derived fields.
     pub manifest: SourceAdapter,
     /// Whether the component came from the global store or a
     /// development release build, and the file itself via
@@ -314,7 +314,7 @@ pub struct ResolvedSourceAdapter {
 /// is reachable through [`AdapterLocation::path`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedTargetAdapter {
-    /// Identity + describe-derived metadata.
+    /// Identity + metadata-derived fields.
     pub manifest: TargetAdapter,
     /// Whether the component came from the global store or a
     /// development release build, and the file itself via
@@ -345,7 +345,7 @@ impl TargetAdapter {
     }
 }
 
-/// Parse a `describe` answer's `specify-floor` string into a typed
+/// Parse a metadata answer's `specify-floor` string into a typed
 /// semver, naming the identity and component path on failure.
 ///
 /// # Errors
@@ -361,7 +361,7 @@ pub(super) fn parse_floor(
     semver::Version::parse(floor).map(Some).map_err(|err| {
         Error::validation_failed(
             "adapter-floor-malformed",
-            "an adapter's describe answer declares a semver `specify-floor`",
+            "an adapter's metadata answer declares a semver `specify-floor`",
             format!(
                 "adapter `{name}` ({}) declares `specify-floor: {floor}`, which is not an exact semver: {err}",
                 component.display(),
@@ -373,7 +373,7 @@ pub(super) fn parse_floor(
 /// Enforce an adapter's host-CLI compatibility floor.
 ///
 /// `floor` is the adapter's optional `specify` minimum from its
-/// `describe` answer (already parsed into a typed `semver::Version`);
+/// metadata answer (already parsed into a typed `semver::Version`);
 /// `current` is the running binary's version (the resolve call sites
 /// pass `env!("CARGO_PKG_VERSION")`, the same source [`crate::config`]
 /// uses). When the binary is older than the floor the adapter cannot be

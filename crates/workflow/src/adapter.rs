@@ -3,9 +3,9 @@
 //! An adapter is a single WebAssembly component. Identity lives in the
 //! wasm-pkg package reference (`specify:<name>@<semver>`), axis in the
 //! exported world (`source` xor `target`), and the remaining metadata
-//! in the component's own deterministic `describe` answer, dispatched
+//! in the component's own deterministic `metadata` export, dispatched
 //! host-side at resolve time and cached against the component digest
-//! (see [`describe`]).
+//! (see [`metadata`]).
 //!
 //! Source and target adapters split into [`SourceAdapter`] /
 //! [`TargetAdapter`] in memory, each carrying its closed operation set
@@ -20,7 +20,7 @@
 //! or the sibling `specify-adapters` checkout.
 
 mod core;
-pub mod describe;
+pub mod metadata;
 pub mod handlers;
 pub(crate) mod operation;
 mod resolve;

@@ -2,7 +2,7 @@
 //!
 //! [`SourceAdapter::resolve`] / [`TargetAdapter::resolve`] locate the
 //! single `.wasm` component for an [`AdapterRef`] identity,
-//! obtain the cached `describe` answer ([`super::describe`]), and run
+//! obtain the cached metadata answer ([`super::metadata`]), and run
 //! the post-resolve floor gate in [`super::core`].
 
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use super::core::{
     AdapterLocation, AdapterRef, Axis, ResolvedSourceAdapter, ResolvedTargetAdapter, SourceAdapter,
     TargetAdapter, check_requires_specify, parse_floor,
 };
-use super::describe;
+use super::metadata;
 
 impl SourceAdapter {
     /// Resolve a source adapter by its [`AdapterRef`] identity
@@ -24,16 +24,16 @@ impl SourceAdapter {
     /// a bare name resolves the development release build at
     /// `target/wasm32-wasip2/release/<name>.wasm` under the
     /// project or the sibling `specify-adapters` checkout. Metadata
-    /// comes from the component's cached `describe` answer.
+    /// comes from the component's cached metadata answer.
     ///
     /// # Errors
     ///
     /// - `adapter-not-found` — no store entry / development artifact.
     /// - `adapter-digest-mismatch` — the store entry failed
     ///   verify-on-read.
-    /// - `adapter-describe-unavailable` / `adapter-describe-failed` /
-    ///   `adapter-axis-mismatch` — the describe dispatch failed.
-    /// - `adapter-floor-malformed` — the describe answer's
+    /// - `adapter-metadata-unavailable` / `adapter-metadata-failed` /
+    ///   `adapter-axis-mismatch` — the metadata dispatch failed.
+    /// - `adapter-floor-malformed` — the metadata answer's
     ///   `specify-floor` is not exact semver.
     /// - `adapter-cli-too-old` — the running binary is older than the
     ///   adapter's declared floor (exit 3).
@@ -42,7 +42,7 @@ impl SourceAdapter {
     ) -> Result<ResolvedSourceAdapter, Error> {
         let name = adapter_ref.name.as_str();
         let location = locate(Axis::Source, adapter_ref, project_dir)?;
-        let answer = describe::describe(&location, Axis::Source, name)?;
+        let answer = metadata::metadata(&location, Axis::Source, name)?;
         let floor = parse_floor(answer.specify_floor.as_deref(), name, location.path())?;
         check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, location.path())?;
         Ok(ResolvedSourceAdapter {
@@ -60,9 +60,9 @@ impl TargetAdapter {
     /// Resolve a target adapter by its [`AdapterRef`] identity
     /// (`(name, version)`).
     ///
-    /// Same probe and describe pipeline as [`SourceAdapter::resolve`],
+    /// Same probe and metadata pipeline as [`SourceAdapter::resolve`],
     /// additionally carrying the target's declared build inputs and
-    /// platforms capability from the `describe` answer.
+    /// platforms capability from the metadata answer.
     ///
     /// # Errors
     ///
@@ -72,7 +72,7 @@ impl TargetAdapter {
     ) -> Result<ResolvedTargetAdapter, Error> {
         let name = adapter_ref.name.as_str();
         let location = locate(Axis::Target, adapter_ref, project_dir)?;
-        let answer = describe::describe(&location, Axis::Target, name)?;
+        let answer = metadata::metadata(&location, Axis::Target, name)?;
         let floor = parse_floor(answer.specify_floor.as_deref(), name, location.path())?;
         check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, location.path())?;
         Ok(ResolvedTargetAdapter {
