@@ -1,11 +1,9 @@
-//! Model-free composed coverage for the workflow guest's WASM-only boundary.
+//! Replay-backed composed coverage for the workflow guest's WASM-only boundary.
 
 #![cfg(not(target_arch = "wasm32"))]
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context as _, Result};
 use omnia::wasmtime_wasi::ResourceTable;
@@ -15,10 +13,9 @@ use omnia::{
 };
 use omnia_testkit::temp_manifest;
 use omnia_wasi_http::{HttpDefault, WasiHttp, WasiHttpCtxView};
-use omnia_wasi_model::{Answer, FutureResult, HasModel, ToolHost, WasiModel, WasiModelCtx};
+use omnia_wasi_model::{HasModel, ModelDefault, WasiModel, WasiModelCtx};
 use scenario::grade::{Execution, StepResult};
-use scenario::{ModelBackend, Outcome, Runtime as ScenarioRuntime, Scenario};
-use serde_json::json;
+use scenario::{AssertionId, ModelBackend, Outcome, Runtime as ScenarioRuntime, Scenario};
 
 const SOURCE_INTERFACE: &str = "specify:adapter/source@0.1.0";
 const TARGET_INTERFACE: &str = "specify:adapter/target@0.1.0";
@@ -40,7 +37,7 @@ impl Wiring<Bundle> for Hosts {
 #[derive(Clone)]
 struct Bundle {
     http: HttpDefault,
-    model: RecordingModel,
+    model: ModelDefault,
 }
 
 impl std::fmt::Debug for Bundle {
@@ -53,131 +50,12 @@ impl omnia::Backends for Bundle {
     async fn connect() -> Result<Self> {
         Ok(Self {
             http: HttpDefault::connect().await?,
-            model: RecordingModel,
+            model: ModelDefault::from_dir(
+                Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../quality/fixtures/replay/composed-loop"),
+            )?,
         })
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-struct RecordingModel;
-
-static REQUEST_INDEX: AtomicUsize = AtomicUsize::new(0);
-
-impl WasiModelCtx for RecordingModel {
-    fn complete(
-        &self, request: omnia_wasi_model::Request, _tool_host: Arc<dyn ToolHost>,
-    ) -> FutureResult<Answer> {
-        let index = REQUEST_INDEX.fetch_add(1, Ordering::SeqCst);
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../quality/fixtures/replay/composed-loop")
-            .join(format!("request-{index}.json"));
-        std::fs::create_dir_all(path.parent().expect("request fixture parent"))
-            .expect("create request fixture directory");
-        std::fs::write(
-            &path,
-            serde_json::to_vec_pretty(&replay_value(&request)).expect("serialise replay request"),
-        )
-        .expect("write replay request");
-        let value = if index == 0 {
-            json!({
-                "version": 1,
-                "kind": "response",
-                "slices": [{
-                    "name": "echo",
-                    "sources": [{ "source": "echo", "lead": "echo" }],
-                    "rationale": "The echo source emits one lead."
-                }],
-                "gate": {
-                    "change": "## Echo\n\nExercise the composed workflow boundary.",
-                    "discovery-summary": "Sources: 1. Leads: 1.",
-                    "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| echo | echo-source | \"hello\" |"
-                }
-            })
-        } else {
-            json!({
-                "version": 1,
-                "kind": "response",
-                "slice": "echo",
-                "model": {
-                    "requirements": [{
-                        "title": "echo survives the workflow",
-                        "domain": "echo",
-                        "claims": [{ "source": "echo", "id": "echo.excerpt.001", "kind": "excerpt" }],
-                        "statement": "The echo lead is represented in the baseline.",
-                        "scenarios": ["Echo baseline merged"]
-                    }],
-                    "tasks": [{
-                        "id": "TASK-001",
-                        "text": "Exercise the echo target.",
-                        "satisfies": ["REQ-001"]
-                    }]
-                },
-                "artifacts": {
-                    "proposal": "# Echo\n\n## Why\n\nExercise the composed boundary.\n\n## Domains\n\n- echo — fixture domain\n\n## Non-goals\n\n- Production behaviour.\n",
-                    "design": "# Design\n\nUse the deterministic echo target.\n",
-                    "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Exercise the echo target (TASK-001)\n",
-                    "specs": [{
-                        "domain": "echo",
-                        "content": "## Echo\n\nThe echo lead survives the workflow.\n"
-                    }]
-                }
-            })
-        };
-        Box::pin(std::future::ready(Ok(Answer {
-            value,
-            usage: None,
-            transcript: None,
-        })))
-    }
-}
-
-fn replay_value(request: &omnia_wasi_model::Request) -> serde_json::Value {
-    let format = match &request.format {
-        omnia_wasi_model::Format::Text => json!({ "kind": "text" }),
-        omnia_wasi_model::Format::Json => json!({ "kind": "json" }),
-        omnia_wasi_model::Format::Schema(schema) => json!({
-            "kind": "schema",
-            "schema": { "name": schema.name, "schema": schema.schema },
-        }),
-    };
-    let tools = request
-        .tools
-        .iter()
-        .map(|tool| match tool {
-            omnia_wasi_model::Tool::Function(function) => json!({
-                "function": {
-                    "name": function.name,
-                    "description": function.description,
-                    "parameters": function.parameters,
-                },
-            }),
-            omnia_wasi_model::Tool::Mcp(mcp) => json!({
-                "mcp": { "name": mcp.name, "tools": mcp.tools, "url": mcp.url },
-            }),
-        })
-        .collect::<Vec<_>>();
-    json!({
-        "model": request.model,
-        "system": request.system,
-        "messages": request.messages.iter().map(|message| json!({
-            "role": message.role.to_string(),
-            "content": message.content,
-        })).collect::<Vec<_>>(),
-        "generation": request.generation.as_ref().map(|generation| json!({
-            "temperature": generation.temperature,
-            "top_p": generation.top_p,
-            "max_tokens": generation.max_tokens,
-            "stop": generation.stop,
-            "seed": generation.seed,
-            "effort": generation.effort.map(|effort| effort.to_string()),
-        })),
-        "format": format,
-        "tools": tools,
-        "grants": {
-            "references": request.grants.references,
-            "verify": request.grants.verify,
-        },
-    })
 }
 
 impl HasHttp for Bundle {
@@ -265,7 +143,6 @@ async fn init_dispatches_and_writes_preopens() -> Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn replay_drives_full_loop() -> Result<()> {
-    REQUEST_INDEX.store(0, Ordering::SeqCst);
     let scenario = Scenario::load(
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../quality/scenarios/composed-loop.yaml"),
     )
@@ -298,7 +175,7 @@ async fn replay_drives_full_loop() -> Result<()> {
         steps.insert(
             id.to_owned(),
             StepResult {
-                exit_code: if status == ExitStatus::SUCCESS { 0 } else { 1 },
+                exit_code: i32::from(status != ExitStatus::SUCCESS),
                 stdout: String::new(),
                 stderr: String::new(),
             },
@@ -306,7 +183,10 @@ async fn replay_drives_full_loop() -> Result<()> {
         assert_eq!(status, ExitStatus::SUCCESS, "composed step `{id}` failed");
     }
 
-    let assertions = scenario::grade::hard(&scenario, &Execution::new(project.path(), steps));
+    let assertions = grade_composed(
+        scenario::grade::hard(&scenario, &Execution::new(project.path(), steps)),
+        project.path(),
+    )?;
     assert!(
         assertions.iter().all(|assertion| assertion.outcome == Outcome::Pass),
         "{assertions:?}"
@@ -316,6 +196,37 @@ async fn replay_drives_full_loop() -> Result<()> {
         "merge writes the baseline spec"
     );
     Ok(())
+}
+
+fn grade_composed(
+    mut assertions: Vec<scenario::AssertionResult>, project: &Path,
+) -> Result<Vec<scenario::AssertionResult>> {
+    let plan =
+        std::fs::read_to_string(project.join("plan.yaml")).context("reading composed loop plan")?;
+    let baseline = project.join(".specify/specs/echo/spec.md");
+    for assertion in &mut assertions {
+        let (passed, evidence) = match assertion.id {
+            AssertionId::ComposedPlanDrained => (
+                plan.contains("status: done")
+                    && !plan.contains("status: pending")
+                    && !plan.contains("status: in-progress"),
+                "plan.yaml has one done entry and no pending entry".to_owned(),
+            ),
+            AssertionId::ComposedArtifactsComplete => (
+                std::fs::read_to_string(&baseline)
+                    .is_ok_and(|spec| spec.contains("REQ-001") && spec.contains("Sources: echo")),
+                "merged baseline contains the projected requirement and provenance".to_owned(),
+            ),
+            AssertionId::ComposedBaselineMergeVisible => {
+                (baseline.is_file(), baseline.display().to_string())
+            }
+            _ => continue,
+        };
+        assertion.outcome = if passed { Outcome::Pass } else { Outcome::Fail };
+        assertion.evidence = Some(evidence);
+        assertion.detail = (!passed).then(|| "composed profile evaluator failed".to_owned());
+    }
+    Ok(assertions)
 }
 
 fn manifest(project: &Path, cache: &Path) -> String {

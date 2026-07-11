@@ -1,6 +1,6 @@
 [package]
 name = "specify-composed-tests"
-description = "Model-free composed WASM smoke tests for the Specify workflow core"
+description = "Composed WASM replay tests for the Specify workflow core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -15,7 +15,6 @@ omnia-testkit = { workspace = true, features = ["runtime"] }
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 scenario.workspace = true
-serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 

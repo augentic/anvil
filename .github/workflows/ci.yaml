@@ -35,10 +35,10 @@ jobs:
       - name: Framework quality checks
         run: cargo test --test framework
 
-  # The model-free shipped-guest boundary: build the workflow core and its
-  # single echo target fixture, then host both in one Omnia command-mode
-  # deployment. This proves WIT linking, adapter-id dispatch, and writable
-  # project/cache preopens without a sibling checkout or model credentials.
+  # The deterministic shipped-guest boundary: build the workflow core and
+  # both echo adapter fixtures, then host them in one Omnia command-mode
+  # deployment. This proves WIT linking, dispatch, writable preopens, and
+  # the replay-backed full loop without a sibling checkout or credentials.
   composed:
     name: Composed workflow core
     runs-on: ubuntu-latest
@@ -63,8 +63,8 @@ jobs:
       - name: Build workflow guest
         run: cargo build --locked -p specify --lib --target wasm32-wasip2
 
-      - name: Build target fixture
-        run: cargo build --locked -p fixtures --example echo_target --target wasm32-wasip2
+      - name: Build adapter fixtures
+        run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
 
       - name: Composed workflow smoke
         run: cargo nextest run --locked -p specify-composed-tests --no-tests=pass

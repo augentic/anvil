@@ -36,7 +36,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 **For tooling and CLI work** (the Rust workspace at the repo root):
 
-- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
+- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `make dev-*` loop uses nightly Cargo Script
 - [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the root `Makefile` forwards unknown targets to `Makefile.toml`
 - [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks

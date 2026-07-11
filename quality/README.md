@@ -18,7 +18,7 @@ The Rust types, loader, assertion registry, and report shape live in `crates/sce
 
 - **native-scripted** — linked adapters with ordered scripted responses; fast deterministic integration.
 - **native-replay** — linked adapters with canonical request-key replay; cross-repository CI.
-- **wasm-replay** — hosted workflow and adapter components; current CI runs the model-free `composed-init` scenario while a public replay-fixture projection API remains an Omnia prerequisite for the full loop.
+- **wasm-replay** — hosted workflow and adapter components; CI runs both the model-free `composed-init` seam and the replay-backed `composed-loop` scenario.
 - **native-live** — linked adapters with the live Cursor backend; prompt and workflow iteration.
 - **wasm-live** — composed deployment with the live Cursor backend; explicit release confidence.
 

@@ -8,8 +8,14 @@ INSTALL_DIR ?= $(HOME)/.local/bin
 CURSOR_HOME ?= $(HOME)/.cursor
 MARKETPLACE := augentic
 
+SPECIFY_FRAMEWORK ?= $(CURDIR)
+SPECIFY_ADAPTERS ?= $(SPECIFY_FRAMEWORK)/../specify-adapters
+
 .PHONY: ci install-cli use-local-plugins use-team-plugins
 .PHONY: dev-doctor dev-check dev-run dev-live dev-full
+
+DEV := SPECIFY_FRAMEWORK="$(SPECIFY_FRAMEWORK)" SPECIFY_ADAPTERS="$(SPECIFY_ADAPTERS)" \
+	rustup run nightly cargo -Zscript "$(CURDIR)/scripts/dev.rs"
 
 # Full local gate: the Rust workspace CI (cargo make, Makefile.toml at the
 # repo root). Framework prose invariants run as plain cargo tests
@@ -17,35 +23,35 @@ MARKETPLACE := augentic
 ci:
 	cargo make ci
 
-# --- unified developer loop (scripts/dev.sh; mirrored in specify-adapters) ---
+# --- unified developer loop (scripts/dev.rs; mirrored in specify-adapters) ---
 
 # Validate sibling layout, toolchain, WASI target, and cursor-agent.
 # LIVE=1 adds a command-mode credential probe (one real model call —
 # `cursor-agent status` alone does not prove --print auth).
 dev-doctor:
-	@bash scripts/dev.sh doctor $(if $(LIVE),--live,)
+	@$(DEV) doctor $(if $(LIVE),--live,)
 
 # Fastest model-free rung: native harness seam/replay tests, plus the
 # named adapter's native tests when ADAPTER=<name> is given.
 dev-check:
-	@bash scripts/dev.sh check $(ADAPTER)
+	@$(DEV) check $(ADAPTER)
 
 # Run specify-dev against any consumer project without changing
 # directory: make dev-run PROJECT=/path/to/project ARGS='plan status'.
 dev-run:
-	@bash scripts/dev.sh run "$(PROJECT)" $(ARGS)
+	@$(DEV) run "$(PROJECT)" $(ARGS)
 
 # Repeated live-model profile. Bare: three native workflow trials with
 # structured evidence. ADAPTER=<name> [SCENARIO=<live test>]: exactly one
 # adapter-local prompt-quality case.
 dev-live:
-	@bash scripts/dev.sh live $(ADAPTER) $(SCENARIO)
+	@$(DEV) live $(ADAPTER) $(SCENARIO)
 
 # The explicit outer gate: doctor --live, deterministic checks,
 # composed WASM/WIT coverage, and three composed live workflow trials.
 # Never the default edit loop.
 dev-full:
-	@bash scripts/dev.sh full
+	@$(DEV) full
 
 # Build the in-tree binary and symlink it onto PATH for the eval sweep.
 install-cli:

@@ -42,14 +42,14 @@ install_crate = "cargo-deny"
 
 # Deps
 [tasks.deps]
-script = '''
-cargo +nightly udeps --all-targets
-'''
+command = "rustup"
+args = ["run", "nightly", "cargo", "udeps", "--all-targets"]
 install_crate = "cargo-udeps"
 
 # Fmt
 [tasks.fmt]
-script = "cargo +nightly fmt"
+command = "rustup"
+args = ["run", "nightly", "cargo", "fmt"]
 
 # Lint
 [tasks.lint]
@@ -59,9 +59,8 @@ install_crate = { rustup_component_name = "clippy" }
 
 # Outdated
 [tasks.outdated]
-script = '''
-cargo outdated --depth 1
-'''
+command = "cargo"
+args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
 # Check wasm core

@@ -4142,7 +4142,6 @@ dependencies = [
  "omnia-wasi-http",
  "omnia-wasi-model",
  "scenario",
- "serde_json",
  "tempfile",
  "tokio",
 ]

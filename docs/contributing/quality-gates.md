@@ -25,7 +25,7 @@ The native profile runs canonical workflow scenarios through `specify-dev` with 
 
 ## Gate 3 — composed WebAssembly
 
-The composed profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, and HTTP/reference wiring. The current CI case is model-free; full-loop replay requires Omnia to expose fixture projection without duplicating its private request canonicalization. Adapter-local composed tests remain responsible for each adapter component; Specify's composed profile is responsible for workflow-core orchestration across components.
+The composed profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, HTTP/reference wiring, and one replay-backed `init → author → approve → execute` loop. Checked-in fixtures use Omnia's replay format; Specify owns only scenario inputs and expected answers. Adapter-local composed tests remain responsible for each adapter component; Specify's composed profile is responsible for workflow-core orchestration across components.
 
 ## Gate 4 — live quality
 

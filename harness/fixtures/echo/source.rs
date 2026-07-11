@@ -24,7 +24,7 @@ mod bindings {
 
     wit_bindgen::generate!({
         world: "source-adapter",
-        path: "../wit",
+        path: "../../wit",
         // Asyncness follows the WIT declarations: the judgment operations
         // are `async func`s (judgment legs await the async `omnia:model`
         // import mid-call) and async-lift; `metadata` is a plain `func`
@@ -65,7 +65,7 @@ impl Guest for EchoAdapter {
             authority: Authority::Documentation,
             claims: vec![Claim {
                 kind: ClaimKind::Excerpt,
-                id: None,
+                id: Some("echo.excerpt.001".to_string()),
                 path: None,
                 synopsis: Some(lead.synopsis),
                 backing: None,

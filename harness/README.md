@@ -47,12 +47,12 @@ Run these from `harness/`:
 ```shell
 cargo make dev-run -- target resolve omnia --project-dir /path/to/project
 cargo make test-native  # full loop, seams, replay, and MCP shelves
-cargo make test-composed # model-free workflow-core WASM/WIT smoke
+cargo make test-composed # workflow-core WASM/WIT init and replayed full loop
 cargo make lint         # harness clippy gate
 cargo make guests # WASM core + echo fixtures; not needed for the native loop
 ```
 
-`cargo make dev-run` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`. From either repo root, `make dev-run PROJECT=/path/to/project ARGS='plan status'` is the same shim without changing directory (see `scripts/dev.sh`).
+`cargo make dev-run` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`. From either repo root, `make dev-run PROJECT=/path/to/project ARGS='plan status'` is the same shim without changing directory (see `scripts/dev.rs`).
 
 ## Contents
 
@@ -60,10 +60,10 @@ This directory holds non-shipped workspace surfaces. They are **workspace member
 
 | Path        | What                                                                                                                                                                                                                                                                                                                                      |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `composed/` | The model-free workflow-core WASM/WIT smoke: hosts `specify.wasm` with only the echo target fixture, drives a real command, and proves adapter links, ID dispatch, and writable preopens.                                                                                                                                                 |
+| `composed/` | The workflow-core WASM/WIT profile: hosts `specify.wasm` with echo source/target fixtures, proves adapter links, ID dispatch, and writable preopens, then drives a full loop with checked-in Omnia replay fixtures.                                                                                                                            |
 | `fixtures/` | The echo adapter guests — skeleton `specify:adapter` components usable in composed deployments so the WIT imports resolve without the sibling adapters checkout.                                                                                                                                                                          |
 | `native/`   | The Rust-native shim: the `specify-dev` binary and its provider — the same typed command/HTTP routers and workflow operations as the wasm guest, with a native-only linked adapter catalog, cursor plus Omnia replay/scripted model backends, and per-adapter MCP reference shelves. Requires the `../specify-adapters` sibling checkout. |
 
 The larger composed-deployment rig that previously lived at `harness/runtime/` remains retired: the focused `harness/composed/` package owns only the workflow core's WASM boundary, while the native harness owns deterministic full-loop behavior.
 
-**Coverage boundary.** The composed smoke exercises WIT bindings, Omnia's dispatch-by-id, and mount/preopen wiring without a model call or sibling checkout. The native suite owns replayed workflow behavior; reproducing that full loop in WASM would require a request-keyed fixture corpus for every judgment leg. See [`composed/README.md`](composed/README.md).
+**Coverage boundary.** The composed profile exercises WIT bindings, Omnia's dispatch-by-id, mount/preopen wiring, and one replay-backed full loop without a live model or sibling checkout. The native suite remains the cheaper surface for the broader workflow matrix. See [`composed/README.md`](composed/README.md).

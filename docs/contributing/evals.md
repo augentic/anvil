@@ -6,7 +6,7 @@ Historical scenario prose, operator drivers, and Markdown run records remain und
 
 ## What live profiles prove
 
-Deterministic native replay owns workflow lifecycle state, schemas, journals, files, and exit contracts. The model-free composed profile owns WIT links and mount behavior; full-loop composed replay remains blocked on public replay-fixture projection in Omnia. Live profiles add only what requires a current model:
+Deterministic native replay owns workflow lifecycle state, schemas, journals, files, and exit contracts. The composed `wasm-replay` profile drives the canonical full loop through the hosted workflow, source, and target components with checked-in Omnia replay fixtures. Live profiles add only what requires a current model:
 
 - decomposition and reconciliation quality;
 - behavioral artifact fidelity;
@@ -52,7 +52,7 @@ Gate tiers are declared in canonical YAML:
 - `full` scenarios run per minor release or monthly, whichever comes first;
 - live calls never run in ordinary per-commit CI.
 
-The three native pilots (`intent-only`, the full-loop happy path, and `execute-fail-resume`) are deterministic scenario executions in `harness/native/tests/full_loop.rs`. The model-free composed scenario runs in CI under `harness/composed/`. The live workflow runner currently exercises the complete guest loop through `native-live` and `wasm-live`; additional live cases should reuse the same report and rubric vocabulary.
+The three native pilots (`intent-only`, the full-loop happy path, and `execute-fail-resume`) are deterministic scenario executions in `harness/native/tests/full_loop.rs`. The composed init seam and replay-backed full loop run in CI under `harness/composed/`. The live workflow runner currently exercises the complete guest loop through `native-live` and `wasm-live`; additional live cases should reuse the same report and rubric vocabulary.
 
 ## Historical records
 

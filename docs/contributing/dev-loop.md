@@ -1,6 +1,6 @@
 # The Developer Loop
 
-One command surface drives day-to-day development across the two sibling checkouts (`specify` and `specify-adapters`). The same `make dev-*` targets exist at both repo roots, backed by one canonical orchestration script, [`scripts/dev.sh`](https://github.com/augentic/specify/blob/main/scripts/dev.sh); the adapters root delegates to its sibling. `SPECIFY_FRAMEWORK` and `SPECIFY_ADAPTERS` override the sibling layout. The underlying cases are canonical scenarios; each rung selects a runtime/model profile and gate from the [quality model](quality-gates.md).
+One command surface drives day-to-day development across the two sibling checkouts (`specify` and `specify-adapters`). The same `make dev-*` targets exist at both repo roots, backed by one canonical Cargo Script, [`scripts/dev.rs`](https://github.com/augentic/specify/blob/main/scripts/dev.rs); the adapters root delegates to its sibling. `SPECIFY_FRAMEWORK` and `SPECIFY_ADAPTERS` override the sibling layout. The underlying cases are canonical scenarios; each rung selects a runtime/model profile and gate from the [quality model](quality-gates.md).
 
 Start with the doctor, then climb the rungs only as far as the change demands:
 
