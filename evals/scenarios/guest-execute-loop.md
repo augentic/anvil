@@ -59,7 +59,7 @@ All from the sandbox root, through the one `specify` binary — guest-owned verb
 
 ## Scope
 
-This is the **runtime-composition and live-judgment gate** for the inverted loop, not a planning-ergonomics scenario (that is `intent-only`). The deterministic substrate — argv/exit passthrough, the model-free merge leg, journal-append, envelopes and exit codes — is proven by the always-on crate-level suites (the cli contract lives in `crates/argv/tests/`); this scenario admits only what those cannot reach: judgment legs against the live cursor backend end to end (source survey/extract, synthesis, target codegen), the composed WASI wiring, and the quality of what they emit.
+This is the **runtime-composition and live-judgment gate** for the inverted loop, not a planning-ergonomics scenario (that is `intent-only`). The deterministic substrate — argument/exit passthrough, the model-free merge leg, journal-append, envelopes and exit codes — is proven by the always-on crate-level suites (the CLI contract lives in `crates/transport/tests/`); this scenario admits only what those cannot reach: judgment legs against the live cursor backend end to end (source survey/extract, synthesis, target codegen), the composed WASI wiring, and the quality of what they emit.
 
 ## Negative expectations
 

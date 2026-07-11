@@ -88,7 +88,7 @@ The codebase optimises for short reading over short writing. Concretely:
 
 ## Format dispatch
 
-Handlers do **not** open-code `match ctx.format { Json, Text }`. There is one entry point — `ctx.write(&body, write_text)?` for success bodies, and `report(ctx.format, &err)` (which dispatches `ErrorBody` to stderr) for failures. The underlying `emit` function lives in `crates/argv/src/output.rs`; handlers never spell it, and they never pick a sink directly. `emit_err` / `emit_response` / `emit_error` / `emit_json_error` have all been collapsed into this single surface. See [handler-shape.md](./handler-shape.md) for how `Ctx` and the free `output::write` compose.
+Handlers do **not** open-code `match ctx.format { Json, Text }`. They return typed bodies; the command projector in `crates/transport/src/command.rs` owns format dispatch through the internal `emit` function in `crates/transport/src/output.rs`. Handlers never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -107,7 +107,7 @@ The `write_text` closure receives `(&mut dyn Write, &Body)` and renders the text
 
 ## One emit path
 
-Success bodies leave handlers via `ctx.write(&body, write_text)?;` (or the free `output::write(format, &body, write_text)?;` for the rare `Ctx`-less verb). Failure envelopes leave handlers as `Err(Error::*)`; the dispatcher in `crates/argv/src/commands.rs` routes them through `output::report(format, &err)`. No handler writes its own stderr envelope. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to the output module (`crates/argv/src/output.rs`); handlers never call it directly.
+Success bodies and failures leave operations as typed values. The projectors in `crates/transport` render those values at the command or HTTP boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to `crates/transport/src/output.rs`.
 
 ## DTOs
 

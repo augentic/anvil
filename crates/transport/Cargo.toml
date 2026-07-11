@@ -1,6 +1,6 @@
 [package]
-name = "argv"
-description = "Wasm-clean `specify` argv transport: clap grammar, clap-to-Input conversions, output envelopes, and the exit-code contract consumed by the shims"
+name = "transport"
+description = "Wasm-clean command and HTTP transport for `specify`"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

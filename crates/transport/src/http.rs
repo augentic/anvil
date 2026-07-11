@@ -2,7 +2,7 @@
 
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
-use omnia_guest::api::http::{Projector, Router, get_with, post_with};
+use omnia_guest::api::http::{DecodeError, Projector, Router, get_with, post_with};
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use omnia_guest::axum::response::{IntoResponse, Response};
@@ -48,6 +48,16 @@ where
             }
         }
         json(status, &body)
+    }
+
+    fn decode(&self, error: DecodeError) -> Response {
+        json(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            &serde_json::json!({
+                "error": "invalid-request",
+                "message": error.description(),
+            }),
+        )
     }
 }
 

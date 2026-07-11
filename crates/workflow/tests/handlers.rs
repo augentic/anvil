@@ -6,7 +6,7 @@
 //! This is the always-on native home of the widened-verb coverage:
 //! `registry {add,validate,remove}`, `archive prune`,
 //! `init --scaffold-only`, and `journal {emit,show}`. The exit-code
-//! projection over these failures lives in `crates/argv`
+//! projection over these failures lives in `crates/transport`
 //! (`Exit::from(&error::Error)`) and is pinned there.
 
 use std::fs;

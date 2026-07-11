@@ -1,10 +1,21 @@
-//! Application-wide and provisioning clap argument types.
+//! Clap argument types consumed by the typed command router.
 
 use std::path::PathBuf;
 
 use clap::{Args, ValueEnum};
 
-pub use crate::output::Format;
+use crate::output::Format;
+
+pub mod adapters;
+pub mod archive;
+pub mod journal;
+pub mod plan;
+pub mod plugins;
+pub mod registry;
+pub mod slice;
+pub mod source;
+pub mod target;
+pub mod workspace;
 
 /// One-line application description.
 pub const ABOUT: &str = "Deterministic primitives for spec-driven development";

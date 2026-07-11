@@ -22,7 +22,7 @@ pub async fn run(argv: Vec<String>) -> u8 {
     if let Some(base) = shelves().await {
         provider = provider.mcp_base(base);
     }
-    let router = match argv::router::router(Invoker::new("specify", provider), |_| Ok(())) {
+    let router = match transport::command::router(Invoker::new("specify", provider), |_| Ok(())) {
         Ok(router) => router,
         Err(error) => {
             eprintln!("error: {error}");

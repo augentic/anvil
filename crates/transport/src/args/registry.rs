@@ -1,20 +1,18 @@
 //! Clap argument types for `specify registry *`.
 
 use clap::Args;
-use serde::Serialize;
 
 /// Argv mirror of `registry validate`'s wire input (no fields).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
-    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+    reason = "clap's `Args` derive requires a braced struct"
 )]
 pub struct ValidateArgs {}
 
 /// Argv mirror of `registry add`'s wire input
 /// (`workflow::registry::handlers::AddInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct AddArgs {
     /// Kebab-case project name. Must be unique within the registry.
     pub name: String,
@@ -36,8 +34,7 @@ pub struct AddArgs {
 
 /// Argv mirror of `registry remove`'s wire input
 /// (`workflow::registry::handlers::RemoveInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Kebab-case project name to remove.
     pub name: String,

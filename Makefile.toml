@@ -74,7 +74,7 @@ install_crate = "cargo-outdated"
 #
 # Keeper for the wasm32-cleanliness of the guest-facing crates: the
 # guest shim depends on workflow (no `native` feature) and
-# argv, so both must always compile for wasm32-wasip2.
+# transport, so both must always compile for wasm32-wasip2.
 [tasks.check-wasm-core]
 command = "cargo"
 args = [
@@ -83,7 +83,7 @@ args = [
     "-p",
     "specify",
     "-p",
-    "argv",
+    "transport",
     "--target",
     "wasm32-wasip2",
 ]

@@ -148,23 +148,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
 
 [[package]]
-name = "argv"
-version = "0.27.2"
-dependencies = [
- "artifacts",
- "clap",
- "error",
- "omnia-guest",
- "serde",
- "serde_json",
- "strum",
- "tempfile",
- "tokio",
- "tower",
- "workflow",
-]
-
-[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2758,6 +2741,7 @@ dependencies = [
  "omnia-wasi-otel",
  "omnia-wasi-sql",
  "omnia-wasi-websocket",
+ "rand 0.10.2",
  "sea-query",
  "serde",
  "serde_json",
@@ -4379,7 +4363,6 @@ name = "specify"
 version = "0.27.2"
 dependencies = [
  "anyhow",
- "argv",
  "artifacts",
  "assert_cmd",
  "cfg-if",
@@ -4402,6 +4385,7 @@ dependencies = [
  "tempfile",
  "testkit",
  "tokio",
+ "transport",
  "wasip3",
  "wit-bindgen 0.59.0",
  "workflow",
@@ -4413,7 +4397,6 @@ version = "0.27.2"
 dependencies = [
  "adapter",
  "anyhow",
- "argv",
  "artifacts",
  "axum",
  "captures",
@@ -4437,6 +4420,7 @@ dependencies = [
  "testkit",
  "tokio",
  "tower",
+ "transport",
  "typescript",
  "vectis",
  "workflow",
@@ -5034,6 +5018,23 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "transport"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "clap",
+ "error",
+ "omnia-guest",
+ "serde",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "tokio",
+ "tower",
+ "workflow",
 ]
 
 [[package]]

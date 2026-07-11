@@ -1,8 +1,6 @@
-//! Clap derive surface for `specify slice *` and its nested verbs.
-//! The umbrella `cli.rs` re-exports the action enums.
+//! Clap argument types for `specify slice *`.
 
 use clap::builder::{PossibleValuesParser, TypedValueParser};
-use serde::Serialize;
 use workflow::slice::{CreateIfExists, LifecycleStatus};
 
 /// Clap value parser for a workflow enum carrying strum's kebab-case
@@ -19,8 +17,7 @@ where
 
 /// Argv mirror of `slice create`'s wire input
 /// (`workflow::slice::handlers::CreateInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct CreateArgs {
     /// Kebab-case slice name
     pub name: String,
@@ -34,8 +31,7 @@ pub struct CreateArgs {
 
 /// Argv mirror of `slice validate`'s wire input
 /// (`workflow::slice::handlers::ValidateInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct ValidateArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
@@ -43,8 +39,7 @@ pub struct ValidateArgs {
 
 /// Argv mirror of `slice provenance`'s wire input
 /// (`workflow::slice::handlers::ProvenanceInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct ProvenanceArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
@@ -52,8 +47,7 @@ pub struct ProvenanceArgs {
 
 /// Argv mirror of `slice refine`'s wire input
 /// (`workflow::orchestrate::handlers::RefineInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct RefineArgs {
     /// Slice name (a `plan.yaml.slices[]` entry)
     pub name: String,
@@ -61,8 +55,7 @@ pub struct RefineArgs {
 
 /// Argv mirror of `slice build`'s wire input
 /// (`workflow::orchestrate::handlers::BuildInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct BuildArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
@@ -70,8 +63,7 @@ pub struct BuildArgs {
 
 /// Argv mirror of `slice transition`'s wire input
 /// (`workflow::slice::handlers::TransitionInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct TransitionArgs {
     /// Slice name
     pub name: String,
@@ -84,8 +76,7 @@ pub struct TransitionArgs {
 
 /// Argv mirror of `slice touched-specs`' wire input
 /// (`workflow::slice::handlers::TouchedSpecsInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct TouchedSpecsArgs {
     /// Slice name
     pub name: String,
@@ -99,8 +90,7 @@ pub struct TouchedSpecsArgs {
 
 /// Argv mirror of `slice overlap`'s wire input
 /// (`workflow::slice::handlers::OverlapInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct OverlapArgs {
     /// Slice name
     pub name: String,
@@ -108,8 +98,7 @@ pub struct OverlapArgs {
 
 /// Argv mirror of `slice drop`'s wire input
 /// (`workflow::slice::handlers::DropInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct DropArgs {
     /// Slice name
     pub name: String,
@@ -120,8 +109,7 @@ pub struct DropArgs {
 
 /// Argv mirror of `slice model show`'s wire input
 /// (`workflow::slice::handlers::ModelShowInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct ModelShowArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
@@ -129,8 +117,7 @@ pub struct ModelShowArgs {
 
 /// Argv mirror of `slice merge run`'s wire input
 /// (`workflow::orchestrate::handlers::MergeRunInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct MergeRunArgs {
     /// Slice name
     pub name: String,
@@ -144,8 +131,7 @@ pub struct MergeRunArgs {
 
 /// Argv mirror of `slice merge preview`'s wire input
 /// (`workflow::slice::handlers::PreviewInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct MergePreviewArgs {
     /// Slice name
     pub name: String,
@@ -153,8 +139,7 @@ pub struct MergePreviewArgs {
 
 /// Argv mirror of `slice merge conflict-check`'s wire input
 /// (`workflow::slice::handlers::ConflictCheckInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct ConflictCheckArgs {
     /// Slice name
     pub name: String,
@@ -162,8 +147,7 @@ pub struct ConflictCheckArgs {
 
 /// Argv mirror of `slice task progress`' wire input
 /// (`workflow::slice::handlers::TaskProgressInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct TaskProgressArgs {
     /// Slice name
     pub name: String,
@@ -171,8 +155,7 @@ pub struct TaskProgressArgs {
 
 /// Argv mirror of `slice task mark`'s wire input
 /// (`workflow::slice::handlers::TaskMarkInput`).
-#[derive(Debug, clap::Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, clap::Args)]
 pub struct TaskMarkArgs {
     /// Slice name
     pub name: String,

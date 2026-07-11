@@ -46,7 +46,7 @@ pub async fn serve(argv: &[String]) -> Result<ExitCode> {
 
     let model = DevModel::from_env(&project_dir)?;
     let provider = Provider::new(project_dir, model).mcp_base(base);
-    let router = argv::http::router(Invoker::new("specify", provider))
+    let router = transport::http::router(Invoker::new("specify", provider))
         .into_axum()
         .layer(middleware::from_fn(serialize_writes))
         .merge(mcp::router());

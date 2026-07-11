@@ -13,7 +13,7 @@ impl wasip3::exports::http::handler::Guest for Http {
     async fn handle(
         request: wasip3::http::types::Request,
     ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-        let router = argv::http::router(Invoker::new("specify", Provider));
+        let router = transport::http::router(Invoker::new("specify", Provider));
         http::serve(router, request).await
     }
 }

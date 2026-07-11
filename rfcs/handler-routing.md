@@ -7,7 +7,7 @@ Specify has one transport-neutral execution contract — `omnia_guest::api::oper
 | Layer | Term | Example |
 |---|---|---|
 | Operator surface | **command** | `specify slice build my-slice` |
-| Command grammar | **route** | `["slice", "build"]` plus `slice::cli::BuildArgs` |
+| Command grammar | **route** | `["slice", "build"]` plus `slice::BuildArgs` |
 | Implementation | **operation** | `orchestrate::handlers::Build: Operation<P>` |
 | Wire input | **Input** | `BuildInput`, the transport-neutral operation payload |
 | Command input | **Args** | `BuildArgs`, the clap parser for one command route |
@@ -29,8 +29,8 @@ The hard-cut invariants are:
 
 1. Every workflow command is a stateless `Operation<P>` with associated `Input`, `Output`, and `Error` types.
 2. `Invoker<P>` is the only execution seam used by command and HTTP routing.
-3. `crates/argv/src/router.rs` is the complete typed command inventory.
-4. `crates/argv/src/http.rs` is the complete typed HTTP inventory.
+3. `crates/transport/src/command.rs` is the complete typed command inventory.
+4. `crates/transport/src/http.rs` is the complete typed HTTP inventory.
 5. Command conversion is explicit and exhaustive through `TryFrom<Args> for Input`; there is no serde round-trip between command args and operation input.
 6. The WASI and native shims construct providers and invokers, call the shared routers, and adapt terminal transport output. They do not own route inventories or domain conversions.
 7. Operation outputs are typed values implementing `Serialize`; command-visible outputs also implement `workflow::handler::Render`.
@@ -63,18 +63,18 @@ Provider bounds state the capabilities an operation consumes. Deterministic oper
 
 ## Command router
 
-`crates/argv/src/router.rs` assembles an `omnia_guest::api::command::Router<P, Globals>` from concrete route paths, concrete `Args`, concrete workflow operations, and `SpecifyProjector`.
+`crates/transport/src/command.rs` assembles an `omnia_guest::api::command::Router<P, Globals>` from concrete route paths, concrete `Args`, concrete workflow operations, and `SpecifyProjector`.
 
 ```rust
 route!(
     ["slice", "build"],
-    slice::cli::BuildArgs,
+    slice::BuildArgs,
     workflow::orchestrate::handlers::Build,
     "Build a slice"
 );
 ```
 
-Each command leaf has a clap-only `Args` type under `crates/argv/src/commands/**/cli.rs`. Global flags such as `--format` and `--plan-dir` stay in `Globals`. Each supported leaf has an exhaustive conversion:
+Each command leaf has a clap-only `Args` type under `crates/transport/src/args/*.rs`. Global flags such as `--format` and `--plan-dir` stay in `Globals`. Each supported leaf has an exhaustive conversion:
 
 ```rust
 impl TryFrom<BuildArgs> for BuildInput {
@@ -98,7 +98,7 @@ Unsupported provisioning commands remain typed routes to a private `Unsupported`
 
 ## HTTP router
 
-`crates/argv/src/http.rs` assembles one `omnia_guest::api::http::Router<P>` with typed `get_with` and `post_with` routes:
+`crates/transport/src/http.rs` assembles one `omnia_guest::api::http::Router<P>` with typed `get_with` and `post_with` routes:
 
 ```rust
 Router::new(invoker)
@@ -119,8 +119,8 @@ GET is used for reads; POST is used for mutation and judgment. HTTP route paths 
 The WASI guest and native harness share router assemblies rather than duplicating route tables.
 
 ```text
-src/command.rs              construct Invoker → argv::router::router → command::execute_wasi
-src/http.rs                 construct Invoker → argv::http::router → http::serve
+src/command.rs              construct Invoker → transport::command::router → command::execute_wasi
+src/http.rs                 construct Invoker → transport::http::router → http::serve
 harness/native/command.rs   construct Invoker → shared command Router::execute → write channels
 harness/native/http.rs      construct Invoker → shared HTTP Router::into_axum → lock + MCP merge
 ```
@@ -142,11 +142,11 @@ harness/native/http.rs      construct Invoker → shared HTTP Router::into_axum 
 ## Adding a command
 
 1. Define the operation `Input`, typed output body, and stateless operation type in the owning workflow domain's `handlers` module. Implement `Operation<P>` and `Render` for command-visible output.
-2. Define the concrete clap `Args` under `crates/argv/src/commands/**/cli.rs`.
+2. Define the concrete clap `Args` under `crates/transport/src/args/*.rs`.
 3. Add an explicit `TryFrom<Args> for Input`.
-4. Register the command in `crates/argv/src/router.rs` with its path, args, operation, and help.
-5. If HTTP-exposed, register the same operation in `crates/argv/src/http.rs` with an explicit path and method.
-6. Test domain behavior through the operation public surface and transport behavior through `crates/argv/tests/router.rs` or the native full-loop tests.
+4. Register the command in `crates/transport/src/command.rs` with its path, args, operation, and help.
+5. If HTTP-exposed, register the same operation in `crates/transport/src/http.rs` with an explicit path and method.
+6. Test domain behavior through the operation public surface and transport behavior through `crates/transport/tests/router.rs` or the native full-loop tests.
 
 ## Hard-cut exclusions
 
@@ -154,7 +154,7 @@ The following shapes are retired and must not return:
 
 - `omnia_guest::api::Handler`, `Handler::from_input`, or `Handler::handle`;
 - `Reply<T>` and transport-shaped `Out<T>` as operation output currency;
-- `crates/argv/src/front.rs`, `argv::front::run`, or an argv serde round-trip;
+- `crates/transport/src/front.rs`, `transport::front::run`, or a command-args serde round-trip;
 - command route tables duplicated in WASI and native shims;
 - per-command `Input` construction in shim match arms;
 - a hidden `guest!` command export.

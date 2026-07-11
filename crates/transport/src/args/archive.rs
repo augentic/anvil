@@ -1,12 +1,10 @@
-//! Clap derive surface for `specify archive *`.
+//! Clap argument types for `specify archive *`.
 
 use clap::Args;
-use serde::Serialize;
 
 /// Argv mirror of `archive prune`'s wire input
 /// (`workflow::slice::handlers::PruneInput`).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Args)]
 pub struct PruneArgs {
     /// Keep at most this many most-recent archived slices.
     #[arg(long)]

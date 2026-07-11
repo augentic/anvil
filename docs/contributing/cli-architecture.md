@@ -10,7 +10,7 @@ The core guest identity is versioned by the binary (`specify:core@<binary versio
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `workflow` owns the workflow domain and every command operation (`Operation<P>` impl in `workflow::<domain>::handlers`, shared plumbing in `workflow::handler`); `argv` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `workflow` owns the workflow domain and every command operation (`Operation<P>` impl in `workflow::<domain>::handlers`, shared plumbing in `workflow::handler`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
@@ -21,12 +21,12 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest  →  typed argv router
+src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest  →  typed command router
 ```
 
-The full operator grammar — unsupported provisioning commands included — is assembled in `crates/argv/src/router.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/argv/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
+The full operator grammar — unsupported provisioning commands included — is assembled in `crates/transport/src/command.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/transport/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
-The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`. Each shim constructs an `Invoker`; the route inventories remain in `crates/argv`.
+The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`. Each shim constructs an `Invoker`; the route inventories remain in `crates/transport`.
 
 ## JSON envelope contract
 
@@ -40,7 +40,7 @@ The `--format text|json` flag controls output shape; `SPECIFY_FORMAT=json` is th
 
 ## Exit codes
 
-The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/argv/src/output.rs` is the single source of truth:
+The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/transport/src/output.rs` is the single source of truth:
 
 | Code | Constant | Meaning |
 |------|----------|---------|

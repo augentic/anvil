@@ -29,7 +29,7 @@ impl Project {
     }
 
     fn router(&self) -> Router {
-        argv::http::router(Invoker::new(
+        transport::http::router(Invoker::new(
             "specify",
             Provider {
                 root: self.root.clone(),
@@ -169,7 +169,7 @@ async fn taxonomy_failure_maps_to_error_envelope() {
 }
 
 #[tokio::test]
-async fn missing_required_field_is_bad_request() {
+async fn missing_required_field_is_unprocessable() {
     let project = Project::initialised();
     let request = Request::builder()
         .method(Method::POST)
@@ -177,5 +177,9 @@ async fn missing_required_field_is_bad_request() {
         .body(Body::from(r#"{"name":"alpha"}"#))
         .expect("build request");
     let (status, _) = send(project.router(), request).await;
-    assert_eq!(status, StatusCode::BAD_REQUEST, "a body missing `url` is refused at extraction");
+    assert_eq!(
+        status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "a body missing `url` is refused at extraction"
+    );
 }

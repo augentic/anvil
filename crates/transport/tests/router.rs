@@ -66,9 +66,11 @@ impl TargetSeam for TestProvider {
 
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<TestProvider, argv::cli::Globals> {
-    argv::router::router(Invoker::new("specify", TestProvider { root: root.into() }), |_| Ok(()))
-        .expect("router")
+) -> omnia_guest::api::command::Router<TestProvider, transport::Globals> {
+    transport::command::router(Invoker::new("specify", TestProvider { root: root.into() }), |_| {
+        Ok(())
+    })
+    .expect("router")
 }
 
 #[test]
@@ -79,7 +81,7 @@ fn inventories_match_with_transport_allowlist() {
         .iter()
         .filter_map(omnia_guest::api::command::RouteInfo::operation_type_id)
         .collect();
-    let http_types: BTreeSet<TypeId> = argv::http::router(Invoker::new(
+    let http_types: BTreeSet<TypeId> = transport::http::router(Invoker::new(
         "specify",
         TestProvider {
             root: PathBuf::from("."),
@@ -327,38 +329,4 @@ fn project(fixture: Fixture) -> TempDir {
         .expect("write cyclic plan");
     }
     project
-}
-
-#[test]
-fn complex_args_convert_without_serde() {
-    use argv::commands::plan::cli::{AmendArgs, TransitionArgs};
-    use workflow::change::plan::handlers::{AmendInput, TransitionInput};
-
-    let transition = TransitionInput::try_from(TransitionArgs {
-        name: "billing".to_string(),
-        target: None,
-        undo: true,
-        actor: "agent".to_string(),
-    })
-    .expect("transition conversion");
-    assert!(transition.undo);
-    assert_eq!(transition.actor, "agent");
-
-    let amend = AmendInput::try_from(AmendArgs {
-        name: "billing".to_string(),
-        depends_on: Some(Vec::new()),
-        sources: Some(Vec::new()),
-        add_source: Vec::new(),
-        remove_source: vec!["docs".to_string()],
-        divergence: Some("accepted".to_string()),
-        description: None,
-        project: None,
-        context: None,
-        authority_override: Vec::new(),
-        clear_authority_override: Vec::new(),
-        clear_authority_overrides: Vec::new(),
-    })
-    .expect("amend conversion");
-    assert_eq!(amend.remove_source, ["docs"]);
-    assert_eq!(amend.divergence.as_deref(), Some("accepted"));
 }

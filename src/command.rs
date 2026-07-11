@@ -11,7 +11,7 @@ wasip3::cli::command::export!(CliGuest);
 impl wasip3::exports::cli::run::Guest for CliGuest {
     async fn run() -> Result<(), ()> {
         let invoker = Invoker::new("specify", Provider);
-        let router = argv::router::router(invoker, |_| Ok(())).map_err(|_error| ())?;
+        let router = transport::command::router(invoker, |_| Ok(())).map_err(|_error| ())?;
         omnia_guest::api::command::execute_wasi(&router).await
     }
 }

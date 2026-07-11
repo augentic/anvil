@@ -3,12 +3,10 @@
 use std::path::PathBuf;
 
 use clap::Args;
-use serde::Serialize;
 
 /// Argv mirror of `source resolve`'s wire input
 /// (`workflow::adapter::handlers::ResolveInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct ResolveArgs {
     /// Kebab-case source-adapter name (e.g. `intent`,
     /// `documentation`, `typescript`, `screenshots`).
@@ -22,8 +20,7 @@ pub struct ResolveArgs {
 
 /// Argv mirror of `source survey`'s wire input
 /// (`workflow::orchestrate::handlers::SurveyInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct SurveyArgs {
     /// Source key from `plan.yaml.sources.<key>`.
     pub source: String,
@@ -34,8 +31,7 @@ pub struct SurveyArgs {
 
 /// Argv mirror of `source extract`'s wire input
 /// (`workflow::orchestrate::handlers::ExtractInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct ExtractArgs {
     /// Source key from `plan.yaml.sources.<key>`.
     pub source: String,

@@ -1,19 +1,11 @@
 //! Clap argument types for the `specify plan *` routes.
-//!
-//! The custom-grammar field types ([`SourceAssign`], [`BindingArg`],
-//! [`KindAssign`]) come from `workflow`'s plan handlers: each carries
-//! the `FromStr` clap parses with and the serde form the wire
-//! carries, so the mirror structs here stay field-identical to their
-//! handler `Input`s.
 
 use clap::{ArgAction, Args};
-use serde::Serialize;
 use workflow::change::plan::handlers::{BindingArg, KindAssign, SourceAssign};
 
 /// Argv mirror of `plan create`'s wire input
 /// (`workflow::change::plan::handlers::CreateInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct CreateArgs {
     /// Kebab-case change name
     pub name: String,
@@ -68,41 +60,40 @@ pub struct CreateArgs {
 }
 
 /// Argv mirror of `plan validate`'s wire input (no fields).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
-    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+    reason = "clap's `Args` derive requires a braced struct"
 )]
 pub struct ValidateArgs {}
 
 /// Argv mirror of `plan next`'s wire input (no fields).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
-    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+    reason = "clap's `Args` derive requires a braced struct"
 )]
 pub struct NextArgs {}
 
 /// Argv mirror of `plan status`' wire input (no fields).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
-    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+    reason = "clap's `Args` derive requires a braced struct"
 )]
 pub struct StatusArgs {}
 
 /// Argv mirror of `plan execute`'s wire input (no fields).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
+#[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
-    reason = "serde serialises the braced struct as the wire `{}` object a braced Input deserialises from"
+    reason = "clap's `Args` derive requires a braced struct"
 )]
 pub struct ExecuteArgs {}
 
 /// Argv mirror of `plan remove`'s wire input
 /// (`workflow::change::plan::handlers::RemoveInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Kebab-case entry name to remove
     pub name: String,
@@ -110,8 +101,7 @@ pub struct RemoveArgs {
 
 /// Argv mirror of `plan transition`'s wire input
 /// (`workflow::change::plan::handlers::TransitionInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct TransitionArgs {
     /// Plan name (for plan-level `approved`) or kebab-case entry
     /// name (for per-entry `done` / `--undo`).
@@ -141,8 +131,7 @@ pub struct TransitionArgs {
 
 /// Argv mirror of `plan author`'s wire input
 /// (`workflow::orchestrate::handlers::AuthorInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct AuthorArgs {
     /// Kebab-case change name
     pub name: String,
@@ -160,8 +149,7 @@ pub struct AuthorArgs {
 
 /// Argv mirror of `plan archive`'s wire input
 /// (`workflow::change::plan::handlers::ArchiveInput`).
-#[derive(Clone, Copy, Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Args)]
 pub struct ArchiveArgs {
     /// Archive even when the plan has pending or in-progress entries.
     /// Without --force, these non-terminal statuses block the archive.
@@ -171,8 +159,7 @@ pub struct ArchiveArgs {
 
 /// Argv mirror of `plan add`'s wire input
 /// (`workflow::change::plan::handlers::AddInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct AddArgs {
     /// Kebab-case plan entry (slice) name for the new row under `plan.yaml.slices[]`.
     pub name: String,
@@ -212,8 +199,7 @@ pub struct AddArgs {
 
 /// Argv mirror of `plan amend`'s wire input
 /// (`workflow::change::plan::handlers::AmendInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct AmendArgs {
     /// Kebab-case plan entry (slice) name — the row under `plan.yaml.slices[]`
     /// being edited. There is one active plan file; this is not the plan name.

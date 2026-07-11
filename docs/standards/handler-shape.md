@@ -45,7 +45,7 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 ## Errors and their projections
 
-`workflow::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The HTTP `SpecifyProjector` in `crates/argv/src/http.rs` owns the single taxonomy → status projection (validation/argument → 422, version floor → 426, everything else → 500) and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/argv` — there is no second exit table.
+`workflow::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The HTTP `SpecifyProjector` in `crates/transport/src/http.rs` owns the single taxonomy → status projection (validation/argument → 422, version floor → 426, everything else → 500) and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
 
 ## Exit codes
 
@@ -58,21 +58,21 @@ The four-slot CLI exit-code table is fixed:
 | 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
 | 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old` in JSON) |
 
-`Exit::from(&Error)` in [`crates/argv/src/output.rs`](../../crates/argv/src/output.rs) is the single source of truth. `SpecifyProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes. `Exit::Code(u8)` is reserved for transport passthrough.
+`Exit::from(&Error)` in [`crates/transport/src/output.rs`](../../crates/transport/src/output.rs) is the single source of truth. `SpecifyProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes.
 
-## The argv transport (`crates/argv`)
+## The transport crate (`crates/transport`)
 
-`crates/argv` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Specify command/HTTP projectors, and the fixed exit contract.
+`crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Specify command/HTTP projectors, and the fixed exit contract.
 
-`crates/argv/src/commands/**/cli.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`, `--plan-dir`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
+`crates/transport/src/args/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`, `--plan-dir`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
 
 ## The HTTP route table (`http.rs`)
 
-`crates/argv/src/http.rs` owns one `omnia_guest::api::http::Router` assembly using typed `get_with` / `post_with` routes and `SpecifyProjector`. The WASI shim serves it directly; native converts it to Axum, layers the process-wide write lock, and merges MCP shelves.
+`crates/transport/src/http.rs` owns one `omnia_guest::api::http::Router` assembly using typed `get_with` / `post_with` routes and `SpecifyProjector`. The WASI shim serves it directly; native converts it to Axum, layers the process-wide write lock, and merges MCP shelves.
 
 ## Dispatch contract (`command.rs`)
 
-The reusable route table lives in `crates/argv/src/router.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary. The shared HTTP table lives in `crates/argv/src/http.rs`; native adds its write lock and MCP merge after `into_axum()`.
+The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary. The shared HTTP table lives in `crates/transport/src/http.rs`; native adds its write lock and MCP merge after `into_axum()`.
 
 On wasm, `command.rs` exports `wasi:cli/run` explicitly and calls `omnia_guest::api::command::execute_wasi`. Native calls `Router::execute` and writes the returned channels. Both paths use the same assembly and the same `SpecifyProjector`.
 
@@ -83,7 +83,7 @@ Target discipline per leaf arm:
 3. Convert `Args` through its explicit `TryFrom` implementation and invoke the typed operation.
 4. Project success, operation failure, or conversion failure through `SpecifyProjector`; provisioning routes return the standard argument refusal and completions remain synthetic router behavior.
 
-Never put domain logic in `argv` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
+Never put domain logic in `transport` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 
 ## Operation-shape notes
 

@@ -1,12 +1,10 @@
 //! Clap argument types for `specify journal *`.
 
 use clap::Args;
-use serde::Serialize;
 
 /// Argv mirror of `journal emit`'s wire input
 /// (`workflow::journal::handlers::EmitInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct EmitArgs {
     /// Dotted-kebab event id (e.g. `slice.build.started`).
     pub event: String,
@@ -20,8 +18,7 @@ pub struct EmitArgs {
 
 /// Argv mirror of `journal show`'s wire input
 /// (`workflow::journal::handlers::ShowInput`).
-#[derive(Debug, Args, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Args)]
 pub struct ShowArgs {
     /// Keep only events whose dotted-kebab id starts with this
     /// prefix (e.g. `slice.build` or `plan.entry.advanced`).

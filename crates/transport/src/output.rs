@@ -68,8 +68,6 @@ pub enum Exit {
     /// arguments; we mirror that for argument errors discovered after
     /// parsing (kebab-case checks, mutually exclusive payloads, etc.).
     ArgumentError,
-    /// WASI tool exit-code passthrough.
-    Code(u8),
 }
 
 impl Exit {
@@ -81,17 +79,12 @@ impl Exit {
             Self::GenericFailure => 1,
             Self::ArgumentError | Self::ValidationFailed => 2,
             Self::VersionTooOld => 3,
-            Self::Code(code) => code,
         }
     }
 }
 
-/// The closed exit-code table as `(code, name, meaning)` rows.
-///
-/// [`Exit::Code`] (the WASI tool passthrough) is open-ended by design
-/// and intentionally absent. The `exit_code_table_matches_exit` test
-/// pins each row to the matching [`Exit`] variant.
-pub const EXIT_CODES: &[(u8, &str, &str)] = &[
+#[cfg(test)]
+const EXIT_CODES: &[(u8, &str, &str)] = &[
     (0, "success", "Command succeeded."),
     (
         1,
@@ -123,34 +116,8 @@ impl From<&Error> for Exit {
     }
 }
 
-/// Render `err` as a failure envelope and return the matching exit
-/// code.
-///
-/// JSON serialises the body directly; Text writes `error: {err}` plus
-/// any long-form hint for the variant. Both formats route through
-/// [`emit`] against `std::io::stderr()` so failure output never
-/// interleaves with the structured success stream skills consume.
-///
-/// Single dispatcher entry point: handlers return
-/// `Result<T, error::Error>` and the run loop in
-/// [`crate::commands`] hands the error here. The body shape is
-/// always [`ErrorBody`]. `Error::Validation` is payload-free — its
-/// `code` becomes the wire `error` discriminant and its `detail` the
-/// `message`; per-finding rows are rendered by the producing handler on
-/// stdout as a `schema::diagnostics::DiagnosticReport` before the
-/// payload-free error is returned.
-pub fn report(format: Format, err: &Error) -> Exit {
-    let code = Exit::from(err);
-    let body = ErrorBody::from(err);
-    let result = emit(&mut std::io::stderr().lock(), format, &body, write_error_text);
-    if let Err(serialise_err) = result {
-        eprintln!("error: {err}");
-        eprintln!("error: {serialise_err}");
-    }
-    code
-}
-
-/// Failure envelope used by [`report`] for every error variant.
+/// Failure envelope used by the transport projectors for every error
+/// variant.
 ///
 /// The shape is now payload-free: `error` carries the variant
 /// discriminant (the `code` for `Error::Validation`), `message` the
@@ -182,7 +149,7 @@ impl From<&Error> for ErrorBody {
     }
 }
 
-fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<()> {
+pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<()> {
     writeln!(w, "error: {}", body.message)?;
     if let Some(hint) = body.hint {
         writeln!(w, "hint: {hint}")?;
@@ -196,9 +163,8 @@ mod tests {
 
     #[test]
     fn exit_code_table_matches_exit() {
-        // Every fixed Exit variant has exactly one table row whose
-        // numeric code matches `Exit::code()`; `Exit::Code` is the
-        // open-ended WASI passthrough and stays out of the table.
+        // Every Exit variant has exactly one table row whose numeric
+        // code matches `Exit::code()`.
         let by_code = |code: u8| {
             EXIT_CODES
                 .iter()
@@ -210,6 +176,6 @@ mod tests {
         assert_eq!(by_code(Exit::ValidationFailed.code()).1, "validation-failed");
         assert_eq!(by_code(Exit::ArgumentError.code()).1, "validation-failed");
         assert_eq!(by_code(Exit::VersionTooOld.code()).1, "version-too-old");
-        assert_eq!(EXIT_CODES.len(), 4, "one row per fixed exit code");
+        assert_eq!(EXIT_CODES.len(), 4, "one row per exit code");
     }
 }

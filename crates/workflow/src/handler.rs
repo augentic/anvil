@@ -8,7 +8,7 @@
 //! [`ReportBody`] diagnostic envelope, and operation-layer [`Error`].
 //!
 //! The transports stay out: no clap, no stdout, no exit codes here.
-//! `crates/argv` owns the typed command/HTTP routers, command grammar,
+//! `crates/transport` owns the typed command/HTTP routers, command grammar,
 //! explicit input conversions, and JSON/text projection.
 
 mod anchor;
