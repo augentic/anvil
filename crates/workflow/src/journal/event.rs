@@ -124,7 +124,7 @@ pub enum EventKind {
     SliceExtractCompleted {
         /// Affected slice.
         slice_name: SliceName,
-        /// Extracted source binding.
+        /// Extracted source key.
         source: String,
     },
     /// `[conflict]` on a requirement in `spec.md` — same-authority
@@ -271,7 +271,7 @@ pub enum EventKind {
     /// survey)` run. CLI-owned.
     #[serde(rename = "source.survey.completed", rename_all = "kebab-case")]
     SourceSurveyCompleted {
-        /// Surveyed source binding.
+        /// Surveyed source key.
         source: String,
         /// Adapter name (kebab-case; the resolved adapter identity).
         adapter: String,
@@ -282,7 +282,7 @@ pub enum EventKind {
     /// (`survey | extract`).
     #[serde(rename = "source.execution.agent", rename_all = "kebab-case")]
     SourceExecutionAgent {
-        /// Dispatched source binding.
+        /// Dispatched source key.
         source: String,
         /// Adapter name (kebab-case; the resolved adapter identity).
         adapter: String,

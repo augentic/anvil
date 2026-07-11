@@ -208,6 +208,8 @@ impl MetadataKeyByte for u8 {
 mod tests {
     use super::*;
 
+    // The private error matrix and metadata accessor are not observable
+    // through the public parser surface.
     #[test]
     fn document_matrix() {
         let input = b"# hand title\n\n<!-- specify:context begin\nfingerprint: sha256:old\n-->\n\nold body\n\n<!-- specify:context end -->\n\noperator notes\n";

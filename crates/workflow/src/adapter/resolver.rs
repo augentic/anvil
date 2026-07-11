@@ -66,6 +66,10 @@ impl Resolver for Component {
 }
 
 /// Build a resolved source from provider metadata, enforcing its CLI floor.
+///
+/// # Errors
+///
+/// Returns metadata, version-floor, or resolution errors.
 pub fn source(
     adapter_ref: &AdapterRef, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedSource, Error> {
@@ -84,6 +88,10 @@ pub fn source(
 }
 
 /// Build a resolved target from provider metadata, enforcing its CLI floor.
+///
+/// # Errors
+///
+/// Returns metadata, version-floor, or resolution errors.
 pub fn target(
     adapter_ref: &AdapterRef, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedTarget, Error> {

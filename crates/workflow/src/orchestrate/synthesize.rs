@@ -47,12 +47,12 @@ pub async fn synthesize<P: Model, T: TargetSeam>(
     let id = target_id(request.target);
     let guidance =
         seam.guidance(id.clone()).await.map_err(|err| seam_failure("guidance", &id, &err))?;
-    let inputs = inputs(
+    let synthesis_inputs = inputs(
         request.slice,
         request.sources,
         &guidance,
         request.baseline,
         request.baseline_detail,
     );
-    judgment::synthesize::synthesize(model, &inputs, kernel).await
+    judgment::synthesize::synthesize(model, &synthesis_inputs, kernel).await
 }

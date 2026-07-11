@@ -111,8 +111,8 @@ pub fn merge(baseline: Option<&str>, delta: &str) -> Result<MergeResult, Error> 
 }
 
 fn into_empty(delta: &str, delta_spec: &DeltaSpec) -> MergeResult {
-    // `has_delta_headers` uses a full-line match; see
-    // `has_delta_headers_requires_full_line_match` in the spec crate.
+    // `has_delta_headers` requires a full-line match; see
+    // `delta_headers::full_line_match` in the spec crate.
     if !has_delta_headers(delta) {
         let requirement_count = count_requirement_headings(delta);
         return MergeResult {
