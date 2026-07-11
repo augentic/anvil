@@ -35,6 +35,43 @@ jobs:
       - name: Framework quality checks
         run: cargo test --test framework
 
+  # The model-free shipped-guest boundary: build the workflow core and its
+  # single echo target fixture, then host both in one Omnia command-mode
+  # deployment. This proves WIT linking, adapter-id dispatch, and writable
+  # project/cache preopens without a sibling checkout or model credentials.
+  composed:
+    name: Composed workflow core
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+          components: clippy
+
+      - uses: taiki-e/install-action@nextest
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-on-failure: true
+
+      - name: Build workflow guest
+        run: cargo build --locked -p specify --lib --target wasm32-wasip2
+
+      - name: Build target fixture
+        run: cargo build --locked -p fixtures --example echo_target --target wasm32-wasip2
+
+      - name: Composed workflow smoke
+        run: cargo nextest run --locked -p specify-composed-tests --no-tests=pass
+
+      - name: Composed harness clippy
+        run: cargo clippy --locked -p specify-composed-tests --all-targets -- -D warnings
+
   # The deterministic cross-repo gate over the native harness: check
   # out the sibling specify-adapters repo (the shim links its adapter
   # crates by path) and run the model-free dev-check content — the

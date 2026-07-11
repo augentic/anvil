@@ -12,6 +12,7 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest}; owns transport-neutral Operation implementations and workflow::agents; no wasmtime in its graph
 transport                # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract
+scenario                 # non-shipped quality layer — canonical scenario DTOs, assertion metadata, and reports; composes workflow-specific semantics with omnia-testkit in profile executors
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 
@@ -28,6 +29,8 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 **Hard dependency rule:** `error` is the leaf and depends on no other workspace crate. Adding a workspace dep to `error` re-introduces the cycle the layering was designed to avoid; do not.
 
 **New workspace crates** are an exception, not the default.
+
+`scenario` is the dev-only exception that prevents workflow cases and assertion vocabularies from being copied across the native harness, WebAssembly conformance tests, shell drivers, and live evaluations. It carries no production lifecycle authority and is never linked into the shipped guest. Generic model doubles, replay, temporary manifests, runtime hosting, and HTTP driving remain in upstream `omnia-testkit`.
 
 The root `specify` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, command entry in `src/command.rs`, and HTTP entry in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `command.rs` (`CliGuest` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`Http` + `Guest::handle` + `omnia_guest::api::http::serve`). `lib.rs` is module wiring only — no `guest!` macro. Commands live in `crates/workflow` as transport-neutral `Operation<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `workflow::handler`). `crates/transport/src/command.rs` and `crates/transport/src/http.rs` own the explicit typed command and HTTP route inventories over `Invoker<P>`; the WASI and native shims only construct invokers and adapt transport output. See [rfcs/handler-routing.md](../../rfcs/handler-routing.md) for the routing design.
 

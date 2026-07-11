@@ -2498,7 +2498,7 @@ dependencies = [
 [[package]]
 name = "omnia-cursor"
 version = "0.28.0"
-source = "git+https://github.com/augentic/backends.git#98b334ff997e6815412ee5982b178028869637f7"
+source = "git+https://github.com/augentic/backends.git#4ba27b3e0741c9d09894d4ac871d70205c2f232e"
 dependencies = [
  "anyhow",
  "omnia 0.35.0",
@@ -2572,8 +2572,17 @@ version = "0.35.0"
 source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
+ "bytes",
+ "futures",
+ "http",
+ "http-body-util",
+ "omnia 0.35.0",
  "omnia-guest",
  "omnia-wasi-model",
+ "tokio",
+ "wasmtime",
+ "wasmtime-wasi",
+ "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -3783,6 +3792,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "scenario"
+version = "0.27.2"
+dependencies = [
+ "error",
+ "jiff",
+ "schema",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "tempfile",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4110,6 +4133,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "specify-composed-tests"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "omnia 0.35.0",
+ "omnia-testkit",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "scenario",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "specify-dev"
 version = "0.27.2"
 dependencies = [
@@ -4130,6 +4167,7 @@ dependencies = [
  "omnia-guest",
  "omnia-testkit",
  "omnia-wasi-model",
+ "scenario",
  "schema",
  "screenshots",
  "serde",

@@ -28,6 +28,7 @@ artifacts.workspace = true
 transport.workspace = true
 error.workspace = true
 schema.workspace = true
+scenario.workspace = true
 workflow.workspace = true
 
 omnia.workspace = true

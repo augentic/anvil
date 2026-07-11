@@ -11,6 +11,7 @@ use omnia_guest::api::invocation::Invocation;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use omnia_testkit::model::{Harness, Scripted};
+use scenario::{ModelBackend, Runtime, Scenario};
 use serde_json::json;
 use specify_dev::provider::Provider;
 use workflow::change::plan::wire::SourceAssign;
@@ -99,6 +100,23 @@ fn scripted_answers() -> Vec<&'static str> {
 
 #[tokio::test]
 async fn author_approve_execute_drains() {
+    let scenario = Scenario::load(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../quality/scenarios/guest-execute-loop.yaml"),
+    )
+    .expect("canonical full-loop scenario");
+    let profile = scenario
+        .profiles
+        .iter()
+        .find(|profile| profile.id == "native-scripted")
+        .expect("native scripted profile");
+    assert_eq!(profile.runtime, Runtime::Native);
+    assert_eq!(profile.model, ModelBackend::Scripted);
+    assert_eq!(
+        scenario.workflow.iter().map(|step| step.id.as_str()).collect::<Vec<_>>(),
+        ["author", "approve", "execute"]
+    );
+
     let project = common::Project::new();
     let invoker = Invoker::new(
         "specify",
@@ -171,4 +189,139 @@ async fn author_approve_execute_drains() {
     let requests = invoker.provider().model().requests();
     assert_eq!(requests.len(), 8, "survey, reconcile, extract, synthesis, and four build legs");
     assert!(requests[4].lend_workspace, "the omnia generation leg lends the workspace");
+    invoker.provider().model().assert_exhausted();
+}
+
+#[tokio::test]
+async fn intent_pilot_refines() {
+    let scenario = Scenario::load(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../quality/scenarios/intent-only.yaml"),
+    )
+    .expect("canonical intent scenario");
+    assert_eq!(
+        scenario.workflow.iter().map(|step| step.id.as_str()).collect::<Vec<_>>(),
+        ["author", "approve", "claim", "refine"]
+    );
+
+    let project = common::Project::new();
+    let invoker = Invoker::new(
+        "specify",
+        Provider::new(
+            project.root(),
+            Harness::new(Scripted::answers(scripted_answers().into_iter().take(4))),
+        ),
+    );
+    run::<plan::handlers::Author, _>(
+        &invoker,
+        plan::handlers::AuthorInput {
+            name: "demo".to_string(),
+            sources: bindings(),
+            intent: None,
+        },
+    )
+    .await
+    .expect("author");
+    run::<plan::handlers::Transition, _>(
+        &invoker,
+        plan::handlers::TransitionInput {
+            name: "demo".to_string(),
+            target: Some("approved".to_string()),
+            undo: false,
+            actor: "operator".to_string(),
+        },
+    )
+    .await
+    .expect("approve");
+    run::<plan::handlers::Next, _>(&invoker, plan::handlers::NextInput {}).await.expect("claim");
+    let refined = run::<workflow::slice::handlers::Refine, _>(
+        &invoker,
+        workflow::slice::handlers::RefineInput {
+            name: "feature-x".to_string(),
+        },
+    )
+    .await
+    .expect("refine");
+
+    assert_eq!(refined.slice, "feature-x");
+    assert!(refined.artifacts.iter().any(|artifact| artifact.ends_with("spec.md")));
+    assert_eq!(invoker.provider().model().requests().len(), 4);
+    invoker.provider().model().assert_exhausted();
+}
+
+#[tokio::test]
+async fn failure_pilot_resumes() {
+    let scenario = Scenario::load(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../quality/scenarios/execute-fail-resume.yaml"),
+    )
+    .expect("canonical failure scenario");
+    assert_eq!(
+        scenario.workflow.iter().map(|step| step.id.as_str()).collect::<Vec<_>>(),
+        ["author", "approve", "execute-fails", "build-resumes", "execute-resumes"]
+    );
+
+    let mut answers = scripted_answers().into_iter().map(str::to_string).collect::<Vec<_>>();
+    answers[7] = r#"{"status":"failure","findings":[]}"#.to_string();
+    answers.extend(
+        [
+            r#"{"applicable":true,"summary":"generation resumed"}"#,
+            r#"{"applicable":true,"summary":"review resumed"}"#,
+            r#"{"applicable":false,"summary":"no captures binding"}"#,
+            r#"{"status":"success","findings":[]}"#,
+        ]
+        .map(str::to_string),
+    );
+
+    let project = common::Project::new();
+    let invoker = Invoker::new(
+        "specify",
+        Provider::new(project.root(), Harness::new(Scripted::answers(answers))),
+    );
+    run::<plan::handlers::Author, _>(
+        &invoker,
+        plan::handlers::AuthorInput {
+            name: "demo".to_string(),
+            sources: bindings(),
+            intent: None,
+        },
+    )
+    .await
+    .expect("author");
+    run::<plan::handlers::Transition, _>(
+        &invoker,
+        plan::handlers::TransitionInput {
+            name: "demo".to_string(),
+            target: Some("approved".to_string()),
+            undo: false,
+            actor: "operator".to_string(),
+        },
+    )
+    .await
+    .expect("approve");
+
+    let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+        .await
+        .expect_err("first execute parks");
+    assert!(stopped.to_string().contains("build-failed"), "{stopped}");
+
+    let rebuilt = run::<workflow::slice::handlers::Build, _>(
+        &invoker,
+        workflow::slice::handlers::BuildInput {
+            name: "feature-x".to_string(),
+        },
+    )
+    .await
+    .expect("breakout build resumes");
+    assert_eq!(rebuilt.slice, "feature-x");
+
+    let resumed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+        .await
+        .expect("second execute drains");
+    assert_eq!(resumed.status, "drained");
+    assert_eq!(
+        resumed.phases.iter().map(|phase| phase.step).collect::<Vec<_>>(),
+        [LoopStep::Merge]
+    );
+    invoker.provider().model().assert_exhausted();
 }

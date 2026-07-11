@@ -97,6 +97,14 @@ The closure skill (`/spec:finalize`) that verifies the plan is drained, confirms
 **Gate 1**
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
+**Gate (quality)**
+A cadence and threshold applied to scenario reports: repository correctness, cross-repository native workflow, composed WebAssembly conformance, or live semantic quality. Distinct from the operator's plan Gate 1.
+
+## H
+
+**Hard assertion**
+A mechanically decidable scenario result, such as lifecycle state, exit status, schema validity, journal cadence, filesystem shape, or generated-output verification. Every applicable profile executes it automatically.
+
 ## I
 
 **Intent**
@@ -118,6 +126,9 @@ The slice phase that applies spec deltas to the baseline, archives the slice, an
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
 
+**Model backend**
+The implementation serving judgment requests for a scenario profile: ordered scripted responses, canonical request-key replay, or a live model.
+
 ## O
 
 **Operation**
@@ -135,6 +146,9 @@ An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. T
 
 **Plan**
 The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `specify plan {create, add, amend, transition, next, archive}` only.
+
+**Profile**
+The execution selection for one canonical scenario: runtime, model backend, grading mode, trial count, and report destination. Profiles do not redefine scenario steps or assertions.
 
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
@@ -159,7 +173,19 @@ The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`,
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
 
+**Run report**
+The structured result of executing a scenario profile, including source revisions, trial outcomes, hard assertions, semantic rubric scores, model metadata, and retained evidence.
+
+**Runtime (quality)**
+The environment executing a scenario: native linked-adapter operations or a composed WebAssembly deployment. Distinct from the shipped Omnia runtime product.
+
 ## S
+
+**Scenario**
+A canonical YAML workflow case declaring setup, workflow steps, fixtures, hard assertions, semantic rubrics, expected outputs, and gate tier. Profiles execute the same scenario through different runtimes and model backends.
+
+**Semantic rubric**
+An evidence-backed grading rule for meaning or usefulness, such as decomposition quality or artifact fidelity. Rubrics run only in live profiles; mechanically decidable behavior is a hard assertion instead.
 
 **Shape**
 The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.

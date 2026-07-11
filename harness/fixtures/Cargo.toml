@@ -21,7 +21,7 @@ wit-bindgen.workspace = true
 workspace = true
 
 # The echo adapter guests: skeleton wasm32-wasip2 components built by
-# `cargo make build-guests` inside harness/.
+# `cargo make guests` inside harness/.
 # Underscore names keep the artifact filenames deterministic; example
 # targets always land under the target dir's examples/ subdirectory
 # (target/wasm32-wasip2/debug/examples/echo_{source,target}.wasm).

@@ -1,47 +1,45 @@
 # Skills Test Coverage
 
-This page is a coverage audit of every plugin skill against the
-eval scenarios in this repo. It exists to answer one question: for each
+This page is a coverage audit of every plugin skill against the canonical
+workflow scenarios in this repo. It exists to answer one question: for each
 `SKILL.md`, is there at least one scenario that exercises the skill's primary
 path end to end?
 
 > The matrix below tracks the current verbs (`/spec:plan`,
 > `/spec:refine`, `specify plan execute`, `/spec:build`, `/spec:merge`, `/spec:drop`,
-> `/spec:finalize`) and the deterministic-boundary harness that ships with
-> them. Per-replay coverage is tracked alongside the eval scenarios.
+> `/spec:finalize`) and the deterministic native/composed profiles that execute
+> them. Replay and live coverage are profiles of the same cases.
 
 The audit is hand-curated and is intended to be re-run whenever a new skill
 or scenario lands. The checked-in fixtures under
 [`evals/fixtures/{sources,targets,skills}/`](../../evals/fixtures/) document
 representative inputs and expected artifact shapes, while the framework
 checks at `tests/framework/` cover authoring-shape
-regressions. The eval scenarios under
-[`evals/scenarios/`](../../evals/scenarios/) cover the LLM-driven body bytes that the
-Rust harness intentionally does not pin.
+regressions. Canonical YAML under [`quality/scenarios/`](../../quality/scenarios/)
+declares hard assertions and semantic rubrics. Native and WebAssembly replay
+profiles prove deterministic behavior; live profiles rubric-grade model output
+without pinning synthesized bytes.
 
 ## Inputs
 
 - **Skills:** every `plugins/<plugin>/skills/<skill>/SKILL.md` and the
   `argument-hint` declared in its YAML frontmatter (the documented primary
   trigger).
-- **Plan-generation scenarios:** [`evals/scenarios/`](../../evals/scenarios/) -- two
-  eval scenarios that cover plan authoring only (no execution, no push, no
+- **Plan-generation scenarios:** [`quality/scenarios/`](../../quality/scenarios/) -- canonical
+  cases that cover plan authoring only (no execution, no push, no
   finalize).
-- **Cross-repo scenarios:** [`evals/scenarios/`](../../evals/scenarios/) --
-  one end-to-end eval scenario that drives `plan` → `execute` → `push` →
+- **Cross-repo scenarios:** [`quality/scenarios/`](../../quality/scenarios/) --
+  end-to-end cases that drive `plan` → `execute` → `push` →
   `finalize` across a workspace plus two routed projects.
 - **Target-local scenarios:**
   [`adapters/evals/contracts/scenarios/`](https://github.com/augentic/specify-adapters/tree/main/evals/contracts/scenarios/) --
   five scenarios covering the contracts target's own `refine → build →
   merge` slice loop (the only target-local pack in the repo today).
 
-> **Scenario fixtures (`evals/**/*.json`).** The cleanup-plan brief
-> mentions JSON scenario fixtures, but no such files exist in the repository at audit time. The repository's eval packs are the
-> markdown scenarios listed above; their YAML frontmatter (validated by the
-> scenario checks in `tests/framework/scenarios.rs`) is the closest analogue to a
-> fixture. The matrix below uses the markdown scenarios
-> as the unit of coverage. See [Plan amendments](#plan-amendments) for
-> follow-up.
+The matrix keeps linking the expanded Markdown explanations under `evals/scenarios/`
+for readability; `crates/scenario/tests/catalog.rs` guarantees each explanation has
+a canonical YAML counterpart and that assertion documentation matches the typed
+registry.
 
 ## How to read the matrix
 

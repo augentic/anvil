@@ -12,7 +12,7 @@ The echo adapter guests — skeleton `specify:adapter` components usable in comp
 Both compile against this repo's own [`wit/`](../../wit/) — the fixtures that let a contract revision and its seam tests land in one engine PR — and are deliberately model-free: they exercise the runtime seams, not Specify logic. Build them from inside `harness/` with:
 
 ```shell
-cargo make build-guests
+cargo make guests
 ```
 
 Artifacts land at `target/wasm32-wasip2/debug/examples/echo_{source,target}.wasm` (example targets always land under the target dir's `examples/` subdirectory).

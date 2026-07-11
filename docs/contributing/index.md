@@ -4,12 +4,13 @@ This section is for developers working on the Specify framework itself -- the sk
 
 ## Repository map
 
-The platform lives in one repository, [`augentic/specify`](https://github.com/augentic/specify):
+The workflow engine and operator plugins live in [`augentic/specify`](https://github.com/augentic/specify); source and target adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters):
 
 | Path                                                                   | Contents                                                                                         | Language       |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
-| `plugins/`, `adapters/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `evals/` | Skills, adapters, brief templates, shared references, documentation, marketplace manifest        | Markdown, YAML |
-| `src/`, `crates/`, `tests/` (the Cargo workspace at the repo root)     | The `specify` binary (workflow runtime), workspace crates, and the framework-quality cargo tests | Rust           |
+| `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `quality/` | Skills, references, documentation, marketplace manifest, and canonical workflow scenarios | Markdown, YAML |
+| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/composed execution surfaces | Rust |
+| `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 
 The prose defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace at the repo root implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
 
@@ -51,6 +52,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 ## What to read next
 
+- [Quality gates](quality-gates.md) -- canonical scenarios, execution profiles, assertion ownership, and release cadence
 - [The developer loop](dev-loop.md) -- the three-rung `make dev-*` surface shared with `specify-adapters`: `dev-check` (model-free), `dev-live` (live model), `dev-full` (WASM boundary)
 - [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
@@ -65,4 +67,4 @@ Advanced examples live beside the skills that own them, so they stay close to th
 
 - [`adapters/targets/omnia/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this prompt carries the crate-writer and test-writer behavior).
 - [`adapters/targets/vectis/prose/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/) and [`adapters/targets/vectis/prose/references/examples/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/prose/prompts/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/prompts/).
-- [`evals/scenarios/`](../../evals/scenarios/README.md) -- the unified scenario pack covering the change lifecycle (`/spec:plan`, `specify plan execute`, `/spec:finalize`) from N=1 through multi-repo, happy-path through failure and recovery.
+- [`quality/scenarios/`](../../quality/scenarios/) -- canonical executable workflow cases; historical operator records remain under `evals/` during migration.

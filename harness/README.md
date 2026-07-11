@@ -47,21 +47,23 @@ Run these from `harness/`:
 ```shell
 cargo make dev-run -- target resolve omnia --project-dir /path/to/project
 cargo make test-native  # full loop, seams, replay, and MCP shelves
+cargo make test-composed # model-free workflow-core WASM/WIT smoke
 cargo make lint         # harness clippy gate
-cargo make build-guests # WASM core + echo fixtures; not needed for the native loop
+cargo make guests # WASM core + echo fixtures; not needed for the native loop
 ```
 
 `cargo make dev-run` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`. From either repo root, `make dev-run PROJECT=/path/to/project ARGS='plan status'` is the same shim without changing directory (see `scripts/dev.sh`).
 
 ## Contents
 
-This directory holds workspace surfaces that sit outside the root CI gates: they are **workspace members** of the root cargo workspace (shared lockfile, path deps, lint tables) but are **excluded from `default-members`**, so no root gate — `cargo make ci`, `test`, `lint`, `doc`, `vet`, `deny`, `fmt` — ever builds, lints, tests, or audits them.
+This directory holds non-shipped workspace surfaces. They are **workspace members** of the root Cargo workspace (shared lockfile, path deps, lint tables) but are **excluded from `default-members`**. Dedicated CI jobs run the native cross-repository and composed WebAssembly profiles; the ordinary per-repository `cargo make ci` gate does not require sibling checkouts or guest builds.
 
-| Path        | What                                                                                                                                                                                                                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fixtures/` | The echo adapter guests — skeleton `specify:adapter` components usable in composed deployments so the WIT imports resolve without the sibling adapters checkout.                                                                                                                                                               |
+| Path        | What                                                                                                                                                                                                                                                                                                                                      |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `composed/` | The model-free workflow-core WASM/WIT smoke: hosts `specify.wasm` with only the echo target fixture, drives a real command, and proves adapter links, ID dispatch, and writable preopens.                                                                                                                                                 |
+| `fixtures/` | The echo adapter guests — skeleton `specify:adapter` components usable in composed deployments so the WIT imports resolve without the sibling adapters checkout.                                                                                                                                                                          |
 | `native/`   | The Rust-native shim: the `specify-dev` binary and its provider — the same typed command/HTTP routers and workflow operations as the wasm guest, with a native-only linked adapter catalog, cursor plus Omnia replay/scripted model backends, and per-adapter MCP reference shelves. Requires the `../specify-adapters` sibling checkout. |
 
-The composed-deployment rig that previously lived at `harness/runtime/` is retired: the native harness (`harness/native/`) owns the dev loop and full-loop integration coverage, and the crate-level suites keep the deterministic coverage.
+The larger composed-deployment rig that previously lived at `harness/runtime/` remains retired: the focused `harness/composed/` package owns only the workflow core's WASM boundary, while the native harness owns deterministic full-loop behavior.
 
-**Coverage boundary.** The native suite exercises everything except the wasm-only surface: WIT bindings, Omnia's dispatch-by-id, and mount/preopen wiring. Those stay with the shipped guest — the `evals/drivers/guest-execute-loop.sh` composed run and targeted adapter tests — so a green native suite plus a green guest eval is the full picture, and neither alone is.
+**Coverage boundary.** The composed smoke exercises WIT bindings, Omnia's dispatch-by-id, and mount/preopen wiring without a model call or sibling checkout. The native suite owns replayed workflow behavior; reproducing that full loop in WASM would require a request-keyed fixture corpus for every judgment leg. See [`composed/README.md`](composed/README.md).

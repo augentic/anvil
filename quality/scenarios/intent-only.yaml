@@ -1,0 +1,85 @@
+version: 1
+id: intent-only
+owner: scenarios
+gate-tier: release-blocker
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: author
+  kind: command
+  run: specify plan author demo --intent "Fix the greeting."
+- id: approve
+  kind: command
+  run: specify plan transition demo approved
+- id: claim
+  kind: command
+  run: specify plan next
+- id: refine
+  kind: command
+  run: specify slice refine feature-x
+profiles:
+- id: native-scripted
+  runtime: native
+  model: scripted
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-replay
+  runtime: native
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: wasm-replay
+  runtime: wasm
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-live
+  runtime: native
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: author
+  probe:
+    kind: path-exists
+    path: plan.yaml
+- id: plan-validates
+  after: author
+  probe:
+    kind: registered
+- id: intent-single-lead
+  after: author
+  probe:
+    kind: registered
+- id: gate-1-not-auto-stamped
+  after: author
+  probe:
+    kind: registered
+- id: sources-intent-only
+  after: refine
+  probe:
+    kind: registered
+- id: refine-reaches-refined
+  after: refine
+  probe:
+    kind: registered
+semantic-rubrics: []
+expected-outputs:
+- path: plan.yaml
+  kind: file
+- path: discovery.md
+  kind: file

@@ -16,13 +16,27 @@ skip_rust_env_info = true
 # landing under target/wasm32-wasip2/debug/examples/). Two invocations:
 # `--examples` narrows target selection to example targets only, so the
 # core guest's lib needs its own build.
-[tasks.build-guests]
+[tasks.guests]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 (cd "${root}" && cargo build -p specify --lib --target wasm32-wasip2)
 (cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
+'''
+
+# Composed workflow-core guests
+#
+# The CI smoke needs only the workflow guest and one model-free target
+# fixture. Keep this narrower than `guests`, which remains the manual
+# entry point for both echo adapter axes.
+[tasks.build-composed-guests]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo build -p specify --lib --target wasm32-wasip2)
+(cd "${root}" && cargo build -p fixtures --example echo_target --target wasm32-wasip2)
 '''
 
 # Dev shim
@@ -45,6 +59,13 @@ args = ["run", "-p", "specify-dev", "${@}"]
 command = "cargo"
 args = ["nextest", "run", "-p", "specify-dev"]
 
+# Model-free composed WASM/WIT smoke. Guest construction is explicit so the
+# host test never shells out to Cargo or hides a missing CI build prerequisite.
+[tasks.test-composed]
+dependencies = ["build-composed-guests"]
+command = "cargo"
+args = ["nextest", "run", "-p", "specify-composed-tests", "--no-tests=pass"]
+
 # Lint — the harness crates are not covered by the root workspace's
 # clippy gate; run this before extending them.
 [tasks.lint]
@@ -53,6 +74,8 @@ args = [
     "clippy",
     "-p",
     "fixtures",
+    "-p",
+    "specify-composed-tests",
     "-p",
     "specify-dev",
     "--all-targets",

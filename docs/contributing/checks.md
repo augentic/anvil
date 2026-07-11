@@ -66,12 +66,15 @@ Every `SKILL.md` under `plugins/` is validated against the embedded `schemas/aut
 
 ### `scenarios.rs`
 
-Eval scenario files (opt-in by frontmatter, discovered under `evals/scenarios/`, `targets/*/tests/`, and promoted skill fixtures) are validated against the embedded `schemas/authoring/scenario.schema.json`, plus:
+The authoring schema accepts canonical YAML and legacy Markdown frontmatter during migration. `tests/framework/scenarios.rs` validates legacy records and cross-file audit consistency; `crates/scenario/tests/catalog.rs` loads every canonical YAML file through the typed DTOs and enforces one-to-one legacy migration plus assertion-registry documentation parity.
 
 - **Stages contiguity** — `stages` must be a contiguous slice of `[plan, refine, build, merge, drop]`.
 - **Body-id consistency** — a visible `Scenario ID:` body line must equal the frontmatter `id`.
 - **Expected-artifact path safety** — no `..` segments or leading `/`.
 - **Cross-file id uniqueness** — scenario ids are unique across the repo.
+- **Assertion registry** — every legacy assertion resolves to the documented taxonomy; canonical YAML deserialises through the closed `scenario::AssertionId` enum.
+- **Run assertion coverage** — completed historical records cover exactly the assertions declared by their scenario.
+- **Negative-expectation policy** — live model calls stay outside ordinary CI and semantic output is not byte-golden tested.
 - **Catalog ↔ runs drift** — the [`evals/scenarios/README.md`](../../evals/scenarios/README.md) catalog's Status/Gate columns must agree with the committed run records under `evals/runs/`.
 
 ### `prose.rs`

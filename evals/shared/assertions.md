@@ -1,11 +1,11 @@
 # Assertion taxonomy
 
-The executable grading contract for every assertion id used in scenario frontmatter (`assertions[]` in `evals/scenarios/<id>.md`). Each id maps to a definition plus **exactly one** grading mechanism:
+Legacy operator detail for assertion ids now typed by `crates/scenario` and declared in `quality/scenarios/*.yaml`. Each id maps to **exactly one** grading mechanism:
 
 - **Probe** — a deterministic post-run check: a CLI read verb (`specify plan status`, `specify journal show`, …), an artifact predicate, or a `jq` projection over a read verb's output. Probes never drive the workflow and never transition anything; probe output is evidence, never a transition.
-- **Judgment flag** — the irreducibly human residue (prose quality, decomposition sensibility, ergonomics). Graded by operator or agent **with an evidence pointer** — a verdict without one is not a grade.
+- **Semantic rubric** — meaning or usefulness that no deterministic predicate can decide. Live profiles grade it with an evidence pointer and calibrated score.
 
-Driving stays agent-/operator-led per the scenario's Invocation; grading is what happens after — the two are deliberately separate concerns, so deterministic post-run probes never count as "automating the run". The `negative-expectations` (`automated-runner-added`, `fake-forge-added`, `transcript-replay-added`, `ci-target-added`, `golden-output-required`) constrain *driving*; running these probes after a sweep violates none of them.
+Canonical profiles may automate setup, driving, and hard grading. The remaining negative expectations prohibit live-model calls in ordinary CI (`live-model-ci-required`) and byte-golden semantic grading (`semantic-byte-golden-required`).
 
 Conventions:
 
@@ -14,13 +14,25 @@ Conventions:
 - `<slice>`, `<key>`, `<plan>` placeholders come from the run's own plan; substitute before running.
 - Record probe output (or its absence) as the **Evidence** entry in the [run-template](run-template.md) assertion table for any non-`pass` verdict; on `pass` the probe command itself is sufficient evidence.
 
-Ids are deliberately shared across scenario files; this document is their single definition. If machine enforcement is ever needed, this file becomes a structured carrier plus a lint check that every scenario id resolves here — never a per-scenario `probe` field (the probe definitions live here, in one place, so scenario frontmatter stays declarative).
+Ids are deliberately shared across scenarios. `scenario::AssertionId` is the closed executable registry; this document supplies expanded legacy probe guidance while migration replaces registered probes with typed YAML probes or profile-specific evaluators.
 
 ## Shared assertions
 
+### `composed-init-succeeds`
+
+The hosted workflow guest completes the canonical `composed-init` command with exit code 0.
+
+**Probe.** Typed `exit-code` probe in `quality/scenarios/composed-init.yaml`.
+
+### `project-scaffold-written`
+
+The composed init writes `.specify/project.yaml` through the writable project preopen.
+
+**Probe.** Typed `path-exists` probe in `quality/scenarios/composed-init.yaml`.
+
 ### `plan-exists`
 
-Used by every scenario (13 of 13). `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `specify plan execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
+Used by every catalog scenario except `guest-execute-loop`, whose assertions start at the composed runtime's execute result. `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `specify plan execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.
 
 **Probe.**
 
@@ -262,12 +274,12 @@ grep 'project:' plan.yaml | sort -u    # absent, or only the sole project synthe
 
 ### `contract-slice-first`
 
-The dependency graph makes the contract slice the first executable slice.
+The dependency graph makes the contract slice the first feature slice and places it before both implementation slices. A target-required bootstrap slice may execute before it without violating the contract-first feature ordering.
 
-**Probe.** On a fresh approved copy of the plan (or from the recorded first advance):
+**Probe.**
 
 ```bash
-specify journal show --filter plan.entry.advanced | head -1 | jq -c .payload    # first advance names the contract slice
+grep -n 'name: \|project: ' plan.yaml    # contract entry precedes backend/mobile implementation entries
 ```
 
 ### `implementation-slices-routed`
@@ -487,9 +499,9 @@ git -C workspace/mobile log --oneline specify/<plan>     # mobile slice commits 
 test -d workspace/backend && test -d workspace/mobile && echo materialised
 ```
 
-### `guest-lock-at-workspace`
+### `plan-lock-at-workspace`
 
-The guest execute marker is held at the workspace while phase work runs in the slots — the workspace root owns `plan.yaml` and every per-entry status write; no slot grows its own plan. The guest loop holds the create-exclusive `.specify/guest.lock` at the plan root for the run's lifetime (a second driver session exits `guest-marker-held`) and releases it on exit.
+The plan lock is held at the workspace while phase work runs in the slots — the workspace root owns `plan.yaml` and every per-entry status write; no slot grows its own plan. An unlocked mutating plan command is refused with `plan-lock-not-held`.
 
 **Probe.**
 
@@ -497,7 +509,7 @@ The guest execute marker is held at the workspace while phase work runs in the s
 test -f plan.yaml && echo workspace-owns-plan
 ls workspace/*/plan.yaml 2>/dev/null    # expect no output
 specify journal show --filter plan.entry.advanced    # advances recorded in the workspace journal, not a slot's
-test ! -f .specify/guest.lock && echo released    # after the run exits; mid-run the marker exists at the workspace root only
+specify plan next --format json    # after lock release, expect plan-lock-not-held rather than mutation
 ```
 
 ## `workspace-fail-resume`

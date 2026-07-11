@@ -213,9 +213,10 @@ fn write_valid_scenario_tree(root: &Path, id: &str) {
         root,
         &format!("evals/scenarios/{id}.md"),
         &format!(
-            "---\nid: {id}\nowner: spec\nkind: skill\nentrypoint: /spec:refine\nstages: [refine, build]\nisolation: fresh-project\n---\n\nBody.\n"
+            "---\nid: {id}\nowner: spec\nkind: skill\nentrypoint: /spec:refine\nstages: [refine, build]\nisolation: fresh-project\nassertions: [plan-exists]\nnegative-expectations:\n  - live-model-ci-required\n  - semantic-byte-golden-required\n---\n\nBody.\n"
         ),
     );
+    write(root, "evals/shared/assertions.md", "### `plan-exists`\n\n**Probe.**\n");
     write(
         root,
         "evals/scenarios/README.md",
@@ -287,6 +288,35 @@ fn scenario_checks_fire_on_bad_fixtures() {
     let content = fs::read_to_string(&path).expect("read");
     fs::write(&path, content.replace("| pending |", "| passed |")).expect("write");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_CATALOG_RUNS_DRIFT));
+
+    // A scenario assertion absent from the shared taxonomy fires.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_valid_scenario_tree(dir.path(), "assertion");
+    let path = dir.path().join("evals/scenarios/assertion.md");
+    let content = fs::read_to_string(&path).expect("read");
+    fs::write(&path, content.replace("plan-exists", "unknown-assertion")).expect("write");
+    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_ASSERTION_UNRESOLVED));
+
+    // A completed run must cover exactly the scenario assertion ids.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_valid_scenario_tree(dir.path(), "coverage");
+    let catalog = dir.path().join("evals/scenarios/README.md");
+    let content = fs::read_to_string(&catalog).expect("read");
+    fs::write(&catalog, content.replace("| pending |", "| passed |")).expect("write");
+    write(
+        dir.path(),
+        "evals/runs/coverage.pass.md",
+        "# Run: `coverage` — **pass**\n\n## Assertions\n\n| Assertion | Verdict | Evidence |\n| --- | --- | --- |\n",
+    );
+    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_RUN_ASSERTION_COVERAGE));
+
+    // Every catalog scenario carries the same manual-driving prohibitions.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_valid_scenario_tree(dir.path(), "negative");
+    let path = dir.path().join("evals/scenarios/negative.md");
+    let content = fs::read_to_string(&path).expect("read");
+    fs::write(&path, content.replace("  - live-model-ci-required\n", "")).expect("write");
+    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_NEGATIVE_EXPECTATIONS));
 }
 
 /// A marketplace manifest declaring exactly one `spec` plugin.
@@ -303,6 +333,10 @@ const VALID_MARKETPLACE: &str = r#"{
 /// Baseline fixture carrying the artifacts the prose checks require.
 fn write_valid_prose_tree(root: &Path) {
     write(root, "docs/reference/review-team-protocol.md", "# Review team protocol\n");
+    write(root, "docs/standards/testing.md", "# Testing\n");
+    write(root, "docs/contributing/quality-gates.md", "# Quality gates\n");
+    write(root, "quality/README.md", "# Workflow quality\n");
+    write(root, "quality/COVERAGE.md", "# Scenario coverage map\n");
     write(
         root,
         "docs/standards/skill-authoring.md",

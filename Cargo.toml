@@ -65,7 +65,7 @@ path = "tests/framework/main.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/fixtures", "harness/native"]
+members = ["crates/*", "harness/composed", "harness/fixtures", "harness/native"]
 default-members = [
     ".",
     "crates/*",
@@ -192,6 +192,7 @@ wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 artifacts = { path = "crates/artifacts" }
 error = { path = "crates/error" }
+scenario = { path = "crates/scenario" }
 transport = { path = "crates/transport" }
 workflow = { path = "crates/workflow" }
 

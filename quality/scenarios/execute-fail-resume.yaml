@@ -1,0 +1,78 @@
+version: 1
+id: execute-fail-resume
+owner: scenarios
+gate-tier: release-blocker
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: author
+  kind: command
+  run: specify plan author demo --intent "Fix the greeting."
+- id: approve
+  kind: command
+  run: specify plan transition demo approved
+- id: execute-fails
+  kind: command
+  run: specify plan execute --format json
+- id: build-resumes
+  kind: command
+  run: specify slice build feature-x --format json
+- id: execute-resumes
+  kind: command
+  run: specify plan execute --format json
+profiles:
+- id: native-scripted
+  runtime: native
+  model: scripted
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-replay
+  runtime: native
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: wasm-replay
+  runtime: wasm
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-live
+  runtime: native
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: author
+  probe:
+    kind: path-exists
+    path: plan.yaml
+- id: build-failure-stop-hint
+  after: execute-fails
+  probe:
+    kind: registered
+- id: build-resumes-from-failed-task
+  after: build-resumes
+  probe:
+    kind: registered
+- id: loop-continues-to-merge
+  after: execute-resumes
+  probe:
+    kind: registered
+semantic-rubrics: []
+expected-outputs:
+- path: plan.yaml
+  kind: file

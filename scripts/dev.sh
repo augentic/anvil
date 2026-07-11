@@ -17,15 +17,14 @@
 #                              seam/replay suite; no WASM, no model
 #   run <project> [args...]    run specify-dev against any consumer
 #                              project without changing directory
-#   live [<adapter> [<test>]]  one deliberate live-model run: with no
-#                              adapter, the native-shim guest execute
-#                              loop; with an adapter, exactly one live
-#                              eval scenario (prose overlay on once
-#                              artifacts exist)
+#   live [<adapter> [<test>]]  with no adapter, the repeated native-live
+#                              workflow profile and structured report;
+#                              with an adapter, exactly one live quality
+#                              case (prose overlay on once artifacts exist)
 #   full                       the explicit outer gate: doctor --live,
 #                              deterministic checks, composed WASM/WIT
-#                              coverage, and the composed guest execute
-#                              loop — never the default edit loop
+#                              coverage, and the repeated wasm-live
+#                              workflow profile — never the default loop
 #
 # Overrides: SPECIFY_FRAMEWORK (this checkout), SPECIFY_ADAPTERS
 # (sibling adapters checkout).
@@ -201,8 +200,8 @@ live() {
     # Specify workflow iteration: the native shim is the default live
     # rung — no WASM builds, no deployment manifest. Composed mode is
     # dev-full's job.
-    say "== live workflow run (native shim) =="
-    SPECIFY_SHIM=native bash "$FRAMEWORK/evals/drivers/guest-execute-loop.sh"
+    say "== live workflow profile: native-live =="
+    bash "$FRAMEWORK/quality/run-live.sh" native-live
     return
   fi
 
@@ -234,7 +233,7 @@ live() {
     cd "$ADAPTERS"
     [ -z "${CARGO_TARGET_DIR:-}" ] || export CARGO_TARGET_DIR="$target"
     [ "$overlay" != 1 ] || export SPECIFY_PROSE_OVERLAY=1
-    cargo test -p evals --test live -- \
+    cargo test -p adapter-host-tests --test live -- \
       --ignored --nocapture --exact "$adapter::$scenario"
   )
 }
@@ -249,10 +248,10 @@ full() {
   check ""
 
   say "== composed WASM/WIT coverage (adapters checkout) =="
-  cargo_in "$ADAPTERS" test -p evals --test composed
+  cargo_in "$ADAPTERS" test -p adapter-host-tests --test composed
 
-  say "== composed guest execute loop (live model, WASM deployment) =="
-  bash "$FRAMEWORK/evals/drivers/guest-execute-loop.sh"
+  say "== composed workflow profile: wasm-live =="
+  bash "$FRAMEWORK/quality/run-live.sh" wasm-live
 
   say "==== dev-full: complete ===="
 }

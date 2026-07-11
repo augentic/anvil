@@ -73,6 +73,8 @@ make ci                               # the full Rust workspace gate (cargo make
 
 The framework checks are plain cargo tests at `tests/framework/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
 
+Test placement, canonical workflow scenarios, native/WASM/live profiles, and assertion ownership are defined in [`docs/standards/testing.md`](../../docs/standards/testing.md). The contributor-facing gate model is [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). Generic model/runtime mechanics belong to `omnia-testkit`; Specify owns only workflow-specific scenarios, execution, and grading.
+
 For generated crates in downstream consumer projects, the normal verification commands apply:
 
 ```bash

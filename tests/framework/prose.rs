@@ -34,8 +34,14 @@ const BODY_CAP: u64 = 200;
 /// Standards document that must carry both numeric caps in prose.
 const STANDARDS_REL: &str = "docs/standards/skill-authoring.md";
 
-/// Canonical document per-target `agent-teams.md` overlays resolve to.
-const CANONICAL_REVIEW_PROTOCOL: &str = "docs/reference/review-team-protocol.md";
+/// Canonical documents required by shipped overlays and contributor guidance.
+const CANONICAL_DOCUMENTS: &[&str] = &[
+    "docs/reference/review-team-protocol.md",
+    "docs/standards/testing.md",
+    "docs/contributing/quality-gates.md",
+    "quality/README.md",
+    "quality/COVERAGE.md",
+];
 
 /// Reference-corpus roots (one directory depth per `*`; `*` does not
 /// cross `/`) that owe a `README.md` index at two or more files.
@@ -217,14 +223,15 @@ fn schema_description_max_length() -> Option<u64> {
     schema.get("properties")?.get("description")?.get("maxLength").and_then(JsonValue::as_u64)
 }
 
-/// The canonical review-team-protocol document must exist: per-target
-/// `agent-teams.md` overlays in the adapters repo symlink to it.
+/// Canonical overlay and test-model documents must exist.
 fn check_canonical_doc(root: &Path, findings: &mut Vec<Finding>) {
-    if !root.join(CANONICAL_REVIEW_PROTOCOL).is_file() {
-        findings.push(Finding::new(
-            CHECK_CANONICAL_MISSING,
-            format!("required file '{CANONICAL_REVIEW_PROTOCOL}' is missing"),
-        ));
+    for relative in CANONICAL_DOCUMENTS {
+        if !root.join(relative).is_file() {
+            findings.push(Finding::new(
+                CHECK_CANONICAL_MISSING,
+                format!("required file '{relative}' is missing"),
+            ));
+        }
     }
 }
 

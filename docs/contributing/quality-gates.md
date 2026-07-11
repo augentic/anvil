@@ -1,0 +1,62 @@
+# Quality gates
+
+Specify uses one workflow-scenario model across deterministic integration tests, composed WebAssembly conformance, and live model evaluation. The scenario says what to run and prove; its profile selects where it runs, which model backend answers judgment requests, and whether semantic grading applies.
+
+The authoritative placement rules live in [testing standards](../standards/testing.md). The [developer loop](dev-loop.md) maps ordinary changes onto the commands below.
+
+## Vocabulary
+
+- **Scenario** — canonical YAML declaring setup, workflow steps, fixtures, hard assertions, semantic rubrics, expected outputs, and gate tier.
+- **Profile** — execution selection over one scenario: runtime, model backend, grading mode, trial count, and report destination.
+- **Runtime** — native linked-adapter execution or a composed WebAssembly deployment.
+- **Model backend** — scripted answers, canonical request-key replay, or a live model.
+- **Hard assertion** — mechanically decidable result such as an exit status, lifecycle state, schema result, journal event, filesystem predicate, or generated-output verifier.
+- **Semantic rubric** — evidence-backed judgment of meaning or usefulness, used only by live profiles.
+- **Run report** — structured result carrying source revisions, profile, trials, assertion results, rubric scores, model metadata, and retained evidence.
+- **Gate** — the cadence and threshold applied to reports.
+
+## Gate 1 — repository correctness
+
+`cargo make ci` in each repository owns formatting, lints, schemas, authoring checks, crate integration, transport contracts, adapter-native operations, and adapter-component conformance that needs no sibling workflow checkout. It is model-free and runs on every commit.
+
+## Gate 2 — cross-repository workflow
+
+The native profile runs canonical workflow scenarios through `specify-dev` with linked adapter crates. Omnia's `omnia-testkit` supplies request-recording `Harness`, `Scripted`, and canonical `Replay`; Specify supplies only workflow setup, execution, assertions, and reports. This gate is model-free, requires sibling checkouts, and runs in CI.
+
+## Gate 3 — composed WebAssembly
+
+The composed profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, and HTTP/reference wiring. The current CI case is model-free; full-loop replay requires Omnia to expose fixture projection without duplicating its private request canonicalization. Adapter-local composed tests remain responsible for each adapter component; Specify's composed profile is responsible for workflow-core orchestration across components.
+
+## Gate 4 — live quality
+
+Live profiles run selected scenarios with the Cursor-backed model. Hard assertions must pass mechanically on every trial. Semantic rubrics score decomposition, artifact fidelity, generated implementation, and operator ergonomics with evidence. Reports record model identity, source and prompt digests, tokens, latency, generated-output verification, and retained artifacts.
+
+Live profiles are explicit development or release gates, not ordinary CI. Release blockers run for each release; the full catalog runs per the documented release cadence. Ambiguous rubric results and publication approval remain human decisions.
+
+## Placement decision
+
+When adding coverage:
+
+1. Put a private dense matrix in a kernel unit test only when integration is impractical.
+2. Put one-crate public behavior in that crate's integration suite.
+3. Put deterministic cross-crate workflow behavior in a canonical scenario with native replay.
+4. Add the composed profile only when the behavior crosses a WebAssembly/WIT/runtime seam.
+5. Add a semantic rubric only when no deterministic predicate can decide the result.
+
+Do not copy an assertion into another layer for reassurance. Name the seam it owns and let other profiles reuse the same scenario result.
+
+## Test infrastructure boundary
+
+`omnia-testkit` is the reusable infrastructure boundary:
+
+- `model` — scripted responses, request recording, MCP-grant inspection.
+- `replay` — `omnia-wasi-model` request-key fixture replay.
+- `runtime` — temporary manifests, guest discovery, in-process runtime hosting, and HTTP driving.
+
+`crates/scenario` must not duplicate those facilities. It owns Specify's scenario schema, typed assertion registry, report types, and workflow execution vocabulary. `harness/native` remains the native linked-adapter runtime and live Cursor adapter, not a second scenario catalog.
+
+## Reader acceptance
+
+- **First-time contributor choosing a command:** start with `make dev-check`; use `make dev-live` only for model-sensitive behavior and `make dev-full` only when the WebAssembly boundary or release quality matters.
+- **Framework developer placing coverage:** use the placement decision above, name one primary seam owner, and add canonical YAML only for cross-phase workflow behavior or semantic quality.
+- **Release owner interpreting reports:** require every hard assertion in every trial, review semantic scores below the review threshold, retain the structured bundle, and never treat a schema-valid build report alone as generated-output proof.

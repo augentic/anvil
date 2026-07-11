@@ -9,7 +9,7 @@
 # writable "." mount.
 #
 # Paths resolve relative to this file. The workflow guest is built in-tree
-# (`cargo make build-guests`); the adapter guests are single-file
+# (`cargo make guests`); the adapter guests are single-file
 # components release-built in the sibling augentic/specify-adapters
 # checkout — run `cargo make release` there once (and after
 # any adapter change) to populate its `target/wasm32-wasip2/release/`.

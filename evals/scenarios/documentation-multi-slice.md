@@ -16,11 +16,8 @@ expected-artifacts:
   - plan.yaml
   - discovery.md
 negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
+  - live-model-ci-required
+  - semantic-byte-golden-required
 ---
 
 # Documentation, multi-slice
@@ -52,7 +49,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 ## Negative expectations
 
-Manual by design — see [`docs/contributing/evals.md`](../../docs/contributing/evals.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
+Live profiles remain outside per-commit CI, and semantic output is rubric-graded rather than byte-golden tested.
 
 ## Recording
 

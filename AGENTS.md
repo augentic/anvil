@@ -118,6 +118,8 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
 - **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced by the WIT contract plus each adapter crate's `tests/` suite and the adapters repo's composed-deployment tests (the `composed` test target in `evals/`).
 
+Canonical workflow scenarios separate the case from its execution profile: native scripted/replay and composed WASM replay are deterministic gates; live profiles add semantic rubrics. Hard assertions are automated in every applicable profile. `omnia-testkit` owns generic model/replay/runtime test mechanics; Specify owns scenario semantics and grading. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
+
 ## Commands
 
 All commands are run from the repository root:
@@ -128,7 +130,7 @@ All commands are run from the repository root:
 
 CI is one job: `.github/workflows/ci.yaml` runs `cargo make ci` from the repo root (no sibling checkout required — the engine embeds no adapter-authored prose). See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
-Full evals guidance, including the scenario packs under [`evals/`](evals/README.md), lives in [docs/contributing/evals.md](docs/contributing/evals.md).
+The quality-gate model and canonical scenarios live under [`quality/`](quality/README.md); historical operator eval guidance and run records remain under [`evals/`](evals/README.md) during migration.
 
 ## Skill authoring
 
@@ -161,6 +163,7 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest} (owns the command operations too: each domain module carries its family in a `handlers` submodule — journal::handlers, slice::handlers, change::plan::handlers, orchestrate::handlers, registry::handlers, adapter::handlers, init::handlers — as omnia_guest::api::operation::Operation<P> impls over flat serde Input DTOs, with shared plumbing in workflow::handler: Anchor, Ctx, Render, ReportBody, and the operation-layer Error; also owns workflow::agents — init-time AGENTS.md context-fence generation — and workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability); no wasmtime in its graph
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract
+scenario                 # non-shipped quality layer — canonical scenario DTOs, typed assertion registry, deterministic grading, and structured reports
 harness/fixtures         # echo adapter fixtures (skeleton specify:adapter components for composed deployments)
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
@@ -197,7 +200,10 @@ src/command.rs              struct Cli + Guest::run + route(cli)
 src/http.rs              struct Http + Guest impl + the HTTP route table
 crates/transport/         shared command/HTTP routing, clap grammar, conversions, projectors, and exit contract
 crates/workflow/         workflow domain logic
+crates/scenario/         non-shipped canonical scenario, assertion, grading, and report types
+harness/{native,composed}/ deterministic linked-adapter and hosted-WASM profile executors
 harness/fixtures/        echo adapter fixtures (skeleton specify:adapter components)
+quality/                 canonical YAML cases, profiles, rubrics, and structured live reports
 tests/framework/         prose/manifest framework checks as cargo tests
 tests/fixtures/          shared fixture trees referenced by crate-level suites
 ```

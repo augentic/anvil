@@ -179,7 +179,7 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 - **Migration ledger and slice mapping.** Cumulative cross-change state answering "is this source migrated yet?" and "what's the source-to-target pattern of this slice?" for migrations spanning many changes.
 - **Omnia plan composition.** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
 - **Standards baseline.** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Specify-native codebases.
-- **Orchestration trace replay for eval scenarios.** Deterministic structural grading lives in the [assertion taxonomy](../evals/shared/assertions.md) (per-assertion `Probe` vs `Judgment flag`), so structure is self-graded and only prose is human-judged. The model seam covers the same goal: `ModelDefault` replays recorded *answers* at the `wasi-model` boundary, giving deterministic replay without capturing editor transcripts at all. Anything beyond it stays parked behind the `transcript-replay-added` / `automated-runner-added` negative-expectations every scenario encodes.
+- **Orchestration replay coverage.** Canonical scenarios separate hard assertions from semantic rubrics. `ModelDefault` provides deterministic request-key replay at the `wasi-model` boundary; native and composed profiles reuse that contract without capturing editor transcripts. Live profiles remain outside ordinary CI.
 
 ## Non-Goals
 

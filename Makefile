@@ -35,14 +35,14 @@ dev-check:
 dev-run:
 	@bash scripts/dev.sh run "$(PROJECT)" $(ARGS)
 
-# One deliberate live-model run. Bare: the native-shim guest execute
-# loop. ADAPTER=<name> [SCENARIO=<live test>]: exactly one adapter live
-# eval scenario (prose overlay on once artifacts exist).
+# Repeated live-model profile. Bare: three native workflow trials with
+# structured evidence. ADAPTER=<name> [SCENARIO=<live test>]: exactly one
+# adapter-local prompt-quality case.
 dev-live:
 	@bash scripts/dev.sh live $(ADAPTER) $(SCENARIO)
 
 # The explicit outer gate: doctor --live, deterministic checks,
-# composed WASM/WIT coverage, and the composed guest execute loop.
+# composed WASM/WIT coverage, and three composed live workflow trials.
 # Never the default edit loop.
 dev-full:
 	@bash scripts/dev.sh full

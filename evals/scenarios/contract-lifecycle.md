@@ -19,7 +19,7 @@ assertions:
   - finalize-archives-plan
   - archived-plan-path-recorded
   - archived-change-md-present
-  - pushed-branch-list-recorded
+  - publication-confirmation-recorded
   - rerun-finalize-plan-not-found
 expected-artifacts:
   - plan.yaml
@@ -27,11 +27,8 @@ expected-artifacts:
   - workspace
   - .specify/archive/plans
 negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
+  - live-model-ci-required
+  - semantic-byte-golden-required
 ---
 
 # Cross-Repo Contract Flow
@@ -74,7 +71,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 
 - `plan-exists`: `plan.yaml` exists after `/spec:plan`.
 - `plan-validates`: `specify plan validate` exits cleanly after draft and during review.
-- `contract-slice-first`: the dependency graph makes the contract slice the first executable slice.
+- `contract-slice-first`: the dependency graph makes the contract slice the first feature slice before both implementations; a target-required bootstrap may precede it.
 - `implementation-slices-routed`: exactly two implementation slices route to `backend` and `mobile`.
 - `dependencies-contract-before-implementations`: each implementation slice depends on the contract slice.
 - `draft-stops-at-handoff`: `/spec:plan` exits at the hand-off without executing, pushing, or finalizing.
@@ -85,12 +82,12 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 - `finalize-archives-plan`: `/spec:finalize` archives the plan via `specify plan archive` after publication is confirmed.
 - `archived-plan-path-recorded`: the wrap-up names the archived plan path under `.specify/archive/plans/`.
 - `archived-change-md-present`: the archived directory contains the archived `change.md`.
-- `pushed-branch-list-recorded`: the wrap-up lists one pushed branch per routed project (`backend`, `mobile`, `contracts`) and reminds the operator to open PRs by hand.
+- `publication-confirmation-recorded`: the captured finalize interaction records the operator's publication confirmation before the archive command runs.
 - `rerun-finalize-plan-not-found`: a second `/spec:finalize` reports no active plan and exits 0.
 
 ## Negative expectations
 
-Manual by design — see [`docs/contributing/evals.md`](../../docs/contributing/evals.md). This scenario must not add an automated runner, fake forge, recorded transcript, CI target, or required byte-for-byte golden comparison. Parity is asserted on durable structure (archive path shape, pushed-branch count and project mapping, archive directory contents).
+Live profiles remain outside per-commit CI, and semantic output is rubric-graded rather than byte-golden tested.
 
 ## Recording
 

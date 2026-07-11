@@ -1,6 +1,6 @@
 //! Scenario-pack predicates: frontmatter schema, id uniqueness, body
-//! id agreement, stage contiguity, artifact-path safety, and the
-//! catalog↔runs drift check over `evals/`.
+//! id agreement, stage contiguity, artifact-path safety, assertion
+//! contracts, and the catalog↔runs drift check over `evals/`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -22,6 +22,12 @@ pub const CHECK_BODY_ID_MISMATCH: &str = "scenarios.body-id-mismatch";
 pub const CHECK_STAGES_NOT_CONTIGUOUS: &str = "scenarios.stages-not-contiguous";
 /// An `expected-artifacts` entry is empty, absolute, or escaping.
 pub const CHECK_ARTIFACT_PATH_UNSAFE: &str = "scenarios.artifact-path-unsafe";
+/// A scenario assertion id has no definition in the assertion taxonomy.
+pub const CHECK_ASSERTION_UNRESOLVED: &str = "scenarios.assertion-unresolved";
+/// A completed run record does not cover exactly its scenario assertions.
+pub const CHECK_RUN_ASSERTION_COVERAGE: &str = "scenarios.run-assertion-coverage";
+/// An eval scenario omits or invents a required negative expectation.
+pub const CHECK_NEGATIVE_EXPECTATIONS: &str = "scenarios.negative-expectations";
 /// The catalog, scenario files, and run records disagree.
 pub const CHECK_CATALOG_RUNS_DRIFT: &str = "scenarios.catalog-runs-drift";
 
@@ -33,8 +39,11 @@ const STAGES_ORDER: [&str; 5] = ["plan", "refine", "build", "merge", "drop"];
 const CATALOG: &str = "evals/scenarios/README.md";
 const SCENARIOS_DIR: &str = "evals/scenarios";
 const RUNS_DIR: &str = "evals/runs";
+const ASSERTIONS: &str = "evals/shared/assertions.md";
 const STATUSES: &[&str] = &["pending", "parked", "passed", "failed", "deferred"];
 const GATES: &[&str] = &["release-blocker", "full"];
+const REQUIRED_NEGATIVE_EXPECTATIONS: &[&str] =
+    &["live-model-ci-required", "semantic-byte-golden-required"];
 const STATUS_RESULT_MAP: &[(&str, &str)] =
     &[("passed", "pass"), ("failed", "fail"), ("deferred", "deferred")];
 
@@ -47,7 +56,9 @@ pub fn run(root: &Path) -> Vec<Finding> {
     check_body_id(&opted, &mut findings);
     check_stages(&opted, &mut findings);
     check_artifact_paths(&opted, &mut findings);
-    check_catalog_runs(root, &mut findings);
+    check_assertion_taxonomy(root, &opted, &mut findings);
+    check_negative_expectations(&opted, &mut findings);
+    check_catalog_runs(root, &opted, &mut findings);
     findings
 }
 
@@ -295,6 +306,73 @@ fn check_artifact_paths(opted: &[ScenarioFile], findings: &mut Vec<Finding>) {
     }
 }
 
+static ASSERTION_HEADING_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?m)^### `([a-z][a-z0-9-]*)`\s*$").expect("assertion heading pattern")
+});
+
+fn string_set(value: Option<&JsonValue>) -> BTreeSet<&str> {
+    value
+        .and_then(JsonValue::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(JsonValue::as_str)
+        .collect()
+}
+
+fn eval_scenarios(opted: &[ScenarioFile]) -> impl Iterator<Item = &ScenarioFile> {
+    opted.iter().filter(|scenario| {
+        scenario.rel.starts_with(&format!("{SCENARIOS_DIR}/"))
+            && scenario.rel.matches('/').count() == 2
+    })
+}
+
+fn check_assertion_taxonomy(root: &Path, opted: &[ScenarioFile], findings: &mut Vec<Finding>) {
+    let Ok(content) = fs::read_to_string(root.join(ASSERTIONS)) else {
+        findings.push(Finding::new(
+            CHECK_ASSERTION_UNRESOLVED,
+            format!("assertion taxonomy {ASSERTIONS} cannot be read"),
+        ));
+        return;
+    };
+    let known: BTreeSet<&str> = ASSERTION_HEADING_RE
+        .captures_iter(&content)
+        .map(|captures| captures.get(1).expect("capture group").as_str())
+        .collect();
+    for scenario in eval_scenarios(opted) {
+        for assertion in string_set(scenario.frontmatter.get("assertions")) {
+            if !known.contains(assertion) {
+                findings.push(Finding::new(
+                    CHECK_ASSERTION_UNRESOLVED,
+                    format!(
+                        "{} — assertion '{assertion}' has no `### `{assertion}`` definition in \
+                         {ASSERTIONS}",
+                        scenario.rel
+                    ),
+                ));
+            }
+        }
+    }
+}
+
+fn check_negative_expectations(opted: &[ScenarioFile], findings: &mut Vec<Finding>) {
+    let required: BTreeSet<&str> = REQUIRED_NEGATIVE_EXPECTATIONS.iter().copied().collect();
+    for scenario in eval_scenarios(opted) {
+        let actual = string_set(scenario.frontmatter.get("negative-expectations"));
+        if actual != required {
+            let missing: Vec<_> = required.difference(&actual).copied().collect();
+            let unexpected: Vec<_> = actual.difference(&required).copied().collect();
+            findings.push(Finding::new(
+                CHECK_NEGATIVE_EXPECTATIONS,
+                format!(
+                    "{} — negative-expectations must match the shared manual-driving contract; \
+                     missing {missing:?}, unexpected {unexpected:?}",
+                    scenario.rel
+                ),
+            ));
+        }
+    }
+}
+
 /// One parsed catalog table row: the id from the File link plus the
 /// Status / Gate cells.
 struct CatalogRow {
@@ -309,7 +387,7 @@ static ROW_LINK_RE: LazyLock<Regex> = LazyLock::new(|| {
 
 /// The scenario catalog, the scenario files, and the committed run
 /// records must agree.
-fn check_catalog_runs(root: &Path, findings: &mut Vec<Finding>) {
+fn check_catalog_runs(root: &Path, opted: &[ScenarioFile], findings: &mut Vec<Finding>) {
     let Ok(content) = fs::read_to_string(root.join(CATALOG)) else {
         findings.push(Finding::new(
             CHECK_CATALOG_RUNS_DRIFT,
@@ -322,6 +400,7 @@ fn check_catalog_runs(root: &Path, findings: &mut Vec<Finding>) {
     check_file_parity(root, &rows, findings);
     let records = collect_records(root, findings);
     check_record_agreement(&rows, &records, findings);
+    check_run_assertions(opted, &records, findings);
 }
 
 fn drift(detail: &str) -> Finding {
@@ -444,6 +523,22 @@ struct RunRecord {
     id: String,
     result: String,
     rel: String,
+    assertions: Vec<String>,
+}
+
+static RUN_ASSERTION_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?m)^\|\s*`([a-z][a-z0-9-]*)`\s*\|").expect("run assertion row pattern")
+});
+
+fn run_assertions(content: &str) -> Vec<String> {
+    let Some((_, assertions)) = content.split_once("## Assertions") else {
+        return Vec::new();
+    };
+    let table = assertions.split("\n## ").next().unwrap_or(assertions);
+    RUN_ASSERTION_RE
+        .captures_iter(table)
+        .map(|captures| captures.get(1).expect("capture group").as_str().to_owned())
+        .collect()
 }
 
 fn collect_records(root: &Path, findings: &mut Vec<Finding>) -> Vec<RunRecord> {
@@ -468,13 +563,47 @@ fn collect_records(root: &Path, findings: &mut Vec<Finding>) -> Vec<RunRecord> {
             ));
             continue;
         }
+        let assertions = fs::read_to_string(root.join(&record_rel))
+            .map(|content| run_assertions(&content))
+            .unwrap_or_default();
         records.push(RunRecord {
             id: id.to_owned(),
             result: result.to_owned(),
             rel: record_rel,
+            assertions,
         });
     }
     records
+}
+
+fn check_run_assertions(
+    opted: &[ScenarioFile], records: &[RunRecord], findings: &mut Vec<Finding>,
+) {
+    let scenarios: BTreeMap<&str, &ScenarioFile> = eval_scenarios(opted)
+        .filter_map(|scenario| {
+            scenario.frontmatter.get("id").and_then(JsonValue::as_str).map(|id| (id, scenario))
+        })
+        .collect();
+    for record in records {
+        let Some(scenario) = scenarios.get(record.id.as_str()) else {
+            continue;
+        };
+        let expected = string_set(scenario.frontmatter.get("assertions"));
+        let actual: BTreeSet<&str> = record.assertions.iter().map(String::as_str).collect();
+        let duplicates = record.assertions.len() != actual.len();
+        let missing: Vec<_> = expected.difference(&actual).copied().collect();
+        let unexpected: Vec<_> = actual.difference(&expected).copied().collect();
+        if duplicates || !missing.is_empty() || !unexpected.is_empty() {
+            findings.push(Finding::new(
+                CHECK_RUN_ASSERTION_COVERAGE,
+                format!(
+                    "{} — assertion rows must cover scenario '{}' exactly; missing {missing:?}, \
+                     unexpected {unexpected:?}, duplicates: {duplicates}",
+                    record.rel, scenario.rel
+                ),
+            ));
+        }
+    }
 }
 
 fn check_record_agreement(rows: &[CatalogRow], records: &[RunRecord], findings: &mut Vec<Finding>) {

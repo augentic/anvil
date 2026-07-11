@@ -1,0 +1,84 @@
+version: 1
+id: guest-execute-loop
+owner: scenarios
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: author
+  kind: command
+  run: specify plan author demo --intent "Fix the greeting."
+- id: approve
+  kind: command
+  run: specify plan transition demo approved
+- id: execute
+  kind: command
+  run: specify plan execute --format json
+profiles:
+- id: native-scripted
+  runtime: native
+  model: scripted
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-replay
+  runtime: native
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: wasm-replay
+  runtime: wasm
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-live
+  runtime: native
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: guest-loop-drained
+  after: execute
+  probe:
+    kind: json-equals
+    step: execute
+    pointer: /status
+    value: drained
+- id: guest-journal-cadence
+  after: execute
+  probe:
+    kind: registered
+- id: guest-generated-crate-verifies
+  after: execute
+  probe:
+    kind: registered
+- id: guest-marker-released
+  after: execute
+  probe:
+    kind: path-absent
+    path: .specify/guest.lock
+semantic-rubrics:
+- id: guest-spec-sensible
+  after: execute
+  criterion: the synthesized baseline spec reads as a faithful, well-formed rendering
+    of the intent.
+  evidence:
+  - plan.yaml
+  - discovery.md
+expected-outputs:
+- path: plan.yaml
+  kind: file
+- path: discovery.md
+  kind: file

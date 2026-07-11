@@ -1,0 +1,27 @@
+version: 1
+scale:
+  minimum: 0
+  maximum: 100
+  pass: 80
+  review-below: 90
+criteria:
+  no-under-slicing:
+    question: Does the proposed decomposition preserve independently deliverable behavior without hiding materially separate work?
+  tentative-merge-surfaced:
+    question: Are uncertain cross-source matches exposed for operator review rather than silently merged?
+  slices-match-expected-shape:
+    question: Does the plan form a coherent, dependency-aware set of slices for the supplied intent and evidence?
+  archived-plan-path-recorded:
+    question: Does the final handoff identify the durable archived plan clearly enough for an operator to retrieve it?
+  publication-confirmation-recorded:
+    question: Does finalization preserve clear evidence that operator-owned publication completed before archival?
+  spec-reflects-shape-idioms:
+    question: Does the behavioral specification use target guidance without leaking target implementation detail into requirements?
+  design-reflects-shape-idioms:
+    question: Does the design apply target idioms concretely and consistently?
+  intent-and-doc-fixtures-agree:
+    question: Does synthesis reconcile the intent and documentation evidence faithfully without inventing unsupported behavior?
+  chdir-without-operator-intervention:
+    question: Does routed execution continue across workspace boundaries without requiring the operator to repair hidden context?
+  guest-spec-sensible:
+    question: Is the merged baseline specification faithful, well-formed, internally coherent, and useful to a future change?

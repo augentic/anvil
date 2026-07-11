@@ -1,12 +1,12 @@
 # Eval replay drivers
 
-Operator replay scripts for the multi-step execute scenarios. Pure bash (no Python), `jq` as the only structured-data dependency, bash 3.2-compatible. They shell out to the real `specify` CLI and delegate the whole refine → build → merge loop to the guest-owned `specify plan execute` — they do not reimplement scheduling, routing, or lock semantics (the guest holds `.specify/guest.lock` for the run).
+Legacy operator replay scripts for multi-step scenarios not yet expressible as direct command steps. Canonical cases live under `quality/scenarios/`; new profile execution belongs under `quality/profiles/`, not here. The scripts shell out to the real `specify` CLI and delegate refine → build → merge to `specify plan execute`.
 
 Each driver does the clerical work around the loop: build the branch-head binary and workflow guest (pinned as the core via `SPECIFY_CORE_PATH`, so nothing hydrates `specify:core` from the registry), init the sandbox from release-built adapter components in the sibling `augentic/specify-adapters` checkout (`cargo make release` there), write a project-root `omnia.toml` deployment manifest, author the plan (`specify plan author`), stamp Gate 1 on the operator's behalf (`specify plan transition <name> approved --actor agent`), and drive `specify plan execute`. Briefs live in [`fixtures/`](fixtures/), never inline in the scripts.
 
 The judgment legs (`plan author`, `plan execute`) run through the composed runtime against the live cursor backend, so the `main` legs require `cursor-agent` on PATH and make real model calls. The `setup` legs are model-free and runnable anywhere the sibling checkout is release-built.
 
-**Not CI.** These stay out of `.github/workflows/` so every scenario `negative-expectation: automated-runner-added` still holds. Run them manually or let a Cursor agent invoke them while filing a run record under `evals/runs/`.
+**Live legs are not CI.** Deterministic canonical profiles may run in CI; anything that calls the live model remains explicit. New runs write structured bundles under `quality/runs/`; `evals/runs/` is historical audit evidence.
 
 ## Layout
 
@@ -18,7 +18,7 @@ The judgment legs (`plan author`, `plan execute`) run through the composed runti
 | `execute-pause-resume.sh` | `execute-pause-resume` | Operator interrupt mid-slice, breakout, `resume` leg |
 | `workspace.sh` | workspace-* | Cross-repo workspace setup / author / approve / execute + resume |
 | `contract-lifecycle.sh` | `contract-lifecycle` | Execute-phase loop only (plan setup stays agent-driven) |
-| `guest-execute-loop.sh` | `guest-execute-loop` | Composed-runtime inverted loop with post-run probes |
+| `guest-execute-loop.sh` | `guest-execute-loop` | Compatibility wrapper for `quality/profiles/guest-execute-loop.sh` |
 
 Sandboxes materialise under `evals/.sandbox/<scenario>/` (gitignored). Override roots with `SPECIFY_FRAMEWORK`, `SPECIFY_SANDBOX`, `SPECIFY_BIN`, `SPECIFY_ADAPTERS`, or `SPECIFY_WS` when replaying on another machine.
 

@@ -1,8 +1,8 @@
-# Eval scenarios
+# Historical scenario catalog
 
-The platform scenario pack proves the operator-facing `/spec:*` change lifecycle end-to-end across the full difficulty range — N=1 trivial through multi-repo, happy-path through failure and recovery. Each scenario is a self-contained, schema-validated `<id>.md`: open one file and you have its intent, setup, invocation, and assertions.
+These Markdown files are expanded operator guidance and historical status for the canonical YAML cases under [`quality/scenarios/`](../../quality/scenarios/). The executable scenario, profile, hard-assertion, rubric, and expected-output contract is YAML; each legacy `<id>.md` must have a matching canonical id.
 
-This README is the **single catalog** — the canonical list of scenarios, their grouping, gate tier, and run status. How to run the sweep (surfaces, the `specify` build on PATH, the agent runbook, the gate signal) lives in [`docs/contributing/evals.md`](../../docs/contributing/evals.md). Common setup is factored into [`shared/setup.md`](../shared/setup.md); reusable operator prompts into [`shared/prompts.md`](../shared/prompts.md); run records into [`evals/runs/`](../runs/README.md); per-assertion probes into [`shared/assertions.md`](../shared/assertions.md).
+This README preserves grouping and historical run status. Current gate tiers live in YAML and the gate model lives in [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). New structured reports land under [`quality/runs/`](../../quality/runs/).
 
 ## Groups
 

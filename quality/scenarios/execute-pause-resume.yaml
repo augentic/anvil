@@ -1,0 +1,60 @@
+version: 1
+id: execute-pause-resume
+owner: scenarios
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: runbook
+  kind: prompt
+  run: Follow evals/scenarios/execute-pause-resume.md
+profiles:
+- id: native-replay
+  runtime: native
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: wasm-replay
+  runtime: wasm
+  model: replay
+  grading: hard
+  trials: 1
+  environment: {}
+- id: native-live
+  runtime: native
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: runbook
+  probe:
+    kind: path-exists
+    path: plan.yaml
+- id: breakout-state-consistent
+  after: runbook
+  probe:
+    kind: registered
+- id: execute-resumes-without-flags
+  after: runbook
+  probe:
+    kind: registered
+- id: execute-loop-all-done
+  after: runbook
+  probe:
+    kind: registered
+semantic-rubrics: []
+expected-outputs:
+- path: plan.yaml
+  kind: file

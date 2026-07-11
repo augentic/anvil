@@ -12,11 +12,8 @@ assertions:
   - resume-continues-from-in-progress
   - execute-loop-all-done
 negative-expectations:
-  - automated-runner-added
-  - fake-forge-added
-  - transcript-replay-added
-  - ci-target-added
-  - golden-output-required
+  - live-model-ci-required
+  - semantic-byte-golden-required
 expected-artifacts:
   - plan.yaml
   - workspace
@@ -50,7 +47,7 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 
 ## Negative expectations
 
-Manual by design — see [`docs/contributing/evals.md`](../../docs/contributing/evals.md). No automated runner, fake forge, recorded transcript, CI target, or golden comparison.
+Live profiles remain outside per-commit CI, and semantic output is rubric-graded rather than byte-golden tested.
 
 ## Recording
 

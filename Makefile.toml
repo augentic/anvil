@@ -15,10 +15,10 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt-check", "lint", "check-wasm-core", "test", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "wasm", "test", "test-docs", "doc"]
 
 [tasks.ci]
-dependencies = ["fmt-check", "lint", "check-wasm-core", "test", "test-docs", "doc", "vet", "deny"]
+dependencies = ["check", "vet", "deny"]
 
 # -------------------------------------
 # Individual Actions
@@ -47,14 +47,9 @@ cargo +nightly udeps --all-targets
 '''
 install_crate = "cargo-udeps"
 
-# Fmt (mutating; local convenience)
+# Fmt
 [tasks.fmt]
 script = "cargo +nightly fmt"
-
-# Fmt check (non-mutating; the gate `check` / `ci` run — a mutating
-# `fmt` inside a gate silently rewrites violations instead of failing)
-[tasks.fmt-check]
-script = "cargo +nightly fmt -- --check"
 
 # Lint
 [tasks.lint]
@@ -62,8 +57,7 @@ command = "cargo"
 args = ["clippy", "--locked", "--all-targets", "--all-features", "--", "-D", "warnings"]
 install_crate = { rustup_component_name = "clippy" }
 
-# Outdated (advisory — never part of `ci`: any upstream release would
-# fail the gate for unrelated changes; run it on demand or scheduled)
+# Outdated
 [tasks.outdated]
 script = '''
 cargo outdated --depth 1
@@ -71,11 +65,7 @@ cargo outdated --depth 1
 install_crate = "cargo-outdated"
 
 # Check wasm core
-#
-# Keeper for the wasm32-cleanliness of the guest-facing crates: the
-# guest shim depends on workflow (no `native` feature) and
-# transport, so both must always compile for wasm32-wasip2.
-[tasks.check-wasm-core]
+[tasks.wasm]
 command = "cargo"
 args = [
     "check",
@@ -90,21 +80,11 @@ args = [
 env = { RUSTFLAGS = "-Dwarnings" }
 
 # Build guests
-#
-# The core `specify` guest as a wasm32-wasip2 component — the dev build
-# the repo-root omnia.toml manifest points at. The echo fixture guests
-# build on demand via `cargo make build-guests` inside harness/ (see
-# harness/README.md).
-[tasks.build-guests]
+[tasks.guests]
 command = "cargo"
 args = ["build", "--lib", "-p", "specify", "--target", "wasm32-wasip2"]
 
 # Test
-#
-# `clean` is deliberately not in the dependency list: the
-# `RUSTFLAGS=-Dwarnings` override already differs from the default
-# profile, so cargo rebuilds the workspace under these flags regardless,
-# making a `cargo clean` cold rebuild redundant cost on every run.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--all-features", "--no-tests=pass"]
@@ -138,25 +118,8 @@ cargo vet --locked
 '''
 install_crate = "cargo-vet"
 
-# Vet regenerate (manual, on dependency add/update — refresh imports and
-# exemptions, then review the `supply-chain/` diff before committing)
-[tasks.vet-regenerate]
-script = '''
-cargo vet regenerate imports
-cargo vet regenerate exemptions
-cargo vet regenerate unpublished
-'''
-install_crate = "cargo-vet"
-
 # Publish (dry-run to augentic registry)
 [tasks.publish]
 command = "cargo"
 args = ["publish", "--registry=augentic", "--allow-dirty", "--dry-run"]
 
-# wasm-shaped artifacts (the core guest `specify:core@<VERSION>` and the
-# WIT contract `specify:adapter@<ver>`) are published manually with
-# `wkg publish` — see wit/README.md and docs/release.md.
-
-# -------------------------------------
-# Auxiliary tasks
-# -------------------------------------

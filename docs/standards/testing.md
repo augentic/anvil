@@ -1,12 +1,33 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over the binary, auto-discovered per-area test binaries (`crates/<name>/tests/<area>.rs`), golden JSON checked in. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a new test or harness.
+Integration-first test posture: `cargo nextest` over public crate and binary boundaries, canonical workflow scenarios across native/WASM/live profiles, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a test, scenario, or profile.
 
 ## Posture
 
 Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
+
+## Quality gates
+
+Specify separates the case being proved from the environment used to prove it. A canonical scenario declares setup, workflow steps, fixtures, hard assertions, and any semantic rubrics once. Profiles select the runtime (`native` or composed WebAssembly), model backend (`scripted`, `replay`, or `live`), and gate cadence.
+
+The four gates have distinct owners:
+
+1. **Repository correctness** — crate/binary integration and authoring checks under `cargo make ci` in each repository. No model or sibling checkout.
+2. **Cross-repository workflow** — canonical scenarios through `specify-dev`, linked adapters, and `omnia_testkit::model::{Harness, Scripted, Replay}`. Model-free and CI-safe.
+3. **Composed WebAssembly conformance** — canonical scenarios through the hosted workflow guest and adapter components. Owns WIT, dispatch-by-id, mount/preopen, and component-linking assertions. The current workflow-core CI case is model-free; do not duplicate Omnia's private replay-key projection to force a full-loop fixture.
+4. **Live quality** — selected scenarios against the live model backend. Hard assertions remain mechanical; semantic rubrics assess decomposition, prose, and generated output. Live profiles are deliberate release/development runs, never ordinary per-commit CI.
+
+The ownership boundary is strict: `omnia-testkit` owns reusable model doubles, replay, temporary manifests, runtime hosting, and HTTP driving; `crates/scenario` owns Specify scenario vocabulary, reports, and assertion metadata; `harness/native` owns the linked-adapter developer runtime. Do not add another local mock model, replay store, deployment harness, or scenario-specific lifecycle driver.
+
+### Scenario admission and assertion ownership
+
+- A behavior reducible to a crate API, CLI result, filesystem predicate, validator, compiler, or journal query is a **hard assertion**. It must execute automatically in every applicable profile.
+- A behavior requiring judgment about meaning or usefulness is a **semantic rubric**. It belongs only in a live profile and carries evidence plus a calibrated score.
+- Runtime wiring is not a semantic rubric. Native and WebAssembly profiles may execute the same scenario, but each assertion has one primary seam owner.
+- Markdown explains a scenario; YAML defines it. Shell scripts may select a profile but must not reimplement setup, lifecycle scheduling, assertions, or grading.
+- A passed report must cover every declared assertion. Substituting stubs or a different invocation is a different scenario, not a permissible deviation.
 
 ## Integration-first policy
 
