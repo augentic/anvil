@@ -24,13 +24,13 @@ mod target;
 
 use error::Error;
 
-pub use self::author::{AuthorOutcome, author};
-pub use self::execute::{ExecuteOutcome, GuestMarker, PhaseRun, execute};
-pub use self::merge::{MergeOutcome, merge};
-pub use self::refine::{RefineOutcome, refine, refine_breakout};
-pub use self::source::{ExtractOutcome, SurveyedSource, extract, survey, survey_all};
-pub use self::synthesize::{SynthesizeRequest, synthesize};
-pub use self::target::{BuildOutcome, build};
+pub use self::author::author;
+pub use self::execute::{ExecuteOutcome, execute};
+pub use self::merge::merge;
+pub use self::refine::{refine, refine_breakout};
+pub use self::source::{SurveyedSource, extract, survey, survey_all};
+pub use self::synthesize::synthesize;
+pub use self::target::build;
 use crate::seam;
 
 /// The borrowed capability bundle one orchestration run dispatches

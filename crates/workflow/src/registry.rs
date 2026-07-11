@@ -1,15 +1,13 @@
-//! Registry topology, shape validation, and workspace materialisation
-//! for Specify.
+//! Registry topology and shape validation for Specify.
 
-pub mod branch;
-pub mod catalog;
-pub mod gitignore;
+pub(crate) mod catalog;
+mod gitignore;
 pub mod handlers;
-pub mod identity;
-pub mod topology;
-pub mod validate;
-pub mod workspace;
+pub(crate) mod identity;
+pub(crate) mod topology;
+mod validate;
+pub(crate) mod workspace;
 
 pub use catalog::{ContractRoles, GreenfieldSeed, Registry, RegistryProject};
-pub use gitignore::ensure_gitignore_entries;
-pub use topology::{Surface, TopologyLock, TopologyProject, cache_staleness};
+pub(crate) use gitignore::ensure_gitignore_entries;
+pub(crate) use topology::{TopologyLock, TopologyProject, cache_staleness};

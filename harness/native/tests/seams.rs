@@ -153,6 +153,61 @@ fn metadata_answers_both_axes() {
     assert!(err.to_string().contains("source:unknown"), "{err}");
 }
 
+#[tokio::test]
+async fn catalog_table_dispatches_every_entry() {
+    // Table-driven proof over the declarative linked-adapter table:
+    // every declared entry resolves on its own axis, refuses the
+    // opposite axis, and dispatches its operation set — `survey` for
+    // sources (scripted empty answer), `guidance` for targets.
+    let tmp = TempDir::new().expect("tempdir");
+
+    for entry in specify_dev::catalog::entries() {
+        let name = entry.name();
+        let id = entry.id();
+        assert_eq!(
+            entry.server_name(),
+            format!("{name}-references"),
+            "the MCP server name follows the shared convention"
+        );
+        assert!(!entry.docs().is_empty(), "`{name}` embeds its prose documents");
+
+        match entry.axis() {
+            Axis::Source => {
+                let provider = Provider::new(tmp.path(), MockModel::answering([r#"{"leads":[]}"#]));
+                let resolved = provider
+                    .resolve_source(&AdapterRef::bare(name), tmp.path())
+                    .unwrap_or_else(|err| panic!("source `{name}` resolves: {err}"));
+                assert_eq!(resolved.origin.reference, format!("rust:{id}"));
+                provider
+                    .resolve_target(&AdapterRef::bare(name), tmp.path())
+                    .expect_err("a source never resolves on the target axis");
+
+                let leads = provider
+                    .survey(id.clone())
+                    .await
+                    .unwrap_or_else(|err| panic!("`{id}` survey dispatches: {err:?}"));
+                assert!(leads.is_empty(), "the scripted empty survey answer crosses");
+            }
+            Axis::Target => {
+                let provider = Provider::new(tmp.path(), MockModel::answering([]));
+                let resolved = provider
+                    .resolve_target(&AdapterRef::bare(name), tmp.path())
+                    .unwrap_or_else(|err| panic!("target `{name}` resolves: {err}"));
+                assert_eq!(resolved.origin.reference, format!("rust:{id}"));
+                provider
+                    .resolve_source(&AdapterRef::bare(name), tmp.path())
+                    .expect_err("a target never resolves on the source axis");
+
+                let prompt = provider
+                    .guidance(id.clone())
+                    .await
+                    .unwrap_or_else(|err| panic!("`{id}` guidance dispatches: {err:?}"));
+                assert!(!prompt.is_empty(), "the embedded guidance prompt is served");
+            }
+        }
+    }
+}
+
 #[test]
 fn resolver_uses_linked_catalog() {
     let tmp = tempfile::tempdir().expect("tempdir");

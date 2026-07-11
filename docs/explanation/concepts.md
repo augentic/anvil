@@ -94,7 +94,7 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 </div>
 
 
-`/spec:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan transition <name> approved` (Gate 1). The guest-routed `specify plan execute` then drives the per-slice loop until every entry is `done`. `/spec:finalize` pushes branches and archives; opening and merging PRs is operator-owned, outside Specify.
+`/spec:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan transition <name> approved` (Gate 1). The guest-routed `specify plan execute` then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Specify; `/spec:finalize` archives only after that publication is complete.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `specify plan execute` runs the same single-slice rhythm.
 

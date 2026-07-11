@@ -1,5 +1,7 @@
 # Harness — non-default-member support surfaces
 
+The day-to-day command surface over this harness is the three-rung `make dev-*` loop — `dev-check` (model-free), `dev-live` (live model), `dev-full` (WASM boundary) — documented in [the developer loop](../docs/contributing/dev-loop.md).
+
 ## Quick start
 
 The native loop requires sibling checkouts so the shim can link the adapter crates directly:

@@ -17,7 +17,6 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use artifacts::atomic::yaml_write;
 use error::Error;
 use schema::diagnostics::{Diagnostic, Severity};
 use serde::{Deserialize, Serialize};
@@ -127,15 +126,6 @@ struct Version {
 }
 
 impl TopologyLock {
-    /// Wrap a resolved project list into a versioned lock document.
-    #[must_use]
-    pub const fn from_projects(projects: Vec<TopologyProject>) -> Self {
-        Self {
-            version: CURRENT_TOPOLOGY_LOCK_VERSION,
-            projects,
-        }
-    }
-
     /// Load + version-gate the committed cache. A missing file yields
     /// `Ok(None)` — the registry layer decides whether absence is fatal
     /// (workspace plan-time topology raises `topology-cache-missing`).
@@ -179,17 +169,6 @@ impl TopologyLock {
             .map_err(|err| malformed(format!("topology-lock-malformed: {err}")))?;
         crate::schema_gate::validate_topology_lock(&lock)?;
         Ok(Some(lock))
-    }
-
-    /// Atomically write the cache, after schema validation.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Validation`] when the lock fails its schema, or
-    /// the underlying I/O error on a failed write.
-    pub fn save(&self, path: &Path) -> Result<(), Error> {
-        crate::schema_gate::validate_topology_lock(self)?;
-        yaml_write(path, self)
     }
 }
 

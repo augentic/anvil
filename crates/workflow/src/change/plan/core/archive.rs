@@ -54,7 +54,7 @@ impl Plan {
     /// Errors when archive targets already exist, when load/move
     /// underlying calls fail, or when entries are non-terminal without
     /// `force`.
-    pub fn archive(
+    pub(crate) fn archive(
         path: &Path, change_brief_path: &Path, archive_dir: &Path, force: bool, now: Timestamp,
     ) -> Result<(PathBuf, Option<PathBuf>), Error> {
         let plan = Self::load(path)?;

@@ -19,7 +19,7 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 
 ## Principles
 
-- **Keep the CLI authoritative.** Skills, MCP servers, CI, and cloud runners may orchestrate `specify`; they must not reimplement lifecycle transitions, plan validation, registry validation, workspace sync, or merge behavior.
+- **Keep the CLI authoritative for workflow state.** Skills, MCP servers, CI, and cloud runners may orchestrate `specify`; they must not reimplement lifecycle transitions, plan validation, registry validation, or merge behavior. Repository checkout and publication remain operator-owned.
 - **One authored home per fact; derive the rest.** Each project's intent (`adapter`, `description`) lives in `.specify/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.specify/topology.lock`. `registry.yaml` carries membership and location only (plus optional greenfield adapter seed and cross-project `contracts` wiring) — not adapter/description for plan-time topology. Rich catalog metadata can still live in Backstage or another catalog; Specify consumes reviewable projections at the boundary.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
 - **Optimize for local first, cloud later.** `specify plan execute` remains the proving ground, but guest locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
@@ -120,7 +120,7 @@ specify registry diff <source>
 **Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
-#### RM-17: Forge abstraction behind workspace push and change finalize
+#### RM-17: Operator-owned forge integration
 
 **Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
 **Adapter covers:** remote discovery, auth checks, branch existence, push permissions, PR/MR create-or-update, CI/mergeability status, merged-state verification, and provider links.
@@ -128,7 +128,7 @@ specify registry diff <source>
 
 ```bash
 specify forge doctor
-specify workspace push --forge github
+gh pr create
 specify plan finalize --forge github
 ```
 

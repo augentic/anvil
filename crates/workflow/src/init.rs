@@ -12,10 +12,8 @@ mod workspace;
 
 use std::path::{Path, PathBuf};
 
-pub use adapter_uri::{AdapterPackage, adapter_name_from_value, recognize_package};
 use artifacts::atomic::bytes_write;
-pub use cache::ComponentMeta;
-pub use context::ContextSkip;
+use context::ContextSkip;
 use error::Error;
 use jiff::Timestamp;
 
@@ -30,7 +28,7 @@ use crate::platform::Platform;
 /// scalars, so the struct is `Copy` and threads through the workspace /
 /// regular runners by value without a clone.
 #[derive(Debug, Clone, Copy)]
-pub struct InitOptions<'a> {
+pub(crate) struct InitOptions<'a> {
     /// Root of the project being initialised.
     pub project_dir: &'a Path,
     /// Adapter identifier (bare name like `omnia` or a URL) to fetch
@@ -70,7 +68,7 @@ pub struct InitOptions<'a> {
 /// Structured summary of what `init` did, returned for downstream
 /// rendering by both the JSON and text CLI paths.
 #[derive(Debug, Clone)]
-pub struct InitResult {
+pub(crate) struct InitResult {
     /// Path to the written `project.yaml`.
     pub config_path: PathBuf,
     /// Resolved adapter name from the adapter root. For workspace init
@@ -86,13 +84,6 @@ pub struct InitResult {
     /// The `specify` version recorded in `project.yaml` after
     /// this run (the running binary's version).
     pub specify_version: String,
-    /// `true` when this run actually wrote `project.yaml.specify`
-    /// — always `true` for fresh init (the file is minted) and for an
-    /// `--upgrade` that bumped an older pin; `false` only on an
-    /// `--upgrade` no-op where the pin already matched the running
-    /// version. Lets the renderer distinguish "upgraded" from "already
-    /// current".
-    pub specify_version_changed: bool,
     /// `true` when this run wrote `.specify/wasm-pkg.toml` for the
     /// first time; `false` when an operator-edited file was preserved.
     /// Lets the JSON envelope distinguish a fresh scaffold from a
@@ -130,7 +121,7 @@ pub struct InitResult {
 /// (`init-requires-adapter-or-workspace`). Bubbles up
 /// filesystem, adapter resolution, and serialisation errors from
 /// the underlying calls.
-pub fn init(
+pub(crate) fn init(
     resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>, now: Timestamp,
 ) -> Result<InitResult, Error> {
     let mut result = if opts.upgrade {

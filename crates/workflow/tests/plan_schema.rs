@@ -140,39 +140,3 @@ fn schema_rejects_non_kebab_name() {
         "non-kebab-case name should produce at least one error on /name; got none"
     );
 }
-
-/// The JSON Schema regex and `validate_name` must agree on every name,
-/// in both directions. The cases below are the plan schema alias cases
-/// out; keep them in sync with the doc-comment on
-/// `workflow::slice::actions::validate_name`.
-#[test]
-fn kebab_name_regex_matches_validate_name() {
-    use regex::Regex;
-    use workflow::slice::actions as slice_actions;
-
-    // Extract the pattern from the embedded schema to keep this test
-    // honest against drift — the schema is the source of truth.
-    let schema: JsonValue =
-        serde_json::from_str(PLAN_JSON_SCHEMA).expect("plan.schema.json is valid JSON");
-    let pattern = schema["$defs"]["kebabName"]["pattern"]
-        .as_str()
-        .expect("$defs.kebabName.pattern is a string");
-    let regex = Regex::new(pattern).expect("$defs.kebabName.pattern compiles as a regex");
-
-    let accept = ["a", "ab", "a-b", "a1", "user-registration"];
-    let reject = ["", "-a", "a-", "a--b", "A", "a_b"];
-
-    for name in accept {
-        assert!(regex.is_match(name), "regex `{pattern}` should accept `{name}` but did not");
-        slice_actions::validate_name(name).unwrap_or_else(|err| {
-            panic!("validate_name should accept `{name}`, got error: {err}");
-        });
-    }
-
-    for name in reject {
-        assert!(!regex.is_match(name), "regex `{pattern}` should reject `{name}` but accepted it");
-        slice_actions::validate_name(name)
-            .err()
-            .unwrap_or_else(|| panic!("validate_name should reject `{name}`"));
-    }
-}

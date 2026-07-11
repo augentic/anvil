@@ -29,7 +29,7 @@ Scenario ID: `workspace-two-projects`
 
 ## Intent
 
-Prove workspace-driven execution across projects: a plan with slices targeting two registered projects executes from the workspace, with per-slice project routing, slot materialisation, `workspace prepare`, `chdir` + residue commit, and the guest execute marker held at the workspace while phase work runs in the slots.
+Prove workspace-driven execution across projects: a plan with slices targeting two registered projects executes from the workspace, with per-slice project routing into operator-materialized slots and the guest execute marker held at the workspace while phase work runs in the slots.
 
 ## Setup
 

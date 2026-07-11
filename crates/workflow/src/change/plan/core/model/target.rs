@@ -35,7 +35,7 @@ impl TargetRef {
     /// Returns [`TargetRefParseError`] when the string does not match
     /// the wire regex `^[a-z][a-z0-9-]*@<semver>$` — wrong shape, empty
     /// segment, mixed case, missing `@`, non-semver version, etc.
-    pub fn parse(input: &str) -> Result<Self, TargetRefParseError> {
+    pub(crate) fn parse(input: &str) -> Result<Self, TargetRefParseError> {
         let (name, version_part) =
             input.split_once('@').ok_or_else(|| TargetRefParseError::new(input))?;
         if !crate::name::is_kebab_leading_alpha(name) {

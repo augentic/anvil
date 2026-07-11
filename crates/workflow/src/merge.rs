@@ -3,15 +3,14 @@
 //! [`slice::commit`] is the transactional multi-class merge + archive.
 
 mod artifact_class;
-pub mod composition;
+mod composition;
 mod engine;
 pub mod slice;
 mod validate;
 
-pub use artifact_class::{ArtifactClass, MergeStrategy, artifact_classes};
-pub use engine::{MergeOperation, MergeResult, merge};
+pub use artifact_class::{MergeStrategy, artifact_classes};
+pub use engine::MergeOperation;
 pub use slice::{
-    BaselineConflict, MergeCommit, MergePreviewEntry, OpaqueAction, OpaquePreviewEntry,
-    PreviewResult, conflict_check, summarise_operations,
+    BaselineConflict, MergeCommit, MergePreviewEntry, OpaqueAction, conflict_check,
+    summarise_operations,
 };
-pub use validate::validate_baseline;

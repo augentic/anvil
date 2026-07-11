@@ -15,7 +15,7 @@ assertions:
   - review-step-no-op
   - execute-loop-all-done
   - workspace-branches-prepared
-  - finalize-pushes-branches
+  - publication-complete-before-finalize
   - finalize-archives-plan
   - archived-plan-path-recorded
   - archived-change-md-present
@@ -38,7 +38,7 @@ negative-expectations:
 
 Scenario ID: `contract-lifecycle`
 
-The full cross-repo happy path: a short feature brief becomes one contract slice and two routed implementation slices, the operator reviews the draft plan, the change executes, and `/spec:finalize` pushes the prepared branches to each project's local bare-repo `origin` and archives the plan in one invocation. Opening and merging the pull requests is an operator action done by hand outside Specify.
+The full cross-repo happy path: a short feature brief becomes one contract slice and two routed implementation slices, the operator reviews the draft plan, the change executes, the operator publishes each repository, and `/spec:finalize` archives the plan after publication is confirmed.
 
 ## Intent
 
@@ -51,7 +51,8 @@ feature brief
   -> operator review pause (inspect plan.yaml)
   -> specify plan transition oauth-login approved
   -> specify plan execute
-  -> /spec:finalize oauth-login   (pushes branches, then archives the plan)
+  -> operator publishes repositories
+  -> /spec:finalize oauth-login   (confirms publication, then archives the plan)
   -> /spec:finalize oauth-login   (no active plan)
 ```
 
@@ -65,7 +66,7 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 2. **Review (operator pause)** — `specify plan validate` and inspect `plan.yaml` read-only; confirm the slice shape. No `specify plan amend` for the parity run.
 3. **Stamp Gate 1** — run the literal `specify plan transition oauth-login approved`.
 4. **Execute** — `specify plan execute`; answer only genuine clarification prompts. The loop exits because the plan is complete (drained).
-5. **Finalize** — `/spec:finalize oauth-login`. The skill pushes the prepared `specify/oauth-login` branches to each project's bare-repo `origin` (per-project status `pushed`), then runs `specify plan archive` (archiving `plan.yaml` + `change.md` under `.specify/archive/plans/oauth-login-<date>/`), and prints the pushed-branch list, a reminder to open PRs by hand, and the archived path.
+5. **Publish and finalize** — publish each prepared repository branch through ordinary Git tooling, then run `/spec:finalize oauth-login`. The skill confirms publication, runs `specify plan archive` (archiving `plan.yaml` + `change.md` under `.specify/archive/plans/oauth-login-<date>/`), and prints the archived path.
 6. **Open PRs externally (out of scope for the assertions)** — the operator opens and merges the backend, mobile, and contracts pull requests by hand outside Specify; the scenario does not drive or assert this.
 7. **Finalize (re-run)** — `/spec:finalize oauth-login` reports no active plan remains and exits 0.
 
@@ -80,8 +81,8 @@ Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup
 - `review-step-no-op`: inspecting `plan.yaml` between draft and execute reports the plan as authored.
 - `execute-loop-all-done`: `specify plan execute` exits because the plan is complete, not stuck/failed/interrupted.
 - `workspace-branches-prepared`: routed project work happens on `specify/oauth-login` branches.
-- `finalize-pushes-branches`: `/spec:finalize` pushes the `specify/oauth-login` branch to each project's `origin` (per-project status `pushed`); it creates, observes, and merges no PRs.
-- `finalize-archives-plan`: the same `/spec:finalize` run archives the plan via `specify plan archive` after the push succeeds.
+- `publication-complete-before-finalize`: every routed repository branch is published by the operator before `/spec:finalize`; finalize performs no Git or forge operations.
+- `finalize-archives-plan`: `/spec:finalize` archives the plan via `specify plan archive` after publication is confirmed.
 - `archived-plan-path-recorded`: the wrap-up names the archived plan path under `.specify/archive/plans/`.
 - `archived-change-md-present`: the archived directory contains the archived `change.md`.
 - `pushed-branch-list-recorded`: the wrap-up lists one pushed branch per routed project (`backend`, `mobile`, `contracts`) and reminds the operator to open PRs by hand.

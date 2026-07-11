@@ -55,7 +55,7 @@ serde_json.workspace = true
 tempfile.workspace = true
 testkit.workspace = true
 transport.workspace = true
-workflow = { workspace = true, features = ["native"] }
+workflow.workspace = true
 
 # `framework` gates the prose/manifest surfaces (links, skills,
 # scenarios, plugins, docs) — the rehomed framework checks.
@@ -189,7 +189,6 @@ thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["fs", "io-util", "rt"] }
 toml = "1.1.2"
 tower = "0.5.3"
-ureq = { version = "3.3.0", features = ["json"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
@@ -197,7 +196,7 @@ artifacts = { path = "crates/artifacts" }
 error = { path = "crates/error" }
 testkit = { path = "crates/testkit" }
 transport = { path = "crates/transport" }
-workflow = { path = "crates/workflow", default-features = false }
+workflow = { path = "crates/workflow" }
 
 omnia = "0.35.0"
 omnia-cursor = "0.28.0"

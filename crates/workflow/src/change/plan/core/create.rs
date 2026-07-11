@@ -23,7 +23,9 @@ impl Plan {
     /// # Errors
     ///
     /// Errors when `name` is not kebab-case.
-    pub fn init(name: &str, sources: BTreeMap<String, SourceBinding>) -> Result<Self, Error> {
+    pub(crate) fn init(
+        name: &str, sources: BTreeMap<String, SourceBinding>,
+    ) -> Result<Self, Error> {
         validate_name(name)?;
         Ok(Self {
             name: name.into(),
@@ -50,7 +52,7 @@ impl Plan {
     ///
     /// Errors when the name is invalid, when an entry with the same
     /// name already exists, or when post-append validation fails.
-    pub fn create(&mut self, change: Entry) -> Result<(), Error> {
+    pub(crate) fn create(&mut self, change: Entry) -> Result<(), Error> {
         validate_name(&change.name)?;
 
         if self.entries.iter().any(|c| c.name == change.name) {

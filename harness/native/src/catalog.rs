@@ -1,7 +1,15 @@
 //! Native-only catalog of adapter crates linked into `specify-dev`.
+//!
+//! [`linked!`] is the single declarative table: one `<axis> <name> =>
+//! <crate>;` line per adapter generates the catalog [`entries`] (name,
+//! MCP server, metadata projection, embedded docs) *and* the
+//! per-operation dispatch functions the seam provider calls — adding
+//! an adapter is that one line plus its Cargo path dependency.
 
 use adapter::registry::Doc;
+use adapter::seam::{self as aseam, Context};
 use error::Error;
+use omnia_guest::Model;
 use workflow::adapter::metadata::Metadata;
 use workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
 
@@ -53,68 +61,124 @@ impl Entry {
     }
 }
 
-/// Every adapter linked into the native shim.
-#[must_use]
-pub fn entries() -> &'static [Entry] {
-    static ENTRIES: &[Entry] = &[
-        Entry {
-            axis: Axis::Source,
-            name: "captures",
-            server_name: "captures-references",
-            metadata: captures_metadata,
-            docs: captures::registry::docs,
-        },
-        Entry {
-            axis: Axis::Target,
-            name: "contracts",
-            server_name: "contracts-references",
-            metadata: contracts_metadata,
-            docs: contracts::registry::docs,
-        },
-        Entry {
-            axis: Axis::Source,
-            name: "documentation",
-            server_name: "documentation-references",
-            metadata: documentation_metadata,
-            docs: documentation::registry::docs,
-        },
-        Entry {
-            axis: Axis::Source,
-            name: "intent",
-            server_name: "intent-references",
-            metadata: intent_metadata,
-            docs: intent::registry::docs,
-        },
-        Entry {
-            axis: Axis::Target,
-            name: "omnia",
-            server_name: "omnia-references",
-            metadata: omnia_metadata,
-            docs: omnia_target::registry::docs,
-        },
-        Entry {
-            axis: Axis::Source,
-            name: "screenshots",
-            server_name: "screenshots-references",
-            metadata: screenshots_metadata,
-            docs: screenshots::registry::docs,
-        },
-        Entry {
-            axis: Axis::Source,
-            name: "typescript",
-            server_name: "typescript-references",
-            metadata: typescript_metadata,
-            docs: typescript::registry::docs,
-        },
-        Entry {
-            axis: Axis::Target,
-            name: "vectis",
-            server_name: "vectis-references",
-            metadata: vectis_metadata,
-            docs: vectis::registry::docs,
-        },
-    ];
-    ENTRIES
+/// The axis token of one table line.
+macro_rules! axis_of {
+    (source) => {
+        Axis::Source
+    };
+    (target) => {
+        Axis::Target
+    };
+}
+
+/// The metadata projection thunk for one table line, by axis.
+macro_rules! metadata_of {
+    (source, $krate:ident) => {
+        || source_metadata($krate::operations::metadata())
+    };
+    (target, $krate:ident) => {
+        || target_metadata($krate::operations::metadata())
+    };
+}
+
+/// One source-operation dispatch leg; expands to nothing for targets.
+macro_rules! source_leg {
+    (source, $name:ident, $krate:ident, $op:ident, ($($arg:expr),+), $id:expr) => {
+        if $id == concat!("source:", stringify!($name)) {
+            return $krate::operations::$op($($arg),+).await;
+        }
+    };
+    (target, $name:ident, $krate:ident, $op:ident, ($($arg:expr),+), $id:expr) => {};
+}
+
+/// One `guidance` dispatch leg; expands to nothing for sources.
+macro_rules! guidance_leg {
+    (target, $name:ident, $krate:ident, $id:expr) => {
+        if $id == concat!("target:", stringify!($name)) {
+            return Ok($krate::operations::guidance());
+        }
+    };
+    (source, $name:ident, $krate:ident, $id:expr) => {};
+}
+
+/// One `build` dispatch leg; expands to nothing for sources.
+macro_rules! build_leg {
+    (target, $name:ident, $krate:ident, ($($arg:expr),+), $id:expr) => {
+        if $id == concat!("target:", stringify!($name)) {
+            return $krate::operations::build($($arg),+).await;
+        }
+    };
+    (source, $name:ident, $krate:ident, ($($arg:expr),+), $id:expr) => {};
+}
+
+/// The declarative linked-adapter table: generates [`entries`] and the
+/// dispatch functions from one line per adapter.
+macro_rules! linked {
+    ($( $axis:ident $name:ident => $krate:ident; )+) => {
+        /// Every adapter linked into the native shim.
+        #[must_use]
+        pub fn entries() -> &'static [Entry] {
+            static ENTRIES: &[Entry] = &[
+                $(
+                    Entry {
+                        axis: axis_of!($axis),
+                        name: stringify!($name),
+                        server_name: concat!(stringify!($name), "-references"),
+                        metadata: metadata_of!($axis, $krate),
+                        docs: $krate::registry::docs,
+                    },
+                )+
+            ];
+            ENTRIES
+        }
+
+        /// Dispatch `survey` to the linked source adapter behind `id`.
+        pub(crate) async fn survey<M: Model>(
+            model: &M, ctx: &Context<'_>, id: &str,
+        ) -> Result<Vec<aseam::Lead>, aseam::Error> {
+            $( source_leg!($axis, $name, $krate, survey, (model, ctx), id); )+
+            Err(unlinked(id))
+        }
+
+        /// Dispatch `extract` to the linked source adapter behind `id`.
+        pub(crate) async fn extract<M: Model>(
+            model: &M, ctx: &Context<'_>, id: &str, lead: &aseam::Lead,
+        ) -> Result<aseam::Evidence, aseam::Error> {
+            $( source_leg!($axis, $name, $krate, extract, (model, ctx, lead), id); )+
+            Err(unlinked(id))
+        }
+
+        /// Serve the linked target adapter's embedded guidance prompt.
+        pub(crate) fn guidance(id: &str) -> Result<&'static str, aseam::Error> {
+            $( guidance_leg!($axis, $name, $krate, id); )+
+            Err(unlinked(id))
+        }
+
+        /// Dispatch `build` to the linked target adapter behind `id`.
+        pub(crate) async fn build<M: Model>(
+            model: &M, ctx: &Context<'_>, id: &str, slice: &str,
+            inputs: &[aseam::Input], tree: &aseam::WorkingTree,
+        ) -> Result<aseam::Report, aseam::Error> {
+            $( build_leg!($axis, $name, $krate, (model, ctx, slice, inputs, tree), id); )+
+            Err(unlinked(id))
+        }
+    };
+}
+
+linked! {
+    source captures => captures;
+    target contracts => contracts;
+    source documentation => documentation;
+    source intent => intent;
+    target omnia => omnia_target;
+    source screenshots => screenshots;
+    source typescript => typescript;
+    target vectis => vectis;
+}
+
+/// A dispatch to an adapter id this shim does not link.
+fn unlinked(id: &str) -> aseam::Error {
+    aseam::Error::InvalidRequest(format!("adapter `{id}` is not linked into the native shim"))
 }
 
 /// Look up a linked adapter by axis and name.
@@ -131,7 +195,7 @@ pub fn get(axis: Axis, name: &str) -> Result<Entry, Error> {
     )
 }
 
-fn source(record: adapter::seam::SourceMetadata) -> Metadata {
+fn source_metadata(record: adapter::seam::SourceMetadata) -> Metadata {
     Metadata {
         specify_floor: record.specify_floor,
         inputs: Vec::new(),
@@ -139,7 +203,7 @@ fn source(record: adapter::seam::SourceMetadata) -> Metadata {
     }
 }
 
-fn target(record: adapter::seam::TargetMetadata) -> Metadata {
+fn target_metadata(record: adapter::seam::TargetMetadata) -> Metadata {
     Metadata {
         specify_floor: record.specify_floor,
         inputs: record
@@ -167,29 +231,4 @@ const fn platform(platform: adapter::seam::Platform) -> workflow::platform::Plat
         adapter::seam::Platform::Web => Platform::Web,
         adapter::seam::Platform::Desktop => Platform::Desktop,
     }
-}
-
-fn captures_metadata() -> Metadata {
-    source(captures::operations::metadata())
-}
-fn contracts_metadata() -> Metadata {
-    target(contracts::operations::metadata())
-}
-fn documentation_metadata() -> Metadata {
-    source(documentation::operations::metadata())
-}
-fn intent_metadata() -> Metadata {
-    source(intent::operations::metadata())
-}
-fn omnia_metadata() -> Metadata {
-    target(omnia_target::operations::metadata())
-}
-fn screenshots_metadata() -> Metadata {
-    source(screenshots::operations::metadata())
-}
-fn typescript_metadata() -> Metadata {
-    source(typescript::operations::metadata())
-}
-fn vectis_metadata() -> Metadata {
-    target(vectis::operations::metadata())
 }

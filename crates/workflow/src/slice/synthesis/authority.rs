@@ -70,7 +70,7 @@ pub struct Resolution {
     pub status: RequirementStatus,
     /// Recomputed provenance label (not persisted; the provenance
     /// projection derives it from the same inputs).
-    pub resolution: ProvenanceResolution,
+    pub label: ProvenanceResolution,
     /// Per-claim winner markers, aligned with the input claim order.
     pub winners: Vec<Option<bool>>,
 }
@@ -79,11 +79,11 @@ impl Resolution {
     /// A resolution with no winner/loser distinction — every claim
     /// carries a `None` marker.
     fn uniform(
-        claim_count: usize, status: RequirementStatus, resolution: ProvenanceResolution,
+        claim_count: usize, status: RequirementStatus, label: ProvenanceResolution,
     ) -> Self {
         Self {
             status,
-            resolution,
+            label,
             winners: vec![None; claim_count],
         }
     }

@@ -53,7 +53,7 @@ impl SourceAssign {
     /// The desugared `plan create --intent <string>` binding —
     /// byte-identical to parsing `intent=intent:value:<string>`.
     #[must_use]
-    pub fn intent(value: String) -> Self {
+    pub(crate) fn intent(value: String) -> Self {
         Self {
             key: "intent".to_string(),
             adapter: "intent".to_string(),
@@ -78,7 +78,7 @@ impl SourceAssign {
 ///
 /// `Error::Diag` with the stable `plan-source-duplicate-key`
 /// discriminant on a duplicate source key.
-pub fn source_map(
+pub(crate) fn source_map(
     mut sources: Vec<SourceAssign>, intent: Option<String>,
 ) -> Result<BTreeMap<String, SourceBinding>> {
     if let Some(value) = intent {
@@ -178,7 +178,7 @@ impl FromStr for KindAssign {
 ///
 /// Unknown lead tokens surface as `Error::validation_failed` (exit 2)
 /// with the discriminant `discovery-lead-unknown`.
-pub fn bindings_from_args(
+pub(crate) fn bindings_from_args(
     args: &[BindingArg], slice_name: &str, discovery: Option<&Discovery>,
 ) -> Result<Vec<SliceSourceBinding>> {
     args.iter().map(|a| binding_from_arg(a, slice_name, discovery)).collect()
@@ -227,7 +227,7 @@ fn resolve_lead_token(token: &str, discovery: Option<&Discovery>) -> Result<Stri
 /// # Errors
 ///
 /// Propagates `discovery.md` parse and I/O failures.
-pub fn load_discovery(layout: Layout<'_>) -> Result<Option<Discovery>> {
+pub(crate) fn load_discovery(layout: Layout<'_>) -> Result<Option<Discovery>> {
     let path = layout.discovery_path();
     if !path.exists() {
         return Ok(None);
@@ -247,7 +247,7 @@ pub fn load_discovery(layout: Layout<'_>) -> Result<Option<Discovery>> {
 /// # Errors
 ///
 /// `Error::Argument` on any token outside the wire-legal set.
-pub fn parse_divergence(raw: &str) -> Result<Divergence> {
+pub(crate) fn parse_divergence(raw: &str) -> Result<Divergence> {
     match raw {
         "likely" => Ok(Divergence::Likely),
         "accepted" => Ok(Divergence::Accepted),
@@ -273,7 +273,9 @@ pub fn parse_divergence(raw: &str) -> Result<Divergence> {
 ///
 /// `Error::Argument` on an empty slice name or an unparseable value
 /// half.
-pub fn parse_slice_pair_args<T>(raw: &[String], flag: &'static str) -> Result<Vec<(String, T)>>
+pub(crate) fn parse_slice_pair_args<T>(
+    raw: &[String], flag: &'static str,
+) -> Result<Vec<(String, T)>>
 where
     T: FromStr<Err = String>,
 {
@@ -301,7 +303,7 @@ where
 ///
 /// `Error::Argument` on a malformed pair (see
 /// [`parse_slice_pair_args`]).
-pub fn parse_override_assigns(raw: &[String]) -> Result<Vec<(String, ClaimKind, String)>> {
+pub(crate) fn parse_override_assigns(raw: &[String]) -> Result<Vec<(String, ClaimKind, String)>> {
     Ok(parse_slice_pair_args::<KindAssign>(raw, "--authority-override")?
         .into_iter()
         .map(|(slice, a)| (slice, a.kind, a.source))

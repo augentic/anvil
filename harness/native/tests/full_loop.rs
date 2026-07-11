@@ -165,8 +165,10 @@ async fn author_approve_execute_drains() {
     );
 
     // The merge stamped the entry `done` and folded the baseline spec.
-    let plan =
-        workflow::change::Plan::load(&project.root().join("plan.yaml")).expect("load plan.yaml");
+    let plan: workflow::change::Plan = serde_saphyr::from_str(
+        &fs::read_to_string(project.root().join("plan.yaml")).expect("read plan.yaml"),
+    )
+    .expect("parse plan.yaml");
     assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
     let baseline = project.root().join(".specify/specs/greeting/spec.md");
     let content = fs::read_to_string(&baseline).expect("baseline spec written");

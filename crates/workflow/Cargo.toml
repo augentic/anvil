@@ -13,17 +13,6 @@ readme = "../../README.md"
 [lints]
 workspace = true
 
-# The `native` feature (default-on) carries the host-binary-only surface:
-# the bootstrap lifecycle (`upgrade`, `plugins`) and its `ureq` release
-# probe. Guest builds (`wasm32-wasip2`) depend on this crate with
-# `default-features = false`; everything outside the gate stays
-# wasm32-clean (`cargo make check-wasm-core` is the keeper). The gate is
-# a workflow-crate concern only: the root `specify` binary always builds
-# with defaults and references the gated modules unconditionally.
-[features]
-default = ["native"]
-native = ["dep:ureq"]
-
 [dependencies]
 anyhow.workspace = true
 glob.workspace = true
@@ -41,11 +30,9 @@ schema.workspace = true
 strum.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
-ureq = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
-regex.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 testkit.workspace = true

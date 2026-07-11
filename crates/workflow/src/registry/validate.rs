@@ -22,7 +22,7 @@ impl Registry {
     /// the broken invariant — e.g. `registry-version-unsupported`,
     /// `registry-project-name-empty`, `registry-project-name-not-kebab`,
     /// or a duplicate-name / malformed-`url` discriminant.
-    pub fn validate_shape(&self) -> Result<(), Error> {
+    pub(crate) fn validate_shape(&self) -> Result<(), Error> {
         if self.version != 1 {
             return Err(Error::Diag {
                 code: "registry-version-unsupported",
@@ -101,7 +101,7 @@ impl Registry {
     /// Returns the first base-shape error if `validate_shape` fails,
     /// or a `workspace-cannot-be-project` config error if any entry's `url`
     /// equals `.`.
-    pub fn validate_shape_workspace(&self) -> Result<(), Error> {
+    pub(crate) fn validate_shape_workspace(&self) -> Result<(), Error> {
         self.validate_shape()?;
         for (idx, project) in self.projects.iter().enumerate() {
             if project.url == "." {

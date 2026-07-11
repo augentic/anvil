@@ -35,7 +35,7 @@ specify plan transition <name> approved
 specify plan execute
 ```
 
-`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specify plan transition <name> approved`, `specify plan execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, top-level `workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specify plan transition <name> approved`, `specify plan execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` archives the change after the operator has published branches and completed the required repository workflow. Cross-repo work adds `registry.yaml`, top-level `workspace/` slots, and operator-owned slot materialization and branch publication. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
@@ -63,7 +63,7 @@ cargo install --git https://github.com/augentic/specify   # from source
 
 or download the platform archive from the [GitHub Releases page](https://github.com/augentic/specify/releases) and verify it against its `.sha256` companion (see [docs/release.md](docs/release.md)). A Homebrew tap is planned but not yet published.
 
-Once installed, keep the binary current with `specify upgrade`. It detects its install channel (`cargo` / `brew` / `binary`), resolves the latest release, and self-updates after `--yes` (or previews with `--dry-run`).
+Once installed, keep the binary current through the same install channel: rerun `cargo install`, upgrade through your package manager, or replace the downloaded release binary. `specify init --upgrade` updates an existing project's Specify pin and preservation-safe scaffold; it does not self-update the CLI binary.
 
 `specify completions <shell>` writes a completion script to stdout for any clap-supported shell (`bash`, `elvish`, `fish`, `powershell`, `zsh`), generated from the live clap surface so it stays in sync with every verb the binary exposes.
 

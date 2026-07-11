@@ -2,7 +2,7 @@
 
 Operator-driven eval scenarios and reference corpora for the Specify repo. The scenarios covered here are agent-based. All deterministic tests live in the Rust workspace at the repo root.
 
-Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree workspace builds on first `make install-cli`) and network access for the adapter fetch. The finalize scenarios push to local bare-repo remotes; no forge client (`gh`) is required.
+Before your first run, check [Prerequisites](shared/setup.md#prerequisites) — a Rust toolchain (the in-tree workspace builds on first `make install-cli`) and network access for the adapter fetch. Repository publication is operator-owned and is not performed by finalize scenarios.
 
 ## Run all scenarios
 

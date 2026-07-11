@@ -130,7 +130,7 @@ sources:
 
 The `.snapshot.yaml` records what was on disk at archive time so audit value is preserved without copying gigabytes per change. Operators who want a full byte-snapshot of the source tree can run `git clone --shared` against the cache before archive; this is a deliberate operator opt-in, not the default.
 
-This refines the source-input/target-workspace separation (see [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md)): the source-clone cache is a durable read-only input, distinct from the read-write target **workspace slots** materialised by `specify workspace sync`. The **role separation** — source clone = read-only input; workspace slot = read-write target — holds throughout.
+This refines the source-input/target-workspace separation (see [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md)): the source-clone cache is a durable read-only input, distinct from the operator-materialized read-write target **workspace slots**. The **role separation** — source clone = read-only input; workspace slot = read-write target — holds throughout.
 
 ### `--source @<key>` selector
 
@@ -219,7 +219,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Extend `registry.yaml` with a `sources:` block instead of a separate file.** Rejected. Sources and targets have different lifecycles, validation rules, materialisation strategies (read-only cache vs read-write working tree), and audiences (planner-time vs executor-time). Mixing them violates the registry's existing role and the source/target axis separation.
 
-**Promote `specify source sync` into `specify workspace sync`.** Rejected. `workspace sync` materialises target **workspace slots** under `workspace/<project>/`; `source sync` materialises read-only source inputs into `.specify/cache/sources/`. Conflating them re-introduces the source-vs-target confusion the adapter-axis split deliberately keeps apart.
+**Conflate source-input synchronization with workspace materialization.** Rejected. Source synchronization materialises read-only source inputs into `.specify/cache/sources/`; operator-owned workspace setup materialises read-write target slots under `workspace/<project>/`. Conflating them re-introduces the source-vs-target confusion the adapter-axis split deliberately keeps apart.
 
 **Snapshot the entire source clone into archives instead of recording a snapshot reference.** Rejected. With 80+ repos and frequent re-plans, copying gigabytes per archive is impractical. The recorded `.snapshot.yaml` (commit SHA, source URL, materialisation date) preserves the audit trail at constant cost; operators who genuinely need byte-snapshots can opt in by hand.
 
@@ -245,7 +245,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## Open Questions
 
-1. Should `specify source sync` accept `--depth <n>` for shallow clones? Current preference: yes, with a default of `1` for remotes (matching `workspace sync`'s posture for workspace slots).
+1. Should `specify source sync` accept `--depth <n>` for shallow clones? Current preference: yes, with a default of `1` for remotes.
 2. How should the source-clone cache handle stale clones? Current preference: `specify source sync` is `git fetch` for remotes (no merge, no rebase); operators get a warning if `HEAD` differs from the `head_sha` recorded in any open plan's `.snapshot.yaml`.
 3. Should `--source @<key>` accept the kind suffix only, or fall back to `sources.yaml:sources[].language` to infer kind? Current preference: explicit suffix only; `language` is advisory.
 4. Should `specify source` validation check URL reachability? Current preference: no - keep validation offline; reachability surfaces during `specify source sync`.

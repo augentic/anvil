@@ -28,7 +28,7 @@ impl Plan {
     /// entry is not eligible. Orphan-reference diagnostics belong to
     /// [`Plan::validate`].
     #[must_use]
-    pub fn next_eligible(&self) -> Option<&Entry> {
+    pub(crate) fn next_eligible(&self) -> Option<&Entry> {
         if self.entries.iter().any(|c| c.status == Status::InProgress) {
             return None;
         }
@@ -60,7 +60,7 @@ impl Plan {
     /// in practice unreachable since `next_eligible` filters for
     /// `Pending` entries and the only legal edge from `Pending` is
     /// `→ InProgress`.
-    pub fn advance_next(&mut self) -> Result<Option<&Entry>, Error> {
+    pub(crate) fn advance_next(&mut self) -> Result<Option<&Entry>, Error> {
         if self.is_executing() {
             return Ok(self.entries.iter().find(|e| e.status == Status::InProgress));
         }

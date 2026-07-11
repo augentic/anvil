@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use artifacts::validate::validate_slice;
 use schema::diagnostics::DiagnosticKind;
 use tempfile::TempDir;
-use workflow::slice::SLICES_DIR_NAME;
 
 mod common;
 
@@ -26,7 +25,7 @@ fn stage_project() -> (TempDir, PathBuf) {
 #[test]
 fn missing_artifact_produces_synth_failure() {
     let (_guard, project_dir) = stage_project();
-    let slice_dir = project_dir.join(".specify").join(SLICES_DIR_NAME).join("synth-missing");
+    let slice_dir = project_dir.join(".specify/slices/synth-missing");
     fs::create_dir_all(&slice_dir).unwrap();
     // Deliberately leave out every canonical artifact.
 
@@ -75,7 +74,7 @@ fn validate_slice_passes_all_rules() {
     let repo = repo_root();
     let fixture = repo.join("crates/workflow/tests/fixtures/change-good");
     let (_guard, project_dir) = stage_project();
-    let slice_dir = project_dir.join(".specify").join(SLICES_DIR_NAME).join("change-good");
+    let slice_dir = project_dir.join(".specify/slices/change-good");
     common::copy_dir(&fixture, &slice_dir);
 
     let findings = validate_slice(&slice_dir).expect("validate_slice ok");

@@ -119,7 +119,7 @@ specify plan execute
   --> /spec:refine + /spec:build + /spec:merge per slice until drained
 
 /spec:finalize fix-typo
-  --> push branches, archive plan
+  --> publish outside Specify, archive plan
 ```
 
 ## Built for the Augentic stack

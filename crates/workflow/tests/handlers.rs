@@ -262,14 +262,14 @@ mod scaffold {
     struct Linked(Project);
 
     impl workflow::handler::Anchor for Linked {
-        fn project_root(&self) -> &std::path::Path {
+        fn project_root(&self) -> &Path {
             &self.0.root
         }
     }
 
     impl workflow::adapter::Resolver for Linked {
         fn resolve_source(
-            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &std::path::Path,
+            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &Path,
         ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
             workflow::adapter::resolver::source(
                 adapter_ref,
@@ -279,7 +279,7 @@ mod scaffold {
         }
 
         fn resolve_target(
-            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &std::path::Path,
+            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &Path,
         ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
             workflow::adapter::resolver::target(
                 adapter_ref,

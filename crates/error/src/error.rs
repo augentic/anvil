@@ -109,9 +109,6 @@ impl Error {
                 "init-requires-adapter-or-workspace" => Some(
                     "`specify init <adapter>` for a regular project, or `specify init --workspace` for a workspace.\nsee: docs/init.md",
                 ),
-                "adapter-prefetch-unpinned" => Some(
-                    "pin each `project.yaml.adapters:` entry to an exact version: `<name>@<semver>` or `<namespace>:<name>@<semver>`.",
-                ),
                 _ => None,
             },
             _ => None,

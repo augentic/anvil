@@ -59,13 +59,13 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `/spec:plan`     | Wrap `specify plan author`: survey each bound source, reconcile `slices[]`, validate; exit at `pending` |
 | `specify plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, no skill wrapper); refuses unless plan is `approved` |
-| `/spec:finalize` | Push branches, then archive the plan (PRs opened and merged by the operator outside Specify)        |
+| `/spec:finalize` | Confirm operator-owned publication is complete, then archive the plan                                |
 
 The plan is the change's table of contents. `/spec:plan` produces it by invoking `specify plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
 
-`specify plan execute` consumes the approved plan by claiming the next eligible entry, running the Layer 1 loop, and updating per-entry status. `/spec:finalize` closes the change once execution drains by pushing branches and archiving `plan.yaml`.
+`specify plan execute` consumes the approved plan by claiming the next eligible entry, running the Layer 1 loop, and updating per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/spec:finalize` then archives `plan.yaml`.
 
-The matching CLI surface spans **`specify plan {create, author, execute, add, amend, remove, transition, next}`** and **`specify workspace {sync, push, prepare}`** for multi-repo changes.
+The matching CLI surface is **`specify plan {create, author, execute, add, amend, remove, transition, next, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Specify.
 
 ### Gate 1: the operator review seam
 
@@ -81,5 +81,5 @@ This means you can always drop down a layer:
 
 - If `/spec:plan` produces a plan you want to adjust, use **re-propose** or `specify plan add` / `specify plan remove` for grouping and deferral, and `specify plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then stamp `approved` when ready.
 - If `specify plan execute` parks on a slice, finish it manually with `/spec:build` and `/spec:merge`, then re-run `specify plan execute` to pick up the next entry.
-- If `/spec:finalize` halts on an unmerged PR, merge through the forge UI and re-run.
+- If publication is incomplete, finish the repository's normal branch and review workflow before running `/spec:finalize`.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.specify/slices/<name>/metadata.yaml` directly — they are plain YAML files.

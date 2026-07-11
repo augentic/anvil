@@ -301,7 +301,6 @@ grep -A4 'project: mobile' plan.yaml | grep 'depends-on'     # names the contrac
 ```bash
 grep -q 'lifecycle: pending' plan.yaml && echo pending
 specify journal show --filter plan.entry.advanced    # expect no output
-specify journal show --filter workspace.push.completed    # expect no output
 ```
 
 ### `review-step-no-op`
@@ -324,12 +323,11 @@ Routed project work happens on `specify/<plan>` branches in the project slots.
 ```bash
 git -C workspace/backend branch --show-current    # expect specify/<plan>
 git -C workspace/mobile branch --show-current     # expect specify/<plan>
-specify journal show --filter workspace.push.completed | jq -c .payload    # "branch":"specify/<plan>", both projects listed
 ```
 
-### `finalize-pushes-branches`
+### `publication-complete-before-finalize`
 
-`/spec:finalize` pushes the prepared `specify/<plan>` branch to each routed project's `origin`; the per-project push table reports `pushed` (or `up-to-date` on a repeat run) for every project the plan routed a slice to. It never creates, observes, or merges pull requests.
+The operator publishes every routed project's completed branch before invoking `/spec:finalize`; finalize performs no Git or forge operations.
 
 **Probe.**
 
@@ -337,12 +335,11 @@ specify journal show --filter workspace.push.completed | jq -c .payload    # "br
 for proj in backend mobile contracts; do    # every routed project; trim to the set the plan routed to
   git -C "$proj" ls-remote --heads origin "refs/heads/specify/<plan>"    # branch present on the bare remote
 done
-specify journal show --filter workspace.push.completed | jq -c .payload    # every routed project listed
 ```
 
 ### `finalize-archives-plan`
 
-The same `/spec:finalize` run archives the plan via `specify plan archive` once the push succeeds — push and archive happen in one invocation.
+`/spec:finalize` archives the plan via `specify plan archive` only after operator-owned publication is confirmed.
 
 **Probe.**
 
@@ -367,11 +364,11 @@ The archived directory contains the archived `change.md` next to the archived `p
 ls .specify/archive/plans/<plan>-*/    # expect change.md and plan.yaml together
 ```
 
-### `pushed-branch-list-recorded`
+### `publication-confirmation-recorded`
 
-The wrap-up lists one pushed branch per routed project and reminds the operator to open the pull requests by hand outside Specify — reporting ergonomics over the push table.
+The captured finalize interaction records the operator's publication confirmation before the archive command runs.
 
-**Judgment flag.** Evidence pointer: the captured `/spec:finalize` wrap-up showing the pushed-branch list (one per routed project) and the manual-PR reminder.
+**Judgment flag.** Evidence pointer: the captured `/spec:finalize` interaction showing publication confirmation before the archived path.
 
 ### `rerun-finalize-plan-not-found`
 
@@ -482,13 +479,12 @@ git -C workspace/mobile log --oneline specify/<plan>     # mobile slice commits 
 
 ### `slots-materialised`
 
-`workspace/backend/` and `workspace/mobile/` are materialised by workspace sync.
+`workspace/backend/` and `workspace/mobile/` are materialised by operator-owned setup before planning or execution.
 
 **Probe.**
 
 ```bash
 test -d workspace/backend && test -d workspace/mobile && echo materialised
-specify journal show --filter workspace.sync.completed | jq -c .payload    # "projects" lists both slots
 ```
 
 ### `guest-lock-at-workspace`
@@ -591,15 +587,14 @@ The synthesized baseline spec is a faithful, well-formed rendering of the operat
 
 ## `workspace-stale-recovery`
 
-### `dirty-slot-detected-at-sync`
+### `dirty-slot-preserved`
 
-`specify workspace sync` after the interruption detects the dirty/uncommitted slot rather than clobbering or ignoring it.
+Operator inspection after the interruption confirms the dirty/uncommitted slot remains intact before it is made safe for resume.
 
-**Probe.** Grade the captured resync step:
+**Probe.** Grade the captured inspection step:
 
 ```bash
-git -C workspace/<project> status --short    # the slot really was dirty at resync time
-# the captured `specify workspace sync` output surfaces the dirty-slot diagnostic for that slot
+git -C workspace/<project> status --short    # interrupted work is present before operator reconciliation
 ```
 
 ### `slice-state-preserved`

@@ -65,23 +65,17 @@ fn init_scaffold_component_free() {
 
     let root = project.path().canonicalize().expect("canonical tempdir");
     let flag = format!("--project-dir={}", root.display());
-    let output = run_from(
-        elsewhere.path(),
-        &[&flag, "init", "omnia", "--name", "demo", "--scaffold-only"],
-    );
+    let output =
+        run_from(elsewhere.path(), &[&flag, "init", "omnia", "--name", "demo", "--scaffold-only"]);
     assert!(
         output.status.success(),
         "component-free init failed: stdout={} stderr={}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
-    let config =
-        std::fs::read_to_string(root.join(".specify/project.yaml")).expect("project.yaml");
+    let config = std::fs::read_to_string(root.join(".specify/project.yaml")).expect("project.yaml");
     assert!(config.contains("adapter: omnia"), "the bare identity is recorded:\n{config}");
-    assert!(
-        !root.join("target").exists(),
-        "no development artifact tree is demanded or created"
-    );
+    assert!(!root.join("target").exists(), "no development artifact tree is demanded or created");
 }
 
 #[test]

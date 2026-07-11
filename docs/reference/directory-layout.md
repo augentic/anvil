@@ -76,13 +76,10 @@ The regenerable **cache** lives outside the working tree, in a per-project direc
 
 ```text
 $XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
-├── components/                                   # Project component cache
-│   ├── <name>.wasm                               # Local adapter component mirrored at init
-│   ├── <name>.wasm.metadata.json                 # Digest-keyed describe answer sidecar
-│   └── component-meta.yaml                       # Component mirror provenance stamp
-└── deployment/                                   # Generated deployment manifest (omnia.toml)
-
-$XDG_CACHE_HOME/specify/mirrors/<url-id>.git      # Persistent bare mirror per remote peer URL
+└── components/                                   # Project component cache
+    ├── <name>.wasm                               # Local adapter component mirrored at init
+    ├── <name>.wasm.metadata.json                 # Digest-keyed describe answer sidecar
+    └── component-meta.yaml                       # Component mirror provenance stamp
 ```
 
 ## Key directories
@@ -105,7 +102,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### Cache (out-of-tree)
 
-The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `components/` is the project component cache — an operator-supplied local adapter component mirrored at `specify init` (`<name>.wasm`, with provenance stamped at `components/component-meta.yaml`); pinned identities resolve from the global store and development builds resolve live, so neither is mirrored here. `deployment/` holds the generated deployment manifest (`omnia.toml`). There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
+The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `components/` is the project component cache — an operator-supplied local adapter component mirrored at `specify init` (`<name>.wasm`, with provenance stamped at `components/component-meta.yaml`); pinned identities resolve from the global store and development builds resolve live, so neither is mirrored here. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 
@@ -113,9 +110,9 @@ The transient working-state root and the lone gitignored tenant *inside* `.speci
 
 ### `workspace/` (top-level)
 
-Workspace slots for multi-repo changes, materialised at the project root (not under `.specify/`) and gitignored. Created or refreshed by `specify workspace sync`: remote URLs become `git worktree`s of a persistent out-of-tree bare mirror (so a peer's object store is shared across changes and fresh checkouts), and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
+Workspace slots for multi-repo changes are materialised at the project root (not under `.specify/`) and gitignored. The operator or surrounding repository automation creates each `workspace/<project>/` path from the matching `registry.yaml` entry, using an ordinary checkout/worktree for a remote repository or a symlink for a local path.
 
-Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch to `origin`. Opening and merging pull requests is operator-owned through the forge, entirely outside Specify; `/spec:finalize` runs `specify workspace push` and then `specify plan archive`.
+Slots are read-only during planning and writable during execution. Branch creation, checkout, commits, publication, pull requests, and merges are operator-owned repository operations outside Specify. After publication is complete, `/spec:finalize` verifies the plan is drained and runs `specify plan archive`.
 
 ### `archive/`
 

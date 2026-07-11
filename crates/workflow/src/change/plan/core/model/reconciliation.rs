@@ -37,7 +37,7 @@ impl Divergence {
     /// values. `Likely` / `Accepted` are live divergences the agent or
     /// operator has affirmed; `None` / `Rejected` carry no obligation.
     #[must_use]
-    pub const fn requires_values(self) -> bool {
+    pub(crate) const fn requires_values(self) -> bool {
         matches!(self, Self::Likely | Self::Accepted)
     }
 }

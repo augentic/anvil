@@ -35,30 +35,6 @@ pub struct SourceBinding {
     pub value: Option<String>,
 }
 
-impl SourceBinding {
-    /// Construct a path-bound binding for the named adapter.
-    #[must_use]
-    pub fn path(adapter: impl Into<String>, path: impl Into<String>) -> Self {
-        Self {
-            adapter: adapter.into(),
-            version: None,
-            path: Some(path.into()),
-            value: None,
-        }
-    }
-
-    /// Construct a value-bound binding for the named adapter.
-    #[must_use]
-    pub fn value(adapter: impl Into<String>, value: impl Into<String>) -> Self {
-        Self {
-            adapter: adapter.into(),
-            version: None,
-            path: None,
-            value: Some(value.into()),
-        }
-    }
-}
-
 /// One `(source, lead)` binding under [`super::Entry::sources`].
 ///
 /// On the wire (workflow §`Slice.sources`) this is either:
@@ -92,7 +68,7 @@ impl SliceSourceBinding {
     /// Construct the bare-string shorthand form: lead defaults to
     /// the owning slice's name at lookup time.
     #[must_use]
-    pub fn bare(source: impl Into<String>) -> Self {
+    pub(crate) fn bare(source: impl Into<String>) -> Self {
         Self {
             source: source.into(),
             lead: None,
@@ -101,7 +77,7 @@ impl SliceSourceBinding {
 
     /// Construct the structured form with an explicit lead.
     #[must_use]
-    pub fn structured(source: impl Into<String>, lead: impl Into<String>) -> Self {
+    pub(crate) fn structured(source: impl Into<String>, lead: impl Into<String>) -> Self {
         Self {
             source: source.into(),
             lead: Some(lead.into()),
@@ -111,7 +87,7 @@ impl SliceSourceBinding {
     /// The source key this binding references in
     /// [`super::Plan::sources`].
     #[must_use]
-    pub fn source(&self) -> &str {
+    pub(crate) fn source(&self) -> &str {
         &self.source
     }
 
@@ -119,7 +95,7 @@ impl SliceSourceBinding {
     /// owning slice's name for the bare-string shorthand per the
     /// workflow contract §`Slice.sources`.
     #[must_use]
-    pub fn lead<'a>(&'a self, slice_name: &'a str) -> &'a str {
+    pub(crate) fn lead<'a>(&'a self, slice_name: &'a str) -> &'a str {
         self.lead.as_deref().unwrap_or(slice_name)
     }
 }

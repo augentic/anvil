@@ -36,20 +36,8 @@ pub struct LeadCatalog {
 impl LeadCatalog {
     /// `true` when the `(source, lead)` identity was surveyed.
     #[must_use]
-    pub fn contains(&self, source: &str, lead: &str) -> bool {
+    pub(crate) fn contains(&self, source: &str, lead: &str) -> bool {
         self.identities.get(source).is_some_and(|leads| leads.contains(lead))
-    }
-
-    /// Number of distinct surveyed identities.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.identities.values().map(BTreeSet::len).sum()
-    }
-
-    /// `true` when no lead was surveyed.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.identities.is_empty()
     }
 
     /// Surveyed `(source, lead)` identities in lexicographic order.

@@ -7,7 +7,7 @@ stages: [plan, refine, build, merge]
 isolation: fresh-project
 assertions:
   - plan-exists
-  - dirty-slot-detected-at-sync
+  - dirty-slot-preserved
   - slice-state-preserved
   - resume-continues-from-in-progress
   - execute-loop-all-done
@@ -28,7 +28,7 @@ Scenario ID: `workspace-stale-recovery`
 
 ## Intent
 
-Prove re-entry after an interrupted execute: the operator interrupts `specify plan execute` mid-run leaving a workspace slot dirty with uncommitted work; a fresh `specify workspace sync` plus resume reconciles cleanly without losing slice state, continuing from the in-progress entry rather than restarting or dropping work.
+Prove re-entry after an interrupted execute: the operator interrupts `specify plan execute` mid-run leaving a workspace slot dirty with uncommitted work, inspects and preserves that state through operator-owned repository handling, then resumes from the in-progress entry rather than restarting or dropping work.
 
 ## Setup
 
@@ -37,13 +37,13 @@ Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup
 ## Invocation
 
 1. **Execute + interrupt** — `specify plan execute`; interrupt mid-run, leaving a slot dirty with uncommitted work. (Workspace routing has no in-guest counterpart yet: the verb currently exits with the typed `plan-execute-workspace-unsupported` refusal, so a run files as blocked until the workspace leg lands.)
-2. **Resync** — `specify workspace sync`; confirm it detects the dirty slot.
+2. **Inspect** — use `git status` in the affected slot; confirm the interrupted work remains present and make the slot safe for resume without discarding slice state.
 3. **Resume** — `specify plan execute`; confirm it continues from the in-progress entry and reaches drained.
 
 ## Assertions
 
 - `plan-exists`: `plan.yaml` exists and is approved before execute.
-- `dirty-slot-detected-at-sync`: `specify workspace sync` detects the dirty/uncommitted slot.
+- `dirty-slot-preserved`: operator inspection confirms the dirty/uncommitted slot state survives the interruption.
 - `slice-state-preserved`: slice state survives the interruption (no lost or duplicated work).
 - `resume-continues-from-in-progress`: resume continues from the in-progress entry, not a restart.
 - `execute-loop-all-done`: the resumed loop reaches drained.

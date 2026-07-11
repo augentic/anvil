@@ -59,7 +59,7 @@ impl Plan {
     ///
     /// Returns an [`Error::Validation`] (exit 2) carrying the first
     /// invariant code listed above that the response violates.
-    pub fn propose_from(
+    pub(crate) fn propose_from(
         &mut self, response: ProposalResponse, discovery: &Discovery, topology: &[ProjectRef],
     ) -> Result<ProposeOutcome> {
         if !self.is_replaceable() {

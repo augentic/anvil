@@ -42,7 +42,7 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | --------------------------- | --------------------------------------------- | ------ | ---- |
 | Composed guest execute loop | [`guest-execute-loop`](guest-execute-loop.md) | failed | full |
 
-14 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [Rust workspace](https://github.com/augentic/specify), run under `cargo make test` on every commit, with no catalog entry here — dual-driving refusal left the catalog this way when the guest execute marker (the create-exclusive `.specify/guest.lock`, covered by `crates/workflow/tests/execute.rs`) made it deterministic.
+14 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [Rust workspace](https://github.com/augentic/specify), run under `cargo make test` on every commit; the create-exclusive `.specify/guest.lock` is covered through the native operation harness.
 
 ## Status legend
 

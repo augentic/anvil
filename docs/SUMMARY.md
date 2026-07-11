@@ -90,6 +90,7 @@
 - [Documentation authoring standards](standards/doc-authoring.md)
 - [Skill authoring standards](standards/skill-authoring.md)
 - [Skill guardrails](standards/skill-guardrails.md)
+- [The developer loop](contributing/dev-loop.md)
 - [Plugin development](contributing/plugin-development.md)
 - [CLI architecture](contributing/cli-architecture.md)
 - [Consistency checks](contributing/checks.md)

@@ -220,68 +220,6 @@ impl AdapterPackageRef {
     }
 }
 
-/// Public projection of an adapter package reference for install
-/// layers.
-///
-/// Carries the `(namespace, name, version)` an install leg keys the
-/// package pull and the global store entry by (see
-/// [`crate::hydrate::Fetch`]).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AdapterPackage {
-    /// First-party package namespace (e.g. `specify`) — the wasm-pkg
-    /// namespace under the registry host.
-    pub namespace: String,
-    /// Kebab-case adapter name.
-    pub name: String,
-    /// Mandatory exact-SemVer pin.
-    pub version: semver::Version,
-}
-
-impl AdapterPackage {
-    /// A first-party pinned identity — the namespace sugar the
-    /// versioned shorthand (`<name>@<semver>`) expands to. Used by the
-    /// hydration ref collector to key `plan.yaml` source pins, which
-    /// carry only the bare adapter name.
-    #[must_use]
-    pub fn first_party(name: impl Into<String>, version: semver::Version) -> Self {
-        Self {
-            namespace: FIRST_PARTY_NAMESPACE.to_string(),
-            name: name.into(),
-            version,
-        }
-    }
-}
-
-/// Recognise an adapter argument the root install layer must fetch
-/// before scaffolding.
-///
-/// Matches a `<namespace>:<name>@<semver>` package reference, or the
-/// versioned first-party shorthand (`omnia@1.0.0` — sugar for
-/// `specify:omnia@1.0.0`).
-///
-/// Returns `None` for non-package shapes (bare names, paths, URLs), so
-/// those keep flowing through the dev / local branches; `Some(Err(_))`
-/// when the shape *is* a package reference but the SemVer pin is
-/// missing or malformed.
-#[must_use]
-pub fn recognize_package(value: &str) -> Option<Result<AdapterPackage, Error>> {
-    if let Some(parsed) = AdapterPackageRef::recognize(value) {
-        return Some(parsed.map(|package| AdapterPackage {
-            namespace: package.namespace,
-            name: package.name,
-            version: package.version,
-        }));
-    }
-    match parse_first_party_shorthand(value) {
-        Some((name, Some(version))) => Some(Ok(AdapterPackage {
-            namespace: FIRST_PARTY_NAMESPACE.to_string(),
-            name: name.to_string(),
-            version,
-        })),
-        Some((_, None)) | None => None,
-    }
-}
-
 fn is_github_url(adapter: &str) -> bool {
     adapter.starts_with("https://github.com/")
 }
@@ -361,7 +299,7 @@ fn adapter_name_from_component(path: &Path) -> Result<String, Error> {
 ///   artifact prefix stripped,
 /// - bare local paths — same treatment.
 #[must_use]
-pub fn adapter_name_from_value(value: &str) -> String {
+fn adapter_name_from_value(value: &str) -> String {
     let stripped = strip_at_ref_suffix(value);
     let stripped = stripped.strip_prefix("file://").unwrap_or(stripped);
     let stripped = stripped.strip_suffix('/').unwrap_or(stripped);
@@ -392,7 +330,7 @@ impl AdapterRef {
     /// artifact. (Housed here rather than beside the type because the
     /// value grammar it inverts is this module's.)
     #[must_use]
-    pub fn from_value(value: &str) -> Self {
+    pub(crate) fn from_value(value: &str) -> Self {
         let name = adapter_name_from_value(value);
         let version = at_ref_suffix(value).and_then(|suffix| semver::Version::parse(suffix).ok());
         Self { name, version }

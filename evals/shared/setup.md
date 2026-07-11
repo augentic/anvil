@@ -7,10 +7,10 @@ Run every scenario from the repo-local sandbox at `evals/.sandbox/<scenario>/` (
 ## Prerequisites
 
 - A `specify` binary on your PATH that is the build under test. The sweep needs a binary **built from the in-tree source**. `make install-cli` builds the binary and symlinks `target/release/specify` into `~/.local/bin` (overridable with `INSTALL_DIR=`), so the bare `specify` commands below resolve to this build with no further setup — it warns if that directory is not on your PATH. An agent driving the sweep self-heals this: if `specify --version` does not resolve to the build under test, prepend the symlink dir to PATH for its own shells (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute `target/release/specify` path. To build without `make`, run `cargo build --release --bin specify` and symlink `target/release/specify` into a PATH directory yourself. Confirm the right build with `specify --version` before starting. To test a different binary instead, put it earlier on your PATH.
-- The adapters a scenario names (`omnia@1.0.0`, `vectis@1.0.0`, `contracts@1.0.0`) are resolvable. The versioned first-party shorthand (`specify init omnia@1.0.0`) installs the published component into the global adapter store through the wasm-pkg registry transport, so `init` needs network access on a cold store (`specify adapters sync` re-hydrates later; `--frozen` refuses to fetch). To run fully offline, pass a local `.wasm` component instead — `specify init <sibling>/target/wasm32-wasip2/release/omnia.wasm` against a release-built `augentic/specify-adapters` checkout (`cargo make release` there); init mirrors it into the project component cache. Bare names (`specify init omnia`) are the development shorthand resolving the sibling/in-repo release build. Pin the in-tree workflow guest as the core with `SPECIFY_CORE_PATH` so nothing hydrates `specify:core` from the registry.
+- The adapters a scenario names (`omnia@1.0.0`, `vectis@1.0.0`, `contracts@1.0.0`) are resolvable. The versioned first-party shorthand (`specify init omnia@1.0.0`) installs the published component into the global adapter store through the wasm-pkg registry transport, so init needs network access on a cold store. To run fully offline, pass a local `.wasm` component instead — `specify init <sibling>/target/wasm32-wasip2/release/omnia.wasm` against a release-built `augentic/specify-adapters` checkout (`cargo make release` there); init mirrors it into the project component cache. Bare names (`specify init omnia`) are the development shorthand resolving the sibling/in-repo release build. Pin the in-tree workflow guest as the core with `SPECIFY_CORE_PATH` so nothing resolves `specify:core` from the registry.
 - Source adapters a scenario binds (`documentation`, `typescript`, …) are components too: a pinned identity in `plan.yaml` resolves the global store entry; a bare name resolves the sibling/in-repo release build. `plan author` runs before `plan.yaml` binds sources, so dev runs give the deployment its source adapters through a project-root `omnia.toml` listing the release-built components (the drivers write one; see the checked-in repo-root [`omnia.toml`](../../omnia.toml) for the shape). Confirm a binding with `specify source resolve <name>`.
-- Git is available for local branches and remotes. Scenarios that run `/spec:finalize` push the prepared `specify/<change>` branch to each routed project's `origin`, so every routed project needs a reachable `origin` remote before finalize. A **local bare repository** (`git init --bare`) reached via a `file://` URL satisfies this with no network or forge — see the cross-repo setup below.
-- No forge client (`gh`) is required. `/spec:finalize` pushes branches and then archives the plan; it never creates, observes, or merges pull requests. Opening the PR and merging it is an operator action done entirely outside Specify.
+- Git is available for operator-owned slot setup and publication. Cross-repo scenarios may use a local bare repository (`git init --bare`) reached via a `file://` URL to model publication without network or forge access.
+- No forge client (`gh`) is required. `/spec:finalize` confirms publication and archives the plan; it performs no Git or pull-request operations.
 - The replay drivers under [`drivers/`](../drivers/README.md) need `jq` on PATH (the only structured-data dependency). They are bash 3.2-compatible, so the stock macOS `/bin/bash` works — no Homebrew bash 4 required.
 
 ## Single-project setup
@@ -57,7 +57,7 @@ cd ../contracts
 specify init contracts@1.0.0
 ```
 
-Give each routed project a local bare-repo `origin` so `specify workspace prepare` can resolve `origin/HEAD` and `/spec:finalize` has somewhere to push — no network, no forge. (Drop `contracts` from the list for scenarios that do not route a contract slice.)
+Give each routed project a local bare-repo `origin` when the scenario models operator-owned branch publication — no network or forge is required. Materialize and prepare each workspace slot through ordinary Git tooling. (Drop `contracts` from the list for scenarios that do not route a contract slice.)
 
 ```bash
 cd "$SANDBOX"
@@ -81,7 +81,7 @@ specify registry add contracts --url ../contracts --adapter contracts --descript
 specify registry validate
 ```
 
-Then create the brief (below) and run the scenario's **Invocation**. After `/spec:finalize` pushes the `specify/<change>` branches to the bare repos, opening and merging the pull requests is an operator step done by hand outside Specify (for a local bare repo, that is a plain `git merge --no-ff` into the bare repo's default branch if you want to model the merge).
+Then create the brief (below) and run the scenario's **Invocation**. Publish and, when relevant, merge the `specify/<change>` branches by hand before `/spec:finalize`; for a local bare repo, a plain `git merge --no-ff` into the bare repo's default branch can model the merge.
 
 ## OAuth login brief
 

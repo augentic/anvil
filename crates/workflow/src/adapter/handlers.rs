@@ -12,7 +12,10 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::{AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
+use super::{
+    AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver, SourceAdapter,
+    TargetAdapter,
+};
 use crate::handler::{Anchor, Render};
 
 /// Wire input for `source resolve` / `target resolve`.
@@ -107,7 +110,7 @@ impl ResolveBody {
 
 impl From<ResolvedSource> for ResolveBody {
     fn from(resolved: ResolvedSource) -> Self {
-        let operations = resolved.manifest.operations().map(ToString::to_string).collect();
+        let operations = SourceAdapter::operations().map(ToString::to_string).collect();
         Self::assemble(
             Axis::Source,
             resolved.manifest.name,
@@ -120,7 +123,7 @@ impl From<ResolvedSource> for ResolveBody {
 
 impl From<ResolvedTarget> for ResolveBody {
     fn from(resolved: ResolvedTarget) -> Self {
-        let operations = resolved.manifest.operations().map(ToString::to_string).collect();
+        let operations = TargetAdapter::operations().map(ToString::to_string).collect();
         Self::assemble(
             Axis::Target,
             resolved.manifest.name,

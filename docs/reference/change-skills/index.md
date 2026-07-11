@@ -27,7 +27,7 @@ Each row below links to a per-phase stub; the skills are ultrathin wrappers, and
 
 ## How skills delegate
 
-Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb — plan authoring, lifecycle transitions, spec merging, and workspace sync all run inside the CLI. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract.
+Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb — plan authoring, lifecycle transitions, spec merging, and plan archival run inside the CLI. Workspace slot materialization and repository publication are operator-owned outside Specify. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract.
 
 Per-slice work (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) lives in [Slice skills](../slice-skills/index.md). `specify plan execute` sequences the same orchestrations; the same guest legs run when you invoke a breakout by hand.
 

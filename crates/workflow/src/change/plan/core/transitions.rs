@@ -16,7 +16,7 @@ impl Plan {
     ///
     /// # Errors
     /// `plan-entry-not-found` / `plan-transition` — see module docs.
-    pub fn transition(&mut self, name: &str, target: Status) -> Result<(), Error> {
+    pub(crate) fn transition(&mut self, name: &str, target: Status) -> Result<(), Error> {
         let entry: &mut Entry =
             self.entries.iter_mut().find(|c| c.name == name).ok_or_else(|| Error::Diag {
                 code: "plan-entry-not-found",
@@ -41,7 +41,7 @@ impl Plan {
     ///
     /// # Errors
     /// `plan-lifecycle-transition` when the edge is not legal.
-    pub fn transition_lifecycle(&mut self, target: Lifecycle) -> Result<(), Error> {
+    pub(crate) fn transition_lifecycle(&mut self, target: Lifecycle) -> Result<(), Error> {
         let current = self.lifecycle;
         if matches!((current, target), (Lifecycle::Pending, Lifecycle::Approved)) {
             self.lifecycle = target;
@@ -72,7 +72,7 @@ impl Plan {
     ///   `name`.
     /// - `plan-transition-undo` when the entry is already at
     ///   `Pending` (nothing to undo).
-    pub fn transition_undo(&mut self, name: &str) -> Result<(Status, Status), Error> {
+    pub(crate) fn transition_undo(&mut self, name: &str) -> Result<(Status, Status), Error> {
         let entry: &mut Entry =
             self.entries.iter_mut().find(|c| c.name == name).ok_or_else(|| Error::Diag {
                 code: "plan-entry-not-found",

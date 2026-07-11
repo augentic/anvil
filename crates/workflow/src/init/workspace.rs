@@ -84,7 +84,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         name,
         description: opts.description.map(str::to_string),
         adapter: None,
-        adapters: Vec::new(),
         specify_version: Some(specify_version.clone()),
         rules: BTreeMap::new(),
         workspace: true,
@@ -115,7 +114,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         directories_created,
         scaffolded_rule_keys: Vec::new(),
         specify_version,
-        specify_version_changed: true,
         wasm_pkg_config_written,
         context_skip_reason: None,
     })

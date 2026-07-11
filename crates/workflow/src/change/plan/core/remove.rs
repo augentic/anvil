@@ -9,7 +9,7 @@ impl Plan {
     /// Whether the plan accepts wholesale slice replacement (the
     /// reconciliation kernel) or per-entry removal (`plan remove`).
     #[must_use]
-    pub fn is_replaceable(&self) -> bool {
+    pub(crate) fn is_replaceable(&self) -> bool {
         self.lifecycle == Lifecycle::Pending
             && self.entries.iter().all(|e| e.status == Status::Pending)
     }
@@ -21,7 +21,7 @@ impl Plan {
     ///
     /// Errors when the plan is not replaceable, the entry is missing,
     /// or another entry lists `name` in `depends-on`.
-    pub fn remove(&mut self, name: &str) -> Result<(), Error> {
+    pub(crate) fn remove(&mut self, name: &str) -> Result<(), Error> {
         if !self.is_replaceable() {
             return Err(Error::validation_failed(
                 "plan-remove-plan-not-replaceable",

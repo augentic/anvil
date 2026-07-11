@@ -81,7 +81,7 @@ impl StopReason {
     /// Operator hint rendered under the stop block — one line, aligned
     /// with the stop-conditions reference's re-entry contract.
     #[must_use]
-    pub const fn hint(self) -> &'static str {
+    pub(crate) const fn hint(self) -> &'static str {
         match self {
             Self::PlanNotApproved => {
                 "Stamp Gate 1 first: specify plan transition <plan-name> approved."

@@ -82,7 +82,6 @@ pub(super) fn run(resolver: &impl Resolver, opts: InitOptions<'_>) -> Result<Ini
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
         specify_version: target,
-        specify_version_changed,
         wasm_pkg_config_written: false,
         context_skip_reason: None,
     })

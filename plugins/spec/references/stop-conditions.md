@@ -59,7 +59,7 @@ No `pending` or `in-progress` entries remain. This is the only clean exit. The C
 drained — run /spec:finalize <name>
 ```
 
-`<name>` is the plan name. `/spec:finalize` is the next operator step: it re-validates every per-entry `done`, pushes branches with `specify workspace push`, then runs `specify plan archive` to archive. `specify plan execute` itself never pushes and never archives — those are finalize's responsibility. Opening and merging the pull requests is operator-owned and happens outside Specify.
+`<name>` is the plan name. Before `/spec:finalize`, the operator commits, publishes, and completes the required repository workflow outside Specify. Finalize re-validates every per-entry `done`, confirms publication is complete, then runs `specify plan archive`. `specify plan execute` itself never publishes or archives.
 
 ## What is NOT a stop
 

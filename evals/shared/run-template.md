@@ -44,7 +44,7 @@ Skip on `pass`.
 
 #### Fault
 
-- **Fault domain:** `<plan | review | execute | finalize-push | finalize-pr-observation | finalize-archive | synthesis | operator-error | unknown>`
+- **Fault domain:** `<plan | review | execute | publication | finalize-archive | synthesis | operator-error | unknown>`
 - **Follow-up issue:** `<URL or none>`
 
 #### Failure detail

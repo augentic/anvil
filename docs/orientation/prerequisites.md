@@ -55,16 +55,14 @@ specify --version
 
 ### Keeping the CLI current
 
-`specify upgrade` self-updates the binary in place. It detects the install channel from the running binary's path — `cargo` (under `$CARGO_HOME/bin`, or `~/.cargo/bin`), `brew` (a Homebrew Cellar/prefix), `binary` (a system install such as `/usr/local/bin` or `/opt/specify`), or `unknown` (it then prints manual-upgrade guidance via a structured `unknown-install-channel` diagnostic). Pass `--channel` to override detection.
-
-It resolves the latest release before upgrading — `SPECIFY_RELEASE_TAG` env override first, then `gh release view -R augentic/specify` when `gh` is on `PATH`, then an unauthenticated `api.github.com` request. A probe failure is a warning, not an error: the upgrade proceeds against `HEAD` with a journal note. Preview with `--dry-run`; apply with `--yes`.
+Update the CLI through the same channel used to install it:
 
 ```bash
-specify upgrade --dry-run            # report channel + target version, write nothing
-specify upgrade --yes                # self-update and journal `cli.upgraded`
+cargo install --git https://github.com/augentic/specify   # source install
+# or upgrade with your package manager / replace the release binary
 ```
 
-The `cargo` and `brew` executors are fully wired; the `binary`-channel in-process self-replace is deferred to a follow-up, so today that channel emits planned-action plus manual-upgrade guidance.
+`specify init --upgrade` is a separate project re-entry command: it updates the project's Specify pin and preservation-safe scaffold while retaining operator-authored artifacts. It does not update the installed CLI.
 
 ### Contributing to the repo
 

@@ -45,7 +45,7 @@ impl Plan {
     /// # Errors
     ///
     /// See variants enumerated above.
-    pub fn load(path: &Path) -> Result<Self, Error> {
+    pub(crate) fn load(path: &Path) -> Result<Self, Error> {
         if !path.exists() {
             return Err(Error::ArtifactNotFound {
                 kind: "plan.yaml",
@@ -75,7 +75,7 @@ impl Plan {
     ///
     /// Returns `Error::Io` on any I/O failure and `Error::YamlSer` if
     /// serialization fails.
-    pub fn save(&self, path: &Path) -> Result<(), Error> {
+    pub(crate) fn save(&self, path: &Path) -> Result<(), Error> {
         yaml_write(path, self)
     }
 }

@@ -55,7 +55,7 @@ pub struct Created {
     pub metadata: SliceMetadata,
     /// `true` when the call created a new directory; `false` when an
     /// existing directory was reused (`CreateIfExists::Continue`).
-    pub created: bool,
+    pub is_new: bool,
     /// `true` when the call replaced an existing directory
     /// (`CreateIfExists::Restart`).
     pub restarted: bool,
@@ -132,7 +132,7 @@ pub fn create(
                 return Ok(Created {
                     dir: slice_dir,
                     metadata,
-                    created: false,
+                    is_new: false,
                     restarted: false,
                 });
             }
@@ -160,7 +160,7 @@ pub fn create(
     Ok(Created {
         dir: slice_dir,
         metadata,
-        created: true,
+        is_new: true,
         restarted: matches!(if_exists, CreateIfExists::Restart),
     })
 }

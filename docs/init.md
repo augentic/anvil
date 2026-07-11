@@ -37,7 +37,7 @@ A workspace is a registry-only project: it owns `registry.yaml` and
 the cross-repo workspace slots, but does not itself host adapter artifacts.
 Use this for the platform repo that orchestrates a fleet of adapter
 projects. Workspace init writes `workspace: true` in `project.yaml`,
-seeds an empty `registry.yaml`, and chains `specify workspace sync`
+seeds an empty `registry.yaml`; workspace slot materialization remains operator-owned
 before returning (no-op when `projects: []`, but still upserts
 `.gitignore` and canonicalises an empty `topology.lock`). Workspace init
 also writes `.specify/wasm-pkg.toml` so workspace operators can publish or

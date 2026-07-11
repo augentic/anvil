@@ -55,61 +55,6 @@ After installation, run `specify --version` again.
 - If verification succeeds, continue.
 - If installation or verification fails, surface the error and stop. Do not attempt a prose fallback or hand-roll `.specify/` scaffolding.
 
-These three probes run before any prompt the existing steps would otherwise fire. Each is a fast no-op when nothing has drifted, so prompt counts only grow when the operator must choose.
-
-### 1b. Probe CLI version
-
-Run:
-
-```bash
-specify upgrade --dry-run --format json
-```
-
-Parse the JSON body. The binary is **stale** when `to` differs from `from`, when `to` is `"HEAD"`, or when `head-fallback` is `true`. When `channel` is `"unknown"`, the CLI cannot self-update.
-
-- If the binary is current (`to == from`), say nothing and continue to step 1c.
-- If `channel` is `"unknown"`, surface the `guidance` string verbatim so the operator can upgrade manually, then continue to step 1c. Do not auto-run an upgrade.
-- If stale on a known channel, tell the user:
-
-  > "Your `specify` binary is behind the latest release (`<from>` → `<to>`). I can update it now with `specify upgrade --yes`."
-
-  Use the **AskQuestion tool** to confirm.
-
-  - If they decline, continue to step 1c on the current binary.
-  - If they confirm, run:
-
-    ```bash
-    specify upgrade --yes
-    ```
-
-    Then print "CLI updated to `<to>`; no Cursor restart required." and continue to step 1c.
-
-### 1c. Probe plugin cache
-
-Run:
-
-```bash
-specify plugins doctor --format json
-```
-
-`doctor` never exits non-zero on drift — drift is a finding. Parse the JSON body: the cache is **drifted** when `summary.drifted > 0` or `summary.missing > 0`.
-
-- If `summary.drifted` and `summary.missing` are both `0`, continue to step 2.
-- If drifted, tell the user:
-
-  > "Your Cursor plugin cache has drifted from the marketplace (`<drifted>` drifted, `<missing>` missing). I can clear it with `specify plugins refresh --yes`, but Cursor must restart to repopulate the cache."
-
-  Use the **AskQuestion tool** to confirm.
-
-  - If they decline, continue to step 2 on the current cache.
-  - If they confirm, run:
-
-    ```bash
-    specify plugins refresh --yes
-    ```
-
-    The CLI prints `Plugin cache cleared. Restart Cursor to repopulate from the marketplace.` Relay that line, then **stop**: tell the operator to restart Cursor and re-run `/spec:init`. Do not continue to step 2 — the refreshed cache only repopulates on restart.
-
 ### 2. Check if already initialized
 
 Check whether `.specify/project.yaml` exists.
@@ -211,11 +156,11 @@ Never combine the two: `specify init "$PROFILE" --workspace` exits `2` with clap
 The CLI writes:
 
 - **Regular** — `.specify/{slices,specs,archive}/`, `.specify/project.yaml` with `adapter:` set to the resolved value; init scaffolds empty `rules:` entries for `proposal|specs|design|tasks`, the resolved adapter manifest cached in the out-of-tree per-project cache at `<project-cache>/manifests/targets/<adapter>/`, `.specify/scratch/` and top-level `workspace/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
-- **Workspace** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/scratch/` and top-level `workspace/` upserted into `.gitignore`; an initial `workspace sync` runs before init returns; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`) are NOT scaffolded — the workspace disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
+- **Workspace** — `.specify/project.yaml` with `workspace: true` only (the `adapter:` field is **omitted** — its absence is the sentinel that disables adapter resolution on the workspace itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/scratch/` and top-level `workspace/` upserted into `.gitignore`; generated workspace-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`) are NOT scaffolded — the workspace disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands, while slot materialization remains operator-owned.
 
 If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `workspace/<peer>/` also skips nested context generation.
 
-For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `adapter-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `workspace-synced`, `workspace-sync-message`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
+For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `adapter-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
 
 On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Workspace mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a workspace, they remove `.specify/` first.
 
@@ -232,8 +177,8 @@ For a **workspace** init, tell the user:
 
 - "Specify initialized as a registry-only workspace. Config written to `.specify/project.yaml` (`workspace: true`, no `adapter:`)."
 - "Generated workspace context at `AGENTS.md`; inspect the file directly for later review."
-- Report the init envelope's `workspace-sync-message` (CLI chains sync automatically — do not run `specify workspace sync` again).
 - "Add code projects to `registry.yaml` once they exist. The workspace starts with `projects: []`."
+- "Materialize registered project slots through your normal repository tooling before planning cross-repo work."
 
 Do NOT print "Next steps" yet — Step 7 determines which output to show.
 

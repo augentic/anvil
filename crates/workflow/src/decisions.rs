@@ -84,7 +84,7 @@ fn is_ascii_digits(s: &str) -> bool {
 /// # Errors
 ///
 /// Surfaces I/O errors reading the directory or one of its entries.
-pub(crate) fn list_md_files(dir: &Path) -> Result<Vec<PathBuf>, Error> {
+pub fn list_md_files(dir: &Path) -> Result<Vec<PathBuf>, Error> {
     let mut out: Vec<PathBuf> = Vec::new();
     for entry in crate::fs::dir_entries(dir)? {
         let path = entry.path();

@@ -37,17 +37,6 @@ pub struct ProjectConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
 
-    /// Optional prefetch list of pinned adapter identities hydrated at
-    /// the provisioning triggers (`specify init`, `specify adapters
-    /// sync` — ). Each entry is a package reference
-    /// (`<namespace>:<name>@<semver>`) or first-party `name@<semver>`
-    /// shorthand; an unpinned entry is refused at hydration with
-    /// `adapter-prefetch-unpinned`. Both axes are legal — a project
-    /// that knows its source set up front provisions everything in one
-    /// command. Empty (the default) stays off disk.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub adapters: Vec<String>,
-
     /// Minimum `specify` CLI version required to operate on this project,
     /// serialised as the `specify:` key in `project.yaml`. Written by
     /// `specify init` as the running binary's version and enforced by
@@ -198,15 +187,6 @@ impl<'a> Layout<'a> {
     #[must_use]
     pub fn topology_lock_path(&self) -> PathBuf {
         self.specify_dir().join("topology.lock")
-    }
-
-    /// Absolute path to `<project_dir>/.specify/adapters.lock` — the
-    /// committed cross-machine digest pin over hydrated adapter
-    /// identities, written by the hydration kernel.
-    /// Machine-written; never hand-edited.
-    #[must_use]
-    pub fn adapters_lock_path(&self) -> PathBuf {
-        self.specify_dir().join("adapters.lock")
     }
 
     /// Absolute path to this project's out-of-tree memoization root

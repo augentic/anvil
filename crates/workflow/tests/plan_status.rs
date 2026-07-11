@@ -16,13 +16,20 @@
 use jiff::Timestamp;
 use workflow::change::plan::handlers::{Status as StatusOp, StatusInput};
 use workflow::change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
-use workflow::config::Layout;
-use workflow::journal::{Event, EventKind, append_batch};
-use workflow::slice::{LifecycleStatus, SliceMetadata};
+use workflow::journal::{Event as JournalEvent, EventKind};
+use workflow::slice::LifecycleStatus;
 
 mod common;
 
 use common::{Project, change, change_with_deps, plan_with_changes, run};
+
+struct Event;
+
+impl Event {
+    const fn new(timestamp: Timestamp, kind: EventKind) -> JournalEvent {
+        JournalEvent { timestamp, kind }
+    }
+}
 
 const fn approved(mut plan: Plan) -> Plan {
     plan.lifecycle = Lifecycle::Approved;
@@ -44,30 +51,29 @@ async fn status(project: &Project, plan: &Plan) -> StatusBody {
 fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
     let slice_dir = root.join(".specify").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
-    let metadata = SliceMetadata {
-        target: "demo-target@1.0.0".to_string(),
-        status,
-        created_at: None,
-        defined_at: None,
-        completed_at: None,
-        merged_at: None,
-        dropped_at: None,
-        drop_reason: None,
-        touched_specs: vec![],
-        outcome: None,
-    };
-    metadata.save(&slice_dir).expect("write metadata");
+    let status = serde_saphyr::to_string(&status).expect("serialize lifecycle").trim().to_string();
+    std::fs::write(
+        slice_dir.join("metadata.yaml"),
+        format!("target: demo-target@1.0.0\nstatus: {status}\n"),
+    )
+    .expect("write metadata");
 }
 
 fn ts(seconds: i64) -> Timestamp {
     Timestamp::from_second(1_700_000_000 + seconds).expect("valid timestamp")
 }
 
-fn append(root: &std::path::Path, events: &[Event]) {
-    append_batch(Layout::new(root), events).expect("append journal events");
+fn append(root: &std::path::Path, events: &[JournalEvent]) {
+    let body = events
+        .iter()
+        .map(|event| serde_json::to_string(event).expect("serialize journal event"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(root.join(".specify/journal.jsonl"), format!("{body}\n"))
+        .expect("write journal events");
 }
 
-fn advanced(seconds: i64, plan: &str, slice: &str) -> Event {
+fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {
     Event::new(
         ts(seconds),
         EventKind::PlanEntryAdvanced {
@@ -77,7 +83,7 @@ fn advanced(seconds: i64, plan: &str, slice: &str) -> Event {
     )
 }
 
-fn build_failed(seconds: i64, slice: &str, reason: &str) -> Event {
+fn build_failed(seconds: i64, slice: &str, reason: &str) -> JournalEvent {
     Event::new(
         ts(seconds),
         EventKind::SliceBuildFailed {

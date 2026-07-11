@@ -114,19 +114,19 @@ pub fn target(
 
 /// Project component cache directory.
 #[must_use]
-pub fn component_cache_dir(project_dir: &Path) -> PathBuf {
+pub(crate) fn component_cache_dir(project_dir: &Path) -> PathBuf {
     schema::cache::project_cache_dir(project_dir).join("components")
 }
 
 /// Project component cache entry for `name`.
 #[must_use]
-pub fn component_cache_entry(project_dir: &Path, name: &str) -> PathBuf {
+pub(crate) fn component_cache_entry(project_dir: &Path, name: &str) -> PathBuf {
     component_cache_dir(project_dir).join(format!("{name}.wasm"))
 }
 
 /// Development release-build candidates for a bare-name identity.
 #[must_use]
-pub fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
+pub(crate) fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
     let file = dev_component_filename(name);
     let release = Path::new("target").join("wasm32-wasip2").join("release");
     let mut candidates = vec![project_dir.join(&release).join(&file)];
@@ -138,7 +138,7 @@ pub fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
 
 /// Cargo artifact filename for an adapter guest crate.
 #[must_use]
-pub fn dev_component_filename(name: &str) -> String {
+pub(crate) fn dev_component_filename(name: &str) -> String {
     format!("{}.wasm", name.replace('-', "_"))
 }
 

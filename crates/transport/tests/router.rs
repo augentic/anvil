@@ -99,23 +99,14 @@ fn inventories_match_with_transport_allowlist() {
         })
         .map(|route| route.selector().path().to_vec())
         .collect();
-    let expected: BTreeSet<Vec<String>> = [
-        &["adapters", "sync"][..],
-        &["completions"][..],
-        &["plugins", "doctor"][..],
-        &["plugins", "refresh"][..],
-        &["upgrade"][..],
-        &["workspace", "prepare"][..],
-        &["workspace", "push"][..],
-        &["workspace", "sync"][..],
-    ]
-    .into_iter()
-    .map(|path| path.iter().map(|part| (*part).to_string()).collect())
-    .collect();
+    let expected: BTreeSet<Vec<String>> = [&["completions"][..]]
+        .into_iter()
+        .map(|path| path.iter().map(|part| (*part).to_string()).collect())
+        .collect();
 
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
-    assert_eq!(command_types.difference(&http_types).count(), 1);
+    assert_eq!(command_types.difference(&http_types).count(), 0);
     assert_eq!(http_types.len(), 37);
 }
 
@@ -162,9 +153,17 @@ async fn help_preserves_detailed_routes_and_namespaces() {
             .contains("Read-only viewer over a slice's `model.yaml`")
     );
 
-    let workspace = router.execute(["specify", "workspace", "--help"]).await;
-    assert_eq!(workspace.exit, 0);
-    assert!(!String::from_utf8_lossy(&workspace.stdout).contains("prepare"));
+    for removed in [
+        &["specify", "adapters", "sync"][..],
+        &["specify", "plugins", "doctor"][..],
+        &["specify", "plugins", "refresh"][..],
+        &["specify", "upgrade"][..],
+        &["specify", "workspace", "prepare"][..],
+        &["specify", "workspace", "push"][..],
+        &["specify", "workspace", "sync"][..],
+    ] {
+        assert_eq!(router.execute(removed.iter().copied()).await.exit, 2, "{removed:?}");
+    }
 }
 
 #[tokio::test]

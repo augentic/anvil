@@ -51,6 +51,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 ## What to read next
 
+- [The developer loop](dev-loop.md) -- the three-rung `make dev-*` surface shared with `specify-adapters`: `dev-check` (model-free), `dev-live` (live model), `dev-full` (WASM boundary)
 - [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines

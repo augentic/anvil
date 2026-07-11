@@ -150,7 +150,7 @@ impl BuildReport {
     /// Returns [`Error::Validation`] keyed on
     /// `target-build-success-with-blocking-finding` (exit code 2) when
     /// a `success` report carries a blocking finding.
-    pub fn enforce_no_blocking(&self) -> Result<()> {
+    pub(crate) fn enforce_no_blocking(&self) -> Result<()> {
         if self.status == BuildStatus::Success && self.findings.iter().any(blocking) {
             return Err(Error::validation_failed(
                 "target-build-success-with-blocking-finding",
@@ -178,7 +178,7 @@ impl BuildReport {
     /// report declares an output path that is absent, empty
     /// (zero-length file or entry-less directory), or escapes the
     /// project directory.
-    pub fn enforce_outputs_exist(&self, project_dir: &Path) -> Result<()> {
+    pub(crate) fn enforce_outputs_exist(&self, project_dir: &Path) -> Result<()> {
         if self.status != BuildStatus::Success || self.outputs.is_empty() {
             return Ok(());
         }

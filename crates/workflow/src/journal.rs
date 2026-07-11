@@ -28,9 +28,9 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use serde_json::Value;
 
-pub use self::append::{append_batch, append_one};
-pub use self::emit::{bracket, bracket_sync, emit_best_effort};
-pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind, WIRE_EVENT_IDS};
+pub(crate) use self::append::{append_batch, append_one};
+pub(crate) use self::emit::{bracket, bracket_sync, emit_best_effort};
+pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind};
 use crate::config::Layout;
 
 /// Project-relative path the journal lives at.
@@ -38,7 +38,7 @@ const JOURNAL_FILE_NAME: &str = "journal.jsonl";
 
 /// Absolute path to the journal at `<project_dir>/.specify/journal.jsonl`.
 #[must_use]
-pub fn path(layout: Layout<'_>) -> PathBuf {
+pub(crate) fn path(layout: Layout<'_>) -> PathBuf {
     layout.specify_dir().join(JOURNAL_FILE_NAME)
 }
 
@@ -55,7 +55,7 @@ pub fn path(layout: Layout<'_>) -> PathBuf {
 /// # Errors
 ///
 /// Propagates I/O failures other than a missing file.
-pub fn read(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
+pub(crate) fn read(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
     let path = path(layout);
     let contents = match std::fs::read_to_string(&path) {
         Ok(contents) => contents,
@@ -92,7 +92,7 @@ const TAIL_CHUNK: usize = 8192;
 /// # Errors
 ///
 /// Propagates I/O failures other than a missing file.
-pub fn read_recent<T>(
+pub(crate) fn read_recent<T>(
     layout: Layout<'_>, limit: usize, mut select: impl FnMut(Event) -> Option<T>,
 ) -> Result<Vec<T>, Error> {
     let mut newest_first: Vec<T> = Vec::new();
@@ -131,7 +131,7 @@ pub fn read_recent<T>(
 /// # Errors
 ///
 /// Propagates I/O failures other than a missing file.
-pub fn scan_recent(
+pub(crate) fn scan_recent(
     layout: Layout<'_>, mut visit: impl FnMut(Event) -> std::ops::ControlFlow<()>,
 ) -> Result<(), Error> {
     for_each_line_rev(&path(layout), TAIL_CHUNK, |line| {

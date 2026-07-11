@@ -25,7 +25,7 @@ mod support;
 mod target;
 mod topology;
 
-pub use design_system::{validate_components_yaml, validate_parts_yaml};
+pub use design_system::validate_components_yaml;
 pub use evidence::{
     EvidenceDoc, evidence_yaml_paths, validate_evidence, validate_evidence_dir, validate_leads,
 };

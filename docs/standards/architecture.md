@@ -1,6 +1,6 @@
 # Architecture
 
-Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>` boundary, time injection, network hardening, and the rationale behind atomic writes. Read this before adding a new crate or shifting where state lives.
+Workspace shape, crate dependency direction, the WASI carve-out, the `Layout<'a>` boundary, time injection, and the rationale behind atomic writes. Read this before adding a new crate or shifting where state lives.
 
 ## Workspace layout
 
@@ -47,7 +47,7 @@ Four module trees carry the workflow contract — three in `workflow`, plus `spe
 
 ## WASI carve-outs
 
-The two adapter validators — `contract` and `vectis` — are in-guest adapter library code compiled into each adapter's published component in `augentic/specify-adapters`. The carve-out discipline (leaner lint posture, minimal `[workspace.dependencies]`, no `error` / `wasmtime` / `tokio` / `ureq` dependency) lives in that repo's workspace. Crux shell presence and launcher-icon heuristics live in the vectis adapter's in-guest core: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
+The two adapter validators — `contract` and `vectis` — are in-guest adapter library code compiled into each adapter's published component in `augentic/specify-adapters`. The carve-out discipline (leaner lint posture and minimal `[workspace.dependencies]`) lives in that repo's workspace. Crux shell presence and launcher-icon heuristics live in the vectis adapter's in-guest core: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
 
 The framework checks over this repo's prose are not WASI components either — they are plain cargo tests at `tests/framework/`, dev-only and outside every shipped crate.
 
@@ -60,10 +60,6 @@ The framework checks over this repo's prose are not WASI components either — t
 ## Time injection
 
 Functions that record a timestamp into a serialised artifact accept `now: jiff::Timestamp` from the operation boundary. Domain kernels do not call `Timestamp::now()`; operation call sites inject time so tests can pin it deterministically. The current carve-out — `slice_actions::*` and friends still consume an injected `now` argument — is the canonical shape to follow.
-
-## ureq fetch hardening
-
-Any `ureq` HTTP path in this workspace (today: the channel-aware self-update probe in `crates/workflow/src/upgrade.rs`) runs with explicit per-call timeouts, a response-size cap checked on both the `Content-Length` header and the streamed body, and streams large bodies to a tempfile before persisting. Any new HTTP path must adopt the same shape (timeouts + size cap + stream-to-tempfile); do not buffer arbitrary remote bodies into memory.
 
 ## Atomic writes
 

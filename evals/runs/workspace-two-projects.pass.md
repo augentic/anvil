@@ -27,8 +27,8 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 - Symlinked the `documentation` source adapter into the workspace (`adapters/sources/documentation`) per setup prerequisite.
 - Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
 - Plan authored headlessly (`specify plan create`, survey finalize, `propose --from`) rather than a live `/spec:plan` skill session; default-on platform bootstrap inserted `app-foundation` bootstrap slice for mobile.
-- Execute driven by `evals/drivers/workspace.sh workspace-two-projects` following `/spec:execute` routing (workspace sync/prepare, `SPECIFY_PLAN_DIR`, refine → build → merge per slice) with minimal omnia/vectis/contracts build stubs; finalize not run (execute-only per scenario stages).
-- Inter-slice residue commits after refine/build in each slot to satisfy `workspace prepare` dirty-boundary classification between phases.
+- Execute driven by `evals/drivers/workspace.sh workspace-two-projects` following `/spec:execute` routing (`SPECIFY_PLAN_DIR`, refine → build → merge per slice) with minimal omnia/vectis/contracts build stubs; slots and branches were prepared through operator-owned Git setup, and finalize was not run (execute-only per scenario stages).
+- Inter-slice residue commits after refine/build kept each operator-prepared slot clean between phases.
 
 ## Notes
 

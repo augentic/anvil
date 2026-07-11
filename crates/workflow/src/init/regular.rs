@@ -74,7 +74,6 @@ pub(super) fn run(
         name,
         description: opts.description.map(str::to_string),
         adapter: Some(adapter_value),
-        adapters: Vec::new(),
         specify_version: Some(specify_version.clone()),
         rules,
         platforms: validated_platforms,
@@ -98,7 +97,6 @@ pub(super) fn run(
         directories_created,
         scaffolded_rule_keys,
         specify_version,
-        specify_version_changed: true,
         wasm_pkg_config_written,
         context_skip_reason: None,
     })

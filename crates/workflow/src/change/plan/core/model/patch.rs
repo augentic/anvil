@@ -23,7 +23,7 @@ pub enum Patch<T> {
 
 impl<T> Patch<T> {
     /// Apply the patch to an `Option<T>` field in place.
-    pub fn apply(self, field: &mut Option<T>) {
+    pub(crate) fn apply(self, field: &mut Option<T>) {
         match self {
             Self::Keep => {}
             Self::Clear => *field = None,
@@ -38,7 +38,7 @@ impl Patch<String> {
     /// (`--field ""`) means `Clear`, and any non-empty value means
     /// `Set(value)`.
     #[must_use]
-    pub fn from_string_option(value: Option<String>) -> Self {
+    pub(crate) fn from_string_option(value: Option<String>) -> Self {
         match value {
             None => Self::Keep,
             Some(s) if s.is_empty() => Self::Clear,

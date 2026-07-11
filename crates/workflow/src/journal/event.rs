@@ -32,7 +32,7 @@ impl Event {
     /// Build an [`Event`] at `timestamp` carrying `kind`. Tests pin
     /// the timestamp; production callers pass `Timestamp::now()`.
     #[must_use]
-    pub const fn new(timestamp: Timestamp, kind: EventKind) -> Self {
+    pub(crate) const fn new(timestamp: Timestamp, kind: EventKind) -> Self {
         Self { timestamp, kind }
     }
 }
@@ -386,109 +386,7 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
-    /// `specify upgrade` self-updated the CLI binary. The new binary
-    /// writes the event; `from` is the version observed before the
-    /// upgrade, `to` the version now running, `channel` the resolved
-    /// install channel (`cargo | brew | binary`).
-    #[serde(rename = "cli.upgraded", rename_all = "kebab-case")]
-    CliUpgraded {
-        /// Version observed before the upgrade.
-        from: String,
-        /// Version now running.
-        to: String,
-        /// Resolved install channel (`cargo | brew | binary`).
-        channel: String,
-    },
-    /// `specify plugins refresh` invalidated the Cursor plugin cache.
-    /// `deleted_paths` are the cache directories removed (wire:
-    /// `deleted-paths`); `marketplace` is the resolved marketplace file
-    /// path whose top-level `name` scoped the deletion.
-    #[serde(rename = "plugins.refreshed", rename_all = "kebab-case")]
-    PluginsRefreshed {
-        /// Cache directories removed (wire: `deleted-paths`).
-        deleted_paths: Vec<String>,
-        /// Resolved marketplace file path whose top-level `name` scoped
-        /// the deletion.
-        marketplace: String,
-    },
-    /// `specify adapters sync` hydrated the project's declared pinned
-    /// identities against the global adapter store (explicit
-    /// hydration trigger). Fires once per successful sync that
-    /// resolved at least one identity; a project with no pinned
-    /// declarations emits nothing. `resolved` counts the
-    /// digest-verified identities in the resolved set; `fetched`
-    /// counts the store misses pulled through the transport (`0` on a
-    /// warm-store no-op probe, always `0` under `--frozen`).
-    #[serde(rename = "adapters.synced", rename_all = "kebab-case")]
-    AdaptersSynced {
-        /// Identities resolved and digest-verified by this sync.
-        resolved: usize,
-        /// Identities pulled into the store on a miss.
-        fetched: usize,
-    },
-    /// `specify workspace sync` materialised the selected workspace
-    /// slots and regenerated `topology.lock`. Fires once per
-    /// successful sync; the registry-less no-op path emits nothing.
-    #[serde(rename = "workspace.sync.completed", rename_all = "kebab-case")]
-    WorkspaceSyncCompleted {
-        /// Registry project names the sync materialised, in registry
-        /// (selection) order.
-        projects: Vec<String>,
-    },
-    /// `specify workspace push` pushed the active plan's
-    /// `specify/<plan-name>` branch across the selected projects with
-    /// no failed project. Dry runs and failed pushes emit nothing.
-    #[serde(rename = "workspace.push.completed", rename_all = "kebab-case")]
-    WorkspacePushCompleted {
-        /// Plan name from `plan.yaml.name`.
-        plan_name: PlanName,
-        /// Branch the push targeted (`specify/<plan-name>`).
-        branch: String,
-        /// Registry project names the push covered, in selection order.
-        projects: Vec<String>,
-    },
 }
-
-/// Every wire event id in the closed [`EventKind`] taxonomy, sorted.
-///
-/// The closed inventory `specify journal emit` validates against. The
-/// `wire_event_ids` test in `journal/tests.rs` serialises one sample
-/// per variant to prove the table matches the serde renames; adding a
-/// variant without updating this table fails that test.
-pub const WIRE_EVENT_IDS: &[&str] = &[
-    "adapters.synced",
-    "cli.upgraded",
-    "plan.amend.authority-override",
-    "plan.amend.divergence",
-    "plan.entry.advanced",
-    "plan.reconcile.completed",
-    "plan.transition.approved",
-    "plan.transition.undone",
-    "plugins.refreshed",
-    "slice.archive.created",
-    "slice.build.failed",
-    "slice.build.started",
-    "slice.build.succeeded",
-    "slice.extract.completed",
-    "slice.merge.commit-skipped",
-    "slice.merge.failed",
-    "slice.merge.started",
-    "slice.merge.succeeded",
-    "slice.replay.completed",
-    "slice.synthesis.conflict",
-    "slice.synthesis.divergence",
-    "slice.synthesis.unknown",
-    "slice.synthesize.agent",
-    "slice.synthesize.completed",
-    "slice.synthesize.failed",
-    "slice.synthesize.started",
-    "slice.transition.refined",
-    "source.execution.agent",
-    "source.survey.completed",
-    "target.execution.agent",
-    "workspace.push.completed",
-    "workspace.sync.completed",
-];
 
 /// Closed `actor` enum on [`EventKind::PlanTransitionApproved`] —
 /// who drove the Gate-1 stamp.

@@ -75,7 +75,7 @@ impl<P: Anchor> Operation<P> for Create {
 
 impl Render for Created {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        if self.created {
+        if self.is_new {
             writeln!(w, "Created slice {}", self.dir.display())?;
         } else {
             writeln!(w, "Reusing existing slice {}", self.dir.display())?;

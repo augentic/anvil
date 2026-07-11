@@ -7,19 +7,13 @@
 //! no `source` — the orchestrator attributes them). Orchestrators in
 //! [`crate::orchestrate`] take `&impl SourceSeam` / `&impl TargetSeam`
 //! bounds, so the crate stays wasm-free: the `wit-bindgen`-backed
-//! providers live in the guest shim, and native tests bind the scripted
-//! [`MockSourceSeam`] / [`MockTargetSeam`].
-
-#[cfg(not(target_arch = "wasm32"))]
-mod mock;
+//! providers live in the guest shim and native harness.
 
 use std::future::Future;
 
 use artifacts::evidence::AuthorityClass;
 use serde_json::Value as JsonValue;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::mock::{MockSourceSeam, MockTargetSeam, SourceCall, TargetCall};
 use crate::slice::BuildReport;
 
 /// Typed seam failure, mirroring the WIT `types.error` variant.
@@ -109,7 +103,7 @@ impl WorkingTree {
     /// share one live tree) — the caller-resolved working tree the
     /// native prepare phase used to own.
     #[must_use]
-    pub fn live() -> Self {
+    pub(crate) fn live() -> Self {
         Self {
             base: "live".to_string(),
             subpath: None,

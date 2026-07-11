@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --all
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/execute.rs`, `crates/workflow/tests/workspace.rs`, and so on — matching the layout `specify-adapters` uses. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the retired composed-deployment rig is replaced by the native harness (`harness/`, see `harness/README.md`), which sits outside the gate.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/handlers.rs`, `crates/workflow/tests/plan_status.rs`, and so on — matching the layout `specify-adapters` uses. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; the shared scripted `Model` mock lives in the dev-only `testkit` workspace crate. The repo-root `tests/` carries the framework-quality gate (`tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the native harness (`harness/`, see `harness/README.md`) owns end-to-end operation-loop coverage.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatcher contract"](./handler-shape.md#dispatcher-contract).
 
@@ -68,12 +68,12 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common/mod.rs` and follow the fake-forge bare-repo patterns in `crates/workflow/tests/workspace.rs` for multi-repo / fake-forge work; do not invent a parallel harness.
+- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common/mod.rs`; end-to-end provider and operation-loop coverage belongs in the native harness.
 - Compare structured output against checked-in goldens (the merge-engine goldens under `tests/fixtures/merge/`, the wire-schema fixtures under `tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
-The end-to-end fan-in-twice / fan-out-once path runs through the guest orchestrators (`orchestrate::{author,execute,refine,build,merge}`) — its coverage lives in `crates/workflow/tests/` (orchestrate, merge_slice); the wasm-only seams (WIT bindings, dispatch-by-id, mount/preopen wiring) stay with the shipped guest and targeted adapter tests.
+The end-to-end fan-in-twice / fan-out-once path runs through the public plan operations; its coverage lives in `harness/native/tests/full_loop.rs`. The wasm-only seams (WIT bindings, dispatch-by-id, mount/preopen wiring) stay with the shipped guest and targeted adapter tests.
 
 ## Golden file discipline
 

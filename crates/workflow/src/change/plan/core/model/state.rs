@@ -192,7 +192,7 @@ impl Plan {
     /// duplication between plan-level and per-entry state is
     /// impossible by construction.
     #[must_use]
-    pub fn is_executing(&self) -> bool {
+    pub(crate) fn is_executing(&self) -> bool {
         self.entries.iter().any(|e| e.status == Status::InProgress)
     }
 
@@ -203,7 +203,7 @@ impl Plan {
     /// to drain. Like [`Plan::is_executing`], "drained" is derived
     /// from per-entry [`Status`] at read time and never stored.
     #[must_use]
-    pub fn is_drained(&self) -> bool {
+    pub(crate) fn is_drained(&self) -> bool {
         self.entries.iter().all(|e| e.status == Status::Done)
     }
 }

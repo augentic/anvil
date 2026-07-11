@@ -2,7 +2,6 @@
 //! of peer projects and their adapters. Shape is enforced by
 //! [`Registry::validate_shape`] (in [`crate::registry::validate`]).
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use error::Error;
@@ -108,7 +107,7 @@ impl Registry {
     /// Absolute path to `<project_dir>/registry.yaml`. The platform
     /// catalogue lives at the repo root.
     #[must_use]
-    pub fn path(project_dir: &Path) -> PathBuf {
+    pub(crate) fn path(project_dir: &Path) -> PathBuf {
         project_dir.join("registry.yaml")
     }
 
@@ -123,7 +122,7 @@ impl Registry {
     ///   carries unknown keys.
     /// - The first shape violation from [`Registry::validate_shape`]
     ///   (wrong `version`, kebab-case / required-field / duplicate-name).
-    pub fn load(project_dir: &Path) -> Result<Option<Self>, Error> {
+    pub(crate) fn load(project_dir: &Path) -> Result<Option<Self>, Error> {
         let path = Self::path(project_dir);
         if !path.exists() {
             return Ok(None);
@@ -139,70 +138,6 @@ impl Registry {
         registry.validate_shape()?;
         Ok(Some(registry))
     }
-
-    /// `true` when the registry declares at most one project.
-    ///
-    /// Absent registry + single-entry registry behave identically in
-    /// the `/change:draft` flow. Useful where the *sync workspace* phase is
-    /// gated on `len(projects) > 1`.
-    #[must_use]
-    pub const fn is_single_repo(&self) -> bool {
-        self.projects.len() <= 1
-    }
-
-    /// Resolve optional project selectors against `registry.yaml`.
-    ///
-    /// Empty selectors mean every registry project. Non-empty selectors
-    /// are treated as a set, but output always follows registry order so
-    /// workspace verbs behave consistently regardless of CLI argument
-    /// order.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the registry shape is invalid or any selector
-    /// does not match a declared project name.
-    pub fn select<'a>(&'a self, selectors: &[String]) -> Result<Vec<&'a RegistryProject>, Error> {
-        self.validate_shape()?;
-        if selectors.is_empty() {
-            return Ok(self.projects.iter().collect());
-        }
-
-        let requested: HashSet<&str> = selectors.iter().map(String::as_str).collect();
-        let selected: Vec<&RegistryProject> = self
-            .projects
-            .iter()
-            .filter(|project| requested.contains(project.name.as_str()))
-            .collect();
-
-        if selected.len() == requested.len() {
-            return Ok(selected);
-        }
-
-        let matched: HashSet<&str> = selected.iter().map(|project| project.name.as_str()).collect();
-        let mut unknown = Vec::new();
-        for selector in selectors {
-            let name = selector.as_str();
-            if !matched.contains(name) && !unknown.contains(&name) {
-                unknown.push(name);
-            }
-        }
-
-        let known = self
-            .projects
-            .iter()
-            .map(|project| project.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let unknown_list =
-            unknown.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>().join(", ");
-        let noun = if unknown.len() == 1 { "selector" } else { "selectors" };
-        Err(Error::Diag {
-            code: "registry-project-selector-unknown",
-            detail: format!(
-                "registry.yaml: unknown project {noun} {unknown_list}; expected one of: {known}"
-            ),
-        })
-    }
 }
 
 impl RegistryProject {
@@ -215,7 +150,7 @@ impl RegistryProject {
     /// accepted the URL — this predicate mirrors its classification
     /// rules.
     #[must_use]
-    pub fn is_local(&self) -> bool {
+    pub(crate) fn is_local(&self) -> bool {
         self.url == "." || (!self.url.contains("://") && !self.url.starts_with("git@"))
     }
 }

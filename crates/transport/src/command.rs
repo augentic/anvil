@@ -1,14 +1,13 @@
 //! Typed command grammar, conversions, and Specify projection policy.
 
-use clap::{Args, ValueEnum};
+use clap::Args;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{
     BuildError, CommandResponse, Completions, Namespace, Outcome, Projector, Router, RouterBuilder,
     run,
 };
-use omnia_guest::api::invoke::{CallContext, Invoker};
-use omnia_guest::api::operation::Operation;
+use omnia_guest::api::invoke::Invoker;
 use serde::Serialize;
 use workflow::adapter::Resolver;
 use workflow::handler::{Anchor, Render};
@@ -17,17 +16,14 @@ use workflow::seam::{SourceSeam, TargetSeam};
 pub use self::output::Format;
 use self::output::{ErrorBody, Exit, emit, write_error_text};
 
-mod adapters;
 mod archive;
 mod journal;
 mod output;
 mod plan;
-mod plugins;
 mod registry;
 mod slice;
 mod source;
 mod target;
-mod workspace;
 
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
@@ -66,33 +62,6 @@ struct InitArgs {
     scaffold_only: bool,
 }
 
-/// Flags for `specify upgrade`.
-#[derive(Debug, Clone, Copy, Args)]
-struct UpgradeArgs {
-    /// Install channel to upgrade.
-    #[arg(long, value_enum, default_value = "auto")]
-    channel: ChannelArg,
-    /// Apply the upgrade.
-    #[arg(long)]
-    yes: bool,
-    /// Report the upgrade plan without changing anything.
-    #[arg(long)]
-    dry_run: bool,
-}
-
-/// `specify upgrade --channel` value.
-#[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
-enum ChannelArg {
-    /// Detect the install channel.
-    Auto,
-    /// Force the Cargo strategy.
-    Cargo,
-    /// Force the Homebrew strategy.
-    Brew,
-    /// Force the release-archive strategy.
-    Binary,
-}
-
 #[derive(Clone, Copy)]
 struct NamespaceHelp {
     path: &'static [&'static str],
@@ -106,22 +75,9 @@ impl NamespaceHelp {
             metadata: Namespace::new().about(about),
         }
     }
-
-    const fn detailed(
-        path: &'static [&'static str], about: &'static str, long_about: &'static str,
-    ) -> Self {
-        Self {
-            path,
-            metadata: Namespace::new().about(about).long_about(long_about),
-        }
-    }
 }
 
 const NAMESPACE_HELP: &[NamespaceHelp] = &[
-    NamespaceHelp::new(
-        &["adapters"],
-        "Global adapter-store provisioning. `sync` is the explicit hydration trigger: it hydrates every pinned identity the project declares (`project.yaml` plus `plan.yaml` source pins) into the global store and prints the resolved set. Native provisioning verb — never runs in the workflow guest",
-    ),
     NamespaceHelp::new(
         &["source"],
         "Source adapter operations (workflow contract). Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the development release build for bare names",
@@ -147,12 +103,6 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
         "Workflow journal at `.specify/journal.jsonl`. `emit` is a guarded front door onto the closed §Observability event taxonomy — it appends one well-formed line, minting no event kinds of its own",
     ),
     NamespaceHelp::new(&["registry"], "Platform registry at `registry.yaml` (repo root)"),
-    NamespaceHelp::new(&["workspace"], "Materialise and manage registry peers under `workspace/`"),
-    NamespaceHelp::detailed(
-        &["plugins"],
-        "Inspect and invalidate the Cursor plugin cache",
-        "Inspect and invalidate the Cursor plugin cache.\n\nBootstrap verb: operates on `$CURSOR_HOME/plugins/cache/<name>/` and the marketplace manifest, not a project, so it never loads project config. `doctor` reports per-plugin drift (read-only); `refresh` clears the marketplace-scoped cache after `--yes` and prints a restart instruction. The CLI never restarts Cursor.",
-    ),
 ];
 
 /// Specify's command output and error projection.
@@ -504,122 +454,10 @@ where
         "Remove an existing project entry. Warns when `plan.yaml` references it"
     );
 
-    macro_rules! native {
-        ($path:expr, $args:ty, $command:literal, $about:literal) => {
-            router = router.route(
-                $path,
-                run::<$args, Unsupported>()
-                    .about($about)
-                    .decode_with(unsupported($command))
-                    .project_with(SpecifyProjector),
-            );
-        };
-        ($path:expr, $args:ty, $command:literal, $about:literal, $long_about:literal) => {
-            router = router.route(
-                $path,
-                run::<$args, Unsupported>()
-                    .about($about)
-                    .long_about($long_about)
-                    .decode_with(unsupported($command))
-                    .project_with(SpecifyProjector),
-            );
-        };
-    }
-
-    native!(
-        ["adapters", "sync"],
-        adapters::SyncArgs,
-        "adapters sync",
-        "Hydrate every declared pinned adapter identity into the global store",
-        "Hydrate every declared pinned adapter identity into the global store (the explicit hydration trigger).\n\nReads `project.yaml` (the `adapter:` pin plus the `adapters:` prefetch list) and `plan.yaml` source pins when a plan is present, probes the global store per identity, pulls on miss through the wasm-pkg transport, verifies each entry's digest (store sidecar and the committed `.specify/adapters.lock`), and prints the resolved set with per-identity store paths and digests. A warm store makes sync a no-op probe. Bare, unpinned names keep project-local resolution and never hydrate."
-    );
-    native!(
-        ["workspace", "sync"],
-        workspace::SyncArgs,
-        "workspace sync",
-        "Create symlinks or git clones under `workspace/<name>/`. No-op when `registry.yaml` is absent"
-    );
-    router = router.route(
-        ["workspace", "prepare"],
-        run::<workspace::PrepareArgs, Unsupported>()
-            .about("Hidden executor helper: prepare one workspace slot on `specify/<change>`")
-            .hidden()
-            .decode_with(unsupported("workspace prepare"))
-            .project_with(SpecifyProjector),
-    );
-    native!(
-        ["workspace", "push"],
-        workspace::PushArgs,
-        "workspace push",
-        "Push workspace clones to their remote repositories"
-    );
-    native!(
-        ["upgrade"],
-        UpgradeArgs,
-        "upgrade",
-        "Self-update the `specify` binary across its install channel",
-        "Self-update the `specify` binary across its install channel.\n\nBootstrap verb: operates on the binary, not a project, so it never loads project config. `--channel auto` (the default) detects how the binary was installed (`cargo`, Homebrew, or a pre-built release archive); pass `--channel` to override. The target version is the latest GitHub release when reachable, otherwise a HEAD install for the `cargo` channel. `--dry-run` reports the detected channel, the target version, and the exact command(s) that would run without changing anything; applying requires `--yes` (the verb never prompts)."
-    );
-    native!(
-        ["plugins", "doctor"],
-        plugins::DoctorArgs,
-        "plugins doctor",
-        "Report Cursor plugin-cache drift against the marketplace",
-        "Report Cursor plugin-cache drift against the marketplace.\n\nRead-only. Resolves the marketplace (`--marketplace`, then `<project-dir>/.cursor-plugin/marketplace.json`, then the XDG config dir), scans `$CURSOR_HOME/plugins/cache/<name>/`, and classifies each declared plugin as `ok | drifted | present | missing`, plus any undeclared cache entry as `extra`. Never exits non-zero on drift — drift is a finding; only filesystem or marketplace-parse failures fail."
-    );
-    native!(
-        ["plugins", "refresh"],
-        plugins::RefreshArgs,
-        "plugins refresh",
-        "Invalidate the Cursor plugin cache for the marketplace",
-        "Invalidate the Cursor plugin cache for the marketplace.\n\nDeletes `$CURSOR_HOME/plugins/cache/<name>/`, journals `plugins.refreshed`, and prints a restart instruction. The CLI never restarts Cursor or touches open IDE state. Requires `--yes`; the verb never prompts (consent is the skill's job)."
-    );
-
     for help in NAMESPACE_HELP {
         router = router.namespace(help.path.iter().copied(), help.metadata);
     }
     router.build()
-}
-
-#[derive(Debug, Serialize)]
-struct UnsupportedBody;
-
-impl Render for UnsupportedBody {
-    fn render(&self, _writer: &mut dyn std::io::Write) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
-/// A native-only verb with no guest implementation yet. Its input is
-/// uninhabited: the route's decoder always fails, so `call` is never
-/// reached.
-#[derive(Clone, Copy, Debug)]
-struct Unsupported;
-
-impl<P: Provider> Operation<P> for Unsupported {
-    type Error = workflow::handler::Error;
-    type Input = std::convert::Infallible;
-    type Output = UnsupportedBody;
-
-    async fn call(
-        input: Self::Input, _context: CallContext<'_, P>,
-    ) -> Result<Self::Output, Self::Error> {
-        match input {}
-    }
-}
-
-/// Decoder for [`Unsupported`] routes: refuses every parse with the
-/// named command's guest-unsupported diagnostic.
-fn unsupported<A>(
-    command: &'static str,
-) -> impl Fn(A, &Globals) -> Result<std::convert::Infallible, error::Error> + Clone + Send + Sync + 'static
-{
-    move |_args, _globals| {
-        Err(error::Error::Argument {
-            flag: "<command>",
-            detail: format!("`specify {command}` has no guest implementation yet"),
-        })
-    }
 }
 
 macro_rules! convert {

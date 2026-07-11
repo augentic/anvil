@@ -89,7 +89,7 @@ impl Plan {
     /// rejects invalid statuses at parse time, which is not reachable
     /// in-process — so nothing is emitted for it.
     #[must_use]
-    pub fn validate(
+    pub(crate) fn validate(
         &self, slices_dir: Option<&Path>, registry: Option<&Registry>,
     ) -> Vec<Diagnostic> {
         let mut results = Vec::new();

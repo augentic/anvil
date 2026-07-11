@@ -36,12 +36,12 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Change umbrella
 
-- `specify plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specify plan *`; `/spec:finalize` runs this verb after `specify workspace push`. Pull-request creation and merging are operator-owned and happen outside Specify.
+- `specify plan archive` — canonical archive verb for `plan.yaml`, `change.md`, and the plan working directory. In 2.0 the umbrella collapsed into `specify plan *`; `/spec:finalize` runs this verb after the operator confirms branch publication and the required repository workflow are complete.
 
-### Registry and workspace
+### Registry and workspace topology
 
 - `specify registry {validate, add, remove}` — platform registry at `registry.yaml`. `add` and `remove` validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
-- `specify workspace {sync, push}` — `sync` materialises top-level `workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches to `origin` only — it does not create remote repositories or pull requests. There is no `workspace merge` subcommand; operators open and merge pull requests through the forge UI or explicit `gh` invocations, entirely outside Specify, while `/spec:finalize` runs `specify workspace push` then archives via `specify plan archive`.
+- Top-level `workspace/<peer>/` slots and `.specify/topology.lock` remain inputs to multi-repo plan validation and routing. Materializing slots, preparing branches, committing, publishing, and completing pull requests are operator-owned operations outside Specify; there is no `specify workspace` command group.
 
 ### Source / target adapters
 
@@ -59,10 +59,10 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 
 1. **Author.** `/spec:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits at `plan.lifecycle: pending`. The skill stops at the operator review seam — execution does not start automatically and the literal `specify plan transition <change-name> approved` command is printed for the operator.
 2. **Gate 1.** Operator runs `specify plan transition <change-name> approved` — the only writer of `approved`. `/spec:plan` never stamps `approved` itself.
-3. **Execute.** `specify plan execute` refuses unless the plan is `approved` (rendered as `specify plan status`'s `stop plan-not-approved`); under the guest lock it loops claim → refine → build → merge per entry, preparing only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set. Per-entry `done` is stamped by `specify slice merge`. Exits on the first `stop <reason>` or on `drained`.
-4. **Finalize.** `/spec:finalize <change-name>` runs `specify workspace push`, then runs `specify plan archive`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Opening and merging the pull requests is the operator's job, done outside Specify.
+3. **Execute.** `specify plan execute` refuses unless the plan is `approved` (rendered as `specify plan status`'s `stop plan-not-approved`); under the guest lock it loops claim → refine → build → merge per entry, routing project-bound entries into the corresponding materialized slot. Per-entry `done` is stamped by `specify slice merge`. Exits on the first `stop <reason>` or on `drained`.
+4. **Publish and finalize.** After execution drains, the operator commits, publishes, and completes the required repository workflow. `/spec:finalize <change-name>` confirms publication is complete, then runs `specify plan archive`, which sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/spec:plan`, `specify plan execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), then run `specify workspace push` and `specify plan archive` by hand; open and merge the pull requests yourself outside Specify.
+Hand-driven fallback: skip `/spec:plan`, `specify plan execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), complete publication through normal repository tooling, then run `specify plan archive` by hand.
 
 The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specify plan author` (default), `specify plan add`, `specify plan amend`, and `specify plan remove`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
@@ -87,7 +87,6 @@ The `error` discriminants are part of the public contract that skills and tests 
 - `registry-amendment-required` — execute-loop phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
 - `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.
-- `no-branch` — `specify workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 
 ## Journal events
@@ -98,7 +97,7 @@ Durable run telemetry is the newline-delimited JSON journal at `.specify/journal
 {"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}
 ```
 
-The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum's `WIRE_EVENT_IDS` table when the taxonomy changes:
+The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal/event.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum when the taxonomy changes:
 
 | Family | Event ids | Emitted by |
 |---|---|---|
@@ -108,8 +107,6 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created` | `specify slice merge` (fired on its validator outcome) |
 | Slice replay | `slice.replay.completed` | the replay target hook |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent` | `specify source survey` / `extract`, the `slice build` request-assembly leg |
-| Workspace | `workspace.sync.completed`, `workspace.push.completed` | `specify workspace sync` / `push` |
-| Bootstrap | `cli.upgraded`, `plugins.refreshed`, `adapters.synced` | `specify upgrade`, `specify plugins refresh`, `specify adapters sync` |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills append only through `specify journal emit`, never by writing the file. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `specify journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`specify plan status`'s stop classification); nothing re-parses the JSONL by hand.
 
@@ -122,7 +119,7 @@ The CLI uses a four-slot exit-code table. The authoritative definition (variants
 | `0` | `EXIT_SUCCESS` | Command succeeded; parse `data`. |
 | `1` | `EXIT_GENERIC_FAILURE` | Default `Error` mapping; parse the top-level `error` discriminant. |
 | `2` | `EXIT_VALIDATION_FAILED` | Validation errors, undeclared/over-permissioned tool, argument errors. |
-| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old`) — the project's `specify` pin is **newer** than this binary — or `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `specify` compatibility floor is newer than this binary; surface the upgrade hint (`specify upgrade`). |
+| `3` | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old`) — the project's `specify` pin is **newer** than this binary — or `Error::AdapterCliTooOld` (`adapter-cli-too-old`) — an adapter's declared `specify` compatibility floor is newer than this binary; tell the operator to update the installed binary through its install channel. |
 
 Skills should branch on the exit code first (success vs failure class) and on the top-level `error` discriminant second (the specific failure mode). New exit codes are not invented by skills or the CLI; if a class of failure does not fit the four slots, the wire contract changes in the CLI repo and the kebab `error` discriminant distinguishes the case within an existing slot.
 

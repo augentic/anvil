@@ -46,7 +46,7 @@ struct MetadataCache {
 
 /// Sidecar path for a component file.
 #[must_use]
-pub fn metadata_cache_path(component: &Path) -> PathBuf {
+pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
     let mut file_name = component.file_name().map_or_else(Default::default, ToOwned::to_owned);
     file_name.push(".metadata.json");
     component.with_file_name(file_name)

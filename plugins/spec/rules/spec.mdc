@@ -49,7 +49,7 @@ specify plan transition <name> approved   (Gate 1; operator-only)
 
 specify plan execute              (guest-routed loop: refine -> build -> merge per slice)
 
-/spec:finalize <name>             (push branches, archive plan)
+/spec:finalize <name>             (confirm publication, archive plan)
 ```
 
 Breakouts invoke the same guest orchestrations one slice at a time, when the execute loop parks or the operator wants to drive a slice by hand:

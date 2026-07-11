@@ -1,6 +1,6 @@
 //! Strict parser for the `<!-- specify:context begin -->` /
 //! `<!-- specify:context end -->` document shape — emits the byte
-//! offsets used by the [`super::render`] write planner.
+//! body consumed by init-time context fingerprinting.
 
 use std::collections::BTreeMap;
 
@@ -13,36 +13,16 @@ const CLOSE_MARKER: &[u8] = b"<!-- specify:context end -->";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FencedDocument<'a> {
     source: &'a [u8],
-    block_start: usize,
     body_start: usize,
     close_start: usize,
-    close_end: usize,
     metadata: BTreeMap<String, String>,
 }
 
 impl<'a> FencedDocument<'a> {
-    /// Bytes before the opening fence.
-    #[must_use]
-    pub fn prefix(&self) -> &'a [u8] {
-        &self.source[..self.block_start]
-    }
-
-    /// Bytes from the opening fence through the closing fence.
-    #[must_use]
-    pub fn generated_block(&self) -> &'a [u8] {
-        &self.source[self.block_start..self.close_end]
-    }
-
     /// Bytes between the completed opening fence and the closing fence.
     #[must_use]
     pub fn body(&self) -> &'a [u8] {
         &self.source[self.body_start..self.close_start]
-    }
-
-    /// Bytes after the closing fence.
-    #[must_use]
-    pub fn suffix(&self) -> &'a [u8] {
-        &self.source[self.close_end..]
     }
 
     /// Opening-fence metadata parsed as deterministic key order.
@@ -56,16 +36,6 @@ impl<'a> FencedDocument<'a> {
 /// Reason a fenced document could not be parsed or planned.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum FenceError {
-    /// The existing `AGENTS.md` has no context fences and `--force` was not set.
-    #[error(
-        "context-existing-unfenced-agents-md: AGENTS.md exists without Specify context fences; rerun with --force to rewrite it"
-    )]
-    ExistingUnfencedAgentsMd,
-    /// The generated document supplied by the renderer had no valid context fences.
-    #[error(
-        "context-generated-document-missing-fences: generated AGENTS.md content must contain a Specify context fence"
-    )]
-    GeneratedDocumentMissingFences,
     /// More than one opening fence was present, making replacement ambiguous.
     #[error("context-malformed-fences: multiple opening fences found")]
     MultipleOpeningFences,
@@ -120,10 +90,8 @@ pub fn parse_document(bytes: &[u8]) -> Result<Option<FencedDocument<'_>>, FenceE
         [] => Err(FenceError::MissingClosingFence),
         [close_start] => Ok(Some(FencedDocument {
             source: bytes,
-            block_start,
             body_start,
             close_start: *close_start,
-            close_end: close_start + CLOSE_MARKER.len(),
             metadata,
         })),
         [_, ..] => Err(FenceError::MultipleClosingFences),
@@ -247,18 +215,11 @@ mod tests {
     // test); the error cases — each a distinct code path — drive a table.
     #[test]
     fn parse_document_matrix() {
-        // The one well-formed document: prefix / body / suffix / metadata /
-        // generated-block all split as expected.
+        // The one well-formed document exposes the managed body and metadata.
         let input = b"# hand title\n\n<!-- specify:context begin\nfingerprint: sha256:old\n-->\n\nold body\n\n<!-- specify:context end -->\n\noperator notes\n";
         let parsed = parse_document(input).expect("parse ok").expect("fences present");
-        assert_eq!(parsed.prefix(), b"# hand title\n\n");
         assert_eq!(parsed.body(), b"\nold body\n\n");
-        assert_eq!(parsed.suffix(), b"\n\noperator notes\n");
         assert_eq!(parsed.metadata().get("fingerprint").map(String::as_str), Some("sha256:old"));
-        assert_eq!(
-            parsed.generated_block(),
-            b"<!-- specify:context begin\nfingerprint: sha256:old\n-->\n\nold body\n\n<!-- specify:context end -->"
-        );
 
         // A document with no fence markers at all is `Ok(None)`.
         assert!(

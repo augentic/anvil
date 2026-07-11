@@ -1,5 +1,5 @@
 //! Slot-problem detection: read-only diagnostics that mirror the
-//! refusals enforced by `sync_projects` for individual workspace slots.
+//! drift diagnostics for individual workspace slots.
 
 use std::path::{Path, PathBuf};
 

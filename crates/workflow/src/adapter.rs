@@ -25,14 +25,12 @@ pub mod metadata;
 pub(crate) mod operation;
 pub mod resolver;
 
-pub(crate) use core::PlatformsSurface;
+pub(crate) use core::{PlatformsSurface, PlatformsViolation};
 pub use core::{
-    AdapterRef, Axis, BuildInputDeclaration, Origin, PlatformsCapability, PlatformsViolation,
-    ResolvedSource, ResolvedTarget, SourceAdapter, TargetAdapter, dev_version,
+    AdapterRef, Axis, BuildInputDeclaration, Origin, PlatformsCapability, ResolvedSource,
+    ResolvedTarget, SourceAdapter, TargetAdapter,
 };
 
 pub use operation::{SourceOperation, TargetOperation};
-pub use resolver::{
-    Resolver, component_cache_dir, component_cache_entry, dev_component_filename,
-    dev_component_paths,
-};
+pub use resolver::Resolver;
+pub(crate) use resolver::component_cache_entry;

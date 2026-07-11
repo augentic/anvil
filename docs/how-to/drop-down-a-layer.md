@@ -35,14 +35,14 @@ Repeat `specify plan next` between slices when the plan has multiple entries; `s
 
 ## When finalize is blocked
 
-If push or archive fails, use CLI verbs directly:
+If publication or archive is blocked, complete publication through the repository's normal tooling, then archive directly:
 
 ```bash
-specify workspace push
+git push -u origin HEAD
 specify plan archive <name>
 ```
 
-See [specify plan](../reference/cli/plan.md) and [specify workspace](../reference/cli/workspace.md).
+See [specify plan](../reference/cli/plan.md) and [Workspace topology](../reference/cli/workspace.md).
 
 ## See also
 

@@ -41,7 +41,7 @@ description: |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored: `specify workspace sync` projects it deterministically from the project's own baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger) into `.specify/topology.lock`. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored. In workspace mode, the committed `.specify/topology.lock` projects it deterministically from each project's baseline (`.specify/specs/` requirement titles + the `.specify/journal.jsonl` outcome ledger). Slot materialization and topology-lock regeneration are operator-owned setup outside Specify. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ### Workspace shape
 
@@ -122,7 +122,7 @@ slices:
 
 **Location:** `registry.yaml`
 **Created by:** Operator (directly)
-**Validated by:** First-use validators (`specify workspace sync`, `/spec:plan`)
+**Validated by:** First-use plan validators (`/spec:plan`)
 
 Workspace membership + location ledger for multi-repo changes. Optional — not needed for single-repo projects. It carries only `name` + `url` (plus optional `contracts` wiring and an optional greenfield `adapter` seed); a project's `description` is authored in its own `.specify/project.yaml`, and its derived identity (`surface[]` / `recent[]`) is projected into `.specify/topology.lock` from that project's baseline.
 
@@ -142,8 +142,8 @@ projects:
 | --------------------------- | ----------- | ----------- |
 | `version`                   | Yes         | Schema version (currently `1`). |
 | `projects[].name`           | Yes         | Project identifier (kebab-case). The slot name and the `plan.yaml.slices[].project` binding key. |
-| `projects[].url`            | Yes         | Clone URL or relative path. For local paths, `workspace push` reads `git remote get-url origin` to discover the push target. |
-| `projects[].adapter`        | No          | Greenfield scaffold seed only — written into a new project's `project.yaml` when `workspace sync` clones an empty repo. Not read for plan-time topology. |
+| `projects[].url`            | Yes         | Clone URL or relative path used by the operator when materializing the corresponding workspace slot. |
+| `projects[].adapter`        | No          | Optional greenfield scaffold seed for operator tooling. Not read for plan-time topology. |
 | `projects[].contracts`      | No          | Per-project contract role declarations (`produces`, `consumes`). |
 
 ## change.md

@@ -52,10 +52,10 @@ Next steps:
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
-**Workspace sync**: $WORKSPACE_SYNC_MESSAGE (from init JSON `workspace-sync-message`; typically `workspace sync complete` on first run)
 
 Next steps:
 1. Add registered projects with `specify registry add`
-2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
-3. Stamp Gate 1 with `specify plan transition <name> approved`, then run `specify plan execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
+2. Materialize `workspace/<project>/` slots through your normal repository tooling
+3. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
+4. Stamp Gate 1 with `specify plan transition <name> approved`, then run `specify plan execute` to drive `refine -> build -> merge` per slice; publish through your normal repository workflow before `/spec:finalize <name>` archives the plan
 ```

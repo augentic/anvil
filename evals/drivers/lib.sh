@@ -154,7 +154,7 @@ require_tools() {
 # cursor-agent through the composed runtime; setup-only legs skip this.
 require_model() {
   command -v cursor-agent >/dev/null 2>&1 || {
-    echo "cursor-agent not found on PATH; the model-driven legs need a logged-in cursor backend" >&2
+    echo "cursor-agent not found on PATH; install it, then \`cursor-agent login\` or export CURSOR_API_KEY (\`make dev-doctor LIVE=1\` verifies command-mode credentials)" >&2
     exit 2
   }
 }

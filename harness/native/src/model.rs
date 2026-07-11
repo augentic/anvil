@@ -92,7 +92,13 @@ impl Model for DevModel {
                 let model = cell
                     .get_or_try_init(|| CursorModel::connect(root.clone()))
                     .await
-                    .map_err(|err| Error::Backend(format!("{err:#}")))?;
+                    .map_err(|err| {
+                        Error::Backend(format!(
+                            "cursor-agent backend unavailable: {err:#}; install cursor-agent, \
+                             then `cursor-agent login` or export CURSOR_API_KEY (`make \
+                             dev-doctor LIVE=1` verifies command-mode credentials)"
+                        ))
+                    })?;
                 model.create(request).await
             }
             Self::Replay(model) => model.create(request).await,

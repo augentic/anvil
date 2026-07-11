@@ -46,16 +46,6 @@ impl Axis {
             Self::Target => "targets",
         }
     }
-
-    /// The `specify:adapter` axis interface a component of this axis
-    /// exports — the instance name the metadata dispatch invokes.
-    #[must_use]
-    pub const fn interface(self) -> &'static str {
-        match self {
-            Self::Source => "specify:adapter/source@0.1.0",
-            Self::Target => "specify:adapter/target@0.1.0",
-        }
-    }
 }
 
 /// One adapter-declared build input from the target's `metadata`
@@ -224,7 +214,7 @@ impl PlatformsCapability {
     /// # Errors
     ///
     /// Returns the first [`PlatformsViolation`] in rule order.
-    pub fn check(&self, platforms: &[Platform]) -> Result<(), PlatformsViolation> {
+    pub(crate) fn check(&self, platforms: &[Platform]) -> Result<(), PlatformsViolation> {
         if platforms.is_empty() {
             if self.required {
                 return Err(PlatformsViolation::RequiredButMissing {
@@ -270,7 +260,7 @@ pub enum AdapterLocation {
 impl AdapterLocation {
     /// Kebab-case label for JSON envelopes (`"store"` / `"dev"`).
     #[must_use]
-    pub const fn label(&self) -> &'static str {
+    pub(crate) const fn label(&self) -> &'static str {
         match self {
             Self::Store(_) => "store",
             Self::Dev(_) => "dev",
@@ -279,7 +269,7 @@ impl AdapterLocation {
 
     /// The component file path.
     #[must_use]
-    pub const fn path(&self) -> &PathBuf {
+    pub(crate) const fn path(&self) -> &PathBuf {
         match self {
             Self::Store(path) | Self::Dev(path) => path,
         }
@@ -325,7 +315,7 @@ impl AdapterRef {
     /// else the [`dev_version`] placeholder a development artifact
     /// carries.
     #[must_use]
-    pub fn resolved_version(&self) -> semver::Version {
+    pub(crate) fn resolved_version(&self) -> semver::Version {
         self.version.clone().unwrap_or_else(dev_version)
     }
 }
@@ -336,7 +326,7 @@ impl AdapterRef {
 /// honest "not a published release" marker in topology projections and
 /// envelopes.
 #[must_use]
-pub const fn dev_version() -> semver::Version {
+pub(super) const fn dev_version() -> semver::Version {
     semver::Version::new(0, 0, 0)
 }
 
@@ -425,7 +415,7 @@ impl SourceAdapter {
     /// Iterator over the source operations this adapter serves, in
     /// ascending kebab-name order (`extract < survey`) — the axis's
     /// closed WIT operation set (`wit/specify.wit`).
-    pub fn operations(&self) -> impl Iterator<Item = &SourceOperation> {
+    pub(crate) fn operations() -> impl Iterator<Item = &'static SourceOperation> {
         const WIT_OPERATIONS: &[SourceOperation] =
             &[SourceOperation::Extract, SourceOperation::Survey];
         WIT_OPERATIONS.iter()
@@ -437,7 +427,7 @@ impl TargetAdapter {
     /// ascending kebab-name order (`build < guidance < merge`) — the
     /// axis's closed WIT operation set (`wit/specify.wit`:
     /// guidance/build/merge).
-    pub fn operations(&self) -> impl Iterator<Item = &TargetOperation> {
+    pub(crate) fn operations() -> impl Iterator<Item = &'static TargetOperation> {
         const WIT_OPERATIONS: &[TargetOperation] =
             &[TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge];
         WIT_OPERATIONS.iter()

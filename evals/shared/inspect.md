@@ -39,5 +39,5 @@ For registry-only workspace scenarios:
 ```bash
 specify registry validate                              # registry.yaml shape
 cat registry.yaml                                      # registered projects + routing descriptions
-cat topology.lock                                      # materialised slot topology (after workspace sync)
+cat topology.lock                                      # committed slot topology (after operator regeneration)
 ```

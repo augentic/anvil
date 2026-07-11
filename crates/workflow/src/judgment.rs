@@ -40,7 +40,7 @@ pub const MAX_REPAIRS: usize = 2;
 ///
 /// The mapped model failure ([`model_error`]) or the last tail failure
 /// once the repair budget is exhausted.
-pub(crate) async fn schema_gated<P, T, F>(
+async fn schema_gated<P, T, F>(
     model: &P, system: &str, user: String, schema_name: &str, schema: &str, mut tail: F,
 ) -> Result<T, Error>
 where
@@ -97,7 +97,7 @@ fn model_error(schema_name: &str, err: &omnia_guest::model::Error) -> Error {
 
 /// Serialise a prompt payload as pretty JSON, mapping the (practically
 /// impossible) serialisation failure onto the workflow error currency.
-pub(crate) fn render_json<T: serde::Serialize>(value: &T, what: &str) -> Result<String, Error> {
+fn render_json<T: serde::Serialize>(value: &T, what: &str) -> Result<String, Error> {
     serde_json::to_string_pretty(value).map_err(|err| Error::Diag {
         code: "judgment-request-serialise",
         detail: format!("failed to serialise {what}: {err}"),

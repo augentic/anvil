@@ -24,7 +24,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
 | `specify plan execute`   | Drive the per-slice refine → build → merge loop (CLI verb, no skill wrapper)                   |
-| `/spec:finalize`         | Push branches, then archive the plan (PRs are opened and merged by the operator outside Specify) |
+| `/spec:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
 | `/spec:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
@@ -91,22 +91,11 @@ specify slice transition <name> <refining|refined|built|dropped> [--reason "..."
 specify slice validate <name>
 specify slice merge <name> [--dry-run|--check-only]
 
-# Workspace (multi-repo)
-specify workspace sync [<project>...]                    # materialise slots from registry.yaml
-specify workspace prepare <project> --change <name>
-specify workspace push [<project>...]                    # publish specify/<name> branch as PR
-
-# Tools
-# adapter helper tools are in-guest library code (no host dispatch verb)
-
 # Maintenance & bootstrap
-specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
-specify plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
-specify plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
 specify init --upgrade                                   # bump specify pin + re-scaffold preservation-safe files only
 ```
 
-A pin newer than the binary is exit `3` (upgrade the binary first); an older pin loads normally — pre-1.0 majors are re-init, not migration. For `specify upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specify plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
+A pin newer than the binary is exit `3` (update the binary through its install channel first); an older pin loads normally — pre-1.0 majors are re-init, not migration. `specify init --upgrade` updates the project pin and preservation-safe scaffold, not the installed CLI.
 
 ## Adapters
 

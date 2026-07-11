@@ -4,7 +4,7 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary, one guest
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Provisioning commands (`init` without `--scaffold-only`, `adapters sync`, `workspace *`, `upgrade`, `plugins`) remain typed routes to the standard unsupported operation until their in-guest implementations land.
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
 
 The core guest identity is versioned by the binary (`specify:core@<binary version>`); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
 

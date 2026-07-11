@@ -51,7 +51,7 @@ Two supported install paths:
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
 
-`specify upgrade` handles subsequent updates channel-natively. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest resolves by the binary's own version, `specify:core@<binary version>`.
+Subsequent updates use the same installation channel: rerun `cargo install`, upgrade through the package manager, or replace the downloaded binary. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest resolves by the binary's own version, `specify:core@<binary version>`.
 
 ## Adding a new target triple
 
