@@ -88,22 +88,20 @@ The codebase optimises for short reading over short writing. Concretely:
 
 ## Format dispatch
 
-Handlers do **not** open-code `match ctx.format { Json, Text }`. They return typed bodies; the command projector in `crates/transport/src/command.rs` owns format dispatch through the internal `emit` function in `crates/transport/src/command/output.rs`. Handlers never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector (`SpecifyProjector` in `crates/transport/src/command.rs`) owns format dispatch through the internal `emit` function in `crates/transport/src/command/output.rs`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
-match ctx.format {
+match format {
     Format::Json => serde_json::to_writer(stdout(), &SomeBody::from(&r))?,
     Format::Text => println!("..."),
 }
 
-// GOOD
-ctx.write(&SomeBody::from(&result), write_text)?;
+// GOOD — the operation returns the typed body; the projector renders it
+Ok(SomeBody::from(&result))
 ```
 
-Format-only handlers that run before (or outside of) a `Ctx` — `commands::init::run` and the unified `commands::resolve_plugin` shared by `source resolve` / `target resolve` — receive a bare `Format` and call `output::emit(&mut std::io::stdout().lock(), format, &body, write_text)?;` directly.
-
-The `write_text` closure receives `(&mut dyn Write, &Body)` and renders the text-mode body; the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
+Text mode renders through the body's `workflow::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
 
 ## One emit path
 
@@ -158,17 +156,14 @@ struct HandleBody {
     path: PathBuf,
 }
 
-fn write_text(w: &mut dyn std::io::Write, body: &HandleBody) -> std::io::Result<()> {
-    writeln!(w, "{}", body.name)
+impl Render for HandleBody {
+    fn render(&self, w: &mut dyn std::io::Write) -> std::io::Result<()> {
+        writeln!(w, "{}", self.name)
+    }
 }
 
 impl From<&Outcome> for HandleBody {
     fn from(outcome: &Outcome) -> Self { /* ... */ }
-}
-
-fn handle(ctx: &Ctx, outcome: &Outcome) -> Result<()> {
-    ctx.write(&HandleBody::from(outcome), write_text)?;
-    Ok(())
 }
 ```
 

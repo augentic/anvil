@@ -176,10 +176,18 @@ async fn missing_required_field_is_unprocessable() {
         .uri("/registry")
         .body(Body::from(r#"{"name":"alpha"}"#))
         .expect("build request");
-    let (status, _) = send(project.router(), request).await;
+    let (status, value) = send(project.router(), request).await;
     assert_eq!(
         status,
         StatusCode::UNPROCESSABLE_ENTITY,
         "a body missing `url` is refused at extraction"
+    );
+    assert_eq!(
+        value["error"], "invalid-request",
+        "decode failures render the Specify envelope: {value}"
+    );
+    assert!(
+        value["message"].as_str().is_some_and(|message| message.contains("url")),
+        "the decode message names the missing field: {value}"
     );
 }
