@@ -242,6 +242,37 @@ mod failure_overlay {
     }
 
     #[tokio::test]
+    async fn durable_merge_dominates_later_failure() {
+        // The merge landed (durable archive evidence in the claim
+        // window); a later failed retry against the archived slice is
+        // noise — the torn state still projects merge-incomplete, not
+        // merge-conflict.
+        let project = Project::initialised();
+        append(
+            &project.root,
+            &[
+                advanced(0, "test", "a"),
+                Event::new(
+                    ts(10),
+                    EventKind::SliceMergeSucceeded {
+                        slice_name: "a".into(),
+                    },
+                ),
+                Event::new(
+                    ts(20),
+                    EventKind::SliceMergeFailed {
+                        slice_name: "a".into(),
+                        reason: "retry against archived slice".to_string(),
+                    },
+                ),
+            ],
+        );
+        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "stop merge-incomplete");
+    }
+
+    #[tokio::test]
     async fn pre_claim_candidate_skips_overlay() {
         // Stale same-name events (e.g. from an archived plan) must not
         // classify an entry that has not been claimed yet.

@@ -2,17 +2,15 @@
 
 use std::io::Write;
 
-use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
-use schema::diagnostics::{Diagnostic, Severity, blocking, blocking_present};
+use schema::diagnostics::{Diagnostic, blocking, blocking_present};
 use serde::{Deserialize, Serialize};
 
 use super::require_file;
 use crate::adapter::Resolver;
-use crate::change::{Plan, plan_doctor, plan_finding};
+use crate::change::{Plan, plan_full_report};
 use crate::handler::{Anchor, Ctx, ReportBody};
-use crate::registry::Registry;
 
 /// Wire input for `plan validate` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -39,45 +37,17 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
-        let slices_dir = cx.layout().slices_dir();
-
-        let (registry, registry_err) = match Registry::load(&cx.project_dir) {
-            Ok(reg) => (reg, None),
-            Err(err) => (None, Some(err)),
-        };
-
-        let mut results: Vec<Diagnostic> =
-            plan_doctor(&plan, Some(&slices_dir), registry.as_ref(), Some(&cx.project_dir));
-
-        if let Some(err) = registry_err {
-            results.push(plan_finding(
-                "registry-shape",
-                Severity::Important,
-                err.to_string(),
-                None,
-            ));
-        }
-        if let Some(reg) = &registry {
-            let workspace_base = cx.project_dir.join("workspace");
-            results.extend(crate::registry::cache_staleness(
-                context.provider,
-                reg,
-                &workspace_base,
-                &cx.layout().topology_lock_path(),
-            ));
-        }
+        let results = plan_full_report(context.provider, &plan, cx.layout());
 
         let has_errors = blocking_present(&results);
         let body = ReportBody::new(results, Some("Plan OK"), write_validate_row_text);
         if has_errors {
-            Err(crate::handler::Error::Report {
+            Err(crate::handler::Error::validation_report(
                 body,
-                source: Error::validation_failed(
-                    "plan-structural-errors",
-                    "plan must be free of structural errors",
-                    "run 'specify plan validate' for detail",
-                ),
-            })
+                "plan-structural-errors",
+                "plan must be free of structural errors",
+                "run 'specify plan validate' for detail",
+            ))
         } else {
             Ok(body)
         }

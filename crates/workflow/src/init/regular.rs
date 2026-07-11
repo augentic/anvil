@@ -101,5 +101,6 @@ pub(super) fn run(
         specify_version,
         specify_version_changed: true,
         wasm_pkg_config_written,
+        context_skip_reason: None,
     })
 }

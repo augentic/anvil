@@ -1,24 +1,24 @@
-//! Slice-validation kernel for `specify slice validate`.
+//! Slice-validation kernel shared by `specify slice validate` and the
+//! guest refine orchestrator.
 //!
-//! Holds the pure, `Ctx`-free gate logic the handler orchestrates: the
-//! pre-adapter gates ([`pre_adapter_gates`]) — provenance scan, spec
-//! file-location, per-slice authority-override orphans, component-catalog
-//! drift, typed-model drift, and Decision
-//! Record gates — plus the non-blocking synopsis advisory and the
-//! synthesis journal emission. Every entry point takes a [`Layout`] or
-//! plain paths rather than the CLI `Ctx`, so the gates are unit-testable
-//! without standing up a binary. Adapter validation (`validate_slice`,
-//! from `artifacts`'s `validate` registry) and report rendering stay
-//! in the handler, keeping this kernel free of the registry and of
-//! output concerns.
+//! [`run`] is the single findings collector: the pre-adapter gates
+//! (provenance scan, spec file-location, per-slice authority-override
+//! orphans, component-catalog drift, typed-model drift, and Decision
+//! Record gates), then the adapter rules
+//! (`artifacts::validate::validate_slice`) folded with the non-blocking
+//! synopsis advisories. Every entry point takes a [`Layout`] or plain
+//! paths rather than the CLI `Ctx`, so the gates are unit-testable
+//! without standing up a binary. Report rendering, journaling, and the
+//! error envelope stay at the caller boundaries — the handler renders a
+//! [`crate::handler::ReportBody`]; the orchestrator raises codes only.
 //!
 //! This module is the thin orchestrator: it owns the public entry
-//! points ([`pre_adapter_gates`], [`append_synthesis_journal`], the
-//! [`PreAdapter`] outcome) and the two filesystem helpers shared across
-//! gates (`path_hint`, `collect_spec_files`). The gate machinery
-//! lives in the cohesive submodules — `pre_adapter` (spec scan, gate
-//! bundle, authority overrides, synopsis advisory), `model_drift`,
-//! `decisions`, `catalog`, and `spec_location`.
+//! points ([`run`], [`append_synthesis_journal`], the [`Validation`]
+//! outcome) and the two filesystem helpers shared across gates
+//! (`path_hint`, `collect_spec_files`). The gate machinery lives in the
+//! cohesive submodules — `pre_adapter` (spec scan, gate bundle,
+//! authority overrides, synopsis advisory), `model_drift`, `decisions`,
+//! `catalog`, and `spec_location`.
 
 use std::path::{Path, PathBuf};
 
@@ -37,59 +37,60 @@ mod model_drift;
 mod pre_adapter;
 mod spec_location;
 
-/// Outcome of the pre-adapter gate sweep ([`pre_adapter_gates`]).
+/// Outcome of the full validation sweep ([`run`]).
 ///
-/// `slice validate` runs structural gates before invoking the target
-/// adapter's rules; a firing gate short-circuits adapter validation so
-/// the operator sees the structural cause first.
+/// The structural gates run before the target adapter's rules; a firing
+/// gate short-circuits adapter validation so the operator sees the
+/// structural cause first.
 #[derive(Debug)]
-pub enum PreAdapter {
-    /// A gate fired. `code` is the error discriminant the handler raises
-    /// after rendering `findings`; `findings` are the blocking diagnostics
-    /// for that gate.
+pub enum Validation {
+    /// A pre-adapter gate fired; adapter validation did not run. `code`
+    /// is the error discriminant the caller raises after surfacing
+    /// `findings` — the blocking diagnostics for that gate.
     Gate {
         /// Stable `Error::Validation` discriminant for the failing gate.
         code: &'static str,
-        /// Blocking diagnostics to render before failing.
+        /// Blocking diagnostics to surface before failing.
         findings: Vec<Diagnostic>,
     },
-    /// Every gate passed. The handler proceeds to adapter validation,
-    /// folds `advisories` into the adapter findings, and — on overall
-    /// success — journals `synthesis_tags`.
-    Proceed {
+    /// Every gate passed and the adapter rules ran. `findings` carries
+    /// the adapter diagnostics folded with the non-blocking synopsis
+    /// advisories; the caller fails with `slice-validation-failed` when
+    /// any finding blocks, and — on overall success — journals
+    /// `synthesis_tags` via [`append_synthesis_journal`].
+    Adapter {
+        /// Adapter diagnostics plus non-blocking advisories.
+        findings: Vec<Diagnostic>,
         /// `(requirement-id, tag)` pairs to journal on overall success.
         synthesis_tags: Vec<(String, RequirementTag)>,
-        /// Non-blocking advisories (synopsis content-floor) to render
-        /// alongside the adapter findings.
-        advisories: Vec<Diagnostic>,
     },
 }
 
-/// Run the pre-adapter gate sweep for slice `name`.
+/// Run the full validation sweep for slice `name`: the pre-adapter
+/// gates, then the adapter rules with the advisory fold.
 ///
 /// First-use schema validation of per-source `Evidence` files runs first
 /// (per workflow §Source adapter contract); a structural Evidence problem
 /// short-circuits with [`error::Error`] before any gate so the operator sees it
 /// before downstream artefact noise. Then the provenance scan and the
 /// pre-adapter gates fire in order, each able to return
-/// [`PreAdapter::Gate`]. When all gates pass, returns
-/// [`PreAdapter::Proceed`] carrying the synthesis tags and the synopsis
-/// advisory surface.
+/// [`Validation::Gate`]. When all gates pass, the adapter rules run and
+/// the sweep returns [`Validation::Adapter`].
 ///
 /// # Errors
 ///
 /// Returns [`error::Error`] when Evidence schema validation fails, or when a
 /// plan, spec, model, discovery, decision, or Evidence file cannot be
 /// read or parsed.
-pub fn pre_adapter_gates(layout: Layout<'_>, name: &str) -> Result<PreAdapter> {
-    let slice_dir = layout.slices_dir().join(name);
+pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
+    let slice_dir = layout.slice_dir(name);
     let evidence_docs = validate_evidence_dir(&slice_dir)?;
 
     let source_keys = pre_adapter::resolve_slice_source_keys(layout, name)?;
     let (_spec_req_ids, synthesis_tags, provenance_findings) =
         pre_adapter::scan_slice_specs(&slice_dir, &source_keys)?;
     if !provenance_findings.is_empty() {
-        return Ok(PreAdapter::Gate {
+        return Ok(Validation::Gate {
             code: "slice-provenance-invalid",
             findings: provenance_findings,
         });
@@ -98,16 +99,22 @@ pub fn pre_adapter_gates(layout: Layout<'_>, name: &str) -> Result<PreAdapter> {
     let gate_findings =
         pre_adapter::collect_pre_adapter_gates(layout, &slice_dir, name, &evidence_docs)?;
     if !gate_findings.is_empty() {
-        return Ok(PreAdapter::Gate {
+        return Ok(Validation::Gate {
             code: "slice-pre-adapter-gate",
             findings: gate_findings,
         });
     }
 
-    let advisories = pre_adapter::synopsis_thin(layout)?;
-    Ok(PreAdapter::Proceed {
+    // Adapter validation findings — `validate_slice` returns one
+    // `violation` diagnostic per structural Fail and one `review`
+    // diagnostic per deferred semantic rule. The non-blocking
+    // `discovery-lead-synopsis-thin` advisories ride this surface too;
+    // only a blocking diagnostic gates the caller's exit.
+    let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
+    findings.append(&mut pre_adapter::synopsis_thin(layout)?);
+    Ok(Validation::Adapter {
+        findings,
         synthesis_tags,
-        advisories,
     })
 }
 

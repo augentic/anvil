@@ -33,13 +33,13 @@ impl<P: Anchor + Resolver + TargetSeam> Operation<P> for Build {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let manifest_inputs = cx.resolve_target_adapter(context.provider)?.manifest.inputs;
+        let adapter = cx.resolve_target_adapter(context.provider)?;
         let outcome = orchestrate::build(
             context.provider,
             cx.layout(),
             cx.now(),
             &input.name,
-            &manifest_inputs,
+            &adapter.manifest,
             WorkingTree::live(),
         )
         .await?;

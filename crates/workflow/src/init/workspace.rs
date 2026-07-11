@@ -117,5 +117,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         specify_version,
         specify_version_changed: true,
         wasm_pkg_config_written,
+        context_skip_reason: None,
     })
 }

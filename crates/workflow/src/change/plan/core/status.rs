@@ -7,14 +7,14 @@
 //! dispatch instead of deriving it. Writes nothing; `plan next`
 //! stays the only writer of per-entry `in-progress`.
 //!
-//! This module owns the wire types; the journal classification lives
-//! in [`marker`] and the projection kernel in [`project`].
+//! This module owns the wire types; the per-entry decision kernel
+//! lives in the shared `core::execution` projection and the body
+//! assembly in [`project`].
 
 use serde::Serialize;
 
 use super::model::Lifecycle;
 
-mod marker;
 mod project;
 
 pub use project::plan_status_body;

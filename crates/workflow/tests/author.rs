@@ -26,6 +26,20 @@ fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
 }
 
+/// Bundle the independent mocks into the orchestration capability
+/// context. Authoring never dispatches the target seam, so the slot
+/// carries a unit placeholder.
+const fn caps<'a, P, S, R>(
+    model: &'a P, sources: &'a S, resolver: &'a R,
+) -> orchestrate::Capabilities<'a, P, S, (), R> {
+    orchestrate::Capabilities {
+        model,
+        sources,
+        targets: &(),
+        resolver,
+    }
+}
+
 /// A throw-away project with `.specify/project.yaml`, a stub `omnia`
 /// adapter component at the development probe (so topology resolution
 /// works), and a hermetic project cache. No `plan.yaml` —
@@ -142,9 +156,7 @@ async fn author_walks_to_pending_with_gate_prose() {
     );
 
     let outcome = orchestrate::author(
-        &model,
-        &sources,
-        &common::resolver(),
+        caps(&model, &sources, &common::resolver()),
         project.layout(),
         now(),
         "account-revamp",
@@ -231,9 +243,7 @@ async fn author_fan_out_failure_aborts() {
     );
 
     let err = orchestrate::author(
-        &model,
-        &sources,
-        &common::resolver(),
+        caps(&model, &sources, &common::resolver()),
         project.layout(),
         now(),
         "account-revamp",
@@ -285,9 +295,7 @@ async fn author_repairs_kernel_rejected_grouping() {
     );
 
     let outcome = orchestrate::author(
-        &model,
-        &sources,
-        &common::resolver(),
+        caps(&model, &sources, &common::resolver()),
         project.layout(),
         now(),
         "account-revamp",
@@ -336,9 +344,7 @@ async fn author_gate_missing_exhausts_budget() {
     );
 
     let err = orchestrate::author(
-        &model,
-        &sources,
-        &common::resolver(),
+        caps(&model, &sources, &common::resolver()),
         project.layout(),
         now(),
         "account-revamp",
@@ -363,9 +369,7 @@ async fn author_refuses_existing_plan() {
     let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let err = orchestrate::author(
-        &model,
-        &sources,
-        &common::resolver(),
+        caps(&model, &sources, &common::resolver()),
         project.layout(),
         now(),
         "account-revamp",
@@ -389,9 +393,7 @@ async fn author_refuses_workspace_root() {
     let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let err = orchestrate::author(
-        &model,
-        &sources,
-        &common::resolver(),
+        caps(&model, &sources, &common::resolver()),
         project.layout(),
         now(),
         "account-revamp",

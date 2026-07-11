@@ -25,11 +25,12 @@ pub mod platform;
 #[cfg(feature = "native")]
 pub mod plugins;
 pub mod registry;
-pub mod schema_gate;
+pub(crate) mod schema_gate;
 pub mod seam;
 pub(crate) mod serde_time;
 pub mod slice;
 pub mod source;
+pub(crate) mod target_policy;
 #[cfg(feature = "native")]
 pub mod upgrade;
 

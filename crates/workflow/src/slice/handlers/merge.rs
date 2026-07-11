@@ -112,7 +112,7 @@ impl<P: Anchor> Operation<P> for Preview {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.layout().slices_dir().join(&input.name);
+        let slice_dir = cx.layout().slice_dir(&input.name);
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let result = slice::preview(&slice_dir, &classes)?;
 
@@ -214,7 +214,7 @@ impl<P: Anchor> Operation<P> for ConflictCheck {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.layout().slices_dir().join(&input.name);
+        let slice_dir = cx.layout().slice_dir(&input.name);
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let conflicts = conflict_check(&slice_dir, &classes)?;
 

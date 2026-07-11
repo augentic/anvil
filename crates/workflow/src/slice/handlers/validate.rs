@@ -12,15 +12,13 @@
 
 use std::io::Write;
 
-use artifacts::validate::validate_slice;
-use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use schema::diagnostics::{Diagnostic, blocking_present};
 use serde::{Deserialize, Serialize};
 
 use crate::handler::{Anchor, Ctx, ReportBody};
-use crate::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
+use crate::slice::validate::{Validation, append_synthesis_journal};
 
 /// Wire input for `slice validate`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,31 +42,22 @@ impl<P: Anchor> Operation<P> for Validate {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let name = &input.name;
-        match pre_adapter_gates(cx.layout(), name)? {
-            PreAdapter::Gate { code, findings } => Err(fail_with(code, findings)),
-            PreAdapter::Proceed {
+        match crate::slice::validate::run(cx.layout(), name)? {
+            Validation::Gate { code, findings } => Err(fail_with(code, findings)),
+            Validation::Adapter {
+                findings,
                 synthesis_tags,
-                mut advisories,
             } => {
-                // Adapter validation findings — `validate_slice` returns one
-                // `violation` diagnostic per structural Fail and one `review`
-                // diagnostic per deferred semantic rule. The non-blocking
-                // `discovery-lead-synopsis-thin` advisories ride this surface
-                // too; only a blocking diagnostic gates exit.
-                let mut findings = validate_slice(&cx.layout().slices_dir().join(name))?;
-                findings.append(&mut advisories);
                 let blocking = blocking_present(&findings);
                 let body = ReportBody::new(findings, None, write_finding_row);
 
                 if blocking {
-                    Err(crate::handler::Error::Report {
+                    Err(crate::handler::Error::validation_report(
                         body,
-                        source: Error::validation_failed(
-                            "slice-validation-failed",
-                            "slice must satisfy adapter validation",
-                            format!("slice `{name}` failed validation"),
-                        ),
-                    })
+                        "slice-validation-failed",
+                        "slice must satisfy adapter validation",
+                        format!("slice `{name}` failed validation"),
+                    ))
                 } else {
                     // `slice.synthesis.{conflict,divergence,unknown}` emit
                     // once per tagged requirement after a successful validate.
@@ -85,14 +74,12 @@ impl<P: Anchor> Operation<P> for Validate {
 /// full diagnostic surface before the gate fails the command.
 fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> crate::handler::Error {
     let count = findings.len();
-    crate::handler::Error::Report {
-        body: ReportBody::new(findings, None, write_finding_row),
-        source: Error::validation_failed(
-            code,
-            "slice must satisfy structural invariants",
-            format!("{count} blocking finding(s)"),
-        ),
-    }
+    crate::handler::Error::validation_report(
+        ReportBody::new(findings, None, write_finding_row),
+        code,
+        "slice must satisfy structural invariants",
+        format!("{count} blocking finding(s)"),
+    )
 }
 
 fn write_finding_row(w: &mut dyn Write, finding: &Diagnostic) -> std::io::Result<()> {

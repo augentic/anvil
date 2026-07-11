@@ -26,7 +26,7 @@ use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
 
-use crate::adapter::{BuildInputDeclaration, Resolver};
+use crate::adapter::Resolver;
 use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
 use crate::config::{Layout, ProjectConfig};
 use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
@@ -80,10 +80,12 @@ pub enum ExecuteOutcome {
 /// place, so the next run's status projection resumes (or re-reports
 /// the stop) from the same point.
 ///
-/// `manifest_inputs` and `tree` are the caller-resolved build
-/// parameters [`super::build`] takes (the shim resolves the bound
-/// target's declared inputs once; today's deployments share one live
-/// tree).
+/// The bound target adapter resolves once, inside the loop's own
+/// setup (after the workspace refusal, before the marker) — its
+/// declared inputs and its name feed every [`super::build`] dispatch,
+/// so the declared inputs and the seam routing come from one identity.
+/// `tree` names the snapshot builds apply against (today's deployments
+/// share one live tree).
 ///
 /// # Errors
 ///
@@ -91,21 +93,24 @@ pub enum ExecuteOutcome {
 ///   is a workspace or any entry is `project`-scoped — the skill's
 ///   workspace routing (slot sync + chdir) has no in-guest counterpart
 ///   yet, so the loop refuses rather than writing to the wrong tree.
+///   Classified **before** the adapter lookup, so a workspace root
+///   surfaces this refusal rather than `workspace-no-adapter`.
+/// - `workspace-no-adapter` / adapter-resolution failures from the
+///   project-adapter lookup.
 /// - `guest-marker-held` (exit 2) when another guest execute run holds
 ///   the D1 marker — or a stale marker survived a crash; the detail
 ///   says which file to delete.
 /// - propagates plan load/validate failures and marker I/O failures.
 /// - phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the orchestration boundary receives four independent capabilities plus loop inputs"
-)]
-pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
-    model: &P, sources: &S, targets: &T, resolver: &impl Resolver, layout: Layout<'_>,
-    now: Timestamp, manifest_inputs: &[BuildInputDeclaration], tree: &WorkingTree,
+pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp,
+    tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {
     refuse_workspace_routing(layout)?;
+    let config = ProjectConfig::load(layout.project_dir())?;
+    let adapter =
+        crate::target_policy::project_adapter(caps.resolver, &config, layout.project_dir())?;
     let _marker = GuestMarker::acquire(layout, now)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
@@ -136,7 +141,7 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
 
         // Claim: `plan next` before every phase, exactly as the skill
         // drives it (returns the active entry unchanged mid-slice).
-        let Some(claim) = claim_next(resolver, layout, now)? else {
+        let Some(claim) = claim_next(caps.resolver, layout, now)? else {
             // The status projection targeted a phase but the claim
             // found nothing runnable — plan state moved underneath us.
             // Surface it as the stuck stop rather than spinning.
@@ -159,12 +164,10 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
                          (or fix the bound project's topology) before executing"
                     ),
                 })?;
-                super::refine(model, sources, targets, resolver, layout, now, &slice, &target)
-                    .await
-                    .map(drop)
+                super::refine(caps, layout, now, &slice, &target).await.map(drop)
             }
             LoopStep::Build => {
-                super::build(targets, layout, now, &slice, manifest_inputs, tree.clone())
+                super::build(caps.targets, layout, now, &slice, &adapter.manifest, tree.clone())
                     .await
                     .map(drop)
             }
@@ -199,28 +202,22 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
 /// slot and chdirs into `workspace/<project>/` for a `project`-scoped
 /// entry, and the guest loop has no counterpart yet — running anyway
 /// would create slices under the workspace root's own `.specify/`
-/// tree. Single-project plans (no `workspace: true`, no `project:`
-/// keys) are unaffected.
+/// tree. The shared [`super::routing`] classification with this
+/// operation's own refusal code; single-project plans are unaffected.
 fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
-    let config = ProjectConfig::load(layout.project_dir())?;
     let plan = Plan::load(&layout.plan_path())?;
-    let scoped_entry = plan.entries.iter().find_map(|entry| entry.project.as_deref());
-    if config.workspace || scoped_entry.is_some() {
-        let detail = scoped_entry.map_or_else(
-            || "the plan root is a workspace (`workspace: true` in project.yaml)".to_string(),
-            |project| format!("plan entry scoped to project `{project}`"),
-        );
-        return Err(Error::validation_failed(
-            "plan-execute-workspace-unsupported",
-            "the guest execute loop runs single-project plans only",
-            format!(
-                "{detail}; workspace routing (slot sync + chdir) has no in-guest counterpart — \
-                 drive workspace plans hand-driven (`specify plan next`, then the \
-                 /spec:refine → /spec:build → /spec:merge breakouts)"
-            ),
-        ));
-    }
-    Ok(())
+    let Some(subject) = super::routing::classify(layout, Some(&plan))?.refusal_subject() else {
+        return Ok(());
+    };
+    Err(Error::validation_failed(
+        "plan-execute-workspace-unsupported",
+        "the guest execute loop runs single-project plans only",
+        format!(
+            "{subject}; workspace routing (slot sync + chdir) has no in-guest counterpart — \
+             drive workspace plans hand-driven (`specify plan next`, then the \
+             /spec:refine → /spec:build → /spec:merge breakouts)"
+        ),
+    ))
 }
 
 /// One claimed entry: the slice to run and its best-effort resolved
@@ -250,9 +247,7 @@ fn claim_next(
             target: body.target,
         }),
         (None, Some(slice)) => {
-            let target = crate::slice::SliceMetadata::load(&layout.slices_dir().join(&slice))
-                .ok()
-                .map(|metadata| metadata.target);
+            let target = crate::target_policy::resumed(layout, &slice).ok();
             Some(Claim { slice, target })
         }
         (None, None) => None,

@@ -28,14 +28,14 @@ use schema::diagnostics::blocking_present;
 
 use super::synthesize::SynthesizeRequest;
 use crate::adapter::Resolver;
-use crate::change::{Entry, Plan, Status, resolve_target, resolve_topology};
+use crate::change::{Entry, Plan, Status, resolve_topology};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
 use crate::registry::topology::Surface;
 use crate::seam::{SourceSeam, TargetSeam};
-use crate::slice::validate::{PreAdapter, append_synthesis_journal, pre_adapter_gates};
+use crate::slice::validate::{Validation, append_synthesis_journal};
 use crate::slice::{
     BaselineDomainDetail, BaselineIndex, CreateIfExists, LifecycleStatus, ProjectionHeader,
     actions as slice_actions, persist_synthesized, read_evidence_index, read_source_inputs,
@@ -71,13 +71,9 @@ pub struct RefineOutcome {
 /// - `slice-provenance-invalid` / `slice-pre-adapter-gate` /
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `lifecycle` gate error from the `refined` transition.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the orchestration boundary receives four independent capabilities plus phase inputs"
-)]
-pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
-    model: &P, sources: &S, targets: &T, resolver: &impl Resolver, layout: Layout<'_>,
-    now: Timestamp, slice: &str, target_value: &str,
+pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp, slice: &str,
+    target_value: &str,
 ) -> Result<RefineOutcome, Error> {
     let entry = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
@@ -92,7 +88,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let lead = binding.lead(slice).to_string();
-        super::extract(sources, layout, now, &source, &lead, slice).await?;
+        super::extract(caps.sources, layout, now, &source, &lead, slice).await?;
         extracted.push((source, lead));
     }
 
@@ -102,7 +98,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_specs_dir = resolve_baseline_specs_dir(layout, &slice_dir);
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
-    let baseline = baseline_surface(resolver, layout, &entry)?;
+    let baseline = baseline_surface(caps.resolver, layout, &entry)?;
     let baseline_detail: Vec<BaselineDomainDetail> = (&baseline_index).into();
     let header = ProjectionHeader {
         version: 1,
@@ -137,51 +133,33 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
         },
         SYNTHESIZE_SCOPE,
     );
-    journal::emit_best_effort(
+    let artifacts = journal::bracket_best_effort(
         layout,
         now,
+        SYNTHESIZE_SCOPE,
         EventKind::SliceSynthesizeStarted {
             slice_name: slice.into(),
         },
-        SYNTHESIZE_SCOPE,
-    );
-    let artifacts = match synthesize_and_persist(
-        model,
-        targets,
-        &request,
-        &kernel,
-        &slice_dir,
-        &baseline_index,
+        synthesize_and_persist(
+            caps.model,
+            caps.targets,
+            &request,
+            &kernel,
+            &slice_dir,
+            &baseline_index,
+        ),
+        |artifacts: &Vec<String>| EventKind::SliceSynthesizeCompleted {
+            slice_name: slice.into(),
+            artifacts: artifacts.clone(),
+        },
+        |err| EventKind::SliceSynthesizeFailed {
+            slice_name: slice.into(),
+            reason: synthesize_failure_reason(err),
+        },
     )
-    .await
-    {
-        Ok(artifacts) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceSynthesizeCompleted {
-                    slice_name: slice.into(),
-                    artifacts: artifacts.clone(),
-                },
-                SYNTHESIZE_SCOPE,
-            );
-            artifacts
-        }
-        Err(err) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceSynthesizeFailed {
-                    slice_name: slice.into(),
-                    reason: synthesize_failure_reason(&err),
-                },
-                SYNTHESIZE_SCOPE,
-            );
-            return Err(err);
-        }
-    };
+    .await?;
 
-    validate(layout, now, slice, &slice_dir)?;
+    validate(layout, now, slice)?;
 
     slice_actions::transition(&slice_dir, LifecycleStatus::Refined, now)?;
 
@@ -210,9 +188,8 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
 /// - `slice-create-target-missing` when neither the slice metadata nor
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
-pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam>(
-    model: &P, sources: &S, targets: &T, resolver: &impl Resolver, layout: Layout<'_>,
-    now: Timestamp, slice: &str,
+pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
     let entry = load_entry(layout, slice)?;
     if entry.status == Status::Done {
@@ -225,28 +202,18 @@ pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam>(
             ),
         ));
     }
-    let target = breakout_target(resolver, layout, &entry, slice)?;
-    refine(model, sources, targets, resolver, layout, now, slice, &target).await
+    let target = breakout_target(caps.resolver, layout, &entry, slice)?;
+    refine(caps, layout, now, slice, &target).await
 }
 
 /// Resolve the breakout's target value: the slice's recorded
-/// `metadata.yaml` target when the slice directory already exists,
-/// else the bound project's topology.
+/// `metadata.yaml` target when the slice directory already exists
+/// (resumed policy), else the bound project's topology (fresh policy).
 fn breakout_target(
     resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry, slice: &str,
 ) -> Result<String, Error> {
-    if let Ok(metadata) = crate::slice::SliceMetadata::load(&layout.slices_dir().join(slice)) {
-        return Ok(metadata.target);
-    }
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let topology = resolve_topology(resolver, &config, layout.project_dir())?;
-    resolve_target(entry, &topology).map(|target| target.to_string()).map_err(|err| Error::Diag {
-        code: "slice-create-target-missing",
-        detail: format!(
-            "no target resolved for slice `{slice}`: {err}; declare the project adapter (or fix \
-             the bound project's topology) before refining"
-        ),
-    })
+    crate::target_policy::resumed(layout, slice)
+        .or_else(|_| crate::target_policy::fresh(resolver, layout, entry, slice, "refining"))
 }
 
 /// The judgment leg plus the native persist tail — one fallible unit
@@ -268,21 +235,17 @@ async fn synthesize_and_persist<P: Model, T: TargetSeam>(
 /// the synthesis-tag journal emission — minus the report rendering
 /// (the orchestrator has no stdout report surface; the blocking
 /// decision and error codes match the native verb).
-fn validate(
-    layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
-) -> Result<(), Error> {
-    match pre_adapter_gates(layout, slice)? {
-        PreAdapter::Gate { code, findings } => Err(Error::validation_failed(
+fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<(), Error> {
+    match crate::slice::validate::run(layout, slice)? {
+        Validation::Gate { code, findings } => Err(Error::validation_failed(
             code,
             "slice must satisfy structural invariants",
             format!("{} blocking finding(s)", findings.len()),
         )),
-        PreAdapter::Proceed {
+        Validation::Adapter {
+            findings,
             synthesis_tags,
-            mut advisories,
         } => {
-            let mut findings = artifacts::validate::validate_slice(slice_dir)?;
-            findings.append(&mut advisories);
             if blocking_present(&findings) {
                 let rules: Vec<&str> = findings
                     .iter()

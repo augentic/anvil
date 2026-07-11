@@ -4,7 +4,7 @@
 //! [`omnia_guest::api::operation::Operation`] implementation
 //! co-located with the domain module that owns its kernel. This module
 //! carries the pieces they share: the [`Anchor`] provider capability,
-//! per-invocation [`Ctx`], [`Render`] output rendering, shared
+//! per-invocation `Ctx` (crate-private), [`Render`] output rendering, shared
 //! [`ReportBody`] diagnostic envelope, and operation-layer [`Error`].
 //!
 //! The transports stay out: no clap, no stdout, no exit codes here.
@@ -17,7 +17,7 @@ mod error;
 mod output;
 
 pub use anchor::Anchor;
-pub use ctx::Ctx;
+pub(crate) use ctx::Ctx;
 pub use error::Error;
 pub use output::{Render, ReportBody, ReportRow};
 

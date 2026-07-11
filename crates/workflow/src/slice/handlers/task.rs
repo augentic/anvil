@@ -39,7 +39,7 @@ impl<P: Anchor> Operation<P> for TaskProgress {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.layout().slices_dir().join(&input.name);
+        let slice_dir = cx.layout().slice_dir(&input.name);
         let tasks_path = resolve_tasks_path(&slice_dir)?;
         let tasks = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
         let progress = parse_tasks(&tasks);
@@ -107,7 +107,7 @@ impl<P: Anchor> Operation<P> for TaskMark {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let TaskMarkInput { name, task_number } = input;
-        let slice_dir = cx.layout().slices_dir().join(&name);
+        let slice_dir = cx.layout().slice_dir(&name);
         let tasks_path = resolve_tasks_path(&slice_dir)?;
         let original = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
         let updated = mark_complete(&original, &task_number)?;

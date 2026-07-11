@@ -9,7 +9,6 @@ use jiff::Timestamp;
 use super::Anchor;
 use crate::adapter::{ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
-use crate::init::adapter_ref_from_value;
 
 /// Shared context for every verb that operates inside an initialised
 /// `.specify/` project. Created at the top of each `handle` body via
@@ -39,12 +38,7 @@ impl Ctx {
     }
 
     /// Resolve this project's target adapter into a
-    /// [`ResolvedTarget`].
-    ///
-    /// Workspace projects (`workspace: true`, `adapter:` omitted) do not declare
-    /// an adapter, so this returns a `workspace-no-adapter` diagnostic
-    /// naming the workspace case rather than a stray adapter-resolution
-    /// error lower down the stack.
+    /// [`ResolvedTarget`] via [`crate::target_policy::project_adapter`].
     ///
     /// # Errors
     ///
@@ -53,17 +47,7 @@ impl Ctx {
     pub fn resolve_target_adapter(
         &self, resolver: &impl Resolver,
     ) -> Result<ResolvedTarget, Error> {
-        let Some(adapter_value) = self.config.adapter.as_deref() else {
-            return Err(Error::Diag {
-                code: "workspace-no-adapter",
-                detail: "this project has no adapter declared (workspaces do not run \
-                         per-target operations); only `specify registry` and `specify plan` \
-                         verbs are supported on workspaces"
-                    .to_string(),
-            });
-        };
-        let adapter_ref = adapter_ref_from_value(adapter_value);
-        resolver.resolve_target(&adapter_ref, &self.project_dir)
+        crate::target_policy::project_adapter(resolver, &self.config, &self.project_dir)
     }
 
     /// Typed view over `.specify/`-anchored paths. Hand this to
@@ -83,6 +67,7 @@ impl Ctx {
     // injected test clock has one named home and handler call sites
     // stay uniform (`ctx.now()`).
     #[must_use]
+    #[expect(clippy::unused_self, reason = "method form reserves a home for an injected clock")]
     pub fn now(&self) -> Timestamp {
         Timestamp::now()
     }

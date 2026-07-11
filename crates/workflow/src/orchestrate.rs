@@ -17,6 +17,7 @@ mod author;
 mod execute;
 mod merge;
 mod refine;
+mod routing;
 mod source;
 mod synthesize;
 mod target;
@@ -31,6 +32,65 @@ pub use self::source::{ExtractOutcome, SurveyedSource, extract, survey, survey_a
 pub use self::synthesize::{SynthesizeRequest, synthesize};
 pub use self::target::{BuildOutcome, build};
 use crate::seam;
+
+/// The borrowed capability bundle one orchestration run dispatches
+/// across: model judgment, source-axis seam, target-axis seam, and
+/// adapter resolver.
+///
+/// The four capabilities stay independent type parameters so tests
+/// bind independent mocks per seam; the shipped provider satisfies
+/// all four at once, so handlers bundle it with
+/// [`Capabilities::provider`]. Phases that use a subset simply leave
+/// the unused parameter unbounded (plan authoring never dispatches
+/// the target seam).
+#[derive(Debug)]
+pub struct Capabilities<'a, P, S, T, R> {
+    /// Judgment-leg model dispatch.
+    pub model: &'a P,
+    /// Source-axis seam (survey / extract).
+    pub sources: &'a S,
+    /// Target-axis seam (guidance / build).
+    pub targets: &'a T,
+    /// Adapter resolver.
+    pub resolver: &'a R,
+}
+
+impl<'a, Provider> Capabilities<'a, Provider, Provider, Provider, Provider> {
+    /// Bundle one provider that carries every capability — the
+    /// handler-side constructor over `context.provider`.
+    pub const fn provider(provider: &'a Provider) -> Self {
+        Self {
+            model: provider,
+            sources: provider,
+            targets: provider,
+            resolver: provider,
+        }
+    }
+}
+
+impl<'a, P, S, T, R> Capabilities<'a, P, S, T, R> {
+    /// Drop the target seam for phases that never dispatch it
+    /// ([`author`] surveys and reconciles but builds nothing).
+    #[must_use]
+    pub const fn sans_targets(self) -> Capabilities<'a, P, S, (), R> {
+        Capabilities {
+            model: self.model,
+            sources: self.sources,
+            targets: &(),
+            resolver: self.resolver,
+        }
+    }
+}
+
+// Manual `Copy`/`Clone`: the bundle is four shared borrows, copyable
+// regardless of whether the capability types themselves are.
+impl<P, S, T, R> Clone for Capabilities<'_, P, S, T, R> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<P, S, T, R> Copy for Capabilities<'_, P, S, T, R> {}
 
 /// Map a seam dispatch failure onto the wire contract.
 ///

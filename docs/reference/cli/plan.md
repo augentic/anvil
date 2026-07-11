@@ -68,6 +68,8 @@ specify plan execute
 
 The loop claims the next eligible entry, runs the refine, build, and merge orchestrations, and repeats until `specify plan status` projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). It refuses unless the plan lifecycle is `approved`, and it holds the create-exclusive `.specify/guest.lock` marker for the run's lifetime — a second driver session exits with `guest-marker-held`.
 
+**Workspace routing is unsupported.** The loop runs single-project plans only: a workspace plan root (`workspace: true` in `project.yaml`) or any `project`-scoped plan entry refuses with `plan-execute-workspace-unsupported` (exit 2) before any adapter lookup or plan state is touched. Drive workspace plans hand-driven instead — `specify plan next`, then the `/spec:refine` → `/spec:build` → `/spec:merge` breakouts. The read-only `specify plan status` stays slot-aware and never refuses.
+
 Stops render the `specify plan status` projection verbatim: the closed reason (`plan-not-approved`, `refine-failed`, `build-failed`, `merge-conflict`, `slice-dropped`, `merge-incomplete`, `stuck`), the failure detail from the journal, a one-line hint, and the literal resume command. Re-running `specify plan execute` after a stop resumes from the same active entry.
 
 ### specify plan next

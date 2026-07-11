@@ -4,6 +4,7 @@
 
 mod adapter_uri;
 mod cache;
+mod context;
 pub mod handlers;
 mod regular;
 mod upgrade;
@@ -16,6 +17,7 @@ pub use adapter_uri::{
 };
 use artifacts::atomic::bytes_write;
 pub use cache::ComponentMeta;
+pub use context::ContextSkip;
 use error::Error;
 use jiff::Timestamp;
 
@@ -98,6 +100,9 @@ pub struct InitResult {
     /// Lets the JSON envelope distinguish a fresh scaffold from a
     /// re-init that left registry config intact.
     pub wasm_pkg_config_written: bool,
+    /// Why init-time context generation was skipped; `None` when this
+    /// run generated root `AGENTS.md` and `.specify/context.lock`.
+    pub context_skip_reason: Option<ContextSkip>,
 }
 
 /// Initialise `.specify/` inside `opts.project_dir`.
@@ -130,13 +135,18 @@ pub struct InitResult {
 pub fn init(
     resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>, now: Timestamp,
 ) -> Result<InitResult, Error> {
-    if opts.upgrade {
-        return upgrade::run(resolver, opts);
-    }
-    if opts.workspace {
-        return workspace::run(opts);
-    }
-    regular::run(resolver, opts, now)
+    let mut result = if opts.upgrade {
+        upgrade::run(resolver, opts)?
+    } else if opts.workspace {
+        workspace::run(opts)?
+    } else {
+        regular::run(resolver, opts, now)?
+    };
+    // Every branch shares one context-generation pass over the freshly
+    // written project: the skip logic (existing `AGENTS.md`, workspace
+    // slot) gives `--upgrade` its regenerate-only-when-absent behavior.
+    result.context_skip_reason = context::generate_initial(resolver, opts.project_dir)?;
+    Ok(result)
 }
 
 pub(crate) fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {

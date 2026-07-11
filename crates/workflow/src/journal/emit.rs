@@ -1,4 +1,4 @@
-//! Best-effort journal emit.
+//! Best-effort journal emit and the lifecycle bracket helpers.
 
 use jiff::Timestamp;
 
@@ -27,5 +27,63 @@ pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, sco
     let event = Event::new(now, kind);
     if let Err(err) = append_one(layout, &event) {
         record_dropped(layout, scope, &event, &err);
+    }
+}
+
+/// Best-effort lifecycle bracket around one fallible async phase body:
+/// emit `started`, await `body`, then emit `on_success(&ok)` or
+/// `on_failure(&err)` and pass the result through unchanged.
+///
+/// Every emit goes through [`emit_best_effort`] — the journal is
+/// observability, not the source of truth, so a journal hiccup never
+/// changes the phase outcome. This helper codifies only the
+/// *best-effort* bracket policy; strict journal writes (the claim
+/// event, synthesis tags) stay `append_one` / `append_batch` at their
+/// call sites, and the event order is exactly the caller-supplied
+/// started → body → terminal cadence.
+///
+/// # Errors
+///
+/// Whatever `body` returns, unchanged.
+pub async fn bracket_best_effort<T, Fut>(
+    layout: Layout<'_>, now: Timestamp, scope: &str, started: EventKind, body: Fut,
+    on_success: impl FnOnce(&T) -> EventKind, on_failure: impl FnOnce(&error::Error) -> EventKind,
+) -> Result<T, error::Error>
+where
+    Fut: Future<Output = Result<T, error::Error>>,
+{
+    emit_best_effort(layout, now, started, scope);
+    settle(layout, now, scope, body.await, on_success, on_failure)
+}
+
+/// [`bracket_best_effort`] for a synchronous phase body (the
+/// deterministic merge).
+///
+/// # Errors
+///
+/// Whatever `body` returns, unchanged.
+pub fn bracket_best_effort_sync<T>(
+    layout: Layout<'_>, now: Timestamp, scope: &str, started: EventKind,
+    body: impl FnOnce() -> Result<T, error::Error>, on_success: impl FnOnce(&T) -> EventKind,
+    on_failure: impl FnOnce(&error::Error) -> EventKind,
+) -> Result<T, error::Error> {
+    emit_best_effort(layout, now, started, scope);
+    settle(layout, now, scope, body(), on_success, on_failure)
+}
+
+/// Shared terminal emit for both bracket shapes.
+fn settle<T>(
+    layout: Layout<'_>, now: Timestamp, scope: &str, result: Result<T, error::Error>,
+    on_success: impl FnOnce(&T) -> EventKind, on_failure: impl FnOnce(&error::Error) -> EventKind,
+) -> Result<T, error::Error> {
+    match result {
+        Ok(value) => {
+            emit_best_effort(layout, now, on_success(&value), scope);
+            Ok(value)
+        }
+        Err(err) => {
+            emit_best_effort(layout, now, on_failure(&err), scope);
+            Err(err)
+        }
     }
 }

@@ -7,16 +7,14 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use crate::change::plan::wire::{SourceAssign, parse_override_assigns, source_map};
-use crate::change::{Lifecycle, Plan, mutate_authority_overrides, reject_orphan_overrides};
+use crate::change::{Lifecycle, mutate_authority_overrides, reject_orphan_overrides, scaffold};
 use crate::handler::{Anchor, Ctx, Render};
 use crate::journal;
-use crate::name::is_kebab;
 
 /// Wire input for `plan create`.
 ///
@@ -83,30 +81,10 @@ impl<P: Anchor> Operation<P> for Create {
             authority_override,
         } = input;
         let sources = source_map(sources, intent)?;
-
-        if !is_kebab(&name) {
-            return Err(Error::Diag {
-                code: "change-name-not-kebab",
-                detail: format!(
-                    "change: name `{name}` must be kebab-case \
-                     (lowercase ascii, digits, single hyphens; no leading/trailing/doubled \
-                     hyphens)"
-                ),
-            }
-            .into());
-        }
         let plan_path = cx.layout().plan_path();
-        if plan_path.exists() {
-            return Err(Error::Diag {
-                code: "already-exists",
-                detail: format!("refusing to overwrite existing plan at {}", plan_path.display()),
-            }
-            .into());
-        }
+        let mut plan = scaffold(&plan_path, &name, sources)?;
 
         let override_assigns = parse_override_assigns(&authority_override)?;
-
-        let mut plan = Plan::init(&name, sources)?;
         // Route `--authority-override` through the shared mutation
         // helper used by `plan amend` so create and amend produce
         // byte-identical `plan.amend.authority-override` journal events

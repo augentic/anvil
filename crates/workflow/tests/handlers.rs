@@ -189,6 +189,17 @@ mod scaffold {
         assert!(config.contains("workspace: true"), "workspace mode is recorded:\n{config}");
         assert!(config.contains("name: demo-workspace"), "the name override lands:\n{config}");
         assert!(project.root.join("registry.yaml").is_file(), "workspace init mints registry.yaml");
+
+        assert!(body.context_generated, "workspace init generates AGENTS.md context");
+        let agents = fs::read_to_string(project.root.join("AGENTS.md")).expect("AGENTS.md");
+        assert!(
+            !agents.contains("## Runtime"),
+            "workspace context omits the per-language sections:\n{agents}"
+        );
+        assert!(
+            project.root.join(".specify/context.lock").is_file(),
+            "the fingerprint sidecar lands beside the generated context"
+        );
     }
 
     #[tokio::test]
@@ -227,6 +238,54 @@ mod scaffold {
             fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
         assert!(config.contains("adapter: demo"), "the adapter is recorded:\n{config}");
         assert!(project.root.join(".specify/slices").is_dir(), "the slice tree is scaffolded");
+
+        assert!(body.context_generated, "init generates AGENTS.md context when absent");
+        let agents = fs::read_to_string(project.root.join("AGENTS.md")).expect("AGENTS.md");
+        assert!(
+            agents.contains("<!-- specify:context begin"),
+            "the generated context is fenced:\n{agents}"
+        );
+        assert!(
+            agents.contains("adapter `demo`"),
+            "the resolved adapter surfaces in Conventions:\n{agents}"
+        );
+        assert!(
+            project.root.join(".specify/context.lock").is_file(),
+            "the fingerprint sidecar lands beside the generated context"
+        );
+    }
+
+    #[tokio::test]
+    async fn existing_agents_md_preserved() {
+        let project = Project::bare();
+        let agents_path = project.root.join("AGENTS.md");
+        fs::write(&agents_path, "# operator prose\n").expect("stage operator AGENTS.md");
+
+        let body = run::<workflow::init::handlers::Scaffold, _>(
+            &project,
+            workflow::init::handlers::ScaffoldInput {
+                adapter: None,
+                name: Some("demo-workspace".into()),
+                description: None,
+                workspace: true,
+                platforms: None,
+            },
+        )
+        .await
+        .expect("scaffold succeeds");
+
+        assert!(!body.context_generated, "an existing AGENTS.md suppresses generation");
+        assert!(body.context_skipped);
+        assert_eq!(body.context_skip_reason, Some("existing-agents-md"));
+        assert_eq!(
+            fs::read_to_string(&agents_path).expect("AGENTS.md"),
+            "# operator prose\n",
+            "the operator file is preserved byte-for-byte"
+        );
+        assert!(
+            !project.root.join(".specify/context.lock").exists(),
+            "no fingerprint sidecar is written when generation is skipped"
+        );
     }
 }
 

@@ -37,19 +37,9 @@ impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Ex
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let manifest_inputs = cx.resolve_target_adapter(context.provider)?.manifest.inputs;
         let tree = WorkingTree::live();
-        let outcome = orchestrate::execute(
-            context.provider,
-            context.provider,
-            context.provider,
-            context.provider,
-            cx.layout(),
-            cx.now(),
-            &manifest_inputs,
-            &tree,
-        )
-        .await?;
+        let caps = orchestrate::Capabilities::provider(context.provider);
+        let outcome = orchestrate::execute(caps, cx.layout(), cx.now(), &tree).await?;
         match outcome {
             ExecuteOutcome::Drained { phases } => Ok(ExecuteBody {
                 status: "drained",

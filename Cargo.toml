@@ -45,7 +45,6 @@ wit-bindgen.workspace = true
 assert_cmd.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
-transport.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 omnia-testkit.workspace = true
@@ -55,6 +54,7 @@ serde-saphyr.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 testkit.workspace = true
+transport.workspace = true
 workflow = { workspace = true, features = ["native"] }
 
 # `framework` gates the prose/manifest surfaces (links, skills,
@@ -165,70 +165,70 @@ verbose_file_reads = "warn"
 # - `field_scoped_visibility_modifiers`
 
 [workspace.dependencies]
-anyhow = "1.0.11"
-assert_cmd = "2.1.1"
+anyhow = "1.0.103"
+assert_cmd = "2.2.2"
 base16ct = { version = "1.0.0", features = ["alloc"] }
-cfg-if = "1.0.1"
-clap = { version = "4.5.33", features = ["derive", "env"] }
-clap_complete = "4.0.2"
+cfg-if = "1.0.4"
+clap = { version = "4.6.1", features = ["derive", "env"] }
+clap_complete = "4.6.7"
 glob = "0.3.3"
 jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
 jsonschema = { version = "0.47", default-features = false }
-petgraph = "0.8.1"
+petgraph = "0.8.3"
 proptest = "1.11.0"
-regex = "1.12.4"
+regex = "1.13.0"
 schema = { path = "crates/schema" }
 semver = { version = "1.0.28", features = ["serde"] }
-serde = { version = "1.0.217", features = ["derive"] }
+serde = { version = "1.0.228", features = ["derive"] }
 serde-saphyr = "0.0.29"
-serde_json = "1.0.140"
+serde_json = "1.0.150"
 sha2 = "0.11"
 strum = { version = "0.28", features = ["derive"] }
-tempfile = "3.10.1"
-thiserror = "2.0.11"
-tokio = { version = "1.43.0", features = ["fs", "io-util", "rt"] }
-toml = "1.0.10"
+tempfile = "3.27.0"
+thiserror = "2.0.18"
+tokio = { version = "1.52.3", features = ["fs", "io-util", "rt"] }
+toml = "1.1.2"
 tower = "0.5.3"
 ureq = { version = "3.3.0", features = ["json"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
-workflow = { path = "crates/workflow", default-features = false }
 artifacts = { path = "crates/artifacts" }
-transport = { path = "crates/transport" }
 error = { path = "crates/error" }
 testkit = { path = "crates/testkit" }
+transport = { path = "crates/transport" }
+workflow = { path = "crates/workflow", default-features = false }
 
 omnia = "0.35.0"
+omnia-cursor = "0.28.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
+omnia-testkit = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
-omnia-cursor = "0.28.0"
-omnia-testkit = "0.35.0"
-
 [patch.crates-io]
-# omnia = { git = "https://github.com/augentic/omnia.git" }
-# omnia-guest = { git = "https://github.com/augentic/omnia.git" }
-# omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
-# omnia-host-macros = { git = "https://github.com/augentic/omnia.git"" }
-# omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
-# omnia-wasi-model = {git = "https://github.com/augentic/omnia.git" }
-# omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
+omnia = { git = "https://github.com/augentic/omnia.git" }
+omnia-cursor = { git = "https://github.com/augentic/backends.git" }
+omnia-guest = { git = "https://github.com/augentic/omnia.git" }
+omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 
-omnia = { path = "../omnia/crates/omnia" }
-omnia-guest = { path = "../omnia/crates/omnia-guest" }
-omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-omnia-host-macros = { path = "../omnia/crates/host-macros" }
-omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
-omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
-omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
-
-omnia-cursor = { path = "../backends/crates/cursor" }
-omnia-testkit = { path = "../omnia/crates/testkit" }
+# omnia = { path = "../omnia/crates/omnia" }
+# omnia-cursor = { path = "../backends/crates/cursor" }
+# omnia-guest = { path = "../omnia/crates/omnia-guest" }
+# omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+# omnia-host-macros = { path = "../omnia/crates/host-macros" }
+# omnia-testkit = { path = "../omnia/crates/testkit" }
+# omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
+# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+# omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }

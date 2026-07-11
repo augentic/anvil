@@ -3,7 +3,7 @@
 //!
 //! Project-context-free: the resolvers take the project directory from
 //! the input (defaulting to the provider anchor), so the verbs never
-//! load [`crate::handler::Ctx`].
+//! load `crate::handler::Ctx`.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::{Axis, Resolver};
+use super::{Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
 use crate::handler::{Anchor, Render};
 use crate::init::adapter_ref_from_value;
 
@@ -43,14 +43,7 @@ impl<P: Anchor + Resolver> Operation<P> for SourceResolve {
         let project_dir = project_dir(&input, context.provider);
         let resolved =
             context.provider.resolve_source(&adapter_ref_from_value(&input.value), &project_dir)?;
-        Ok(ResolveBody {
-            axis: Axis::Source.dir_segment(),
-            name: resolved.manifest.name.clone(),
-            version: resolved.manifest.version.to_string(),
-            resolved_path: resolved.origin.reference,
-            location: resolved.origin.label,
-            operations: resolved.manifest.operations().map(ToString::to_string).collect(),
-        })
+        Ok(ResolveBody::from(resolved))
     }
 }
 
@@ -69,14 +62,7 @@ impl<P: Anchor + Resolver> Operation<P> for TargetResolve {
         let project_dir = project_dir(&input, context.provider);
         let resolved =
             context.provider.resolve_target(&adapter_ref_from_value(&input.value), &project_dir)?;
-        Ok(ResolveBody {
-            axis: Axis::Target.dir_segment(),
-            name: resolved.manifest.name.clone(),
-            version: resolved.manifest.version.to_string(),
-            resolved_path: resolved.origin.reference,
-            location: resolved.origin.label,
-            operations: resolved.manifest.operations().map(ToString::to_string).collect(),
-        })
+        Ok(ResolveBody::from(resolved))
     }
 }
 
@@ -100,6 +86,50 @@ pub struct ResolveBody {
     pub location: String,
     /// The axis's closed operation set.
     pub operations: Vec<String>,
+}
+
+impl ResolveBody {
+    /// Shared envelope assembly for both axes; only the axis tag, the
+    /// manifest identity, and the closed operation set differ.
+    fn assemble(
+        axis: Axis, name: String, version: &semver::Version, origin: Origin,
+        operations: Vec<String>,
+    ) -> Self {
+        Self {
+            axis: axis.dir_segment(),
+            name,
+            version: version.to_string(),
+            resolved_path: origin.reference,
+            location: origin.label,
+            operations,
+        }
+    }
+}
+
+impl From<ResolvedSource> for ResolveBody {
+    fn from(resolved: ResolvedSource) -> Self {
+        let operations = resolved.manifest.operations().map(ToString::to_string).collect();
+        Self::assemble(
+            Axis::Source,
+            resolved.manifest.name,
+            &resolved.manifest.version,
+            resolved.origin,
+            operations,
+        )
+    }
+}
+
+impl From<ResolvedTarget> for ResolveBody {
+    fn from(resolved: ResolvedTarget) -> Self {
+        let operations = resolved.manifest.operations().map(ToString::to_string).collect();
+        Self::assemble(
+            Axis::Target,
+            resolved.manifest.name,
+            &resolved.manifest.version,
+            resolved.origin,
+            operations,
+        )
+    }
 }
 
 impl Render for ResolveBody {

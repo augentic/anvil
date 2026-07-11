@@ -129,7 +129,7 @@ impl<P: Anchor> Operation<P> for Transition {
             }
             .into());
         }
-        let slice_dir = cx.layout().slices_dir().join(&name);
+        let slice_dir = cx.layout().slice_dir(&name);
         let metadata = slice_actions::transition(&slice_dir, target, cx.now())?;
         Ok(TransitionBody {
             name,
@@ -201,7 +201,7 @@ impl<P: Anchor> Operation<P> for Drop {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let DropInput { name, reason } = input;
-        let slice_dir = cx.layout().slices_dir().join(&name);
+        let slice_dir = cx.layout().slice_dir(&name);
         let archive_dir = cx.layout().archive_dir();
         let (metadata, archive_path) =
             slice_actions::discard(&slice_dir, &archive_dir, reason.as_deref(), cx.now())?;

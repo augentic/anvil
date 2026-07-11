@@ -29,7 +29,7 @@ use error::Error;
 use serde_json::Value;
 
 pub use self::append::{append_batch, append_one};
-pub use self::emit::emit_best_effort;
+pub use self::emit::{bracket_best_effort, bracket_best_effort_sync, emit_best_effort};
 pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind, WIRE_EVENT_IDS};
 use crate::config::Layout;
 
@@ -116,6 +116,31 @@ pub fn read_recent<T>(
     .map_err(Error::Io)?;
     newest_first.reverse();
     Ok(newest_first)
+}
+
+/// Visit journal [`Event`]s newest-first until `visit` breaks or the
+/// head of the file is reached.
+///
+/// The backward tail reader bounds the bytes touched by how far back
+/// `visit` keeps scanning, so a fold that stops at a known boundary
+/// event (e.g. the execution projection's claim window) stays flat as
+/// the journal grows. Reader leniency matches [`read`]: blank and
+/// unparseable lines are skipped and a missing journal yields no
+/// visits.
+///
+/// # Errors
+///
+/// Propagates I/O failures other than a missing file.
+pub fn scan_recent(
+    layout: Layout<'_>, mut visit: impl FnMut(Event) -> std::ops::ControlFlow<()>,
+) -> Result<(), Error> {
+    for_each_line_rev(&path(layout), TAIL_CHUNK, |line| {
+        if line.trim().is_empty() {
+            return true;
+        }
+        serde_json::from_str::<Event>(line).map_or(true, |event| visit(event).is_continue())
+    })
+    .map_err(Error::Io)
 }
 
 /// Read events for `specify journal show`, in append (file) order.

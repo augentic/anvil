@@ -2,14 +2,15 @@
 //!
 //! The scaffold writes project-scoped state only — `.specify/`,
 //! `project.yaml`, `registry.yaml` (workspace mode), `.gitignore`
-//! lines, and the per-project derived component-mirror cache tenant.
-//! Everything the full `init` adds around it (hydration, deployment-
-//! manifest generation, `AGENTS.md` context generation, the workspace
-//! sync chain) awaits its in-guest implementation.
+//! lines, the per-project derived component-mirror cache tenant, and
+//! the generated `AGENTS.md` context (plus its `.specify/context.lock`
+//! sidecar) when `AGENTS.md` is absent. Everything the full `init`
+//! adds around it (hydration, deployment-manifest generation, the
+//! workspace sync chain) awaits its in-guest implementation.
 //!
 //! Unlike the project-scoped verbs, the scaffold runs *before* a
 //! project exists, so it anchors at the provider's raw
-//! [`Anchor::project_root`] instead of loading [`crate::handler::Ctx`].
+//! [`Anchor::project_root`] instead of loading `crate::handler::Ctx`.
 
 use std::io::Write;
 use std::path::Path;
@@ -99,6 +100,10 @@ fn canonical(p: &Path) -> String {
 /// Success envelope for the scaffold leg.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "wire DTO — each flag is a documented JSON field on the init envelope"
+)]
 pub struct ScaffoldBody {
     /// Display path of the written `project.yaml`.
     pub config_path: String,
@@ -114,6 +119,15 @@ pub struct ScaffoldBody {
     pub specify_version: String,
     /// Whether a wasm-pkg config was written.
     pub wasm_pkg_config_written: bool,
+    /// `true` when this run generated root `AGENTS.md` and
+    /// `.specify/context.lock`.
+    pub context_generated: bool,
+    /// `true` when context generation was skipped.
+    pub context_skipped: bool,
+    /// Why context generation was skipped (`existing-agents-md` /
+    /// `workspace-clone`); absent when it ran.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_skip_reason: Option<&'static str>,
 }
 
 impl From<&InitResult> for ScaffoldBody {
@@ -126,6 +140,9 @@ impl From<&InitResult> for ScaffoldBody {
             scaffolded_rule_keys: result.scaffolded_rule_keys.clone(),
             specify_version: result.specify_version.clone(),
             wasm_pkg_config_written: result.wasm_pkg_config_written,
+            context_generated: result.context_skip_reason.is_none(),
+            context_skipped: result.context_skip_reason.is_some(),
+            context_skip_reason: result.context_skip_reason.map(super::ContextSkip::as_str),
         }
     }
 }
@@ -140,6 +157,9 @@ impl Render for ScaffoldBody {
         writeln!(w, "  adapter: {}", self.adapter_name)?;
         writeln!(w, "  config: {}", self.config_path)?;
         writeln!(w, "  specify: {}", self.specify_version)?;
+        if self.context_skip_reason == Some("existing-agents-md") {
+            writeln!(w, "AGENTS.md already present; skipping context generate")?;
+        }
         Ok(())
     }
 }

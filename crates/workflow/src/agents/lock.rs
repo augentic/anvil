@@ -1,7 +1,5 @@
 //! YAML sidecar for init-time AGENTS.md generation fingerprints.
 
-#[cfg(test)]
-use std::collections::BTreeMap;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -141,104 +139,6 @@ fn validation_error(rule_id: &'static str, detail: String) -> Error {
     Error::validation_failed(rule_id, "context.lock must be a supported context lock file", detail)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct InputDiff {
-        pub changed: Vec<String>,
-        pub added: Vec<String>,
-        pub removed: Vec<String>,
-    }
-
-    pub fn diff_inputs(expected: &[Input], actual: &[Input]) -> InputDiff {
-        let expected_by_path = inputs_by_path(expected);
-        let actual_by_path = inputs_by_path(actual);
-
-        let changed = expected_by_path
-            .iter()
-            .filter_map(|(path, expected_sha)| {
-                actual_by_path
-                    .get(path)
-                    .filter(|actual_sha| *actual_sha != expected_sha)
-                    .map(|_actual_sha| path.clone())
-            })
-            .collect();
-        let added = actual_by_path
-            .keys()
-            .filter(|path| !expected_by_path.contains_key(*path))
-            .cloned()
-            .collect();
-        let removed = expected_by_path
-            .keys()
-            .filter(|path| !actual_by_path.contains_key(*path))
-            .cloned()
-            .collect();
-
-        InputDiff {
-            changed,
-            added,
-            removed,
-        }
-    }
-
-    fn inputs_by_path(inputs: &[Input]) -> BTreeMap<String, String> {
-        inputs.iter().map(|input| (input.path.clone(), input.sha256.clone())).collect()
-    }
-
-    fn input(path: &str, sha256: &str) -> Input {
-        Input {
-            path: path.to_string(),
-            sha256: sha256.to_string(),
-        }
-    }
-
-    // The public `load` / `save` codec (cold-start `None`, save/load
-    // round-trip, snake_case serialisation) lives in
-    // `crates/workflow/tests/agents_lock.rs`. What stays here exercises code
-    // no public input reaches: the test-only `diff_inputs` helper, and the
-    // version gate's forward-incompatible / unsupported-older / malformed
-    // shapes (a normal `save` only ever writes the current version).
-    #[test]
-    fn input_diff_sorts_by_path() {
-        let expected = vec![input("a.txt", "old"), input("b.txt", "same"), input("d.txt", "gone")];
-        let actual = vec![input("a.txt", "new"), input("b.txt", "same"), input("c.txt", "added")];
-
-        let diff = diff_inputs(&expected, &actual);
-
-        assert_eq!(diff.changed, vec!["a.txt"]);
-        assert_eq!(diff.added, vec!["c.txt"]);
-        assert_eq!(diff.removed, vec!["d.txt"]);
-    }
-
-    // The version gate distinguishes three failure shapes: a future
-    // version (forward-incompatible), an unsupported older version, and
-    // syntactically broken YAML. Each maps to its own closed rule id so
-    // the operator gets an actionable message.
-    #[test]
-    fn load_version_gate() {
-        let dir = tempfile::tempdir().expect("tempdir");
-
-        let too_new = dir.path().join("new.lock");
-        fs::write(&too_new, "version: 2\n").expect("write");
-        assert!(
-            matches!(load(&too_new), Err(Error::Validation { code, .. }) if code == "context-lock-version-too-new"),
-            "future version must be rejected with its own code"
-        );
-
-        let zero = dir.path().join("zero.lock");
-        fs::write(&zero, "version: 0\n").expect("write");
-        assert!(
-            matches!(load(&zero), Err(Error::Validation { code, .. }) if code == "context-lock-malformed"),
-            "an unsupported lower version is malformed"
-        );
-
-        let garbage = dir.path().join("garbage.lock");
-        fs::write(&garbage, ": not yaml :\n").expect("write");
-        assert!(
-            matches!(load(&garbage), Err(Error::Validation { code, .. }) if code == "context-lock-malformed"),
-            "unparseable YAML is malformed"
-        );
-    }
-}
+// The `load` / `save` codec — cold-start `None`, the round-trip,
+// snake_case serialisation, and the version gate's failure shapes — is
+// exercised through the public API in `crates/workflow/tests/agents_lock.rs`.

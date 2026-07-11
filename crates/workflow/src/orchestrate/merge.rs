@@ -43,47 +43,62 @@ pub struct MergeOutcome {
 ///
 /// # Errors
 ///
+/// - `plan-entry-not-found` / `slice-merge-entry-not-in-progress` from
+///   the completion preflight, raised **before** any baseline write —
+///   a plan-owned merge only runs for an `in-progress` entry (skipped
+///   when no `plan.yaml` exists, matching native standalone merges).
 /// - propagates the `lifecycle` gate, validator, and apply failures
 ///   from [`slice_merge::commit`].
-/// - `plan-entry-not-found` / transition failures from the `done`
-///   stamp (skipped silently when no `plan.yaml` exists, matching
-///   native standalone merges).
 pub fn merge(
     layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
-    journal::emit_best_effort(
+    preflight_completion(layout, slice)?;
+    journal::bracket_best_effort_sync(
         layout,
         now,
+        "slice.merge",
         EventKind::SliceMergeStarted {
             slice_name: slice.into(),
         },
-        "slice.merge",
-    );
-    match commit_run(layout, now, slice, allow_composition_replace) {
-        Ok(outcome) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceMergeSucceeded {
-                    slice_name: slice.into(),
-                },
-                "slice.merge",
-            );
-            Ok(outcome)
-        }
-        Err(err) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceMergeFailed {
-                    slice_name: slice.into(),
-                    reason: err.variant_str().into_owned(),
-                },
-                "slice.merge",
-            );
-            Err(err)
-        }
+        || commit_run(layout, now, slice, allow_composition_replace),
+        |_| EventKind::SliceMergeSucceeded {
+            slice_name: slice.into(),
+        },
+        |err| EventKind::SliceMergeFailed {
+            slice_name: slice.into(),
+            reason: err.variant_str().into_owned(),
+        },
+    )
+}
+
+/// Read-only completion preflight, run before the `slice.merge.*`
+/// bracket and any baseline write: a plan-owned merge must be able to
+/// stamp its entry `done` (`in-progress → done` is the only legal
+/// edge), so an absent or unclaimed entry refuses here instead of
+/// failing after the baseline and archive have already been mutated.
+/// Standalone merges (no `plan.yaml`) skip the gate entirely.
+fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
+    if !layout.plan_path().exists() {
+        return Ok(());
     }
+    let plan = Plan::load(&layout.plan_path())?;
+    let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
+        return Err(Error::Diag {
+            code: "plan-entry-not-found",
+            detail: format!("no slice named '{slice}' in plan"),
+        });
+    };
+    if entry.status != Status::InProgress {
+        return Err(Error::validation_failed(
+            "slice-merge-entry-not-in-progress",
+            "a plan-owned merge stamps its entry `done` from `in-progress`",
+            format!(
+                "plan entry `{slice}` is `{}`; claim it with `specify plan next` before merging",
+                entry.status
+            ),
+        ));
+    }
+    Ok(())
 }
 
 /// Validator + apply core: commit the deltas, journal the skipped git
@@ -93,7 +108,7 @@ pub fn merge(
 fn commit_run(
     layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
-    let slice_dir = layout.slices_dir().join(slice);
+    let slice_dir = layout.slice_dir(slice);
     let archive_dir = layout.archive_dir();
     let classes = artifact_classes(layout.project_dir(), &slice_dir);
 
@@ -159,18 +174,14 @@ fn emit_archive_created(layout: Layout<'_>, now: Timestamp, slice: &str, merged:
 
 /// workflow §Workflow: the merge step is the sole writer of per-entry
 /// `done`. Standalone merges without `plan.yaml` skip this step
-/// silently, matching the native verb.
+/// silently, matching the native verb. [`preflight_completion`]
+/// guarantees the entry exists and is `in-progress` before any merge
+/// write; `Plan::transition` re-checks the edge on the re-read state.
 fn stamp_plan_entry_done(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     if !layout.plan_path().exists() {
         return Ok(());
     }
     with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
-        if !plan.entries.iter().any(|e| e.name == slice) {
-            return Err(Error::Diag {
-                code: "plan-entry-not-found",
-                detail: format!("no slice named '{slice}' in plan"),
-            });
-        }
         plan.transition(slice, Status::Done)?;
         Ok(Mutation::changed(()))
     })?;

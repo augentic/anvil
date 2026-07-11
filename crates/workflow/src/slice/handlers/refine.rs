@@ -35,16 +35,9 @@ impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Re
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let outcome = orchestrate::refine_breakout(
-            context.provider,
-            context.provider,
-            context.provider,
-            context.provider,
-            cx.layout(),
-            cx.now(),
-            &input.name,
-        )
-        .await?;
+        let caps = orchestrate::Capabilities::provider(context.provider);
+        let outcome =
+            orchestrate::refine_breakout(caps, cx.layout(), cx.now(), &input.name).await?;
         Ok(RefineBody {
             slice: outcome.slice,
             artifacts: outcome.artifacts,

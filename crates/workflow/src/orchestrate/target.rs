@@ -5,10 +5,9 @@ use std::path::Path;
 use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
-use serde::Serialize;
 
 use super::{seam_failure, target_adapter_id};
-use crate::adapter::BuildInputDeclaration;
+use crate::adapter::TargetAdapter;
 use crate::config::Layout;
 use crate::init::adapter_ref_from_value;
 use crate::journal::{self, EventKind};
@@ -45,13 +44,16 @@ pub struct BuildOutcome {
 /// `Refined → Built` transition. The UI-surface coherence judgement
 /// lives in the target adapter's own guest.
 ///
-/// `manifest_inputs` is the bound target's declared build-inputs list
-/// (empty when the target declares none); `tree` names the snapshot
-/// the build applies against — both are caller-resolved by the guest
-/// shim.
+/// `adapter` is the caller-resolved bound target adapter — its
+/// declared `inputs[]` assemble the request, and its name must match
+/// the slice's recorded `metadata.yaml` target so the declared inputs
+/// and the seam dispatch can never resolve from different adapters.
+/// `tree` names the snapshot the build applies against.
 ///
 /// # Errors
 ///
+/// - `target-build-adapter-mismatch` when the slice's recorded target
+///   names a different adapter than `adapter`.
 /// - propagates `metadata.yaml` load and request assembly/validation
 ///   failures (`target-build-input-missing`,
 ///   `target-build-request-schema`).
@@ -63,13 +65,25 @@ pub struct BuildOutcome {
 ///   `lifecycle` gate error from the finalize tail.
 pub async fn build(
     seam: &impl TargetSeam, layout: Layout<'_>, now: Timestamp, slice: &str,
-    manifest_inputs: &[BuildInputDeclaration], tree: WorkingTree,
+    adapter: &TargetAdapter, tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
-    let slice_dir = layout.slices_dir().join(slice);
+    let slice_dir = layout.slice_dir(slice);
     let metadata = SliceMetadata::load(&slice_dir)?;
     let target_name = adapter_ref_from_value(&metadata.target).name;
+    if target_name != adapter.name {
+        return Err(Error::validation_failed(
+            "target-build-adapter-mismatch",
+            "the slice's recorded target names the resolved build adapter",
+            format!(
+                "slice `{slice}` records target `{}` but the build resolved adapter `{}`; align \
+                 the project's declared adapter with the slice (or re-create the slice) before \
+                 building",
+                metadata.target, adapter.name
+            ),
+        ));
+    }
 
-    let request = assemble_and_write_request(layout, slice, &slice_dir, manifest_inputs)?;
+    let request = assemble_and_write_request(layout, slice, &slice_dir, &adapter.inputs)?;
 
     journal::emit_best_effort(
         layout,
@@ -84,41 +98,23 @@ pub async fn build(
     // The `slice.build.*` pair brackets the dispatch *and* the finalize
     // tail: the guest has no prepare/finalize seam for an agent to sit
     // between, so `started` frames the whole operation.
-    journal::emit_best_effort(
+    journal::bracket_best_effort(
         layout,
         now,
+        "slice.build",
         EventKind::SliceBuildStarted {
             slice_name: slice.into(),
         },
-        "slice.build",
-    );
-    match dispatch_and_finalize(seam, layout, now, slice, &slice_dir, &target_name, &request, tree)
-        .await
-    {
-        Ok(outcome) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceBuildSucceeded {
-                    slice_name: slice.into(),
-                },
-                "slice.build",
-            );
-            Ok(outcome)
-        }
-        Err(err) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceBuildFailed {
-                    slice_name: slice.into(),
-                    reason: err.variant_str().into_owned(),
-                },
-                "slice.build",
-            );
-            Err(err)
-        }
-    }
+        dispatch_and_finalize(seam, layout, now, slice, &slice_dir, &target_name, &request, tree),
+        |_| EventKind::SliceBuildSucceeded {
+            slice_name: slice.into(),
+        },
+        |err| EventKind::SliceBuildFailed {
+            slice_name: slice.into(),
+            reason: err.variant_str().into_owned(),
+        },
+    )
+    .await
 }
 
 /// Dispatch `seam.build` and run the native finalize tail over the
@@ -139,7 +135,7 @@ async fn dispatch_and_finalize(
     // Persist + schema-gate the report before anything acts on it, so
     // the on-disk `build/report.yaml` matches what the tail validated
     // (parity with the native finalize reading the agent's file).
-    let yaml = trailing_newline_yaml(&report)?;
+    let yaml = crate::fs::yaml_document(&report)?;
     validate_build_report_json(&yaml)?;
     bytes_write(&slice_dir.join("build").join("report.yaml"), yaml.as_bytes())?;
 
@@ -179,10 +175,11 @@ async fn dispatch_and_finalize(
 /// `.specify/slices/<slice>/build/request.yaml` — the native prepare
 /// leg verbatim, minus the shell hooks.
 fn assemble_and_write_request(
-    layout: Layout<'_>, slice: &str, slice_dir: &Path, manifest_inputs: &[BuildInputDeclaration],
+    layout: Layout<'_>, slice: &str, slice_dir: &Path,
+    manifest_inputs: &[crate::adapter::BuildInputDeclaration],
 ) -> Result<BuildRequest, Error> {
     let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir())?;
-    let yaml = trailing_newline_yaml(&request)?;
+    let yaml = crate::fs::yaml_document(&request)?;
     validate_build_request_json(&yaml)?;
 
     let build_dir = slice_dir.join("build");
@@ -214,13 +211,4 @@ fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
 /// Read one slice-tree artifact body.
 fn read_artifact(root: &Path, relative: &str) -> Result<String, Error> {
     crate::fs::read_text(&root.join(relative))
-}
-
-/// Serialise to a trailing-newlined YAML document.
-fn trailing_newline_yaml<T: Serialize>(value: &T) -> Result<String, Error> {
-    let mut content = serde_saphyr::to_string(value)?;
-    if !content.ends_with('\n') {
-        content.push('\n');
-    }
-    Ok(content)
 }

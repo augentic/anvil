@@ -1,27 +1,23 @@
-//! The status projection kernel: plan entries + slice metadata +
-//! journal markers → one [`StatusBody`].
-
-use std::path::PathBuf;
+//! The status projection: plan entries + the shared execution-state
+//! kernel → one [`StatusBody`].
 
 use error::Error;
 
+use super::super::execution::{JournalOverlay, Resolution, resolve_entry};
 use super::super::model::{Entry, Lifecycle, Plan, Status};
-use super::marker::{Marker, newest_marker};
-use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason};
+use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
-use crate::slice::{LifecycleStatus, SliceMetadata};
 
 /// Project the read-only `specify plan status` body.
 ///
 /// Selection: the active `in-progress` entry, else the next eligible
 /// `pending` entry (what `plan next` would claim), else `drained` /
-/// `stop stuck`. For the active entry the journal tail overlays
-/// failure classification — the newest marker among that entry's
-/// `plan.entry.advanced` / `plan.transition.undone` events and the
-/// slice's phase-terminal events decides whether the awaited phase
-/// last failed. Pre-claim candidates skip the overlay (nothing has
-/// run under the current claim; stale same-name events from earlier
-/// plans must not classify).
+/// `stop stuck`. The per-entry decision — slot-aware slice lifecycle
+/// plus (for the active entry) the folded claim-window journal facts —
+/// is the shared [`resolve_entry`] execution kernel; pre-claim
+/// candidates skip the journal overlay (nothing has run under the
+/// current claim; stale same-name events from earlier plans must not
+/// classify).
 ///
 /// `layout` resolves the plan root and the work root: an entry bound
 /// to a materialised workspace slot reads that slot's slice metadata
@@ -53,77 +49,6 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         },
     };
     Ok(assemble(plan, counts, active, resolution))
-}
-
-/// Whether the journal failure overlay applies to the candidate entry.
-/// Only the active `in-progress` entry carries a claim window
-/// (`plan.entry.advanced`) that scopes phase-terminal events to the
-/// current plan.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum JournalOverlay {
-    Apply,
-    Skip,
-}
-
-/// Intermediate projection outcome for one candidate entry.
-struct Resolution {
-    action: NextActionKind,
-    slice: Option<String>,
-    project: Option<String>,
-    last_completed: Option<LoopStep>,
-    stop: Option<StopBody>,
-}
-
-impl Resolution {
-    const fn stop(reason: StopReason) -> Self {
-        Self {
-            action: NextActionKind::Stop,
-            slice: None,
-            project: None,
-            last_completed: None,
-            stop: Some(StopBody {
-                reason,
-                detail: None,
-                hint: reason.hint(),
-            }),
-        }
-    }
-
-    const fn drained() -> Self {
-        Self {
-            action: NextActionKind::Drained,
-            slice: None,
-            project: None,
-            last_completed: None,
-            stop: None,
-        }
-    }
-
-    fn phase(action: NextActionKind, entry: &Entry, last_completed: Option<LoopStep>) -> Self {
-        Self {
-            action,
-            slice: Some(entry.name.to_string()),
-            project: entry.project.clone(),
-            last_completed,
-            stop: None,
-        }
-    }
-
-    fn stop_for(
-        reason: StopReason, detail: Option<String>, entry: &Entry, last_completed: Option<LoopStep>,
-    ) -> Self {
-        Self {
-            action: NextActionKind::Stop,
-            slice: Some(entry.name.to_string()),
-            project: entry.project.clone(),
-            last_completed,
-            stop: Some(StopBody {
-                reason,
-                detail,
-                hint: reason.hint(),
-            }),
-        }
-    }
 }
 
 fn count(plan: &Plan, status: Status) -> usize {
@@ -200,94 +125,4 @@ fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }
-}
-
-/// Dispatch one candidate entry: slot-aware slice lifecycle first,
-/// then (for the active entry) the journal failure overlay.
-fn resolve_entry(
-    plan: &Plan, entry: &Entry, layout: Layout<'_>, overlay: JournalOverlay,
-) -> Result<Resolution, Error> {
-    let work_root = resolve_work_root(layout, entry);
-    let work_layout = Layout::new(&work_root);
-    let slice_dir = work_layout.slices_dir().join(entry.name.as_str());
-
-    let lifecycle = match SliceMetadata::load(&slice_dir) {
-        Ok(metadata) => Some(metadata.status),
-        Err(Error::ArtifactNotFound { .. }) => None,
-        Err(err) => return Err(err),
-    };
-
-    let marker = match overlay {
-        JournalOverlay::Apply => newest_marker(work_layout, &plan.name, &entry.name)?,
-        JournalOverlay::Skip => None,
-    };
-
-    // A merge that completed without the entry's `done` stamp is a torn
-    // state whatever the slice tree looks like (the directory is
-    // archived on merge).
-    if matches!(marker, Some(Marker::MergeSucceeded)) {
-        return Ok(Resolution::stop_for(
-            StopReason::MergeIncomplete,
-            None,
-            entry,
-            Some(LoopStep::Merge),
-        ));
-    }
-
-    // `last-completed`: the slice lifecycle is the record of the
-    // most recent completed step.
-    let last_completed = match lifecycle {
-        None | Some(LifecycleStatus::Refining | LifecycleStatus::Dropped) => None,
-        Some(LifecycleStatus::Refined) => Some(LoopStep::Refine),
-        Some(LifecycleStatus::Built) => Some(LoopStep::Build),
-        Some(LifecycleStatus::Merged) => Some(LoopStep::Merge),
-    };
-
-    let awaited = match lifecycle {
-        None | Some(LifecycleStatus::Refining) => NextActionKind::Refine,
-        Some(LifecycleStatus::Refined) => NextActionKind::Build,
-        Some(LifecycleStatus::Built) => NextActionKind::Merge,
-        Some(LifecycleStatus::Dropped) => {
-            return Ok(Resolution::stop_for(StopReason::SliceDropped, None, entry, None));
-        }
-        Some(LifecycleStatus::Merged) => {
-            return Ok(Resolution::stop_for(
-                StopReason::MergeIncomplete,
-                None,
-                entry,
-                last_completed,
-            ));
-        }
-    };
-
-    // Failure overlay: stop only when the newest marker is a failure of
-    // the phase the lifecycle is awaiting. A failure of any other phase
-    // means the operator already moved the slice past it.
-    if let Some(Marker::PhaseFailed { phase, reason }) = marker
-        && phase == awaited
-    {
-        let stop = match awaited {
-            NextActionKind::Refine => StopReason::RefineFailed,
-            NextActionKind::Build => StopReason::BuildFailed,
-            _ => StopReason::MergeConflict,
-        };
-        return Ok(Resolution::stop_for(stop, Some(reason), entry, last_completed));
-    }
-
-    Ok(Resolution::phase(awaited, entry, last_completed))
-}
-
-/// Work root for an entry: the materialised workspace slot
-/// (`<plan-root>/workspace/<project>/`) when the entry is
-/// project-bound and the slot exists, else the project root. Mirrors
-/// the workspace routing under which phase work wrote the slice tree
-/// and journal.
-fn resolve_work_root(layout: Layout<'_>, entry: &Entry) -> PathBuf {
-    if let Some(project) = &entry.project {
-        let slot = layout.project_dir().join("workspace").join(project);
-        if slot.is_dir() {
-            return slot;
-        }
-    }
-    layout.project_dir().to_path_buf()
 }

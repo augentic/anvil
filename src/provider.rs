@@ -35,8 +35,7 @@ use workflow::adapter::{
     Resolver,
 };
 use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
-use workflow::slice::build::wire::BUILD_VERSION;
-use workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
+use workflow::slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::specify::adapter::{source, target, types};
 

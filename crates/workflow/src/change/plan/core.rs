@@ -6,11 +6,13 @@ pub mod amend;
 pub mod archive;
 pub mod authority_override;
 pub mod create;
+mod execution;
 pub mod io;
 pub mod model;
 pub mod next;
 pub mod propose;
 pub mod remove;
+pub mod scaffold;
 pub mod status;
 pub mod transitions;
 pub mod validate;
@@ -30,6 +32,7 @@ pub use propose::{
     ProposalResponse, ProposeOutcome, ResponseMember, ResponseSlice, apply_greenfield_seed,
     build_request, resolve_target, resolve_topology,
 };
+pub use scaffold::scaffold;
 pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,
     plan_status_body,

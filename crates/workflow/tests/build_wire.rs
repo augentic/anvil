@@ -1,6 +1,22 @@
-use serde_json::{Value, json};
+//! Integration coverage for the target build wire DTOs re-exported at
+//! `workflow::slice`: the `BuildRequest` / `BuildReport` serde envelope
+//! and the output-existence gate (`enforce_report_outputs_exist`).
+//!
+//! The success-with-blocking gate is asserted end-to-end by the
+//! build-finalize blocking-finding test in the binary suite, and the
+//! UI-surface coherence check moved in-guest (the vectis core's report
+//! gate); the output-existence gate has no CLI fixture
+//! (`target-build-output-missing` never surfaces e2e), so its matrix
+//! lives here against the public gate.
 
-use super::*;
+use std::path::Path;
+
+use error::Error;
+use serde_json::{Value, json};
+use workflow::Platform;
+use workflow::slice::{
+    BUILD_VERSION, BuildReport, BuildRequest, UiSurface, enforce_report_outputs_exist,
+};
 
 fn report(status: &str, findings: &[Value]) -> BuildReport {
     serde_json::from_value(json!({
@@ -37,13 +53,6 @@ fn report_with_ui_surface(screens: u32) -> BuildReport {
     }))
     .expect("report with ui-surface deserialises")
 }
-
-// The success-with-blocking gate is asserted end-to-end by
-// `tests/slice.rs` (the build-finalize blocking-finding test), so its
-// unit duplicate was deleted. The UI-surface coherence check moved in-guest
-// (the vectis core's report gate), so its unit tests died with it. The
-// output-existence gate has no CLI fixture (`target-build-output-missing`
-// never surfaces e2e), so it stays as the two kept tests below.
 
 /// The `BuildRequest` / `BuildReport` serde envelope: the optional `ui-surface`
 /// claim, the `project-dir` request round-trip, `deny_unknown_fields`

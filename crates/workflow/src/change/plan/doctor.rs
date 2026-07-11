@@ -63,8 +63,7 @@ pub struct CloneSignature {
 /// `slices_dir` and `registry` are forwarded to `Plan::validate` so
 /// the validate-level findings are bit-identical to those emitted by
 /// `specify plan validate`. `project_dir` is consulted by the
-/// stale-workspace-clone check; pass `None` to skip it
-/// (`Plan::doctor_pure` does the same — see the unit tests).
+/// stale-workspace-clone check; pass `None` to skip it.
 ///
 /// Every check already emits the neutral [`Diagnostic`] currency, so
 /// the validate-level findings pass through unchanged and the health
@@ -89,4 +88,68 @@ pub fn doctor(
     }
 
     out
+}
+
+/// Claim-time gate subset: the structural `Plan::validate` findings
+/// plus dependency cycles — what `plan next` (and the execute loop's
+/// per-phase claim) must be clean of before advancing an entry.
+/// Deliberately registry-free: claiming works in registry-less projects
+/// and must stay read-only. Cycle findings always block, so callers
+/// gate on `blocking_present` over the returned set.
+#[must_use]
+pub fn claim_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
+    let mut out = plan.validate(Some(slices_dir), None);
+    out.extend(detect(&plan.entries));
+    out
+}
+
+/// Author-time gate: the full [`doctor`] sweep against the freshly
+/// written plan — the post-write check the guest `plan author`
+/// orchestration runs before exiting at `pending`. Identical to the
+/// `plan validate` findings minus the verb-only registry-shape and
+/// topology-cache staleness surfaces (which need the verb's provider).
+///
+/// # Errors
+///
+/// Propagates the [`Registry`] load failure — an unreadable registry
+/// aborts authoring rather than silently skipping the cross-registry
+/// checks.
+pub fn author_gate(
+    plan: &Plan, slices_dir: &Path, project_dir: &Path,
+) -> error::Result<Vec<Diagnostic>> {
+    let registry = Registry::load(project_dir)?;
+    Ok(doctor(plan, Some(slices_dir), registry.as_ref(), Some(project_dir)))
+}
+
+/// The complete `plan validate` report: the [`doctor`] sweep plus the
+/// verb-only surfaces — the `registry-shape` finding when the registry
+/// fails to load, and the workspace topology-cache staleness findings
+/// when it loads. Finding order is stable: doctor findings first, then
+/// `registry-shape`, then staleness.
+pub fn full_report(
+    resolver: &impl crate::adapter::Resolver, plan: &Plan, layout: crate::config::Layout<'_>,
+) -> Vec<Diagnostic> {
+    use schema::diagnostics::Severity;
+
+    use crate::change::plan::core::validate::plan_finding;
+
+    let project_dir = layout.project_dir();
+    let (registry, registry_err) = match Registry::load(project_dir) {
+        Ok(reg) => (reg, None),
+        Err(err) => (None, Some(err)),
+    };
+    let mut results =
+        doctor(plan, Some(&layout.slices_dir()), registry.as_ref(), Some(project_dir));
+    if let Some(err) = registry_err {
+        results.push(plan_finding("registry-shape", Severity::Important, err.to_string(), None));
+    }
+    if let Some(reg) = &registry {
+        results.extend(crate::registry::cache_staleness(
+            resolver,
+            reg,
+            &project_dir.join("workspace"),
+            &layout.topology_lock_path(),
+        ));
+    }
+    results
 }

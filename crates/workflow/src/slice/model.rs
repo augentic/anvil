@@ -17,11 +17,11 @@ use artifacts::evidence::{AuthorityClass, ClaimKind};
 use artifacts::spec::provenance::RequirementStatus;
 use error::{Error, Result};
 use jiff::Timestamp;
-use schema::{ValidationStatus, join_details};
+use schema::{SLICE_MODEL_JSON_SCHEMA, ValidationStatus, join_details, validate_value_cached};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::schema_gate::{SLICE_MODEL_JSON_SCHEMA, evidence_yaml_paths, validate_value_cached};
+use crate::schema_gate::evidence_yaml_paths;
 use crate::slice::provenance::{
     ContributingClaim, ProvenanceIndex, ProvenanceRequirement, ProvenanceResolution,
     ResolutionTrace,

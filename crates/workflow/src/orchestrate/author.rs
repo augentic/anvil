@@ -33,12 +33,12 @@ use super::SurveyedSource;
 use crate::adapter::Resolver;
 use crate::change::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
-    build_request, plan_doctor, resolve_topology,
+    author_gate, build_request, resolve_topology,
 };
 use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
 use crate::judgment::propose::{self, GateContext};
-use crate::name::{SliceName, is_kebab};
+use crate::name::SliceName;
 use crate::registry::Registry;
 use crate::seam::SourceSeam;
 
@@ -79,10 +79,18 @@ pub struct AuthorOutcome {
 ///   once the repair budget is exhausted.
 /// - `plan-structural-errors` when the doctor sweep finds blocking
 ///   findings after the write.
-pub async fn author<P: Model, S: SourceSeam>(
-    model: &P, sources: &S, resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp,
-    name: &str, bindings: BTreeMap<String, SourceBinding>,
+pub async fn author<P: Model, S: SourceSeam, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, (), R>, layout: Layout<'_>, now: Timestamp, name: &str,
+    bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<AuthorOutcome, Error> {
+    // Authoring never dispatches the target seam — the bundle carries
+    // the unit placeholder (see `Capabilities::sans_targets`).
+    let super::Capabilities {
+        model,
+        sources,
+        resolver,
+        ..
+    } = caps;
     refuse_workspace(layout)?;
     scaffold(layout, name, bindings)?;
     let surveyed = super::survey_all(sources, layout, now).await?;
@@ -151,48 +159,32 @@ fn gate_hint(name: &str) -> String {
 
 /// Refuse workspace-routed plan authoring: the `/spec:plan` skill
 /// syncs workspace slots before surveying, and the guest collapse has
-/// no counterpart yet — mirroring the execute loop's refusal posture.
-/// (A fresh plan has no entries, so only the `workspace: true`
-/// discriminator applies here.)
+/// no counterpart yet — the shared [`super::routing`] classification
+/// with this operation's own refusal code.
 fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
-    let config = ProjectConfig::load(layout.project_dir())?;
-    if config.workspace {
-        return Err(Error::validation_failed(
-            "plan-author-workspace-unsupported",
-            "the guest plan-authoring collapse runs single-project plans only",
-            "the plan root is a workspace (`workspace: true` in project.yaml); workspace \
-             routing (slot sync) has no in-guest counterpart — author workspace plans through \
-             the native /spec:plan skill",
-        ));
-    }
-    Ok(())
+    let Some(subject) = super::routing::classify(layout, None)?.refusal_subject() else {
+        return Ok(());
+    };
+    Err(Error::validation_failed(
+        "plan-author-workspace-unsupported",
+        "the guest plan-authoring collapse runs single-project plans only",
+        format!(
+            "{subject}; workspace routing (slot sync) has no in-guest counterpart — author \
+             workspace plans through the native /spec:plan skill"
+        ),
+    ))
 }
 
-/// The `plan create` scaffold semantics: kebab name gate, overwrite
-/// refusal, `Plan::init` + atomic save. No `--auto-approve` and no
-/// `--authority-override` surface — Gate 1 stamping stays operator-only
-/// and override pre-seeding needs slice rows that do not exist yet.
+/// The `plan create` scaffold semantics via the shared
+/// [`crate::change::scaffold`] kernel, plus the immediate atomic save.
+/// No `--auto-approve` and no `--authority-override` surface — Gate 1
+/// stamping stays operator-only and override pre-seeding needs slice
+/// rows that do not exist yet.
 fn scaffold(
     layout: Layout<'_>, name: &str, bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<(), Error> {
-    if !is_kebab(name) {
-        return Err(Error::Diag {
-            code: "change-name-not-kebab",
-            detail: format!(
-                "change: name `{name}` must be kebab-case \
-                 (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens)"
-            ),
-        });
-    }
     let plan_path = layout.plan_path();
-    if plan_path.exists() {
-        return Err(Error::Diag {
-            code: "already-exists",
-            detail: format!("refusing to overwrite existing plan at {}", plan_path.display()),
-        });
-    }
-    let plan = Plan::init(name, bindings)?;
-    plan.save(&plan_path)
+    crate::change::scaffold(&plan_path, name, bindings)?.save(&plan_path)
 }
 
 /// Resolve the project topology the request embeds, minus the
@@ -254,17 +246,12 @@ fn discovery_preamble(name: &str, gate: &GateProse) -> String {
     )
 }
 
-/// The `plan validate` doctor sweep — minus the stdout report surface
-/// (the blocking decision and error code match the native verb).
+/// The post-write author gate — the doctor sweep minus the stdout
+/// report surface (the blocking decision and error code match the
+/// native verb).
 fn validate(layout: Layout<'_>) -> Result<(), Error> {
     let plan = Plan::load(&layout.plan_path())?;
-    let registry = Registry::load(layout.project_dir())?;
-    let findings = plan_doctor(
-        &plan,
-        Some(&layout.slices_dir()),
-        registry.as_ref(),
-        Some(layout.project_dir()),
-    );
+    let findings = author_gate(&plan, &layout.slices_dir(), layout.project_dir())?;
     if blocking_present(&findings) {
         return Err(Error::validation_failed(
             "plan-structural-errors",

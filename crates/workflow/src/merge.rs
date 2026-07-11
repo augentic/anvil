@@ -3,7 +3,6 @@
 //! [`slice::commit`] is the transactional multi-class merge + archive.
 
 mod artifact_class;
-pub mod clone_commit;
 pub mod composition;
 mod engine;
 pub mod slice;

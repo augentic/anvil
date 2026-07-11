@@ -1,9 +1,11 @@
 //! Integration coverage for the AGENTS.md context-lock sidecar codec
 //! (`workflow::agents::lock::{load, save}`): the cold-start read (missing →
-//! `None`), the save/load round-trip, and `snake_case` serialisation all run
-//! through the public codec. The version gate and the test-only `diff_inputs`
-//! helper keep their in-`src` unit tests (no public input reaches the latter).
+//! `None`), the save/load round-trip, `snake_case` serialisation, and the
+//! version gate's three failure shapes all run through the public codec.
 
+use std::fs;
+
+use error::Error;
 use workflow::agents::lock::{ContextLock, Fences, Input, load, save};
 
 fn input(path: &str, sha256: &str) -> Input {
@@ -55,4 +57,34 @@ fn save_load_round_trips() {
     let lock = sample_lock();
     save(&path, &lock).expect("save lock");
     assert_eq!(load(&path).expect("load lock"), Some(lock));
+}
+
+// The version gate distinguishes three failure shapes: a future
+// version (forward-incompatible), an unsupported older version, and
+// syntactically broken YAML. Each maps to its own closed rule id so
+// the operator gets an actionable message.
+#[test]
+fn load_version_gate() {
+    let dir = tempfile::tempdir().expect("tempdir");
+
+    let too_new = dir.path().join("new.lock");
+    fs::write(&too_new, "version: 2\n").expect("write");
+    assert!(
+        matches!(load(&too_new), Err(Error::Validation { code, .. }) if code == "context-lock-version-too-new"),
+        "future version must be rejected with its own code"
+    );
+
+    let zero = dir.path().join("zero.lock");
+    fs::write(&zero, "version: 0\n").expect("write");
+    assert!(
+        matches!(load(&zero), Err(Error::Validation { code, .. }) if code == "context-lock-malformed"),
+        "an unsupported lower version is malformed"
+    );
+
+    let garbage = dir.path().join("garbage.lock");
+    fs::write(&garbage, ": not yaml :\n").expect("write");
+    assert!(
+        matches!(load(&garbage), Err(Error::Validation { code, .. }) if code == "context-lock-malformed"),
+        "unparseable YAML is malformed"
+    );
 }

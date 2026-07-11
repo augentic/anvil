@@ -11,9 +11,8 @@ use schema::diagnostics::blocking_present;
 use serde::Serialize;
 
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
-use super::propose::{resolve_target, resolve_topology};
 use crate::adapter::Resolver;
-use crate::change::detect;
+use crate::change::claim_gate;
 use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
 
@@ -137,11 +136,7 @@ pub fn plan_next_body(
     resolver: &impl Resolver, plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig,
     project_dir: &Path,
 ) -> Result<NextBody, Error> {
-    let validate_results = plan.validate(Some(slices_dir), None);
-    if blocking_present(&validate_results) {
-        return Err(structural_errors());
-    }
-    if !detect(&plan.entries).is_empty() {
+    if blocking_present(&claim_gate(plan, slices_dir)) {
         return Err(structural_errors());
     }
 
@@ -164,10 +159,8 @@ pub fn plan_next_body(
             ..NextBody::default()
         },
         Some(entry) => {
-            let target = resolve_topology(resolver, config, project_dir)
-                .and_then(|topology| resolve_target(entry, &topology))
-                .ok()
-                .map(|t| t.to_string());
+            let target =
+                crate::target_policy::best_effort_next(resolver, config, project_dir, entry);
             NextBody {
                 next: Some(entry.name.to_string()),
                 project: entry.project.clone(),

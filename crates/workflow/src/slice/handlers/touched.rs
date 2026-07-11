@@ -47,7 +47,7 @@ impl<P: Anchor> Operation<P> for TouchedSpecs {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let TouchedSpecsInput { name, scan, set } = input;
-        let slice_dir = cx.layout().slices_dir().join(&name);
+        let slice_dir = cx.layout().slice_dir(&name);
 
         let entries = if !set.is_empty() {
             let v = parse_touched_spec_set(&set)?;

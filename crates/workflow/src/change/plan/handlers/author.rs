@@ -55,16 +55,8 @@ impl<P: Anchor + Model + Resolver + SourceSeam> Operation<P> for Author {
             intent,
         } = input;
         let sources = source_map(sources, intent)?;
-        let outcome = orchestrate::author(
-            context.provider,
-            context.provider,
-            context.provider,
-            cx.layout(),
-            cx.now(),
-            &name,
-            sources,
-        )
-        .await?;
+        let caps = orchestrate::Capabilities::provider(context.provider).sans_targets();
+        let outcome = orchestrate::author(caps, cx.layout(), cx.now(), &name, sources).await?;
         Ok(AuthorBody {
             plan: outcome.plan,
             lifecycle: "pending",

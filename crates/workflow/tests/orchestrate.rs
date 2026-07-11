@@ -383,15 +383,28 @@ fn tree() -> WorkingTree {
     }
 }
 
+/// The caller-resolved bound target adapter (no declared inputs) —
+/// name-matched to the staged slice's `omnia@1.0.0` metadata target.
+fn adapter() -> workflow::adapter::TargetAdapter {
+    workflow::adapter::TargetAdapter {
+        name: "omnia".to_string(),
+        version: workflow::adapter::dev_version(),
+        requires_specify: None,
+        inputs: vec![],
+        platforms: None,
+    }
+}
+
 #[tokio::test]
 async fn build_happy_path_runs_finalize_tail() {
     let project = Project::new();
     stage_refined_slice(&project);
 
     let seam = MockTargetSeam::scripted([], [Ok(success_report())]);
-    let outcome = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &[], tree())
-        .await
-        .expect("build succeeds");
+    let outcome =
+        orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &adapter(), tree())
+            .await
+            .expect("build succeeds");
     assert_eq!(outcome.slice, SLICE_NAME);
     assert_eq!(outcome.target, "omnia@1.0.0");
     assert_eq!(outcome.status, BuildStatus::Success);
@@ -457,7 +470,7 @@ async fn build_rejects_blocking_on_success() {
         ..success_report()
     };
     let seam = MockTargetSeam::scripted([], [Ok(report)]);
-    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &[], tree())
+    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &adapter(), tree())
         .await
         .expect_err("blocking finding on success is rejected");
     assert_eq!(err.variant_str(), "target-build-success-with-blocking-finding");
@@ -485,7 +498,7 @@ async fn build_rejects_missing_outputs() {
         ..success_report()
     };
     let seam = MockTargetSeam::scripted([], [Ok(report)]);
-    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &[], tree())
+    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &adapter(), tree())
         .await
         .expect_err("absent declared output is rejected");
     assert_eq!(err.variant_str(), "target-build-output-missing");
@@ -504,7 +517,7 @@ async fn build_rejects_failure_report() {
         ..success_report()
     };
     let seam = MockTargetSeam::scripted([], [Ok(report)]);
-    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &[], tree())
+    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &adapter(), tree())
         .await
         .expect_err("failure report is rejected");
     assert_eq!(err.variant_str(), "target-build-failed");
@@ -512,6 +525,29 @@ async fn build_rejects_failure_report() {
         project.journal_event_ids(),
         ["target.execution.agent", "slice.build.started", "slice.build.failed"]
     );
+}
+
+#[tokio::test]
+async fn build_rejects_adapter_mismatch() {
+    let project = Project::new();
+    stage_refined_slice(&project);
+
+    // The slice records `omnia@1.0.0`, but the caller resolved a
+    // different adapter — refused before any request assembly or
+    // dispatch, so the declared inputs can never come from a different
+    // adapter than the seam routing.
+    let mismatched = workflow::adapter::TargetAdapter {
+        name: "vectis".to_string(),
+        ..adapter()
+    };
+    let seam = MockTargetSeam::scripted([], []);
+    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &mismatched, tree())
+        .await
+        .expect_err("a mismatched adapter is rejected");
+    assert_eq!(err.variant_str(), "target-build-adapter-mismatch");
+    assert!(err.to_string().contains("omnia@1.0.0"), "{err}");
+    assert!(seam.calls().is_empty(), "no dispatch for a mismatched adapter");
+    assert!(!project.slice_dir().join("build").exists(), "no request persisted");
 }
 
 #[tokio::test]
@@ -524,7 +560,7 @@ async fn build_rejects_slice_mismatch() {
         ..success_report()
     };
     let seam = MockTargetSeam::scripted([], [Ok(report)]);
-    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &[], tree())
+    let err = orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &adapter(), tree())
         .await
         .expect_err("mismatched report slice is rejected");
     assert_eq!(err.variant_str(), "target-build-report-slice-mismatch");
@@ -609,6 +645,107 @@ async fn merge_without_plan_skips_done_stamp() {
     orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
         .expect("standalone merge succeeds");
     assert!(!project.root.join("plan.yaml").exists());
+}
+
+/// Assert the completion preflight refused before any irreversible
+/// work: no baseline write, no archive move, no journal events.
+fn assert_no_merge_side_effects(project: &Project) {
+    assert!(project.slice_dir().exists(), "slice tree must stay in place");
+    assert!(
+        !project.root.join(".specify/specs/login/spec.md").exists(),
+        "no baseline may be written"
+    );
+    assert!(
+        fs::read_dir(project.root.join(".specify/archive")).expect("readdir").next().is_none(),
+        "nothing may be archived"
+    );
+    assert_eq!(project.journal_event_ids(), Vec::<String>::new(), "no journal events");
+}
+
+#[tokio::test]
+async fn merge_refuses_unclaimed_entry_before_mutation() {
+    let project = Project::new();
+    project.seed_plan("name: demo\nslices:\n  - name: feature-x\n    status: pending\n");
+    stage_built_slice(&project);
+    let err = orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
+        .expect_err("a pending entry cannot merge");
+    assert_eq!(err.variant_str(), "slice-merge-entry-not-in-progress");
+    assert!(err.to_string().contains("specify plan next"), "{err}");
+    assert_no_merge_side_effects(&project);
+}
+
+#[tokio::test]
+async fn merge_refuses_done_entry_before_mutation() {
+    let project = Project::new();
+    project.seed_plan("name: demo\nslices:\n  - name: feature-x\n    status: done\n");
+    stage_built_slice(&project);
+    let err = orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
+        .expect_err("a done entry cannot re-merge");
+    assert_eq!(err.variant_str(), "slice-merge-entry-not-in-progress");
+    assert_no_merge_side_effects(&project);
+}
+
+#[tokio::test]
+async fn merge_refuses_missing_entry_before_mutation() {
+    let project = Project::new();
+    project.seed_plan("name: demo\nslices:\n  - name: other-slice\n    status: in-progress\n");
+    stage_built_slice(&project);
+    let err = orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
+        .expect_err("an unplanned slice cannot merge under a plan");
+    assert_eq!(err.variant_str(), "plan-entry-not-found");
+    assert_no_merge_side_effects(&project);
+}
+
+// ---------------------------------------------------------------------------
+// journal-write failure (best-effort bracket posture)
+// ---------------------------------------------------------------------------
+
+/// Make every journal append fail by occupying the journal path with a
+/// directory.
+fn sabotage_journal(project: &Project) {
+    fs::create_dir_all(project.root.join(".specify/journal.jsonl")).expect("sabotage journal");
+}
+
+#[tokio::test]
+async fn merge_survives_journal_write_failure() {
+    let project = Project::new();
+    project.seed_plan(MERGE_PLAN);
+    stage_built_slice(&project);
+    sabotage_journal(&project);
+
+    let outcome = orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
+        .expect("a journal hiccup must not fail a committed merge");
+    assert!(outcome.archive_path.is_dir(), "merge committed despite the journal failure");
+    let plan = fs::read_to_string(project.root.join("plan.yaml")).expect("read plan");
+    assert!(plan.contains("status: done"), "done stamped despite the journal failure: {plan}");
+
+    // The dropped events land in the recoverable sidecar.
+    let dropped = fs::read_to_string(project.root.join(".specify/journal.dropped"))
+        .expect("dropped sidecar written");
+    assert!(dropped.contains("slice.merge.started"), "{dropped}");
+    assert!(dropped.contains("slice.merge.succeeded"), "{dropped}");
+    assert!(dropped.contains("slice.archive.created"), "{dropped}");
+}
+
+#[tokio::test]
+async fn build_survives_journal_write_failure() {
+    let project = Project::new();
+    stage_refined_slice(&project);
+    sabotage_journal(&project);
+
+    let seam = MockTargetSeam::scripted([], [Ok(success_report())]);
+    let outcome =
+        orchestrate::build(&seam, project.layout(), now(), SLICE_NAME, &adapter(), tree())
+            .await
+            .expect("a journal hiccup must not fail a successful build");
+    assert_eq!(outcome.status, BuildStatus::Success);
+    let metadata = SliceMetadata::load(&project.slice_dir()).expect("reload metadata");
+    assert_eq!(metadata.status, LifecycleStatus::Built, "transition landed");
+
+    let dropped = fs::read_to_string(project.root.join(".specify/journal.dropped"))
+        .expect("dropped sidecar written");
+    assert!(dropped.contains("slice.build.started"), "{dropped}");
+    assert!(dropped.contains("slice.build.succeeded"), "{dropped}");
 }
 
 // ---------------------------------------------------------------------------

@@ -24,8 +24,7 @@ use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource
 use workflow::adapter::metadata::{Metadata, Request as MetadataRequest};
 use workflow::adapter::{AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
 use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
-use workflow::slice::build::wire::BUILD_VERSION;
-use workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
+use workflow::slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::catalog;
 

@@ -26,6 +26,19 @@ fn now() -> Timestamp {
     "2026-01-02T03:04:05Z".parse().expect("fixed timestamp parses")
 }
 
+/// Bundle the four independent mocks into the orchestration
+/// capability context.
+const fn caps<'a, P, S, T, R>(
+    model: &'a P, sources: &'a S, targets: &'a T, resolver: &'a R,
+) -> orchestrate::Capabilities<'a, P, S, T, R> {
+    orchestrate::Capabilities {
+        model,
+        sources,
+        targets,
+        resolver,
+    }
+}
+
 /// A throw-away project with `.specify/project.yaml`, a stub `omnia`
 /// adapter component at the development probe (so topology / target
 /// resolution works), and a hermetic project cache.
@@ -256,13 +269,9 @@ async fn execute_drains_two_entry_plan() {
     );
 
     let outcome = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await
@@ -347,13 +356,9 @@ async fn execute_refuses_unapproved_plan() {
     let targets = MockTargetSeam::scripted([], []);
 
     let outcome = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await
@@ -392,13 +397,9 @@ async fn build_failure_stops_typed_entry_kept() {
     );
 
     let outcome = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await
@@ -436,13 +437,9 @@ async fn build_failure_stops_typed_entry_kept() {
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let outcome = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await
@@ -471,10 +468,7 @@ async fn refine_breakout_skips_entry_claim() {
     let targets = MockTargetSeam::scripted([Ok("Shape guidance.".to_string())], []);
 
     let outcome = orchestrate::refine_breakout(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
         "feature-x",
@@ -524,10 +518,7 @@ async fn refine_breakout_refuses_done_entry() {
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::refine_breakout(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
         "feature-x",
@@ -550,10 +541,7 @@ async fn refine_breakout_refuses_unknown_entry() {
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::refine_breakout(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
         "feature-z",
@@ -577,13 +565,9 @@ async fn workspace_routed_plan_refused() {
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await
@@ -668,10 +652,7 @@ async fn refine_and_standalone_validate_agree() {
     let targets = MockTargetSeam::scripted([Ok("Shape guidance.".to_string())], []);
 
     let refine_err = orchestrate::refine_breakout(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
         "feature-x",
@@ -751,13 +732,9 @@ async fn standalone_next_matches_execute_claim() {
     );
     let targets = MockTargetSeam::scripted([], []);
     let outcome = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         executed.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await
@@ -808,13 +785,9 @@ async fn held_marker_refused_and_named() {
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
     let err = orchestrate::execute(
-        &model,
-        &sources,
-        &targets,
-        &common::resolver(),
+        caps(&model, &sources, &targets, &common::resolver()),
         project.layout(),
         now(),
-        &[],
         &tree(),
     )
     .await

@@ -35,4 +35,18 @@ impl Error {
             Self::Core(err) | Self::Report { source: err, .. } => err,
         }
     }
+
+    /// Bundle a diagnostic report with a payload-free
+    /// [`error::Error::validation_failed`] failure — the gate verbs'
+    /// contract (findings on stdout, the `code`-keyed envelope on
+    /// stderr, exit 2).
+    #[must_use]
+    pub fn validation_report(
+        body: ReportBody, code: &'static str, rule: impl Into<String>, detail: impl Into<String>,
+    ) -> Self {
+        Self::Report {
+            body,
+            source: error::Error::validation_failed(code, rule, detail),
+        }
+    }
 }

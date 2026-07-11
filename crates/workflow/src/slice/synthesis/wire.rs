@@ -5,7 +5,7 @@
 //! wire is the **response**
 //! ([`SynthesisResponse`], `kind: response`), validated against
 //! `schemas/slice/synthesis.schema.json` by
-//! [`crate::schema_gate::validate_synthesis_json`] before the refine
+//! `crate::schema_gate::validate_synthesis_json` before the refine
 //! orchestration deserialises it here. The response carries the
 //! agent's [`crate::slice::model::SliceModel`]
 //! (kernel-owned and header fields omitted) plus the prose-only Markdown
@@ -58,7 +58,7 @@ pub enum SynthesisKind {
 ///
 /// Round-trips `schemas/slice/synthesis.schema.json`. The DTO is
 /// shape-only; the refine orchestration schema-gates the raw bytes via
-/// [`crate::schema_gate::validate_synthesis_json`] before deserialising here,
+/// `crate::schema_gate::validate_synthesis_json` before deserialising here,
 /// and the projection kernel re-derives every kernel-owned field.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]

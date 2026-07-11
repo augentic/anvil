@@ -11,6 +11,22 @@ use std::fs::DirEntry;
 use std::path::Path;
 
 use error::{Error, Result};
+use serde::Serialize;
+
+/// Serialise `value` to a YAML document with exactly one trailing
+/// newline — the shape every persisted `.yaml` artifact shares
+/// (Evidence, build request/report, decision front-matter).
+///
+/// # Errors
+///
+/// [`Error::YamlSer`] when serialisation fails.
+pub fn yaml_document<T: Serialize>(value: &T) -> Result<String> {
+    let mut yaml = serde_saphyr::to_string(value)?;
+    if !yaml.ends_with('\n') {
+        yaml.push('\n');
+    }
+    Ok(yaml)
+}
 
 /// Read `path` to a string, mapping the failure onto
 /// [`Error::Filesystem`] with `op: "read"`.

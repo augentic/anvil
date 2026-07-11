@@ -18,6 +18,6 @@ pub use plan::core::{
 pub(crate) use plan::core::{
     build_request, claim_next, drained_line, emit_authority_override_seed_events, entry_mut,
     mutate_authority_overrides, orphan_authority_override_keys, plan_finding, plan_status_body,
-    reject_duplicate_source_keys, reject_orphan_overrides, unknown_slice_err,
+    reject_duplicate_source_keys, reject_orphan_overrides, scaffold, unknown_slice_err,
 };
-pub(crate) use plan::doctor::{detect, doctor as plan_doctor};
+pub(crate) use plan::doctor::{author_gate, claim_gate, detect, full_report as plan_full_report};

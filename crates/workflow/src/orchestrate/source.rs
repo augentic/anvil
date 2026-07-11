@@ -214,7 +214,7 @@ pub async fn extract(
         .map_err(|err| seam_failure("extract", &id, &err))?;
 
     let yaml = evidence_yaml(lead, evidence.authority, &evidence.claims)?;
-    let path = layout.slices_dir().join(slice).join("evidence").join(format!("{source}.yaml"));
+    let path = layout.slice_dir(slice).join("evidence").join(format!("{source}.yaml"));
     schema_gate::validate_evidence(&yaml, &path)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(Error::Io)?;
@@ -273,16 +273,11 @@ struct EvidenceDocument<'a> {
 fn evidence_yaml(
     lead: &str, authority: AuthorityClass, claims: &[JsonValue],
 ) -> Result<String, Error> {
-    let document = EvidenceDocument {
+    crate::fs::yaml_document(&EvidenceDocument {
         lead,
         authority,
         claims,
-    };
-    let mut yaml = serde_saphyr::to_string(&document)?;
-    if !yaml.ends_with('\n') {
-        yaml.push('\n');
-    }
-    Ok(yaml)
+    })
 }
 
 /// Load `discovery.md`, or start from an empty document when the file

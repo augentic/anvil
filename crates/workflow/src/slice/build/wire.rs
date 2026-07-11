@@ -240,6 +240,3 @@ pub fn enforce_report_outputs_exist(report: &BuildReport, project_dir: &Path) ->
 fn dir_has_entries(dir: &Path) -> bool {
     std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_some())
 }
-
-#[cfg(test)]
-mod tests;

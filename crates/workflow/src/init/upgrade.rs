@@ -84,5 +84,6 @@ pub(super) fn run(resolver: &impl Resolver, opts: InitOptions<'_>) -> Result<Ini
         specify_version: target,
         specify_version_changed,
         wasm_pkg_config_written: false,
+        context_skip_reason: None,
     })
 }
