@@ -6,11 +6,13 @@
 //! [`omnia_guest::mcp::router`] — the same `list_docs` / `read_doc`
 //! surface the wasm deployment serves, on the dev listener instead.
 //! The judgment grant-URL rewrite
-//! (`NativeProvider::mcp_base` → `<base>/mcp/<name>`) points spawned
+//! (`Provider::mcp_base` → `<base>/mcp/<name>`) points spawned
 //! agents here; cursor-agent fetches over real HTTP regardless of shim.
 
 use adapter::references::References;
 use omnia_guest::axum::Router;
+
+use crate::catalog;
 
 /// One mounted reference shelf: the adapter name (the `/mcp/<name>`
 /// path segment and grant name stem) and its embedded doc table.
@@ -25,28 +27,17 @@ pub struct Shelf {
 /// Every linked adapter's reference shelf, one per adapter crate.
 #[must_use]
 pub fn shelves() -> Vec<Shelf> {
-    const fn shelf(
-        name: &'static str, server_name: &'static str, docs: &'static [adapter::registry::Doc],
-    ) -> Shelf {
-        Shelf {
-            name,
+    catalog::entries()
+        .iter()
+        .map(|entry| Shelf {
+            name: entry.name(),
             references: References {
-                server_name,
+                server_name: entry.server_name(),
                 version: env!("CARGO_PKG_VERSION"),
-                docs,
+                docs: entry.docs(),
             },
-        }
-    }
-    vec![
-        shelf("captures", "captures-references", captures::registry::docs()),
-        shelf("contracts", "contracts-references", contracts::registry::docs()),
-        shelf("documentation", "documentation-references", documentation::registry::docs()),
-        shelf("intent", "intent-references", intent::registry::docs()),
-        shelf("omnia", "omnia-references", omnia_target::registry::docs()),
-        shelf("screenshots", "screenshots-references", screenshots::registry::docs()),
-        shelf("typescript", "typescript-references", typescript::registry::docs()),
-        shelf("vectis", "vectis-references", vectis::registry::docs()),
-    ]
+        })
+        .collect()
 }
 
 /// The shelf router: every adapter's MCP references nested at

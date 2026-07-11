@@ -11,7 +11,7 @@ use std::fs;
 
 use error::Error;
 
-use crate::adapter::TargetAdapter;
+use crate::adapter::Resolver;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_uri::{adapter_name_from_value, adapter_ref_from_value};
 use crate::init::cache::ComponentMeta;
@@ -30,7 +30,7 @@ use crate::init::{InitOptions, InitResult, resolve_version, validate_platforms};
 /// - [`Error::CliTooOld`] when the pinned floor is newer than this
 ///   binary (propagated by the loader).
 /// - filesystem / serialisation errors from rewriting `project.yaml`.
-pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
+pub(super) fn run(resolver: &impl Resolver, opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let mut cfg = ProjectConfig::load(opts.project_dir)?;
 
     let layout = Layout::new(opts.project_dir);
@@ -46,10 +46,10 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
                     .to_string(),
         })?;
         let adapter_ref = adapter_ref_from_value(adapter_value);
-        let resolved = TargetAdapter::resolve(&adapter_ref, opts.project_dir)?;
+        let target = resolver.resolve_target(&adapter_ref, opts.project_dir)?;
         let validated = validate_platforms(
             Some(incoming),
-            resolved.manifest.platforms.as_ref(),
+            target.manifest.platforms.as_ref(),
             &adapter_ref.name,
         )?;
         let changed = cfg.platforms != validated;

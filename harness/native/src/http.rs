@@ -16,7 +16,7 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::http::Method;
 use specify_dev::mcp;
 use specify_dev::model::DevModel;
-use specify_dev::provider::NativeProvider;
+use specify_dev::provider::Provider;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
@@ -45,7 +45,7 @@ pub async fn serve(argv: &[String]) -> Result<ExitCode> {
     println!("specify-dev serving {} at {base}", project_dir.display());
 
     let model = DevModel::from_env(&project_dir)?;
-    let provider = NativeProvider::new(project_dir, model).mcp_base(base);
+    let provider = Provider::new(project_dir, model).mcp_base(base);
     let router = argv::http::router(Invoker::new("specify", provider))
         .into_axum()
         .layer(middleware::from_fn(serialize_writes))

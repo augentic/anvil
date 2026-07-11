@@ -26,7 +26,7 @@ use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
 
-use crate::adapter::BuildInputDeclaration;
+use crate::adapter::{BuildInputDeclaration, Resolver};
 use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_next_body, plan_status_body};
 use crate::config::{Layout, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
@@ -98,9 +98,13 @@ pub enum ExecuteOutcome {
 /// - propagates plan load/validate failures and marker I/O failures.
 /// - phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the orchestration boundary receives four independent capabilities plus loop inputs"
+)]
 pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
-    model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp,
-    manifest_inputs: &[BuildInputDeclaration], tree: &WorkingTree,
+    model: &P, sources: &S, targets: &T, resolver: &impl Resolver, layout: Layout<'_>,
+    now: Timestamp, manifest_inputs: &[BuildInputDeclaration], tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {
     refuse_workspace_routing(layout)?;
     let _marker = GuestMarker::acquire(layout, now)?;
@@ -133,7 +137,7 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
 
         // Claim: `plan next` before every phase, exactly as the skill
         // drives it (returns the active entry unchanged mid-slice).
-        let Some(claim) = claim_next(layout, now)? else {
+        let Some(claim) = claim_next(resolver, layout, now)? else {
             // The status projection targeted a phase but the claim
             // found nothing runnable — plan state moved underneath us.
             // Surface it as the stuck stop rather than spinning.
@@ -156,7 +160,9 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
                          (or fix the bound project's topology) before executing"
                     ),
                 })?;
-                super::refine(model, sources, targets, layout, now, &slice, &target).await.map(drop)
+                super::refine(model, sources, targets, resolver, layout, now, &slice, &target)
+                    .await
+                    .map(drop)
             }
             LoopStep::Build => {
                 super::build(targets, layout, now, &slice, manifest_inputs, tree.clone())
@@ -236,12 +242,14 @@ struct Claim {
 /// journalling `plan.entry.advanced` on a fresh advance exactly as the
 /// native handler does. Returns `None` when nothing is runnable
 /// (drained / stuck — the status projection decides which).
-fn claim_next(layout: Layout<'_>, now: Timestamp) -> Result<Option<Claim>, Error> {
+fn claim_next(
+    resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp,
+) -> Result<Option<Claim>, Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
     let slices_dir = layout.slices_dir();
     let project_dir = layout.project_dir().to_path_buf();
     let (body, plan_name) = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
-        let body = plan_next_body(plan, &slices_dir, &config, &project_dir)?;
+        let body = plan_next_body(resolver, plan, &slices_dir, &config, &project_dir)?;
         Ok((body, plan.name.clone()))
     })?;
     if let Some(advanced) = &body.next {

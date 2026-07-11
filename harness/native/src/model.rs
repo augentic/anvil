@@ -1,4 +1,4 @@
-//! The native [`Model`] backends behind [`crate::provider::NativeProvider`].
+//! The native [`Model`] backends behind [`crate::provider::Provider`].
 //!
 //! Two live here (both incubating upstream — cursor
 //! graduates to a feature-gated impl in `omnia-cursor`, replay to

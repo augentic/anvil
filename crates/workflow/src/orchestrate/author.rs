@@ -30,6 +30,7 @@ use omnia_guest::Model;
 use schema::diagnostics::blocking_present;
 
 use super::SurveyedSource;
+use crate::adapter::Resolver;
 use crate::change::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
     build_request, plan_doctor, resolve_topology,
@@ -79,15 +80,15 @@ pub struct AuthorOutcome {
 /// - `plan-structural-errors` when the doctor sweep finds blocking
 ///   findings after the write.
 pub async fn author<P: Model, S: SourceSeam>(
-    model: &P, sources: &S, layout: Layout<'_>, now: Timestamp, name: &str,
-    bindings: BTreeMap<String, SourceBinding>,
+    model: &P, sources: &S, resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp,
+    name: &str, bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<AuthorOutcome, Error> {
     refuse_workspace(layout)?;
     scaffold(layout, name, bindings)?;
     let surveyed = super::survey_all(sources, layout, now).await?;
 
     let discovery = Discovery::load(&layout.discovery_path())?;
-    let topology = load_topology(layout)?;
+    let topology = load_topology(resolver, layout)?;
     let request = build_request(&discovery, &topology)?;
 
     let plan = Plan::load(&layout.plan_path())?;
@@ -197,9 +198,9 @@ fn scaffold(
 /// Resolve the project topology the request embeds, minus the
 /// operator-facing `greenfield-seed-shadowed` advisories (the seed
 /// projection itself still applies).
-fn load_topology(layout: Layout<'_>) -> Result<Vec<ProjectRef>, Error> {
+fn load_topology(resolver: &impl Resolver, layout: Layout<'_>) -> Result<Vec<ProjectRef>, Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
-    let mut topology = resolve_topology(&config, layout.project_dir())?;
+    let mut topology = resolve_topology(resolver, &config, layout.project_dir())?;
     if let Some(registry) = Registry::load(layout.project_dir())? {
         let _shadowed =
             apply_greenfield_seed(&mut topology, &registry, layout.project_dir(), config.workspace);

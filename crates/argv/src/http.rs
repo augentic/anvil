@@ -9,6 +9,7 @@ use omnia_guest::axum::response::{IntoResponse, Response};
 use omnia_guest::http::StatusCode;
 use omnia_guest::http::header::{CONTENT_TYPE, HeaderValue};
 use serde::Serialize;
+use workflow::adapter::Resolver;
 use workflow::handler::Anchor;
 use workflow::seam::{SourceSeam, TargetSeam};
 
@@ -75,7 +76,7 @@ fn encoding(error: &serde_json::Error) -> Response {
 #[must_use]
 pub fn router<P>(invoker: Invoker<P>) -> Router<P>
 where
-    P: Provider + Anchor + Model + SourceSeam + TargetSeam,
+    P: Provider + Anchor + Model + Resolver + SourceSeam + TargetSeam,
 {
     macro_rules! get {
         ($operation:ty) => {

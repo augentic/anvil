@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
 use super::propose::{resolve_target, resolve_topology};
+use crate::adapter::Resolver;
 use crate::change::detect;
 use crate::config::ProjectConfig;
 
@@ -130,7 +131,8 @@ pub struct NextBody {
 /// - Whatever [`Plan::advance_next`] surfaces (in practice unreachable —
 ///   `next_eligible` only selects `Pending` entries).
 pub fn plan_next_body(
-    plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig, project_dir: &Path,
+    resolver: &impl Resolver, plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig,
+    project_dir: &Path,
 ) -> Result<NextBody, Error> {
     let validate_results = plan.validate(Some(slices_dir), None);
     if blocking_present(&validate_results) {
@@ -159,7 +161,7 @@ pub fn plan_next_body(
             ..NextBody::default()
         },
         Some(entry) => {
-            let target = resolve_topology(config, project_dir)
+            let target = resolve_topology(resolver, config, project_dir)
                 .and_then(|topology| resolve_target(entry, &topology))
                 .ok()
                 .map(|t| t.to_string());

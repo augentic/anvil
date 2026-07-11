@@ -28,7 +28,7 @@ Both build envelopes are closed-shape YAML, keyed on `(slice, target)`, schema-v
 
 ## Resolver and cache
 
-`SourceAdapter::resolve(adapter_ref, project_dir)` and `TargetAdapter::resolve(adapter_ref, project_dir)` are the per-axis entry points; each resolves the identity to exactly one `.wasm` component. A pinned `(name, version)` resolves only the global single-file store entry `<store-root>/<name>@<version>.wasm` (D4 verify-on-read against the recorded byte digest). A bare name resolves the development probes, in order:
+`adapter::Resolver` is the provider capability used by operations and kernels. The shipped WASI provider delegates it to `adapter::resolver::Component`, whose per-axis methods resolve the identity to exactly one `.wasm` component. A pinned `(name, version)` resolves only the global single-file store entry `<store-root>/<name>@<version>.wasm` (D4 verify-on-read against the recorded byte digest). A bare name resolves the development probes, in order:
 
 1. `<project-cache>/components/<name>.wasm` — the project component cache (an operator-supplied local component mirrored at init).
 2. `target/wasm32-wasip2/release/<name>.wasm` under the project, then under the sibling `specify-adapters` checkout — live development release builds (`cargo make release` in the adapters repo).
@@ -39,7 +39,7 @@ In workspace mode, `specify workspace sync` provisions probe location 1 for each
 
 `specify init <adapter>` accepts a package reference (`specify:<name>@<semver>` — installed into the store on fetch), the first-party **shorthand** (`omnia@1.0.0` is package-reference sugar; bare `omnia` resolves the development release build), or a local `.wasm` path. GitHub URLs are refused (`adapter-github-uri-unsupported`).
 
-The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `version`, `resolved-path`, `location` (`store` / `dev`), and `operations`. It is diagnostic: operation prompts are compiled into each adapter's component, so no engine code resolves prompt files at run time.
+The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `version`, `resolved-path`, `location`, and `operations`. `location` and `resolved-path` project the resolver's opaque `Origin`; the component provider emits `store` / `dev`, while other providers may use another mechanism label. It is diagnostic: operation prompts are compiled into each adapter's deployment, so no engine code resolves prompt files at run time.
 
 ## Adapter name uniqueness
 

@@ -23,7 +23,7 @@ use schema::diagnostics::{Diagnostic, Severity};
 use serde::{Deserialize, Serialize};
 
 use crate::Platform;
-use crate::adapter::{PlatformsViolation, TargetAdapter};
+use crate::adapter::{PlatformsViolation, Resolver};
 use crate::change::plan_finding;
 use crate::config::ProjectConfig;
 use crate::init::adapter_ref_from_value;
@@ -215,10 +215,10 @@ impl TopologyProject {
     ///   when the slot's platform set omits `Platform::Core`.
     /// - [`Error::Validation`] `topology-cache-project-platforms-not-allowed`
     ///   when a declared platform falls outside the target's allowed set.
-    /// - Any error from [`TargetAdapter::resolve`] when the adapter
+    /// - Any error from [`crate::adapter::Resolver::resolve_target`] when the adapter
     ///   cannot be resolved against the slot.
     pub fn resolve(
-        registry_name: &str, config: &ProjectConfig, slot_dir: &Path,
+        resolver: &impl Resolver, registry_name: &str, config: &ProjectConfig, slot_dir: &Path,
     ) -> Result<Self, Error> {
         let adapter_value = config.adapter.as_deref().ok_or_else(|| {
             Error::validation_failed(
@@ -227,14 +227,16 @@ impl TopologyProject {
                 format!("workspace slot `{registry_name}` project.yaml omits the `adapter` field"),
             )
         })?;
-        let resolved = TargetAdapter::resolve(&adapter_ref_from_value(adapter_value), slot_dir)?;
-        let target = format!("{}@{}", resolved.manifest.name, resolved.manifest.version);
+        let target_adapter =
+            resolver.resolve_target(&adapter_ref_from_value(adapter_value), slot_dir)?;
+        let target =
+            format!("{}@{}", target_adapter.manifest.name, target_adapter.manifest.version);
 
         validate_topology_platforms(
             registry_name,
             &config.platforms,
-            resolved.manifest.platforms.as_ref(),
-            &resolved.manifest.name,
+            target_adapter.manifest.platforms.as_ref(),
+            &target_adapter.manifest.name,
         )?;
 
         let projection = super::identity::project_baseline(slot_dir)?;
@@ -315,7 +317,7 @@ fn validate_topology_platforms(
 /// diagnostics — it owns no projection logic of its own.
 #[must_use]
 pub fn cache_staleness(
-    registry: &Registry, workspace_base: &Path, topology_lock_path: &Path,
+    resolver: &impl Resolver, registry: &Registry, workspace_base: &Path, topology_lock_path: &Path,
 ) -> Vec<Diagnostic> {
     let mut results = Vec::new();
     let lock = TopologyLock::load(topology_lock_path).ok().flatten();
@@ -330,7 +332,7 @@ pub fn cache_staleness(
             continue;
         }
         let fresh = match ProjectConfig::load(&slot_project_dir)
-            .and_then(|cfg| TopologyProject::resolve(&rp.name, &cfg, &slot_project_dir))
+            .and_then(|cfg| TopologyProject::resolve(resolver, &rp.name, &cfg, &slot_project_dir))
         {
             Ok(fresh) => fresh,
             Err(err) => {

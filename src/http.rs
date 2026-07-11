@@ -3,7 +3,6 @@
 use omnia_guest::api::http;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::wasip3;
-use workflow::adapter;
 
 use crate::provider::Provider;
 
@@ -14,7 +13,6 @@ impl wasip3::exports::http::handler::Guest for Http {
     async fn handle(
         request: wasip3::http::types::Request,
     ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
-        adapter::metadata::register(crate::provider::metadata);
         let router = argv::http::router(Invoker::new("specify", Provider));
         http::serve(router, request).await
     }

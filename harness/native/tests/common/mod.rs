@@ -1,7 +1,5 @@
 //! Shared support for the native harness suites: a throw-away project
-//! tree with a hermetic project cache, the staged `omnia` dev
-//! component (so target resolution works), and the native describe
-//! runner registered in place of a wasm dispatch.
+//! tree with a hermetic project cache.
 
 use std::fs;
 use std::path::PathBuf;
@@ -28,8 +26,7 @@ impl Drop for CacheGuard {
 }
 
 /// An initialised throw-away project bound to the `omnia` target, with
-/// the adapter cache pinned inside the tempdir and the native describe
-/// runner registered.
+/// the adapter cache pinned inside the tempdir.
 pub struct Project {
     _tmp: TempDir,
     _cache: CacheGuard,
@@ -38,12 +35,9 @@ pub struct Project {
 
 impl Project {
     /// Scaffold the tree: `.specify/{slices,specs}`, `project.yaml`
-    /// bound to `omnia`, and the stub dev component the target
-    /// resolver probes (its metadata comes from the in-process
-    /// describe runner, not the stub bytes).
+    /// bound to the linked `omnia` adapter.
     #[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
     pub fn new() -> Self {
-        workflow::adapter::metadata::register(specify_dev::provider::metadata);
         let tmp = TempDir::new().expect("tempdir");
         let root = tmp.path().canonicalize().expect("canonical tempdir");
         let prev = std::env::var_os(CACHE_ENV);
@@ -54,9 +48,6 @@ impl Project {
         }
         fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: omnia\nrules: {}\n")
             .expect("write project.yaml");
-        let dev_dir = root.join("target/wasm32-wasip2/release");
-        fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-        fs::write(dev_dir.join("omnia.wasm"), "{}").expect("write stub component");
         Self {
             _tmp: tmp,
             _cache: CacheGuard(prev),

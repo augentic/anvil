@@ -127,14 +127,16 @@ pub struct InitResult {
 /// (`init-requires-adapter-or-workspace`). Bubbles up
 /// filesystem, adapter resolution, and serialisation errors from
 /// the underlying calls.
-pub fn init(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> {
+pub fn init(
+    resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>, now: Timestamp,
+) -> Result<InitResult, Error> {
     if opts.upgrade {
-        return upgrade::run(opts);
+        return upgrade::run(resolver, opts);
     }
     if opts.workspace {
         return workspace::run(opts);
     }
-    regular::run(opts, now)
+    regular::run(resolver, opts, now)
 }
 
 pub(crate) fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {

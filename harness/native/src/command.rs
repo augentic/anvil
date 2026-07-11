@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use omnia_guest::api::invoke::Invoker;
 use specify_dev::mcp;
 use specify_dev::model::DevModel;
-use specify_dev::provider::NativeProvider;
+use specify_dev::provider::Provider;
 use tokio::net::TcpListener;
 
 /// Parse and execute one native command invocation.
@@ -18,7 +18,7 @@ pub async fn run(argv: Vec<String>) -> u8 {
             return 1;
         }
     };
-    let mut provider = NativeProvider::new(root, model);
+    let mut provider = Provider::new(root, model);
     if let Some(base) = shelves().await {
         provider = provider.mcp_base(base);
     }

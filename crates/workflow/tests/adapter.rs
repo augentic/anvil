@@ -20,21 +20,18 @@ use std::path::Path;
 use error::Error;
 use workflow::adapter::metadata::metadata_cache_path;
 use workflow::adapter::{
-    AdapterLocation, AdapterRef, SourceAdapter, SourceOperation, TargetAdapter, TargetOperation,
-    component_cache_entry,
+    AdapterRef, Resolver as _, SourceOperation, TargetOperation, component_cache_entry,
 };
 
 mod common;
 
-/// Register the shared JSON-body describe stub (see
-/// [`common::register_stub`]): the fixture component's bytes
-/// are the JSON `Metadata` itself.
-fn register_stub() {
-    common::register_stub();
+/// Explicit component resolver over the shared metadata fixture.
+fn resolver() -> workflow::adapter::resolver::Component {
+    common::resolver()
 }
 
-/// Stage a store entry for `(name, version)` whose bytes are `answer`
-/// (JSON), plus the verify-on-read sidecar over those bytes.
+/// Stage a store entry for `(name, version)` plus its verify-on-read
+/// sidecar. The bytes are opaque to the explicit metadata runner.
 fn stage_store_entry(name: &str, version: &str, answer: &str) -> std::path::PathBuf {
     let entry = schema::cache::adapter_store_entry(name, version);
     fs::create_dir_all(entry.parent().expect("store root")).expect("create store root");
@@ -46,7 +43,7 @@ fn stage_store_entry(name: &str, version: &str, answer: &str) -> std::path::Path
 
 #[test]
 fn pinned_resolves_from_store() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let project = tmp.path().join("project");
@@ -55,14 +52,14 @@ fn pinned_resolves_from_store() {
     let version = semver::Version::new(2, 3, 4);
     let entry = stage_store_entry("typescript", "2.3.4", "{}");
 
-    let resolved =
-        SourceAdapter::resolve(&AdapterRef::pinned("typescript", version.clone()), &project)
-            .expect("resolve pinned identity from the store");
+    let resolved = components
+        .resolve_source(&AdapterRef::pinned("typescript", version.clone()), &project)
+        .expect("resolve pinned identity from the store");
     assert_eq!(resolved.manifest.name, "typescript");
     assert_eq!(resolved.manifest.version, version, "version comes from the package identity");
     assert_eq!(resolved.manifest.requires_specify, None);
-    assert!(matches!(resolved.location, AdapterLocation::Store(_)));
-    assert_eq!(resolved.location.path(), &entry);
+    assert_eq!(resolved.origin.label, "store");
+    assert_eq!(resolved.origin.reference, entry.display().to_string());
     assert_eq!(
         resolved.manifest.operations().copied().collect::<Vec<_>>(),
         vec![SourceOperation::Extract, SourceOperation::Survey],
@@ -76,7 +73,7 @@ fn pinned_resolves_from_store() {
 
 #[test]
 fn metadata_cache_short_circuits() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let project = tmp.path().join("project");
@@ -84,7 +81,7 @@ fn metadata_cache_short_circuits() {
 
     let entry = stage_store_entry("typescript", "1.0.0", "{}");
     let adapter_ref = AdapterRef::pinned("typescript", semver::Version::new(1, 0, 0));
-    SourceAdapter::resolve(&adapter_ref, &project).expect("first resolve dispatches");
+    components.resolve_source(&adapter_ref, &project).expect("first resolve dispatches");
 
     // Rewrite the cached sidecar with a different answer under the same
     // digest: a second resolve must return the sidecar answer without
@@ -97,7 +94,7 @@ fn metadata_cache_short_circuits() {
     )
     .expect("rewrite sidecar");
 
-    let resolved = SourceAdapter::resolve(&adapter_ref, &project).expect("second resolve");
+    let resolved = components.resolve_source(&adapter_ref, &project).expect("second resolve");
     assert_eq!(
         resolved.manifest.requires_specify,
         Some(semver::Version::new(0, 1, 0)),
@@ -107,7 +104,7 @@ fn metadata_cache_short_circuits() {
 
 #[test]
 fn bare_resolves_from_component_cache() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let project = tmp.path().join("project");
     fs::create_dir_all(&project).expect("project dir");
@@ -117,7 +114,8 @@ fn bare_resolves_from_component_cache() {
     fs::create_dir_all(entry.parent().expect("cache dir")).expect("create component cache");
     fs::write(&entry, "{}").expect("write cached component");
 
-    let resolved = SourceAdapter::resolve(&AdapterRef::bare("captures"), &project)
+    let resolved = components
+        .resolve_source(&AdapterRef::bare("captures"), &project)
         .expect("bare name resolves the project component cache");
     assert_eq!(resolved.manifest.name, "captures");
     assert_eq!(
@@ -125,13 +123,13 @@ fn bare_resolves_from_component_cache() {
         workflow::adapter::dev_version(),
         "a development artifact resolves as the 0.0.0 placeholder"
     );
-    assert!(matches!(resolved.location, AdapterLocation::Dev(_)));
-    assert_eq!(resolved.location.path(), &entry);
+    assert_eq!(resolved.origin.label, "dev");
+    assert_eq!(resolved.origin.reference, entry.display().to_string());
 }
 
 #[test]
 fn missing_adapter_reports_not_found() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let _cache = common::scoped_cache(tmp.path());
@@ -139,13 +137,15 @@ fn missing_adapter_reports_not_found() {
     fs::create_dir_all(&project).expect("project dir");
 
     for err in [
-        SourceAdapter::resolve(&AdapterRef::bare("nonexistent"), &project)
+        components
+            .resolve_source(&AdapterRef::bare("nonexistent"), &project)
             .expect_err("missing development artifact must fail"),
-        SourceAdapter::resolve(
-            &AdapterRef::pinned("nonexistent", semver::Version::new(1, 0, 0)),
-            &project,
-        )
-        .expect_err("missing store entry must fail"),
+        components
+            .resolve_source(
+                &AdapterRef::pinned("nonexistent", semver::Version::new(1, 0, 0)),
+                &project,
+            )
+            .expect_err("missing store entry must fail"),
     ] {
         let detail = err.to_string();
         assert!(
@@ -164,7 +164,7 @@ fn missing_adapter_reports_not_found() {
 
 #[test]
 fn store_entry_digest_mismatch_refused() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let project = tmp.path().join("project");
@@ -175,11 +175,9 @@ fn store_entry_digest_mismatch_refused() {
     let entry = stage_store_entry("typescript", "1.0.0", "{}");
     fs::write(&entry, r#"{"specify-floor":"0.1.0"}"#).expect("drift the entry");
 
-    let err = SourceAdapter::resolve(
-        &AdapterRef::pinned("typescript", semver::Version::new(1, 0, 0)),
-        &project,
-    )
-    .expect_err("drifted store entry must fail verify-on-read");
+    let err = components
+        .resolve_source(&AdapterRef::pinned("typescript", semver::Version::new(1, 0, 0)), &project)
+        .expect_err("drifted store entry must fail verify-on-read");
     let detail = err.to_string();
     assert!(
         matches!(
@@ -195,7 +193,7 @@ fn store_entry_digest_mismatch_refused() {
 
 #[test]
 fn floor_gate_from_metadata() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let project = tmp.path().join("project");
@@ -204,20 +202,16 @@ fn floor_gate_from_metadata() {
     // A floor above the running binary aborts on the exit-3 path,
     // naming the identity.
     stage_store_entry("demo-target", "1.0.0", r#"{"specify-floor":"999.0.0"}"#);
-    let err = TargetAdapter::resolve(
-        &AdapterRef::pinned("demo-target", semver::Version::new(1, 0, 0)),
-        &project,
-    )
-    .expect_err("a binary below the adapter floor must be rejected");
+    let err = components
+        .resolve_target(&AdapterRef::pinned("demo-target", semver::Version::new(1, 0, 0)), &project)
+        .expect_err("a binary below the adapter floor must be rejected");
     assert_eq!(err.variant_str(), "adapter-cli-too-old");
 
     // A non-semver floor is the typed `adapter-floor-malformed`.
     stage_store_entry("bad-floor", "1.0.0", r#"{"specify-floor":"v1"}"#);
-    let err = TargetAdapter::resolve(
-        &AdapterRef::pinned("bad-floor", semver::Version::new(1, 0, 0)),
-        &project,
-    )
-    .expect_err("a non-semver floor must be rejected");
+    let err = components
+        .resolve_target(&AdapterRef::pinned("bad-floor", semver::Version::new(1, 0, 0)), &project)
+        .expect_err("a non-semver floor must be rejected");
     let Error::Validation { code, .. } = err else {
         panic!("expected Error::Validation, got: {err:?}");
     };
@@ -226,7 +220,7 @@ fn floor_gate_from_metadata() {
 
 #[test]
 fn target_metadata_from_metadata_answer() {
-    register_stub();
+    let components = resolver();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _store = common::scoped_store(&tmp.path().join("store"));
     let project = tmp.path().join("project");
@@ -248,11 +242,9 @@ fn target_metadata_from_metadata_answer() {
         }"#,
     );
 
-    let resolved = TargetAdapter::resolve(
-        &AdapterRef::pinned("vectis", semver::Version::new(1, 0, 4)),
-        &project,
-    )
-    .expect("target adapter resolves with metadata");
+    let resolved = components
+        .resolve_target(&AdapterRef::pinned("vectis", semver::Version::new(1, 0, 4)), &project)
+        .expect("target adapter resolves with metadata");
     assert_eq!(resolved.manifest.inputs.len(), 2, "both declared inputs survive");
     assert_eq!(resolved.manifest.inputs[0].path, "tokens.yaml");
     assert!(resolved.manifest.inputs[0].required);
@@ -269,11 +261,9 @@ fn target_metadata_from_metadata_answer() {
     // A source answer never carries the target-only fields; a target
     // resolve over an empty answer defaults them.
     stage_store_entry("omnia", "1.0.0", "{}");
-    let resolved = TargetAdapter::resolve(
-        &AdapterRef::pinned("omnia", semver::Version::new(1, 0, 0)),
-        &project,
-    )
-    .expect("target adapter with empty metadata answer resolves");
+    let resolved = components
+        .resolve_target(&AdapterRef::pinned("omnia", semver::Version::new(1, 0, 0)), &project)
+        .expect("target adapter with empty metadata answer resolves");
     assert!(resolved.manifest.inputs.is_empty(), "absent inputs default to empty");
     assert!(resolved.manifest.platforms.is_none(), "absent platforms default to None");
 }

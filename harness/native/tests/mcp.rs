@@ -33,8 +33,11 @@ fn call(name: &str, arguments: &Value) -> Value {
 #[test]
 fn one_shelf_per_linked_adapter() {
     let names: Vec<&str> = mcp::shelves().iter().map(|shelf| shelf.name).collect();
+    let catalog_names: Vec<&str> =
+        specify_dev::catalog::entries().iter().map(|entry| entry.name()).collect();
+    assert_eq!(names, catalog_names, "MCP shelves must derive from the native catalog");
     assert_eq!(
-        names,
+        catalog_names,
         [
             "captures",
             "contracts",

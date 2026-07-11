@@ -144,6 +144,7 @@ async fn author_walks_to_pending_with_gate_prose() {
     let outcome = orchestrate::author(
         &model,
         &sources,
+        &common::resolver(),
         project.layout(),
         now(),
         "account-revamp",
@@ -232,6 +233,7 @@ async fn author_fan_out_failure_aborts() {
     let err = orchestrate::author(
         &model,
         &sources,
+        &common::resolver(),
         project.layout(),
         now(),
         "account-revamp",
@@ -285,6 +287,7 @@ async fn author_repairs_kernel_rejected_grouping() {
     let outcome = orchestrate::author(
         &model,
         &sources,
+        &common::resolver(),
         project.layout(),
         now(),
         "account-revamp",
@@ -335,6 +338,7 @@ async fn author_gate_missing_exhausts_budget() {
     let err = orchestrate::author(
         &model,
         &sources,
+        &common::resolver(),
         project.layout(),
         now(),
         "account-revamp",
@@ -361,6 +365,7 @@ async fn author_refuses_existing_plan() {
     let err = orchestrate::author(
         &model,
         &sources,
+        &common::resolver(),
         project.layout(),
         now(),
         "account-revamp",
@@ -386,6 +391,7 @@ async fn author_refuses_workspace_root() {
     let err = orchestrate::author(
         &model,
         &sources,
+        &common::resolver(),
         project.layout(),
         now(),
         "account-revamp",

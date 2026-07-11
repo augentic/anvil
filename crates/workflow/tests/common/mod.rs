@@ -178,27 +178,38 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
     StoreGuard(prev)
 }
 
-/// Register the JSON-body describe stub (idempotent; nextest gives each
-/// test its own process, so the process-global registration is
-/// per-test). The stub parses the component file's bytes as a JSON
-/// `Metadata`, so a test controls its adapter's metadata by
-/// writing the fixture component (`{}` for an empty answer).
-pub fn register_stub() {
+/// Component resolver with deterministic metadata answers for adapter
+/// integration fixtures.
+pub fn resolver() -> workflow::adapter::resolver::Component {
     use error::Error;
-    use workflow::adapter::metadata::{Metadata, MetadataRequest, register};
+    use workflow::adapter::metadata::{Metadata, Request};
 
-    fn stub(request: &MetadataRequest<'_>) -> Result<Metadata, Error> {
-        let raw = std::fs::read_to_string(request.component).map_err(|err| Error::Diag {
+    fn stub(request: &Request<'_>) -> Result<Metadata, Error> {
+        let raw = match request.adapter_id {
+            "target:demo-target" => r#"{"specify-floor":"999.0.0"}"#,
+            "target:bad-floor" => r#"{"specify-floor":"v1"}"#,
+            "target:vectis" => {
+                r#"{
+                    "inputs": [
+                        { "path": "tokens.yaml", "required": true },
+                        { "path": "assets.yaml", "required": false }
+                    ],
+                    "platforms": {
+                        "required": true,
+                        "allowed": ["core", "ios", "android"],
+                        "default": ["core", "ios", "android"]
+                    }
+                }"#
+            }
+            _ => "{}",
+        };
+        serde_json::from_str(raw).map_err(|err| Error::Diag {
             code: "adapter-metadata-failed",
-            detail: format!("stub read {}: {err}", request.component.display()),
-        })?;
-        serde_json::from_str(&raw).map_err(|err| Error::Diag {
-            code: "adapter-metadata-failed",
-            detail: format!("stub parse {}: {err}", request.component.display()),
+            detail: format!("stub parse {}: {err}", request.adapter_id),
         })
     }
 
-    register(stub);
+    workflow::adapter::resolver::Component::new(stub)
 }
 
 /// Stage a stub adapter component for `name` at the resolver's in-repo
@@ -207,7 +218,6 @@ pub fn register_stub() {
 /// bare-name resolve inside `root` succeeds with an empty
 /// `Metadata`.
 pub fn stage_dev_component(root: &std::path::Path, name: &str) {
-    register_stub();
     let dev_dir = root.join("target/wasm32-wasip2/release");
     std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
     std::fs::write(dev_dir.join(format!("{}.wasm", name.replace('-', "_"))), "{}")

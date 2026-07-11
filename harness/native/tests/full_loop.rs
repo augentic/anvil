@@ -1,7 +1,7 @@
 //! The native loop end to end: `plan author`
 //! → the operator's `approved` stamp → `plan execute`, driven through
 //! the same transport-neutral operations the `specify-dev` binary
-//! dispatches, against one [`NativeProvider`] — so the *real* intent
+//! dispatches, against one native [`Provider`] — so the *real* intent
 //! and omnia adapter operations (prompts, schema gates, validation
 //! tails) run in-process with only the model scripted. No wasm builds.
 
@@ -11,7 +11,7 @@ use omnia_guest::api::invocation::Invocation;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use serde_json::json;
-use specify_dev::provider::NativeProvider;
+use specify_dev::provider::Provider;
 use testkit::MockModel;
 use workflow::change::plan::handlers::SourceAssign;
 use workflow::change::{LoopStep, Status, plan};
@@ -21,10 +21,10 @@ mod common;
 
 /// Invoke one operation against the shared provider.
 async fn run<R, B>(
-    invoker: &Invoker<NativeProvider<MockModel>>, input: R::Input,
+    invoker: &Invoker<Provider<MockModel>>, input: R::Input,
 ) -> Result<B, workflow::handler::Error>
 where
-    R: Operation<NativeProvider<MockModel>, Output = B, Error = workflow::handler::Error>,
+    R: Operation<Provider<MockModel>, Output = B, Error = workflow::handler::Error>,
     B: Send,
 {
     invoker.invoke::<R>(Invocation::new(input)).await
@@ -103,8 +103,20 @@ async fn author_approve_execute_drains() {
     let project = common::Project::new();
     let invoker = Invoker::new(
         "specify",
-        NativeProvider::new(project.root(), MockModel::answering(scripted_answers())),
+        Provider::new(project.root(), MockModel::answering(scripted_answers())),
     );
+
+    let resolved = run::<workflow::adapter::handlers::TargetResolve, _>(
+        &invoker,
+        workflow::adapter::handlers::ResolveInput {
+            value: "omnia".to_string(),
+            project_dir: None,
+        },
+    )
+    .await
+    .expect("typed target resolve uses the native provider");
+    assert_eq!(resolved.location, "native");
+    assert_eq!(resolved.resolved_path, "rust:target:omnia");
 
     // `plan author` — survey through the real intent adapter, the
     // reconciliation judgment leg, Gate 1 prose — exits at `pending`.

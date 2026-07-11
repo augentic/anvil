@@ -29,8 +29,11 @@ use std::future::Future;
 use artifacts::evidence::AuthorityClass;
 use error::Error;
 use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use workflow::adapter::metadata::{Metadata, MetadataRequest};
-use workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
+use workflow::adapter::metadata::{Metadata, Request};
+use workflow::adapter::{
+    AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource, ResolvedTarget,
+    Resolver,
+};
 use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
 use workflow::slice::build::wire::BUILD_VERSION;
 use workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
@@ -53,6 +56,22 @@ impl omnia_guest::Model for Provider {}
 impl workflow::handler::Anchor for Provider {
     fn project_root(&self) -> &std::path::Path {
         std::path::Path::new(".")
+    }
+}
+
+impl Resolver for Provider {
+    fn resolve_source(
+        &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<ResolvedSource, Error> {
+        workflow::adapter::resolver::Component::new(metadata)
+            .resolve_source(adapter_ref, project_dir)
+    }
+
+    fn resolve_target(
+        &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<ResolvedTarget, Error> {
+        workflow::adapter::resolver::Component::new(metadata)
+            .resolve_target(adapter_ref, project_dir)
     }
 }
 
@@ -104,13 +123,11 @@ impl TargetSeam for Provider {
     }
 }
 
-/// In-guest metadata dispatch: the resolver's [`MetadataRequest`]
+/// In-guest metadata dispatch: the component resolver's [`Request`]
 /// routed through this world's `source` / `target` imports by the
 /// request's `adapter-id` (Omnia's host-mediated dispatch reaches the
-/// deployment guest exporting that id). Registered by the guest shim
-/// at startup, so `SourceAdapter::resolve` / `TargetAdapter::resolve`
-/// work for forwarded verbs against the read-only store and cache
-/// mounts.
+/// deployment guest exporting that id). The provider passes this
+/// function explicitly to [`workflow::adapter::resolver::Component`].
 ///
 /// Routing is by name, not by file: the answer comes from the
 /// *deployed* component with the request's id. Drive-time deployment
@@ -125,7 +142,7 @@ impl TargetSeam for Provider {
 /// Infallible today: WIT `metadata` carries no error channel, so a
 /// dispatch to an id absent from the deployment fails at the Omnia
 /// seam, not here.
-pub fn metadata(request: &MetadataRequest<'_>) -> Result<Metadata, Error> {
+pub fn metadata(request: &Request<'_>) -> Result<Metadata, Error> {
     Ok(match request.axis {
         Axis::Source => {
             let record = source::metadata(request.adapter_id);

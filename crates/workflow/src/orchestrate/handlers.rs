@@ -20,6 +20,7 @@ use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{self as orchestrate, ExecuteOutcome};
+use crate::adapter::Resolver;
 use crate::change::LoopStep;
 use crate::change::plan::handlers::{SourceAssign, source_map};
 use crate::handler::{Anchor, Ctx, Render};
@@ -185,7 +186,7 @@ pub struct BuildInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Build;
 
-impl<P: Anchor + TargetSeam> Operation<P> for Build {
+impl<P: Anchor + Resolver + TargetSeam> Operation<P> for Build {
     type Error = crate::handler::Error;
     type Input = BuildInput;
     type Output = BuildBody;
@@ -194,7 +195,7 @@ impl<P: Anchor + TargetSeam> Operation<P> for Build {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let manifest_inputs = cx.resolve_target_adapter()?.manifest.inputs;
+        let manifest_inputs = cx.resolve_target_adapter(context.provider)?.manifest.inputs;
         let outcome = orchestrate::build(
             context.provider,
             cx.layout(),
@@ -336,7 +337,7 @@ pub struct AuthorInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Author;
 
-impl<P: Anchor + Model + SourceSeam> Operation<P> for Author {
+impl<P: Anchor + Model + Resolver + SourceSeam> Operation<P> for Author {
     type Error = crate::handler::Error;
     type Input = AuthorInput;
     type Output = AuthorBody;
@@ -352,6 +353,7 @@ impl<P: Anchor + Model + SourceSeam> Operation<P> for Author {
         } = input;
         let sources = source_map(sources, intent)?;
         let outcome = orchestrate::author(
+            context.provider,
             context.provider,
             context.provider,
             cx.layout(),
@@ -441,7 +443,7 @@ pub struct RefineInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Refine;
 
-impl<P: Anchor + Model + SourceSeam + TargetSeam> Operation<P> for Refine {
+impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Refine {
     type Error = crate::handler::Error;
     type Input = RefineInput;
     type Output = RefineBody;
@@ -451,6 +453,7 @@ impl<P: Anchor + Model + SourceSeam + TargetSeam> Operation<P> for Refine {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::refine_breakout(
+            context.provider,
             context.provider,
             context.provider,
             context.provider,
@@ -523,7 +526,7 @@ pub struct ExecuteInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
-impl<P: Anchor + Model + SourceSeam + TargetSeam> Operation<P> for Execute {
+impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Execute {
     type Error = crate::handler::Error;
     type Input = ExecuteInput;
     type Output = ExecuteBody;
@@ -532,9 +535,10 @@ impl<P: Anchor + Model + SourceSeam + TargetSeam> Operation<P> for Execute {
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let manifest_inputs = cx.resolve_target_adapter()?.manifest.inputs;
+        let manifest_inputs = cx.resolve_target_adapter(context.provider)?.manifest.inputs;
         let tree = live_tree();
         let outcome = orchestrate::execute(
+            context.provider,
             context.provider,
             context.provider,
             context.provider,

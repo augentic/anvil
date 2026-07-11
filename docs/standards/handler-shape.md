@@ -10,7 +10,7 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 - **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = workflow::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only. The orchestration operations (`orchestrate::handlers`) additionally bind the seams they drive: `P: Anchor + Model + SourceSeam + TargetSeam` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted seams.
+Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + SourceSeam + TargetSeam` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted seams.
 
 ```rust
 // GOOD — default shape
@@ -87,7 +87,7 @@ Never put domain logic in `argv` or a shim's route match. Manual `Input { … }`
 
 ## Operation-shape notes
 
-`source resolve <name>` and `target resolve <value>` never load a `Ctx`, because adapter resolution is read-only and runs before any project mutation; they anchor the default project dir on the provider's `Anchor`. The two axes share one input shape; the axis is the request type. The target axis peels an opaque `@version` suffix (per the workflow contract §CLI surface).
+`source resolve <name>` and `target resolve <value>` never load a `Ctx`, because adapter resolution is read-only and runs before any project mutation; they invoke the provider's `Resolver` directly and anchor the default project dir on its `Anchor`. The two axes share one input shape; the axis is the request type. The target axis peels an opaque `@version` suffix (per the workflow contract §CLI surface).
 
 `plan amend` extends the canonical `with_state::<Plan, _, _>(...)` operation shape with the three `--sources` flag families: `--sources <binding>...` (wholesale replace), `--add-source <binding>` (repeatable), `--remove-source <key>` (repeatable). The operation applies `--add-source` / `--remove-source` *after* the wholesale `Plan::amend(name, patch)` call so wholesale replacement plus targeted edits compose cleanly in a single invocation. The `--divergence` flag accepts only `likely | accepted | rejected` from the wire and emits a `plan.amend.divergence` journal event when (and only when) the field flips.
 

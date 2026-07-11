@@ -5,7 +5,7 @@
 //! the whole workflow — handlers, orchestrators, adapter operations — runs
 //! without a wasm runtime:
 //!
-//! - [`provider`] — [`provider::NativeProvider`]: `workflow::handler::Anchor` +
+//! - [`provider`] — [`provider::Provider`]: `workflow::handler::Anchor` +
 //!   `omnia_guest::Model` + `SourceSeam` / `TargetSeam` as an
 //!   in-process dispatch table over the sibling adapter crates'
 //!   `operations` modules, plus the matching describe runner.
@@ -21,6 +21,7 @@
 //! and mount/preopen wiring — that surface stays with the shipped
 //! guest (see `harness/README.md`).
 
+pub mod catalog;
 pub mod mcp;
 pub mod model;
 pub mod provider;

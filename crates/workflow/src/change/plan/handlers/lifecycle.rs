@@ -10,6 +10,7 @@ use schema::diagnostics::{Diagnostic, Severity, blocking, blocking_present};
 use serde::{Deserialize, Serialize};
 
 use super::{Ref, plan_ref, require_file};
+use crate::adapter::Resolver;
 use crate::change::{
     Lifecycle, NextActionKind, NextBody, NextReason, Plan, Status as EntryStatus, StatusBody,
     drained_line, plan_doctor, plan_finding, plan_next_body, plan_status_body,
@@ -36,7 +37,7 @@ pub struct ValidateInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Validate;
 
-impl<P: Anchor> Operation<P> for Validate {
+impl<P: Anchor + Resolver> Operation<P> for Validate {
     type Error = crate::handler::Error;
     type Input = ValidateInput;
     type Output = ReportBody;
@@ -68,6 +69,7 @@ impl<P: Anchor> Operation<P> for Validate {
         if let Some(reg) = &registry {
             let workspace_base = cx.project_dir.join("workspace");
             results.extend(crate::registry::cache_staleness(
+                context.provider,
                 reg,
                 &workspace_base,
                 &cx.layout().topology_lock_path(),
@@ -118,7 +120,7 @@ pub struct NextInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Next;
 
-impl<P: Anchor> Operation<P> for Next {
+impl<P: Anchor + Resolver> Operation<P> for Next {
     type Error = crate::handler::Error;
     type Input = NextInput;
     type Output = NextBody;
@@ -138,7 +140,7 @@ impl<P: Anchor> Operation<P> for Next {
         let project_dir = cx.project_dir.clone();
 
         let (body, plan_name) = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
-            let body = plan_next_body(plan, &slices_dir, &config, &project_dir)?;
+            let body = plan_next_body(context.provider, plan, &slices_dir, &config, &project_dir)?;
             Ok((body, plan.name.clone()))
         })?;
         // workflow §Observability: `plan.entry.advanced` fires only when an

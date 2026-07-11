@@ -46,7 +46,7 @@ impl Project {
         fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: omnia\nrules: {}\n")
             .expect("write project.yaml");
         // Stage the omnia adapter component at the in-repo development
-        // probe so `TargetAdapter::resolve` (topology / plan-next
+        // probe so the component resolver (topology / plan-next
         // target resolution) succeeds locally.
         common::stage_dev_component(&root, "omnia");
         Self {
@@ -255,10 +255,18 @@ async fn execute_drains_two_entry_plan() {
         [Ok(success_report("feature-x")), Ok(success_report("feature-y"))],
     );
 
-    let outcome =
-        orchestrate::execute(&model, &sources, &targets, project.layout(), now(), &[], &tree())
-            .await
-            .expect("execute drains the plan");
+    let outcome = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect("execute drains the plan");
 
     // Drained, with every phase in claim order.
     let ExecuteOutcome::Drained { phases } = outcome else {
@@ -338,10 +346,18 @@ async fn execute_refuses_unapproved_plan() {
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
 
-    let outcome =
-        orchestrate::execute(&model, &sources, &targets, project.layout(), now(), &[], &tree())
-            .await
-            .expect("gate-1 refusal is a typed stop, not an error");
+    let outcome = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect("gate-1 refusal is a typed stop, not an error");
     let ExecuteOutcome::Stopped {
         reason, hint, phases, ..
     } = outcome
@@ -375,10 +391,18 @@ async fn build_failure_stops_typed_entry_kept() {
         [Ok(failure_report("feature-x"))],
     );
 
-    let outcome =
-        orchestrate::execute(&model, &sources, &targets, project.layout(), now(), &[], &tree())
-            .await
-            .expect("a failing phase is a typed stop, not an error");
+    let outcome = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect("a failing phase is a typed stop, not an error");
     let ExecuteOutcome::Stopped {
         reason,
         detail,
@@ -411,10 +435,18 @@ async fn build_failure_stops_typed_entry_kept() {
     let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
-    let outcome =
-        orchestrate::execute(&model, &sources, &targets, project.layout(), now(), &[], &tree())
-            .await
-            .expect("re-entry is safe");
+    let outcome = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect("re-entry is safe");
     let ExecuteOutcome::Stopped { reason, .. } = outcome else {
         panic!("expected the re-reported stop, got {outcome:?}");
     };
@@ -442,6 +474,7 @@ async fn refine_breakout_skips_entry_claim() {
         &model,
         &sources,
         &targets,
+        &common::resolver(),
         project.layout(),
         now(),
         "feature-x",
@@ -494,6 +527,7 @@ async fn refine_breakout_refuses_done_entry() {
         &model,
         &sources,
         &targets,
+        &common::resolver(),
         project.layout(),
         now(),
         "feature-x",
@@ -519,6 +553,7 @@ async fn refine_breakout_refuses_unknown_entry() {
         &model,
         &sources,
         &targets,
+        &common::resolver(),
         project.layout(),
         now(),
         "feature-z",
@@ -541,10 +576,18 @@ async fn workspace_routed_plan_refused() {
     let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
-    let err =
-        orchestrate::execute(&model, &sources, &targets, project.layout(), now(), &[], &tree())
-            .await
-            .expect_err("a workspace-routed plan refuses the run");
+    let err = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect_err("a workspace-routed plan refuses the run");
     assert_eq!(err.variant_str(), "plan-execute-workspace-unsupported");
     assert!(err.to_string().contains("demo-app"), "the error names the scoped project: {err}");
 
@@ -568,10 +611,18 @@ async fn held_marker_refused_and_named() {
     let model = testkit::MockModel::answering([]);
     let sources = MockSourceSeam::scripted([], []);
     let targets = MockTargetSeam::scripted([], []);
-    let err =
-        orchestrate::execute(&model, &sources, &targets, project.layout(), now(), &[], &tree())
-            .await
-            .expect_err("a held marker refuses the run");
+    let err = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect_err("a held marker refuses the run");
     assert_eq!(err.variant_str(), "guest-marker-held");
     assert!(err.to_string().contains("guest.lock"), "the error names the marker file: {err}");
     assert!(err.to_string().contains("delete the file"), "{err}");

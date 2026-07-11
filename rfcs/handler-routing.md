@@ -125,7 +125,7 @@ harness/native/command.rs   construct Invoker → shared command Router::execute
 harness/native/http.rs      construct Invoker → shared HTTP Router::into_axum → lock + MCP merge
 ```
 
-`src/command.rs` and `src/http.rs` explicitly export `wasi:cli/run` and `wasi:http/incoming-handler`. `src/lib.rs` is module wiring only. The shims register guest-only metadata where required, but carry no per-command match arms.
+`src/command.rs` and `src/http.rs` explicitly export `wasi:cli/run` and `wasi:http/incoming-handler`. `src/lib.rs` is module wiring only. Adapter resolution is a provider capability: the WASI provider owns component metadata dispatch and the native provider owns its linked-crate catalog. The transport shims carry neither resolver registration nor per-command match arms.
 
 ## Where operations live
 

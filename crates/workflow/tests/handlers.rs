@@ -18,6 +18,8 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use tempfile::TempDir;
 
+mod common;
+
 /// A throw-away project tree the verbs run against: the provider
 /// anchor points at its root, and the derived project cache is pinned
 /// beneath it so cache writes are hermetic.
@@ -30,6 +32,20 @@ struct Project {
 impl workflow::handler::Anchor for Project {
     fn project_root(&self) -> &Path {
         &self.root
+    }
+}
+
+impl workflow::adapter::Resolver for Project {
+    fn resolve_source(
+        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &Path,
+    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        workflow::adapter::Resolver::resolve_source(&common::resolver(), adapter_ref, project_dir)
+    }
+
+    fn resolve_target(
+        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &Path,
+    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        workflow::adapter::Resolver::resolve_target(&common::resolver(), adapter_ref, project_dir)
     }
 }
 

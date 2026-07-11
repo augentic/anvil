@@ -12,7 +12,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::{Axis, SourceAdapter, TargetAdapter};
+use super::{Axis, Resolver};
 use crate::handler::{Anchor, Render};
 use crate::init::adapter_ref_from_value;
 
@@ -32,7 +32,7 @@ pub struct ResolveInput {
 #[derive(Clone, Copy, Debug)]
 pub struct SourceResolve;
 
-impl<P: Anchor> Operation<P> for SourceResolve {
+impl<P: Anchor + Resolver> Operation<P> for SourceResolve {
     type Error = crate::handler::Error;
     type Input = ResolveInput;
     type Output = ResolveBody;
@@ -41,13 +41,14 @@ impl<P: Anchor> Operation<P> for SourceResolve {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let project_dir = project_dir(&input, context.provider);
-        let resolved = SourceAdapter::resolve(&adapter_ref_from_value(&input.value), &project_dir)?;
+        let resolved =
+            context.provider.resolve_source(&adapter_ref_from_value(&input.value), &project_dir)?;
         Ok(ResolveBody {
             axis: Axis::Source.dir_segment(),
             name: resolved.manifest.name.clone(),
             version: resolved.manifest.version.to_string(),
-            resolved_path: resolved.location.path().display().to_string(),
-            location: resolved.location.label(),
+            resolved_path: resolved.origin.reference,
+            location: resolved.origin.label,
             operations: resolved.manifest.operations().map(ToString::to_string).collect(),
         })
     }
@@ -57,7 +58,7 @@ impl<P: Anchor> Operation<P> for SourceResolve {
 #[derive(Clone, Copy, Debug)]
 pub struct TargetResolve;
 
-impl<P: Anchor> Operation<P> for TargetResolve {
+impl<P: Anchor + Resolver> Operation<P> for TargetResolve {
     type Error = crate::handler::Error;
     type Input = ResolveInput;
     type Output = ResolveBody;
@@ -66,13 +67,14 @@ impl<P: Anchor> Operation<P> for TargetResolve {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let project_dir = project_dir(&input, context.provider);
-        let resolved = TargetAdapter::resolve(&adapter_ref_from_value(&input.value), &project_dir)?;
+        let resolved =
+            context.provider.resolve_target(&adapter_ref_from_value(&input.value), &project_dir)?;
         Ok(ResolveBody {
             axis: Axis::Target.dir_segment(),
             name: resolved.manifest.name.clone(),
             version: resolved.manifest.version.to_string(),
-            resolved_path: resolved.location.path().display().to_string(),
-            location: resolved.location.label(),
+            resolved_path: resolved.origin.reference,
+            location: resolved.origin.label,
             operations: resolved.manifest.operations().map(ToString::to_string).collect(),
         })
     }
@@ -88,14 +90,14 @@ fn project_dir(input: &ResolveInput, provider: &impl Anchor) -> PathBuf {
 pub struct ResolveBody {
     /// Axis directory segment (`sources` / `targets`).
     pub axis: &'static str,
-    /// Adapter name from the component's metadata.
+    /// Adapter name from the resolved identity.
     pub name: String,
     /// Adapter version.
     pub version: String,
-    /// Display path of the resolved `.wasm` component.
+    /// Resolver-defined display reference.
     pub resolved_path: String,
-    /// Which probe answered (store / cache / dev build).
-    pub location: &'static str,
+    /// Resolver-defined origin label.
+    pub location: String,
     /// The axis's closed operation set.
     pub operations: Vec<String>,
 }

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use error::Error;
 
 use super::*;
@@ -52,18 +50,21 @@ fn axis_routing() {
 
 #[test]
 fn typed_gates() {
-    let component = Path::new("/store/demo@1.0.0.wasm");
+    let origin = Origin {
+        label: "store".to_string(),
+        reference: "/store/demo@1.0.0.wasm".to_string(),
+    };
 
     // The `specify-floor` string from a describe answer parses into a
     // typed semver; a non-semver floor is `adapter-floor-malformed`;
     // an absent floor is `None`.
-    assert_eq!(parse_floor(None, "demo", component).expect("absent floor passes"), None);
+    assert_eq!(parse_floor(None, "demo", &origin).expect("absent floor passes"), None);
     assert_eq!(
-        parse_floor(Some("0.28.0"), "demo", component).expect("exact semver parses"),
+        parse_floor(Some("0.28.0"), "demo", &origin).expect("exact semver parses"),
         Some(semver::Version::new(0, 28, 0))
     );
-    let Error::Validation { code, .. } = parse_floor(Some("1"), "demo", component)
-        .expect_err("integer-shaped floor must be rejected")
+    let Error::Validation { code, .. } =
+        parse_floor(Some("1"), "demo", &origin).expect_err("integer-shaped floor must be rejected")
     else {
         panic!("expected Error::Validation");
     };
@@ -72,14 +73,14 @@ fn typed_gates() {
     // An absent floor never gates; a binary at/above the floor
     // passes; below the floor aborts on the exit-3 path; an unparseable
     // current version is permissive (mirrors config::version_is_older).
-    check_requires_specify(None, "0.1.0", "demo-source", component)
+    check_requires_specify(None, "0.1.0", "demo-source", &origin)
         .expect("absent floor never gates");
     let floor = semver::Version::new(0, 28, 0);
-    check_requires_specify(Some(&floor), "0.28.0", "demo-target", component)
+    check_requires_specify(Some(&floor), "0.28.0", "demo-target", &origin)
         .expect("exact floor passes");
-    check_requires_specify(Some(&floor), "0.29.1", "demo-target", component).expect("newer passes");
+    check_requires_specify(Some(&floor), "0.29.1", "demo-target", &origin).expect("newer passes");
     let two = semver::Version::new(2, 0, 0);
-    let err = check_requires_specify(Some(&two), "1.5.0", "demo-target", component)
+    let err = check_requires_specify(Some(&two), "1.5.0", "demo-target", &origin)
         .expect_err("a binary below the floor must be rejected");
     assert_eq!(err.variant_str(), "adapter-cli-too-old");
     let Error::AdapterCliTooOld { required, found, .. } = err else {
@@ -87,7 +88,7 @@ fn typed_gates() {
     };
     assert_eq!(required, "2.0.0");
     assert_eq!(found, "1.5.0");
-    check_requires_specify(Some(&two), "not-a-version", "demo-target", component)
+    check_requires_specify(Some(&two), "not-a-version", "demo-target", &origin)
         .expect("unparseable current version is permissive");
 }
 

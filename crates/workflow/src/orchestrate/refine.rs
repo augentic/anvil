@@ -27,6 +27,7 @@ use omnia_guest::Model;
 use schema::diagnostics::blocking_present;
 
 use super::synthesize::SynthesizeRequest;
+use crate::adapter::Resolver;
 use crate::change::{Entry, Plan, Status, resolve_target, resolve_topology};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
@@ -70,9 +71,13 @@ pub struct RefineOutcome {
 /// - `slice-provenance-invalid` / `slice-pre-adapter-gate` /
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `lifecycle` gate error from the `refined` transition.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the orchestration boundary receives four independent capabilities plus phase inputs"
+)]
 pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
-    model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str,
-    target_value: &str,
+    model: &P, sources: &S, targets: &T, resolver: &impl Resolver, layout: Layout<'_>,
+    now: Timestamp, slice: &str, target_value: &str,
 ) -> Result<RefineOutcome, Error> {
     let entry = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
@@ -97,7 +102,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_specs_dir = resolve_baseline_specs_dir(layout, &slice_dir);
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
-    let baseline = baseline_surface(layout, &entry)?;
+    let baseline = baseline_surface(resolver, layout, &entry)?;
     let baseline_detail: Vec<BaselineDomainDetail> = (&baseline_index).into();
     let header = ProjectionHeader {
         version: 1,
@@ -200,7 +205,8 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
 pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam>(
-    model: &P, sources: &S, targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str,
+    model: &P, sources: &S, targets: &T, resolver: &impl Resolver, layout: Layout<'_>,
+    now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
     let entry = load_entry(layout, slice)?;
     if entry.status == Status::Done {
@@ -213,19 +219,21 @@ pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam>(
             ),
         ));
     }
-    let target = breakout_target(layout, &entry, slice)?;
-    refine(model, sources, targets, layout, now, slice, &target).await
+    let target = breakout_target(resolver, layout, &entry, slice)?;
+    refine(model, sources, targets, resolver, layout, now, slice, &target).await
 }
 
 /// Resolve the breakout's target value: the slice's recorded
 /// `metadata.yaml` target when the slice directory already exists,
 /// else the bound project's topology.
-fn breakout_target(layout: Layout<'_>, entry: &Entry, slice: &str) -> Result<String, Error> {
+fn breakout_target(
+    resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry, slice: &str,
+) -> Result<String, Error> {
     if let Ok(metadata) = crate::slice::SliceMetadata::load(&layout.slices_dir().join(slice)) {
         return Ok(metadata.target);
     }
     let config = ProjectConfig::load(layout.project_dir())?;
-    let topology = resolve_topology(&config, layout.project_dir())?;
+    let topology = resolve_topology(resolver, &config, layout.project_dir())?;
     resolve_target(entry, &topology).map(|target| target.to_string()).map_err(|err| Error::Diag {
         code: "slice-create-target-missing",
         detail: format!(
@@ -327,9 +335,11 @@ fn resolve_baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
 /// synthesis inputs envelope. Baseline is advisory context, so any
 /// topology resolution miss degrades to an empty surface (the native
 /// handler's posture).
-fn baseline_surface(layout: Layout<'_>, entry: &Entry) -> Result<Vec<Surface>, Error> {
+fn baseline_surface(
+    resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry,
+) -> Result<Vec<Surface>, Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
-    let topology = resolve_topology(&config, layout.project_dir())?;
+    let topology = resolve_topology(resolver, &config, layout.project_dir())?;
     let bound = match entry.project.as_deref() {
         Some(name) => topology.iter().find(|p| p.name == name),
         None if topology.len() == 1 => topology.first(),

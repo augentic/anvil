@@ -195,7 +195,7 @@ fn c02_local_slot_refuses_non_symlink() {
 
     let registry = registry_with_projects(&["peer"]);
     let selected = registry.select(&["peer".to_string()]).unwrap();
-    let err = workspace_sync_projects(project_dir, &selected)
+    let err = workspace_sync_projects(&common::resolver(), project_dir, &selected)
         .expect_err("mismatched local slot should fail");
     let msg = err.to_string();
 
@@ -224,7 +224,7 @@ fn c02_remote_slot_refuses_existing_symlink() {
         contracts: None,
         greenfield_seed: None,
     };
-    let err = workspace_sync_projects(project_dir, &[&project])
+    let err = workspace_sync_projects(&common::resolver(), project_dir, &[&project])
         .expect_err("remote-backed symlink slot should fail");
     let msg = err.to_string();
 
@@ -255,7 +255,7 @@ fn c10_slot_problem_wrong_symlink() {
     assert_eq!(problem.observed_kind, Some(SlotKind::Symlink));
 
     let selected = registry.select(&["peer".to_string()]).unwrap();
-    let err = workspace_sync_projects(project_dir, &selected)
+    let err = workspace_sync_projects(&common::resolver(), project_dir, &selected)
         .expect_err("sync should refuse same wrong symlink");
     let msg = err.to_string();
     assert!(msg.contains(problem.message()), "msg: {msg}\nproblem: {}", problem.message());
@@ -282,7 +282,7 @@ fn c10_slot_problem_wrong_origin() {
     assert_eq!(problem.reason, SlotProblemReason::RemoteOriginMismatch);
     assert_eq!(problem.observed_url.as_deref(), Some("https://example.invalid/old.git"));
 
-    let err = workspace_sync_projects(project_dir, &[&project])
+    let err = workspace_sync_projects(&common::resolver(), project_dir, &[&project])
         .expect_err("sync should refuse same wrong origin");
     let msg = err.to_string();
     assert!(msg.contains(problem.message()), "msg: {msg}\nproblem: {}", problem.message());
@@ -302,7 +302,7 @@ fn c02_sync_refuses_escaping_name() {
         greenfield_seed: None,
     };
 
-    let err = workspace_sync_projects(project_dir, &[&project])
+    let err = workspace_sync_projects(&common::resolver(), project_dir, &[&project])
         .expect_err("traversal-like project name should fail");
     let msg = err.to_string();
 
@@ -325,7 +325,7 @@ fn c02_sync_refuses_symlinked_base() {
 
     let registry = registry_with_projects(&["peer"]);
     let selected = registry.select(&["peer".to_string()]).unwrap();
-    let err = workspace_sync_projects(project_dir, &selected)
+    let err = workspace_sync_projects(&common::resolver(), project_dir, &selected)
         .expect_err("workspace base symlink should fail");
     let msg = err.to_string();
 
@@ -345,8 +345,9 @@ fn c02_sync_preserves_gitignore_once() {
     let registry = registry_with_projects(&["peer"]);
     let selected = registry.select(&[]).unwrap();
 
-    workspace_sync_projects(project_dir, &selected).expect("sync ok");
-    workspace_sync_projects(project_dir, &selected).expect("sync remains idempotent");
+    workspace_sync_projects(&common::resolver(), project_dir, &selected).expect("sync ok");
+    workspace_sync_projects(&common::resolver(), project_dir, &selected)
+        .expect("sync remains idempotent");
 
     let gitignore = fs::read_to_string(project_dir.join(".gitignore")).unwrap();
     assert_eq!(gitignore.lines().filter(|line| line.trim() == "workspace/").count(), 1);
@@ -379,7 +380,8 @@ fn workspace_with_specify_peer(project_dir: &Path) -> PathBuf {
 
 fn sync_all(project_dir: &Path) {
     let registry = Registry::load(project_dir).unwrap().expect("registry present");
-    workspace_sync_projects(project_dir, &registry.select(&[]).unwrap()).expect("sync ok");
+    workspace_sync_projects(&common::resolver(), project_dir, &registry.select(&[]).unwrap())
+        .expect("sync ok");
 }
 
 #[test]
@@ -469,7 +471,7 @@ fn sync_remote_worktree_reuses_mirror() {
     let project = remote_project(remote_url.clone());
 
     // First sync clones the persistent mirror once, then checks out a worktree.
-    workspace_sync_projects(&project_dir, &[&project]).expect("first sync");
+    workspace_sync_projects(&common::resolver(), &project_dir, &[&project]).expect("first sync");
 
     let slot = project_dir.join("workspace/alpha");
     assert!(
@@ -487,7 +489,8 @@ fn sync_remote_worktree_reuses_mirror() {
 
     // Simulate a fresh checkout: the gitignored slot vanishes, the mirror persists.
     fs::remove_dir_all(&slot).unwrap();
-    workspace_sync_projects(&project_dir, &[&project]).expect("second sync reuses the mirror");
+    workspace_sync_projects(&common::resolver(), &project_dir, &[&project])
+        .expect("second sync reuses the mirror");
 
     assert!(slot.join(".git").is_file(), "the worktree re-materialises from the persistent mirror");
     assert!(sentinel.is_file(), "the mirror was reused via fetch, not re-cloned");
@@ -502,7 +505,8 @@ fn prepare_on_worktree_creates_branch() {
     let (_remote, remote_url) = seed_bare_remote(&tmp);
     let project = remote_project(remote_url);
 
-    workspace_sync_projects(&project_dir, &[&project]).expect("sync materialises a worktree");
+    workspace_sync_projects(&common::resolver(), &project_dir, &[&project])
+        .expect("sync materialises a worktree");
 
     let prepared = prepare(&project_dir, &project, &branch_request("demo-change"))
         .expect("branch preparation succeeds against a mirror-backed worktree");
@@ -705,14 +709,13 @@ fn c07_push_wrong_branch_no_checkout() {
 ///
 /// The slot pins `omnia@1.0.0`, which resolves the single-file global
 /// store entry (the caller pins `SPECIFY_ADAPTER_STORE` via
-/// `common::scoped_store`); the describe answer is stubbed through the
-/// JSON-body runner registered by `common::register_stub`.
+/// `common::scoped_store`); tests pass their explicit component
+/// resolver to topology regeneration.
 fn stage_topology_slot(project_dir: &Path, name: &str, project_yaml: &str) {
     let slot = project_dir.join("workspace").join(name);
     let slot_specify = slot.join(".specify");
     fs::create_dir_all(&slot_specify).unwrap();
     fs::write(slot_specify.join("project.yaml"), project_yaml).unwrap();
-    common::register_stub();
     let entry = schema::cache::adapter_store_entry("omnia", "1.0.0");
     fs::create_dir_all(entry.parent().unwrap()).unwrap();
     fs::write(&entry, "{}").unwrap();
@@ -775,7 +778,7 @@ fn topology_lock_projects_baseline() {
         ],
     };
 
-    regenerate_topology_lock(project_dir, &registry).expect("regenerate");
+    regenerate_topology_lock(&common::resolver(), project_dir, &registry).expect("regenerate");
 
     let lock = TopologyLock::load(&project_dir.join(".specify/topology.lock"))
         .expect("load")
@@ -839,7 +842,7 @@ fn topology_lock_projects_decisions() {
         }],
     };
 
-    regenerate_topology_lock(project_dir, &registry).expect("regenerate");
+    regenerate_topology_lock(&common::resolver(), project_dir, &registry).expect("regenerate");
 
     let lock = TopologyLock::load(&project_dir.join(".specify/topology.lock"))
         .expect("load")

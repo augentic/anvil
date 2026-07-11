@@ -12,6 +12,7 @@ use super::git::{self, git_output_ok};
 use super::mirror::mirror_adapters;
 use super::slot_problem::inspect_at;
 use super::{contracts_base, registry_symlink_target, workspace_base, workspace_slot_path};
+use crate::adapter::Resolver;
 use crate::cmd;
 use crate::config::{Layout, ProjectConfig};
 use crate::registry::catalog::{Registry, RegistryProject};
@@ -29,7 +30,9 @@ use crate::registry::topology::{TopologyLock, TopologyProject};
 /// Aggregates per-project sync failures under the `workspace-sync-failed`
 /// diagnostic; refuses materialisation when `workspace/` is itself
 /// a symlink or otherwise invalid.
-pub fn sync_projects(project_dir: &Path, projects: &[&RegistryProject]) -> Result<(), Error> {
+pub fn sync_projects(
+    resolver: &impl Resolver, project_dir: &Path, projects: &[&RegistryProject],
+) -> Result<(), Error> {
     ensure_gitignore_entries(project_dir)?;
 
     let base = prepare_workspace_base(project_dir)?;
@@ -46,7 +49,13 @@ pub fn sync_projects(project_dir: &Path, projects: &[&RegistryProject]) -> Resul
             if project.is_local() {
                 materialise_symlink(project_dir, &project.url, &dest)
             } else {
-                materialise_git_remote(&project.url, &dest, project.adapter.as_deref(), project_dir)
+                materialise_git_remote(
+                    resolver,
+                    &project.url,
+                    &dest,
+                    project.adapter.as_deref(),
+                    project_dir,
+                )
             }
         });
         if let Err(err) = result {
@@ -123,7 +132,9 @@ pub fn sync_projects(project_dir: &Path, projects: &[&RegistryProject]) -> Resul
 ///
 /// Surfaces target-resolution errors and a malformed/too-new existing
 /// lock; an absent slot `project.yaml` is skipped, not an error.
-pub fn regenerate_topology_lock(project_dir: &Path, registry: &Registry) -> Result<(), Error> {
+pub fn regenerate_topology_lock(
+    resolver: &impl Resolver, project_dir: &Path, registry: &Registry,
+) -> Result<(), Error> {
     let base = workspace_base(project_dir);
     let mut projects: Vec<TopologyProject> = Vec::new();
     for project in &registry.projects {
@@ -132,7 +143,7 @@ pub fn regenerate_topology_lock(project_dir: &Path, registry: &Registry) -> Resu
             continue;
         }
         let config = ProjectConfig::load(&slot)?;
-        projects.push(TopologyProject::resolve(&project.name, &config, &slot)?);
+        projects.push(TopologyProject::resolve(resolver, &project.name, &config, &slot)?);
     }
 
     let path = Layout::new(project_dir).topology_lock_path();
@@ -254,7 +265,8 @@ fn symlink(target: &Path, link: &Path) -> Result<(), Error> {
 }
 
 pub(super) fn materialise_git_remote(
-    url: &str, dest: &Path, adapter: Option<&str>, initiating_project_dir: &Path,
+    resolver: &impl Resolver, url: &str, dest: &Path, adapter: Option<&str>,
+    initiating_project_dir: &Path,
 ) -> Result<(), Error> {
     match std::fs::symlink_metadata(dest) {
         Ok(meta) if meta.file_type().is_symlink() => Err(Error::Diag {
@@ -281,7 +293,13 @@ pub(super) fn materialise_git_remote(
                 // in the shared mirror's `refs/remotes/origin/*`.
                 git::run(dest, &["fetch", "origin"], &format!("git fetch in {}", dest.display()))
             } else {
-                greenfield_init(dest, require_seed(adapter, dest)?, initiating_project_dir, true)
+                greenfield_init(
+                    resolver,
+                    dest,
+                    require_seed(adapter, dest)?,
+                    initiating_project_dir,
+                    true,
+                )
             }
         }
         Ok(_) => Err(Error::Diag {
@@ -303,6 +321,7 @@ pub(super) fn materialise_git_remote(
                     Ok(())
                 }
                 None => bootstrap::bootstrap(
+                    resolver,
                     url,
                     dest,
                     require_seed(adapter, dest)?,

@@ -1,4 +1,4 @@
-//! [`NativeProvider`] — the native seam command operations run against.
+//! [`Provider`] — the native seam command operations run against.
 //!
 //! Project anchoring, judgment (delegated to the configured [`Model`]
 //! backend), and `SourceSeam` / `TargetSeam` as an in-process dispatch
@@ -21,11 +21,13 @@ use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Reply, Request};
 use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use workflow::adapter::metadata::{Metadata, MetadataRequest};
-use workflow::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
+use workflow::adapter::metadata::{Metadata, Request as MetadataRequest};
+use workflow::adapter::{AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
 use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
 use workflow::slice::build::wire::BUILD_VERSION;
 use workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
+
+use crate::catalog;
 
 /// The native shim's seam provider: every capability the orchestrators
 /// need, backed by the linked adapter crates and a native [`Model`].
@@ -33,7 +35,7 @@ use workflow::slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 /// Generic over the model backend so the dev binary binds
 /// [`crate::model::DevModel`] and tests bind `testkit::MockModel`.
 #[derive(Debug)]
-pub struct NativeProvider<M> {
+pub struct Provider<M> {
     /// The configured project root every project-scoped verb anchors at.
     project_dir: PathBuf,
     /// The judgment backend behind both the orchestrators' own legs and
@@ -45,7 +47,7 @@ pub struct NativeProvider<M> {
     mcp_base: Option<String>,
 }
 
-impl<M> NativeProvider<M> {
+impl<M> Provider<M> {
     /// A provider anchored at `project_dir` over the given model backend.
     pub fn new(project_dir: impl Into<PathBuf>, model: M) -> Self {
         Self {
@@ -77,19 +79,37 @@ impl<M> NativeProvider<M> {
     }
 }
 
-impl<M: Send + Sync + 'static> workflow::handler::Anchor for NativeProvider<M> {
+impl<M: Send + Sync + 'static> workflow::handler::Anchor for Provider<M> {
     fn project_root(&self) -> &Path {
         &self.project_dir
     }
 }
 
-impl<M: Model> Model for NativeProvider<M> {
+impl<M: Send + Sync> Resolver for Provider<M> {
+    fn resolve_source(
+        &self, adapter_ref: &AdapterRef, _project_dir: &Path,
+    ) -> Result<ResolvedSource, Error> {
+        require_bare(adapter_ref)?;
+        let entry = catalog::get(Axis::Source, &adapter_ref.name)?;
+        workflow::adapter::resolver::source(adapter_ref, entry.metadata(), origin(entry))
+    }
+
+    fn resolve_target(
+        &self, adapter_ref: &AdapterRef, _project_dir: &Path,
+    ) -> Result<ResolvedTarget, Error> {
+        require_bare(adapter_ref)?;
+        let entry = catalog::get(Axis::Target, &adapter_ref.name)?;
+        workflow::adapter::resolver::target(adapter_ref, entry.metadata(), origin(entry))
+    }
+}
+
+impl<M: Model> Model for Provider<M> {
     async fn create(&self, request: Request) -> Result<Reply, omnia_guest::model::Error> {
         self.model.create(request).await
     }
 }
 
-impl<M: Model> SourceSeam for NativeProvider<M> {
+impl<M: Model> SourceSeam for Provider<M> {
     async fn survey(&self, id: String) -> Result<Vec<Lead>, seam::Error> {
         let url = self.mcp_url(&id);
         let ctx = Context {
@@ -141,7 +161,7 @@ impl<M: Model> SourceSeam for NativeProvider<M> {
     }
 }
 
-impl<M: Model> TargetSeam for NativeProvider<M> {
+impl<M: Model> TargetSeam for Provider<M> {
     async fn guidance(&self, id: String) -> Result<String, seam::Error> {
         let prompt = match id.as_str() {
             "target:contracts" => contracts::operations::guidance(),
@@ -183,59 +203,18 @@ impl<M: Model> TargetSeam for NativeProvider<M> {
     }
 }
 
-/// In-process metadata dispatch.
-///
-/// The resolvers' [`MetadataRequest`] is answered by calling each
-/// linked adapter's `operations::metadata()` directly — the native
-/// counterpart of the guest shim's WIT-routed runner. Registered by
-/// `specify-dev` at startup.
+/// In-process metadata dispatch used by seam-level parity tests.
 ///
 /// # Errors
 ///
 /// `adapter-metadata-failed` when the request names an adapter this
 /// shim does not link.
 pub fn metadata(request: &MetadataRequest<'_>) -> Result<Metadata, Error> {
-    match request.axis {
-        Axis::Source => {
-            let record = match request.adapter_id {
-                "source:captures" => captures::operations::metadata(),
-                "source:documentation" => documentation::operations::metadata(),
-                "source:intent" => intent::operations::metadata(),
-                "source:screenshots" => screenshots::operations::metadata(),
-                "source:typescript" => typescript::operations::metadata(),
-                other => return Err(not_linked(other)),
-            };
-            Ok(Metadata {
-                specify_floor: record.specify_floor,
-                inputs: Vec::new(),
-                platforms: None,
-            })
-        }
-        Axis::Target => {
-            let record = match request.adapter_id {
-                "target:contracts" => contracts::operations::metadata(),
-                "target:omnia" => omnia_target::operations::metadata(),
-                "target:vectis" => vectis::operations::metadata(),
-                other => return Err(not_linked(other)),
-            };
-            Ok(Metadata {
-                specify_floor: record.specify_floor,
-                inputs: record
-                    .inputs
-                    .into_iter()
-                    .map(|input| BuildInputDeclaration {
-                        path: input.path,
-                        required: input.required,
-                    })
-                    .collect(),
-                platforms: record.platforms.map(|capability| PlatformsCapability {
-                    required: capability.required,
-                    allowed: capability.allowed.into_iter().map(map_platform).collect(),
-                    default: capability.default.into_iter().map(map_platform).collect(),
-                }),
-            })
-        }
-    }
+    let name = request.adapter_id.split_once(':').map(|(_, name)| name).unwrap_or_default();
+    catalog::get(request.axis, name).map(catalog::Entry::metadata).map_err(|_error| Error::Diag {
+        code: "adapter-metadata-failed",
+        detail: format!("adapter `{}` is not linked into the native shim", request.adapter_id),
+    })
 }
 
 /// A dispatch to an adapter id this shim does not link.
@@ -243,11 +222,24 @@ fn unlinked(id: &str) -> seam::Error {
     seam::Error::InvalidRequest(format!("adapter `{id}` is not linked into the native shim"))
 }
 
-/// The metadata-time flavour of [`unlinked`].
-fn not_linked(id: &str) -> Error {
-    Error::Diag {
-        code: "adapter-metadata-failed",
-        detail: format!("adapter `{id}` is not linked into the native shim"),
+fn require_bare(adapter_ref: &AdapterRef) -> Result<(), Error> {
+    if adapter_ref.version.is_none() {
+        return Ok(());
+    }
+    Err(Error::Diag {
+        code: "adapter-not-found",
+        detail: format!(
+            "native adapter resolution accepts bare development identities only; \
+             `{}` is pinned and must resolve through the component deployment",
+            adapter_ref.name
+        ),
+    })
+}
+
+fn origin(entry: catalog::Entry) -> Origin {
+    Origin {
+        label: "native".to_string(),
+        reference: format!("rust:{}", entry.id()),
     }
 }
 

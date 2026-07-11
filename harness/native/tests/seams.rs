@@ -1,15 +1,15 @@
-//! Seam-level coverage of [`NativeProvider`]: the in-process dispatch
+//! Seam-level coverage of the native [`Provider`]: the in-process dispatch
 //! table reaches the real adapter operations (scripted through
 //! `testkit::MockModel`), the DTO mappings match the guest shim's WIT
 //! projections (claim JSON keys, report widening), and the metadata
 //! runner answers both axes.
 
 use serde_json::json;
-use specify_dev::provider::{NativeProvider, metadata};
+use specify_dev::provider::{Provider, metadata};
 use tempfile::TempDir;
 use testkit::MockModel;
-use workflow::adapter::Axis;
-use workflow::adapter::metadata::MetadataRequest;
+use workflow::adapter::metadata::Request as MetadataRequest;
+use workflow::adapter::{AdapterRef, Axis, Resolver};
 use workflow::seam::{Error, Input, Lead, SourceSeam as _, TargetSeam as _, WorkingTree};
 use workflow::slice::BuildStatus;
 
@@ -34,7 +34,7 @@ async fn survey_dispatches_to_intent() {
     let model = MockModel::answering([
         r#"{"leads":[{"lead":"password-reset","synopsis":"Let users reset passwords."}]}"#,
     ]);
-    let provider = NativeProvider::new(tmp.path(), model);
+    let provider = Provider::new(tmp.path(), model);
 
     let leads = provider.survey("source:intent".to_string()).await.expect("survey");
 
@@ -48,7 +48,7 @@ async fn extract_projects_claim_json() {
     let model = MockModel::answering([
         r#"{"authority":"intent","claims":[{"kind":"intent","id":"password-reset","statement":"Let users reset passwords."}]}"#,
     ]);
-    let provider = NativeProvider::new(tmp.path(), model);
+    let provider = Provider::new(tmp.path(), model);
 
     let evidence = provider
         .extract("source:intent".to_string(), lead("password-reset"))
@@ -65,8 +65,7 @@ async fn extract_projects_claim_json() {
 async fn mcp_base_grants_reference_url() {
     let tmp = TempDir::new().expect("tempdir");
     let model = MockModel::answering([r#"{"leads":[]}"#]);
-    let provider =
-        NativeProvider::new(tmp.path(), model).mcp_base("http://127.0.0.1:7737".to_string());
+    let provider = Provider::new(tmp.path(), model).mcp_base("http://127.0.0.1:7737".to_string());
 
     provider.survey("source:intent".to_string()).await.expect("survey");
 
@@ -80,7 +79,7 @@ async fn mcp_base_grants_reference_url() {
 #[tokio::test]
 async fn guidance_serves_embedded_prompts() {
     let tmp = TempDir::new().expect("tempdir");
-    let provider = NativeProvider::new(tmp.path(), MockModel::answering([]));
+    let provider = Provider::new(tmp.path(), MockModel::answering([]));
 
     let omnia = provider.guidance("target:omnia".to_string()).await.expect("omnia guidance");
     assert!(omnia.starts_with("# Omnia target — guidance prompt"), "{omnia:.60}");
@@ -99,7 +98,7 @@ async fn build_widens_report() {
         r#"{"applicable":false,"summary":"no captures binding"}"#,
         r#"{"status":"success","findings":[]}"#,
     ]);
-    let provider = NativeProvider::new(tmp.path(), model);
+    let provider = Provider::new(tmp.path(), model);
 
     let report = provider
         .build(
@@ -120,7 +119,7 @@ async fn build_widens_report() {
 #[tokio::test]
 async fn unlinked_adapter_refused() {
     let tmp = TempDir::new().expect("tempdir");
-    let provider = NativeProvider::new(tmp.path(), MockModel::answering([]));
+    let provider = Provider::new(tmp.path(), MockModel::answering([]));
 
     let err = provider.survey("source:unknown".to_string()).await.expect_err("unlinked source");
     assert!(matches!(err, Error::InvalidRequest(detail) if detail.contains("source:unknown")));
@@ -131,9 +130,7 @@ async fn unlinked_adapter_refused() {
 
 #[test]
 fn metadata_answers_both_axes() {
-    let component = std::path::Path::new("unused.wasm");
     let source = metadata(&MetadataRequest {
-        component,
         axis: Axis::Source,
         adapter_id: "source:intent",
     })
@@ -142,7 +139,6 @@ fn metadata_answers_both_axes() {
     assert!(source.inputs.is_empty());
 
     let target = metadata(&MetadataRequest {
-        component,
         axis: Axis::Target,
         adapter_id: "target:omnia",
     })
@@ -150,10 +146,37 @@ fn metadata_answers_both_axes() {
     assert!(target.platforms.is_none());
 
     let err = metadata(&MetadataRequest {
-        component,
         axis: Axis::Source,
         adapter_id: "source:unknown",
     })
     .expect_err("unlinked adapter refuses");
     assert!(err.to_string().contains("source:unknown"), "{err}");
+}
+
+#[test]
+fn resolver_uses_linked_catalog() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let provider = Provider::new(tmp.path(), MockModel::answering([]));
+
+    let source = provider
+        .resolve_source(&AdapterRef::bare("intent"), tmp.path())
+        .expect("linked source resolves");
+    assert_eq!(source.origin.label, "native");
+    assert_eq!(source.origin.reference, "rust:source:intent");
+
+    let target = provider
+        .resolve_target(&AdapterRef::bare("omnia"), tmp.path())
+        .expect("linked target resolves");
+    assert_eq!(target.origin.reference, "rust:target:omnia");
+    assert!(!tmp.path().join("target/wasm32-wasip2/release/omnia.wasm").exists());
+
+    let unknown = provider
+        .resolve_target(&AdapterRef::bare("unknown"), tmp.path())
+        .expect_err("unknown linked adapter refuses");
+    assert_eq!(unknown.variant_str(), "adapter-not-found");
+
+    let pinned = provider
+        .resolve_target(&AdapterRef::pinned("omnia", "1.0.0".parse().expect("semver")), tmp.path())
+        .expect_err("pinned identities remain component-only");
+    assert_eq!(pinned.variant_str(), "adapter-not-found");
 }

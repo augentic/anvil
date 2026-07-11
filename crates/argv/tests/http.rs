@@ -49,6 +49,26 @@ impl workflow::handler::Anchor for Provider {
     }
 }
 
+impl workflow::adapter::Resolver for Provider {
+    fn resolve_source(
+        &self, _: &workflow::adapter::AdapterRef, _: &Path,
+    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        Err(error::Error::Diag {
+            code: "test-resolver-unused",
+            detail: "HTTP router test has no adapter resolver".to_string(),
+        })
+    }
+
+    fn resolve_target(
+        &self, _: &workflow::adapter::AdapterRef, _: &Path,
+    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        Err(error::Error::Diag {
+            code: "test-resolver-unused",
+            detail: "HTTP router test has no adapter resolver".to_string(),
+        })
+    }
+}
+
 impl omnia_guest::Model for Provider {
     async fn create(&self, _: model::Request) -> Result<model::Reply, model::Error> {
         Err(model::Error::Backend("no model behind the router test".to_string()))

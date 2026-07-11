@@ -22,6 +22,20 @@ impl workflow::handler::Anchor for TestProvider {
     }
 }
 
+impl workflow::adapter::Resolver for TestProvider {
+    fn resolve_source(
+        &self, _: &workflow::adapter::AdapterRef, _: &Path,
+    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        unreachable!("router grammar tests do not resolve adapters")
+    }
+
+    fn resolve_target(
+        &self, _: &workflow::adapter::AdapterRef, _: &Path,
+    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        unreachable!("router grammar tests do not resolve adapters")
+    }
+}
+
 impl Model for TestProvider {
     async fn create(&self, _request: Request) -> Result<Reply, omnia_guest::model::Error> {
         unreachable!("router grammar tests do not invoke judgment")

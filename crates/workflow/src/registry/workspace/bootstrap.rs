@@ -6,30 +6,31 @@ use std::path::Path;
 use error::Error;
 
 use super::git::{self, git_output_ok, git_porcelain_non_empty};
-use crate::adapter::TargetAdapter;
+use crate::adapter::Resolver;
 use crate::config::Layout;
 use crate::init::adapter_ref_from_value;
 use crate::registry::gitignore::ensure_gitignore_entries;
 
 pub(super) fn bootstrap(
-    url: &str, dest: &Path, adapter: &str, initiating_project_dir: &Path,
+    resolver: &impl Resolver, url: &str, dest: &Path, adapter: &str, initiating_project_dir: &Path,
 ) -> Result<(), Error> {
     std::fs::create_dir_all(dest).map_err(Error::Io)?;
 
     git::run(dest, &["init"], &format!("git init in {}", dest.display()))?;
     git::run(dest, &["remote", "add", "origin", url], &format!("git remote add origin {url}"))?;
 
-    greenfield_init(dest, adapter, initiating_project_dir, false)?;
+    greenfield_init(resolver, dest, adapter, initiating_project_dir, false)?;
 
     Ok(())
 }
 
 pub(super) fn greenfield_init(
-    dest: &Path, adapter: &str, initiating_project_dir: &Path, is_rerun: bool,
+    resolver: &impl Resolver, dest: &Path, adapter: &str, initiating_project_dir: &Path,
+    is_rerun: bool,
 ) -> Result<(), Error> {
     let adapter = resolve_greenfield_adapter(adapter, initiating_project_dir)?;
 
-    scaffold_greenfield(dest, &adapter)?;
+    scaffold_greenfield(resolver, dest, &adapter)?;
 
     git::run(dest, &["add", "."], &format!("git add in {}", dest.display()))?;
 
@@ -48,7 +49,7 @@ pub(super) fn greenfield_init(
     Ok(())
 }
 
-fn scaffold_greenfield(dest: &Path, adapter: &str) -> Result<(), Error> {
+fn scaffold_greenfield(resolver: &impl Resolver, dest: &Path, adapter: &str) -> Result<(), Error> {
     let specify_dir = dest.join(".specify");
     // The memoization cache is out-of-tree (OS cache, populated on
     // demand), so only the in-tree `.specify/` tenants are scaffolded.
@@ -67,7 +68,7 @@ fn scaffold_greenfield(dest: &Path, adapter: &str) -> Result<(), Error> {
         .filter(|name| !name.is_empty())
         .unwrap_or("greenfield");
 
-    let platforms_line = resolve_default_platforms(adapter, dest);
+    let platforms_line = resolve_default_platforms(resolver, adapter, dest);
 
     let mut project_yaml = format!(
         "name: {name}\nadapter: {adapter}\nspecify: \"{}\"\nrules: {{}}\n",
@@ -87,9 +88,11 @@ fn scaffold_greenfield(dest: &Path, adapter: &str) -> Result<(), Error> {
 /// `platforms.required`. Returns `None` on resolve failure (edge case:
 /// adapter cache not yet populated) or when the target does not require
 /// platforms.
-fn resolve_default_platforms(adapter: &str, dest: &Path) -> Option<String> {
-    let resolved = TargetAdapter::resolve(&adapter_ref_from_value(adapter), dest).ok()?;
-    let cap = resolved.manifest.platforms.as_ref()?;
+fn resolve_default_platforms(
+    resolver: &impl Resolver, adapter: &str, dest: &Path,
+) -> Option<String> {
+    let target = resolver.resolve_target(&adapter_ref_from_value(adapter), dest).ok()?;
+    let cap = target.manifest.platforms.as_ref()?;
     if !cap.required || cap.default.is_empty() {
         return None;
     }

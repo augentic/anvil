@@ -7,7 +7,7 @@ use error::Error;
 use jiff::Timestamp;
 
 use super::Anchor;
-use crate::adapter::{ResolvedTargetAdapter, TargetAdapter};
+use crate::adapter::{ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_ref_from_value;
 
@@ -47,7 +47,7 @@ impl Ctx {
     }
 
     /// Resolve this project's target adapter into a
-    /// [`ResolvedTargetAdapter`].
+    /// [`ResolvedTarget`].
     ///
     /// Workspace projects (`workspace: true`, `adapter:` omitted) do not declare
     /// an adapter, so this returns a `workspace-no-adapter` diagnostic
@@ -58,7 +58,9 @@ impl Ctx {
     ///
     /// Returns `workspace-no-adapter` for adapter-less workspace
     /// projects, and propagates adapter-resolution failures.
-    pub fn resolve_target_adapter(&self) -> Result<ResolvedTargetAdapter, Error> {
+    pub fn resolve_target_adapter(
+        &self, resolver: &impl Resolver,
+    ) -> Result<ResolvedTarget, Error> {
         let Some(adapter_value) = self.config.adapter.as_deref() else {
             return Err(Error::Diag {
                 code: "workspace-no-adapter",
@@ -69,7 +71,7 @@ impl Ctx {
             });
         };
         let adapter_ref = adapter_ref_from_value(adapter_value);
-        TargetAdapter::resolve(&adapter_ref, &self.project_dir)
+        resolver.resolve_target(&adapter_ref, &self.project_dir)
     }
 
     /// Typed view over `.specify/`-anchored paths. Hand this to

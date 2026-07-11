@@ -20,6 +20,7 @@ use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{InitOptions, InitResult, init};
+use crate::adapter::Resolver;
 use crate::handler::{Anchor, Render};
 use crate::platform::parse_platforms_csv;
 
@@ -52,7 +53,7 @@ pub struct ScaffoldInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Scaffold;
 
-impl<P: Anchor> Operation<P> for Scaffold {
+impl<P: Anchor + Resolver> Operation<P> for Scaffold {
     type Error = crate::handler::Error;
     type Input = ScaffoldInput;
     type Output = ScaffoldBody;
@@ -84,7 +85,7 @@ impl<P: Anchor> Operation<P> for Scaffold {
             platforms: parsed_platforms.as_deref(),
             upgrade: false,
         };
-        let result = init(opts, jiff::Timestamp::now())?;
+        let result = init(context.provider, opts, jiff::Timestamp::now())?;
         Ok(ScaffoldBody::from(&result))
     }
 }

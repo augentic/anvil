@@ -1,11 +1,11 @@
-//! Adapter resolution: one component, no manifest.
+//! Deployment-neutral adapter resolution.
 //!
-//! An adapter is a single WebAssembly component. Identity lives in the
-//! wasm-pkg package reference (`specify:<name>@<semver>`), axis in the
-//! exported world (`source` xor `target`), and the remaining metadata
-//! in the component's own deterministic `metadata` export, dispatched
-//! host-side at resolve time and cached against the component digest
-//! (see [`metadata`]).
+//! Workflow operations resolve adapters through the provider-carried
+//! [`Resolver`] capability. The shipped [`resolver::Component`]
+//! implementation locates one WebAssembly component, dispatches its
+//! deterministic `metadata` export, and caches the answer against the
+//! component digest. Other deployments provide the same capability
+//! without changing workflow kernels.
 //!
 //! Source and target adapters split into [`SourceAdapter`] /
 //! [`TargetAdapter`] in memory, each carrying its closed operation set
@@ -23,15 +23,15 @@ mod core;
 pub mod handlers;
 pub mod metadata;
 pub(crate) mod operation;
-mod resolve;
+pub mod resolver;
 
 pub use core::{
-    AdapterLocation, AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability,
-    PlatformsViolation, ResolvedSourceAdapter, ResolvedTargetAdapter, SourceAdapter, TargetAdapter,
-    dev_version,
+    AdapterRef, Axis, BuildInputDeclaration, Origin, PlatformsCapability, PlatformsViolation,
+    ResolvedSource, ResolvedTarget, SourceAdapter, TargetAdapter, dev_version,
 };
 
 pub use operation::{SourceOperation, TargetOperation};
-pub use resolve::{
-    component_cache_dir, component_cache_entry, dev_component_filename, dev_component_paths,
+pub use resolver::{
+    Resolver, component_cache_dir, component_cache_entry, dev_component_filename,
+    dev_component_paths,
 };

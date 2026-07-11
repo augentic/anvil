@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use error::Error;
 use jiff::Timestamp;
 
-use crate::adapter::TargetAdapter;
+use crate::adapter::Resolver;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_uri::adapter_ref_from_value;
 use crate::init::cache::{ComponentMeta, cache_adapter};
@@ -25,7 +25,9 @@ use crate::init::{
 /// `artifacts::validate::registry::rules_for`.
 const SCAFFOLDED_RULE_KEYS: &[&str] = &["proposal", "specs", "design", "tasks"];
 
-pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, Error> {
+pub(super) fn run(
+    resolver: &impl Resolver, opts: InitOptions<'_>, now: Timestamp,
+) -> Result<InitResult, Error> {
     let adapter = opts.adapter.ok_or_else(|| Error::Diag {
         code: "init-requires-adapter-or-workspace",
         detail: "pass <adapter> or --workspace".to_string(),
@@ -56,10 +58,10 @@ pub(super) fn run(opts: InitOptions<'_>, now: Timestamp) -> Result<InitResult, E
     let source = cache_adapter(adapter, opts.project_dir, now)?;
     let adapter_value = source.adapter_value;
     let adapter_ref = adapter_ref_from_value(&adapter_value);
-    let resolved = TargetAdapter::resolve(&adapter_ref, opts.project_dir)?;
-    let adapter_name = resolved.manifest.name.clone();
+    let target = resolver.resolve_target(&adapter_ref, opts.project_dir)?;
+    let adapter_name = target.manifest.name.clone();
     let validated_platforms =
-        validate_platforms(opts.platforms, resolved.manifest.platforms.as_ref(), &adapter_name)?;
+        validate_platforms(opts.platforms, target.manifest.platforms.as_ref(), &adapter_name)?;
     let scaffolded_rule_keys: Vec<String> =
         SCAFFOLDED_RULE_KEYS.iter().map(|key| (*key).to_string()).collect();
 

@@ -12,6 +12,7 @@ use omnia_guest::api::command::{
 use omnia_guest::api::invoke::{CallContext, Invoker};
 use omnia_guest::api::operation::Operation;
 use serde::Serialize;
+use workflow::adapter::Resolver;
 use workflow::handler::{Anchor, Render};
 use workflow::seam::{SourceSeam, TargetSeam};
 
@@ -184,7 +185,7 @@ pub fn router<P>(
     preflight: impl Fn(&Globals) -> Result<(), error::Error> + Send + Sync + 'static,
 ) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + SourceSeam + TargetSeam,
+    P: Provider + Anchor + Model + Resolver + SourceSeam + TargetSeam,
 {
     let app = App::new("specify")
         .version(env!("CARGO_PKG_VERSION"))

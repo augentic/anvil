@@ -12,7 +12,7 @@ use error::{Error, Result};
 use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 
 use super::wire::ProjectRef;
-use crate::adapter::TargetAdapter;
+use crate::adapter::Resolver;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::adapter_ref_from_value;
 use crate::registry::catalog::Registry;
@@ -33,7 +33,7 @@ use crate::registry::topology::{Surface, TopologyLock};
 /// - **Single regular project** — one synthesised [`ProjectRef`]:
 ///   `name` from `project.yaml.name`, `description` from `project.yaml`,
 ///   `target` formed by resolving `project.yaml.adapter` through
-///   [`TargetAdapter::resolve`], plus the live baseline projection
+///   [`crate::adapter::Resolver::resolve_target`], plus the live baseline projection
 ///   (`surface[]`, `decisions[]`, `recent[]`). A regular project reads its
 ///   own `project.yaml` live as its single source of truth — no cache.
 ///
@@ -47,14 +47,16 @@ use crate::registry::topology::{Surface, TopologyLock};
 /// - [`Error::Validation`] (`plan-propose-project-adapter-missing`) when
 ///   a regular `project.yaml` omits `adapter` — a corrupt project that
 ///   `specify init` never produces.
-/// - Any error from [`TargetAdapter::resolve`] (`adapter-not-found`,
+/// - Any error from [`crate::adapter::Resolver::resolve_target`] (`adapter-not-found`,
 ///   `adapter-metadata-failed`, …) when the regular project's adapter
 ///   cannot be resolved.
-pub fn resolve_topology(config: &ProjectConfig, project_dir: &Path) -> Result<Vec<ProjectRef>> {
+pub fn resolve_topology(
+    resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path,
+) -> Result<Vec<ProjectRef>> {
     if config.workspace {
         workspace_topology(project_dir)
     } else {
-        regular_topology(config, project_dir).map(|project| vec![project])
+        regular_topology(resolver, config, project_dir).map(|project| vec![project])
     }
 }
 
@@ -168,7 +170,9 @@ fn workspace_topology(project_dir: &Path) -> Result<Vec<ProjectRef>> {
 }
 
 /// Synthesise the sole [`ProjectRef`] for a single regular project.
-fn regular_topology(config: &ProjectConfig, project_dir: &Path) -> Result<ProjectRef> {
+fn regular_topology(
+    resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path,
+) -> Result<ProjectRef> {
     let adapter_value = config.adapter.as_deref().ok_or_else(|| {
         Error::validation_failed(
             "plan-propose-project-adapter-missing",
@@ -176,8 +180,8 @@ fn regular_topology(config: &ProjectConfig, project_dir: &Path) -> Result<Projec
             "non-workspace project.yaml omits the `adapter` field",
         )
     })?;
-    let resolved = TargetAdapter::resolve(&adapter_ref_from_value(adapter_value), project_dir)?;
-    let target = format!("{}@{}", resolved.manifest.name, resolved.manifest.version);
+    let adapter = resolver.resolve_target(&adapter_ref_from_value(adapter_value), project_dir)?;
+    let target = format!("{}@{}", adapter.manifest.name, adapter.manifest.version);
     let projection = crate::registry::identity::project_baseline(project_dir)?;
     Ok(ProjectRef {
         name: config.name.clone(),

@@ -248,11 +248,25 @@ pub const fn dev_version() -> semver::Version {
     semver::Version::new(0, 0, 0)
 }
 
+/// Deployment-neutral description of where an adapter resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Origin {
+    /// Resolver-defined mechanism label (`store`, `dev`, `native`, …).
+    pub label: String,
+    /// Human-readable reference to the resolved implementation.
+    pub reference: String,
+}
+
+impl AdapterLocation {
+    pub(super) fn origin(&self) -> Origin {
+        Origin {
+            label: self.label().to_string(),
+            reference: self.path().display().to_string(),
+        }
+    }
+}
+
 /// In-memory identity + metadata of a resolved source adapter.
-///
-/// Constructed by [`SourceAdapter::resolve`]: `name`/`version` from the
-/// [`AdapterRef`] identity, `requires_specify` from the component's
-/// cached metadata answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceAdapter {
     /// Kebab-case adapter name from the resolved identity.
@@ -269,9 +283,8 @@ pub struct SourceAdapter {
 
 /// In-memory identity + metadata of a resolved target adapter.
 ///
-/// Constructed by [`TargetAdapter::resolve`]: `name`/`version` from the
-/// [`AdapterRef`] identity, the rest from the component's cached
-/// metadata answer.
+/// Constructed by a [`crate::adapter::Resolver`]: `name`/`version` from
+/// the [`AdapterRef`] identity, the rest from its metadata answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetAdapter {
     /// Kebab-case adapter name from the resolved identity.
@@ -296,30 +309,24 @@ pub struct TargetAdapter {
     pub platforms: Option<PlatformsCapability>,
 }
 
-/// A resolved [`SourceAdapter`] paired with the [`AdapterLocation`] it
-/// loaded from (store entry vs. development build). The component file
-/// is reachable through [`AdapterLocation::path`].
+/// A resolved [`SourceAdapter`] paired with its deployment-neutral
+/// origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedSourceAdapter {
+pub struct ResolvedSource {
     /// Identity + metadata-derived fields.
     pub manifest: SourceAdapter,
-    /// Whether the component came from the global store or a
-    /// development release build, and the file itself via
-    /// [`AdapterLocation::path`].
-    pub location: AdapterLocation,
+    /// Resolver-defined implementation origin.
+    pub origin: Origin,
 }
 
-/// A resolved [`TargetAdapter`] paired with the [`AdapterLocation`] it
-/// loaded from (store entry vs. development build). The component file
-/// is reachable through [`AdapterLocation::path`].
+/// A resolved [`TargetAdapter`] paired with its deployment-neutral
+/// origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedTargetAdapter {
+pub struct ResolvedTarget {
     /// Identity + metadata-derived fields.
     pub manifest: TargetAdapter,
-    /// Whether the component came from the global store or a
-    /// development release build, and the file itself via
-    /// [`AdapterLocation::path`].
-    pub location: AdapterLocation,
+    /// Resolver-defined implementation origin.
+    pub origin: Origin,
 }
 
 impl SourceAdapter {
@@ -346,14 +353,14 @@ impl TargetAdapter {
 }
 
 /// Parse a metadata answer's `specify-floor` string into a typed
-/// semver, naming the identity and component path on failure.
+/// semver, naming the identity and resolved origin on failure.
 ///
 /// # Errors
 ///
 /// Returns [`Error::Validation`] with the kebab discriminant
 /// `adapter-floor-malformed` when the floor is not exact semver.
 pub(super) fn parse_floor(
-    floor: Option<&str>, name: &str, component: &std::path::Path,
+    floor: Option<&str>, name: &str, origin: &Origin,
 ) -> Result<Option<semver::Version>, Error> {
     let Some(floor) = floor else {
         return Ok(None);
@@ -364,7 +371,7 @@ pub(super) fn parse_floor(
             "an adapter's metadata answer declares a semver `specify-floor`",
             format!(
                 "adapter `{name}` ({}) declares `specify-floor: {floor}`, which is not an exact semver: {err}",
-                component.display(),
+                origin.reference,
             ),
         )
     })
@@ -390,7 +397,7 @@ pub(super) fn parse_floor(
 /// Returns [`Error::AdapterCliTooOld`] when `current` parses below
 /// `floor`.
 pub(super) fn check_requires_specify(
-    floor: Option<&semver::Version>, current: &str, name: &str, component: &std::path::Path,
+    floor: Option<&semver::Version>, current: &str, name: &str, origin: &Origin,
 ) -> Result<(), Error> {
     let Some(floor) = floor else {
         return Ok(());
@@ -400,7 +407,7 @@ pub(super) fn check_requires_specify(
     };
     if current_version < *floor {
         return Err(Error::AdapterCliTooOld {
-            adapter: format!("{name} ({})", component.display()),
+            adapter: format!("{name} ({})", origin.reference),
             required: floor.to_string(),
             found: current.to_string(),
         });
