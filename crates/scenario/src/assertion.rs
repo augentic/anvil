@@ -86,6 +86,9 @@ pub enum AssertionId {
     ResumeContinuesFromInProgress,
     ComposedInitSucceeds,
     ProjectScaffoldWritten,
+    ComposedPlanDrained,
+    ComposedArtifactsComplete,
+    ComposedBaselineMergeVisible,
 }
 
 /// Grading mechanism attached to an assertion identifier.
@@ -170,6 +173,9 @@ registry! {
         ResumeContinuesFromInProgress,
         ComposedInitSucceeds,
         ProjectScaffoldWritten,
+        ComposedPlanDrained,
+        ComposedArtifactsComplete,
+        ComposedBaselineMergeVisible,
     ],
     Semantic => [
         NoUnderSlicing,

@@ -36,11 +36,11 @@ make dev-live ADAPTER=contracts                  # that adapter's default scenar
 make dev-live ADAPTER=vectis SCENARIO=single_screen
 ```
 
-For adapter prompt iteration, the prose overlay turns on automatically once the run artifacts exist (a re-run skips cargo entirely; `SPECIFY_PROSE_OVERLAY=0` opts out), and `cargo make eval-watch` in the adapters repo re-runs one scenario on every prose save (`EVAL_FILTER=contracts::design cargo make eval-watch`).
+For adapter prompt iteration, the prose overlay turns on automatically once the run artifacts exist (a re-run skips cargo entirely; `SPECIFY_PROSE_OVERLAY=0` opts out). To watch one prose tree from the adapters repo, run `EVAL_FILTER=contracts::design cargo watch -w targets/contracts/prose -s 'SPECIFY_PROSE_OVERLAY=1 cargo test -p evals --test live -- --ignored --nocapture --exact "$EVAL_FILTER"'`.
 
 ### 3. `dev-full` — the WASM boundary
 
-The explicit outer gate, never the default edit loop: `doctor --live`, the deterministic rung, adapter-component WASM/WIT conformance (`cargo test -p adapter-host-tests --test composed` in the adapters repo), the workflow-core model-free composed profile, and the selected workflow scenario's `wasm-live` profile:
+The explicit outer gate, never the default edit loop: `doctor --live`, the deterministic rung, adapter-component WASM/WIT conformance (`cargo test -p evals --test composed` in the adapters repo), the workflow-core model-free composed profile, and the selected workflow scenario's `wasm-live` profile:
 
 ```bash
 make dev-full

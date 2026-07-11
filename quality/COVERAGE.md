@@ -17,7 +17,7 @@ This map names the primary owner of each seam so coverage can move without being
 ## Composed WebAssembly profiles
 
 - `quality/scenarios/composed-init.yaml` plus `harness/composed/tests/workflow.rs` owns workflow-guest command dispatch, target adapter linking, and project/cache writable preopens in CI.
-- `specify-adapters`' `adapter-host-tests` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
+- `specify-adapters`' `evals` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
 - A replayed composed full loop requires a public fixture-projection API in `omnia-testkit`; until then, workflow behavior is proved natively and the WebAssembly-only seam is proved by `composed-init`.
 
 ## Live quality profiles

@@ -30,6 +30,24 @@ The composed init writes `.specify/project.yaml` through the writable project pr
 
 **Probe.** Typed `path-exists` probe in `quality/scenarios/composed-init.yaml`.
 
+### `composed-plan-drained`
+
+The replay-backed hosted workflow leaves no plan entry pending after `specify plan execute`.
+
+**Probe.** The `composed-loop` profile grades the persisted plan after execute.
+
+### `composed-artifacts-complete`
+
+The replay-backed hosted workflow completes the slice artifact set before merge.
+
+**Probe.** The `composed-loop` profile inspects the archived slice and merged baseline.
+
+### `composed-baseline-merge-visible`
+
+The replay-backed hosted workflow writes `.specify/specs/echo/spec.md`.
+
+**Probe.** The `composed-loop` profile checks the baseline path after execute.
+
 ### `plan-exists`
 
 Used by every catalog scenario except `guest-execute-loop`, whose assertions start at the composed runtime's execute result. `plan.yaml` exists at the driving root after `/spec:plan` returns. Scenarios that execute (`workspace-two-projects`, `workspace-fail-resume`, `workspace-stale-recovery`) additionally expect `lifecycle: approved` before `specify plan execute` — the stamp the operator (or the agent at the operator's direction, with `--actor agent`) applied at Gate 1.

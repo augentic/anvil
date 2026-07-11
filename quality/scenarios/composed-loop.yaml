@@ -1,0 +1,55 @@
+version: 1
+id: composed-loop
+owner: specify
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+  - id: init
+    kind: command
+    run: specify init ./echo-target.wasm --name composed-loop --scaffold-only
+  - id: author
+    kind: command
+    run: specify plan author composed-loop --source echo=echo-source:value:hello
+  - id: approve
+    kind: command
+    run: specify plan transition composed-loop approved
+  - id: execute
+    kind: command
+    run: specify plan execute
+profiles:
+  - id: wasm-replay
+    runtime: wasm
+    model: replay
+    grading: hard
+    trials: 1
+    environment: {}
+fixtures:
+  - id: core-model-replay
+    source: quality/fixtures/replay/composed-loop
+    destination: .quality/replay
+hard-assertions:
+  - id: composed-init-succeeds
+    after: init
+    probe:
+      kind: exit-code
+      step: init
+      equals: 0
+  - id: composed-plan-drained
+    after: execute
+    probe:
+      kind: registered
+  - id: composed-artifacts-complete
+    after: execute
+    probe:
+      kind: registered
+  - id: composed-baseline-merge-visible
+    after: execute
+    probe:
+      kind: registered
+semantic-rubrics: []
+expected-outputs:
+  - path: .specify/specs
+    kind: directory

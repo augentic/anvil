@@ -233,7 +233,7 @@ live() {
     cd "$ADAPTERS"
     [ -z "${CARGO_TARGET_DIR:-}" ] || export CARGO_TARGET_DIR="$target"
     [ "$overlay" != 1 ] || export SPECIFY_PROSE_OVERLAY=1
-    cargo test -p adapter-host-tests --test live -- \
+    cargo test -p evals --test live -- \
       --ignored --nocapture --exact "$adapter::$scenario"
   )
 }
@@ -248,7 +248,7 @@ full() {
   check ""
 
   say "== composed WASM/WIT coverage (adapters checkout) =="
-  cargo_in "$ADAPTERS" test -p adapter-host-tests --test composed
+  cargo_in "$ADAPTERS" test -p evals --test composed
 
   say "== composed workflow profile: wasm-live =="
   bash "$FRAMEWORK/quality/run-live.sh" wasm-live

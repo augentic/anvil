@@ -83,7 +83,10 @@
         "slice-state-preserved",
         "resume-continues-from-in-progress",
         "composed-init-succeeds",
-        "project-scaffold-written"
+        "project-scaffold-written",
+        "composed-plan-drained",
+        "composed-artifacts-complete",
+        "composed-baseline-merge-visible"
       ]
     },
     "setup": {
