@@ -128,10 +128,12 @@ cargo +nightly miri setup
 cargo +nightly miri nextest run --no-tests=pass
 '''
 
-# Vet (check only — regeneration before checking would auto-exempt
-# anything unaudited and the gate could never fail)
+# Vet
 [tasks.vet]
 script = '''
+cargo vet regenerate imports
+cargo vet regenerate exemptions
+cargo vet regenerate unpublished
 cargo vet --locked
 '''
 install_crate = "cargo-vet"
