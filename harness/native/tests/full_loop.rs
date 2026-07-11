@@ -12,7 +12,7 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use serde_json::json;
 use specify_dev::provider::Provider;
-use testkit::MockModel;
+use specify_testkit::MockModel;
 use workflow::change::plan::wire::SourceAssign;
 use workflow::change::{LoopStep, Status, plan};
 

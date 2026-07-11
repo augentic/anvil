@@ -12,7 +12,7 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest}; owns transport-neutral Operation implementations and workflow::agents; no wasmtime in its graph
 transport                # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract
-testkit                  # dev-only shared test support (the scripted Model mock); [dev-dependencies] only, never shipped
+specify-testkit          # dev-only shared test support (the scripted Model mock); [dev-dependencies] only, never shipped
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 

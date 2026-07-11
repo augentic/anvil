@@ -19,7 +19,7 @@
 //!
 //! [`DevModel`] is the closed selection the `specify-dev` binary
 //! constructs from the environment; tests bypass it and bind
-//! `testkit::MockModel` directly.
+//! `specify_testkit::MockModel` directly.
 
 use std::collections::HashMap;
 use std::fmt;

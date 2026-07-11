@@ -47,13 +47,11 @@ clap.workspace = true
 clap_complete.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
-omnia-testkit.workspace = true
 regex.workspace = true
 schema.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
-testkit.workspace = true
 transport.workspace = true
 workflow.workspace = true
 
@@ -194,7 +192,7 @@ wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 artifacts = { path = "crates/artifacts" }
 error = { path = "crates/error" }
-testkit = { path = "crates/testkit" }
+specify-testkit = { path = "crates/specify-testkit" }
 transport = { path = "crates/transport" }
 workflow = { path = "crates/workflow" }
 
@@ -203,7 +201,6 @@ omnia-cursor = "0.28.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
-omnia-testkit = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
@@ -214,7 +211,6 @@ omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
-omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
@@ -224,7 +220,6 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
-# omnia-testkit = { path = "../omnia/crates/testkit" }
 # omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }

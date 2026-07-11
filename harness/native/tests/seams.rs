@@ -1,13 +1,13 @@
 //! Seam-level coverage of the native [`Provider`]: the in-process dispatch
 //! table reaches the real adapter operations (scripted through
-//! `testkit::MockModel`), the DTO mappings match the guest shim's WIT
+//! `specify_testkit::MockModel`), the DTO mappings match the guest shim's WIT
 //! projections (claim JSON keys, report widening), and the metadata
 //! runner answers both axes.
 
 use serde_json::json;
 use specify_dev::provider::{Provider, metadata};
+use specify_testkit::MockModel;
 use tempfile::TempDir;
-use testkit::MockModel;
 use workflow::adapter::metadata::Request as MetadataRequest;
 use workflow::adapter::{AdapterRef, Axis, Resolver};
 use workflow::seam::{Error, Input, Lead, SourceSeam as _, TargetSeam as _, WorkingTree};
@@ -70,7 +70,7 @@ async fn mcp_base_grants_reference_url() {
     provider.survey("source:intent".to_string()).await.expect("survey");
 
     let requests = provider.model().requests();
-    let grants = testkit::mcp_grants(&requests[0]);
+    let grants = specify_testkit::mcp_grants(&requests[0]);
     assert_eq!(grants.len(), 1, "one references grant per judgment leg");
     assert_eq!(grants[0].name, "intent-references");
     assert_eq!(grants[0].url, "http://127.0.0.1:7737/mcp/intent");

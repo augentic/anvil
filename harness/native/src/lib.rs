@@ -11,7 +11,7 @@
 //!   `operations` modules, plus the matching describe runner.
 //! - [`model`] — the native `Model` backends: [`model::CursorModel`]
 //!   (cursor-agent, live-only) and [`model::ReplayModel`] (recorded
-//!   fixtures, CI-safe); tests bind `testkit::MockModel` through the
+//!   fixtures, CI-safe); tests bind `specify_testkit::MockModel` through the
 //!   provider's generic parameter.
 //! - [`mcp`] — the per-adapter reference shelves, mounted at
 //!   `/mcp/<name>` on the serve-mode listener via

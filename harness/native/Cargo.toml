@@ -51,8 +51,8 @@ vectis = { path = "../../../specify-adapters/targets/vectis" }
 [dev-dependencies]
 jiff.workspace = true
 serde-saphyr.workspace = true
+specify-testkit.workspace = true
 tempfile.workspace = true
-testkit.workspace = true
 tower.workspace = true
 
 [lints]

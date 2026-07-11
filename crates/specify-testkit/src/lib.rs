@@ -2,11 +2,11 @@
 //! sibling `specify-adapters` suites.
 //!
 //! Home of the scripted [`omnia_guest::Model`] mock consumed by the
-//! `workflow` suites and the adapter crates' `tests/`. A library crate
-//! (not a per-suite `mod` include) so every test binary shares one copy
-//! and partially-used helpers never trip `dead_code`. Never a dependency
-//! of shipped code — consumers reach it through `[dev-dependencies]`
-//! only, and it never compiles for the guest wasm32 targets.
+//! native harness and the adapter crates' `tests/`. A library crate (not
+//! a per-suite `mod` include) so every test binary shares one copy and
+//! partially-used helpers never trip `dead_code`. Never a dependency of
+//! shipped code — consumers reach it through `[dev-dependencies]` only,
+//! and it never compiles for the guest wasm32 targets.
 
 #![cfg(not(target_arch = "wasm32"))]
 
