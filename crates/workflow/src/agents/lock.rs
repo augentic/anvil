@@ -14,26 +14,37 @@ use super::fingerprint::ContextFingerprint;
 
 const CURRENT_LOCK_VERSION: u64 = 1;
 
+/// The `.specify/context.lock` document.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ContextLock {
+    /// Lock format version; currently always `1`.
     pub version: u64,
+    /// `sha256:<hex>` digest over the canonical aggregate input.
     pub fingerprint: String,
+    /// CLI version that generated the fenced block.
     pub cli_version: String,
+    /// Sorted per-file input digests.
     pub inputs: Vec<Input>,
+    /// Digests of the generated fenced block itself.
     pub fences: Fences,
 }
 
+/// One fingerprinted renderer input on [`ContextLock::inputs`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Input {
+    /// Repo-relative path, `/`-separated.
     pub path: String,
+    /// Lowercase hex SHA-256 digest of the input bytes.
     pub sha256: String,
 }
 
+/// Fence digests on [`ContextLock::fences`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Fences {
+    /// `sha256:<hex>` digest of the bytes between the context fences.
     pub body_sha256: String,
 }
 
@@ -45,6 +56,8 @@ struct Version {
 impl ContextLock {
     // YAML sidecar persisted to disk — not a wire DTO, so it keeps a
     // named constructor rather than a `From`-for-Body/Row impl.
+    /// Build the current-version lock from a computed fingerprint.
+    #[must_use]
     pub fn from_fingerprint(fingerprint: &ContextFingerprint) -> Self {
         Self {
             version: CURRENT_LOCK_VERSION,
@@ -65,6 +78,14 @@ impl ContextLock {
     }
 }
 
+/// Read the lock at `path`; `Ok(None)` when the file does not exist.
+///
+/// # Errors
+///
+/// [`Error::Io`] on read failures other than not-found, and
+/// [`Error::Validation`] (`context-lock-malformed` /
+/// `context-lock-version-too-new`) when the document does not parse or
+/// carries an unsupported version.
 pub fn load(path: &Path) -> Result<Option<ContextLock>, Error> {
     let contents = match fs::read_to_string(path) {
         Ok(contents) => contents,
@@ -104,6 +125,11 @@ pub fn load(path: &Path) -> Result<Option<ContextLock>, Error> {
     Ok(Some(lock))
 }
 
+/// Atomically write the lock to `path`.
+///
+/// # Errors
+///
+/// Propagates the atomic-write failure.
 pub fn save(path: &Path, lock: &ContextLock) -> Result<(), Error> {
     // ContextLock isn't a Plan/Registry/ProjectConfig sibling; its load
     // path returns a typed Validation envelope rather than `Option<Self>`,

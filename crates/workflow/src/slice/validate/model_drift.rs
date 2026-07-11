@@ -11,7 +11,7 @@ use schema::diagnostics::{Artifact, Diagnostic};
 use serde_json::Value as JsonValue;
 
 use crate::change::Plan;
-use crate::schema::EvidenceDoc;
+use crate::schema_gate::EvidenceDoc;
 use crate::slice::expected_provenance_lines;
 use crate::slice::model::{SliceModel, validate_model_doc};
 
@@ -52,11 +52,7 @@ pub(super) fn model_drift_findings(
     if !model_path.exists() {
         return Ok(Vec::new());
     }
-    let raw = std::fs::read_to_string(&model_path).map_err(|source| Error::Filesystem {
-        op: "read",
-        path: model_path.clone(),
-        source,
-    })?;
+    let raw = crate::fs::read_text(&model_path)?;
     let value: JsonValue = serde_saphyr::from_str(&raw)?;
 
     let mut findings = Vec::new();

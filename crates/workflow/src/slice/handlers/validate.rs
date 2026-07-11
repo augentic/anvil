@@ -55,7 +55,7 @@ impl<P: Anchor> Operation<P> for Validate {
                 // diagnostic per deferred semantic rule. The non-blocking
                 // `discovery-lead-synopsis-thin` advisories ride this surface
                 // too; only a blocking diagnostic gates exit.
-                let mut findings = validate_slice(&cx.slices_dir().join(name))?;
+                let mut findings = validate_slice(&cx.layout().slices_dir().join(name))?;
                 findings.append(&mut advisories);
                 let blocking = blocking_present(&findings);
                 let body = ReportBody::new(findings, None, write_finding_row);

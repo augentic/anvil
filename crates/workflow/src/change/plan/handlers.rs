@@ -1,15 +1,17 @@
 //! The `specify plan *` verb family plus the shared plan-file helpers.
-//!
-//! `plan author` / `plan execute` are orchestration verbs and live in
-//! [`crate::orchestrate`].
 
 mod add;
 mod amend;
-pub mod args;
+mod archive;
+mod author;
 mod create;
 mod entry;
-mod lifecycle;
+mod execute;
+mod next;
 mod remove;
+mod status;
+mod transition;
+mod validate;
 
 use std::path::{Path, PathBuf};
 
@@ -18,14 +20,16 @@ use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
 pub use self::amend::{Amend, AmendInput};
-pub use self::args::{BindingArg, KindAssign, SourceAssign, source_map};
+pub use self::archive::{Archive, ArchiveBody, ArchiveInput, ArchivedPlan};
+pub use self::author::{Author, AuthorBody, AuthorInput, AuthorSurvey};
 pub use self::create::{Create, CreateInput};
 pub use self::entry::EntryBody;
-pub use self::lifecycle::{
-    Archive, ArchiveInput, Next, NextInput, Status, StatusInput, Transition, TransitionInput,
-    Validate, ValidateInput,
-};
+pub use self::execute::{Execute, ExecuteBody, ExecuteInput, ExecutePhase};
+pub use self::next::{Next, NextInput};
 pub use self::remove::{Remove, RemoveInput};
+pub use self::status::{Status, StatusInput};
+pub use self::transition::{Transition, TransitionBody, TransitionInput, TransitionKind, UndoPair};
+pub use self::validate::{Validate, ValidateInput};
 use crate::change::Plan;
 use crate::handler::Ctx;
 use crate::registry::Registry;
@@ -34,8 +38,7 @@ use crate::registry::Registry;
 
 /// Ensure the plan file exists before we try to load it. Error text is
 /// the stable "plan file not found: plan.yaml" string that skill
-/// authors match on. Resolves through `ctx.layout()` so the plan-root
-/// override applies.
+/// authors match on.
 pub(crate) fn require_file(ctx: &Ctx) -> Result<PathBuf> {
     let path = ctx.layout().plan_path();
     if !path.exists() {
@@ -54,14 +57,14 @@ pub(crate) fn require_file(ctx: &Ctx) -> Result<PathBuf> {
 pub struct Ref {
     /// Plan name from `plan.yaml.name`.
     pub name: String,
-    /// Display path of the plan file.
-    pub path: String,
+    /// Path of the plan file (serialised as its display string).
+    pub path: PathBuf,
 }
 
 pub(crate) fn plan_ref(plan: &Plan, plan_path: &Path) -> Ref {
     Ref {
         name: plan.name.to_string(),
-        path: plan_path.display().to_string(),
+        path: plan_path.to_path_buf(),
     }
 }
 

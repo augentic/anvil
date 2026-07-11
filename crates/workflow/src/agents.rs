@@ -7,15 +7,6 @@
 //! command assembles a [`render::Input`] from its `Ctx` and drives these
 //! modules; everything here is `Ctx`-free so it can carry its own unit tests
 //! (per `docs/standards/testing.md`).
-#![allow(
-    missing_docs,
-    missing_debug_implementations,
-    missing_copy_implementations,
-    clippy::pedantic,
-    clippy::nursery,
-    reason = "binary-internal context-fence code consumed only by the `agents` command; documenting ~30 internal fields and `#[must_use]` / `# Panics` attributes adds noise, not API surface"
-)]
-
 pub mod detect;
 pub mod fences;
 pub mod fingerprint;

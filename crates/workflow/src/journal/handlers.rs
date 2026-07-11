@@ -82,7 +82,7 @@ impl<P: Anchor> Operation<P> for Emit {
             serde_json::from_value(Value::Object(tagged)).map_err(|err| classify(&event, &err))?;
 
         let journal_event = Event::new(cx.now(), kind);
-        super::append_batch(cx.layout(), std::slice::from_ref(&journal_event))?;
+        super::append_one(cx.layout(), &journal_event)?;
 
         Ok(EmitBody { event })
     }

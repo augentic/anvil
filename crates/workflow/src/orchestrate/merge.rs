@@ -6,9 +6,9 @@ use error::Error;
 use jiff::Timestamp;
 
 use crate::change::{Plan, Status};
-use crate::config::{Layout, with_state};
+use crate::config::{Layout, Mutation, with_state};
 use crate::journal::{self, EventKind};
-use crate::merge::{ArtifactClass, MergeCommit, MergePreviewEntry, slice as slice_merge};
+use crate::merge::{MergeCommit, MergePreviewEntry, artifact_classes, slice as slice_merge};
 
 /// The result of a completed guest [`merge`].
 #[derive(Debug, Clone)]
@@ -37,9 +37,9 @@ pub struct MergeOutcome {
 /// is the sole `.specify/` writer during a run (non-concurrent stack
 /// use is the documented coexistence rule).
 ///
-/// `classes` is the artifact-class set the deltas merge under (the
-/// caller resolves it, mirroring how the native verb owns the omnia
-/// default set).
+/// The deltas merge under the omnia-default artifact-class set
+/// ([`artifact_classes`]), resolved here so every merge entry point
+/// shares one prelude.
 ///
 /// # Errors
 ///
@@ -49,8 +49,7 @@ pub struct MergeOutcome {
 ///   stamp (skipped silently when no `plan.yaml` exists, matching
 ///   native standalone merges).
 pub fn merge(
-    layout: Layout<'_>, now: Timestamp, slice: &str, classes: &[ArtifactClass],
-    allow_composition_replace: bool,
+    layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
     journal::emit_best_effort(
         layout,
@@ -60,7 +59,7 @@ pub fn merge(
         },
         "slice.merge",
     );
-    match commit_run(layout, now, slice, classes, allow_composition_replace) {
+    match commit_run(layout, now, slice, allow_composition_replace) {
         Ok(outcome) => {
             journal::emit_best_effort(
                 layout,
@@ -92,14 +91,14 @@ pub fn merge(
 /// `done`. Wrapped by [`merge`] so the `slice.merge.*` pair brackets
 /// it.
 fn commit_run(
-    layout: Layout<'_>, now: Timestamp, slice: &str, classes: &[ArtifactClass],
-    allow_composition_replace: bool,
+    layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
     let slice_dir = layout.slices_dir().join(slice);
     let archive_dir = layout.archive_dir();
+    let classes = artifact_classes(layout.project_dir(), &slice_dir);
 
     let merged =
-        slice_merge::commit(&slice_dir, classes, &archive_dir, now, allow_composition_replace)?;
+        slice_merge::commit(&slice_dir, &classes, &archive_dir, now, allow_composition_replace)?;
 
     // D2: the guest owns no git surface, so the native workspace-clone
     // auto-commit leg is skipped — explicitly, so a journal reader can
@@ -173,7 +172,7 @@ fn stamp_plan_entry_done(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
             });
         }
         plan.transition(slice, Status::Done)?;
-        Ok(())
+        Ok(Mutation::changed(()))
     })?;
     Ok(())
 }

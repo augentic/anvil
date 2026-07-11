@@ -21,7 +21,7 @@ use schema::{ValidationStatus, join_details};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::schema::{SLICE_MODEL_JSON_SCHEMA, evidence_yaml_paths, validate_value_cached};
+use crate::schema_gate::{SLICE_MODEL_JSON_SCHEMA, evidence_yaml_paths, validate_value_cached};
 use crate::slice::provenance::{
     ContributingClaim, ProvenanceIndex, ProvenanceRequirement, ProvenanceResolution,
     ResolutionTrace,
@@ -204,12 +204,7 @@ impl SliceModel {
     /// - [`Error::YamlDe`] when the file is not valid YAML.
     /// - [`Error::Validation`] when the file fails the schema.
     pub fn load(path: &Path) -> Result<Self> {
-        let raw = std::fs::read_to_string(path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.to_path_buf(),
-            source,
-        })?;
-        Self::parse_yaml(&raw)
+        Self::parse_yaml(&crate::fs::read_text(path)?)
     }
 
     /// Project the audit-only provenance view from this model plus the
@@ -354,11 +349,7 @@ impl EvidenceIndex {
     fn read(slice_dir: &Path) -> Result<Self> {
         let mut index = Self::default();
         for path in evidence_yaml_paths(slice_dir)? {
-            let raw = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-                op: "read",
-                path: path.clone(),
-                source,
-            })?;
+            let raw = crate::fs::read_text(&path)?;
             let doc: JsonValue = serde_saphyr::from_str(&raw)?;
             let source = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
             if let Some(class) = doc

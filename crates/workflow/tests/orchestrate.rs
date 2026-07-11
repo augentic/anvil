@@ -6,7 +6,7 @@
 //! tails, and the journal cadence match the native verbs.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use jiff::Timestamp;
 use schema::diagnostics::{
@@ -15,7 +15,6 @@ use schema::diagnostics::{
 use serde_json::{Value, json};
 use tempfile::TempDir;
 use workflow::config::Layout;
-use workflow::merge::{ArtifactClass, MergeStrategy};
 use workflow::orchestrate;
 use workflow::seam::{
     Error as SeamError, Evidence, Lead, MockSourceSeam, MockTargetSeam, SourceCall, TargetCall,
@@ -535,23 +534,6 @@ async fn build_rejects_slice_mismatch() {
 // merge
 // ---------------------------------------------------------------------------
 
-fn omnia_classes(slice_dir: &Path, project_root: &Path) -> Vec<ArtifactClass> {
-    vec![
-        ArtifactClass {
-            name: "specs".to_string(),
-            staged_dir: slice_dir.join("specs"),
-            baseline_dir: project_root.join(".specify/specs"),
-            strategy: MergeStrategy::ThreeWayMerge,
-        },
-        ArtifactClass {
-            name: "contracts".to_string(),
-            staged_dir: slice_dir.join("contracts"),
-            baseline_dir: project_root.join("contracts"),
-            strategy: MergeStrategy::OpaqueReplace,
-        },
-    ]
-}
-
 const MERGE_PLAN: &str = "\
 name: demo
 slices:
@@ -573,10 +555,8 @@ async fn merge_stamps_done_and_skips_git() {
     let project = Project::new();
     project.seed_plan(MERGE_PLAN);
     stage_built_slice(&project);
-    let classes = omnia_classes(&project.slice_dir(), &project.root);
-
-    let outcome = orchestrate::merge(project.layout(), now(), SLICE_NAME, &classes, false)
-        .expect("merge succeeds");
+    let outcome =
+        orchestrate::merge(project.layout(), now(), SLICE_NAME, false).expect("merge succeeds");
     assert_eq!(outcome.merged.len(), 1);
     assert_eq!(outcome.merged[0].name, "login");
     assert_eq!(outcome.archive_path, project.root.join(".specify/archive/2026-01-02-feature-x"));
@@ -614,9 +594,7 @@ async fn merge_rejects_unbuilt_slice() {
     let project = Project::new();
     project.seed_plan(MERGE_PLAN);
     stage_refined_slice(&project);
-    let classes = omnia_classes(&project.slice_dir(), &project.root);
-
-    let err = orchestrate::merge(project.layout(), now(), SLICE_NAME, &classes, false)
+    let err = orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
         .expect_err("a refined slice cannot merge");
     assert_eq!(err.variant_str(), "lifecycle");
     assert_eq!(project.journal_event_ids(), ["slice.merge.started", "slice.merge.failed"]);
@@ -628,9 +606,7 @@ async fn merge_rejects_unbuilt_slice() {
 async fn merge_without_plan_skips_done_stamp() {
     let project = Project::new();
     stage_built_slice(&project);
-    let classes = omnia_classes(&project.slice_dir(), &project.root);
-
-    orchestrate::merge(project.layout(), now(), SLICE_NAME, &classes, false)
+    orchestrate::merge(project.layout(), now(), SLICE_NAME, false)
         .expect("standalone merge succeeds");
     assert!(!project.root.join("plan.yaml").exists());
 }

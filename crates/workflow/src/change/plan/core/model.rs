@@ -282,7 +282,7 @@ fn slice_authority_override_is_empty(o: &SliceAuthorityOverride) -> bool {
 /// On the wire (workflow §Source) the binding is always the structured
 /// `{ adapter, path?, value? }` object form. The `oneOf` exclusion
 /// between `path` and `value` is enforced by `plan.schema.json` and
-/// re-checked at the loader boundary via [`crate::schema::validate_plan`].
+/// re-checked at the loader boundary via [`crate::schema_gate::validate_plan`].
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SourceBinding {
@@ -622,6 +622,3 @@ pub struct EntryPatch {
     /// `--divergence` to leave the field alone).
     pub divergence: Option<Divergence>,
 }
-
-#[cfg(test)]
-mod tests;

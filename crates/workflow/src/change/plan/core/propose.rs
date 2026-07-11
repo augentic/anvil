@@ -5,7 +5,7 @@
 //! reconciliation in this projection kernel. The wire contract is a
 //! single envelope discriminated by a closed `kind: request | response`,
 //! validated against `schemas/discovery/proposal.schema.json`
-//! ([`crate::schema::validate_proposal_json`]). The pieces split across
+//! ([`crate::schema_gate::validate_proposal_json`]). The pieces split across
 //! focused submodules, re-exported here so the public path stays
 //! `…::core::propose::<item>`:
 //!
@@ -23,7 +23,7 @@ mod kernel;
 mod topology;
 mod wire;
 
-pub use catalog::{LeadCatalog, build_catalog, build_request};
+pub use catalog::{LeadCatalog, build_request};
 pub use kernel::{ProposeOutcome, resolve_target};
 pub use topology::{apply_greenfield_seed, resolve_topology};
 pub use wire::{

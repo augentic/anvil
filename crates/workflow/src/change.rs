@@ -3,17 +3,21 @@
 
 pub mod plan;
 
+// The intentional external surface: the plan state machine, its domain
+// enums and DTO types, and the propose/topology entry points the
+// harness and crate-level tests drive.
 pub use plan::core::{
-    Divergence, Entry, EntryPatch, GateProse, LeadCatalog, LeadCatalogEntry, Lifecycle, LoopStep,
-    NextActionKind, NextBody, NextReason, Patch, Plan, ProjectRef, ProposalKind, ProposalRequest,
-    ProposalResponse, ProposeOutcome, ResponseMember, ResponseSlice, SliceAuthorityOverride,
-    SliceSourceBinding, SourceBinding, Status, StatusBody, StatusCounts, StopBody, StopReason,
-    TargetRef, TargetRefParseError, apply_greenfield_seed, build_catalog, build_request,
-    drained_line, emit_authority_override_seed_events, entry_mut, mutate_authority_overrides,
-    orphan_authority_override_keys, plan_finding, plan_finding_structured, plan_next_body,
-    plan_status_body, reject_duplicate_source_keys, reject_orphan_overrides, resolve_target,
-    resolve_topology, unknown_slice_err,
+    Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, GateProse, LeadCatalog,
+    LeadCatalogEntry, Lifecycle, LoopStep, NextActionKind, NextBody, NextReason, Patch, Plan,
+    ProjectRef, ProposalKind, ProposalRequest, ProposalResponse, ProposeOutcome, ResponseMember,
+    ResponseSlice, SliceAuthorityOverride, SliceSourceBinding, SourceBinding, Status, StatusBody,
+    StatusCounts, StopBody, StopReason, TargetRef, TargetRefParseError, apply_greenfield_seed,
+    resolve_target, resolve_topology,
 };
-pub use plan::doctor::{
-    CYCLE, CloneSignature, ORPHAN_SOURCE, STALE_CLONE, StaleReason, detect, doctor as plan_doctor,
+// Handler/orchestrator plumbing: reachable inside the crate only.
+pub(crate) use plan::core::{
+    build_request, claim_next, drained_line, emit_authority_override_seed_events, entry_mut,
+    mutate_authority_overrides, orphan_authority_override_keys, plan_finding, plan_status_body,
+    reject_duplicate_source_keys, reject_orphan_overrides, unknown_slice_err,
 };
+pub(crate) use plan::doctor::{detect, doctor as plan_doctor};

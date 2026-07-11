@@ -223,3 +223,185 @@ pub fn stage_dev_component(root: &std::path::Path, name: &str) {
     std::fs::write(dev_dir.join(format!("{}.wasm", name.replace('-', "_"))), "{}")
         .expect("write stub component");
 }
+
+// ---------------------------------------------------------------------------
+// Project anchor + operation invocation
+// ---------------------------------------------------------------------------
+
+/// A throw-away project tree the verbs run against: the provider
+/// anchor points at its root, and the derived project cache is pinned
+/// beneath it so cache writes are hermetic.
+#[derive(Clone)]
+pub struct Project {
+    _tmp: std::sync::Arc<tempfile::TempDir>,
+    pub root: PathBuf,
+}
+
+impl workflow::handler::Anchor for Project {
+    fn project_root(&self) -> &std::path::Path {
+        &self.root
+    }
+}
+
+impl workflow::adapter::Resolver for Project {
+    fn resolve_source(
+        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        workflow::adapter::Resolver::resolve_source(&resolver(), adapter_ref, project_dir)
+    }
+
+    fn resolve_target(
+        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        workflow::adapter::Resolver::resolve_target(&resolver(), adapter_ref, project_dir)
+    }
+}
+
+impl Project {
+    /// A bare directory — nothing scaffolded (the scaffold-leg input).
+    #[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
+    pub fn bare() -> Self {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().canonicalize().expect("canonical tempdir");
+        // SAFETY: nextest runs each test in its own process, so no
+        // other thread observes the env mutation.
+        unsafe { std::env::set_var(CACHE_ENV, root.join("project-cache")) };
+        std::env::set_current_dir(&root).expect("enter project root");
+        Self {
+            _tmp: std::sync::Arc::new(tmp),
+            root,
+        }
+    }
+
+    /// An initialised project (`.specify/project.yaml` present).
+    pub fn initialised() -> Self {
+        let project = Self::bare();
+        std::fs::create_dir_all(project.root.join(".specify")).expect("mkdir .specify");
+        std::fs::write(
+            project.root.join(".specify/project.yaml"),
+            "name: demo\nadapter: demo\nrules: {}\n",
+        )
+        .expect("write project.yaml");
+        project
+    }
+}
+
+/// Invoke one operation against the project anchor.
+pub async fn run<R, B>(
+    project: &Project, input: R::Input,
+) -> Result<B, workflow::handler::Error>
+where
+    R: omnia_guest::api::operation::Operation<Project, Output = B, Error = workflow::handler::Error>,
+    B: Send,
+{
+    omnia_guest::api::invoke::Invoker::new("specify", project.clone())
+        .invoke::<R>(omnia_guest::api::invocation::Invocation::new(input))
+        .await
+}
+
+// ---------------------------------------------------------------------------
+// Plan fixtures
+// ---------------------------------------------------------------------------
+
+/// Reduced-state reproduction of the plan execution §"The Plan"
+/// fixture. There is no per-entry `failed`, `blocked`, or `skipped`
+/// state — entries either move forward or stay where they are.
+pub const PLAN_EXAMPLE_YAML: &str = r"name: platform-v2
+sources:
+  monolith:
+    adapter: demo-source
+    path: /path/to/legacy-codebase
+  orders:
+    adapter: demo-source
+    path: git@github.com:org/orders-service.git
+  payments:
+    adapter: demo-source
+    path: git@github.com:org/payments-service.git
+  frontend:
+    adapter: demo-source
+    path: git@github.com:org/web-app.git
+slices:
+  - name: user-registration
+    project: platform
+    sources: [monolith]
+    status: done
+  - name: email-verification
+    project: platform
+    sources: [monolith]
+    depends-on: [user-registration]
+    status: in-progress
+  - name: registration-duplicate-email-crash
+    project: platform
+    description: >
+      Duplicate email submission returns 500 instead of 409.
+      Discovered during email-verification extraction.
+    status: pending
+  - name: notification-preferences
+    project: platform
+    depends-on: [user-registration]
+    description: >
+      Greenfield — user-facing notification channel and frequency settings.
+    status: pending
+  - name: extract-shared-validation
+    project: platform
+    description: >
+      Pull duplicated input validation into a shared validation crate
+      before building checkout-flow.
+    depends-on: [email-verification]
+    status: pending
+  - name: product-catalog
+    project: platform
+    sources: [monolith]
+    depends-on: [extract-shared-validation]
+    status: pending
+  - name: shopping-cart
+    project: platform
+    sources: [orders]
+    depends-on: [product-catalog, user-registration]
+    status: pending
+  - name: checkout-api
+    project: platform
+    sources: [payments]
+    depends-on: [shopping-cart]
+    status: pending
+  - name: checkout-ui
+    project: platform
+    sources: [frontend]
+    depends-on: [checkout-api]
+    status: pending
+";
+
+/// A minimal in-memory plan named `test` wrapping `changes`.
+pub fn plan_with_changes(changes: Vec<workflow::change::Entry>) -> workflow::change::Plan {
+    workflow::change::Plan {
+        name: "test".into(),
+        lifecycle: workflow::change::Lifecycle::Pending,
+        sources: std::collections::BTreeMap::new(),
+        entries: changes,
+    }
+}
+
+/// A minimal plan entry bound to project `default`.
+pub fn change(name: &str, status: workflow::change::Status) -> workflow::change::Entry {
+    workflow::change::Entry {
+        name: name.into(),
+        project: Some("default".into()),
+        status,
+        depends_on: vec![],
+        sources: vec![],
+        context: vec![],
+        description: None,
+        divergence: None,
+        disagreements: Vec::new(),
+        authority_override: workflow::change::SliceAuthorityOverride::default(),
+    }
+}
+
+/// [`change`] plus a `depends-on` list.
+pub fn change_with_deps(
+    name: &str, status: workflow::change::Status, deps: &[&str],
+) -> workflow::change::Entry {
+    let mut e = change(name, status);
+    e.depends_on = deps.iter().map(|s| (*s).into()).collect();
+    e
+}

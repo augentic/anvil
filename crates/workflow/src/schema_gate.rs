@@ -14,7 +14,6 @@
 //! (`Exit::ValidationFailed` in the binary crate).
 
 use std::ffi::OsStr;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
@@ -250,19 +249,8 @@ pub fn evidence_yaml_paths(slice_dir: &Path) -> Result<Vec<PathBuf>> {
         return Ok(Vec::new());
     }
 
-    let entries = fs::read_dir(&evidence_dir).map_err(|source| Error::Filesystem {
-        op: "readdir",
-        path: evidence_dir.clone(),
-        source,
-    })?;
-
     let mut paths: Vec<PathBuf> = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|source| Error::Filesystem {
-            op: "readdir-entry",
-            path: evidence_dir.clone(),
-            source,
-        })?;
+    for entry in crate::fs::dir_entries(&evidence_dir)? {
         let path = entry.path();
         if !path.is_file() {
             continue;

@@ -9,14 +9,23 @@ use super::detect::Detection;
 /// Complete input needed to render repository context.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Input {
+    /// `project.yaml.name`, used in the document title.
     pub project_name: String,
+    /// Registry-only workspace mode — omits the per-language sections.
     pub is_workspace: bool,
+    /// Root-marker detection summary.
     pub detection: Detection,
+    /// `project.yaml.description`, when set.
     pub description: Option<String>,
+    /// The bound target adapter, when the project declares one.
     pub adapter: Option<Adapter>,
+    /// `project.yaml.rules` overrides.
     pub rule_overrides: Vec<Rule>,
+    /// Names of active slices under `.specify/slices/`.
     pub active_slices: Vec<String>,
+    /// Materialized workspace slots.
     pub workspace_peers: Vec<Peer>,
+    /// Registry peer dependencies.
     pub dependencies: Vec<Dep>,
 }
 
@@ -24,30 +33,40 @@ pub struct Input {
 /// the binary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Adapter {
+    /// Adapter kebab name.
     pub name: String,
+    /// Pinned adapter version.
     pub version: semver::Version,
 }
 
 /// One `project.yaml.rules` override.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Rule {
+    /// Rule brief identifier (the `rules:` key).
     pub brief_id: String,
+    /// Repo-relative override path.
     pub path: String,
 }
 
 /// One materialized registry workspace slot.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Peer {
+    /// Registry project name.
     pub name: String,
+    /// Repo-relative slot path (`workspace/<project>/`).
     pub path: String,
 }
 
 /// One registry peer dependency.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dep {
+    /// Registry project name.
     pub name: String,
+    /// Peer's recorded adapter value.
     pub adapter: String,
+    /// Peer's registry URL.
     pub url: String,
+    /// Peer's registry description, when set.
     pub description: Option<String>,
 }
 

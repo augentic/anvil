@@ -14,7 +14,7 @@ use error::{Error, Result};
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
-use crate::schema::{PROVENANCE_JSON_SCHEMA, validate_serialisable};
+use crate::schema_gate::{PROVENANCE_JSON_SCHEMA, validate_serialisable};
 
 /// In-memory provenance view, projected from `model.yaml`.
 ///

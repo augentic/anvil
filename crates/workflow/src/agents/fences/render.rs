@@ -27,6 +27,14 @@ pub struct PlannedWrite {
 }
 
 /// Compose final `AGENTS.md` bytes according to the context fence policy.
+///
+/// # Errors
+///
+/// [`FenceError::GeneratedDocumentMissingFences`] when the generated
+/// document carries no fences,
+/// [`FenceError::ExistingUnfencedAgentsMd`] when the existing file is
+/// unfenced and `force` is off, and the [`parse_document`] errors for
+/// malformed fences on either side.
 pub fn plan_agents_write(
     existing: Option<&[u8]>, generated_document: &[u8], force: bool,
 ) -> Result<PlannedWrite, FenceError> {

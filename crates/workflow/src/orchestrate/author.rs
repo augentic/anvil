@@ -35,7 +35,7 @@ use crate::change::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
     build_request, plan_doctor, resolve_topology,
 };
-use crate::config::{Layout, ProjectConfig, with_state};
+use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
 use crate::judgment::propose::{self, GateContext};
 use crate::name::{SliceName, is_kebab};
@@ -116,7 +116,7 @@ pub async fn author<P: Model, S: SourceSeam>(
     // `propose_from` replaces `plan.entries`, `with_state` writes
     // `plan.yaml` on Ok and rolls back on any Err.
     let outcome = with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
-        plan.propose_from(response, &discovery, &topology)
+        plan.propose_from(response, &discovery, &topology).map(Mutation::changed)
     })?;
 
     // Only after the write commits: emit the reconcile event.
@@ -128,7 +128,7 @@ pub async fn author<P: Model, S: SourceSeam>(
             slice_names: outcome.slice_names.iter().map(SliceName::from).collect(),
         },
     );
-    journal::append_batch(layout, std::slice::from_ref(&event))?;
+    journal::append_one(layout, &event)?;
 
     persist_gate_prose(layout, name, &gate, discovery)?;
     validate(layout)?;

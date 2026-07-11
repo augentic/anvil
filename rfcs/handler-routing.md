@@ -74,7 +74,7 @@ route!(
 );
 ```
 
-Each command leaf has a clap-only `Args` type under `crates/transport/src/command/*.rs`. Global flags such as `--format` and `--plan-dir` stay in `Globals`. Each supported leaf has an exhaustive conversion:
+Each command leaf has a clap-only `Args` type under `crates/transport/src/command/*.rs`. Global flags such as `--format` stay in `Globals`. Each supported leaf has an exhaustive conversion:
 
 ```rust
 impl TryFrom<BuildArgs> for BuildInput {

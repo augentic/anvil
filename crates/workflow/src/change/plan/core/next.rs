@@ -1,10 +1,12 @@
-//! [`Plan::next_eligible`] (single-step scheduler) and the
-//! [`plan_next_body`] one-shot projection behind `specify plan next`.
+//! [`Plan::next_eligible`] (single-step scheduler), the
+//! [`plan_next_body`] one-shot projection, and the [`claim_next`]
+//! claim kernel behind `specify plan next` and the execute loop.
 
 use std::collections::HashMap;
 use std::path::Path;
 
 use error::Error;
+use jiff::Timestamp;
 use schema::diagnostics::blocking_present;
 use serde::Serialize;
 
@@ -12,7 +14,8 @@ use super::model::{Entry, Plan, SliceSourceBinding, Status};
 use super::propose::{resolve_target, resolve_topology};
 use crate::adapter::Resolver;
 use crate::change::detect;
-use crate::config::ProjectConfig;
+use crate::config::{Layout, Mutation, ProjectConfig, with_state};
+use crate::journal::{self, Event, EventKind};
 
 impl Plan {
     /// First entry in list order whose dependencies are all `done` and
@@ -183,4 +186,44 @@ fn structural_errors() -> Error {
         "plan must be free of structural errors",
         "run 'specify plan validate' for detail",
     )
+}
+
+/// Claim the next plan entry: the shared kernel behind both `specify
+/// plan next` and the execute loop's per-phase claim.
+///
+/// Runs [`plan_next_body`] inside the atomic state loop — `plan.yaml`
+/// is rewritten only when an entry actually advanced (`pending →
+/// in-progress`); returning the active entry or reporting
+/// drained/stuck leaves the file untouched. workflow §Observability:
+/// `plan.entry.advanced` fires only on a fresh advance, so a parked
+/// loop leaves no advance event behind.
+///
+/// # Errors
+///
+/// - [`Error::ArtifactNotFound`] when `plan.yaml` is absent.
+/// - `plan-structural-errors` and transition failures from
+///   [`plan_next_body`].
+/// - journal append failures for the advance event.
+pub fn claim_next(
+    resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp, config: &ProjectConfig,
+) -> Result<NextBody, Error> {
+    let slices_dir = layout.slices_dir();
+    let project_dir = layout.project_dir().to_path_buf();
+    let (body, plan_name) = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
+        let body = plan_next_body(resolver, plan, &slices_dir, config, &project_dir)?;
+        let changed = body.next.is_some();
+        let pair = (body, plan.name.clone());
+        Ok(if changed { Mutation::changed(pair) } else { Mutation::unchanged(pair) })
+    })?;
+    if let Some(advanced) = &body.next {
+        let event = Event::new(
+            now,
+            EventKind::PlanEntryAdvanced {
+                plan_name,
+                slice_name: advanced.clone().into(),
+            },
+        );
+        journal::append_one(layout, &event)?;
+    }
+    Ok(body)
 }

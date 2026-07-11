@@ -1,14 +1,44 @@
-use jiff::Timestamp;
-use tempfile::TempDir;
+//! Integration coverage for the read-only `plan status` projection,
+//! exercised through the `plan status` operation (the public
+//! boundary): each test stages `plan.yaml`, slice metadata, and
+//! journal events on disk, invokes the operation, and asserts the
+//! projected `StatusBody`.
+//!
+//! The base happy-path dispatch arms (pending-stops,
+//! fresh-active-refine, lifecycle refine/build/merge, drained,
+//! eligible-pending preview) are asserted end-to-end through the
+//! crate's orchestrate suites. What stays here is the dispatch and
+//! overlay classification that has no CLI status fixture: stuck
+//! dependency graphs, dropped slices, failure-overlay precedence, the
+//! torn merge-incomplete state, re-entry resume points, and workspace
+//! slot routing.
 
-use super::super::{change, change_with_deps, plan_with_changes};
-use super::*;
-use crate::journal::{Event, append_batch};
-use crate::slice::SliceMetadata;
+use jiff::Timestamp;
+use workflow::change::plan::handlers::{Status as StatusOp, StatusInput};
+use workflow::change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
+use workflow::config::Layout;
+use workflow::journal::{Event, EventKind, append_batch};
+use workflow::slice::{LifecycleStatus, SliceMetadata};
+
+mod common;
+
+use common::{Project, change, change_with_deps, plan_with_changes, run};
 
 fn approved(mut plan: Plan) -> Plan {
     plan.lifecycle = Lifecycle::Approved;
     plan
+}
+
+/// Stage `plan.yaml` at the project root.
+fn write_plan(project: &Project, plan: &Plan) {
+    let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
+    std::fs::write(project.root.join("plan.yaml"), yaml).expect("write plan.yaml");
+}
+
+/// Project the status body for `plan` staged inside `project`.
+async fn status(project: &Project, plan: &Plan) -> StatusBody {
+    write_plan(project, plan);
+    run::<StatusOp, _>(project, StatusInput {}).await.expect("status")
 }
 
 fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
@@ -60,46 +90,51 @@ fn build_failed(seconds: i64, slice: &str, reason: &str) -> Event {
 mod next_action {
     use super::*;
 
-    // The base happy-path dispatch arms (pending-stops, fresh-active-refine,
-    // lifecycle refine/build/merge, drained, eligible-pending preview) are
-    // asserted end-to-end through the crate's orchestrate suites. What
-    // stays here is the dispatch that has no CLI status fixture: a stuck
-    // dependency graph and a dropped slice.
-
-    #[test]
-    fn stuck_when_deps_unmet() {
-        let dir = TempDir::new().expect("tempdir");
+    #[tokio::test]
+    async fn stuck_when_deps_unmet() {
+        let project = Project::initialised();
         let plan =
             approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
     }
 
-    #[test]
-    fn dropped_slice_stops() {
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Dropped);
+    #[tokio::test]
+    async fn dropped_slice_stops() {
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Dropped);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
+    }
+
+    #[tokio::test]
+    async fn drained_renders_finalize_line() {
+        // The drained projection and the literal stop-conditions
+        // drained string, asserted through the text rendering.
+        let project = Project::initialised();
+        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "drained");
+        let mut out = Vec::new();
+        workflow::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(
+            text.contains("drained \u{2014} run /spec:finalize test"),
+            "drained must render the literal finalize line, got:\n{text}"
+        );
     }
 }
 
 mod failure_overlay {
     use super::*;
 
-    // The build-failure overlay is asserted end-to-end through the
-    // crate's orchestrate suites. The remaining
-    // overlay classifications below have no CLI status fixture:
-    // merge-conflict / refine-failed mapping, newest-marker precedence,
-    // stale / pre-claim shadowing, and the torn merge-incomplete state.
-
-    #[test]
-    fn merge_failure_maps_to_conflict() {
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Built);
+    #[tokio::test]
+    async fn merge_failure_maps_to_conflict() {
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Built);
         append(
-            dir.path(),
+            &project.root,
             &[
                 advanced(0, "test", "a"),
                 Event::new(
@@ -112,15 +147,15 @@ mod failure_overlay {
             ],
         );
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-conflict");
     }
 
-    #[test]
-    fn refine_failure_stops() {
-        let dir = TempDir::new().expect("tempdir");
+    #[tokio::test]
+    async fn refine_failure_stops() {
+        let project = Project::initialised();
         append(
-            dir.path(),
+            &project.root,
             &[
                 advanced(0, "test", "a"),
                 Event::new(
@@ -133,16 +168,16 @@ mod failure_overlay {
             ],
         );
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop refine-failed");
     }
 
-    #[test]
-    fn later_success_clears_failure() {
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Refined);
+    #[tokio::test]
+    async fn later_success_clears_failure() {
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Refined);
         append(
-            dir.path(),
+            &project.root,
             &[
                 advanced(0, "test", "a"),
                 build_failed(10, "a", "first attempt"),
@@ -155,42 +190,42 @@ mod failure_overlay {
             ],
         );
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a", "newest marker is a success — dispatch resumes");
     }
 
-    #[test]
-    fn non_awaited_failure_ignored() {
+    #[tokio::test]
+    async fn non_awaited_failure_ignored() {
         // The slice was hand-advanced past the failed phase; the stale
         // failure must not pin the projection.
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Built);
-        append(dir.path(), &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Built);
+        append(&project.root, &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
     }
 
-    #[test]
-    fn reclaim_shadows_old_failure() {
+    #[tokio::test]
+    async fn reclaim_shadows_old_failure() {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
         // dispatch falls back to the lifecycle.
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Refined);
-        append(dir.path(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Refined);
+        append(&project.root, &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a");
     }
 
-    #[test]
-    fn merge_succeeded_without_stamp_stops() {
+    #[tokio::test]
+    async fn merge_succeeded_without_stamp_stops() {
         // Torn state: the merge landed (slice dir archived) but the
         // entry is still in-progress.
-        let dir = TempDir::new().expect("tempdir");
+        let project = Project::initialised();
         append(
-            dir.path(),
+            &project.root,
             &[
                 advanced(0, "test", "a"),
                 Event::new(
@@ -202,17 +237,17 @@ mod failure_overlay {
             ],
         );
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-incomplete");
     }
 
-    #[test]
-    fn pre_claim_candidate_skips_overlay() {
+    #[tokio::test]
+    async fn pre_claim_candidate_skips_overlay() {
         // Stale same-name events (e.g. from an archived plan) must not
         // classify an entry that has not been claimed yet.
-        let dir = TempDir::new().expect("tempdir");
+        let project = Project::initialised();
         append(
-            dir.path(),
+            &project.root,
             &[Event::new(
                 ts(0),
                 EventKind::SliceMergeSucceeded {
@@ -224,7 +259,7 @@ mod failure_overlay {
             change("a", Status::Done),
             change("b", Status::Pending),
         ]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine b");
     }
 }
@@ -232,18 +267,11 @@ mod failure_overlay {
 mod re_entry {
     use super::*;
 
-    // The dispatch + resume projection for the fresh-refine and
-    // refined/build-failed scenarios is exercised end-to-end through the
-    // crate's orchestrate suites. The re-entry
-    // overlays with no CLI fixture remain: the torn merge-incomplete
-    // resume, the drained finalize resume, the Gate-1 approved-stamp
-    // resume, and the repair-shaped stops that carry no resume.
-
-    #[test]
-    fn merge_incomplete_resumes_at_done_stamp() {
-        let dir = TempDir::new().expect("tempdir");
+    #[tokio::test]
+    async fn merge_incomplete_resumes_at_done_stamp() {
+        let project = Project::initialised();
         append(
-            dir.path(),
+            &project.root,
             &[
                 advanced(0, "test", "a"),
                 Event::new(
@@ -255,46 +283,46 @@ mod re_entry {
             ],
         );
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.current_step, Some(LoopStep::Merge));
         assert_eq!(body.last_completed, Some(LoopStep::Merge));
         assert_eq!(body.resume.as_deref(), Some("specify plan transition a done"));
     }
 
-    #[test]
-    fn drained_resumes_at_finalize() {
-        let dir = TempDir::new().expect("tempdir");
+    #[tokio::test]
+    async fn drained_resumes_at_finalize() {
+        let project = Project::initialised();
         let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
         assert_eq!(body.resume.as_deref(), Some("/spec:finalize test"));
     }
 
-    #[test]
-    fn gate_one_resumes_at_approved_stamp() {
-        let dir = TempDir::new().expect("tempdir");
+    #[tokio::test]
+    async fn gate_one_resumes_at_approved_stamp() {
+        let project = Project::initialised();
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
         assert_eq!(body.resume.as_deref(), Some("specify plan transition test approved"));
     }
 
-    #[test]
-    fn repair_shaped_stops_have_no_resume() {
+    #[tokio::test]
+    async fn repair_shaped_stops_have_no_resume() {
         // `stuck` and `slice-dropped` need operator repair — no single
         // command makes progress, so `resume` stays empty.
-        let dir = TempDir::new().expect("tempdir");
+        let project = Project::initialised();
         let plan =
             approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
         assert_eq!(body.resume, None);
 
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Dropped);
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Dropped);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
@@ -305,10 +333,10 @@ mod re_entry {
 mod workspace_routing {
     use super::*;
 
-    #[test]
-    fn slot_bound_entry_reads_slot_state() {
-        let dir = TempDir::new().expect("tempdir");
-        let slot = dir.path().join("workspace").join("storefront");
+    #[tokio::test]
+    async fn slot_bound_entry_reads_slot_state() {
+        let project = Project::initialised();
+        let slot = project.root.join("workspace").join("storefront");
         std::fs::create_dir_all(&slot).expect("create slot");
         write_slice(&slot, "a", LifecycleStatus::Refined);
         append(&slot, &[advanced(0, "test", "a"), build_failed(10, "a", "slot failure")]);
@@ -316,24 +344,19 @@ mod workspace_routing {
         let mut entry = change("a", Status::InProgress);
         entry.project = Some("storefront".to_string());
         let plan = approved(plan_with_changes(vec![entry]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop build-failed");
         assert_eq!(body.project.as_deref(), Some("storefront"));
     }
 
-    #[test]
-    fn missing_slot_falls_back_to_project_root() {
-        let dir = TempDir::new().expect("tempdir");
-        write_slice(dir.path(), "a", LifecycleStatus::Built);
+    #[tokio::test]
+    async fn missing_slot_falls_back_to_project_root() {
+        let project = Project::initialised();
+        write_slice(&project.root, "a", LifecycleStatus::Built);
         let mut entry = change("a", Status::InProgress);
         entry.project = Some("storefront".to_string());
         let plan = approved(plan_with_changes(vec![entry]));
-        let body = plan_status_body(&plan, Layout::new(dir.path())).expect("status");
+        let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
     }
-}
-
-#[test]
-fn drained_line_renders_literal() {
-    assert_eq!(drained_line("platform-v2"), "drained — run /spec:finalize platform-v2");
 }

@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use super::entry::{Action, EntryBody};
 use super::{plan_ref, require_file};
 use crate::change::Plan;
-use crate::config::with_state;
+use crate::config::{Mutation, with_state};
 use crate::handler::{Anchor, Ctx};
-use crate::schema::validate_plan;
+use crate::schema_gate::validate_plan;
 
 /// Wire input for `plan remove`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,11 +45,11 @@ impl<P: Anchor> Operation<P> for Remove {
                 })?;
             plan.remove(&name)?;
             validate_plan(plan)?;
-            Ok(EntryBody {
+            Ok(Mutation::changed(EntryBody {
                 plan: plan_ref(plan, &plan_path),
                 action: Action::Remove,
                 entry: removed,
-            })
+            }))
         })?;
 
         Ok(body)

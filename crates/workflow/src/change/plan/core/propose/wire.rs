@@ -3,7 +3,7 @@
 //! The wire contract is a single envelope discriminated by a closed
 //! `kind: request | response`, validated against
 //! `schemas/discovery/proposal.schema.json`
-//! ([`crate::schema::validate_proposal_json`]). This module owns the
+//! ([`crate::schema_gate::validate_proposal_json`]). This module owns the
 //! serde DTOs for both kinds; the deterministic assembly that fills them
 //! lives in [`super::catalog`] and [`super::topology`].
 

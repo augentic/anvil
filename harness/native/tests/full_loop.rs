@@ -13,9 +13,8 @@ use omnia_guest::api::operation::Operation;
 use serde_json::json;
 use specify_dev::provider::Provider;
 use testkit::MockModel;
-use workflow::change::plan::handlers::SourceAssign;
+use workflow::change::plan::wire::SourceAssign;
 use workflow::change::{LoopStep, Status, plan};
-use workflow::orchestrate;
 
 mod common;
 
@@ -120,9 +119,9 @@ async fn author_approve_execute_drains() {
 
     // `plan author` — survey through the real intent adapter, the
     // reconciliation judgment leg, Gate 1 prose — exits at `pending`.
-    let authored = run::<orchestrate::handlers::Author, _>(
+    let authored = run::<plan::handlers::Author, _>(
         &invoker,
-        orchestrate::handlers::AuthorInput {
+        plan::handlers::AuthorInput {
             name: "demo".to_string(),
             sources: bindings(),
             intent: None,
@@ -150,10 +149,9 @@ async fn author_approve_execute_drains() {
 
     // `plan execute` — the drained refine → build → merge loop over
     // the real adapter operations.
-    let executed =
-        run::<orchestrate::handlers::Execute, _>(&invoker, orchestrate::handlers::ExecuteInput {})
-            .await
-            .expect("execute drains the plan");
+    let executed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+        .await
+        .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();

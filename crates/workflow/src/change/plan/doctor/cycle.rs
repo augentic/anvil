@@ -54,13 +54,33 @@ pub fn detect(changes: &[Entry]) -> Vec<Diagnostic> {
 
 #[cfg(test)]
 mod tests {
+    // Retained in `src`: proptest matrices over the `pub(crate)` cycle
+    // detector — the DAG/ring/self-loop generators are cheap only
+    // in-process, and the CLI surface is asserted end-to-end by the
+    // repo-root `tests/plan.rs` health diagnostics.
+
     use proptest::prelude::*;
 
     use super::detect;
-    use crate::change::plan::core::{Status, change_with_deps};
+    use crate::change::plan::core::{Entry, SliceAuthorityOverride, Status};
 
     fn node_names(n: usize) -> Vec<String> {
         (0..n).map(|i| format!("n{i}")).collect()
+    }
+
+    fn change_with_deps(name: &str, status: Status, deps: &[&str]) -> Entry {
+        Entry {
+            name: name.into(),
+            project: Some("default".into()),
+            status,
+            depends_on: deps.iter().map(|s| (*s).into()).collect(),
+            sources: vec![],
+            context: vec![],
+            description: None,
+            divergence: None,
+            disagreements: Vec::new(),
+            authority_override: SliceAuthorityOverride::default(),
+        }
     }
 
     proptest! {

@@ -99,9 +99,10 @@ pub struct PlatformsCapability {
 
 /// Typed outcome of [`PlatformsCapability::check`].
 ///
-/// Each caller maps the violation onto its own diagnostic-code family
+/// Each caller surface owns a diagnostic-code family
 /// (`project-platforms-*` at init, `topology-cache-project-platforms-*`
-/// at topology resolution) so the rules themselves live in one place.
+/// at topology resolution); the shared [`PlatformsViolation::into_error`]
+/// converter keeps both mappings — and the rules — in one place.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformsViolation {
     /// The capability demands a platform set but none was declared.
@@ -121,6 +122,97 @@ pub enum PlatformsViolation {
         /// Display-formatted `allowed` platform tokens.
         allowed: Vec<String>,
     },
+}
+
+/// Which caller surface a [`PlatformsViolation`] is being reported
+/// from. Selects the diagnostic-code family and message wording in
+/// [`PlatformsViolation::into_error`].
+#[derive(Debug, Clone, Copy)]
+pub enum PlatformsSurface<'a> {
+    /// `specify init --platforms` validation — the
+    /// `project-platforms-*` family.
+    Init {
+        /// Target adapter name for the message text.
+        target: &'a str,
+    },
+    /// Workspace topology backstop validation — the
+    /// `topology-cache-project-platforms-*` family.
+    TopologySlot {
+        /// Workspace slot (registry) name for the message text.
+        registry: &'a str,
+        /// Target adapter name for the message text.
+        target: &'a str,
+    },
+}
+
+impl PlatformsViolation {
+    /// Convert this violation into the workflow [`Error`] for the given
+    /// caller surface, preserving each surface's locked diagnostic
+    /// codes and message wording.
+    pub(crate) fn into_error(self, surface: PlatformsSurface<'_>) -> Error {
+        match (self, surface) {
+            (Self::RequiredButMissing { defaults }, PlatformsSurface::Init { target }) => {
+                Error::validation_failed(
+                    "project-platforms-required",
+                    format!("target '{target}' requires --platforms"),
+                    format!(
+                        "target '{target}' requires --platforms; default set is [{}]",
+                        defaults.join(", "),
+                    ),
+                )
+            }
+            (
+                Self::RequiredButMissing { defaults },
+                PlatformsSurface::TopologySlot { registry, target },
+            ) => Error::validation_failed(
+                "topology-cache-project-platforms-missing",
+                format!("workspace slot `{registry}` declares platforms"),
+                format!(
+                    "workspace slot `{registry}` target '{target}' requires platforms but \
+                     project.yaml declares none; default set is [{}]",
+                    defaults.join(", "),
+                ),
+            ),
+            (Self::MissingCore, PlatformsSurface::Init { .. }) => Error::validation_failed(
+                "project-platforms-must-include-core",
+                "platform set must include `core`",
+                "the --platforms set must include `core`; every project that declares platforms \
+                 requires the shared Rust core crate",
+            ),
+            (Self::MissingCore, PlatformsSurface::TopologySlot { registry, .. }) => {
+                Error::validation_failed(
+                    "topology-cache-project-platforms-must-include-core",
+                    format!("workspace slot `{registry}` platform set includes `core`"),
+                    format!(
+                        "workspace slot `{registry}` platform set must include `core`; every \
+                         project that declares platforms requires the shared Rust core crate",
+                    ),
+                )
+            }
+            (Self::NotAllowed { platform, allowed }, PlatformsSurface::Init { target }) => {
+                Error::validation_failed(
+                    "project-platforms-not-allowed",
+                    format!("platform `{platform}` is not in the target's allowed set"),
+                    format!(
+                        "platform `{platform}` is not allowed by target '{target}'; allowed: [{}]",
+                        allowed.join(", "),
+                    ),
+                )
+            }
+            (
+                Self::NotAllowed { platform, allowed },
+                PlatformsSurface::TopologySlot { registry, target },
+            ) => Error::validation_failed(
+                "topology-cache-project-platforms-not-allowed",
+                format!("workspace slot `{registry}` platform `{platform}` is allowed"),
+                format!(
+                    "workspace slot `{registry}` platform `{platform}` is not allowed by target \
+                     '{target}'; allowed: [{}]",
+                    allowed.join(", "),
+                ),
+            ),
+        }
+    }
 }
 
 impl PlatformsCapability {

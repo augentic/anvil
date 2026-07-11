@@ -67,7 +67,7 @@ impl<P: Anchor> Operation<P> for Provenance {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let name = &input.name;
-        let slice_dir = cx.slices_dir().join(name);
+        let slice_dir = cx.layout().slices_dir().join(name);
         let model_path = slice_dir.join("model.yaml");
         if !model_path.is_file() {
             return Err(Error::validation_failed(

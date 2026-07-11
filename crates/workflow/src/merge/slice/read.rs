@@ -91,16 +91,7 @@ fn list_delta_specs(class: &ArtifactClass) -> Result<Vec<DeltaSpecRef>, Error> {
     if !class.staged_dir.is_dir() {
         return Ok(delta_specs);
     }
-    for entry in fs::read_dir(&class.staged_dir).map_err(|err| Error::Filesystem {
-        op: "readdir",
-        path: class.staged_dir.clone(),
-        source: err,
-    })? {
-        let entry = entry.map_err(|err| Error::Filesystem {
-            op: "dir-entry",
-            path: class.staged_dir.clone(),
-            source: err,
-        })?;
+    for entry in crate::fs::dir_entries(&class.staged_dir)? {
         let file_type = entry.file_type().map_err(|err| Error::Filesystem {
             op: "file-type",
             path: entry.path(),
@@ -135,11 +126,7 @@ fn list_delta_specs(class: &ArtifactClass) -> Result<Vec<DeltaSpecRef>, Error> {
 fn merge_delta_spec(
     class: &ArtifactClass, spec: &DeltaSpecRef,
 ) -> Result<Result<MergePreviewEntry, Vec<String>>, Error> {
-    let delta_text = fs::read_to_string(&spec.delta_path).map_err(|err| Error::Filesystem {
-        op: "read",
-        path: spec.delta_path.clone(),
-        source: err,
-    })?;
+    let delta_text = crate::fs::read_text(&spec.delta_path)?;
     let baseline_text = read_optional_file(&spec.baseline_path)?;
 
     let result = match merge(baseline_text.as_deref(), &delta_text) {
@@ -189,12 +176,7 @@ fn merge_composition_delta(
     if !composition_delta_path.is_file() {
         return Ok(None);
     }
-    let delta_text =
-        fs::read_to_string(&composition_delta_path).map_err(|err| Error::Filesystem {
-            op: "read",
-            path: composition_delta_path.clone(),
-            source: err,
-        })?;
+    let delta_text = crate::fs::read_text(&composition_delta_path)?;
     let baseline_path = class.baseline_dir.join(COMPOSITION_FILENAME);
     let baseline_text = read_optional_file(&baseline_path)?;
 
@@ -276,11 +258,7 @@ pub(super) fn composition_overwrite_gate(
 
 fn read_optional_file(path: &Path) -> Result<Option<String>, Error> {
     if path.is_file() {
-        Ok(Some(fs::read_to_string(path).map_err(|err| Error::Filesystem {
-            op: "read",
-            path: path.to_path_buf(),
-            source: err,
-        })?))
+        crate::fs::read_text(path).map(Some)
     } else {
         Ok(None)
     }
@@ -319,16 +297,7 @@ fn collect_opaque_entries(
     base: &Path, current: &Path, baseline_dir: &Path, class_name: &str,
     entries: &mut Vec<OpaquePreviewEntry>,
 ) -> Result<(), Error> {
-    for entry in fs::read_dir(current).map_err(|err| Error::Filesystem {
-        op: "readdir",
-        path: current.to_path_buf(),
-        source: err,
-    })? {
-        let entry = entry.map_err(|err| Error::Filesystem {
-            op: "dir-entry",
-            path: current.to_path_buf(),
-            source: err,
-        })?;
+    for entry in crate::fs::dir_entries(current)? {
         let path = entry.path();
         if path.is_dir() {
             collect_opaque_entries(base, &path, baseline_dir, class_name, entries)?;
@@ -367,16 +336,7 @@ pub(super) fn check_opaque_drift(
     if !current.is_dir() {
         return Ok(());
     }
-    for entry in fs::read_dir(current).map_err(|err| Error::Filesystem {
-        op: "readdir",
-        path: current.to_path_buf(),
-        source: err,
-    })? {
-        let entry = entry.map_err(|err| Error::Filesystem {
-            op: "dir-entry",
-            path: current.to_path_buf(),
-            source: err,
-        })?;
+    for entry in crate::fs::dir_entries(current)? {
         let path = entry.path();
         if path.is_dir() {
             check_opaque_drift(

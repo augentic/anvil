@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use artifacts::discovery::Discovery;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
-use error::{Error, Result};
+use error::Result;
 use schema::diagnostics::{Artifact, Diagnostic};
 
 use super::catalog::collect_catalog_drift_findings;
@@ -18,7 +18,7 @@ use super::spec_location::collect_spec_file_location_findings;
 use super::{collect_spec_files, path_hint};
 use crate::change::{Plan, orphan_authority_override_keys};
 use crate::config::Layout;
-use crate::schema::EvidenceDoc;
+use crate::schema_gate::EvidenceDoc;
 
 /// One parsed `spec.md` from the slice specs walk.
 struct ScannedSpec {
@@ -50,11 +50,7 @@ pub(super) fn scan_slice_specs(
     let mut provenance_findings = Vec::new();
 
     for path in spec_files {
-        let text = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source,
-        })?;
+        let text = crate::fs::read_text(&path)?;
         let scanned = ScannedSpec {
             path,
             parsed: provenance::parse_spec_md(&text),

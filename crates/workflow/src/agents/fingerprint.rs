@@ -37,6 +37,7 @@ pub struct InputCollector {
 
 impl InputCollector {
     /// Start collecting inputs for a project root.
+    #[must_use]
     pub fn new(project_dir: &Path) -> Self {
         Self {
             project_dir: project_dir.to_path_buf(),
@@ -45,6 +46,11 @@ impl InputCollector {
     }
 
     /// Add a required input file.
+    ///
+    /// # Errors
+    ///
+    /// `context-fingerprint-input-outside-project` when `path` does not
+    /// live under the project root.
     pub fn add_file(&mut self, path: &Path) -> Result<(), Error> {
         let relative = repo_relative_path(&self.project_dir, path)?;
         self.paths.entry(relative).or_insert_with(|| path.to_path_buf());
@@ -61,6 +67,11 @@ impl InputCollector {
     }
 
     /// Add an input file only when it exists as a regular file.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Io`] when existence cannot be determined, plus the
+    /// [`Self::add_file`] errors.
     pub fn add_file_if_present(&mut self, path: &Path) -> Result<(), Error> {
         match path.try_exists() {
             Ok(true) if path.is_file() => self.add_file(path),
@@ -70,6 +81,10 @@ impl InputCollector {
     }
 
     /// Add repo-relative input paths captured by another renderer component.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the [`Self::add_file`] errors.
     pub fn add_relative_files<I, S>(&mut self, paths: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = S>,
@@ -82,6 +97,10 @@ impl InputCollector {
     }
 
     /// Read and hash every collected input in repo-relative path order.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Io`] when a collected input cannot be read.
     pub fn finalize(&self) -> Result<Vec<InputFingerprint>, Error> {
         self.paths
             .iter()
@@ -97,6 +116,7 @@ impl InputCollector {
 }
 
 /// Build the lock-ready fingerprint structure from input hashes and body bytes.
+#[must_use]
 pub fn for_context(
     cli_version: &str, inputs: Vec<InputFingerprint>, body: &[u8],
 ) -> ContextFingerprint {
@@ -109,6 +129,7 @@ pub fn for_context(
 }
 
 /// Hash the canonical aggregate encoding used by `.specify/context.lock`.
+#[must_use]
 pub fn aggregate(cli_version: &str, mut inputs: Vec<InputFingerprint>) -> String {
     inputs.sort_by(|left, right| left.path.cmp(&right.path));
 
@@ -126,6 +147,7 @@ pub fn aggregate(cli_version: &str, mut inputs: Vec<InputFingerprint>) -> String
 }
 
 /// Hash fenced body bytes with the `sha256:` prefix used by the lock file.
+#[must_use]
 pub fn body_sha256(body: &[u8]) -> String {
     prefixed_sha256(body)
 }

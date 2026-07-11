@@ -31,9 +31,8 @@ pub(super) const DROPPED_FILE_NAME: &str = "journal.dropped";
 /// Used by CLI verbs that own more than one journal emit per
 /// invocation (e.g. `specify plan create --auto-approve
 /// --authority-override`, which stages both `plan.transition.approved`
-/// and `plan.amend.authority-override` in the same Gate-1 consent), and
-/// equally by single-event callers via
-/// `append_batch(layout, std::slice::from_ref(&event))`.
+/// and `plan.amend.authority-override` in the same Gate-1 consent).
+/// Single-event callers use [`append_one`].
 ///
 /// Empty `events` is a no-op; the journal file is not created on
 /// disk and `Ok(())` is returned. This lets callers compose the
@@ -46,6 +45,21 @@ pub(super) const DROPPED_FILE_NAME: &str = "journal.dropped";
 /// write / fsync chain, plus JSON serialisation failures as
 /// `journal-event-serialise-failed`.
 pub fn append_batch(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
+    append_all(layout, events)
+}
+
+/// Append exactly one [`Event`], propagating the write failure — the
+/// strict single-event counterpart of [`append_batch`] for verbs whose
+/// contract is one journal line per invocation.
+///
+/// # Errors
+///
+/// Same failure surface as [`append_batch`].
+pub fn append_one(layout: Layout<'_>, event: &Event) -> Result<(), Error> {
+    append_all(layout, std::slice::from_ref(event))
+}
+
+fn append_all(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
     if events.is_empty() {
         return Ok(());
     }

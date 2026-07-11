@@ -8,7 +8,7 @@ use serde_json::Value as JsonValue;
 
 use crate::config::Layout;
 use crate::design_system::{ComponentStatus, ComponentsCatalog};
-use crate::schema::EvidenceDoc;
+use crate::schema_gate::EvidenceDoc;
 
 /// component catalog contract catalog-drift gate. Loads the project-level component
 /// catalog (`.specify/design-system/components.yaml`) when present

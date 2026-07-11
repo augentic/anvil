@@ -12,7 +12,7 @@ use crate::adapter::BuildInputDeclaration;
 use crate::config::Layout;
 use crate::init::adapter_ref_from_value;
 use crate::journal::{self, EventKind};
-use crate::schema::{validate_build_report_json, validate_build_request_json};
+use crate::schema_gate::{validate_build_report_json, validate_build_request_json};
 use crate::seam::{Input, TargetSeam, WorkingTree};
 use crate::slice::{
     BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
@@ -213,12 +213,7 @@ fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
 
 /// Read one slice-tree artifact body.
 fn read_artifact(root: &Path, relative: &str) -> Result<String, Error> {
-    let path = root.join(relative);
-    std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-        op: "read",
-        path,
-        source,
-    })
+    crate::fs::read_text(&root.join(relative))
 }
 
 /// Serialise to a trailing-newlined YAML document.

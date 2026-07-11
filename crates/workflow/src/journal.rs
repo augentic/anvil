@@ -28,7 +28,7 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use serde_json::Value;
 
-pub use self::append::append_batch;
+pub use self::append::{append_batch, append_one};
 pub use self::emit::emit_best_effort;
 pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind, WIRE_EVENT_IDS};
 use crate::config::Layout;

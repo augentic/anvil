@@ -7,9 +7,8 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::artifact_classes;
 use crate::handler::{Anchor, Ctx, Render};
-use crate::merge::MergeStrategy;
+use crate::merge::{MergeStrategy, artifact_classes};
 use crate::slice::{
     Overlap as SliceOverlap, SliceMetadata, SpecKind, TouchedSpec, actions as slice_actions,
 };
@@ -48,7 +47,7 @@ impl<P: Anchor> Operation<P> for TouchedSpecs {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let TouchedSpecsInput { name, scan, set } = input;
-        let slice_dir = cx.slices_dir().join(&name);
+        let slice_dir = cx.layout().slices_dir().join(&name);
 
         let entries = if !set.is_empty() {
             let v = parse_touched_spec_set(&set)?;
@@ -160,7 +159,7 @@ impl<P: Anchor> Operation<P> for Overlap {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let name = input.name;
-        let slices_dir = cx.slices_dir();
+        let slices_dir = cx.layout().slices_dir();
         let overlaps = slice_actions::overlap(&slices_dir, &name)?;
 
         Ok(OverlapBody { name, overlaps })

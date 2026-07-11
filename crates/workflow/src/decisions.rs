@@ -86,16 +86,7 @@ fn is_ascii_digits(s: &str) -> bool {
 /// Surfaces I/O errors reading the directory or one of its entries.
 pub(crate) fn list_md_files(dir: &Path) -> Result<Vec<PathBuf>, Error> {
     let mut out: Vec<PathBuf> = Vec::new();
-    for entry in std::fs::read_dir(dir).map_err(|source| Error::Filesystem {
-        op: "readdir",
-        path: dir.to_path_buf(),
-        source,
-    })? {
-        let entry = entry.map_err(|source| Error::Filesystem {
-            op: "readdir-entry",
-            path: dir.to_path_buf(),
-            source,
-        })?;
+    for entry in crate::fs::dir_entries(dir)? {
         let path = entry.path();
         if path.extension().and_then(|e| e.to_str()) == Some("md") {
             out.push(path);
@@ -121,11 +112,7 @@ pub fn read_baseline(decisions_dir: &Path) -> Result<Vec<BaselineDecision>, Erro
     }
     let mut out: Vec<BaselineDecision> = Vec::new();
     for path in list_md_files(decisions_dir)? {
-        let text = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source,
-        })?;
+        let text = crate::fs::read_text(&path)?;
         let (record, body) = parse_file(&text).ok_or_else(|| Error::Diag {
             code: "decision-baseline-malformed",
             detail: format!("baseline decision `{}` could not be parsed", path.display()),
@@ -162,11 +149,7 @@ fn read_slice_records(src: &Path) -> Result<Vec<SliceRecord>, Error> {
     }
     let mut out: Vec<SliceRecord> = Vec::new();
     for path in list_md_files(src)? {
-        let text = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source,
-        })?;
+        let text = crate::fs::read_text(&path)?;
         let (record, body) = parse_file(&text).ok_or_else(|| Error::Diag {
             code: "decision-record-malformed",
             detail: format!(

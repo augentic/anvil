@@ -1,19 +1,90 @@
-//! `slice merge preview | conflict-check`. Owns the merge-side JSON
-//! DTOs and summarisers; `slice merge run` itself is an orchestration
-//! verb ([`crate::orchestrate::MergeRun`]).
+//! `slice merge run | preview | conflict-check`. Owns the merge-side
+//! JSON DTOs and summarisers; `run` drives the deterministic
+//! [`crate::orchestrate::merge`] kernel.
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::artifact_classes;
 use crate::handler::{Anchor, Ctx, Render};
 use crate::merge::{
-    BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, conflict_check, slice,
-    summarise_operations,
+    BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, artifact_classes,
+    conflict_check, slice, summarise_operations,
 };
+use crate::orchestrate;
+
+// ---------------------------------------------------------------------------
+// slice merge run
+// ---------------------------------------------------------------------------
+
+/// Wire input for `slice merge run`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct MergeRunInput {
+    /// Slice name (under `.specify/slices/`).
+    pub name: String,
+    /// Authorise a whole-document composition overwrite.
+    #[serde(default)]
+    pub allow_composition_replace: bool,
+}
+
+/// `specify slice merge run <name>` → [`orchestrate::merge`]
+/// (deterministic-only — no target merge brief is dispatched).
+#[derive(Clone, Copy, Debug)]
+pub struct MergeRun;
+
+impl<P: Anchor> Operation<P> for MergeRun {
+    type Error = crate::handler::Error;
+    type Input = MergeRunInput;
+    type Output = MergeBody;
+
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let cx = Ctx::load(context.provider)?;
+        let MergeRunInput {
+            name,
+            allow_composition_replace,
+        } = input;
+        let outcome = orchestrate::merge(cx.layout(), cx.now(), &name, allow_composition_replace)?;
+        Ok(MergeBody {
+            slice: name,
+            merged: outcome.merged.into_iter().map(|entry| entry.name).collect(),
+            decisions: outcome.decisions,
+            archive_path: outcome.archive_path,
+        })
+    }
+}
+
+/// Success envelope for `slice merge run`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct MergeBody {
+    /// Slice name.
+    pub slice: String,
+    /// Merged baseline spec names.
+    pub merged: Vec<String>,
+    /// Merge decisions recorded.
+    pub decisions: Vec<String>,
+    /// Path of the archived slice directory.
+    pub archive_path: PathBuf,
+}
+
+impl Render for MergeBody {
+    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "merged {}", self.slice)?;
+        for name in &self.merged {
+            writeln!(w, "spec: {name}")?;
+        }
+        for decision in &self.decisions {
+            writeln!(w, "decision: {decision}")?;
+        }
+        writeln!(w, "archived: {}", self.archive_path.display())
+    }
+}
 
 // ---------------------------------------------------------------------------
 // slice merge preview
@@ -41,7 +112,7 @@ impl<P: Anchor> Operation<P> for Preview {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.slices_dir().join(&input.name);
+        let slice_dir = cx.layout().slices_dir().join(&input.name);
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let result = slice::preview(&slice_dir, &classes)?;
 
@@ -62,7 +133,7 @@ impl<P: Anchor> Operation<P> for Preview {
             .collect();
 
         Ok(PreviewBody {
-            slice_dir: slice_dir.display().to_string(),
+            slice_dir,
             specs,
             contracts,
         })
@@ -73,8 +144,8 @@ impl<P: Anchor> Operation<P> for Preview {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PreviewBody {
-    /// Display path of the slice directory.
-    pub slice_dir: String,
+    /// Path of the slice directory (serialised as its display string).
+    pub slice_dir: PathBuf,
     /// Three-way merge previews for the `specs` class.
     pub specs: Vec<MergePreviewEntry>,
     /// Opaque contract changes.
@@ -143,12 +214,12 @@ impl<P: Anchor> Operation<P> for ConflictCheck {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.slices_dir().join(&input.name);
+        let slice_dir = cx.layout().slices_dir().join(&input.name);
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let conflicts = conflict_check(&slice_dir, &classes)?;
 
         Ok(ConflictCheckBody {
-            slice_dir: slice_dir.display().to_string(),
+            slice_dir,
             conflicts,
         })
     }
@@ -158,8 +229,8 @@ impl<P: Anchor> Operation<P> for ConflictCheck {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ConflictCheckBody {
-    /// Display path of the slice directory.
-    pub slice_dir: String,
+    /// Path of the slice directory (serialised as its display string).
+    pub slice_dir: PathBuf,
     /// Baselines modified after this slice's `defined_at`.
     pub conflicts: Vec<BaselineConflict>,
 }

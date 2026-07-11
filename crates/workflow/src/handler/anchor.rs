@@ -17,11 +17,4 @@ use std::path::Path;
 pub trait Anchor: omnia_guest::api::Provider {
     /// Directory the project-root walk starts from.
     fn project_root(&self) -> &Path;
-
-    /// Plan root override (the `--plan-dir` global): the directory
-    /// holding the governing `plan.yaml` when it is not the project
-    /// root. `None` anchors plan artifacts at the project root.
-    fn plan_dir(&self) -> Option<&Path> {
-        None
-    }
 }

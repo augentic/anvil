@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
 
@@ -6,43 +7,42 @@ use schema::cache::adapter_store_entry;
 
 use super::*;
 
-// Pure parse/identity matrices for the `<adapter>` argument shapes
-// (package references, first-party shorthand, value identity), plus the
-// store-resolve branches driven against a real content-addressed store.
-// GitHub URIs are a refusal branch, covered inline.
+// Retained in `src`: these branches drive the private `AdapterUri::parse`
+// and `parse_first_party_shorthand` — no CLI fixture reaches them short
+// of a full `specify init`, and the store-resolve branches need a
+// hermetic `SPECIFY_ADAPTER_STORE`. The public projections
+// (`adapter_name_from_value`, `adapter_ref_from_value`,
+// `recognize_package`) are covered in `tests/adapter_uri.rs`.
+
+/// Restores the previous `SPECIFY_ADAPTER_STORE` value on drop.
+struct StoreGuard(Option<OsString>);
+
+impl Drop for StoreGuard {
+    #[expect(unsafe_code, reason = "restore the store-root env var pinned for the test")]
+    fn drop(&mut self) {
+        // SAFETY: nextest runs each test in its own process, so no other
+        // thread observes the env mutation for the guard's lifetime.
+        unsafe {
+            match self.0.take() {
+                Some(prev) => std::env::set_var("SPECIFY_ADAPTER_STORE", prev),
+                None => std::env::remove_var("SPECIFY_ADAPTER_STORE"),
+            }
+        }
+    }
+}
+
+/// Pin the global adapter store root at `root` for the test's lifetime so
+/// store reads resolve into a hermetic temp directory.
+#[expect(unsafe_code, reason = "pin the store-root env var into the test tempdir")]
+fn scoped_store(root: &Path) -> StoreGuard {
+    let prev = std::env::var_os("SPECIFY_ADAPTER_STORE");
+    // SAFETY: see `StoreGuard::drop` — single-process test isolation.
+    unsafe { std::env::set_var("SPECIFY_ADAPTER_STORE", root) };
+    StoreGuard(prev)
+}
 
 #[test]
-fn value_identity() {
-    // `adapter_name_from_value` extracts the kebab name across every shape.
-    assert_eq!(adapter_name_from_value("demo-target"), "demo-target");
-    assert_eq!(adapter_name_from_value("specify:demo-target@1.2.0"), "demo-target");
-    assert_eq!(adapter_name_from_value("acme:demo-target@1.2.0"), "demo-target");
-    assert_eq!(adapter_name_from_value("file:///abs/components/demo-target.wasm"), "demo-target");
-    assert_eq!(
-        adapter_name_from_value("file:///abs/release/specify_demo_target.wasm"),
-        "demo-target"
-    );
-    assert_eq!(adapter_name_from_value("/abs/components/demo-target.wasm"), "demo-target");
-
-    // `adapter_ref_from_value` recovers a semver pin; a bare name, a
-    // `file://` path, and a non-semver suffix yield a bare ref; a package
-    // reference recovers the bare `(name, version)` identity, stripping
-    // `<namespace>:`.
-    assert_eq!(adapter_ref_from_value("demo-target"), AdapterRef::bare("demo-target"));
-    assert_eq!(
-        adapter_ref_from_value("demo-target@1.0.0"),
-        AdapterRef::pinned("demo-target", semver::Version::new(1, 0, 0))
-    );
-    assert_eq!(adapter_ref_from_value("demo-target@v1"), AdapterRef::bare("demo-target"));
-    assert_eq!(
-        adapter_ref_from_value("file:///abs/components/demo-target.wasm"),
-        AdapterRef::bare("demo-target")
-    );
-    assert_eq!(
-        adapter_ref_from_value("specify:demo-target@1.2.0"),
-        AdapterRef::pinned("demo-target", semver::Version::new(1, 2, 0))
-    );
-
+fn github_uri_refused() {
     // GitHub URIs are refused with a typed error: a source checkout no
     // longer yields a usable adapter artifact.
     let err = AdapterUri::parse(
@@ -60,8 +60,7 @@ fn value_identity() {
 }
 
 #[test]
-fn package_refs() {
-    // `recognize` parses `<namespace>:<name>@<semver>` and round-trips `wire_value`.
+fn package_ref_wire_value_round_trips() {
     let parsed = AdapterPackageRef::recognize("specify:demo-target@1.2.0")
         .expect("recognised as a package reference")
         .expect("valid package reference");
@@ -74,66 +73,6 @@ fn package_refs() {
         }
     );
     assert_eq!(parsed.wire_value(), "specify:demo-target@1.2.0");
-
-    // An immutable locator pins an exact SemVer version — a missing
-    // version, a git-style tag, and `latest` are all rejected.
-    for malformed in [
-        "specify:demo-target",
-        "specify:demo-target@v1",
-        "specify:demo-target@1",
-        "specify:demo-target@latest",
-    ] {
-        let result = AdapterPackageRef::recognize(malformed)
-            .unwrap_or_else(|| panic!("`{malformed}` is a package-ref shape"));
-        assert!(
-            matches!(
-                result,
-                Err(Error::Diag {
-                    code: "adapter-package-ref-version-required",
-                    ..
-                })
-            ),
-            "`{malformed}` must demand an exact SemVer pin",
-        );
-    }
-
-    // URL schemes, drive paths, bare names, and local paths are not package
-    // references — they keep flowing through the other branches.
-    for non_package in [
-        "demo-target",
-        "demo-target@1.0.0",
-        "./demo-target.wasm",
-        "/abs/demo-target.wasm",
-        "file:///abs/demo-target.wasm",
-        r"C:\adapters\demo-target.wasm",
-        "C:/adapters/demo-target.wasm",
-    ] {
-        assert!(
-            AdapterPackageRef::recognize(non_package).is_none(),
-            "`{non_package}` must not be treated as a package reference",
-        );
-    }
-
-    // The public `recognize_package` projection exposes `(namespace, name,
-    // version)`; non-package shapes pass through (None); a malformed pin errors.
-    let package = recognize_package("specify:demo-target@1.2.0")
-        .expect("package shape")
-        .expect("valid package reference");
-    assert_eq!(package.namespace, "specify");
-    assert_eq!(package.name, "demo-target");
-    assert_eq!(package.version, semver::Version::new(1, 2, 0));
-    assert!(recognize_package("demo-target").is_none());
-    assert!(recognize_package("./local.wasm").is_none());
-    recognize_package("specify:demo-target").expect("package shape").unwrap_err();
-
-    // The versioned first-party shorthand is sugar for the `specify:`
-    // package reference (specify: naming cut).
-    let sugar = recognize_package("demo-target@1.0.0")
-        .expect("versioned shorthand is a package shape")
-        .expect("valid shorthand");
-    assert_eq!(sugar.namespace, "specify");
-    assert_eq!(sugar.name, "demo-target");
-    assert_eq!(sugar.version, semver::Version::new(1, 0, 0));
 }
 
 #[test]
@@ -179,7 +118,7 @@ fn package_ref_uninstalled_is_not_installed() {
     // rather than a silent fallback to a mutable checkout or a local
     // path. Kept: no CLI fixture seeds an empty store for this branch.
     let store = tempfile::tempdir().expect("store root");
-    let _guard = crate::test_cache::scoped_store(store.path());
+    let _guard = scoped_store(store.path());
 
     let err = AdapterUri::parse("specify:demo-target@1.2.0", Path::new("/tmp"))
         .expect_err("uninstalled package reference must not resolve");
@@ -199,7 +138,7 @@ fn package_ref_resolves_from_store_entry() {
     // the canonical wire value as `adapter_value`. Kept: store-resolve has no
     // in-loop CLI fixture.
     let store = tempfile::tempdir().expect("store root");
-    let _guard = crate::test_cache::scoped_store(store.path());
+    let _guard = scoped_store(store.path());
 
     let entry = adapter_store_entry("demo-target", "1.2.0");
     fs::create_dir_all(entry.parent().expect("store root")).expect("create store root");

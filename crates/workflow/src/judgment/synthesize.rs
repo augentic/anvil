@@ -15,7 +15,7 @@ use error::Error;
 use omnia_guest::Model;
 
 use super::{prose, schema_gated};
-use crate::schema::validate_synthesis_json;
+use crate::schema_gate::validate_synthesis_json;
 use crate::slice::{
     BaselineIndex, ProjectionHeader, SliceModel, SynthesisInputs, SynthesisResponse, project,
 };

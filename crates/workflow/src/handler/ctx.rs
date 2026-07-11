@@ -21,10 +21,6 @@ pub struct Ctx {
     pub project_dir: PathBuf,
     /// Loaded `.specify/project.yaml`.
     pub config: ProjectConfig,
-    /// Plan root override from the provider anchor: the initiating
-    /// workspace root while phase verbs run inside a workspace slot.
-    /// `None` anchors plan artifacts at the project root as usual.
-    pub plan_dir: Option<PathBuf>,
 }
 
 impl Ctx {
@@ -42,7 +38,6 @@ impl Ctx {
         Ok(Self {
             project_dir,
             config,
-            plan_dir: anchor.plan_dir().map(PathBuf::from),
         })
     }
 
@@ -79,7 +74,7 @@ impl Ctx {
     /// `plan.yaml` / `registry.yaml`.
     #[must_use]
     pub fn layout(&self) -> Layout<'_> {
-        Layout::new(&self.project_dir).with_plan_dir(self.plan_dir.as_deref())
+        Layout::new(&self.project_dir)
     }
 
     /// Single handler-boundary read of the wall clock. Library crates
@@ -93,17 +88,5 @@ impl Ctx {
     #[must_use]
     pub fn now(&self) -> Timestamp {
         Timestamp::now()
-    }
-
-    /// `.specify/slices/` under the project root.
-    #[must_use]
-    pub fn slices_dir(&self) -> PathBuf {
-        self.layout().slices_dir()
-    }
-
-    /// `.specify/archive/` under the project root.
-    #[must_use]
-    pub fn archive_dir(&self) -> PathBuf {
-        self.layout().archive_dir()
     }
 }

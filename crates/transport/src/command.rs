@@ -1,8 +1,5 @@
 //! Typed command grammar, conversions, and Specify projection policy.
 
-use std::fs;
-use std::path::{Path, PathBuf};
-
 use clap::{Args, ValueEnum};
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
@@ -36,14 +33,11 @@ mod workspace;
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
 /// Arguments shared by every command route.
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Copy, Debug, Args)]
 pub struct Globals {
     /// Output format.
     #[arg(long, env = "SPECIFY_FORMAT", default_value = "text")]
     pub format: Format,
-    /// Directory holding the governing plan.
-    #[arg(long, env = "SPECIFY_PLAN_DIR", value_name = "PATH")]
-    pub plan_dir: Option<PathBuf>,
 }
 
 /// Flags for `specify init`.
@@ -251,10 +245,7 @@ where
                 .long_about("Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `specify completions zsh > ~/.zsh/_specify`). Generated via `clap_complete`; the output tracks the live clap surface so every new verb is auto-discovered."),
         )
         .before_dispatch(move |globals: &Globals| {
-            check_plan_dir(globals.plan_dir.as_deref())
-                .and_then(|()| preflight(globals))
-                .err()
-                .map(|error| failure_response(globals.format, &error))
+            preflight(globals).err().map(|error| failure_response(globals.format, &error))
         });
 
     macro_rules! route {
@@ -292,14 +283,14 @@ where
     route!(
         ["source", "survey"],
         source::SurveyArgs,
-        workflow::orchestrate::handlers::Survey,
+        workflow::source::handlers::Survey,
         "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`",
         "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the workflow guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
     );
     route!(
         ["source", "extract"],
         source::ExtractArgs,
-        workflow::orchestrate::handlers::Extract,
+        workflow::source::handlers::Extract,
         "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`",
         "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the workflow guest — one call covering the source dispatch, the Evidence schema gate (`schemas/evidence.schema.json`), and the persist."
     );
@@ -336,21 +327,21 @@ where
     route!(
         ["slice", "refine"],
         slice::RefineArgs,
-        workflow::orchestrate::handlers::Refine,
+        workflow::slice::handlers::Refine,
         "Refine one named plan entry's slice to `refined` in the workflow guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop",
         "Refine one named plan entry's slice to `refined` in the workflow guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop.\n\nActs on the named slice directly against a `pending` or `in-progress` plan entry (the standalone `slice build <name>` posture); never advances per-entry status, and refuses a `done` entry.\n\nGuest-only. The native binary refuses this verb — natively the phase is driven by the `/spec:refine` skill."
     );
     route!(
         ["slice", "build"],
         slice::BuildArgs,
-        workflow::orchestrate::handlers::Build,
+        workflow::slice::handlers::Build,
         "Build a slice through its bound target adapter's `build` operation and gate the `built` transition",
         "Build a slice through its bound target adapter's `build` operation and gate the `built` transition.\n\nResolves the target from the slice's `metadata.yaml`, then drives the collapsed build orchestration in the workflow guest: request assembly and schema gate, the target-seam dispatch, the report gates (`target-build-*` aborts), the `slice.build.*` events, and the `Refined → Built` transition. The target guest owns only code generation."
     );
     route!(
         ["slice", "merge", "run"],
         slice::MergeRunArgs,
-        workflow::orchestrate::handlers::MergeRun,
+        workflow::slice::handlers::MergeRun,
         "Merge all delta specs for the slice into baseline and archive the slice"
     );
     route!(
@@ -463,14 +454,14 @@ where
     route!(
         ["plan", "author"],
         plan::AuthorArgs,
-        workflow::orchestrate::handlers::Author,
+        workflow::change::plan::handlers::Author,
         "Author a plan end-to-end in the workflow guest: scaffold `plan.yaml` (`plan create` semantics), survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint",
         "Author a plan end-to-end in the workflow guest: scaffold `plan.yaml` (`plan create` semantics), survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint.\n\nGuest-only through the composed-deployment leg: the `/spec:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
-        workflow::orchestrate::handlers::Execute,
+        workflow::change::plan::handlers::Execute,
         "Run the drained execute loop in the workflow guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
         "Run the drained execute loop in the workflow guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nGuest-only through the composed-deployment leg: the loop holds the create-exclusive `.specify/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
@@ -590,27 +581,6 @@ where
     router.build()
 }
 
-fn check_plan_dir(plan_dir: Option<&Path>) -> Result<(), error::Error> {
-    let Some(dir) = plan_dir else {
-        return Ok(());
-    };
-    let same = dir == Path::new(".")
-        || fs::canonicalize(dir)
-            .and_then(|requested| fs::canonicalize(".").map(|root| requested == root))
-            .unwrap_or(false);
-    if same {
-        return Ok(());
-    }
-    Err(error::Error::Argument {
-        flag: "--plan-dir",
-        detail: format!(
-            "`--plan-dir` must be the project root: plan artifacts anchor at the working \
-             directory, so {} would be ignored; run from the plan root instead",
-            dir.display()
-        ),
-    })
-}
-
 #[derive(Debug, Serialize)]
 struct UnsupportedBody;
 
@@ -680,15 +650,15 @@ macro_rules! convert {
 
 convert!(source::ResolveArgs => workflow::adapter::handlers::ResolveInput { value, project_dir });
 convert!(target::ResolveArgs => workflow::adapter::handlers::ResolveInput { value, project_dir });
-convert!(source::SurveyArgs => workflow::orchestrate::handlers::SurveyInput { source, plan });
-convert!(source::ExtractArgs => workflow::orchestrate::handlers::ExtractInput { source, lead, slice });
+convert!(source::SurveyArgs => workflow::source::handlers::SurveyInput { source, plan });
+convert!(source::ExtractArgs => workflow::source::handlers::ExtractInput { source, lead, slice });
 convert!(slice::CreateArgs => workflow::slice::handlers::CreateInput { name, target, if_exists });
 convert!(slice::ValidateArgs => workflow::slice::handlers::ValidateInput { name });
 convert!(slice::ProvenanceArgs => workflow::slice::handlers::ProvenanceInput { name });
 convert!(slice::ModelShowArgs => workflow::slice::handlers::ModelShowInput { name });
-convert!(slice::RefineArgs => workflow::orchestrate::handlers::RefineInput { name });
-convert!(slice::BuildArgs => workflow::orchestrate::handlers::BuildInput { name });
-convert!(slice::MergeRunArgs => workflow::orchestrate::handlers::MergeRunInput { name, allow_composition_replace });
+convert!(slice::RefineArgs => workflow::slice::handlers::RefineInput { name });
+convert!(slice::BuildArgs => workflow::slice::handlers::BuildInput { name });
+convert!(slice::MergeRunArgs => workflow::slice::handlers::MergeRunInput { name, allow_composition_replace });
 convert!(slice::MergePreviewArgs => workflow::slice::handlers::PreviewInput { name });
 convert!(slice::ConflictCheckArgs => workflow::slice::handlers::ConflictCheckInput { name });
 convert!(slice::TaskProgressArgs => workflow::slice::handlers::TaskProgressInput { name });
@@ -702,12 +672,12 @@ convert!(plan::CreateArgs => workflow::change::plan::handlers::CreateInput { nam
 convert!(plan::ValidateArgs => workflow::change::plan::handlers::ValidateInput {});
 convert!(plan::NextArgs => workflow::change::plan::handlers::NextInput {});
 convert!(plan::StatusArgs => workflow::change::plan::handlers::StatusInput {});
-convert!(plan::ExecuteArgs => workflow::orchestrate::handlers::ExecuteInput {});
+convert!(plan::ExecuteArgs => workflow::change::plan::handlers::ExecuteInput {});
 convert!(plan::AddArgs => workflow::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => workflow::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => workflow::change::plan::handlers::RemoveInput { name });
 convert!(plan::TransitionArgs => workflow::change::plan::handlers::TransitionInput { name, target, undo, actor });
-convert!(plan::AuthorArgs => workflow::orchestrate::handlers::AuthorInput { name, sources, intent });
+convert!(plan::AuthorArgs => workflow::change::plan::handlers::AuthorInput { name, sources, intent });
 convert!(plan::ArchiveArgs => workflow::change::plan::handlers::ArchiveInput { force });
 convert!(journal::EmitArgs => workflow::journal::handlers::EmitInput { event, payload });
 convert!(journal::ShowArgs => workflow::journal::handlers::ShowInput { filter, limit });

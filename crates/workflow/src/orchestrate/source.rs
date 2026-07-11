@@ -15,7 +15,7 @@ use crate::adapter::SourceOperation;
 use crate::change::{Plan, SourceBinding};
 use crate::config::Layout;
 use crate::journal::{self, Event, EventKind};
-use crate::schema;
+use crate::schema_gate;
 use crate::seam::SourceSeam;
 
 /// One source's merged survey result under [`survey_all`].
@@ -132,7 +132,7 @@ async fn survey_one(
             topics: lead.topics,
         })
         .collect();
-    schema::validate_leads(&leads)?;
+    schema_gate::validate_leads(&leads)?;
     let lead_ids: Vec<String> = leads.iter().map(|lead| lead.lead.clone()).collect();
 
     let discovery_path = layout.discovery_path();
@@ -215,7 +215,7 @@ pub async fn extract(
 
     let yaml = evidence_yaml(lead, evidence.authority, &evidence.claims)?;
     let path = layout.slices_dir().join(slice).join("evidence").join(format!("{source}.yaml"));
-    schema::validate_evidence(&yaml, &path)?;
+    schema_gate::validate_evidence(&yaml, &path)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(Error::Io)?;
     }
@@ -292,9 +292,8 @@ fn load_or_empty_discovery(path: &Path) -> Result<Discovery, Error> {
 }
 
 /// Append one journal event, propagating the write failure — the
-/// source-axis emits are fallible, mirroring the native verbs'
-/// `append_batch` posture (unlike the best-effort build/merge
-/// brackets).
+/// source-axis emits are fallible (strict [`journal::append_one`]),
+/// unlike the best-effort build/merge brackets.
 fn emit(layout: Layout<'_>, now: Timestamp, kind: EventKind) -> Result<(), Error> {
-    journal::append_batch(layout, std::slice::from_ref(&Event::new(now, kind)))
+    journal::append_one(layout, &Event::new(now, kind))
 }

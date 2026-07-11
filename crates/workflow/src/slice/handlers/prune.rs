@@ -66,7 +66,7 @@ impl<P: Anchor> Operation<P> for Prune {
             keep,
             max_age_days: older_than,
         };
-        let archive_dir = cx.archive_dir();
+        let archive_dir = cx.layout().archive_dir();
         let candidates = prune::scan(&archive_dir, retention, cx.now())?;
         if !dry_run {
             prune::prune(&candidates)?;

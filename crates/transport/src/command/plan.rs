@@ -1,7 +1,97 @@
-//! Clap argument types for the `specify plan *` routes.
+//! Clap argument types for the `specify plan *` routes, including the
+//! locked argv grammars for `--source` ([`source_assign`]) and
+//! `--sources` / `--add-source` ([`binding_arg`]). The parsed values
+//! land directly in the workflow wire DTOs.
 
 use clap::{ArgAction, Args};
-use workflow::change::plan::handlers::{BindingArg, KindAssign, SourceAssign};
+use workflow::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
+
+/// Parse the locked `--source` argv grammar into a [`SourceAssign`]:
+///
+/// - `<key>=<adapter>:<path>` — path-bound binding. The adapter is the
+///   substring up to the first `:` after `=`; the path is everything
+///   after that first `:` (URLs containing `:` such as
+///   `git@github.com:org/foo.git` round-trip cleanly).
+/// - `<key>=<adapter>:value:<literal>` — value-bound binding. The
+///   `value:` sentinel after the adapter switches the parser to
+///   literal mode; the literal payload is everything after the second
+///   `:` and may contain anything (newlines, colons, equals signs).
+///
+/// Returns a `String` error on malformed input so clap surfaces a
+/// standard usage diagnostic (exit code 2).
+fn source_assign(s: &str) -> Result<SourceAssign, String> {
+    let (key, rest) = s.split_once('=').ok_or_else(|| {
+        format!(
+            "--source must be <key>=<adapter>:<path> or <key>=<adapter>:value:<literal>, got `{s}`"
+        )
+    })?;
+    if key.is_empty() {
+        return Err(format!("--source key must be non-empty, got `{s}`"));
+    }
+    let (adapter, body) = rest.split_once(':').ok_or_else(|| {
+        format!(
+            "--source value must be <adapter>:<path> or <adapter>:value:<literal>, got `{rest}` \
+             for key `{key}`"
+        )
+    })?;
+    if adapter.is_empty() {
+        return Err(format!("--source adapter must be non-empty, got `{s}`"));
+    }
+    if body.is_empty() {
+        return Err(format!(
+            "--source binding (path or `value:<literal>`) must be non-empty, got `{s}`"
+        ));
+    }
+    let (path, value) = if let Some(literal) = body.strip_prefix("value:") {
+        if literal.is_empty() {
+            return Err(format!(
+                "--source value-literal must be non-empty after `value:`, got `{s}`"
+            ));
+        }
+        (None, Some(literal.to_string()))
+    } else {
+        (Some(body.to_string()), None)
+    };
+    Ok(SourceAssign {
+        key: key.to_string(),
+        adapter: adapter.to_string(),
+        path,
+        value,
+    })
+}
+
+/// Parse the `--sources` / `--add-source` argv forms (workflow
+/// §`Slice.sources`) into a [`BindingArg`]:
+///
+/// - `<key>=<lead>` — structured binding; both sides are non-empty.
+/// - `<key>` — bare-string shorthand; sugar for
+///   `{ key: <key>, lead: <slice.name> }`.
+///
+/// Malformed inputs (empty key, empty lead, dangling `=`, more than
+/// one `=`) produce a `String` error that clap surfaces as a standard
+/// usage diagnostic (exit code 2).
+fn binding_arg(s: &str) -> Result<BindingArg, String> {
+    if s.is_empty() {
+        return Err("--sources value must be non-empty".to_string());
+    }
+    if let Some((k, v)) = s.split_once('=') {
+        if v.contains('=') {
+            return Err(format!("--sources value `{s}` must be <key>=<lead> with at most one `=`"));
+        }
+        if k.is_empty() || v.is_empty() {
+            return Err(format!("--sources key and lead must both be non-empty, got `{s}`"));
+        }
+        Ok(BindingArg {
+            key: k.to_string(),
+            lead: Some(v.to_string()),
+        })
+    } else {
+        Ok(BindingArg {
+            key: s.to_string(),
+            lead: None,
+        })
+    }
+}
 
 /// Argv mirror of `plan create`'s wire input
 /// (`workflow::change::plan::handlers::CreateInput`).
@@ -15,7 +105,7 @@ pub struct CreateArgs {
     /// value-bound bindings (used by `intent`). Recorded in the
     /// plan's `sources:` map as the structured
     /// `{ adapter, path?, value? }` shape per workflow §Source.
-    #[arg(long = "source")]
+    #[arg(long = "source", value_parser = source_assign)]
     pub sources: Vec<SourceAssign>,
     /// Operator intent as a literal string — pure sugar for
     /// `--source intent=intent:value:<string>` (the N=1 entry
@@ -130,7 +220,7 @@ pub struct TransitionArgs {
 }
 
 /// Argv mirror of `plan author`'s wire input
-/// (`workflow::orchestrate::handlers::AuthorInput`).
+/// (`workflow::change::plan::handlers::AuthorInput`).
 #[derive(Debug, Args)]
 pub struct AuthorArgs {
     /// Kebab-case change name
@@ -138,7 +228,7 @@ pub struct AuthorArgs {
     /// Named source binding, repeatable — the `plan create`
     /// grammar verbatim: `--source <key>=<adapter>:<path>` or
     /// `--source <key>=<adapter>:value:<literal>`.
-    #[arg(long = "source")]
+    #[arg(long = "source", value_parser = source_assign)]
     pub sources: Vec<SourceAssign>,
     /// Operator intent as a literal string — pure sugar for
     /// `--source intent=intent:value:<string>`, exactly as on
@@ -172,7 +262,7 @@ pub struct AddArgs {
     /// `<key>=<lead>`; bare `<key>` is accepted as
     /// shorthand for `{ key: <key>, lead: <slice.name> }`
     /// per workflow §`Slice.sources`.
-    #[arg(long = "sources", action = ArgAction::Append)]
+    #[arg(long = "sources", action = ArgAction::Append, value_parser = binding_arg)]
     pub sources: Vec<BindingArg>,
     /// Free-text scoping hint for the define step
     #[arg(long)]
@@ -213,12 +303,12 @@ pub struct AmendArgs {
     /// is `<key>=<lead>` (or bare `<key>` shorthand).
     /// Pass `--sources` (no value) to clear; omit to leave
     /// unchanged.
-    #[arg(long = "sources", num_args = 0.., value_delimiter = ',')]
+    #[arg(long = "sources", num_args = 0.., value_delimiter = ',', value_parser = binding_arg)]
     pub sources: Option<Vec<BindingArg>>,
     /// Add a single per-slice source binding (repeatable). Each
     /// value is `<key>=<lead>` or the bare `<key>`
     /// shorthand per workflow §`Slice.sources`.
-    #[arg(long = "add-source", action = ArgAction::Append)]
+    #[arg(long = "add-source", action = ArgAction::Append, value_parser = binding_arg)]
     pub add_source: Vec<BindingArg>,
     /// Remove a per-slice source binding by key (repeatable).
     /// Fails with `plan-binding-not-found` when no such binding

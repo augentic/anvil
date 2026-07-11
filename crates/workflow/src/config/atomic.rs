@@ -44,12 +44,44 @@ pub trait AtomicYaml: Sized + Serialize + DeserializeOwned {
     }
 }
 
+/// The result of a [`with_state`] closure: the response body plus an
+/// explicit statement of whether the in-memory state was mutated (and
+/// so must be written back to disk).
+#[derive(Debug)]
+pub struct Mutation<B> {
+    /// The body the closure produced.
+    pub body: B,
+    /// `true` when the state was mutated and must be persisted.
+    pub changed: bool,
+}
+
+impl<B> Mutation<B> {
+    /// The state was mutated; [`with_state`] persists it.
+    pub const fn changed(body: B) -> Self {
+        Self {
+            body,
+            changed: true,
+        }
+    }
+
+    /// The state was left untouched; [`with_state`] skips the write —
+    /// an idempotent no-op leaves neither a disk write nor an mtime
+    /// bump behind.
+    pub const fn unchanged(body: B) -> Self {
+        Self {
+            body,
+            changed: false,
+        }
+    }
+}
+
 /// Load → mutate → atomic-write loop.
 ///
 /// Loads `S` from disk, returning [`Error::ArtifactNotFound`] with
 /// `missing_kind` when the file is absent. Runs `f` against the
-/// in-memory state, atomically writes the mutated value back, then
-/// returns the body the closure produced.
+/// in-memory state; when the returned [`Mutation`] says the state
+/// changed, atomically writes the mutated value back. Returns the body
+/// the closure produced.
 ///
 /// `with_state` does **not** itself emit; the caller writes
 /// `ctx.write(&body, write_text)?;`. This keeps response shaping local
@@ -67,15 +99,17 @@ pub trait AtomicYaml: Sized + Serialize + DeserializeOwned {
 pub fn with_state<S, B, F>(layout: Layout<'_>, missing_kind: &'static str, f: F) -> Result<B, Error>
 where
     S: AtomicYaml,
-    F: FnOnce(&mut S) -> Result<B, Error>,
+    F: FnOnce(&mut S) -> Result<Mutation<B>, Error>,
 {
     let path = S::layout_path(layout);
     let mut state = S::load_state(layout)?.ok_or_else(|| Error::ArtifactNotFound {
         kind: missing_kind,
         path: path.clone(),
     })?;
-    let body = f(&mut state)?;
-    yaml_write(&path, &state)?;
+    let Mutation { body, changed } = f(&mut state)?;
+    if changed {
+        yaml_write(&path, &state)?;
+    }
     Ok(body)
 }
 

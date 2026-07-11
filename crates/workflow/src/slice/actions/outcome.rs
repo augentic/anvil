@@ -5,7 +5,8 @@ use std::path::Path;
 use error::Error;
 use jiff::Timestamp;
 
-use crate::slice::{Outcome, OutcomeKind, SliceMetadata, TargetOperation};
+use crate::adapter::TargetOperation;
+use crate::slice::{Outcome, OutcomeKind, SliceMetadata};
 
 /// Stamp the outcome of a phase run on `<slice_dir>/metadata.yaml`.
 ///

@@ -283,3 +283,87 @@ fn dev_component_paths_shape() {
         Path::new("/repos/specify-adapters/target/wasm32-wasip2/release/demo_target.wasm")
     );
 }
+
+// ---------------------------------------------------------------------------
+// Identity model and platform capability (moved from the src unit layer)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn axis_routing() {
+    use workflow::adapter::{Axis, SourceAdapter, TargetAdapter, dev_version};
+
+    assert_eq!(Axis::Source.dir_segment(), "sources");
+    assert_eq!(Axis::Target.dir_segment(), "targets");
+    assert_eq!(Axis::Source.interface(), "specify:adapter/source@0.1.0");
+    assert_eq!(Axis::Target.interface(), "specify:adapter/target@0.1.0");
+
+    // The operation sets derive from the closed WIT contract:
+    // extract < survey for sources, build < merge < shape for targets.
+    let source = SourceAdapter {
+        name: "demo-source".into(),
+        version: semver::Version::new(1, 0, 0),
+        requires_specify: None,
+    };
+    assert_eq!(
+        source.operations().copied().collect::<Vec<_>>(),
+        vec![SourceOperation::Extract, SourceOperation::Survey]
+    );
+    let target = TargetAdapter {
+        name: "demo-target".into(),
+        version: semver::Version::new(1, 0, 0),
+        requires_specify: None,
+        inputs: Vec::new(),
+        platforms: None,
+    };
+    assert_eq!(
+        target.operations().copied().collect::<Vec<_>>(),
+        vec![TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge]
+    );
+
+    // Identity: a pin resolves as itself, a bare name as the
+    // `0.0.0` development placeholder.
+    assert_eq!(
+        AdapterRef::pinned("demo", semver::Version::new(1, 2, 3)).resolved_version(),
+        semver::Version::new(1, 2, 3)
+    );
+    assert_eq!(AdapterRef::bare("demo").resolved_version(), dev_version());
+}
+
+#[test]
+fn platforms_capability_check() {
+    use workflow::Platform;
+    use workflow::adapter::{PlatformsCapability, PlatformsViolation};
+
+    let capability = PlatformsCapability {
+        required: true,
+        allowed: vec![Platform::Core, Platform::Ios, Platform::Android],
+        default: vec![Platform::Core, Platform::Ios],
+    };
+
+    // Required + empty set: the violation carries the display defaults.
+    let Err(PlatformsViolation::RequiredButMissing { defaults }) = capability.check(&[]) else {
+        panic!("required capability must refuse an empty set");
+    };
+    assert_eq!(defaults, vec!["core".to_string(), "ios".to_string()]);
+
+    // Non-empty set without core.
+    assert_eq!(capability.check(&[Platform::Ios]), Err(PlatformsViolation::MissingCore));
+
+    // A platform outside `allowed`.
+    let Err(PlatformsViolation::NotAllowed { platform, allowed }) =
+        capability.check(&[Platform::Core, Platform::Web])
+    else {
+        panic!("web must be outside the allowed set");
+    };
+    assert_eq!(platform, Platform::Web);
+    assert_eq!(allowed, vec!["core".to_string(), "ios".to_string(), "android".to_string()]);
+
+    // A conforming set passes; an optional capability allows empty.
+    capability.check(&[Platform::Core, Platform::Ios]).expect("conforming set passes");
+    let optional = PlatformsCapability {
+        required: false,
+        allowed: vec![Platform::Core],
+        default: vec![Platform::Core],
+    };
+    optional.check(&[]).expect("optional capability allows an empty set");
+}

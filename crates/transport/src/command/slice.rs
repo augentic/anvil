@@ -46,7 +46,7 @@ pub struct ProvenanceArgs {
 }
 
 /// Argv mirror of `slice refine`'s wire input
-/// (`workflow::orchestrate::handlers::RefineInput`).
+/// (`workflow::slice::handlers::RefineInput`).
 #[derive(Debug, clap::Args)]
 pub struct RefineArgs {
     /// Slice name (a `plan.yaml.slices[]` entry)
@@ -54,7 +54,7 @@ pub struct RefineArgs {
 }
 
 /// Argv mirror of `slice build`'s wire input
-/// (`workflow::orchestrate::handlers::BuildInput`).
+/// (`workflow::slice::handlers::BuildInput`).
 #[derive(Debug, clap::Args)]
 pub struct BuildArgs {
     /// Slice name (under `.specify/slices/`)
@@ -116,7 +116,7 @@ pub struct ModelShowArgs {
 }
 
 /// Argv mirror of `slice merge run`'s wire input
-/// (`workflow::orchestrate::handlers::MergeRunInput`).
+/// (`workflow::slice::handlers::MergeRunInput`).
 #[derive(Debug, clap::Args)]
 pub struct MergeRunArgs {
     /// Slice name

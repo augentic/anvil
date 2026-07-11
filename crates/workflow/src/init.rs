@@ -19,7 +19,7 @@ pub use cache::ComponentMeta;
 use error::Error;
 use jiff::Timestamp;
 
-use crate::adapter::PlatformsViolation;
+use crate::adapter::PlatformsSurface;
 use crate::config::Layout;
 use crate::platform::Platform;
 
@@ -195,9 +195,11 @@ pub(crate) fn scaffold_wasm_pkg_config(layout: &Layout<'_>) -> Result<bool, Erro
 }
 
 /// Validate the operator's `--platforms` set against the target's
-/// declared capability, mapping each [`PlatformsViolation`] onto the
-/// init-time `project-platforms-*` diagnostic family. The rules
-/// themselves live on [`crate::adapter::PlatformsCapability::check`].
+/// declared capability, mapping each violation onto the init-time
+/// `project-platforms-*` diagnostic family via the shared
+/// [`crate::adapter::PlatformsViolation::into_error`] converter. The
+/// rules themselves live on
+/// [`crate::adapter::PlatformsCapability::check`].
 pub(crate) fn validate_platforms(
     operator: Option<&[Platform]>, capability: Option<&crate::adapter::PlatformsCapability>,
     target_name: &str,
@@ -207,29 +209,8 @@ pub(crate) fn validate_platforms(
         return Ok(platforms);
     };
 
-    cap.check(&platforms).map_err(|violation| match violation {
-        PlatformsViolation::RequiredButMissing { defaults } => Error::validation_failed(
-            "project-platforms-required",
-            format!("target '{target_name}' requires --platforms"),
-            format!(
-                "target '{target_name}' requires --platforms; default set is [{}]",
-                defaults.join(", "),
-            ),
-        ),
-        PlatformsViolation::MissingCore => Error::validation_failed(
-            "project-platforms-must-include-core",
-            "platform set must include `core`",
-            "the --platforms set must include `core`; every project that declares platforms requires the shared Rust core crate",
-        ),
-        PlatformsViolation::NotAllowed { platform, allowed } => Error::validation_failed(
-            "project-platforms-not-allowed",
-            format!("platform `{platform}` is not in the target's allowed set"),
-            format!(
-                "platform `{platform}` is not allowed by target '{target_name}'; allowed: [{}]",
-                allowed.join(", "),
-            ),
-        ),
-    })?;
+    cap.check(&platforms)
+        .map_err(|violation| violation.into_error(PlatformsSurface::Init { target: target_name }))?;
 
     Ok(platforms)
 }

@@ -8,11 +8,10 @@ use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
 
+use crate::adapter::TargetOperation;
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
-use crate::slice::{
-    LifecycleStatus, Outcome, OutcomeKind, SliceMetadata, SpecKind, TargetOperation, actions,
-};
+use crate::slice::{LifecycleStatus, Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
 
 mod parse;
 mod read;

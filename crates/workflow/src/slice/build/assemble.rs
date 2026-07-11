@@ -9,7 +9,6 @@
 //! names a path absent from the slice tree.
 
 use std::ffi::OsStr;
-use std::fs;
 use std::path::Path;
 
 use error::{Error, Result};
@@ -75,18 +74,8 @@ fn spec_paths(slice_tree: &Path) -> Result<Vec<String>> {
     if !specs_dir.is_dir() {
         return Ok(Vec::new());
     }
-    let entries = fs::read_dir(&specs_dir).map_err(|source| Error::Filesystem {
-        op: "readdir",
-        path: specs_dir.clone(),
-        source,
-    })?;
     let mut paths: Vec<String> = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|source| Error::Filesystem {
-            op: "readdir-entry",
-            path: specs_dir.clone(),
-            source,
-        })?;
+    for entry in crate::fs::dir_entries(&specs_dir)? {
         let domain_dir = entry.path();
         if !domain_dir.is_dir() || !domain_dir.join("spec.md").is_file() {
             continue;

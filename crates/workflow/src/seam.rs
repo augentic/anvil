@@ -104,6 +104,19 @@ pub struct WorkingTree {
     pub subpath: Option<String>,
 }
 
+impl WorkingTree {
+    /// The live shared mount every build applies against (deployments
+    /// share one live tree) — the caller-resolved working tree the
+    /// native prepare phase used to own.
+    #[must_use]
+    pub fn live() -> Self {
+        Self {
+            base: "live".to_string(),
+            subpath: None,
+        }
+    }
+}
+
 /// The source axis of the seam: plan-time lead discovery and slice-time
 /// Evidence extraction, routed to the exporting adapter guest by the
 /// plan-bound `id` (e.g. `source:typescript`).

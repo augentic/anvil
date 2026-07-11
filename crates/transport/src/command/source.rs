@@ -19,7 +19,7 @@ pub struct ResolveArgs {
 }
 
 /// Argv mirror of `source survey`'s wire input
-/// (`workflow::orchestrate::handlers::SurveyInput`).
+/// (`workflow::source::handlers::SurveyInput`).
 #[derive(Debug, Args)]
 pub struct SurveyArgs {
     /// Source key from `plan.yaml.sources.<key>`.
@@ -30,7 +30,7 @@ pub struct SurveyArgs {
 }
 
 /// Argv mirror of `source extract`'s wire input
-/// (`workflow::orchestrate::handlers::ExtractInput`).
+/// (`workflow::source::handlers::ExtractInput`).
 #[derive(Debug, Args)]
 pub struct ExtractArgs {
     /// Source key from `plan.yaml.sources.<key>`.

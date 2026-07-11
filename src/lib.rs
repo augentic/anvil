@@ -21,6 +21,33 @@ mod bindings {
     });
 }
 
-mod command;
-mod http;
 mod provider;
+
+use omnia_guest::api::http;
+use omnia_guest::api::invoke::Invoker;
+use omnia_guest::wasip3;
+
+use crate::provider::Provider;
+
+struct CliGuest;
+wasip3::cli::command::export!(CliGuest);
+
+impl wasip3::exports::cli::run::Guest for CliGuest {
+    async fn run() -> Result<(), ()> {
+        let invoker = Invoker::new("specify", Provider);
+        let router = transport::command::router(invoker, |_| Ok(())).map_err(|_error| ())?;
+        omnia_guest::api::command::execute_wasi(&router).await
+    }
+}
+
+struct Http;
+wasip3::http::service::export!(Http);
+
+impl wasip3::exports::http::handler::Guest for Http {
+    async fn handle(
+        request: wasip3::http::types::Request,
+    ) -> Result<wasip3::http::types::Response, wasip3::http::types::ErrorCode> {
+        let router = transport::http::router(Invoker::new("specify", Provider));
+        http::serve(router, request).await
+    }
+}

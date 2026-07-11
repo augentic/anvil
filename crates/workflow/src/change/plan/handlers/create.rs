@@ -1,17 +1,18 @@
 //! `specify plan create` — scaffold an empty `plan.yaml`. Composes the
-//! shared argument parsers in [`super::args`] with the domain
+//! shared wire parsers in [`crate::change::plan::wire`] with the domain
 //! authority-override engine in
 //! [`crate::change::mutate_authority_overrides`] so the operation
 //! stays declarative.
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::args::{SourceAssign, parse_override_assigns, source_map};
+use crate::change::plan::wire::{SourceAssign, parse_override_assigns, source_map};
 use crate::change::{Lifecycle, Plan, mutate_authority_overrides, reject_orphan_overrides};
 use crate::handler::{Anchor, Ctx, Render};
 use crate::journal;
@@ -148,7 +149,7 @@ impl<P: Anchor> Operation<P> for Create {
 
         Ok(CreateBody {
             name,
-            plan: plan_path.display().to_string(),
+            plan: plan_path,
             lifecycle: plan.lifecycle,
         })
     }
@@ -160,8 +161,8 @@ impl<P: Anchor> Operation<P> for Create {
 pub struct CreateBody {
     /// Change name.
     pub name: String,
-    /// Display path of the created plan file.
-    pub plan: String,
+    /// Path of the created plan file (serialised as its display string).
+    pub plan: PathBuf,
     /// Final plan-level lifecycle persisted to disk — `pending` for
     /// the default create, `approved` when `--auto-approve` was set.
     /// Exposed in the JSON envelope so skill bodies and tests can
@@ -172,11 +173,14 @@ pub struct CreateBody {
 impl Render for CreateBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         match self.lifecycle {
-            Lifecycle::Pending => writeln!(w, "Initialised plan '{}' at {}.", self.name, self.plan),
+            Lifecycle::Pending => {
+                writeln!(w, "Initialised plan '{}' at {}.", self.name, self.plan.display())
+            }
             Lifecycle::Approved => writeln!(
                 w,
                 "Initialised plan '{}' at {} and stamped lifecycle: approved.",
-                self.name, self.plan
+                self.name,
+                self.plan.display()
             ),
         }
     }

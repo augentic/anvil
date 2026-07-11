@@ -9,7 +9,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::args::{BindingArg, KindAssign, bindings_from_args, load_discovery};
+use crate::change::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
 use crate::change::{
@@ -18,7 +18,7 @@ use crate::change::{
 use crate::config::with_state;
 use crate::handler::{Anchor, Ctx};
 use crate::journal;
-use crate::schema::validate_plan;
+use crate::schema_gate::validate_plan;
 
 /// Wire input for `plan add`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -111,14 +111,14 @@ impl<P: Anchor> Operation<P> for Add {
                 // identically-shaped, identically-sorted Set events.
                 let created_entry = entry_mut(plan, &plan_name, name)?.clone();
                 let events = emit_authority_override_seed_events(&plan_name, &created_entry, now);
-                Ok((
+                Ok(crate::config::Mutation::changed((
                     EntryBody {
                         plan: plan_ref(plan, &plan_path),
                         action: Action::Create,
                         entry: created_entry,
                     },
                     events,
-                ))
+                )))
             })?;
 
         journal::append_batch(cx.layout(), &override_events)?;

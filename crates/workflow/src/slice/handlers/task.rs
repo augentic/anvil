@@ -39,7 +39,7 @@ impl<P: Anchor> Operation<P> for TaskProgress {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.slices_dir().join(&input.name);
+        let slice_dir = cx.layout().slices_dir().join(&input.name);
         let tasks_path = resolve_tasks_path(&slice_dir)?;
         let tasks = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
         let progress = parse_tasks(&tasks);
@@ -107,7 +107,7 @@ impl<P: Anchor> Operation<P> for TaskMark {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let TaskMarkInput { name, task_number } = input;
-        let slice_dir = cx.slices_dir().join(&name);
+        let slice_dir = cx.layout().slices_dir().join(&name);
         let tasks_path = resolve_tasks_path(&slice_dir)?;
         let original = std::fs::read_to_string(&tasks_path).map_err(Error::Io)?;
         let updated = mark_complete(&original, &task_number)?;
@@ -118,7 +118,7 @@ impl<P: Anchor> Operation<P> for TaskMark {
 
         Ok(MarkBody {
             marked: task_number,
-            new_content_path: tasks_path.display().to_string(),
+            new_content_path: tasks_path,
             idempotent,
         })
     }
@@ -130,8 +130,9 @@ impl<P: Anchor> Operation<P> for TaskMark {
 pub struct MarkBody {
     /// The marked task number.
     pub marked: String,
-    /// Display path of the rewritten `tasks.md`.
-    pub new_content_path: String,
+    /// Path of the rewritten `tasks.md` (serialised as its display
+    /// string).
+    pub new_content_path: PathBuf,
     /// `true` when the task was already complete (no write).
     pub idempotent: bool,
 }

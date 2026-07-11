@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use artifacts::decision::{DecisionRecord, parse_decision};
-use error::{Error, Result};
+use error::Result;
 use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 use super::path_hint;
@@ -44,11 +44,7 @@ pub(super) fn collect_decision_gates(
     let mut records: Vec<(String, DecisionRecord)> = Vec::new();
 
     for path in &files {
-        let text = std::fs::read_to_string(path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source,
-        })?;
+        let text = crate::fs::read_text(path)?;
         let hint = path_hint(path, slice_dir);
         let parsed = parse_decision(&text);
         for finding in parsed.findings {

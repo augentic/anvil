@@ -10,7 +10,7 @@
 //! [`StopReason`] plus its operator hint.
 //!
 //! Concurrency: entries are claimed lock-free in-process through
-//! [`plan_next_body`]; guest-vs-guest dual-driving is refused by the
+//! [`crate::change::claim_next`]; guest-vs-guest dual-driving is refused by the
 //! create-exclusive `<plan-root>/.specify/guest.lock` marker held for
 //! the run. No cross-stack interlock exists — non-concurrent stack use
 //! is the documented coexistence rule.
@@ -27,9 +27,8 @@ use jiff::Timestamp;
 use omnia_guest::Model;
 
 use crate::adapter::{BuildInputDeclaration, Resolver};
-use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_next_body, plan_status_body};
-use crate::config::{Layout, ProjectConfig, with_state};
-use crate::journal::{self, Event, EventKind};
+use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
+use crate::config::{Layout, ProjectConfig};
 use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 
 /// One phase the loop completed, in run order.
@@ -169,13 +168,7 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam>(
                     .await
                     .map(drop)
             }
-            LoopStep::Merge => {
-                let classes = crate::merge::artifact_classes(
-                    layout.project_dir(),
-                    &layout.slices_dir().join(&slice),
-                );
-                super::merge(layout, now, &slice, &classes, false).map(drop)
-            }
+            LoopStep::Merge => super::merge(layout, now, &slice, false).map(drop),
         };
 
         match result {
@@ -237,31 +230,16 @@ struct Claim {
     target: Option<String>,
 }
 
-/// Claim the next entry through the lock-free `plan next` core (see
-/// the module docs for why `require_held` does not apply in-loop),
-/// journalling `plan.entry.advanced` on a fresh advance exactly as the
-/// native handler does. Returns `None` when nothing is runnable
-/// (drained / stuck — the status projection decides which).
+/// Claim the next entry through the shared
+/// [`crate::change::claim_next`] kernel (see the module docs for why
+/// `require_held` does not apply in-loop). Returns `None` when
+/// nothing is runnable (drained / stuck — the status projection
+/// decides which).
 fn claim_next(
     resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp,
 ) -> Result<Option<Claim>, Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
-    let slices_dir = layout.slices_dir();
-    let project_dir = layout.project_dir().to_path_buf();
-    let (body, plan_name) = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
-        let body = plan_next_body(resolver, plan, &slices_dir, &config, &project_dir)?;
-        Ok((body, plan.name.clone()))
-    })?;
-    if let Some(advanced) = &body.next {
-        let event = Event::new(
-            now,
-            EventKind::PlanEntryAdvanced {
-                plan_name,
-                slice_name: advanced.clone().into(),
-            },
-        );
-        journal::append_batch(layout, std::slice::from_ref(&event))?;
-    }
+    let body = crate::change::claim_next(resolver, layout, now, &config)?;
     // A fresh advance carries the resolved target; the active-entry
     // return does not, so re-resolve lazily from the slice's own
     // metadata at the phase (refine reads it from the claim, and only

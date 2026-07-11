@@ -1,4 +1,19 @@
-use super::*;
+//! Integration coverage for the `plan.yaml` domain model
+//! (`workflow::change::{Plan, Entry, …}`): the serde wire shapes and
+//! the drained/executing projections, exercised against the public
+//! surface.
+
+use std::collections::BTreeMap;
+
+use artifacts::evidence::ClaimKind;
+use workflow::change::{
+    Divergence, Entry, EntryPatch, Lifecycle, Patch, Plan, SliceSourceBinding, SourceBinding,
+    Status, TargetRef,
+};
+
+mod common;
+
+use common::change;
 
 /// Verbatim §The Plan reference fixture, post-2.0 collapse.
 /// All entries use the simplified per-entry `Status` enum
@@ -36,21 +51,6 @@ slices:
     status: pending
 ";
 
-fn entry(name: &str, status: Status) -> Entry {
-    Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        status,
-        depends_on: vec![],
-        sources: vec![],
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: SliceAuthorityOverride::default(),
-    }
-}
-
 /// Every parse / serialize / round-trip / default case for `Plan`,
 /// `Entry`, the source-binding shapes, `TargetRef`, and `EntryPatch`,
 /// one block per case.
@@ -79,22 +79,13 @@ fn serde_shapes() {
     );
 
     // A constructed plan serialises kebab-case keys and enum values.
+    let mut entry = change("entry-one", Status::InProgress);
+    entry.depends_on = vec!["entry-zero".into()];
     let plan = Plan {
         name: "demo".into(),
         lifecycle: Lifecycle::Pending,
         sources: BTreeMap::new(),
-        entries: vec![Entry {
-            name: "entry-one".into(),
-            project: Some("default".into()),
-            status: Status::InProgress,
-            depends_on: vec!["entry-zero".into()],
-            sources: vec![],
-            context: vec![],
-            description: None,
-            divergence: None,
-            disagreements: Vec::new(),
-            authority_override: SliceAuthorityOverride::default(),
-        }],
+        entries: vec![entry],
     };
     let yaml = serde_saphyr::to_string(&plan).expect("serialize plan");
     assert!(yaml.contains("depends-on:"), "expected kebab-case depends-on in:\n{yaml}");
@@ -262,7 +253,7 @@ fn drained_and_executing() {
         let entries: Vec<Entry> = statuses
             .iter()
             .enumerate()
-            .map(|(i, status)| entry(&format!("slice-{i}"), *status))
+            .map(|(i, status)| change(&format!("slice-{i}"), *status))
             .collect();
         let plan = Plan {
             name: "demo".into(),
@@ -273,42 +264,4 @@ fn drained_and_executing() {
         assert_eq!(plan.is_drained(), *drained, "is_drained for {statuses:?}");
         assert_eq!(plan.is_executing(), *executing, "is_executing for {statuses:?}");
     }
-}
-
-/// A2/A13: plan validation findings are built directly on the neutral
-/// [`schema::diagnostics::Diagnostic`] currency via `plan_finding`. The
-/// stable check code becomes the `rule_id`, the offending entry is
-/// carried as `slice`, the artifact is `Plan`, and the fingerprint
-/// validates.
-#[test]
-fn plan_finding_builds_canonical_diagnostic() {
-    let diagnostic = crate::change::plan::core::plan_finding(
-        "plan.cycle",
-        schema::diagnostics::Severity::Important,
-        "dependency cycle: a -> b -> a",
-        Some("checkout".to_string()),
-    );
-
-    assert_eq!(diagnostic.rule_id.as_deref(), Some("plan.cycle"));
-    assert_eq!(diagnostic.severity, schema::diagnostics::Severity::Important);
-    assert_eq!(diagnostic.slice.as_deref(), Some("checkout"));
-    assert_eq!(diagnostic.artifact, schema::diagnostics::Artifact::Plan);
-    assert_eq!(diagnostic.impact, "dependency cycle: a -> b -> a");
-    schema::diagnostics::validate_diagnostic(&diagnostic).expect("plan finding is valid");
-    assert!(schema::diagnostics::verify_fingerprint(&diagnostic), "fingerprint covers slice");
-}
-
-/// A non-blocking `Suggestion` finding never gates per
-/// [`schema::diagnostics::blocking`].
-#[test]
-fn plan_finding_suggestion_is_non_blocking() {
-    let diagnostic = crate::change::plan::core::plan_finding(
-        "plan.orphan-source",
-        schema::diagnostics::Severity::Suggestion,
-        "source `docs` is unreferenced",
-        None,
-    );
-    assert_eq!(diagnostic.severity, schema::diagnostics::Severity::Suggestion);
-    assert!(diagnostic.slice.is_none());
-    assert!(!schema::diagnostics::blocking(&diagnostic));
 }

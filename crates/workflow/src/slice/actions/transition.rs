@@ -7,7 +7,7 @@ use error::Error;
 use jiff::Timestamp;
 
 use crate::config::Layout;
-use crate::journal::{Event, EventKind, append_batch};
+use crate::journal::{Event, EventKind, append_one};
 use crate::slice::{LifecycleStatus, SLICES_DIR_NAME, SliceMetadata};
 
 /// Transition a slice to `target` status and write the matching timestamp.
@@ -71,7 +71,7 @@ pub fn transition(
                     slice_name: slice_name.into(),
                 },
             );
-            append_batch(Layout::new(&project_root), std::slice::from_ref(&event))?;
+            append_one(Layout::new(&project_root), &event)?;
         }
     }
 

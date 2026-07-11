@@ -92,6 +92,12 @@ pub enum FenceError {
 /// Parse a document that may contain a Specify context fence.
 ///
 /// Returns `Ok(None)` only when no context fence markers are present at all.
+///
+/// # Errors
+///
+/// [`FenceError`] when fence markers are present but malformed —
+/// multiple or unterminated opening fences, a missing closing fence, or
+/// invalid opening-fence metadata.
 pub fn parse_document(bytes: &[u8]) -> Result<Option<FencedDocument<'_>>, FenceError> {
     let Some(block_start) = find_subslice(bytes, OPEN_MARKER, 0) else {
         if find_valid_closing_fences(bytes, 0)?.is_empty() {

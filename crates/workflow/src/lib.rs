@@ -7,11 +7,12 @@
 pub mod adapter;
 pub mod agents;
 pub mod change;
-pub mod cmd;
+pub(crate) mod cmd;
 pub mod config;
 pub mod decisions;
 pub mod deploy;
 pub mod design_system;
+pub(crate) mod fs;
 pub mod handler;
 pub mod hydrate;
 pub mod init;
@@ -24,14 +25,12 @@ pub mod platform;
 #[cfg(feature = "native")]
 pub mod plugins;
 pub mod registry;
-pub mod schema;
+pub mod schema_gate;
 pub mod seam;
 pub(crate) mod serde_time;
 pub mod slice;
+pub mod source;
 #[cfg(feature = "native")]
 pub mod upgrade;
-
-#[cfg(test)]
-pub(crate) mod test_cache;
 
 pub use platform::{Platform, parse_platforms_csv};

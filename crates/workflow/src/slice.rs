@@ -38,4 +38,3 @@ pub use synthesis::wire::{
     SynthesisSourceInput, SynthesisSpec, build_synthesis_inputs,
 };
 
-pub use crate::adapter::TargetOperation;

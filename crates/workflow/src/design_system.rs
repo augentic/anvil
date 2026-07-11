@@ -18,7 +18,7 @@ use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::schema;
+use crate::schema_gate;
 
 /// On-disk path relative to project root.
 const CATALOG_REL: &str = ".specify/design-system/components.yaml";
@@ -26,6 +26,28 @@ const CATALOG_REL: &str = ".specify/design-system/components.yaml";
 /// On-disk path of the operator-authored parts input, relative to the
 /// project root.
 const PARTS_REL: &str = ".specify/design-system/parts.yaml";
+
+/// Shared load-and-validate kernel for the design-system YAML inputs.
+///
+/// Reads `<project_dir>/<rel>`, returning `Ok(None)` when the file is
+/// absent (both inputs are opt-in), then runs the schema `gate` and
+/// deserialises on success. `code` / `rule` label the deserialise
+/// failure with the same discriminant the schema gate uses.
+fn load_validated<T: serde::de::DeserializeOwned>(
+    project_dir: &Path, rel: &str, gate: fn(&str, &Path) -> Result<()>, code: &'static str,
+    rule: &'static str,
+) -> Result<Option<T>> {
+    let path = project_dir.join(rel);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let content = crate::fs::read_text(&path)?;
+    gate(&content, &path)?;
+    let value: T = serde_saphyr::from_str(&content).map_err(|err| {
+        Error::validation_failed(code, rule, format!("{}: deserialise failed: {err}", path.display()))
+    })?;
+    Ok(Some(value))
+}
 
 /// Closed status enum for catalog entries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,35 +104,13 @@ impl ComponentsCatalog {
     /// - [`Error::Filesystem`] if the file exists but cannot be read.
     /// - [`Error::Validation`] if the file fails schema validation.
     pub fn load(project_dir: &Path) -> Result<Option<Self>> {
-        let path = project_dir.join(CATALOG_REL);
-        if !path.is_file() {
-            return Ok(None);
-        }
-        let content = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source,
-        })?;
-        Self::from_yaml(&content, &path).map(Some)
-    }
-
-    /// Parse and validate catalog YAML content.
-    ///
-    /// `source_path` is used only for error messages.
-    ///
-    /// # Errors
-    ///
-    /// - [`Error::Validation`] if YAML parsing or schema validation fails.
-    fn from_yaml(content: &str, source_path: &Path) -> Result<Self> {
-        schema::validate_components_yaml(content, source_path)?;
-        let catalog: Self = serde_saphyr::from_str(content).map_err(|err| {
-            Error::validation_failed(
-                "catalog-schema",
-                "components.yaml conforms to schemas/design-system/components.schema.json",
-                format!("{}: deserialise failed: {err}", source_path.display()),
-            )
-        })?;
-        Ok(catalog)
+        load_validated(
+            project_dir,
+            CATALOG_REL,
+            schema_gate::validate_components_yaml,
+            "catalog-schema",
+            "components.yaml conforms to schemas/design-system/components.schema.json",
+        )
     }
 
     /// Return the path where the catalog lives relative to a project root.
@@ -226,34 +226,13 @@ impl Parts {
     /// - [`Error::Filesystem`] if the file exists but cannot be read.
     /// - [`Error::Validation`] if the file fails schema validation.
     pub fn load(project_dir: &Path) -> Result<Option<Self>> {
-        let path = project_dir.join(PARTS_REL);
-        if !path.is_file() {
-            return Ok(None);
-        }
-        let content = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source,
-        })?;
-        Self::from_yaml(&content, &path).map(Some)
-    }
-
-    /// Parse and validate parts YAML content.
-    ///
-    /// `source_path` is used only for error messages.
-    ///
-    /// # Errors
-    ///
-    /// - [`Error::Validation`] if YAML parsing or schema validation fails.
-    fn from_yaml(content: &str, source_path: &Path) -> Result<Self> {
-        schema::validate_parts_yaml(content, source_path)?;
-        serde_saphyr::from_str(content).map_err(|err| {
-            Error::validation_failed(
-                "parts-schema",
-                "parts.yaml conforms to schemas/design-system/parts.schema.json",
-                format!("{}: deserialise failed: {err}", source_path.display()),
-            )
-        })
+        load_validated(
+            project_dir,
+            PARTS_REL,
+            schema_gate::validate_parts_yaml,
+            "parts-schema",
+            "parts.yaml conforms to schemas/design-system/parts.schema.json",
+        )
     }
 
     /// Return the path where the parts input lives relative to a project
@@ -271,5 +250,3 @@ impl Parts {
     }
 }
 
-#[cfg(test)]
-mod tests;

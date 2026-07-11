@@ -23,7 +23,7 @@ use schema::diagnostics::{Diagnostic, Severity};
 use serde::{Deserialize, Serialize};
 
 use crate::Platform;
-use crate::adapter::{PlatformsViolation, Resolver};
+use crate::adapter::{PlatformsSurface, Resolver};
 use crate::change::plan_finding;
 use crate::config::ProjectConfig;
 use crate::init::adapter_ref_from_value;
@@ -178,7 +178,7 @@ impl TopologyLock {
 
         let lock: Self = serde_saphyr::from_str(&contents)
             .map_err(|err| malformed(format!("topology-lock-malformed: {err}")))?;
-        crate::schema::validate_topology_lock(&lock)?;
+        crate::schema_gate::validate_topology_lock(&lock)?;
         Ok(Some(lock))
     }
 
@@ -189,7 +189,7 @@ impl TopologyLock {
     /// Returns [`Error::Validation`] when the lock fails its schema, or
     /// the underlying I/O error on a failed write.
     pub fn save(&self, path: &Path) -> Result<(), Error> {
-        crate::schema::validate_topology_lock(self)?;
+        crate::schema_gate::validate_topology_lock(self)?;
         yaml_write(path, self)
     }
 }
@@ -255,9 +255,9 @@ impl TopologyProject {
 
 /// Backstop validation of a workspace slot's platforms against the
 /// resolved target adapter's [`crate::adapter::PlatformsCapability`].
-/// Maps each [`PlatformsViolation`] from the shared
-/// [`crate::adapter::PlatformsCapability::check`] kernel onto the
-/// `topology-cache-project-platforms-*` diagnostic family.
+/// Violations map onto the `topology-cache-project-platforms-*`
+/// diagnostic family via the shared
+/// [`crate::adapter::PlatformsViolation::into_error`] converter.
 fn validate_topology_platforms(
     registry_name: &str, platforms: &[Platform],
     capability: Option<&crate::adapter::PlatformsCapability>, target_name: &str,
@@ -266,33 +266,11 @@ fn validate_topology_platforms(
         return Ok(());
     };
 
-    cap.check(platforms).map_err(|violation| match violation {
-        PlatformsViolation::RequiredButMissing { defaults } => Error::validation_failed(
-            "topology-cache-project-platforms-missing",
-            format!("workspace slot `{registry_name}` declares platforms"),
-            format!(
-                "workspace slot `{registry_name}` target '{target_name}' requires platforms \
-                 but project.yaml declares none; default set is [{}]",
-                defaults.join(", "),
-            ),
-        ),
-        PlatformsViolation::MissingCore => Error::validation_failed(
-            "topology-cache-project-platforms-must-include-core",
-            format!("workspace slot `{registry_name}` platform set includes `core`"),
-            format!(
-                "workspace slot `{registry_name}` platform set must include `core`; \
-                 every project that declares platforms requires the shared Rust core crate",
-            ),
-        ),
-        PlatformsViolation::NotAllowed { platform, allowed } => Error::validation_failed(
-            "topology-cache-project-platforms-not-allowed",
-            format!("workspace slot `{registry_name}` platform `{platform}` is allowed"),
-            format!(
-                "workspace slot `{registry_name}` platform `{platform}` is not allowed \
-                 by target '{target_name}'; allowed: [{}]",
-                allowed.join(", "),
-            ),
-        ),
+    cap.check(platforms).map_err(|violation| {
+        violation.into_error(PlatformsSurface::TopologySlot {
+            registry: registry_name,
+            target: target_name,
+        })
     })
 }
 

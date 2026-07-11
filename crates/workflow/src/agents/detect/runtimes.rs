@@ -13,6 +13,10 @@ use super::markers::{
 };
 use super::{CommandDetection, Detection, DetectionWarning, LintDetection, RuntimeDetection};
 
+/// Run every root-marker pass over `project_dir` and return the sorted,
+/// byte-stable [`Detection`]. Unreadable markers become warnings, never
+/// errors.
+#[must_use]
 pub fn detect_root_markers(project_dir: &Path) -> Detection {
     let mut detector = Detector::new(project_dir);
     detector.detect_rust();

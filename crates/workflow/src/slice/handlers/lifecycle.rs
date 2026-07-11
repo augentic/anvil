@@ -1,6 +1,7 @@
 //! Slice lifecycle verbs: create / transition / drop.
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use error::Error;
 use jiff::Timestamp;
@@ -63,7 +64,7 @@ impl<P: Anchor> Operation<P> for Create {
             },
             Ok,
         )?;
-        let slices_dir = cx.slices_dir();
+        let slices_dir = cx.layout().slices_dir();
         std::fs::create_dir_all(&slices_dir).map_err(Error::Io)?;
 
         let outcome =
@@ -128,7 +129,7 @@ impl<P: Anchor> Operation<P> for Transition {
             }
             .into());
         }
-        let slice_dir = cx.slices_dir().join(&name);
+        let slice_dir = cx.layout().slices_dir().join(&name);
         let metadata = slice_actions::transition(&slice_dir, target, cx.now())?;
         Ok(TransitionBody {
             name,
@@ -200,14 +201,14 @@ impl<P: Anchor> Operation<P> for Drop {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let DropInput { name, reason } = input;
-        let slice_dir = cx.slices_dir().join(&name);
-        let archive_dir = cx.archive_dir();
+        let slice_dir = cx.layout().slices_dir().join(&name);
+        let archive_dir = cx.layout().archive_dir();
         let (metadata, archive_path) =
             slice_actions::discard(&slice_dir, &archive_dir, reason.as_deref(), cx.now())?;
         Ok(DropBody {
             name,
             status: metadata.status,
-            archive_path: archive_path.display().to_string(),
+            archive_path,
             drop_reason: metadata.drop_reason,
         })
     }
@@ -221,15 +222,16 @@ pub struct DropBody {
     pub name: String,
     /// Status after the drop.
     pub status: LifecycleStatus,
-    /// Display path of the archived slice directory.
-    pub archive_path: String,
+    /// Path of the archived slice directory (serialised as its display
+    /// string).
+    pub archive_path: PathBuf,
     /// Recorded drop reason, when supplied.
     pub drop_reason: Option<String>,
 }
 
 impl Render for DropBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "{}: dropped and archived to {}", self.name, self.archive_path)?;
+        writeln!(w, "{}: dropped and archived to {}", self.name, self.archive_path.display())?;
         if let Some(r) = &self.drop_reason {
             writeln!(w, "  reason: {r}")?;
         }

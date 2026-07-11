@@ -9,7 +9,7 @@ use error::Error;
 
 use super::model::Plan;
 use crate::config::{AtomicYaml, Layout};
-use crate::schema::validate_plan_yaml;
+use crate::schema_gate::validate_plan_yaml;
 
 impl AtomicYaml for Plan {
     fn layout_path(layout: Layout<'_>) -> PathBuf {

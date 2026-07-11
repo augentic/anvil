@@ -64,7 +64,7 @@ The four-slot CLI exit-code table is fixed:
 
 `crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Specify command/HTTP projectors, and the fixed exit contract.
 
-`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`, `--plan-dir`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
+`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
 
 ## The HTTP route table (`http.rs`)
 
@@ -79,9 +79,8 @@ On wasm, `command.rs` exports `wasi:cli/run` explicitly and calls `omnia_guest::
 Target discipline per leaf arm:
 
 1. Parse global flags and the selected leaf's concrete `Args`.
-2. Run the global pre-dispatch hook (`--plan-dir` policy plus guest metadata registration).
-3. Convert `Args` through its explicit `TryFrom` implementation and invoke the typed operation.
-4. Project success, operation failure, or conversion failure through `SpecifyProjector`; provisioning routes return the standard argument refusal and completions remain synthetic router behavior.
+2. Convert `Args` through its explicit `TryFrom` implementation and invoke the typed operation.
+3. Project success, operation failure, or conversion failure through `SpecifyProjector`; provisioning routes return the standard argument refusal and completions remain synthetic router behavior.
 
 Never put domain logic in `transport` or a shim's route match. Manual `Input { … }` construction in a `command.rs` arm is a shape defect. For the crate dependency direction this enforces see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout).
 

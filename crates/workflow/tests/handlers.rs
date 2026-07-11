@@ -11,81 +11,10 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use omnia_guest::api::invocation::Invocation;
-use omnia_guest::api::invoke::Invoker;
-use omnia_guest::api::operation::Operation;
-use tempfile::TempDir;
 
 mod common;
 
-/// A throw-away project tree the verbs run against: the provider
-/// anchor points at its root, and the derived project cache is pinned
-/// beneath it so cache writes are hermetic.
-#[derive(Clone)]
-struct Project {
-    _tmp: Arc<TempDir>,
-    root: PathBuf,
-}
-
-impl workflow::handler::Anchor for Project {
-    fn project_root(&self) -> &Path {
-        &self.root
-    }
-}
-
-impl workflow::adapter::Resolver for Project {
-    fn resolve_source(
-        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &Path,
-    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
-        workflow::adapter::Resolver::resolve_source(&common::resolver(), adapter_ref, project_dir)
-    }
-
-    fn resolve_target(
-        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &Path,
-    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
-        workflow::adapter::Resolver::resolve_target(&common::resolver(), adapter_ref, project_dir)
-    }
-}
-
-impl Project {
-    /// A bare directory — nothing scaffolded (the scaffold-leg input).
-    #[expect(unsafe_code, reason = "pin the cache-root env var into the test tempdir")]
-    fn bare() -> Self {
-        let tmp = TempDir::new().expect("tempdir");
-        let root = tmp.path().canonicalize().expect("canonical tempdir");
-        // SAFETY: nextest runs each test in its own process, so no
-        // other thread observes the env mutation.
-        unsafe { std::env::set_var("SPECIFY_PROJECT_CACHE", root.join("project-cache")) };
-        std::env::set_current_dir(&root).expect("enter project root");
-        Self {
-            _tmp: Arc::new(tmp),
-            root,
-        }
-    }
-
-    /// An initialised project (`.specify/project.yaml` present).
-    fn initialised() -> Self {
-        let project = Self::bare();
-        fs::create_dir_all(project.root.join(".specify")).expect("mkdir .specify");
-        fs::write(
-            project.root.join(".specify/project.yaml"),
-            "name: demo\nadapter: demo\nrules: {}\n",
-        )
-        .expect("write project.yaml");
-        project
-    }
-}
-
-/// Invoke one operation against the project anchor.
-async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, workflow::handler::Error>
-where
-    R: Operation<Project, Output = B, Error = workflow::handler::Error>,
-    B: Send,
-{
-    Invoker::new("specify", project.clone()).invoke::<R>(Invocation::new(input)).await
-}
+use common::{Project, run};
 
 /// Stage a one-project `registry.yaml` at the project root.
 fn stage_registry(root: &Path) {

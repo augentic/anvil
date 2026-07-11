@@ -9,7 +9,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::args::{
+use crate::change::plan::wire::{
     BindingArg, bindings_from_args, load_discovery, parse_divergence, parse_override_assigns,
     parse_slice_pair_args,
 };
@@ -22,7 +22,7 @@ use crate::change::{
 use crate::config::with_state;
 use crate::handler::{Anchor, Ctx};
 use crate::journal;
-use crate::schema::validate_plan;
+use crate::schema_gate::validate_plan;
 
 /// Wire input for `plan amend`. Option-typed fields distinguish
 /// "leave unchanged" (`None`) from "replace/clear" (`Some`), matching
@@ -176,14 +176,14 @@ impl<P: Anchor> Operation<P> for Amend {
                 }
                 journal_events.extend(override_journal);
 
-                Ok((
+                Ok(crate::config::Mutation::changed((
                     EntryBody {
                         plan: plan_ref(plan, &plan_path),
                         action: Action::Amend,
                         entry: amended.clone(),
                     },
                     journal_events,
-                ))
+                )))
             })?;
         journal::append_batch(cx.layout(), &journal_events)?;
 

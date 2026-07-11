@@ -15,7 +15,6 @@
 
 mod author;
 mod execute;
-pub mod handlers;
 mod merge;
 mod refine;
 mod source;

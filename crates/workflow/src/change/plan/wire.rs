@@ -1,9 +1,12 @@
-//! Input-side argument helpers shared by `plan create`, `plan add`,
-//! and `plan amend`.
+//! Wire DTOs and payload parsers shared by `plan create`, `plan add`,
+//! `plan author`, and `plan amend` on both transports.
 //!
 //! Each helper turns the wire-shaped payload into the domain type the
-//! handler hands to [`crate::change::Plan`]; the handlers
-//! themselves stay free of parsing chatter.
+//! handler hands to [`crate::change::Plan`]; the handlers themselves
+//! stay free of parsing chatter. The clap-only argv grammars (the
+//! `--source` / `--sources` string forms) live in the transport crate;
+//! this module owns only the serde shapes and the parsing every
+//! transport shares.
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -23,26 +26,11 @@ use crate::config::Layout;
 /// sources shape on both transports; [`source_map`] desugars the list
 /// into the structured `plan.yaml.sources` map at the operation boundary.
 ///
-/// Argv grammar (locked), carried by the [`FromStr`] impl so clap
-/// parses `--source` values directly into this type:
-///
-/// - `--source <key>=<adapter>:<path>` — path-bound binding. The
-///   adapter is the substring up to the first `:` after `=`; the
-///   path is everything after that first `:` (URLs containing
-///   `:` such as `git@github.com:org/foo.git` round-trip cleanly).
-/// - `--source <key>=<adapter>:value:<literal>` — value-bound
-///   binding. The `value:` sentinel after the adapter switches the
-///   parser to literal mode; the literal payload is everything
-///   after the second `:` and may contain anything (newlines,
-///   colons, equals signs).
-///
 /// Materialises as [`SourceBinding`] under the structured
 /// `{ adapter, path?, value? }` wire form. Every binding carries an
-/// explicit adapter name; there is no bare-string
-/// `--source <key>=<path>` form.
-///
-/// The [`FromStr`] impl returns a `String` error on malformed input
-/// so clap surfaces a standard usage diagnostic (exit code 2).
+/// explicit adapter name. The locked `--source <key>=<adapter>:<path>`
+/// / `--source <key>=<adapter>:value:<literal>` argv grammar is
+/// transport-owned (the command grammar parses into this type).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceAssign {
@@ -72,52 +60,6 @@ impl SourceAssign {
             path: None,
             value: Some(value),
         }
-    }
-}
-
-impl FromStr for SourceAssign {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (key, rest) = s.split_once('=').ok_or_else(|| {
-            format!(
-                "--source must be <key>=<adapter>:<path> or <key>=<adapter>:value:<literal>, got \
-                 `{s}`"
-            )
-        })?;
-        if key.is_empty() {
-            return Err(format!("--source key must be non-empty, got `{s}`"));
-        }
-        let (adapter, body) = rest.split_once(':').ok_or_else(|| {
-            format!(
-                "--source value must be <adapter>:<path> or <adapter>:value:<literal>, got \
-                 `{rest}` for key `{key}`"
-            )
-        })?;
-        if adapter.is_empty() {
-            return Err(format!("--source adapter must be non-empty, got `{s}`"));
-        }
-        if body.is_empty() {
-            return Err(format!(
-                "--source binding (path or `value:<literal>`) must be non-empty, got `{s}`"
-            ));
-        }
-        let (path, value) = if let Some(literal) = body.strip_prefix("value:") {
-            if literal.is_empty() {
-                return Err(format!(
-                    "--source value-literal must be non-empty after `value:`, got `{s}`"
-                ));
-            }
-            (None, Some(literal.to_string()))
-        } else {
-            (Some(body.to_string()), None)
-        };
-        Ok(Self {
-            key: key.to_string(),
-            adapter: adapter.to_string(),
-            path,
-            value,
-        })
     }
 }
 
@@ -173,18 +115,9 @@ pub fn source_map(
 /// `plan.yaml.sources.<key>` plus an optional lead id. `lead: None` is
 /// the bare-string shorthand (`{ key, lead: <slice.name> }`).
 ///
-/// Argv wire forms (workflow §`Slice.sources`), carried by the
-/// [`FromStr`] impl so clap parses `--sources` / `--add-source`
-/// values directly into this type:
-///
-/// - `<key>=<lead>` — structured binding; both sides are non-empty
-///   kebab identifiers.
-/// - `<key>` — bare-string shorthand; sugar for
-///   `{ key: <key>, lead: <slice.name> }`.
-///
-/// Malformed inputs (empty key, empty lead, dangling `=`, more than
-/// one `=`) produce a `FromStr` error that clap surfaces as a
-/// standard usage diagnostic (exit code 2).
+/// The `<key>=<lead>` / bare-`<key>` argv forms (workflow
+/// §`Slice.sources`) are transport-owned; the command grammar parses
+/// them into this type.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BindingArg {
@@ -193,35 +126,6 @@ pub struct BindingArg {
     /// Lead id from `discovery.md`; `None` for the bare shorthand.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lead: Option<String>,
-}
-
-impl FromStr for BindingArg {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.is_empty() {
-            return Err("--sources value must be non-empty".to_string());
-        }
-        if let Some((k, v)) = s.split_once('=') {
-            if v.contains('=') {
-                return Err(format!(
-                    "--sources value `{s}` must be <key>=<lead> with at most one `=`"
-                ));
-            }
-            if k.is_empty() || v.is_empty() {
-                return Err(format!("--sources key and lead must both be non-empty, got `{s}`"));
-            }
-            Ok(Self {
-                key: k.to_string(),
-                lead: Some(v.to_string()),
-            })
-        } else {
-            Ok(Self {
-                key: s.to_string(),
-                lead: None,
-            })
-        }
-    }
 }
 
 /// One `<claim-kind>=<source>` authority-override assignment where the

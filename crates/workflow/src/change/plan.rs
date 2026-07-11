@@ -5,3 +5,4 @@
 pub(super) mod core;
 pub(super) mod doctor;
 pub mod handlers;
+pub mod wire;

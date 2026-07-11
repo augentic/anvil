@@ -126,20 +126,24 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
 
     // Synthesis is model-dispatched — record the handoff, then bracket
     // the judgment-plus-persist leg with the native started /
-    // completed / failed pair.
-    emit(
+    // completed / failed pair. Emits are best-effort: a journal hiccup
+    // never shadows the synthesis outcome (the native handler's
+    // posture).
+    journal::emit_best_effort(
         layout,
         now,
         EventKind::SliceSynthesizeAgent {
             slice_name: slice.into(),
         },
+        SYNTHESIZE_SCOPE,
     );
-    emit(
+    journal::emit_best_effort(
         layout,
         now,
         EventKind::SliceSynthesizeStarted {
             slice_name: slice.into(),
         },
+        SYNTHESIZE_SCOPE,
     );
     let artifacts = match synthesize_and_persist(
         model,
@@ -152,24 +156,26 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam>(
     .await
     {
         Ok(artifacts) => {
-            emit(
+            journal::emit_best_effort(
                 layout,
                 now,
                 EventKind::SliceSynthesizeCompleted {
                     slice_name: slice.into(),
                     artifacts: artifacts.clone(),
                 },
+                SYNTHESIZE_SCOPE,
             );
             artifacts
         }
         Err(err) => {
-            emit(
+            journal::emit_best_effort(
                 layout,
                 now,
                 EventKind::SliceSynthesizeFailed {
                     slice_name: slice.into(),
                     reason: synthesize_failure_reason(&err),
                 },
+                SYNTHESIZE_SCOPE,
             );
             return Err(err);
         }
@@ -354,9 +360,5 @@ fn target_name(target_value: &str) -> String {
     crate::init::adapter_ref_from_value(target_value).name
 }
 
-/// Best-effort emit of a single `slice.synthesize.*` journal event —
-/// the native handler's posture (a journal hiccup never shadows the
-/// synthesis outcome).
-fn emit(layout: Layout<'_>, now: Timestamp, kind: EventKind) {
-    journal::emit_best_effort(layout, now, kind, "slice.synthesize");
-}
+/// Warning scope for the best-effort `slice.synthesize.*` brackets.
+const SYNTHESIZE_SCOPE: &str = "slice.synthesize";

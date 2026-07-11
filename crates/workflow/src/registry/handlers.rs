@@ -3,7 +3,7 @@
 //! transport.
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use artifacts::atomic::yaml_write;
 use error::{Error, Result};
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Registry, RegistryProject};
 use crate::change::Plan;
-use crate::config::{Layout, ProjectConfig, with_state};
+use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::handler::{Anchor, Ctx, Render};
 
 // ---------------------------------------------------------------------------
@@ -41,15 +41,24 @@ impl<P: Anchor> Operation<P> for Validate {
     async fn call(
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let cx = Ctx::load(context.provider)?;
-        let path = Registry::path(&cx.project_dir).display().to_string();
-        // Workspaces opt into the stricter shape via `project.yaml:workspace:
-        // true`. Tolerate a missing/unparseable project.yaml here —
         // `specify registry validate` is allowed to run before `specify
-        // init`, in which case there is no workspace flag to honour and the base
-        // shape check is the right behaviour.
-        let workspace_mode = ProjectConfig::load(&cx.project_dir).is_ok_and(|cfg| cfg.workspace);
-        let registry = Registry::load(&cx.project_dir)?;
+        // init`, so it anchors directly from the provider instead of
+        // loading `Ctx` (which requires `.specify/project.yaml`). An
+        // initialised ancestor still wins so the verb sees the same
+        // root as every other command — and its config load failures
+        // (parse errors, the `specify:` version floor) still propagate;
+        // only the genuinely uninitialised case falls back to the
+        // anchor directory with the base (non-workspace) shape check.
+        let anchor = context.provider.project_root();
+        let (project_dir, workspace_mode) = match ProjectConfig::find_root(anchor) {
+            Some(root) => {
+                let workspace = ProjectConfig::load(&root)?.workspace;
+                (root, workspace)
+            }
+            None => (anchor.to_path_buf(), false),
+        };
+        let path = Registry::path(&project_dir);
+        let registry = Registry::load(&project_dir)?;
         if workspace_mode && let Some(reg) = registry.as_ref() {
             reg.validate_shape_workspace()?;
         }
@@ -67,8 +76,8 @@ impl<P: Anchor> Operation<P> for Validate {
 pub struct ValidateBody {
     /// The loaded registry, when one exists.
     pub registry: Option<Registry>,
-    /// Display path of `registry.yaml`.
-    pub path: String,
+    /// Path of `registry.yaml` (serialised as its display string).
+    pub path: PathBuf,
     /// Whether the workspace shape rules applied.
     #[serde(skip)]
     pub workspace_mode: bool,
@@ -142,7 +151,6 @@ impl<P: Anchor> Operation<P> for Add {
         }
 
         let registry_path = Registry::path(&cx.project_dir);
-        let path = registry_path.display().to_string();
         let workspace_mode = cx.config.workspace;
         // `--adapter` is an optional greenfield scaffold seed only.
         let candidate = RegistryProject {
@@ -167,8 +175,9 @@ impl<P: Anchor> Operation<P> for Add {
             return Err(Error::Diag {
                 code: "registry-add-name-duplicate",
                 detail: format!(
-                    "registry add: project `{}` already exists in {path}",
-                    candidate.name
+                    "registry add: project `{}` already exists in {}",
+                    candidate.name,
+                    registry_path.display()
                 ),
             }
             .into());
@@ -192,7 +201,7 @@ impl<P: Anchor> Operation<P> for Add {
 
         Ok(AddBody {
             registry,
-            path,
+            path: registry_path,
             added,
         })
     }
@@ -204,15 +213,15 @@ impl<P: Anchor> Operation<P> for Add {
 pub struct AddBody {
     /// The registry as persisted after the add.
     pub registry: Registry,
-    /// Display path of `registry.yaml`.
-    pub path: String,
+    /// Path of `registry.yaml` (serialised as its display string).
+    pub path: PathBuf,
     /// The appended project entry.
     pub added: RegistryProject,
 }
 
 impl Render for AddBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "Added `{}` to {}", self.added.name, self.path)?;
+        writeln!(w, "Added `{}` to {}", self.added.name, self.path.display())?;
         writeln!(w, "registry now declares {} project(s)", self.registry.projects.len())
     }
 }
@@ -244,18 +253,17 @@ impl<P: Anchor> Operation<P> for Remove {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let name = input.name;
-        let path_buf = Registry::path(&cx.project_dir);
-        let path = path_buf.display().to_string();
+        let path = Registry::path(&cx.project_dir);
         let workspace_mode = cx.config.workspace;
 
         // Pre-flight: surface the `registry-remove-no-registry`
         // diagnostic when the file is absent. `with_state` would
         // emit the generic `Error::ArtifactNotFound`; the registry-specific
         // diag is part of the wire contract.
-        if !path_buf.exists() {
+        if !path.exists() {
             return Err(Error::Diag {
                 code: "registry-remove-no-registry",
-                detail: format!("registry remove: no registry declared at {path}"),
+                detail: format!("registry remove: no registry declared at {}", path.display()),
             }
             .into());
         }
@@ -266,7 +274,10 @@ impl<P: Anchor> Operation<P> for Remove {
                 registry.projects.iter().position(|p| p.name == name).ok_or_else(|| {
                     Error::Diag {
                         code: "registry-remove-not-found",
-                        detail: format!("registry remove: project `{name}` not found in {path}"),
+                        detail: format!(
+                            "registry remove: project `{name}` not found in {}",
+                            path.display()
+                        ),
                     }
                 })?;
             registry.projects.remove(position);
@@ -281,12 +292,12 @@ impl<P: Anchor> Operation<P> for Remove {
             }
 
             let warnings = plan_refs(&project_dir, &name);
-            Ok(RemoveBody {
+            Ok(Mutation::changed(RemoveBody {
                 registry: registry.clone(),
                 path,
                 removed: name,
                 warnings,
-            })
+            }))
         })?;
 
         Ok(body)
@@ -299,8 +310,8 @@ impl<P: Anchor> Operation<P> for Remove {
 pub struct RemoveBody {
     /// The registry as persisted after the remove.
     pub registry: Registry,
-    /// Display path of `registry.yaml`.
-    pub path: String,
+    /// Path of `registry.yaml` (serialised as its display string).
+    pub path: PathBuf,
     /// The removed project name.
     pub removed: String,
     /// Advisory warnings (stale `plan.yaml` references).
@@ -309,7 +320,7 @@ pub struct RemoveBody {
 
 impl Render for RemoveBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "Removed `{}` from {}", self.removed, self.path)?;
+        writeln!(w, "Removed `{}` from {}", self.removed, self.path.display())?;
         for warning in &self.warnings {
             writeln!(w, "warning: {warning}")?;
         }

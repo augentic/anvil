@@ -2,7 +2,7 @@
 
 use jiff::Timestamp;
 
-use super::append::{append_batch, record_dropped};
+use super::append::{append_one, record_dropped};
 use super::{Event, EventKind};
 use crate::config::Layout;
 
@@ -25,7 +25,7 @@ use crate::config::Layout;
 /// never panics.
 pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, scope: &str) {
     let event = Event::new(now, kind);
-    if let Err(err) = append_batch(layout, std::slice::from_ref(&event)) {
+    if let Err(err) = append_one(layout, &event) {
         record_dropped(layout, scope, &event, &err);
     }
 }

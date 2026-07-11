@@ -1,52 +1,13 @@
 use error::Error;
 
 use super::*;
-use crate::Platform;
 
-// These tests exercise the `pub(super)` post-resolve gates that cannot
-// move to an integration suite (identity comes from the
-// package reference, metadata from the component's `metadata` answer —
-// there is no manifest to parse). Adapter-specific invariants belong in
-// the adapter's own suite under `specify-adapters`.
-
-#[test]
-fn axis_routing() {
-    assert_eq!(Axis::Source.dir_segment(), "sources");
-    assert_eq!(Axis::Target.dir_segment(), "targets");
-    assert_eq!(Axis::Source.interface(), "specify:adapter/source@0.1.0");
-    assert_eq!(Axis::Target.interface(), "specify:adapter/target@0.1.0");
-
-    // The operation sets derive from the closed WIT contract:
-    // extract < survey for sources, build < merge < shape for targets.
-    let source = SourceAdapter {
-        name: "demo-source".into(),
-        version: semver::Version::new(1, 0, 0),
-        requires_specify: None,
-    };
-    assert_eq!(
-        source.operations().copied().collect::<Vec<_>>(),
-        vec![SourceOperation::Extract, SourceOperation::Survey]
-    );
-    let target = TargetAdapter {
-        name: "demo-target".into(),
-        version: semver::Version::new(1, 0, 0),
-        requires_specify: None,
-        inputs: Vec::new(),
-        platforms: None,
-    };
-    assert_eq!(
-        target.operations().copied().collect::<Vec<_>>(),
-        vec![TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge]
-    );
-
-    // Identity: a pin resolves as itself, a bare name as the
-    // `0.0.0` development placeholder.
-    assert_eq!(
-        AdapterRef::pinned("demo", semver::Version::new(1, 2, 3)).resolved_version(),
-        semver::Version::new(1, 2, 3)
-    );
-    assert_eq!(AdapterRef::bare("demo").resolved_version(), dev_version());
-}
+// Retained in `src`: `parse_floor` / `check_requires_specify` are
+// `pub(super)` post-resolve gates — identity comes from the package
+// reference and metadata from the component's `metadata` answer, so no
+// integration boundary reaches these branches without staging a full
+// resolve. The identity/axis/platform matrices moved to
+// `crates/workflow/tests/adapter.rs`.
 
 #[test]
 fn typed_gates() {
@@ -90,40 +51,4 @@ fn typed_gates() {
     assert_eq!(found, "1.5.0");
     check_requires_specify(Some(&two), "not-a-version", "demo-target", &origin)
         .expect("unparseable current version is permissive");
-}
-
-#[test]
-fn platforms_capability_check() {
-    let capability = PlatformsCapability {
-        required: true,
-        allowed: vec![Platform::Core, Platform::Ios, Platform::Android],
-        default: vec![Platform::Core, Platform::Ios],
-    };
-
-    // Required + empty set: the violation carries the display defaults.
-    let Err(PlatformsViolation::RequiredButMissing { defaults }) = capability.check(&[]) else {
-        panic!("required capability must refuse an empty set");
-    };
-    assert_eq!(defaults, vec!["core".to_string(), "ios".to_string()]);
-
-    // Non-empty set without core.
-    assert_eq!(capability.check(&[Platform::Ios]), Err(PlatformsViolation::MissingCore));
-
-    // A platform outside `allowed`.
-    let Err(PlatformsViolation::NotAllowed { platform, allowed }) =
-        capability.check(&[Platform::Core, Platform::Web])
-    else {
-        panic!("web must be outside the allowed set");
-    };
-    assert_eq!(platform, Platform::Web);
-    assert_eq!(allowed, vec!["core".to_string(), "ios".to_string(), "android".to_string()]);
-
-    // A conforming set passes; an optional capability allows empty.
-    capability.check(&[Platform::Core, Platform::Ios]).expect("conforming set passes");
-    let optional = PlatformsCapability {
-        required: false,
-        allowed: vec![Platform::Core],
-        default: vec![Platform::Core],
-    };
-    optional.check(&[]).expect("optional capability allows an empty set");
 }

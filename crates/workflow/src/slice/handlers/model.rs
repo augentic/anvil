@@ -38,7 +38,7 @@ impl<P: Anchor> Operation<P> for ModelShow {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let name = &input.name;
-        let model_path = cx.slices_dir().join(name).join("model.yaml");
+        let model_path = cx.layout().slices_dir().join(name).join("model.yaml");
         if !model_path.is_file() {
             return Err(Error::validation_failed(
                 "slice-model-missing",

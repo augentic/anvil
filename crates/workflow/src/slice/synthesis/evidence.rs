@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use artifacts::evidence::{AuthorityClass, ClaimKind};
-use error::{Error, Result};
+use error::Result;
 use serde_json::Value as JsonValue;
 
 use crate::change::Entry;
@@ -50,11 +50,7 @@ pub fn read_evidence_index(slice_dir: &Path, entry: &Entry) -> Result<KernelEvid
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let path = evidence_path(slice_dir, &source);
-        let raw = std::fs::read_to_string(&path).map_err(|err| Error::Filesystem {
-            op: "read",
-            path: path.clone(),
-            source: err,
-        })?;
+        let raw = crate::fs::read_text(&path)?;
         let doc: JsonValue = serde_saphyr::from_str(&raw)?;
         if let Some(class) = doc.get("authority").and_then(JsonValue::as_str).and_then(parse_enum) {
             authority.insert(source.clone(), class);
