@@ -295,7 +295,7 @@ where
 
 /// Parse `--authority-override <slice> <kind>=<source>` repeats
 /// into the typed `(slice, kind, source)` tuple
-/// [`crate::change::mutate_authority_overrides`] expects.
+/// `crate::change::mutate_authority_overrides` expects.
 ///
 /// # Errors
 ///

@@ -23,7 +23,7 @@ use super::wire::{LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest};
 /// lead, so [`LeadCatalog::len`] equals the surveyed lead count.
 ///
 /// Keyed `source -> {lead}` (never an empty lead set, since
-/// [`build_catalog`] only inserts when a lead is present) so a
+/// `build_catalog` only inserts when a lead is present) so a
 /// `(source, lead)` membership probe borrows `&str` through
 /// `String: Borrow<str>` and never allocates an owned key. Iterating
 /// `source` then `lead` yields the same lexicographic `(source, lead)`

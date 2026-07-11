@@ -66,7 +66,7 @@ fn reg_project(name: &str, adapter: &str) -> RegistryProject {
     }
 }
 
-fn registry(projects: Vec<RegistryProject>) -> Registry {
+const fn registry(projects: Vec<RegistryProject>) -> Registry {
     Registry { version: 1, projects }
 }
 

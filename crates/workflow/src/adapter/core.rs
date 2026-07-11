@@ -101,7 +101,7 @@ pub struct PlatformsCapability {
 ///
 /// Each caller surface owns a diagnostic-code family
 /// (`project-platforms-*` at init, `topology-cache-project-platforms-*`
-/// at topology resolution); the shared [`PlatformsViolation::into_error`]
+/// at topology resolution); the shared `PlatformsViolation::into_error`
 /// converter keeps both mappings — and the rules — in one place.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformsViolation {
@@ -126,7 +126,7 @@ pub enum PlatformsViolation {
 
 /// Which caller surface a [`PlatformsViolation`] is being reported
 /// from. Selects the diagnostic-code family and message wording in
-/// [`PlatformsViolation::into_error`].
+/// `PlatformsViolation::into_error`.
 #[derive(Debug, Clone, Copy)]
 pub enum PlatformsSurface<'a> {
     /// `specify init --platforms` validation — the

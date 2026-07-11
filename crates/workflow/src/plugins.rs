@@ -15,7 +15,7 @@
 //! derivation (the marketplace repo's `HEAD`, shared by every
 //! relative-path plugin) are confirmed against a live Cursor install.
 //! Expected-sha resolution shells out to `git` through an injected
-//! [`crate::cmd::CmdRunner`] so [`build_report`] is testable with canned
+//! `crate::cmd::CmdRunner` so [`build_report`] is testable with canned
 //! command output, and the cached-vs-expected comparison is the pure
 //! [`classify_status`].
 

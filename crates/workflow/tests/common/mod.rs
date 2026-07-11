@@ -231,6 +231,10 @@ pub fn stage_dev_component(root: &std::path::Path, name: &str) {
 /// A throw-away project tree the verbs run against: the provider
 /// anchor points at its root, and the derived project cache is pinned
 /// beneath it so cache writes are hermetic.
+#[expect(
+    clippy::partial_pub_fields,
+    reason = "tests read `root` directly; the tempdir handle is a lifetime detail"
+)]
 #[derive(Clone)]
 pub struct Project {
     _tmp: std::sync::Arc<tempfile::TempDir>,

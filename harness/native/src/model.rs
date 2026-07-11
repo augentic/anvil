@@ -8,7 +8,7 @@
 //!   host-side `WasiModelCtx` backend): map the guest [`Request`] onto
 //!   the `omnia:model/completion` wire shape — the same mapping the
 //!   wasm default body performs — and translate `lend_workspace: true`
-//!   into a [`ToolHost`] whose `local_path` is the project root, which
+//!   into a `ToolHost` whose `local_path` is the project root, which
 //!   is the only thing cursor-agent reads from it. Live-only: dev loop
 //!   and on-demand tasks, never CI.
 //! - [`ReplayModel`] — recorded fixtures served by canonical request

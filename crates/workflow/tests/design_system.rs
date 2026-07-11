@@ -82,7 +82,7 @@ fn confirmed(description: Option<&str>) -> ComponentEntry {
     }
 }
 
-fn rejected() -> ComponentEntry {
+const fn rejected() -> ComponentEntry {
     ComponentEntry {
         status: ComponentStatus::Rejected,
         description: None,

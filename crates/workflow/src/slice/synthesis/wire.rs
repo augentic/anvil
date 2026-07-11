@@ -228,8 +228,8 @@ impl SynthesisSourceInput {
     ///
     /// # Errors
     ///
-    /// - [`Error::Filesystem`] when `path` cannot be read.
-    /// - [`Error::YamlDe`] when the file is not valid YAML.
+    /// - [`error::Error::Filesystem`] when `path` cannot be read.
+    /// - [`error::Error::YamlDe`] when the file is not valid YAML.
     pub fn from_evidence_file(source: &str, path: &Path) -> Result<Self> {
         Self::from_evidence_yaml(source, &crate::fs::read_text(path)?)
     }

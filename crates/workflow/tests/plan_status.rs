@@ -24,7 +24,7 @@ mod common;
 
 use common::{Project, change, change_with_deps, plan_with_changes, run};
 
-fn approved(mut plan: Plan) -> Plan {
+const fn approved(mut plan: Plan) -> Plan {
     plan.lifecycle = Lifecycle::Approved;
     plan
 }

@@ -242,7 +242,7 @@ mod tests {
         let body = b"\n## Runtime\n- detected: Rust.\n\n";
         let fp = for_context("0.2.0", inputs.clone(), body);
         assert_eq!(fp.cli_version, "0.2.0");
-        assert_eq!(fp.inputs, inputs.clone());
+        assert_eq!(fp.inputs, inputs);
         assert_eq!(fp.fingerprint, aggregate("0.2.0", inputs));
         assert_eq!(fp.body_sha256, body_sha256(body));
     }

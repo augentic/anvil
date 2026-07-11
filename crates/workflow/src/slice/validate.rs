@@ -69,7 +69,7 @@ pub enum PreAdapter {
 ///
 /// First-use schema validation of per-source `Evidence` files runs first
 /// (per workflow §Source adapter contract); a structural Evidence problem
-/// short-circuits with [`Error`] before any gate so the operator sees it
+/// short-circuits with [`error::Error`] before any gate so the operator sees it
 /// before downstream artefact noise. Then the provenance scan and the
 /// pre-adapter gates fire in order, each able to return
 /// [`PreAdapter::Gate`]. When all gates pass, returns
@@ -78,7 +78,7 @@ pub enum PreAdapter {
 ///
 /// # Errors
 ///
-/// Returns [`Error`] when Evidence schema validation fails, or when a
+/// Returns [`error::Error`] when Evidence schema validation fails, or when a
 /// plan, spec, model, discovery, decision, or Evidence file cannot be
 /// read or parsed.
 pub fn pre_adapter_gates(layout: Layout<'_>, name: &str) -> Result<PreAdapter> {

@@ -24,7 +24,7 @@ pub struct NextInput {}
 /// eligible `Pending` entry to `InProgress` and return it. The only
 /// writer of per-entry `in-progress` per workflow §CLI surface. The
 /// projection, persist decision, and conditional `plan.entry.advanced`
-/// event all live in the shared [`claim_next`] kernel.
+/// event all live in the shared `claim_next` kernel.
 #[derive(Clone, Copy, Debug)]
 pub struct Next;
 
