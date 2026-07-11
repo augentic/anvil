@@ -598,6 +598,201 @@ async fn workspace_routed_plan_refused() {
     assert!(plan.entries.iter().all(|e| e.status == Status::Pending));
 }
 
+/// Minimal provider anchor over an existing [`Project`] root, so the
+/// native operations (`plan next`, `slice validate`) can run against
+/// the same tree the orchestrations wrote.
+#[derive(Clone)]
+struct Root(PathBuf);
+
+impl workflow::handler::Anchor for Root {
+    fn project_root(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl workflow::adapter::Resolver for Root {
+    fn resolve_source(
+        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        workflow::adapter::Resolver::resolve_source(&common::resolver(), adapter_ref, project_dir)
+    }
+
+    fn resolve_target(
+        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        workflow::adapter::Resolver::resolve_target(&common::resolver(), adapter_ref, project_dir)
+    }
+}
+
+/// Invoke one operation against a [`Root`] anchor.
+async fn run_op<R, B>(root: &Root, input: R::Input) -> Result<B, workflow::handler::Error>
+where
+    R: omnia_guest::api::operation::Operation<Root, Output = B, Error = workflow::handler::Error>,
+    B: Send,
+{
+    omnia_guest::api::invoke::Invoker::new("specify", root.clone())
+        .invoke::<R>(omnia_guest::api::invocation::Invocation::new(input))
+        .await
+}
+
+/// Like [`synthesis_response`] but with a proposal missing its
+/// `## Domains` section: the persist tail accepts it (artifact bodies
+/// are free markdown) and the validate sweep raises the blocking
+/// `proposal.domains-listed` violation.
+fn invalid_proposal_response(slice: &str, domain: &str, claim_id: &str, req_id: &str) -> String {
+    let good = synthesis_response(slice, domain, claim_id, req_id);
+    let mut value: Value = serde_json::from_str(&good).expect("response parses");
+    value["artifacts"]["proposal"] =
+        json!(format!("# {slice}\n\n## Why\n\nThe operator asked for it.\n\n## Non-goals\n\n- Nothing else.\n"));
+    serde_json::to_string(&value).expect("response serialises")
+}
+
+/// Regression: refine-driven and standalone validation observe one
+/// kernel. A synthesized slice that trips an adapter rule fails the
+/// refine orchestration with `slice-validation-failed`, and the
+/// standalone `slice validate` operation on the same persisted tree
+/// fails with the same code and names the same blocking rules.
+#[tokio::test]
+async fn refine_and_standalone_validate_agree() {
+    let project = Project::new();
+    project.seed_plan(APPROVED_PLAN);
+    project.seed_discovery(&["feature-x", "feature-y"]).await;
+
+    let model = testkit::MockModel::answering([Box::leak(
+        invalid_proposal_response("feature-x", "greeting", "greeting.fix", "REQ-001")
+            .into_boxed_str(),
+    ) as &'static str]);
+    let sources =
+        MockSourceSeam::scripted([], [Ok(intent_evidence("greeting.fix", "Fix the greeting."))]);
+    let targets = MockTargetSeam::scripted([Ok("Shape guidance.".to_string())], []);
+
+    let refine_err = orchestrate::refine_breakout(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        project.layout(),
+        now(),
+        "feature-x",
+    )
+    .await
+    .expect_err("the invalid proposal fails the refine validate sweep");
+    assert_eq!(refine_err.variant_str(), "slice-validation-failed");
+    let refine_detail = refine_err.to_string();
+
+    // The slice tree persisted before the sweep, parked at `refining`.
+    let metadata = workflow::slice::SliceMetadata::load(&project.slices_dir().join("feature-x"))
+        .expect("slice metadata");
+    assert_eq!(metadata.status, workflow::slice::LifecycleStatus::Refining);
+
+    // Standalone validate on the same tree: same code, same blocking rules.
+    let root = Root(project.root.clone());
+    let err = run_op::<workflow::slice::handlers::Validate, _>(
+        &root,
+        workflow::slice::handlers::ValidateInput {
+            name: "feature-x".to_string(),
+        },
+    )
+    .await
+    .expect_err("standalone validate fails the same tree");
+    let workflow::handler::Error::Report { body, source } = err else {
+        panic!("expected a findings report, got {err:?}");
+    };
+    assert!(
+        matches!(&source, error::Error::Validation { code, .. } if *code == "slice-validation-failed"),
+        "standalone validate carries the same failure code, got {source:?}"
+    );
+    let blocking_rules: Vec<&str> = body
+        .report()
+        .findings
+        .iter()
+        .filter(|finding| schema::diagnostics::blocking(finding))
+        .map(|finding| finding.rule_id.as_deref().unwrap_or("unnamed-rule"))
+        .collect();
+    assert!(
+        blocking_rules.contains(&"proposal.domains-listed"),
+        "the staged defect is among the blocking findings: {blocking_rules:?}"
+    );
+    for rule in &blocking_rules {
+        assert!(
+            refine_detail.contains(rule),
+            "refine's failure detail names every blocking rule the standalone verb reports; \
+             missing `{rule}` in: {refine_detail}"
+        );
+    }
+}
+
+/// Regression: the standalone `plan next` and the execute loop claim
+/// through one kernel. On identical fixtures both stamp the same
+/// entry `in-progress` and journal the same `plan.entry.advanced`
+/// claim event.
+#[tokio::test]
+async fn standalone_next_matches_execute_claim() {
+    // Standalone: `plan next` claims feature-x.
+    let standalone = Project::new();
+    standalone.seed_plan(APPROVED_PLAN);
+    let body = run_op::<workflow::change::plan::handlers::Next, _>(
+        &Root(standalone.root.clone()),
+        workflow::change::plan::handlers::NextInput::default(),
+    )
+    .await
+    .expect("plan next claims the first entry");
+    assert_eq!(body.next.as_deref(), Some("feature-x"));
+
+    // Execute-driven: the loop claims feature-x, then refine fails at
+    // extract (scripted), leaving exactly the claim state behind.
+    let executed = Project::new();
+    executed.seed_plan(APPROVED_PLAN);
+    let model = testkit::MockModel::answering([]);
+    let sources = MockSourceSeam::scripted(
+        [],
+        [Err(workflow::seam::Error::Internal("scripted extract failure".to_string()))],
+    );
+    let targets = MockTargetSeam::scripted([], []);
+    let outcome = orchestrate::execute(
+        &model,
+        &sources,
+        &targets,
+        &common::resolver(),
+        executed.layout(),
+        now(),
+        &[],
+        &tree(),
+    )
+    .await
+    .expect("a failing refine is a typed stop");
+    let ExecuteOutcome::Stopped { reason, .. } = outcome else {
+        panic!("expected a stop outcome, got {outcome:?}");
+    };
+    assert_eq!(reason, StopReason::RefineFailed);
+
+    // Equivalent per-entry state: feature-x in-progress, feature-y pending.
+    for project in [&standalone, &executed] {
+        let plan = project.plan();
+        let statuses: Vec<(String, Status)> =
+            plan.entries.iter().map(|e| (e.name.to_string(), e.status)).collect();
+        assert_eq!(
+            statuses,
+            [
+                ("feature-x".to_string(), Status::InProgress),
+                ("feature-y".to_string(), Status::Pending)
+            ]
+        );
+    }
+
+    // Equivalent claim event: the first journal entry is the identical
+    // `plan.entry.advanced` payload on both paths.
+    let standalone_claim = standalone.journal();
+    let executed_claim = executed.journal();
+    assert_eq!(standalone_claim.len(), 1, "plan next journals exactly the claim");
+    assert_eq!(standalone_claim[0]["event"], "plan.entry.advanced");
+    assert_eq!(
+        standalone_claim[0]["payload"], executed_claim[0]["payload"],
+        "both writers journal the same claim payload"
+    );
+    assert_eq!(standalone_claim[0]["event"], executed_claim[0]["event"]);
+}
+
 #[tokio::test]
 async fn held_marker_refused_and_named() {
     let project = Project::new();

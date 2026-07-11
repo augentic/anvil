@@ -81,6 +81,21 @@ mod registry {
         .expect("staged catalogue validates");
     }
 
+    /// Regression: `registry validate` is documented to run before
+    /// `specify init` — it anchors on the invocation root and must not
+    /// demand `.specify/project.yaml`.
+    #[tokio::test]
+    async fn validate_runs_pre_init() {
+        let project = Project::bare();
+        stage_registry(&project.root);
+        run::<workflow::registry::handlers::Validate, _>(
+            &project,
+            workflow::registry::handlers::ValidateInput {},
+        )
+        .await
+        .expect("pre-init registry validate succeeds");
+    }
+
     #[tokio::test]
     async fn remove_drops_entry() {
         let project = Project::initialised();
