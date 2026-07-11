@@ -58,13 +58,13 @@ The four-slot CLI exit-code table is fixed:
 | 2 | `EXIT_VALIDATION_FAILED` | `Error::Validation`, undeclared/over-permissioned tool, `Error::Argument` |
 | 3 | `EXIT_VERSION_TOO_OLD` | `Error::CliTooOld` (`specify-version-too-old` in JSON) |
 
-`Exit::from(&Error)` in [`crates/transport/src/output.rs`](../../crates/transport/src/output.rs) is the single source of truth. `SpecifyProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes.
+`Exit::from(&Error)` in [`crates/transport/src/command/output.rs`](../../crates/transport/src/command/output.rs) is the single source of truth. `SpecifyProjector` uses it for every terminal operation or conversion error. Do not invent new exit codes.
 
 ## The transport crate (`crates/transport`)
 
 `crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Specify command/HTTP projectors, and the fixed exit contract.
 
-`crates/transport/src/args/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`, `--plan-dir`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
+`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`, `--plan-dir`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
 
 ## The HTTP route table (`http.rs`)
 

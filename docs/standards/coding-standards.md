@@ -88,7 +88,7 @@ The codebase optimises for short reading over short writing. Concretely:
 
 ## Format dispatch
 
-Handlers do **not** open-code `match ctx.format { Json, Text }`. They return typed bodies; the command projector in `crates/transport/src/command.rs` owns format dispatch through the internal `emit` function in `crates/transport/src/output.rs`. Handlers never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Handlers do **not** open-code `match ctx.format { Json, Text }`. They return typed bodies; the command projector in `crates/transport/src/command.rs` owns format dispatch through the internal `emit` function in `crates/transport/src/command/output.rs`. Handlers never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -107,7 +107,7 @@ The `write_text` closure receives `(&mut dyn Write, &Body)` and renders the text
 
 ## One emit path
 
-Success bodies and failures leave operations as typed values. The projectors in `crates/transport` render those values at the command or HTTP boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to `crates/transport/src/output.rs`.
+Success bodies and failures leave operations as typed values. The projectors in `crates/transport` render those values at the command or HTTP boundary; no handler writes stdout or stderr. If you need a bespoke failure shape, add an `Error` variant with a kebab-case discriminant; do not hand-roll a `*ErrBody` DTO. `emit` stays internal to `crates/transport/src/command/output.rs`.
 
 ## DTOs
 

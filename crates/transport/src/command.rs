@@ -1,8 +1,9 @@
 //! Typed command grammar, conversions, and Specify projection policy.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use clap::{Args, ValueEnum};
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{
@@ -16,11 +17,87 @@ use workflow::adapter::Resolver;
 use workflow::handler::{Anchor, Render};
 use workflow::seam::{SourceSeam, TargetSeam};
 
-use crate::args::{
-    ABOUT, Globals, InitArgs, UpgradeArgs, adapters, archive, journal, plan, plugins, registry,
-    slice, source, target, workspace,
-};
-use crate::output::{ErrorBody, Exit, Format, emit, write_error_text};
+pub use self::output::Format;
+use self::output::{ErrorBody, Exit, emit, write_error_text};
+
+mod adapters;
+mod archive;
+mod journal;
+mod output;
+mod plan;
+mod plugins;
+mod registry;
+mod slice;
+mod source;
+mod target;
+mod workspace;
+
+/// One-line application description.
+const ABOUT: &str = "Deterministic primitives for spec-driven development";
+
+/// Arguments shared by every command route.
+#[derive(Clone, Debug, Args)]
+pub struct Globals {
+    /// Output format.
+    #[arg(long, env = "SPECIFY_FORMAT", default_value = "text")]
+    pub format: Format,
+    /// Directory holding the governing plan.
+    #[arg(long, env = "SPECIFY_PLAN_DIR", value_name = "PATH")]
+    pub plan_dir: Option<PathBuf>,
+}
+
+/// Flags for `specify init`.
+#[derive(Debug, Args)]
+struct InitArgs {
+    /// Adapter identifier or local component path.
+    #[arg(conflicts_with = "workspace")]
+    adapter: Option<String>,
+    /// Project name.
+    #[arg(long)]
+    name: Option<String>,
+    /// Project description.
+    #[arg(long)]
+    description: Option<String>,
+    /// Scaffold a registry-only workspace.
+    #[arg(long)]
+    workspace: bool,
+    /// Comma-separated target platforms.
+    #[arg(long, conflicts_with = "workspace")]
+    platforms: Option<String>,
+    /// Re-enter initialization to update the Specify version pin.
+    #[arg(long, conflicts_with_all = ["adapter", "workspace", "name", "description"])]
+    upgrade: bool,
+    /// Run only the guest-supported scaffold leg.
+    #[arg(long, hide = true, conflicts_with = "upgrade")]
+    scaffold_only: bool,
+}
+
+/// Flags for `specify upgrade`.
+#[derive(Debug, Clone, Copy, Args)]
+struct UpgradeArgs {
+    /// Install channel to upgrade.
+    #[arg(long, value_enum, default_value = "auto")]
+    channel: ChannelArg,
+    /// Apply the upgrade.
+    #[arg(long)]
+    yes: bool,
+    /// Report the upgrade plan without changing anything.
+    #[arg(long)]
+    dry_run: bool,
+}
+
+/// `specify upgrade --channel` value.
+#[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
+enum ChannelArg {
+    /// Detect the install channel.
+    Auto,
+    /// Force the Cargo strategy.
+    Cargo,
+    /// Force the Homebrew strategy.
+    Brew,
+    /// Force the release-archive strategy.
+    Binary,
+}
 
 #[derive(Clone, Copy)]
 struct NamespaceHelp {

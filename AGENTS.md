@@ -190,7 +190,7 @@ The two **adapter validators** (`contract`, `vectis`) are in-guest adapter libra
 
 ### Exit codes
 
-Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/transport/src/output.rs`](./crates/transport/src/output.rs) is the single source of truth.
+Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/transport/src/command/output.rs`](./crates/transport/src/command/output.rs) is the single source of truth.
 
 ### Repository map
 

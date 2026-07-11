@@ -10,10 +10,5 @@
 //! Wasm specifics stay out: this crate never depends on wit-bindgen,
 //! wasip3, or wasmtime — the guest shim owns all WIT binding.
 
-mod args;
 pub mod command;
 pub mod http;
-mod output;
-
-pub use args::Globals;
-pub use output::Format;

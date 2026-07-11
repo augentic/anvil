@@ -74,7 +74,7 @@ route!(
 );
 ```
 
-Each command leaf has a clap-only `Args` type under `crates/transport/src/args/*.rs`. Global flags such as `--format` and `--plan-dir` stay in `Globals`. Each supported leaf has an exhaustive conversion:
+Each command leaf has a clap-only `Args` type under `crates/transport/src/command/*.rs`. Global flags such as `--format` and `--plan-dir` stay in `Globals`. Each supported leaf has an exhaustive conversion:
 
 ```rust
 impl TryFrom<BuildArgs> for BuildInput {
@@ -142,7 +142,7 @@ harness/native/http.rs      construct Invoker → shared HTTP Router::into_axum 
 ## Adding a command
 
 1. Define the operation `Input`, typed output body, and stateless operation type in the owning workflow domain's `handlers` module. Implement `Operation<P>` and `Render` for command-visible output.
-2. Define the concrete clap `Args` under `crates/transport/src/args/*.rs`.
+2. Define the concrete clap `Args` under `crates/transport/src/command/*.rs`.
 3. Add an explicit `TryFrom<Args> for Input`.
 4. Register the command in `crates/transport/src/command.rs` with its path, args, operation, and help.
 5. If HTTP-exposed, register the same operation in `crates/transport/src/http.rs` with an explicit path and method.
