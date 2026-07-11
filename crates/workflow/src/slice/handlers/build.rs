@@ -20,7 +20,7 @@ pub struct BuildInput {
     pub name: String,
 }
 
-/// `specify slice build <name>` → [`orchestrate::build`].
+/// `specify slice build <name>` → the internal build orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Build;
 

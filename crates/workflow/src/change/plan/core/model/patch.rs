@@ -9,7 +9,7 @@ use crate::name::SliceName;
 /// `Some(v)`.
 ///
 /// This is the in-memory builder shape consumed by
-/// [`super::Plan::amend`]; it does **not** appear on the wire.
+/// the internal plan amendment kernel; it does **not** appear on the wire.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum Patch<T> {
     /// Leave the field unchanged.
@@ -47,11 +47,11 @@ impl Patch<String> {
     }
 }
 
-/// Patch applied by [`super::Plan::amend`] to an existing entry.
+/// Patch applied by the internal plan amendment kernel to an existing entry.
 ///
 /// Wholesale-replacement fields are `Option<Vec<...>>`; nullable fields use
 /// the three-way [`Patch`] enum. `status` is deliberately absent —
-/// status transitions are made via [`super::Plan::transition`], never
+/// status transitions are made via the internal transition kernel, never
 /// through `amend`.
 ///
 /// The absence of a `status` field is a type-system guarantee: `amend`

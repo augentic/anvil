@@ -45,7 +45,7 @@ pub struct EmitInput {
 /// validates both the id and the payload fields. The verb then stamps
 /// a second-precision UTC timestamp (the [`Event`] serde format
 /// truncates `Timestamp::now()` to seconds) and appends exactly one
-/// line to `.specify/journal.jsonl` via [`super::append_batch`].
+/// line to `.specify/journal.jsonl` via the internal batch appender.
 ///
 /// Failures: `journal-emit-unknown-event` (exit 2) when `event` is not
 /// a variant in the closed taxonomy; `journal-emit-payload-schema`

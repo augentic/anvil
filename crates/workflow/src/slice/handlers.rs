@@ -1,7 +1,7 @@
 //! The `specify slice *` command operations, plus `archive prune`.
 //!
-//! The prune kernel lives in [`super::actions::prune`]; the refine /
-//! build / merge operations drive their [`crate::orchestrate`]
+//! The prune kernel lives in the private actions module; the refine /
+//! build / merge operations drive their internal
 //! kernels.
 
 mod build;

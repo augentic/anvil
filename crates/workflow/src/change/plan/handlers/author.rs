@@ -35,7 +35,7 @@ pub struct AuthorInput {
 }
 
 /// `specify plan author <name> [--source ...]` →
-/// [`orchestrate::author`] — the collapsed `/spec:plan` flow exiting
+/// the internal author orchestration — the collapsed `/spec:plan` flow exiting
 /// at `lifecycle: pending`.
 #[derive(Clone, Copy, Debug)]
 pub struct Author;

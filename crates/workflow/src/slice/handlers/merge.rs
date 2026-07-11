@@ -31,7 +31,7 @@ pub struct MergeRunInput {
     pub allow_composition_replace: bool,
 }
 
-/// `specify slice merge run <name>` → [`orchestrate::merge`]
+/// `specify slice merge run <name>` → the internal merge orchestration
 /// (deterministic-only — no target merge brief is dispatched).
 #[derive(Clone, Copy, Debug)]
 pub struct MergeRun;

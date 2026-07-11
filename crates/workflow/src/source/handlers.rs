@@ -26,7 +26,7 @@ pub struct SurveyInput {
     pub plan: Option<String>,
 }
 
-/// `specify source survey <source>` → [`orchestrate::survey`].
+/// `specify source survey <source>` → the internal survey orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Survey;
 
@@ -94,7 +94,7 @@ pub struct ExtractInput {
 }
 
 /// `specify source extract <source> <lead> --slice <slice>` →
-/// [`orchestrate::extract`].
+/// the internal extract orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Extract;
 

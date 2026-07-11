@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::name::is_kebab;
 use crate::slice::{LifecycleStatus, SliceMetadata};
 
-/// What to do when [`create`] finds an existing directory at the
+/// What to do when slice creation finds an existing directory at the
 /// target path. Rides the wire typed on both transports (kebab-case
 /// values), matching the CLI mirror's value parser.
 #[derive(

@@ -196,7 +196,7 @@ pub(crate) fn scaffold_wasm_pkg_config(layout: &Layout<'_>) -> Result<bool, Erro
 /// Validate the operator's `--platforms` set against the target's
 /// declared capability, mapping each violation onto the init-time
 /// `project-platforms-*` diagnostic family via the shared
-/// [`crate::adapter::PlatformsViolation::into_error`] converter. The
+/// shared platform-validation error converter. The
 /// rules themselves live on
 /// [`crate::adapter::PlatformsCapability::check`].
 pub(crate) fn validate_platforms(

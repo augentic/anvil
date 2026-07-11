@@ -78,9 +78,7 @@ pub struct Resolution {
 impl Resolution {
     /// A resolution with no winner/loser distinction — every claim
     /// carries a `None` marker.
-    fn uniform(
-        claim_count: usize, status: RequirementStatus, label: ProvenanceResolution,
-    ) -> Self {
+    fn uniform(claim_count: usize, status: RequirementStatus, label: ProvenanceResolution) -> Self {
         Self {
             status,
             label,
@@ -149,7 +147,7 @@ fn resolve_disagreement(
         };
         Resolution {
             status: RequirementStatus::Divergence,
-            resolution,
+            label: resolution,
             winners,
         }
     } else {

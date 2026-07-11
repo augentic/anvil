@@ -23,13 +23,10 @@ mod kernel;
 mod topology;
 mod wire;
 
-pub use catalog::{LeadCatalog, build_request};
-pub use kernel::{ProposeOutcome, resolve_target};
+pub use catalog::build_request;
+pub use kernel::resolve_target;
 pub use topology::{apply_greenfield_seed, resolve_topology};
-pub use wire::{
-    GateProse, LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest, ProposalResponse,
-    ResponseMember, ResponseSlice,
-};
+pub use wire::{GateProse, ProjectRef, ProposalRequest, ProposalResponse};
 
 /// Wire version pinned by `schemas/discovery/proposal.schema.json`
 /// (`const: 1` on both envelope kinds).

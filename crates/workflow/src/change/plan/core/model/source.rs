@@ -48,7 +48,7 @@ pub struct SourceBinding {
 /// Both shapes round-trip byte-identically: the bare shorthand is
 /// normalised at parse time into `lead == None`, and `Serialize`
 /// emits the same shape the operator authored. Use
-/// [`SliceSourceBinding::bare`] / [`SliceSourceBinding::structured`] in
+/// the internal bare / structured constructors in
 /// tests instead of constructing the struct literal directly so the
 /// shorthand discipline stays consistent.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,7 +60,7 @@ pub struct SliceSourceBinding {
     /// Lead id from `discovery.md`, resolved within `source`.
     /// `None` denotes the bare-string shorthand — the lead falls
     /// back to the owning slice's name via
-    /// [`SliceSourceBinding::lead`].
+    /// the binding's internal lead accessor.
     pub lead: Option<String>,
 }
 

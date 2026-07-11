@@ -299,7 +299,7 @@ fn adapter_name_from_component(path: &Path) -> Result<String, Error> {
 ///   artifact prefix stripped,
 /// - bare local paths — same treatment.
 #[must_use]
-fn adapter_name_from_value(value: &str) -> String {
+pub(super) fn adapter_name_from_value(value: &str) -> String {
     let stripped = strip_at_ref_suffix(value);
     let stripped = stripped.strip_prefix("file://").unwrap_or(stripped);
     let stripped = stripped.strip_suffix('/').unwrap_or(stripped);

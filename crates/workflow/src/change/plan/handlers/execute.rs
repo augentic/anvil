@@ -23,7 +23,7 @@ use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 )]
 pub struct ExecuteInput {}
 
-/// `specify plan execute` → [`orchestrate::execute`] — the drained
+/// `specify plan execute` → the internal execute orchestration — the drained
 /// refine → build → merge loop over the approved plan.
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;

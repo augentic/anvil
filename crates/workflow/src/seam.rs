@@ -5,7 +5,7 @@
 //! interfaces the workflow guest imports; the DTOs below mirror the WIT
 //! records minus what the caller already knows (a survey's leads carry
 //! no `source` — the orchestrator attributes them). Orchestrators in
-//! [`crate::orchestrate`] take `&impl SourceSeam` / `&impl TargetSeam`
+//! Internal orchestrations take `&impl SourceSeam` / `&impl TargetSeam`
 //! bounds, so the crate stays wasm-free: the `wit-bindgen`-backed
 //! providers live in the guest shim and native harness.
 

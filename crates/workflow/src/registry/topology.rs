@@ -235,7 +235,7 @@ impl TopologyProject {
 /// resolved target adapter's [`crate::adapter::PlatformsCapability`].
 /// Violations map onto the `topology-cache-project-platforms-*`
 /// diagnostic family via the shared
-/// [`crate::adapter::PlatformsViolation::into_error`] converter.
+/// the shared platform-validation error converter.
 fn validate_topology_platforms(
     registry_name: &str, platforms: &[Platform],
     capability: Option<&crate::adapter::PlatformsCapability>, target_name: &str,
@@ -258,9 +258,8 @@ fn validate_topology_platforms(
 /// Compares the lock against each slot's current `project.yaml` *and
 /// baseline projection*
 /// (`surface[]` from `.specify/specs/`, `recent[]` from the journal
-/// ledger), returning a `topology-cache-stale` suggestion on divergence
-/// (the fix is `specify workspace sync`). Because the projection is
-/// deterministic, this is a regenerate-and-compare check:
+/// ledger), returning a `topology-cache-stale` suggestion on divergence.
+/// Because the projection is deterministic, this is a regenerate-and-compare check:
 /// [`TopologyProject::resolve`] re-derives the fresh entry and any drift
 /// in `target` / `description` / `surface` / `recent` trips the warning.
 /// A slot whose topology cannot be re-derived yields a
@@ -308,7 +307,7 @@ pub fn cache_staleness(
                 Severity::Suggestion,
                 format!(
                     "workspace slot '{}' has drifted from .specify/topology.lock; \
-                     run `specify workspace sync` to regenerate the topology cache",
+                     the topology cache must be regenerated before planning",
                     rp.name
                 ),
                 None,

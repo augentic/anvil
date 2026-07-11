@@ -26,7 +26,7 @@ use common::{Project, change, change_with_deps, plan_with_changes, run};
 struct Event;
 
 impl Event {
-    const fn new(timestamp: Timestamp, kind: EventKind) -> JournalEvent {
+    const fn event(timestamp: Timestamp, kind: EventKind) -> JournalEvent {
         JournalEvent { timestamp, kind }
     }
 }
@@ -74,7 +74,7 @@ fn append(root: &std::path::Path, events: &[JournalEvent]) {
 }
 
 fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {
-    Event::new(
+    Event::event(
         ts(seconds),
         EventKind::PlanEntryAdvanced {
             plan_name: plan.into(),
@@ -84,7 +84,7 @@ fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {
 }
 
 fn build_failed(seconds: i64, slice: &str, reason: &str) -> JournalEvent {
-    Event::new(
+    Event::event(
         ts(seconds),
         EventKind::SliceBuildFailed {
             slice_name: slice.into(),
@@ -143,7 +143,7 @@ mod failure_overlay {
             &project.root,
             &[
                 advanced(0, "test", "a"),
-                Event::new(
+                Event::event(
                     ts(10),
                     EventKind::SliceMergeFailed {
                         slice_name: "a".into(),
@@ -164,7 +164,7 @@ mod failure_overlay {
             &project.root,
             &[
                 advanced(0, "test", "a"),
-                Event::new(
+                Event::event(
                     ts(10),
                     EventKind::SliceSynthesizeFailed {
                         slice_name: "a".into(),
@@ -187,7 +187,7 @@ mod failure_overlay {
             &[
                 advanced(0, "test", "a"),
                 build_failed(10, "a", "first attempt"),
-                Event::new(
+                Event::event(
                     ts(20),
                     EventKind::SliceBuildSucceeded {
                         slice_name: "a".into(),
@@ -234,7 +234,7 @@ mod failure_overlay {
             &project.root,
             &[
                 advanced(0, "test", "a"),
-                Event::new(
+                Event::event(
                     ts(10),
                     EventKind::SliceMergeSucceeded {
                         slice_name: "a".into(),
@@ -258,13 +258,13 @@ mod failure_overlay {
             &project.root,
             &[
                 advanced(0, "test", "a"),
-                Event::new(
+                Event::event(
                     ts(10),
                     EventKind::SliceMergeSucceeded {
                         slice_name: "a".into(),
                     },
                 ),
-                Event::new(
+                Event::event(
                     ts(20),
                     EventKind::SliceMergeFailed {
                         slice_name: "a".into(),
@@ -285,7 +285,7 @@ mod failure_overlay {
         let project = Project::initialised();
         append(
             &project.root,
-            &[Event::new(
+            &[Event::event(
                 ts(0),
                 EventKind::SliceMergeSucceeded {
                     slice_name: "b".into(),
@@ -311,7 +311,7 @@ mod re_entry {
             &project.root,
             &[
                 advanced(0, "test", "a"),
-                Event::new(
+                Event::event(
                     ts(10),
                     EventKind::SliceMergeSucceeded {
                         slice_name: "a".into(),

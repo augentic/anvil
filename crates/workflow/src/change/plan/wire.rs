@@ -23,7 +23,7 @@ use crate::config::Layout;
 ///
 /// Carries the key from `plan.yaml.sources.<key>` plus the adapter and
 /// its path- or value-binding — the raw `plan create` / `plan author`
-/// sources shape on both transports; [`source_map`] desugars the list
+/// sources shape on both transports; the internal source-map converter desugars the list
 /// into the structured `plan.yaml.sources` map at the operation boundary.
 ///
 /// Materialises as [`SourceBinding`] under the structured

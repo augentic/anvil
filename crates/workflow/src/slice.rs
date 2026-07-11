@@ -1,6 +1,6 @@
 //! Slice `metadata.yaml`, lifecycle, and naming.
 //!
-//! Verb-level filesystem operations live in [`actions`].
+//! Verb-level filesystem operations live in the private actions module.
 
 pub(crate) mod actions;
 pub(crate) mod build;

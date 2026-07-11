@@ -20,14 +20,12 @@ pub mod validate;
 pub use authority_override::{entry_mut, unknown_slice_err};
 pub use model::{
     Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Lifecycle, Patch, Plan,
-    SliceAuthorityOverride, SliceSourceBinding, SourceBinding, Status, TargetRef,
-    TargetRefParseError,
+    SliceAuthorityOverride, SliceSourceBinding, SourceBinding, Status,
 };
 pub use next::{NextBody, NextReason, claim_next};
 pub use propose::{
-    GateProse, LeadCatalog, LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest,
-    ProposalResponse, ProposeOutcome, ResponseMember, ResponseSlice, apply_greenfield_seed,
-    build_request, resolve_target, resolve_topology,
+    GateProse, ProjectRef, ProposalRequest, ProposalResponse, apply_greenfield_seed, build_request,
+    resolve_target, resolve_topology,
 };
 pub use scaffold::scaffold;
 pub use status::{

@@ -23,7 +23,7 @@ use crate::name::{PlanName, SliceName};
 ///
 /// The enum is `Copy + Eq + Hash` so it can appear in `HashSet`s,
 /// `match` guards, and hash-keyed lookups without clones. Transition
-/// table methods live alongside [`Plan::transition`].
+/// table methods live alongside the internal transition kernel.
 #[derive(
     Debug,
     Clone,
@@ -60,7 +60,7 @@ pub enum Status {
 /// and `approved` (operator-stamped at Gate 1 via
 /// `specify plan transition <plan-name> approved`). "Currently
 /// executing" and "drained" are computed from per-entry [`Status`] at
-/// read time via [`Plan::is_executing`] / [`Plan::is_drained`].
+/// read time via the plan's internal execution-state predicates.
 #[derive(
     Debug,
     Clone,
@@ -130,7 +130,7 @@ pub struct Entry {
     /// The target adapter (`name@vN`) is **not** stored on the slice —
     /// it is resolved on demand from this project via the topology
     /// (the committed `.specify/topology.lock` for a workspace, `project.yaml.adapter` for a single
-    /// regular project) by [`crate::change::plan::core::resolve_target`].
+    /// regular project) by the internal target-resolution kernel.
     #[serde(default)]
     pub project: Option<String>,
     /// Current lifecycle state of this entry.

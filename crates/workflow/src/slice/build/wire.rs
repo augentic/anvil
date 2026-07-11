@@ -67,7 +67,7 @@ pub struct BuildArtifacts {
 ///
 /// Partial success is [`BuildStatus::Success`] carrying non-blocking
 /// findings only — the CLI rejects a `success` report with any blocking
-/// finding via [`BuildReport::enforce_no_blocking`].
+/// finding via the report's internal blocking-findings gate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BuildStatus {

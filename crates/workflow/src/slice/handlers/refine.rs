@@ -21,7 +21,7 @@ pub struct RefineInput {
     pub name: String,
 }
 
-/// `specify slice refine <name>` → [`orchestrate::refine_breakout`] —
+/// `specify slice refine <name>` → the internal refine orchestration —
 /// the `/spec:refine` breakout outside the execute loop.
 #[derive(Clone, Copy, Debug)]
 pub struct Refine;

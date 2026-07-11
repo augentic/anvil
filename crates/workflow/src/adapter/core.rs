@@ -354,7 +354,7 @@ pub struct SourceAdapter {
     /// Kebab-case adapter name from the resolved identity.
     pub name: String,
     /// Semver adapter version: the pin for store-resolved identities,
-    /// [`dev_version`] for development artifacts.
+    /// `0.0.0` for development artifacts.
     pub version: semver::Version,
     /// Optional host-CLI compatibility floor from the metadata
     /// answer's `specify-floor`. The resolver compares it against the
@@ -372,7 +372,7 @@ pub struct TargetAdapter {
     /// Kebab-case adapter name from the resolved identity.
     pub name: String,
     /// Semver adapter version: the pin for store-resolved identities,
-    /// [`dev_version`] for development artifacts.
+    /// `0.0.0` for development artifacts.
     pub version: semver::Version,
     /// Optional host-CLI compatibility floor from the metadata
     /// answer's `specify-floor`. The resolver compares it against the

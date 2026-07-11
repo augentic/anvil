@@ -15,9 +15,8 @@ pub use plan::core::{
 // `authority_override` module rides along so call sites read
 // `authority_override::mutate` / `::reject_orphans` / `::emit_seed_events`.
 pub(crate) use plan::core::{
-    GateProse, LeadCatalog, LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest,
-    ProposalResponse, ProposeOutcome, ResponseMember, ResponseSlice, TargetRef, TargetRefParseError,
-    apply_greenfield_seed, authority_override, build_request, claim_next, drained_line, entry_mut,
+    GateProse, ProjectRef, ProposalRequest, ProposalResponse, apply_greenfield_seed,
+    authority_override, build_request, claim_next, drained_line, entry_mut,
     orphan_authority_override_keys, plan_finding, plan_status_body, reject_duplicate_source_keys,
     resolve_target, resolve_topology, scaffold, unknown_slice_err,
 };

@@ -99,8 +99,7 @@ fn inventories_match_with_transport_allowlist() {
         })
         .map(|route| route.selector().path().to_vec())
         .collect();
-    let expected: BTreeSet<Vec<String>> = [&["completions"][..]]
-        .into_iter()
+    let expected: BTreeSet<Vec<String>> = std::iter::once(&["completions"][..])
         .map(|path| path.iter().map(|part| (*part).to_string()).collect())
         .collect();
 

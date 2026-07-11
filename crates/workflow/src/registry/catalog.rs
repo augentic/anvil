@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct Registry {
     /// Schema version. `1` is the only accepted value for this
-    /// release; [`Registry::validate_shape`] rejects anything else
+    /// release; registry shape validation rejects anything else
     /// with an actionable diagnostic.
     pub version: u32,
     /// Platform catalogue. Empty or single-entry is equivalent to
@@ -32,12 +32,12 @@ pub struct Registry {
 #[serde(deny_unknown_fields)]
 pub struct RegistryProject {
     /// Kebab-case identifier for the project; validated by
-    /// [`crate::name::is_kebab`].
+    /// the repository's kebab-case naming rule.
     pub name: String,
     /// Clone target — `.`, a repo-relative path (`../peer`, `./foo`,
     /// `pkg/sub`), `git@host:path`, or an `http(s)://`, `ssh://`, or
     /// `git+http(s)://` / `git+ssh://` remote. Shape-validated by
-    /// [`Registry::validate_shape`]. Stored verbatim.
+    /// registry shape validation. Stored verbatim.
     pub url: String,
     /// Optional greenfield scaffold seed — the adapter written
     /// into a brand-new project's `project.yaml` when `workspace sync`
@@ -73,7 +73,7 @@ pub struct RegistryProject {
 #[serde(deny_unknown_fields)]
 pub struct GreenfieldSeed {
     /// Intended domain slugs (kebab-case), validated by
-    /// [`Registry::validate_shape`]. Each projects into a `surface[]`
+    /// registry shape validation. Each projects into a `surface[]`
     /// entry with empty `requirements[]` until the real baseline
     /// supersedes it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

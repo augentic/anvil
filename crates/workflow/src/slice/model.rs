@@ -254,7 +254,7 @@ impl SliceModel {
                 })
                 .collect();
             let resolved =
-                resolve(&claim_refs, &evidence.authority, overrides, req.agreement).resolution;
+                resolve(&claim_refs, &evidence.authority, overrides, req.agreement).label;
             let contributing_claims: Vec<ContributingClaim> = req
                 .claims
                 .iter()
