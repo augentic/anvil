@@ -203,6 +203,18 @@ fn plan_accepts_divergence_likely() {
 }
 
 #[test]
+fn plan_platform_v2_wire() {
+    let v = load(PLAN_JSON_SCHEMA);
+    let raw = std::fs::read_to_string(plan_v2_fixture_path("platform-v2.yaml")).expect("read");
+    assert_valid(&v, &yaml(&raw), "plan/v2/platform-v2");
+
+    let bad_status = raw.replacen("status: in-progress", "status: maybe", 1);
+    assert_invalid(&v, &yaml(&bad_status), "plan/v2/platform-v2-bad-status");
+    let bad_name = raw.replacen("name: platform-v2", "name: Platform V2", 1);
+    assert_invalid(&v, &yaml(&bad_name), "plan/v2/platform-v2-bad-name");
+}
+
+#[test]
 fn plan_rejects_unknown_divergence() {
     let v = load(PLAN_JSON_SCHEMA);
     let raw =

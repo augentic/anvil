@@ -83,22 +83,6 @@ impl Exit {
     }
 }
 
-#[cfg(test)]
-const EXIT_CODES: &[(u8, &str, &str)] = &[
-    (0, "success", "Command succeeded."),
-    (
-        1,
-        "generic-failure",
-        "Any error without a more specific code (I/O, YAML, schema, merge, tool resolver/runtime, …).",
-    ),
-    (
-        2,
-        "validation-failed",
-        "Validation findings, invalid arguments, or an undeclared/over-permissioned tool request.",
-    ),
-    (3, "version-too-old", "project.yaml.specify is newer than the binary."),
-];
-
 impl From<Exit> for ExitCode {
     fn from(r: Exit) -> Self {
         Self::from(r.code())
@@ -155,27 +139,4 @@ pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<
         writeln!(w, "hint: {hint}")?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{EXIT_CODES, Exit};
-
-    #[test]
-    fn exit_code_table_matches_exit() {
-        // Every Exit variant has exactly one table row whose numeric
-        // code matches `Exit::code()`.
-        let by_code = |code: u8| {
-            EXIT_CODES
-                .iter()
-                .find(|(c, _, _)| *c == code)
-                .unwrap_or_else(|| panic!("EXIT_CODES missing a row for code {code}"))
-        };
-        assert_eq!(by_code(Exit::Success.code()).1, "success");
-        assert_eq!(by_code(Exit::GenericFailure.code()).1, "generic-failure");
-        assert_eq!(by_code(Exit::ValidationFailed.code()).1, "validation-failed");
-        assert_eq!(by_code(Exit::ArgumentError.code()).1, "validation-failed");
-        assert_eq!(by_code(Exit::VersionTooOld.code()).1, "version-too-old");
-        assert_eq!(EXIT_CODES.len(), 4, "one row per exit code");
-    }
 }

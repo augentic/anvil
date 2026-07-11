@@ -3,7 +3,7 @@
 use artifacts::evidence::authority::*;
 
 #[test]
-fn authority_class_round_trips_kebab_case() {
+fn enum_wire_matrix() {
     for (variant, wire) in [
         (AuthorityClass::Intent, "intent"),
         (AuthorityClass::Documentation, "documentation"),
@@ -13,19 +13,9 @@ fn authority_class_round_trips_kebab_case() {
         assert_eq!(json, format!("\"{wire}\""));
         let reparsed: AuthorityClass = serde_json::from_str(&json).expect("reparse");
         assert_eq!(variant, reparsed);
+        assert_eq!(variant.to_string(), wire);
     }
-}
 
-#[test]
-fn claim_kind_round_trips_kebab_case() {
-    let json = serde_json::to_string(&ClaimKind::Example).expect("serialise");
-    assert_eq!(json, "\"example\"");
-    let reparsed: ClaimKind = serde_json::from_str(&json).expect("reparse");
-    assert_eq!(reparsed, ClaimKind::Example);
-}
-
-#[test]
-fn claim_kind_from_str_round_trips() {
     for variant in [
         ClaimKind::Intent,
         ClaimKind::Requirement,
@@ -43,6 +33,9 @@ fn claim_kind_from_str_round_trips() {
         ClaimKind::Leaf,
     ] {
         let wire = variant.to_string();
+        let json = serde_json::to_string(&variant).expect("serialise");
+        assert_eq!(json, format!("\"{wire}\""));
+        assert_eq!(serde_json::from_str::<ClaimKind>(&json).expect("serde reparse"), variant);
         let parsed: ClaimKind = wire.parse().expect("round-trip");
         assert_eq!(parsed, variant, "ClaimKind round-trip failed for {wire}");
     }

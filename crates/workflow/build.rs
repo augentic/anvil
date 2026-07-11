@@ -8,8 +8,8 @@ use std::{env, fs};
 /// The corpus [`crate::judgment::prose`] embeds: `(embedded name,
 /// manifest-dir-relative source path)`.
 const CORPUS: &[(&str, &str)] = &[
-    ("propose.md", "src/judgment/prompts/propose.md"),
-    ("synthesize.md", "src/judgment/prompts/synthesize.md"),
+    ("propose.md", "prompts/propose.md"),
+    ("synthesize.md", "prompts/synthesize.md"),
     ("substeps.md", "../../plugins/spec/references/synthesis/substeps.md"),
     ("requirement-block.md", "../../plugins/spec/references/synthesis/requirement-block.md"),
     ("authority.md", "../../plugins/spec/references/synthesis/authority.md"),

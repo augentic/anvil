@@ -10,4 +10,4 @@ Each case directory contains a subset of:
 - `expected-merge-errors.txt` — canonical stderr for merge failures. Empty file = success.
 - `expected-validation.txt` — canonical stderr from `validate_baseline`. Empty file = all coherence checks passed.
 
-These are checked in so Rust unit tests can compare byte-for-byte without invoking any external tool. A change to one of the cases must land alongside the corresponding source edit in `workflow::merge` / `artifacts::validate` and a hand-crafted update to the `expected-*` file in the same commit.
+`crates/workflow/tests/merge_goldens.rs` drives the public `slice merge preview` operation over all nine cases. Cases 01–07 compare the in-memory merged output byte-for-byte; cases 08–09 compare post-merge validation output. Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p workflow --test merge_goldens`, then review the golden diff. Parser-specific coverage remains in `crates/artifacts/tests/spec.rs`.

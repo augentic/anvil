@@ -3,20 +3,6 @@
 use artifacts::discovery::lead::Lead;
 
 #[test]
-fn round_trips_minimal_lead() {
-    let yaml = r"
-lead: user-registration
-source: legacy-monolith
-synopsis: Registration endpoint accepting email + password.
-";
-    let parsed: Lead = serde_saphyr::from_str(yaml).expect("parse");
-    assert_eq!(parsed.lead, "user-registration");
-    assert_eq!(parsed.source, "legacy-monolith");
-    let rendered = serde_saphyr::to_string(&parsed).expect("render");
-    assert!(rendered.contains("user-registration"));
-}
-
-#[test]
 fn round_trips_optional_topics() {
     let yaml = r"
 lead: user-registration

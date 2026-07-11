@@ -4,7 +4,7 @@ use std::fs;
 
 mod common;
 
-use common::{Project, run, scoped_store};
+use common::{Project, run, scoped_store, stage_dev_component};
 
 fn input(adapter: &str) -> workflow::init::handlers::ScaffoldInput {
     workflow::init::handlers::ScaffoldInput {
@@ -74,4 +74,41 @@ async fn package_reference_is_recorded_and_resolves() {
     assert_eq!(body.name, "demo");
     assert_eq!(body.version, "1.2.0");
     assert_eq!(body.location, "store");
+}
+
+#[tokio::test]
+async fn shorthand_is_canonicalised() {
+    let project = Project::bare();
+    stage_dev_component(&project.root, "demo");
+
+    run::<workflow::init::handlers::Scaffold, _>(&project, input("demo"))
+        .await
+        .expect("bare development shorthand scaffolds");
+    let project_yaml =
+        fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+    assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
+
+    let project = Project::bare();
+    let store = tempfile::tempdir().expect("store");
+    let _guard = scoped_store(store.path());
+    fs::write(schema::cache::adapter_store_entry("demo", "1.2.0"), b"\0asm-component")
+        .expect("stage installed component");
+
+    run::<workflow::init::handlers::Scaffold, _>(&project, input("demo@1.2.0"))
+        .await
+        .expect("versioned shorthand scaffolds");
+    let project_yaml =
+        fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+    assert!(project_yaml.contains("adapter: specify:demo@1.2.0"), "{project_yaml}");
+}
+
+#[tokio::test]
+async fn invalid_shorthand_is_not_registry_sugar() {
+    for value in ["Demo-target", "demo-target@latest", "demo-target@1"] {
+        let project = Project::bare();
+        let err = run::<workflow::init::handlers::Scaffold, _>(&project, input(value))
+            .await
+            .expect_err("invalid shorthand must not resolve as registry sugar");
+        assert_eq!(err.core().variant_str(), "adapter-component-missing", "{value}");
+    }
 }
