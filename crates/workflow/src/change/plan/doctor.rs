@@ -95,7 +95,7 @@ pub fn doctor(
 /// per-phase claim) must be clean of before advancing an entry.
 /// Deliberately registry-free: claiming works in registry-less projects
 /// and must stay read-only. Cycle findings always block, so callers
-/// gate on `blocking_present` over the returned set.
+/// gate on `has_blocking` over the returned set.
 #[must_use]
 pub fn claim_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
     let mut out = plan.validate(Some(slices_dir), None);
@@ -131,7 +131,7 @@ pub fn full_report(
 ) -> Vec<Diagnostic> {
     use schema::diagnostics::Severity;
 
-    use crate::change::plan::core::validate::plan_finding;
+    use crate::change::plan::core::validate::finding;
 
     let project_dir = layout.project_dir();
     let (registry, registry_err) = match Registry::load(project_dir) {
@@ -141,7 +141,7 @@ pub fn full_report(
     let mut results =
         doctor(plan, Some(&layout.slices_dir()), registry.as_ref(), Some(project_dir));
     if let Some(err) = registry_err {
-        results.push(plan_finding("registry-shape", Severity::Important, err.to_string(), None));
+        results.push(finding("registry-shape", Severity::Important, err.to_string(), None));
     }
     if let Some(reg) = &registry {
         results.extend(crate::registry::cache_staleness(

@@ -10,7 +10,7 @@ use error::Error;
 use jiff::Timestamp;
 
 use super::parse::system_time_to_utc;
-use super::{BaselineConflict, MergePreviewEntry, OpaqueAction, OpaquePreviewEntry};
+use super::{BaselineConflict, OpaqueAction, OpaqueEntry, PreviewEntry};
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::merge;
 use crate::merge::validate::validate_baseline;
@@ -46,10 +46,10 @@ pub(super) fn first_three_way(classes: &[ArtifactClass]) -> Option<&ArtifactClas
 /// Per-spec merge or coherence-validation conflicts are aggregated into
 /// a single `Error::Diag { code: "merge-spec-conflicts" }` so callers
 /// can surface every conflict at once instead of bailing on the first.
-pub(super) fn plan_three_way(
+pub(super) fn three_way(
     slice_dir: &Path, classes: &[ArtifactClass],
-) -> Result<Vec<MergePreviewEntry>, Error> {
-    let mut merged: Vec<MergePreviewEntry> = Vec::new();
+) -> Result<Vec<PreviewEntry>, Error> {
+    let mut merged: Vec<PreviewEntry> = Vec::new();
     let mut aborts: Vec<String> = Vec::new();
     let mut composition_handled = false;
 
@@ -125,7 +125,7 @@ fn list_delta_specs(class: &ArtifactClass) -> Result<Vec<DeltaSpecRef>, Error> {
 
 fn merge_delta_spec(
     class: &ArtifactClass, spec: &DeltaSpecRef,
-) -> Result<Result<MergePreviewEntry, Vec<String>>, Error> {
+) -> Result<Result<PreviewEntry, Vec<String>>, Error> {
     let delta_text = crate::fs::read_text(&spec.delta_path)?;
     let baseline_text = read_optional_file(&spec.baseline_path)?;
 
@@ -161,7 +161,7 @@ fn merge_delta_spec(
         return Ok(Err(issues));
     }
 
-    Ok(Ok(MergePreviewEntry {
+    Ok(Ok(PreviewEntry {
         class_name: class.name.clone(),
         name: spec.spec_name.clone(),
         baseline_path: spec.baseline_path.clone(),
@@ -171,7 +171,7 @@ fn merge_delta_spec(
 
 fn merge_composition_delta(
     slice_dir: &Path, class: &ArtifactClass,
-) -> Result<Option<Result<MergePreviewEntry, String>>, Error> {
+) -> Result<Option<Result<PreviewEntry, String>>, Error> {
     let composition_delta_path = slice_dir.join(COMPOSITION_FILENAME);
     if !composition_delta_path.is_file() {
         return Ok(None);
@@ -181,7 +181,7 @@ fn merge_composition_delta(
     let baseline_text = read_optional_file(&baseline_path)?;
 
     match crate::merge::composition::merge(baseline_text.as_deref(), &delta_text) {
-        Ok(comp_result) => Ok(Some(Ok(MergePreviewEntry {
+        Ok(comp_result) => Ok(Some(Ok(PreviewEntry {
             class_name: class.name.clone(),
             name: "composition".to_string(),
             baseline_path,
@@ -268,8 +268,8 @@ fn count_requirement_headings(text: &str) -> usize {
 /// and report each file that would be promoted, paired with whether
 /// its baseline counterpart already exists ([`OpaqueAction::Replaced`])
 /// or is brand new ([`OpaqueAction::Added`]).
-pub(super) fn preview_opaque(classes: &[ArtifactClass]) -> Result<Vec<OpaquePreviewEntry>, Error> {
-    let mut entries: Vec<OpaquePreviewEntry> = Vec::new();
+pub(super) fn preview_opaque(classes: &[ArtifactClass]) -> Result<Vec<OpaqueEntry>, Error> {
+    let mut entries: Vec<OpaqueEntry> = Vec::new();
     for class in classes.iter().filter(|c| matches!(c.strategy, MergeStrategy::OpaqueReplace)) {
         if !class.staged_dir.is_dir() {
             continue;
@@ -291,7 +291,7 @@ pub(super) fn preview_opaque(classes: &[ArtifactClass]) -> Result<Vec<OpaquePrev
 
 fn collect_opaque_entries(
     base: &Path, current: &Path, baseline_dir: &Path, class_name: &str,
-    entries: &mut Vec<OpaquePreviewEntry>,
+    entries: &mut Vec<OpaqueEntry>,
 ) -> Result<(), Error> {
     for entry in crate::fs::dir_entries(current)? {
         let path = entry.path();
@@ -310,7 +310,7 @@ fn collect_opaque_entries(
             let baseline_path = baseline_dir.join(relative);
             let action =
                 if baseline_path.is_file() { OpaqueAction::Replaced } else { OpaqueAction::Added };
-            entries.push(OpaquePreviewEntry {
+            entries.push(OpaqueEntry {
                 class_name: class_name.to_string(),
                 relative_path: relative.to_string_lossy().to_string(),
                 action,

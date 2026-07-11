@@ -14,7 +14,7 @@ fn write_decision(path: &Path, frontmatter: &str) {
 }
 
 #[tokio::test]
-async fn orphan_supersede_is_reported() {
+async fn orphan_supersede_reported() {
     let project = Project::initialised();
     let decisions = project.root.join(".specify/slices/demo/decisions");
     fs::create_dir_all(&decisions).expect("create slice decisions");

@@ -85,11 +85,13 @@ pub struct DisagreementValue {
 /// authority resolution at the workflow default ordering.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
-pub struct SliceAuthorityOverride {
+pub struct AuthorityOverride {
     /// Inner map. `BTreeMap` for byte-stable diffs on serialise.
     pub by_kind: BTreeMap<ClaimKind, String>,
 }
 
-pub(super) fn slice_authority_override_is_empty(o: &SliceAuthorityOverride) -> bool {
-    o.by_kind.is_empty()
+impl AuthorityOverride {
+    pub(super) fn is_empty(&self) -> bool {
+        self.by_kind.is_empty()
+    }
 }

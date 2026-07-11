@@ -22,7 +22,7 @@ fn keys<const N: usize>(items: [&str; N]) -> BTreeSet<String> {
 /// requirement with the expected sources/status/tag and validates cleanly
 /// against its declared source keys. `multi-block.md` is asserted separately.
 #[test]
-fn parses_worked_example_blocks() {
+fn worked_example_blocks() {
     struct Case {
         body: &'static str,
         // Asserted exactly when `Some`; the conflict fixture only pins its
@@ -89,7 +89,7 @@ fn parses_worked_example_blocks() {
 }
 
 #[test]
-fn parses_multi_block_document() {
+fn multi_block_document() {
     let parsed = parse_spec_md(fixture!("multi-block.md"));
     assert!(parsed.findings.is_empty(), "{:?}", parsed.findings);
     assert_eq!(parsed.requirements.len(), 2);
@@ -202,7 +202,7 @@ fn unannotated_file_is_skipped() {
 }
 
 #[test]
-fn empty_input_parses_to_empty_spec() {
+fn empty_input_empty_spec() {
     let parsed = parse_spec_md("");
     assert!(parsed.requirements.is_empty());
     assert!(parsed.findings.is_empty());

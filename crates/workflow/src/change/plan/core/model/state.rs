@@ -5,9 +5,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::reconciliation::{
-    Disagreement, Divergence, SliceAuthorityOverride, slice_authority_override_is_empty,
-};
+use super::reconciliation::{AuthorityOverride, Disagreement, Divergence};
 use super::source::{SliceSourceBinding, SourceBinding};
 use crate::name::{PlanName, SliceName};
 
@@ -179,8 +177,8 @@ pub struct Entry {
     /// orphan keys are rejected by `specify slice validate` with
     /// `slice-authority-override-orphan-source`. Empty map and
     /// missing field are equivalent.
-    #[serde(default, skip_serializing_if = "slice_authority_override_is_empty")]
-    pub authority_override: SliceAuthorityOverride,
+    #[serde(default, skip_serializing_if = "AuthorityOverride::is_empty")]
+    pub authority_override: AuthorityOverride,
 }
 
 impl Plan {

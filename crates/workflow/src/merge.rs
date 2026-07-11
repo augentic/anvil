@@ -11,6 +11,5 @@ mod validate;
 pub use artifact_class::{MergeStrategy, artifact_classes};
 pub use engine::MergeOperation;
 pub use slice::{
-    BaselineConflict, MergeCommit, MergePreviewEntry, OpaqueAction, conflict_check,
-    summarise_operations,
+    BaselineConflict, MergeCommit, OpaqueAction, PreviewEntry, conflict_check, summarise_operations,
 };

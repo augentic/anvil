@@ -113,81 +113,91 @@ fn stage_registry(root: &Path) {
     .expect("stage registry.yaml");
 }
 
-#[tokio::test]
-async fn get_serves_json_body() {
-    let project = Project::initialised();
-    stage_registry(&project.root);
-    let request = Request::builder()
-        .method(Method::GET)
-        .uri("/registry/validate")
-        .body(Body::empty())
-        .expect("build request");
-    let (status, value) = send(project.router(), request).await;
-    assert_eq!(status, StatusCode::OK, "staged catalogue validates: {value}");
+mod routing {
+    use super::*;
+
+    #[tokio::test]
+    async fn get_json_body() {
+        let project = Project::initialised();
+        stage_registry(&project.root);
+        let request = Request::builder()
+            .method(Method::GET)
+            .uri("/registry/validate")
+            .body(Body::empty())
+            .expect("build request");
+        let (status, value) = send(project.router(), request).await;
+        assert_eq!(status, StatusCode::OK, "staged catalogue validates: {value}");
+    }
+
+    #[tokio::test]
+    async fn post_body_reaches_operation() {
+        let project = Project::initialised();
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/registry")
+            .header(omnia_guest::http::header::CONTENT_TYPE, "application/json")
+            .body(Body::from(r#"{"name":"alpha","url":"git@example.com:org/alpha.git"}"#))
+            .expect("build request");
+        let (status, value) = send(project.router(), request).await;
+        assert_eq!(status, StatusCode::OK, "add lands: {value}");
+        let registry =
+            fs::read_to_string(project.root.join("registry.yaml")).expect("registry.yaml");
+        assert!(registry.contains("name: alpha"), "the add landed:\n{registry}");
+    }
+
+    #[tokio::test]
+    async fn path_param_reaches_operation() {
+        let project = Project::initialised();
+        stage_registry(&project.root);
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/registry/alpha/remove")
+            .body(Body::empty())
+            .expect("build request");
+        let (status, value) = send(project.router(), request).await;
+        assert_eq!(status, StatusCode::OK, "remove lands: {value}");
+        let registry =
+            fs::read_to_string(project.root.join("registry.yaml")).expect("registry.yaml");
+        assert!(!registry.contains("name: alpha"), "the remove landed:\n{registry}");
+    }
 }
 
-#[tokio::test]
-async fn post_body_reaches_operation() {
-    let project = Project::initialised();
-    let request = Request::builder()
-        .method(Method::POST)
-        .uri("/registry")
-        .header(omnia_guest::http::header::CONTENT_TYPE, "application/json")
-        .body(Body::from(r#"{"name":"alpha","url":"git@example.com:org/alpha.git"}"#))
-        .expect("build request");
-    let (status, value) = send(project.router(), request).await;
-    assert_eq!(status, StatusCode::OK, "add lands: {value}");
-    let registry = fs::read_to_string(project.root.join("registry.yaml")).expect("registry.yaml");
-    assert!(registry.contains("name: alpha"), "the add landed:\n{registry}");
-}
+mod errors {
+    use super::*;
 
-#[tokio::test]
-async fn path_param_reaches_operation() {
-    let project = Project::initialised();
-    stage_registry(&project.root);
-    let request = Request::builder()
-        .method(Method::POST)
-        .uri("/registry/alpha/remove")
-        .body(Body::empty())
-        .expect("build request");
-    let (status, value) = send(project.router(), request).await;
-    assert_eq!(status, StatusCode::OK, "remove lands: {value}");
-    let registry = fs::read_to_string(project.root.join("registry.yaml")).expect("registry.yaml");
-    assert!(!registry.contains("name: alpha"), "the remove landed:\n{registry}");
-}
+    #[tokio::test]
+    async fn taxonomy_failure_envelope() {
+        let project = Project::initialised();
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/archive/prune")
+            .body(Body::empty())
+            .expect("build request");
+        let (status, value) = send(project.router(), request).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "argument failure is 422: {value}");
+    }
 
-#[tokio::test]
-async fn taxonomy_failure_maps_to_error_envelope() {
-    let project = Project::initialised();
-    let request = Request::builder()
-        .method(Method::POST)
-        .uri("/archive/prune")
-        .body(Body::empty())
-        .expect("build request");
-    let (status, value) = send(project.router(), request).await;
-    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "argument failure is 422: {value}");
-}
-
-#[tokio::test]
-async fn missing_required_field_is_unprocessable() {
-    let project = Project::initialised();
-    let request = Request::builder()
-        .method(Method::POST)
-        .uri("/registry")
-        .body(Body::from(r#"{"name":"alpha"}"#))
-        .expect("build request");
-    let (status, value) = send(project.router(), request).await;
-    assert_eq!(
-        status,
-        StatusCode::UNPROCESSABLE_ENTITY,
-        "a body missing `url` is refused at extraction"
-    );
-    assert_eq!(
-        value["error"], "invalid-request",
-        "decode failures render the Specify envelope: {value}"
-    );
-    assert!(
-        value["message"].as_str().is_some_and(|message| message.contains("url")),
-        "the decode message names the missing field: {value}"
-    );
+    #[tokio::test]
+    async fn missing_required_field_unprocessable() {
+        let project = Project::initialised();
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri("/registry")
+            .body(Body::from(r#"{"name":"alpha"}"#))
+            .expect("build request");
+        let (status, value) = send(project.router(), request).await;
+        assert_eq!(
+            status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "a body missing `url` is refused at extraction"
+        );
+        assert_eq!(
+            value["error"], "invalid-request",
+            "decode failures render the Specify envelope: {value}"
+        );
+        assert!(
+            value["message"].as_str().is_some_and(|message| message.contains("url")),
+            "the decode message names the missing field: {value}"
+        );
+    }
 }

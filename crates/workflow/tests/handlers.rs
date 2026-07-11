@@ -29,7 +29,7 @@ mod registry {
     use super::*;
 
     #[tokio::test]
-    async fn add_mints_registry() {
+    async fn add_mints_file() {
         let project = Project::initialised();
         let body = run::<workflow::registry::handlers::Add, _>(
             &project,
@@ -49,7 +49,7 @@ mod registry {
     }
 
     #[tokio::test]
-    async fn duplicate_add_fails() {
+    async fn duplicate_add_errors() {
         let project = Project::initialised();
         stage_registry(&project.root);
         let err = run::<workflow::registry::handlers::Add, _>(
@@ -70,7 +70,7 @@ mod registry {
     }
 
     #[tokio::test]
-    async fn validate_staged_catalogue() {
+    async fn staged_catalogue_validates() {
         let project = Project::initialised();
         stage_registry(&project.root);
         run::<workflow::registry::handlers::Validate, _>(
@@ -85,7 +85,7 @@ mod registry {
     /// `specify init` — it anchors on the invocation root and must not
     /// demand `.specify/project.yaml`.
     #[tokio::test]
-    async fn validate_runs_pre_init() {
+    async fn validate_pre_init() {
         let project = Project::bare();
         stage_registry(&project.root);
         run::<workflow::registry::handlers::Validate, _>(

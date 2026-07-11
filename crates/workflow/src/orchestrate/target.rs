@@ -6,7 +6,7 @@ use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
 
-use super::{seam_failure, target_adapter_id};
+use super::{seam_failure, target_id};
 use crate::adapter::{AdapterRef, TargetAdapter};
 use crate::config::Layout;
 use crate::journal::{self, EventKind};
@@ -22,13 +22,9 @@ use crate::slice::{
 /// finding count.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildOutcome {
-    /// Slice that was built.
     pub slice: String,
-    /// Adapter that produced the report (e.g. `omnia@1.0.0`).
     pub target: String,
-    /// `success` (a failure report aborts before this is returned).
     pub status: BuildStatus,
-    /// Count of (non-blocking) findings on the report.
     pub findings: usize,
 }
 
@@ -51,17 +47,10 @@ pub struct BuildOutcome {
 ///
 /// # Errors
 ///
-/// - `target-build-adapter-mismatch` when the slice's recorded target
+/// Refuses with `target-build-adapter-mismatch` when the slice's recorded target
 ///   names a different adapter than `adapter`.
-/// - propagates `metadata.yaml` load and request assembly/validation
-///   failures (`target-build-input-missing`,
-///   `target-build-request-schema`).
-/// - `seam-dispatch-failed` when the seam dispatch fails.
-/// - `target-build-report-schema` /
-///   `target-build-report-slice-mismatch` /
-///   `target-build-success-with-blocking-finding` /
-///   `target-build-output-missing` / `target-build-failed` and the
-///   `lifecycle` gate error from the finalize tail.
+/// Dispatch and finalize failures retain their seam, report, output, or
+/// lifecycle diagnostics.
 pub async fn build(
     seam: &impl TargetSeam, layout: Layout<'_>, now: Timestamp, slice: &str,
     adapter: &TargetAdapter, tree: WorkingTree,
@@ -104,7 +93,7 @@ pub async fn build(
         EventKind::SliceBuildStarted {
             slice_name: slice.into(),
         },
-        dispatch_and_finalize(seam, layout, now, slice, &slice_dir, &target_name, &request, tree),
+        finalize(seam, layout, now, slice, &slice_dir, &target_name, &request, tree),
         |_| EventKind::SliceBuildSucceeded {
             slice_name: slice.into(),
         },
@@ -120,12 +109,12 @@ pub async fn build(
 /// returned report. Wrapped by [`build`] so the `slice.build.*` pair
 /// brackets it.
 #[expect(clippy::too_many_arguments, reason = "internal seam-dispatch kernel; callers use `build`")]
-async fn dispatch_and_finalize(
+async fn finalize(
     seam: &impl TargetSeam, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
     target_name: &str, request: &BuildRequest, tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
     let inputs = read_inputs(request)?;
-    let id = target_adapter_id(target_name);
+    let id = target_id(target_name);
     let report = seam
         .build(id.clone(), slice.to_string(), inputs, tree)
         .await
@@ -207,7 +196,6 @@ fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
     Ok(inputs)
 }
 
-/// Read one slice-tree artifact body.
 fn read_artifact(root: &Path, relative: &str) -> Result<String, Error> {
     crate::fs::read_text(&root.join(relative))
 }

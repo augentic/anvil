@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::markers::{
     TomlMarker, parse_go_version, parse_make_targets, relative_marker_path, strip_json_comments,
 };
-use super::{CommandDetection, Detection, DetectionWarning, LintDetection, RuntimeDetection};
+use super::{Command, Detection, Lint, Runtime, Warning};
 
 /// Run every root-marker pass over `project_dir` and return the sorted,
 /// byte-stable [`Detection`]. Unreadable markers become warnings, never
@@ -65,14 +65,12 @@ impl<'a> Detector<'a> {
             Some(channel) if !channel.is_empty() => format!("Rust (toolchain `{channel}`)"),
             _ => "Rust".to_string(),
         };
-        self.detection.runtimes.push(RuntimeDetection::new("rust", label));
-        self.detection.tests.push(CommandDetection::new("rust", "cargo test"));
+        self.detection.runtimes.push(Runtime::new("rust", label));
+        self.detection.tests.push(Command::new("rust", "cargo test"));
 
         let clippy_path = self.project_dir.join("clippy.toml");
         if clippy_path.is_file() && self.parse_toml_marker(&clippy_path).is_some() {
-            self.detection
-                .linting
-                .push(LintDetection::Command(CommandDetection::new("rust-clippy", "cargo clippy")));
+            self.detection.linting.push(Lint::Command(Command::new("rust-clippy", "cargo clippy")));
         }
     }
 
@@ -91,16 +89,14 @@ impl<'a> Detector<'a> {
             || "Node.js".to_string(),
             |version| format!("Node.js (engines.node `{version}`)"),
         );
-        self.detection.runtimes.push(RuntimeDetection::new("node", label));
+        self.detection.runtimes.push(Runtime::new("node", label));
 
         let scripts = package.get("scripts").and_then(Value::as_object);
         if scripts.and_then(|scripts| scripts.get("test")).and_then(Value::as_str).is_some() {
-            self.detection.tests.push(CommandDetection::new("node", "npm test"));
+            self.detection.tests.push(Command::new("node", "npm test"));
         }
         if scripts.and_then(|scripts| scripts.get("lint")).and_then(Value::as_str).is_some() {
-            self.detection
-                .linting
-                .push(LintDetection::Command(CommandDetection::new("node-lint", "npm run lint")));
+            self.detection.linting.push(Lint::Command(Command::new("node-lint", "npm run lint")));
         }
     }
 
@@ -112,21 +108,19 @@ impl<'a> Detector<'a> {
         if pyproject_detected {
             self.detection
                 .runtimes
-                .push(RuntimeDetection::new("python", "Python (pyproject.toml)".to_string()));
+                .push(Runtime::new("python", "Python (pyproject.toml)".to_string()));
         } else if requirements_path.is_file() {
             if self.read_marker(&requirements_path).is_none() {
                 return;
             }
             self.detection
                 .runtimes
-                .push(RuntimeDetection::new("python", "Python (requirements.txt)".to_string()));
+                .push(Runtime::new("python", "Python (requirements.txt)".to_string()));
         }
 
         let ruff_path = self.project_dir.join("ruff.toml");
         if ruff_path.is_file() && self.parse_toml_marker(&ruff_path).is_some() {
-            self.detection
-                .linting
-                .push(LintDetection::Command(CommandDetection::new("ruff", "ruff check")));
+            self.detection.linting.push(Lint::Command(Command::new("ruff", "ruff check")));
         }
     }
 
@@ -140,8 +134,8 @@ impl<'a> Detector<'a> {
         };
         let version = parse_go_version(&contents);
         let label = version.map_or_else(|| "Go".to_string(), |version| format!("Go {version}"));
-        self.detection.runtimes.push(RuntimeDetection::new("go", label));
-        self.detection.tests.push(CommandDetection::new("go", "go test ./..."));
+        self.detection.runtimes.push(Runtime::new("go", label));
+        self.detection.tests.push(Command::new("go", "go test ./..."));
     }
 
     fn detect_deno(&mut self) {
@@ -156,20 +150,17 @@ impl<'a> Detector<'a> {
             return;
         };
 
-        self.detection.runtimes.push(RuntimeDetection::new("deno", "Deno".to_string()));
+        self.detection.runtimes.push(Runtime::new("deno", "Deno".to_string()));
         let tasks = config.get("tasks").and_then(Value::as_object);
         if tasks.and_then(|tasks| tasks.get("test")).and_then(Value::as_str).is_some() {
-            self.detection.tests.push(CommandDetection::new("deno", "deno task test"));
+            self.detection.tests.push(Command::new("deno", "deno task test"));
         }
         if tasks.and_then(|tasks| tasks.get("lint")).and_then(Value::as_str).is_some() {
-            self.detection.linting.push(LintDetection::Command(CommandDetection::new(
-                "deno-lint-task",
-                "deno task lint",
-            )));
-        } else if config.get("lint").is_some() {
             self.detection
                 .linting
-                .push(LintDetection::Command(CommandDetection::new("deno-lint", "deno lint")));
+                .push(Lint::Command(Command::new("deno-lint-task", "deno task lint")));
+        } else if config.get("lint").is_some() {
+            self.detection.linting.push(Lint::Command(Command::new("deno-lint", "deno lint")));
         }
     }
 
@@ -183,12 +174,10 @@ impl<'a> Detector<'a> {
         };
         let targets = parse_make_targets(&contents);
         if targets.has_test {
-            self.detection.tests.push(CommandDetection::new("make-test", "make test"));
+            self.detection.tests.push(Command::new("make-test", "make test"));
         }
         if targets.has_checks {
-            self.detection
-                .linting
-                .push(LintDetection::Command(CommandDetection::new("make-checks", "make checks")));
+            self.detection.linting.push(Lint::Command(Command::new("make-checks", "make checks")));
         }
     }
 
@@ -219,7 +208,7 @@ impl<'a> Detector<'a> {
         else {
             return;
         };
-        self.detection.linting.push(LintDetection::Workflow(name.to_string()));
+        self.detection.linting.push(Lint::Workflow(name.to_string()));
     }
 
     fn parse_json_marker(&mut self, path: &Path) -> Option<Value> {
@@ -291,7 +280,7 @@ impl<'a> Detector<'a> {
     }
 
     fn warn(&mut self, path: &Path, message: String) {
-        self.detection.warnings.push(DetectionWarning {
+        self.detection.warnings.push(Warning {
             path: relative_marker_path(self.project_dir, path),
             message,
         });

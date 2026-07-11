@@ -15,7 +15,7 @@ mod state;
 mod target;
 
 pub use patch::{EntryPatch, Patch};
-pub use reconciliation::{Disagreement, DisagreementValue, Divergence, SliceAuthorityOverride};
+pub use reconciliation::{AuthorityOverride, Disagreement, DisagreementValue, Divergence};
 pub use source::{SliceSourceBinding, SourceBinding};
 pub use state::{Entry, Lifecycle, Plan, Status};
 pub use target::TargetRef;

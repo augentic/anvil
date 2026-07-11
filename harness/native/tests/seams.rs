@@ -33,7 +33,7 @@ fn model(answers: impl IntoIterator<Item = &'static str>) -> Harness<Scripted> {
 }
 
 #[tokio::test]
-async fn survey_dispatches_to_intent() {
+async fn survey_dispatches_intent() {
     let tmp = TempDir::new().expect("tempdir");
     let model =
         model([r#"{"leads":[{"lead":"password-reset","synopsis":"Let users reset passwords."}]}"#]);
@@ -46,7 +46,7 @@ async fn survey_dispatches_to_intent() {
 }
 
 #[tokio::test]
-async fn extract_projects_claim_json() {
+async fn extract_claim_json_projection() {
     let tmp = TempDir::new().expect("tempdir");
     let model = model([
         r#"{"authority":"intent","claims":[{"kind":"intent","id":"password-reset","statement":"Let users reset passwords."}]}"#,
@@ -65,7 +65,7 @@ async fn extract_projects_claim_json() {
 }
 
 #[tokio::test]
-async fn mcp_base_grants_reference_url() {
+async fn mcp_base_reference_grant() {
     let tmp = TempDir::new().expect("tempdir");
     let model = model([r#"{"leads":[]}"#]);
     let provider = Provider::new(tmp.path(), model).mcp_base("http://127.0.0.1:7737".to_string());
@@ -80,7 +80,7 @@ async fn mcp_base_grants_reference_url() {
 }
 
 #[tokio::test]
-async fn guidance_serves_embedded_prompts() {
+async fn guidance_embedded_prompts() {
     let tmp = TempDir::new().expect("tempdir");
     let provider = Provider::new(tmp.path(), model([]));
 
@@ -93,7 +93,7 @@ async fn guidance_serves_embedded_prompts() {
 }
 
 #[tokio::test]
-async fn build_widens_report() {
+async fn build_report_widened() {
     let tmp = TempDir::new().expect("tempdir");
     let model = model([
         r#"{"applicable":true,"summary":"generation complete"}"#,
@@ -132,7 +132,7 @@ async fn unlinked_adapter_refused() {
 }
 
 #[test]
-fn metadata_answers_both_axes() {
+fn metadata_both_axes() {
     let source = metadata(&MetadataRequest {
         axis: Axis::Source,
         adapter_id: "source:intent",
@@ -157,7 +157,7 @@ fn metadata_answers_both_axes() {
 }
 
 #[tokio::test]
-async fn catalog_table_dispatches_every_entry() {
+async fn catalog_dispatches_every_entry() {
     // Table-driven proof over the declarative linked-adapter table:
     // every declared entry resolves on its own axis, refuses the
     // opposite axis, and dispatches its operation set — `survey` for
@@ -212,7 +212,7 @@ async fn catalog_table_dispatches_every_entry() {
 }
 
 #[test]
-fn resolver_uses_linked_catalog() {
+fn resolver_linked_catalog() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = Provider::new(tmp.path(), model([]));
 

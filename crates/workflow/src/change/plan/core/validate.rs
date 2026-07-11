@@ -3,7 +3,7 @@
 //! checks first, then consistency checks against the registry.
 //!
 //! Every check emits a neutral [`schema::diagnostics::Diagnostic`] via
-//! [`plan_finding`]: the stable check code becomes the `rule_id`, the
+//! [`finding`]: the stable check code becomes the `rule_id`, the
 //! offending plan entry (when present) populates `slice`, an `error`
 //! maps to a blocking `important` violation, and a `warning` maps to a
 //! non-blocking `suggestion`.
@@ -30,7 +30,7 @@ use crate::registry::Registry;
 /// [`Severity::Important`] for a blocking structural error and
 /// [`Severity::Suggestion`] for a non-blocking advisory.
 #[must_use]
-pub fn plan_finding(
+pub fn finding(
     code: &'static str, severity: Severity, message: impl Into<String>, entry: Option<String>,
 ) -> Diagnostic {
     let message = message.into();
@@ -49,18 +49,18 @@ pub fn plan_finding(
     diagnostic
 }
 
-/// As [`plan_finding`], but attaches a structured-evidence payload.
+/// As [`finding`], but attaches a structured-evidence payload.
 ///
 /// A health check carries its machine-readable data (the cycle path, the
 /// orphan source key, the stale-clone signatures) onto the neutral
 /// currency without loss. The fingerprint is recomputed after both
 /// `slice` and the structured evidence are set.
 #[must_use]
-pub fn plan_finding_structured(
+pub fn structured_finding(
     code: &'static str, severity: Severity, message: impl Into<String>, entry: Option<String>,
     summary: impl Into<String>, data: serde_json::Value,
 ) -> Diagnostic {
-    let mut diagnostic = plan_finding(code, severity, message, entry);
+    let mut diagnostic = finding(code, severity, message, entry);
     diagnostic.evidence = FindingEvidence::Structured {
         summary: summary.into(),
         data,
@@ -94,16 +94,16 @@ impl Plan {
     ) -> Vec<Diagnostic> {
         let mut results = Vec::new();
         results.extend(duplicate_names(&self.entries));
-        results.extend(check_unknown_depends_on(&self.entries));
-        results.extend(check_unknown_sources(self));
-        results.extend(check_duplicate_source_keys(&self.entries));
-        results.extend(check_single_in_progress(&self.entries));
-        results.extend(check_context_paths(&self.entries));
+        results.extend(unknown_depends_on(&self.entries));
+        results.extend(unknown_sources(self));
+        results.extend(duplicate_source_keys(&self.entries));
+        results.extend(single_in_progress(&self.entries));
+        results.extend(context_paths(&self.entries));
         results.extend(orphan_authority_override_keys(&self.entries));
-        results.extend(check_divergence_consistency(&self.entries));
+        results.extend(divergence_consistency(&self.entries));
         if let Some(reg) = registry {
-            results.extend(check_project_in_registry(&self.entries, reg));
-            results.extend(check_project_binding_required(&self.entries, reg));
+            results.extend(project_in_registry(&self.entries, reg));
+            results.extend(project_binding_required(&self.entries, reg));
         }
         if let Some(dir) = slices_dir.filter(|d| d.is_dir()) {
             results.extend(slices_dir_consistency(self, dir));
@@ -117,7 +117,7 @@ fn duplicate_names(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in changes {
         if !seen.insert(entry.name.as_str()) {
-            out.push(plan_finding(
+            out.push(finding(
                 "duplicate-name",
                 Severity::Important,
                 format!("duplicate plan entry name '{}'", entry.name),
@@ -133,7 +133,7 @@ fn duplicate_names(changes: &[Entry]) -> Vec<Diagnostic> {
 /// Every entry becomes a node (in declaration order). For each
 /// `entry.depends_on` target that names another entry, an edge runs
 /// from the dependency node to `entry`.
-pub fn entry_dependency_graph(entries: &[Entry]) -> DiGraph<&str, ()> {
+pub fn dependency_graph(entries: &[Entry]) -> DiGraph<&str, ()> {
     let mut graph: DiGraph<&str, ()> = DiGraph::new();
     let mut idx = HashMap::new();
     for entry in entries {
@@ -151,13 +151,13 @@ pub fn entry_dependency_graph(entries: &[Entry]) -> DiGraph<&str, ()> {
     graph
 }
 
-fn check_unknown_depends_on(changes: &[Entry]) -> Vec<Diagnostic> {
+fn unknown_depends_on(changes: &[Entry]) -> Vec<Diagnostic> {
     let known: HashSet<&str> = changes.iter().map(|c| c.name.as_str()).collect();
     let mut out = Vec::new();
     for entry in changes {
         for target in &entry.depends_on {
             if !known.contains(target.as_str()) {
-                out.push(plan_finding(
+                out.push(finding(
                     "unknown-depends-on",
                     Severity::Important,
                     format!("depends-on references unknown slice '{target}'"),
@@ -169,13 +169,13 @@ fn check_unknown_depends_on(changes: &[Entry]) -> Vec<Diagnostic> {
     out
 }
 
-fn check_unknown_sources(plan: &Plan) -> Vec<Diagnostic> {
+fn unknown_sources(plan: &Plan) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in &plan.entries {
         for binding in &entry.sources {
             let key = binding.source();
             if !plan.sources.contains_key(key) {
-                out.push(plan_finding(
+                out.push(finding(
                     "unknown-source",
                     Severity::Important,
                     format!("sources references unknown source key '{key}'"),
@@ -193,14 +193,14 @@ fn check_unknown_sources(plan: &Plan) -> Vec<Diagnostic> {
 /// rejects this shape at projection
 /// (`plan-reconcile-slice-source-collision`); this check catches plans
 /// reshaped after propose (e.g. via `plan amend`).
-fn check_duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
+fn duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in changes {
         let mut seen: HashSet<&str> = HashSet::new();
         for binding in &entry.sources {
             let key = binding.source();
             if !seen.insert(key) {
-                out.push(plan_finding(
+                out.push(finding(
                     "duplicate-source-key",
                     Severity::Important,
                     format!("slice '{}' binds source key '{key}' more than once", entry.name),
@@ -214,7 +214,7 @@ fn check_duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 
 /// Post-mutation duplicate-source-key gate.
 ///
-/// Runs `check_duplicate_source_keys` over `plan` and short-circuits
+/// Runs `duplicate_source_keys` over `plan` and short-circuits
 /// the CLI write with a single `Error::Validation` (exit 2) when any
 /// finding fires. The additive `plan amend --add-source` path mutates
 /// entry sources after [`Plan::amend`]'s own validate-and-rollback gate
@@ -227,9 +227,9 @@ fn check_duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 /// Returns `Error::Validation` (`duplicate-source-key`) when at least
 /// one slice binds the same source key more than once.
 pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
-    let findings: Vec<_> = check_duplicate_source_keys(&plan.entries)
+    let findings: Vec<_> = duplicate_source_keys(&plan.entries)
         .into_iter()
-        .filter(schema::diagnostics::blocking)
+        .filter(schema::diagnostics::is_blocking)
         .collect();
     let Some(first) = findings.first() else {
         return Ok(());
@@ -241,7 +241,7 @@ pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
     })
 }
 
-fn check_single_in_progress(changes: &[Entry]) -> Vec<Diagnostic> {
+fn single_in_progress(changes: &[Entry]) -> Vec<Diagnostic> {
     let offenders: Vec<&Entry> =
         changes.iter().filter(|c| c.status == Status::InProgress).collect();
     if offenders.len() <= 1 {
@@ -250,7 +250,7 @@ fn check_single_in_progress(changes: &[Entry]) -> Vec<Diagnostic> {
     offenders
         .into_iter()
         .map(|c| {
-            plan_finding(
+            finding(
                 "multiple-in-progress",
                 Severity::Important,
                 "multiple in-progress entries: at most one allowed per plan",
@@ -260,14 +260,14 @@ fn check_single_in_progress(changes: &[Entry]) -> Vec<Diagnostic> {
         .collect()
 }
 
-fn check_project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
+fn project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
     let project_names: HashSet<&str> = registry.projects.iter().map(|p| p.name.as_str()).collect();
     let mut out = Vec::new();
     for entry in changes {
         if let Some(project) = &entry.project
             && !project_names.contains(project.as_str())
         {
-            out.push(plan_finding(
+            out.push(finding(
                 "project-not-in-registry",
                 Severity::Important,
                 format!(
@@ -290,14 +290,14 @@ fn check_project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diag
 /// The single-regular-project case (no registry) is not reached here —
 /// an omitted `project` there always resolves to the sole synthesised
 /// project.
-fn check_project_binding_required(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
+fn project_binding_required(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
     if registry.projects.len() <= 1 {
         return Vec::new();
     }
     let mut out = Vec::new();
     for entry in changes {
         if entry.project.is_none() {
-            out.push(plan_finding(
+            out.push(finding(
                 "plan-reconcile-project-binding-required",
                 Severity::Important,
                 format!(
@@ -321,7 +321,7 @@ fn check_project_binding_required(changes: &[Entry], registry: &Registry) -> Vec
 /// silently fall through to the default authority. Findings sort
 /// deterministically by slice name (declaration order) then by
 /// claim kind (the `BTreeMap` iteration order on
-/// [`super::model::SliceAuthorityOverride::by_kind`]).
+/// [`super::model::AuthorityOverride::by_kind`]).
 ///
 /// Public for the per-slice helper at `specify slice validate` to
 /// surface only the findings relevant to one slice.
@@ -336,7 +336,7 @@ pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
             entry.sources.iter().map(super::model::SliceSourceBinding::source).collect();
         for (kind, key) in &entry.authority_override.by_kind {
             if !known.contains(key.as_str()) {
-                out.push(plan_finding(
+                out.push(finding(
                     "slice-authority-override-orphan-source",
                     Severity::Important,
                     format!(
@@ -369,7 +369,7 @@ pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 /// write. They surface the inconsistency at `plan validate` / Gate 1.
 /// `rejected` carries no obligation (the plan is to be re-proposed), so
 /// it triggers neither check.
-fn check_divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {
+fn divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in changes {
         let requires_values = entry.divergence.is_some_and(Divergence::requires_values);
@@ -381,7 +381,7 @@ fn check_divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {
                     d.values.iter().map(|v| v.source.as_str()).collect::<HashSet<_>>().len() >= 2
                 });
             if !adequate {
-                out.push(plan_finding(
+                out.push(finding(
                     "slice-divergence-unrecorded",
                     Severity::Suggestion,
                     format!(
@@ -393,7 +393,7 @@ fn check_divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {
                 ));
             }
         } else if unflagged && recorded {
-            out.push(plan_finding(
+            out.push(finding(
                 "slice-divergence-orphan-values",
                 Severity::Suggestion,
                 format!(
@@ -407,12 +407,12 @@ fn check_divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {
     out
 }
 
-fn check_context_paths(changes: &[Entry]) -> Vec<Diagnostic> {
+fn context_paths(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in changes {
         for path in &entry.context {
             if path.starts_with('/') || path.contains("..") {
-                out.push(plan_finding(
+                out.push(finding(
                     "plan.context-path-invalid",
                     Severity::Important,
                     format!(
@@ -449,7 +449,7 @@ fn slices_dir_consistency(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
 
     for name in &dir_names {
         if !declared.contains(name.as_str()) {
-            out.push(plan_finding(
+            out.push(finding(
                 "orphan-slice-dir",
                 Severity::Suggestion,
                 format!("slice directory '{name}' has no plan entry"),
@@ -462,7 +462,7 @@ fn slices_dir_consistency(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
         if entry.status == Status::InProgress {
             let candidate = slices_dir.join(entry.name.as_str());
             if !candidate.is_dir() {
-                out.push(plan_finding(
+                out.push(finding(
                     "missing-slice-dir-for-in-progress",
                     Severity::Suggestion,
                     format!(

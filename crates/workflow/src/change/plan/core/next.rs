@@ -7,7 +7,7 @@ use std::path::Path;
 
 use error::Error;
 use jiff::Timestamp;
-use schema::diagnostics::blocking_present;
+use schema::diagnostics::has_blocking;
 use serde::Serialize;
 
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
@@ -136,7 +136,7 @@ pub fn plan_next_body(
     resolver: &impl Resolver, plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig,
     project_dir: &Path,
 ) -> Result<NextBody, Error> {
-    if blocking_present(&claim_gate(plan, slices_dir)) {
+    if has_blocking(&claim_gate(plan, slices_dir)) {
         return Err(structural_errors());
     }
 

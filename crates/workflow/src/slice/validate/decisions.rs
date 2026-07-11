@@ -13,9 +13,8 @@ use super::path_hint;
 use crate::config::Layout;
 use crate::decisions::{is_dec_ref, list_md_files, read_baseline};
 
-/// Decision Record gate over
-/// `<slice>/decisions/*.md` it raises the per-file findings owned by the
-/// `artifacts` parser — `decision-record-schema`,
+/// Validate `<slice>/decisions/*.md`, raising the per-file findings
+/// owned by the `artifacts` parser — `decision-record-schema`,
 /// `decision-record-section-missing`, `decision-slug-grammar` (the same
 /// parser-drives-findings posture as the `spec.md` provenance parser, so
 /// no JSON schema runs here) — plus the two cross-file checks the parser

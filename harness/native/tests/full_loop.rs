@@ -117,8 +117,6 @@ async fn author_approve_execute_drains() {
     assert_eq!(resolved.location, "native");
     assert_eq!(resolved.resolved_path, "rust:target:omnia");
 
-    // `plan author` — survey through the real intent adapter, the
-    // reconciliation judgment leg, Gate 1 prose — exits at `pending`.
     let authored = run::<plan::handlers::Author, _>(
         &invoker,
         plan::handlers::AuthorInput {
@@ -133,8 +131,6 @@ async fn author_approve_execute_drains() {
     assert_eq!(authored.slices, ["feature-x"]);
     assert!(authored.hint.contains("specify plan transition demo approved"), "{}", authored.hint);
 
-    // Gate 1 — the operator-only stamp, through the same verb the CLI
-    // routes.
     run::<plan::handlers::Transition, _>(
         &invoker,
         plan::handlers::TransitionInput {
@@ -147,8 +143,6 @@ async fn author_approve_execute_drains() {
     .await
     .expect("the operator stamps Gate 1");
 
-    // `plan execute` — the drained refine → build → merge loop over
-    // the real adapter operations.
     let executed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
         .await
         .expect("execute drains the plan");
@@ -164,7 +158,6 @@ async fn author_approve_execute_drains() {
         ]
     );
 
-    // The merge stamped the entry `done` and folded the baseline spec.
     let plan: workflow::change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(project.root().join("plan.yaml")).expect("read plan.yaml"),
     )
@@ -175,8 +168,6 @@ async fn author_approve_execute_drains() {
     assert!(content.contains("ID: REQ-001"), "{content}");
     assert!(content.contains("Sources: intent"), "{content}");
 
-    // Every scripted leg consumed — the real adapters dispatched
-    // exactly the expected judgment cadence.
     let requests = invoker.provider().model().requests();
     assert_eq!(requests.len(), 8, "survey, reconcile, extract, synthesis, and four build legs");
     assert!(requests[4].lend_workspace, "the omnia generation leg lends the workspace");

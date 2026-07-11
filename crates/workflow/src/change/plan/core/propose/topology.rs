@@ -41,14 +41,8 @@ use crate::registry::topology::{Surface, TopologyLock};
 ///
 /// # Errors
 ///
-/// - [`Error::Validation`] (`topology-cache-missing`) when a workspace has no
-///   committed `.specify/topology.lock`.
-/// - [`Error::Validation`] (`plan-propose-project-adapter-missing`) when
-///   a regular `project.yaml` omits `adapter` — a corrupt project that
-///   `specify init` never produces.
-/// - Any error from [`crate::adapter::Resolver::resolve_target`] (`adapter-not-found`,
-///   `adapter-metadata-failed`, …) when the regular project's adapter
-///   cannot be resolved.
+/// A workspace requires a committed topology lock; a regular project
+/// requires a resolvable target adapter. Resolver failures are preserved.
 pub fn resolve_topology(
     resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path,
 ) -> Result<Vec<ProjectRef>> {
@@ -192,7 +186,3 @@ fn regular_topology(
         platforms: config.platforms.clone(),
     })
 }
-
-// The `apply_greenfield_seed` projection is exercised through the crate's
-// public API in `crates/workflow/tests/propose_topology.rs` (seed → empty
-// greenfield surface, seed shadowed by a baseline, absent-seed no-op).

@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
+use omnia::Backend as _;
 use omnia_guest::Model;
 use omnia_guest::model::{Effort, Error, Format, Reply, Request, Role, Tool, Usage};
 use omnia_testkit::model::Replay;
@@ -144,7 +145,7 @@ impl Model for CursorModel {
             .map_err(|err| Error::Backend(err.to_string()))?;
 
         // The same answer gate the host runs after its backends.
-        wire::check_answer(&answer.value, &format).map_err(Error::InvalidAnswer)?;
+        format.check(&answer.value).map_err(Error::InvalidAnswer)?;
         reply(answer)
     }
 }

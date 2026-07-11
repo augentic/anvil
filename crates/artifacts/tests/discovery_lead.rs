@@ -3,7 +3,7 @@
 use artifacts::discovery::lead::Lead;
 
 #[test]
-fn round_trips_optional_topics() {
+fn optional_topics_round_trip() {
     let yaml = r"
 lead: user-registration
 source: legacy-monolith
@@ -17,7 +17,7 @@ topics:
 }
 
 #[test]
-fn defaults_topics_to_empty_when_absent() {
+fn absent_topics_default_empty() {
     let yaml = r"
 lead: user-registration
 source: legacy-monolith
@@ -30,7 +30,7 @@ synopsis: Registration endpoint.
 }
 
 #[test]
-fn serde_rejects_retired_aliases_field() {
+fn retired_aliases_rejected() {
     let yaml = r"
 lead: user-registration
 source: legacy-monolith

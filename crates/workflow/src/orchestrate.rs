@@ -105,12 +105,12 @@ fn seam_failure(operation: &'static str, id: &str, err: &seam::Error) -> Error {
 
 /// The plan-bound adapter id routing a source dispatch
 /// (`source:<adapter>`).
-fn source_adapter_id(adapter: &str) -> String {
+fn source_id(adapter: &str) -> String {
     format!("source:{adapter}")
 }
 
 /// The plan-bound adapter id routing a target dispatch
 /// (`target:<name>`).
-fn target_adapter_id(name: &str) -> String {
+fn target_id(name: &str) -> String {
     format!("target:{name}")
 }

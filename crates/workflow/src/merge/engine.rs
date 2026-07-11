@@ -17,7 +17,7 @@ use serde::Serialize;
 /// used when mutating the underlying block list.
 ///
 /// The `Serialize` derive omits `output` so the type can be `#[serde(flatten)]`-ed
-/// into wire envelopes (e.g. `MergePreviewEntry`) that carry only the
+/// into wire envelopes (e.g. `PreviewEntry`) that carry only the
 /// operations list — the merged text travels separately to disk via
 /// the commit writer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -104,13 +104,13 @@ pub fn merge(baseline: Option<&str>, delta: &str) -> Result<MergeResult, Error> 
     let baseline_text = baseline.unwrap_or("");
     let delta_spec = parse_delta(delta);
     if baseline_text.trim().is_empty() {
-        Ok(merge_into_empty_baseline(delta, &delta_spec))
+        Ok(into_empty(delta, &delta_spec))
     } else {
-        merge_into_existing_baseline(baseline_text, &delta_spec)
+        into_existing(baseline_text, &delta_spec)
     }
 }
 
-fn merge_into_empty_baseline(delta: &str, delta_spec: &DeltaSpec) -> MergeResult {
+fn into_empty(delta: &str, delta_spec: &DeltaSpec) -> MergeResult {
     // `has_delta_headers` uses a full-line match; see
     // `has_delta_headers_requires_full_line_match` in the spec crate.
     if !has_delta_headers(delta) {
@@ -140,9 +140,7 @@ fn merge_into_empty_baseline(delta: &str, delta_spec: &DeltaSpec) -> MergeResult
     MergeResult { output, operations }
 }
 
-fn merge_into_existing_baseline(
-    baseline_text: &str, delta_spec: &DeltaSpec,
-) -> Result<MergeResult, Error> {
+fn into_existing(baseline_text: &str, delta_spec: &DeltaSpec) -> Result<MergeResult, Error> {
     let parsed_baseline = parse_baseline(baseline_text);
     let mut blocks: Vec<Requirement> = parsed_baseline.requirements;
     let preamble = parsed_baseline.preamble;
@@ -178,7 +176,7 @@ fn merge_into_existing_baseline(
     }
 
     Ok(MergeResult {
-        output: assemble_merged_output(&preamble, &blocks, &ids_to_remove),
+        output: assemble_output(&preamble, &blocks, &ids_to_remove),
         operations,
     })
 }
@@ -269,7 +267,7 @@ fn apply_added(
     }
 }
 
-fn assemble_merged_output(
+fn assemble_output(
     preamble: &str, blocks: &[Requirement], ids_to_remove: &HashSet<String>,
 ) -> String {
     let mut parts: Vec<String> = Vec::new();

@@ -23,8 +23,8 @@ pub mod validate;
 
 pub use diagnostic::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticReport, DiagnosticReportVersion,
-    DiagnosticSource, DiagnosticSummary, FindingEvidence, FindingLocation, Severity, blocking,
-    blocking_present, renumber,
+    DiagnosticSource, DiagnosticSummary, FindingEvidence, FindingLocation, Severity, has_blocking,
+    is_blocking, renumber,
 };
 pub use fingerprint::{canonical_json, fingerprint, verify_fingerprint};
 pub use validate::{DiagnosticError, validate_diagnostic};

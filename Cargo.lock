@@ -522,9 +522,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.66"
+version = "1.2.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5d6cac793997bd970000024b2934968efe83b382de4fdcf4fcb46b6ee4ad996"
+checksum = "e17dd265a7d0f31ef544e1b20e03add05d3b45b491b633b10d67145d2acc1a38"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -1577,8 +1577,6 @@ version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
- "allocator-api2",
- "equivalent",
  "foldhash 0.2.0",
 ]
 
@@ -2078,33 +2076,6 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.46.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0a699d3e77675e6aa4bfffe3b907c8b5f7ed3241f9965bffb25475ad4b08d05"
-dependencies = [
- "ahash",
- "bytecount",
- "data-encoding",
- "email_address",
- "fancy-regex",
- "fraction",
- "getrandom 0.3.4",
- "idna",
- "itoa",
- "jsonschema-regex 0.46.10",
- "num-cmp",
- "num-traits",
- "percent-encoding",
- "referencing 0.46.10",
- "regex",
- "serde",
- "serde_json",
- "unicode-general-category",
- "uuid-simd",
-]
-
-[[package]]
-name = "jsonschema"
 version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "281c43ff06dcb331e9356d30e38853d559ce3d0a3f693e0b0e102667dec14fb1"
@@ -2118,25 +2089,16 @@ dependencies = [
  "getrandom 0.3.4",
  "idna",
  "itoa",
- "jsonschema-regex 0.47.0",
+ "jsonschema-regex",
  "num-cmp",
  "num-traits",
  "percent-encoding",
- "referencing 0.47.0",
+ "referencing",
  "regex",
  "serde",
  "serde_json",
  "unicode-general-category",
  "uuid-simd",
-]
-
-[[package]]
-name = "jsonschema-regex"
-version = "0.46.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dbd1086b01b9349fd4ef9a07433965af64c8ce8159abe633a189e4ff817bd13"
-dependencies = [
- "regex-syntax",
 ]
 
 [[package]]
@@ -2467,7 +2429,7 @@ dependencies = [
  "chrono",
  "getrandom 0.2.17",
  "http",
- "rand 0.8.6",
+ "rand 0.8.7",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -2502,6 +2464,7 @@ dependencies = [
 [[package]]
 name = "omnia"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2549,6 +2512,7 @@ dependencies = [
 [[package]]
 name = "omnia-guest"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "axum",
@@ -2579,12 +2543,13 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "wasip3",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-guest-macros"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2594,6 +2559,7 @@ dependencies = [
 [[package]]
 name = "omnia-host-macros"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2603,6 +2569,7 @@ dependencies = [
 [[package]]
 name = "omnia-testkit"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "omnia-guest",
@@ -2612,6 +2579,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-blobstore"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2621,24 +2589,26 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-config"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "omnia 0.35.0",
  "tracing",
  "wasmtime",
  "wasmtime-wasi-config",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-docstore"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2648,12 +2618,13 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-http"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "axum",
@@ -2683,6 +2654,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-identity"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2693,12 +2665,13 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-keyvalue"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2710,12 +2683,13 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-messaging"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "futures",
@@ -2728,18 +2702,19 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-model"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "cap-primitives",
  "cap-std",
  "futures",
- "jsonschema 0.46.10",
+ "jsonschema",
  "omnia 0.35.0",
  "serde",
  "serde_json",
@@ -2748,12 +2723,13 @@ dependencies = [
  "wasip3",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-otel"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -2771,12 +2747,13 @@ dependencies = [
  "tracing-subscriber",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-sql"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -2792,12 +2769,13 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
 name = "omnia-wasi-websocket"
 version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -2812,7 +2790,7 @@ dependencies = [
  "tungstenite",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen 0.58.0",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -2907,7 +2885,7 @@ dependencies = [
  "opentelemetry",
  "percent-encoding",
  "portable-atomic",
- "rand 0.9.4",
+ "rand 0.9.5",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
@@ -3133,7 +3111,7 @@ dependencies = [
  "bit-vec",
  "bitflags 2.13.0",
  "num-traits",
- "rand 0.9.4",
+ "rand 0.9.5",
  "rand_chacha 0.9.0",
  "rand_xorshift",
  "regex-syntax",
@@ -3299,9 +3277,9 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rand"
-version = "0.8.6"
+version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ca0ecfa931c29007047d1bc58e623ab12e5590e8c7cc53200d5202b69266d8a"
+checksum = "22f6172bdec972074665ed81ed53b71da00bfc44b65a753cfde883ec4c702a1a"
 dependencies = [
  "libc",
  "rand_chacha 0.3.1",
@@ -3310,9 +3288,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44c5af06bb1b7d3216d91932aed5265164bf384dc89cd6ba05cf59a35f5f76ea"
+checksum = "b9ef1d0d795eb7d84685bca4f72f3649f064e6641543d3a8c415898726a57b41"
 dependencies = [
  "rand_chacha 0.9.0",
  "rand_core 0.9.5",
@@ -3438,23 +3416,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "referencing"
-version = "0.46.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fbf332a2f81899f6836f22c03da73dae8a664c32e3016b84692c23cddadc95d"
-dependencies = [
- "ahash",
- "fluent-uri",
- "getrandom 0.3.4",
- "hashbrown 0.16.1",
- "itoa",
- "micromap",
- "parking_lot",
- "percent-encoding",
- "serde_json",
 ]
 
 [[package]]
@@ -3836,7 +3797,7 @@ version = "0.27.2"
 dependencies = [
  "base16ct",
  "error",
- "jsonschema 0.47.0",
+ "jsonschema",
  "proptest",
  "serde",
  "serde-saphyr",
@@ -3999,13 +3960,13 @@ dependencies = [
 
 [[package]]
 name = "sha1"
-version = "0.10.7"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a978451301f4db1d02937a4ab3ccce137717b81826e79b7d49ffe3244a13c3b8"
+checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
 dependencies = [
  "cfg-if",
- "cpufeatures 0.2.17",
- "digest 0.10.7",
+ "cpufeatures 0.3.0",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -4515,9 +4476,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f72a05e828585856dacd553fba484c242c46e391fb0e58917c942ee9202915c"
+checksum = "17a073bfed563fa236697a068031408a93cd9522e08abf9933ead3e73411bd71"
 dependencies = [
  "futures-util",
  "log",
@@ -4778,16 +4739,16 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tungstenite"
-version = "0.29.0"
+version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c01152af293afb9c7c2a57e4b559c5620b421f6d133261c60dd2d0cdb38e6b8"
+checksum = "e48ac77174b19c110a50ab2128b24215ac9cb40e0e12e093fb602d175c569d22"
 dependencies = [
  "bytes",
  "data-encoding",
  "http",
  "httparse",
  "log",
- "rand 0.9.4",
+ "rand 0.10.2",
  "sha1",
  "thiserror 2.0.18",
 ]
@@ -4939,7 +4900,7 @@ version = "0.1.0"
 dependencies = [
  "adapter",
  "image",
- "jsonschema 0.47.0",
+ "jsonschema",
  "prose",
  "resvg",
  "serde",
@@ -5103,18 +5064,6 @@ checksum = "59972d6cd272259de647b7c1f1912e45e289c75ffd4be04e10695507cd7e1b59"
 dependencies = [
  "leb128fmt",
  "wasmparser 0.253.0",
-]
-
-[[package]]
-name = "wasm-metadata"
-version = "0.251.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f998ccc6e012f7b86865eb2a106c8a0422017a1a88977ce01a69f2244be2e57"
-dependencies = [
- "anyhow",
- "indexmap",
- "wasm-encoder 0.251.0",
- "wasmparser 0.251.0",
 ]
 
 [[package]]
@@ -5756,35 +5705,13 @@ dependencies = [
 
 [[package]]
 name = "wit-bindgen"
-version = "0.58.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a43552cfa071f246cfd99e5dbb23710dfe7336b3259e09339818483359470749"
-dependencies = [
- "bitflags 2.13.0",
- "futures",
- "wit-bindgen-rust-macro 0.58.0",
-]
-
-[[package]]
-name = "wit-bindgen"
 version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94c5e45f6d4cfaca727c1c48989ab3e05bb289bf84fbad226e1cfbbef2c04b7f"
 dependencies = [
  "bitflags 2.13.0",
  "futures",
- "wit-bindgen-rust-macro 0.59.0",
-]
-
-[[package]]
-name = "wit-bindgen-core"
-version = "0.58.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4738d1c9a78e97bc7f664bfafd5d8e67d7bb26faa5c41e6d628e8bbdad3ec351"
-dependencies = [
- "anyhow",
- "heck",
- "wit-parser 0.251.0",
+ "wit-bindgen-rust-macro",
 ]
 
 [[package]]
@@ -5800,22 +5727,6 @@ dependencies = [
 
 [[package]]
 name = "wit-bindgen-rust"
-version = "0.58.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1130ce1f531bc9f9a75922244aa773bf5e2117fda1ef4a86b9f98d6b8135eb46"
-dependencies = [
- "anyhow",
- "heck",
- "indexmap",
- "prettyplease",
- "syn",
- "wasm-metadata 0.251.0",
- "wit-bindgen-core 0.58.0",
- "wit-component 0.251.0",
-]
-
-[[package]]
-name = "wit-bindgen-rust"
 version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "407ee2b474af1a366766fe91b8255b7935e5e3c3afb9c304e91ac3d154287ff1"
@@ -5825,25 +5736,9 @@ dependencies = [
  "indexmap",
  "prettyplease",
  "syn",
- "wasm-metadata 0.253.0",
- "wit-bindgen-core 0.59.0",
- "wit-component 0.253.0",
-]
-
-[[package]]
-name = "wit-bindgen-rust-macro"
-version = "0.58.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07296369e4d598e7e79b64eef66f724d83324ea671bcf677d78fc5cf92604ae5"
-dependencies = [
- "anyhow",
- "macro-string",
- "prettyplease",
- "proc-macro2",
- "quote",
- "syn",
- "wit-bindgen-core 0.58.0",
- "wit-bindgen-rust 0.58.0",
+ "wasm-metadata",
+ "wit-bindgen-core",
+ "wit-component",
 ]
 
 [[package]]
@@ -5858,27 +5753,8 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
- "wit-bindgen-core 0.59.0",
- "wit-bindgen-rust 0.59.0",
-]
-
-[[package]]
-name = "wit-component"
-version = "0.251.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83a5e60173c413659c689f0581b0cf5d1a2404077568f9ffdce748a9eb2fc913"
-dependencies = [
- "anyhow",
- "bitflags 2.13.0",
- "indexmap",
- "log",
- "serde",
- "serde_derive",
- "serde_json",
- "wasm-encoder 0.251.0",
- "wasm-metadata 0.251.0",
- "wasmparser 0.251.0",
- "wit-parser 0.251.0",
+ "wit-bindgen-core",
+ "wit-bindgen-rust",
 ]
 
 [[package]]
@@ -5895,7 +5771,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "wasm-encoder 0.253.0",
- "wasm-metadata 0.253.0",
+ "wasm-metadata",
  "wasmparser 0.253.0",
  "wit-parser 0.253.0",
 ]

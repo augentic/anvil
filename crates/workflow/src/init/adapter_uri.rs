@@ -3,21 +3,9 @@
 //! `omnia@1.0.0`), and local component paths (`./adapter.wasm`,
 //! `file://…/adapter.wasm`).
 //!
-//! A package reference (and the versioned first-party shorthand, its
-//! sugar) is an *immutable*,
-//! content-addressed identity with a mandatory exact SemVer pin and no
-//! branch or tag defaulting. A package reference resolves from the
-//! global content-addressed store entry ([`AdapterUri::from_package`])
-//! as a local file; nothing installs into the store today — an
-//! install-on-fetch leg lands in-guest.
-//!
-//! A bare first-party name (`omnia`) is the development shorthand: its
-//! resolution is *deferred to the injected `Resolver`* — linked Rust
-//! crates in the native harness, the sibling/in-repo release build
-//! (`target/wasm32-wasip2/release/<name>.wasm`, built by
-//! `cargo make release` in the adapters repo) in the shipped path.
-//! GitHub URLs are refused; adapters resolve from the registry or a
-//! dev build.
+//! Exact package pins resolve from the global store; bare names defer to
+//! the injected resolver (linked Rust in the native harness, release
+//! components in the shipped path). GitHub URLs are refused.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -114,9 +102,9 @@ impl AdapterUri {
         })
     }
 
-    /// A bare first-party name — the development shorthand identity.
+    /// Defer a bare development identity to the injected `Resolver`.
     ///
-    /// No component is probed here: the injected `Resolver` locates
+    /// The resolver locates
     /// one downstream (the project component cache, then the
     /// sibling/in-repo release build in the shipped path; linked Rust
     /// crates in the native harness) and raises `adapter-not-found`

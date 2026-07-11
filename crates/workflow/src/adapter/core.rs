@@ -59,7 +59,7 @@ impl Axis {
 /// and conditional inputs are deferred.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct BuildInputDeclaration {
-    /// Path relative to the build request's `inputs.root`.
+    /// Slice-relative input path.
     pub path: String,
     /// Whether `build` requires this input; a missing `required` path
     /// is a build-time abort.
@@ -107,7 +107,6 @@ pub enum PlatformsViolation {
     /// A declared platform is outside the capability's `allowed` set.
     /// Carries the display-formatted allowed set for the hint text.
     NotAllowed {
-        /// The offending platform.
         platform: Platform,
         /// Display-formatted `allowed` platform tokens.
         allowed: Vec<String>,
@@ -395,9 +394,9 @@ pub struct TargetAdapter {
 /// origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedSource {
-    /// Identity + metadata-derived fields.
+    /// Resolved identity and metadata.
     pub manifest: SourceAdapter,
-    /// Resolver-defined implementation origin.
+    /// Deployment-neutral implementation origin.
     pub origin: Origin,
 }
 
@@ -405,9 +404,9 @@ pub struct ResolvedSource {
 /// origin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedTarget {
-    /// Identity + metadata-derived fields.
+    /// Resolved identity and metadata.
     pub manifest: TargetAdapter,
-    /// Resolver-defined implementation origin.
+    /// Deployment-neutral implementation origin.
     pub origin: Origin,
 }
 
@@ -502,7 +501,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unparseable_current_is_permissive() {
+    fn unparseable_permissive() {
         let origin = Origin {
             label: "store".to_string(),
             reference: "/store/demo@1.0.0.wasm".to_string(),

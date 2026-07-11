@@ -10,7 +10,7 @@ use jiff::Timestamp;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 
-use super::{seam_failure, source_adapter_id};
+use super::{seam_failure, source_id};
 use crate::adapter::SourceOperation;
 use crate::change::{Plan, SourceBinding};
 use crate::config::Layout;
@@ -116,7 +116,7 @@ async fn survey_one(
         },
     )?;
 
-    let id = source_adapter_id(&binding.adapter);
+    let id = source_id(&binding.adapter);
     let raw = seam.survey(id.clone()).await.map_err(|err| seam_failure("survey", &id, &err))?;
 
     // Attribution is orchestrator-owned, mirroring the native verb: a
@@ -207,7 +207,7 @@ pub async fn extract(
         },
     )?;
 
-    let id = source_adapter_id(&binding.adapter);
+    let id = source_id(&binding.adapter);
     let evidence = seam
         .extract(id.clone(), seam_lead)
         .await

@@ -16,10 +16,6 @@ use crate::change::Plan;
 use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::handler::{Anchor, Ctx, Render};
 
-// ---------------------------------------------------------------------------
-// registry validate
-// ---------------------------------------------------------------------------
-
 /// Wire input for `registry validate` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[expect(
@@ -74,11 +70,11 @@ impl<P: Anchor> Operation<P> for Validate {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ValidateBody {
-    /// The loaded registry, when one exists.
+    /// Parsed registry, when present.
     pub registry: Option<Registry>,
-    /// Path of `registry.yaml` (serialised as its display string).
+    /// Validated file location.
     pub path: PathBuf,
-    /// Whether the workspace shape rules applied.
+    /// Shape policy applied during validation.
     #[serde(skip)]
     pub workspace_mode: bool,
 }
@@ -96,10 +92,6 @@ impl Render for ValidateBody {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// registry add
-// ---------------------------------------------------------------------------
 
 /// Wire input for `registry add`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -211,11 +203,11 @@ impl<P: Anchor> Operation<P> for Add {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AddBody {
-    /// The registry as persisted after the add.
+    /// Persisted registry.
     pub registry: Registry,
-    /// Path of `registry.yaml` (serialised as its display string).
+    /// Updated file location.
     pub path: PathBuf,
-    /// The appended project entry.
+    /// Appended entry.
     pub added: RegistryProject,
 }
 
@@ -226,15 +218,11 @@ impl Render for AddBody {
     }
 }
 
-// ---------------------------------------------------------------------------
-// registry remove
-// ---------------------------------------------------------------------------
-
 /// Wire input for `registry remove`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct RemoveInput {
-    /// Kebab-case project name to remove.
+    /// Project entry to remove.
     pub name: String,
 }
 
@@ -308,11 +296,11 @@ impl<P: Anchor> Operation<P> for Remove {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct RemoveBody {
-    /// The registry as persisted after the remove.
+    /// Persisted registry.
     pub registry: Registry,
-    /// Path of `registry.yaml` (serialised as its display string).
+    /// Updated file location.
     pub path: PathBuf,
-    /// The removed project name.
+    /// Removed project.
     pub removed: String,
     /// Advisory warnings (stale `plan.yaml` references).
     pub warnings: Vec<String>,

@@ -406,7 +406,7 @@ pub fn change(name: &str, status: workflow::change::Status) -> workflow::change:
         description: None,
         divergence: None,
         disagreements: Vec::new(),
-        authority_override: workflow::change::SliceAuthorityOverride::default(),
+        authority_override: workflow::change::AuthorityOverride::default(),
     }
 }
 

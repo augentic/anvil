@@ -208,28 +208,19 @@ impl MetadataKeyByte for u8 {
 mod tests {
     use super::*;
 
-    // `parse_document` is a pure `(bytes -> Ok(Some) | Ok(None) | Err)` matrix
-    // with no CLI fixture exercising the per-shape errors. The success case
-    // keeps its rich multi-field assertions (and the `#[cfg(test)]`-only
-    // `metadata()` accessor, which forces this to stay an in-`src` unit
-    // test); the error cases — each a distinct code path — drive a table.
     #[test]
-    fn parse_document_matrix() {
-        // The one well-formed document exposes the managed body and metadata.
+    fn document_matrix() {
         let input = b"# hand title\n\n<!-- specify:context begin\nfingerprint: sha256:old\n-->\n\nold body\n\n<!-- specify:context end -->\n\noperator notes\n";
         let parsed = parse_document(input).expect("parse ok").expect("fences present");
         assert_eq!(parsed.body(), b"\nold body\n\n");
         assert_eq!(parsed.metadata().get("fingerprint").map(String::as_str), Some("sha256:old"));
 
-        // A document with no fence markers at all is `Ok(None)`.
         assert!(
             parse_document(b"# hand-authored\n\nNo managed context here.\n")
                 .expect("parse ok")
                 .is_none()
         );
 
-        // Every malformed shape maps to its distinct `FenceError`. Inputs are
-        // ASCII so a `&str` table keeps the rows readable.
         let error_cases: &[(&str, FenceError)] = &[
             // Unterminated opening fence.
             (

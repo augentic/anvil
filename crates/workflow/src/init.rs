@@ -13,7 +13,7 @@ mod workspace;
 use std::path::{Path, PathBuf};
 
 use artifacts::atomic::bytes_write;
-use context::ContextSkip;
+use context::Skip;
 use error::Error;
 use jiff::Timestamp;
 
@@ -29,17 +29,13 @@ use crate::platform::Platform;
 /// regular runners by value without a clone.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct InitOptions<'a> {
-    /// Root of the project being initialised.
     pub project_dir: &'a Path,
     /// Adapter identifier (bare name like `omnia` or a URL) to fetch
     /// or copy into the out-of-tree per-project cache. Required for regular init; must
     /// be `None` when [`InitOptions::workspace`] is `true` (workspace
     /// roots do not resolve an adapter at init time).
     pub adapter: Option<&'a str>,
-    /// Project name; defaults to the project directory name when `None`.
     pub name: Option<&'a str>,
-    /// Optional free-text project description (tech stack, architecture,
-    /// testing approach).
     pub description: Option<&'a str>,
     /// When `true`, scaffold a registry-only **workspace** instead
     /// of a regular project: writes `registry.yaml` at the repo root
@@ -69,20 +65,14 @@ pub(crate) struct InitOptions<'a> {
 /// rendering by both the JSON and text CLI paths.
 #[derive(Debug, Clone)]
 pub(crate) struct InitResult {
-    /// Path to the written `project.yaml`.
     pub config_path: PathBuf,
     /// Resolved adapter name from the adapter root. For workspace init
     /// this is the literal `"workspace"` so the JSON envelope stays stable
     /// for downstream consumers.
     pub adapter_name: String,
-    /// Whether `components/component-meta.yaml` exists in the per-project cache.
     pub cache_present: bool,
-    /// Directories that were newly created (empty on re-init).
     pub directories_created: Vec<PathBuf>,
-    /// Brief IDs scaffolded into the `rules:` map.
     pub scaffolded_rule_keys: Vec<String>,
-    /// The `specify` version recorded in `project.yaml` after
-    /// this run (the running binary's version).
     pub specify_version: String,
     /// `true` when this run wrote `.specify/wasm-pkg.toml` for the
     /// first time; `false` when an operator-edited file was preserved.
@@ -91,7 +81,7 @@ pub(crate) struct InitResult {
     pub wasm_pkg_config_written: bool,
     /// Why init-time context generation was skipped; `None` when this
     /// run generated root `AGENTS.md` and `.specify/context.lock`.
-    pub context_skip_reason: Option<ContextSkip>,
+    pub context_skip_reason: Option<Skip>,
 }
 
 /// Initialise `.specify/` inside `opts.project_dir`.
@@ -134,7 +124,7 @@ pub(crate) fn init(
     // Every branch shares one context-generation pass over the freshly
     // written project: the skip logic (existing `AGENTS.md`, workspace
     // slot) gives `--upgrade` its regenerate-only-when-absent behavior.
-    result.context_skip_reason = context::generate_initial(resolver, opts.project_dir)?;
+    result.context_skip_reason = context::generate(resolver, opts.project_dir)?;
     Ok(result)
 }
 
@@ -196,8 +186,7 @@ pub(crate) fn scaffold_wasm_pkg_config(layout: &Layout<'_>) -> Result<bool, Erro
 /// Validate the operator's `--platforms` set against the target's
 /// declared capability, mapping each violation onto the init-time
 /// `project-platforms-*` diagnostic family via the shared
-/// shared platform-validation error converter. The
-/// rules themselves live on
+/// platform-validation error converter. The rules themselves live on
 /// [`crate::adapter::PlatformsCapability::check`].
 pub(crate) fn validate_platforms(
     operator: Option<&[Platform]>, capability: Option<&crate::adapter::PlatformsCapability>,

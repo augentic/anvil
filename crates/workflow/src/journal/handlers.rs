@@ -21,10 +21,6 @@ use serde_json::{Map, Value};
 use super::{Event, EventKind};
 use crate::handler::{Anchor, Ctx, Render};
 
-// ---------------------------------------------------------------------------
-// journal emit
-// ---------------------------------------------------------------------------
-
 /// Wire input for `journal emit`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -119,7 +115,7 @@ fn payload_schema_error(detail: String) -> Error {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct EmitBody {
-    /// The appended event id.
+    /// Appended event id.
     pub event: String,
 }
 
@@ -128,10 +124,6 @@ impl Render for EmitBody {
         writeln!(w, "Appended journal event '{}'.", self.event)
     }
 }
-
-// ---------------------------------------------------------------------------
-// journal show
-// ---------------------------------------------------------------------------
 
 /// Wire input for `journal show`.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -176,9 +168,9 @@ impl<P: Anchor> Operation<P> for Show {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ShowBody {
-    /// Matching event count.
+    /// Number of matching events.
     pub count: usize,
-    /// The matching events in append order.
+    /// Matches in append order.
     pub events: Vec<Event>,
 }
 

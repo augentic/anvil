@@ -19,10 +19,10 @@ mod write;
 
 use parse::system_time_to_utc;
 use read::{
-    COMPOSITION_FILENAME, check_opaque_drift, first_three_way, overwrite_gate, plan_three_way,
-    preview_opaque,
+    COMPOSITION_FILENAME, check_opaque_drift, first_three_way, overwrite_gate, preview_opaque,
+    three_way,
 };
-use write::{build_merge_summary, commit_opaque, write_baselines};
+use write::{commit_opaque, summary, write_baselines};
 
 /// One 3-way merged spec entry kept in memory by both
 /// [`preview`] and [`commit`].
@@ -40,7 +40,7 @@ use write::{build_merge_summary, commit_opaque, write_baselines};
 /// disk via the commit writer, never to JSON callers).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct MergePreviewEntry {
+pub struct PreviewEntry {
     /// Originating artefact class name (e.g. `"specs"`).
     #[serde(skip)]
     pub class_name: String,
@@ -68,13 +68,13 @@ fn ser_baseline_path<S: serde::Serializer>(v: &PathBuf, s: S) -> Result<S::Ok, S
 #[derive(Debug, Clone)]
 pub struct MergeCommit {
     /// The 3-way merged spec/composition entries.
-    pub specs: Vec<MergePreviewEntry>,
+    pub specs: Vec<PreviewEntry>,
     /// `DEC-NNNN` ids promoted by this merge, in slug order.
     pub decisions: Vec<String>,
 }
 
 impl std::ops::Deref for MergeCommit {
-    type Target = [MergePreviewEntry];
+    type Target = [PreviewEntry];
 
     fn deref(&self) -> &Self::Target {
         &self.specs
@@ -116,7 +116,7 @@ pub fn summarise_operations(ops: &[crate::merge::MergeOperation]) -> String {
 /// One opaque-replace file pre-image discovered under a
 /// [`MergeStrategy::OpaqueReplace`] class's `staged_dir`.
 #[derive(Debug, Clone)]
-pub struct OpaquePreviewEntry {
+pub struct OpaqueEntry {
     /// Originating artefact class name (e.g. `"contracts"`).
     pub class_name: String,
     /// Path relative to the class's `staged_dir`
@@ -144,10 +144,10 @@ pub enum OpaqueAction {
 pub struct PreviewResult {
     /// 3-way merge entries (one per spec/composition per
     /// `ThreeWayMerge` class). Sorted by `(class_name, name)`.
-    pub three_way: Vec<MergePreviewEntry>,
+    pub three_way: Vec<PreviewEntry>,
     /// Opaque-replace pre-images (one per file per `OpaqueReplace`
     /// class). Sorted by `(class_name, relative_path)`.
-    pub opaque: Vec<OpaquePreviewEntry>,
+    pub opaque: Vec<OpaqueEntry>,
 }
 
 /// One `type: modified` `touched_spec` whose baseline has been modified
@@ -167,7 +167,7 @@ pub struct BaselineConflict {
 
 /// Dry-run of the multi-class merge.
 ///
-/// Computes every in-memory [`MergePreviewEntry`] plus runs the
+/// Computes every in-memory [`PreviewEntry`] plus runs the
 /// baseline coherence validator on each merged output, **without**
 /// writing baselines, transitioning status, or archiving. Also reports
 /// every file that would be promoted by an
@@ -180,19 +180,11 @@ pub struct BaselineConflict {
 ///
 /// # Errors
 ///
-/// - [`Error::Diag { code: "merge-spec-conflicts" }`] aggregating every
-///   per-spec merge conflict and post-merge `validate_baseline` failure
-///   into a single newline-joined detail string.
-/// - [`Error::Filesystem`] (`op = "readdir" | "dir-entry" | "path-prefix"
-///   | "file-type" | "read"`) for directory-walk and per-file I/O
-///   failures while scanning the staged trees and reading deltas /
-///   baselines.
-/// - [`Error::Diag { code: "merge-non-utf8-name" }`] for the rare
-///   non-I/O failure that has no `Error::Filesystem` op equivalent.
-/// - Whatever [`Error`] the inner [`crate::merge::engine::merge`] or
-///   [`crate::merge::composition::merge`] surfaces, propagated unchanged.
+/// Aggregates per-spec conflicts and post-merge validation failures under
+/// `merge-spec-conflicts`; filesystem and inner merge failures retain
+/// their original taxonomy.
 pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewResult, Error> {
-    let three_way = plan_three_way(slice_dir, classes)?;
+    let three_way = three_way(slice_dir, classes)?;
     let opaque = preview_opaque(classes)?;
     Ok(PreviewResult { three_way, opaque })
 }
@@ -223,24 +215,9 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 ///
 /// # Errors
 ///
-/// - [`Error::Diag`] with `code = "lifecycle"` when the slice's status
-///   is not [`LifecycleStatus::Built`] on entry, or when the
-///   `Built → Merged` transition is rejected (e.g. terminal-state
-///   re-entry).
-/// - [`Error::Diag { code: "composition-baseline-overwrite-blocked" }`]
-///   when the slice composition would overwrite a non-empty baseline
-///   without `allow_composition_replace`.
-/// - Every error documented on [`preview`] (the in-memory plan
-///   is computed before any writes).
-/// - [`Error::Filesystem`] (`op = "mkdir" | "copy"`) when the commit
-///   phase fails to create a parent directory or copy an opaque-replace
-///   file.
-/// - [`Error::Diag { code: "merge-write-baseline-failed" }`] when the
-///   commit phase fails to write a merged baseline.
-/// - [`Error::Diag { code: "merge-archive-failed" }`] when the archive
-///   move fails after metadata has already been flipped.
-/// - Whatever atomic-write [`Error`] [`SliceMetadata::save`] surfaces
-///   (`Error::Io`, `Error::YamlSer`).
+/// Lifecycle, overwrite, preview, and write failures occur before the
+/// archive move. `merge-archive-failed` means merged metadata and
+/// baselines may already be persisted and require operator recovery.
 pub fn commit(
     slice_dir: &Path, classes: &[ArtifactClass], archive_dir: &Path, now: Timestamp,
     allow_composition_replace: bool,
@@ -255,12 +232,12 @@ pub fn commit(
 
     // A3 precondition: enforced before any merge work, beside the
     // `Built` gate. Threads the override exactly this far — it never
-    // reaches `plan_three_way` or the pure composition kernel.
+    // reaches `three_way` or the pure composition kernel.
     if let Some(class) = first_three_way(classes) {
         overwrite_gate(slice_dir, class, allow_composition_replace)?;
     }
 
-    let merged = plan_three_way(slice_dir, classes)?;
+    let merged = three_way(slice_dir, classes)?;
 
     // Decisions pass — core (runs for every target), part of the
     // same merge. Promotion is keyed on the slice name and writes into
@@ -285,7 +262,7 @@ pub fn commit(
         phase: TargetOperation::Merge,
         kind: OutcomeKind::Success,
         at: now,
-        summary: build_merge_summary(&merged, &opaque_counts),
+        summary: summary(&merged, &opaque_counts),
         context: None,
     });
     metadata.save(slice_dir)?;
@@ -295,7 +272,7 @@ pub fn commit(
         detail: format!("archive move failed: {err}"),
     })?;
 
-    let mut output: Vec<MergePreviewEntry> = merged;
+    let mut output: Vec<PreviewEntry> = merged;
     output.sort_by(|a, b| {
         (a.class_name.as_str(), a.name.as_str()).cmp(&(b.class_name.as_str(), b.name.as_str()))
     });
@@ -337,18 +314,9 @@ fn promote_decisions(
 ///
 /// # Errors
 ///
-/// - [`Error::Diag { code: "merge-defined-at-malformed" }`] when the
-///   slice's `defined_at` stamp is present but does not parse as
-///   rfc3339.
-/// - [`Error::Diag { code: "merge-mtime-out-of-range" }`] when a baseline
-///   mtime cannot be converted to a UTC `jiff::Timestamp`.
-/// - [`Error::Io`] when a baseline file's metadata cannot be read for
-///   any reason other than `NotFound` (a missing baseline for a
-///   `type: modified` entry is treated as a declaration mismatch and
-///   silently skipped).
-/// - [`Error::Filesystem`] (`op = "readdir" | "dir-entry" | "path-prefix"`)
-///   while walking opaque-replace staged trees.
-/// - Whatever [`Error`] [`SliceMetadata::load`] surfaces.
+/// Malformed timestamps and filesystem failures retain their diagnostic
+/// taxonomy. A missing modified baseline is a declaration mismatch and
+/// is skipped rather than reported as drift.
 pub fn conflict_check(
     slice_dir: &Path, classes: &[ArtifactClass],
 ) -> Result<Vec<BaselineConflict>, Error> {

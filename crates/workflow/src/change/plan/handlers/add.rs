@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
 use crate::change::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
-use crate::change::{Entry, Plan, SliceAuthorityOverride, Status, authority_override, entry_mut};
+use crate::change::{AuthorityOverride, Entry, Plan, Status, authority_override, entry_mut};
 use crate::config::with_state;
 use crate::handler::{Anchor, Ctx};
 use crate::journal;
@@ -79,7 +79,7 @@ impl<P: Anchor> Operation<P> for Add {
         // short-circuits to the verbatim path.
         let discovery = load_discovery(cx.layout())?;
         let sources = bindings_from_args(&sources, name, discovery.as_ref())?;
-        let authority_override_map = SliceAuthorityOverride {
+        let authority_override_map = AuthorityOverride {
             by_kind: authority_override
                 .iter()
                 .map(|a| (a.kind, a.source.clone()))

@@ -31,7 +31,7 @@ fn call(name: &str, arguments: &Value) -> Value {
 }
 
 #[test]
-fn one_shelf_per_linked_adapter() {
+fn shelves_match_linked_adapters() {
     let names: Vec<&str> = mcp::shelves().iter().map(|shelf| shelf.name).collect();
     let catalog_names: Vec<&str> =
         specify_dev::catalog::entries().iter().map(|entry| entry.name()).collect();
@@ -52,7 +52,7 @@ fn one_shelf_per_linked_adapter() {
 }
 
 #[tokio::test]
-async fn read_doc_serves_embedded_prose() {
+async fn read_doc_embedded_prose() {
     let (status, reply) =
         post("/mcp/omnia", &call("read_doc", &json!({ "path": "prompts/guidance.md" }))).await;
     assert_eq!(status, StatusCode::OK);
@@ -61,7 +61,7 @@ async fn read_doc_serves_embedded_prose() {
 }
 
 #[tokio::test]
-async fn list_docs_names_the_shelf_registry() {
+async fn list_docs_shelf_registry() {
     let (status, reply) = post("/mcp/intent", &call("list_docs", &json!({}))).await;
     assert_eq!(status, StatusCode::OK);
     let text = reply["result"]["content"][0]["text"].as_str().expect("text content");
@@ -70,7 +70,7 @@ async fn list_docs_names_the_shelf_registry() {
 }
 
 #[tokio::test]
-async fn unmounted_shelf_is_not_found() {
+async fn unmounted_shelf_not_found() {
     let (status, _) = post("/mcp/unknown", &call("list_docs", &json!({}))).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }

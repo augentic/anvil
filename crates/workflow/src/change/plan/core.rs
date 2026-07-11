@@ -19,8 +19,8 @@ pub mod validate;
 
 pub use authority_override::{entry_mut, unknown_slice_err};
 pub use model::{
-    Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Lifecycle, Patch, Plan,
-    SliceAuthorityOverride, SliceSourceBinding, SourceBinding, Status,
+    AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Lifecycle,
+    Patch, Plan, SliceSourceBinding, SourceBinding, Status,
 };
 pub use next::{NextBody, NextReason, claim_next};
 pub use propose::{
@@ -32,4 +32,4 @@ pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,
     plan_status_body,
 };
-pub use validate::{orphan_authority_override_keys, plan_finding, reject_duplicate_source_keys};
+pub use validate::{finding, orphan_authority_override_keys, reject_duplicate_source_keys};

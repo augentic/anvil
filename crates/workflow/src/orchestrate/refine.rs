@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use schema::diagnostics::blocking_present;
+use schema::diagnostics::has_blocking;
 
 use super::synthesize::SynthesizeRequest;
 use crate::adapter::Resolver;
@@ -37,7 +37,7 @@ use crate::registry::topology::Surface;
 use crate::seam::{SourceSeam, TargetSeam};
 use crate::slice::validate::{Validation, append_synthesis_journal};
 use crate::slice::{
-    BaselineDomainDetail, BaselineIndex, CreateIfExists, LifecycleStatus, ProjectionHeader,
+    BaselineIndex, CreateIfExists, DomainDetail, LifecycleStatus, ProjectionHeader,
     actions as slice_actions, persist_synthesized, read_evidence_index, read_source_inputs,
     synthesize_failure_reason,
 };
@@ -96,10 +96,10 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
     let source_inputs = read_source_inputs(&slice_dir, &entry)?;
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
-    let baseline_specs_dir = resolve_baseline_specs_dir(layout, &slice_dir);
+    let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
     let baseline = baseline_surface(caps.resolver, layout, &entry)?;
-    let baseline_detail: Vec<BaselineDomainDetail> = (&baseline_index).into();
+    let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
     let header = ProjectionHeader {
         version: 1,
         slice: slice.to_string(),
@@ -246,10 +246,10 @@ fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<(), Error
             findings,
             synthesis_tags,
         } => {
-            if blocking_present(&findings) {
+            if has_blocking(&findings) {
                 let rules: Vec<&str> = findings
                     .iter()
-                    .filter(|finding| schema::diagnostics::blocking(finding))
+                    .filter(|finding| schema::diagnostics::is_blocking(finding))
                     .map(|finding| finding.rule_id.as_deref().unwrap_or("unnamed-rule"))
                     .collect();
                 return Err(Error::validation_failed(
@@ -292,7 +292,7 @@ fn load_entry(layout: Layout<'_>, slice: &str) -> Result<Entry, Error> {
 /// The `ThreeWayMerge` baseline `specs/` directory — the same path the
 /// native synthesize handler, merge, and `slice touched-specs --scan`
 /// resolve.
-fn resolve_baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
+fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
     let classes = artifact_classes(layout.project_dir(), slice_dir);
     classes
         .iter()

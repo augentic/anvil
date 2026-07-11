@@ -5,48 +5,52 @@ mod common;
 use common::{Project, run, stage_dev_component};
 use workflow::adapter::Resolver;
 
-#[tokio::test]
-async fn target_resolve_gates_metadata() {
-    for (name, expected) in
-        [("demo-target", "adapter-cli-too-old"), ("bad-floor", "adapter-floor-malformed")]
-    {
+mod resolve {
+    use super::*;
+
+    #[tokio::test]
+    async fn metadata_gated() {
+        for (name, expected) in
+            [("demo-target", "adapter-cli-too-old"), ("bad-floor", "adapter-floor-malformed")]
+        {
+            let project = Project::bare();
+            stage_dev_component(&project.root, name);
+            let err = run::<workflow::adapter::handlers::TargetResolve, _>(
+                &project,
+                workflow::adapter::handlers::ResolveInput {
+                    value: name.to_string(),
+                    project_dir: None,
+                },
+            )
+            .await
+            .expect_err("metadata gate must reject the adapter");
+            assert_eq!(err.core().variant_str(), expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn bare_development_identity() {
         let project = Project::bare();
-        stage_dev_component(&project.root, name);
-        let err = run::<workflow::adapter::handlers::TargetResolve, _>(
+        stage_dev_component(&project.root, "demo");
+
+        let body = run::<workflow::adapter::handlers::TargetResolve, _>(
             &project,
             workflow::adapter::handlers::ResolveInput {
-                value: name.to_string(),
+                value: "demo".to_string(),
                 project_dir: None,
             },
         )
         .await
-        .expect_err("metadata gate must reject the adapter");
-        assert_eq!(err.core().variant_str(), expected);
+        .expect("bare development adapter resolves");
+
+        assert_eq!(body.name, "demo");
+        assert_eq!(body.version, "0.0.0");
+        assert_eq!(body.axis, "targets");
     }
 }
 
-#[tokio::test]
-async fn bare_development_identity_resolves() {
-    let project = Project::bare();
-    stage_dev_component(&project.root, "demo");
-
-    let body = run::<workflow::adapter::handlers::TargetResolve, _>(
-        &project,
-        workflow::adapter::handlers::ResolveInput {
-            value: "demo".to_string(),
-            project_dir: None,
-        },
-    )
-    .await
-    .expect("bare development adapter resolves");
-
-    assert_eq!(body.name, "demo");
-    assert_eq!(body.version, "0.0.0");
-    assert_eq!(body.axis, "targets");
-}
-
 #[test]
-fn target_platforms_metadata_is_preserved() {
+fn platforms_metadata_preserved() {
     let project = Project::bare();
     stage_dev_component(&project.root, "vectis");
 

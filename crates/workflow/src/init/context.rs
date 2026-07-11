@@ -25,7 +25,7 @@ use crate::slice::SliceMetadata;
 ///
 /// Projected onto the init body's `context-skip-reason` wire field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ContextSkip {
+pub enum Skip {
     /// Root `AGENTS.md` already exists; init preserves it byte-for-byte.
     ExistingAgentsMd,
     /// The project is a materialised `workspace/<peer>/` slot; slots
@@ -33,7 +33,7 @@ pub enum ContextSkip {
     WorkspaceClone,
 }
 
-impl ContextSkip {
+impl Skip {
     /// The kebab-case wire token (`existing-agents-md` / `workspace-clone`).
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -58,14 +58,14 @@ impl ContextSkip {
 ///
 /// Bubbles up filesystem, config-load, adapter-resolution, and
 /// fence-composition errors.
-pub(super) fn generate_initial(
+pub(super) fn generate(
     resolver: &impl Resolver, project_dir: &Path,
-) -> Result<Option<ContextSkip>, Error> {
+) -> Result<Option<Skip>, Error> {
     if is_slot(project_dir) {
-        return Ok(Some(ContextSkip::WorkspaceClone));
+        return Ok(Some(Skip::WorkspaceClone));
     }
     match project_dir.join("AGENTS.md").try_exists() {
-        Ok(true) => return Ok(Some(ContextSkip::ExistingAgentsMd)),
+        Ok(true) => return Ok(Some(Skip::ExistingAgentsMd)),
         Ok(false) => {}
         Err(err) if err.kind() == ErrorKind::NotFound => {}
         Err(err) => return Err(Error::Io(err)),
@@ -95,7 +95,7 @@ pub(super) fn generate_initial(
     Ok(None)
 }
 
-struct RenderAssembly {
+struct Assembly {
     input: render::Input,
     inputs: Vec<fingerprint::InputFingerprint>,
 }
@@ -104,7 +104,7 @@ struct RenderAssembly {
 /// [`render::Input`] plus the per-input fingerprint set.
 fn render_input(
     resolver: &impl Resolver, project_dir: &Path, config: &ProjectConfig,
-) -> Result<RenderAssembly, Error> {
+) -> Result<Assembly, Error> {
     let layout = Layout::new(project_dir);
     let mut collector = fingerprint::InputCollector::new(project_dir);
     collector.add_file(&layout.config_path())?;
@@ -133,7 +133,7 @@ fn render_input(
     };
     collector.add_relative_files(detection.input_paths.iter().map(String::as_str))?;
 
-    let active_slices = active_slice_names(&layout.slices_dir(), &mut collector)?;
+    let active_slices = slice_names(&layout.slices_dir(), &mut collector)?;
 
     let input = render::Input {
         project_name: config.name.clone(),
@@ -143,10 +143,10 @@ fn render_input(
         adapter,
         rule_overrides: rule_overrides(config),
         active_slices,
-        workspace_peers: materialized_workspace_peers(registry.as_ref(), project_dir)?,
+        workspace_peers: workspace_peers(registry.as_ref(), project_dir)?,
         dependencies: dependency_peers(registry.as_ref(), project_dir),
     };
-    Ok(RenderAssembly {
+    Ok(Assembly {
         input,
         inputs: collector.finalize()?,
     })
@@ -230,7 +230,7 @@ fn dependency_peers(registry: Option<&Registry>, project_dir: &Path) -> Vec<rend
     peers
 }
 
-fn materialized_workspace_peers(
+fn workspace_peers(
     registry: Option<&Registry>, project_dir: &Path,
 ) -> Result<Vec<render::Peer>, Error> {
     let Some(registry) = registry else {
@@ -256,7 +256,7 @@ fn materialized_workspace_peers(
     Ok(peers)
 }
 
-fn active_slice_names(
+fn slice_names(
     slices_dir: &Path, collector: &mut fingerprint::InputCollector,
 ) -> Result<Vec<String>, Error> {
     if !slices_dir.exists() {

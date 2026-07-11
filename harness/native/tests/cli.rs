@@ -30,34 +30,38 @@ fn assert_created(project: &Path, elsewhere: &Path, output: &Output) {
     assert!(!elsewhere.join("plan.yaml").exists(), "nothing written at the working directory");
 }
 
-#[test]
-fn space_form() {
-    let project = common::Project::new();
-    let elsewhere = TempDir::new().expect("tempdir");
+mod project_dir_forms {
+    use super::*;
 
-    let root = project.root().to_string_lossy().into_owned();
-    let output = run_from(
-        elsewhere.path(),
-        &["--project-dir", &root, "plan", "create", "demo-change", "--intent", "Say hello"],
-    );
-    assert_created(project.root(), elsewhere.path(), &output);
+    #[test]
+    fn space() {
+        let project = common::Project::new();
+        let elsewhere = TempDir::new().expect("tempdir");
+
+        let root = project.root().to_string_lossy().into_owned();
+        let output = run_from(
+            elsewhere.path(),
+            &["--project-dir", &root, "plan", "create", "demo-change", "--intent", "Say hello"],
+        );
+        assert_created(project.root(), elsewhere.path(), &output);
+    }
+
+    #[test]
+    fn equals() {
+        let project = common::Project::new();
+        let elsewhere = TempDir::new().expect("tempdir");
+
+        let flag = format!("--project-dir={}", project.root().display());
+        let output = run_from(
+            elsewhere.path(),
+            &[&flag, "plan", "create", "demo-change", "--intent", "Say hello"],
+        );
+        assert_created(project.root(), elsewhere.path(), &output);
+    }
 }
 
 #[test]
-fn equals_form() {
-    let project = common::Project::new();
-    let elsewhere = TempDir::new().expect("tempdir");
-
-    let flag = format!("--project-dir={}", project.root().display());
-    let output = run_from(
-        elsewhere.path(),
-        &[&flag, "plan", "create", "demo-change", "--intent", "Say hello"],
-    );
-    assert_created(project.root(), elsewhere.path(), &output);
-}
-
-#[test]
-fn init_scaffold_component_free() {
+fn scaffold_component_free() {
     // A bare adapter name resolves through the linked-crate catalog:
     // init succeeds with no `.wasm` artifact anywhere near the project.
     let project = TempDir::new().expect("tempdir");
@@ -78,22 +82,26 @@ fn init_scaffold_component_free() {
     assert!(!root.join("target").exists(), "no development artifact tree is demanded or created");
 }
 
-#[test]
-fn missing_path_refused() {
-    let elsewhere = TempDir::new().expect("tempdir");
-    let output = run_from(elsewhere.path(), &["--project-dir"]);
-    assert!(!output.status.success(), "a bare --project-dir must refuse");
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("requires a path"), "stderr: {stderr}");
-}
+mod project_dir_errors {
+    use super::*;
 
-#[test]
-fn nonexistent_root_refused() {
-    let elsewhere = TempDir::new().expect("tempdir");
-    let missing = elsewhere.path().join("no-such-project");
-    let flag = format!("--project-dir={}", missing.display());
-    let output = run_from(elsewhere.path(), &[&flag, "plan", "status"]);
-    assert!(!output.status.success(), "a missing project root must refuse");
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("--project-dir"), "stderr: {stderr}");
+    #[test]
+    fn missing_path_refused() {
+        let elsewhere = TempDir::new().expect("tempdir");
+        let output = run_from(elsewhere.path(), &["--project-dir"]);
+        assert!(!output.status.success(), "a bare --project-dir must refuse");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("requires a path"), "stderr: {stderr}");
+    }
+
+    #[test]
+    fn nonexistent_root_refused() {
+        let elsewhere = TempDir::new().expect("tempdir");
+        let missing = elsewhere.path().join("no-such-project");
+        let flag = format!("--project-dir={}", missing.display());
+        let output = run_from(elsewhere.path(), &[&flag, "plan", "status"]);
+        assert!(!output.status.success(), "a missing project root must refuse");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("--project-dir"), "stderr: {stderr}");
+    }
 }

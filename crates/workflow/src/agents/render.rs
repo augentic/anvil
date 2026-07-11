@@ -206,6 +206,3 @@ fn dependency_bullets(input: &Input) -> Vec<String> {
 fn one_line(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
-
-// The renderer's body matrix and full-document fence shape are exercised
-// through the public API in `crates/workflow/tests/agents_fences_render.rs`.

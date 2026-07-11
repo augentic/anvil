@@ -7,11 +7,6 @@
 //! component digest. Other deployments provide the same capability
 //! without changing workflow kernels.
 //!
-//! Source and target adapters split into [`SourceAdapter`] /
-//! [`TargetAdapter`] in memory, each carrying its closed operation set
-//! ([`SourceOperation`] / [`TargetOperation`]) derived from the closed
-//! WIT contract (`wit/specify.wit`).
-//!
 //! Resolution keys on the [`AdapterRef`] identity: a pinned
 //! `(name, version)` resolves the single-file global store entry at
 //! `<store-root>/<name>@<version>.wasm` (verify-on-read

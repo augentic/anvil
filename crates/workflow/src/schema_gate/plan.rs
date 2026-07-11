@@ -16,11 +16,9 @@ use crate::change::Plan;
 ///
 /// # Errors
 ///
-/// Returns [`error::Error::Validation`] when the in-memory plan fails
-/// the schema; falls back to [`error::Error::Diag`] when the embedded
-/// schema is unparseable or the plan is not JSON-serialisable (both
-/// should be unreachable in production — they exist to surface a
-/// corrupted binary).
+/// Schema violations return [`error::Error::Validation`]. An invalid
+/// embedded schema or unserialisable plan reports binary corruption
+/// through [`error::Error::Diag`].
 pub fn validate_plan(plan: &Plan) -> Result<()> {
     validate_serialisable(
         plan,

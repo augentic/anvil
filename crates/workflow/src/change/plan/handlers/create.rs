@@ -1,8 +1,4 @@
-//! `specify plan create` — scaffold an empty `plan.yaml`. Composes the
-//! shared wire parsers in [`crate::change::plan::wire`] with the domain
-//! authority-override engine in
-//! `crate::change::authority_override::mutate` so the operation
-//! stays declarative.
+//! `specify plan create` — scaffold an empty `plan.yaml`.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -137,9 +133,7 @@ impl<P: Anchor> Operation<P> for Create {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateBody {
-    /// Change name.
     pub name: String,
-    /// Path of the created plan file (serialised as its display string).
     pub plan: PathBuf,
     /// Final plan-level lifecycle persisted to disk — `pending` for
     /// the default create, `approved` when `--auto-approve` was set.

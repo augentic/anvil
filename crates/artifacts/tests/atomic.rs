@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use artifacts::atomic::{bytes_write, yaml_write};
 
 #[test]
-fn write_round_trips_appends_newline() {
+fn string_appends_newline() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("out.yaml");
     let mut value = BTreeMap::new();
@@ -23,7 +23,7 @@ fn write_round_trips_appends_newline() {
 }
 
 #[test]
-fn write_creates_parent_dirs() {
+fn creates_parent_dirs() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("nested").join("deeper").join("out.yaml");
     let value = vec![1_u32, 2, 3];
@@ -34,7 +34,7 @@ fn write_creates_parent_dirs() {
 }
 
 #[test]
-fn write_overwrites_atomically() {
+fn overwrites_atomically() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("out.yaml");
     yaml_write(&path, &vec!["first"]).expect("first write");
@@ -46,7 +46,7 @@ fn write_overwrites_atomically() {
 }
 
 #[test]
-fn bytes_write_persists_exact_bytes() {
+fn bytes_exact() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("plan.lock");
     let payload = b"12345\n";
@@ -58,7 +58,7 @@ fn bytes_write_persists_exact_bytes() {
 }
 
 #[test]
-fn bytes_write_writes_empty_payload() {
+fn bytes_empty() {
     let dir = tempfile::tempdir().expect("tempdir");
     let path = dir.path().join("empty");
 

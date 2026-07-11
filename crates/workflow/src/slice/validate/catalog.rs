@@ -10,10 +10,8 @@ use crate::config::Layout;
 use crate::design_system::{ComponentStatus, ComponentsCatalog};
 use crate::schema_gate::EvidenceDoc;
 
-/// component catalog contract catalog-drift gate. Loads the project-level component
-/// catalog (`.specify/design-system/components.yaml`) when present
-/// and cross-references every `component: <slug>` directive on
-/// Evidence claims in `<slice>/evidence/*.yaml` against it:
+/// Cross-reference Evidence `component:` directives against the
+/// project-level component catalog when present:
 ///
 /// - Slug absent from catalog → `slice-catalog-drift` finding.
 /// - Slug has `status: rejected` → `slice-catalog-drift` finding.

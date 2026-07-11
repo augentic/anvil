@@ -14,7 +14,7 @@ use std::io::Write;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
-use schema::diagnostics::{Diagnostic, blocking_present};
+use schema::diagnostics::{Diagnostic, has_blocking};
 use serde::{Deserialize, Serialize};
 
 use crate::handler::{Anchor, Ctx, ReportBody};
@@ -48,7 +48,7 @@ impl<P: Anchor> Operation<P> for Validate {
                 findings,
                 synthesis_tags,
             } => {
-                let blocking = blocking_present(&findings);
+                let blocking = has_blocking(&findings);
                 let body = ReportBody::new(findings, None, write_finding_row);
 
                 if blocking {

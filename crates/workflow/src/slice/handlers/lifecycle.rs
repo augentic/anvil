@@ -12,15 +12,11 @@ use serde::{Deserialize, Serialize};
 use crate::handler::{Anchor, Ctx, Render};
 use crate::slice::{CreateIfExists, Created, LifecycleStatus, actions as slice_actions};
 
-// ---------------------------------------------------------------------------
-// slice create
-// ---------------------------------------------------------------------------
-
 /// Wire input for `slice create`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CreateInput {
-    /// Kebab-case slice name.
+    /// Slice to create.
     pub name: String,
     /// Target-adapter identifier; defaults to the value in
     /// `.specify/project.yaml`.
@@ -88,15 +84,11 @@ impl Render for Created {
     }
 }
 
-// ---------------------------------------------------------------------------
-// slice transition
-// ---------------------------------------------------------------------------
-
 /// Wire input for `slice transition`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct TransitionInput {
-    /// Slice name.
+    /// Slice to transition.
     pub name: String,
     /// Target status (`refining`, `refined`, `built`, or `dropped`).
     /// `merged` is reserved for `specify slice merge run`.
@@ -146,20 +138,20 @@ impl<P: Anchor> Operation<P> for Transition {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct TransitionBody {
-    /// Slice name.
+    /// Transitioned slice.
     pub name: String,
-    /// Status after the transition.
+    /// Persisted lifecycle state.
     pub status: LifecycleStatus,
     /// Lifecycle timestamps as persisted.
     #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub defined_at: Option<Timestamp>,
-    /// See `defined_at`.
+    /// Completion timestamp.
     #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub completed_at: Option<Timestamp>,
-    /// See `defined_at`.
+    /// Merge timestamp.
     #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub merged_at: Option<Timestamp>,
-    /// See `defined_at`.
+    /// Drop timestamp.
     #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub dropped_at: Option<Timestamp>,
 }
@@ -170,15 +162,11 @@ impl Render for TransitionBody {
     }
 }
 
-// ---------------------------------------------------------------------------
-// slice drop
-// ---------------------------------------------------------------------------
-
 /// Wire input for `slice drop`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DropInput {
-    /// Slice name.
+    /// Slice to drop.
     pub name: String,
     /// Free-text reason; surfaced in `metadata.yaml.drop_reason` and
     /// the archive path.
@@ -218,14 +206,13 @@ impl<P: Anchor> Operation<P> for Drop {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DropBody {
-    /// Slice name.
+    /// Dropped slice.
     pub name: String,
-    /// Status after the drop.
+    /// Persisted lifecycle state.
     pub status: LifecycleStatus,
-    /// Path of the archived slice directory (serialised as its display
-    /// string).
+    /// Archived slice location.
     pub archive_path: PathBuf,
-    /// Recorded drop reason, when supplied.
+    /// Persisted reason, when supplied.
     pub drop_reason: Option<String>,
 }
 

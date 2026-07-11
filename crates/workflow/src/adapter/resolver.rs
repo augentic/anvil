@@ -16,8 +16,7 @@ pub trait Resolver: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns the resolver's typed location, metadata, or
-    /// compatibility failure.
+    /// Preserves location, metadata, and compatibility failures.
     fn resolve_source(
         &self, adapter_ref: &AdapterRef, project_dir: &Path,
     ) -> Result<ResolvedSource, Error>;
@@ -26,8 +25,7 @@ pub trait Resolver: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Returns the resolver's typed location, metadata, or
-    /// compatibility failure.
+    /// Preserves location, metadata, and compatibility failures.
     fn resolve_target(
         &self, adapter_ref: &AdapterRef, project_dir: &Path,
     ) -> Result<ResolvedTarget, Error>;
@@ -67,11 +65,7 @@ impl Resolver for Component {
     }
 }
 
-/// Build a resolved source from provider metadata.
-///
-/// # Errors
-///
-/// Returns a malformed-floor or CLI-compatibility failure.
+/// Build a resolved source from provider metadata, enforcing its CLI floor.
 pub fn source(
     adapter_ref: &AdapterRef, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedSource, Error> {
@@ -89,11 +83,7 @@ pub fn source(
     })
 }
 
-/// Build a resolved target from provider metadata.
-///
-/// # Errors
-///
-/// Returns a malformed-floor or CLI-compatibility failure.
+/// Build a resolved target from provider metadata, enforcing its CLI floor.
 pub fn target(
     adapter_ref: &AdapterRef, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedTarget, Error> {

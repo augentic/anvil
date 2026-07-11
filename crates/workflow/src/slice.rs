@@ -30,5 +30,5 @@ pub(crate) use synthesis::persist::{
 pub(crate) use synthesis::project::{ProjectionHeader, project};
 pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
-    BaselineDomainDetail, SynthesisInputs, SynthesisResponse, SynthesisSourceInput, build_inputs,
+    DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
 };

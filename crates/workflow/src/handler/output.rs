@@ -6,7 +6,7 @@
 use std::io::Write;
 
 use schema::diagnostics::{
-    Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, blocking_present,
+    Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, has_blocking,
     renumber,
 };
 use serde::Serialize;
@@ -80,7 +80,7 @@ impl Render for ReportBody {
         {
             return writeln!(w, "{line}");
         }
-        let banner = if blocking_present(&self.report.findings) { "FAIL" } else { "PASS" };
+        let banner = if has_blocking(&self.report.findings) { "FAIL" } else { "PASS" };
         writeln!(w, "{banner}")?;
         for finding in &self.report.findings {
             (self.row)(w, finding)?;

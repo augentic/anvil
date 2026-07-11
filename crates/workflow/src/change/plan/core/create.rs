@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use error::Error;
-use schema::diagnostics::blocking;
+use schema::diagnostics::is_blocking;
 
 use super::model::{Entry, Lifecycle, Plan, SourceBinding, Status};
 use crate::change::detect;
@@ -66,7 +66,7 @@ impl Plan {
         change.status = Status::Pending;
 
         self.entries.push(change);
-        let errors: Vec<_> = self.validate(None, None).into_iter().filter(blocking).collect();
+        let errors: Vec<_> = self.validate(None, None).into_iter().filter(is_blocking).collect();
         let failure_msg = errors
             .first()
             .map(|r| r.impact.clone())

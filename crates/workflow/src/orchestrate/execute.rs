@@ -34,9 +34,7 @@ use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 /// One phase the loop completed, in run order.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PhaseRun {
-    /// Slice the phase ran for.
     pub slice: String,
-    /// Which phase completed.
     pub step: LoopStep,
 }
 
@@ -89,19 +87,16 @@ pub enum ExecuteOutcome {
 ///
 /// # Errors
 ///
-/// - `plan-execute-workspace-unsupported` (exit 2) when the plan root
+/// Refuses with `plan-execute-workspace-unsupported` (exit 2) when the plan root
 ///   is a workspace or any entry is `project`-scoped — the skill's
 ///   workspace routing (slot sync + chdir) has no in-guest counterpart
 ///   yet, so the loop refuses rather than writing to the wrong tree.
 ///   Classified **before** the adapter lookup, so a workspace root
 ///   surfaces this refusal rather than `workspace-no-adapter`.
-/// - `workspace-no-adapter` / adapter-resolution failures from the
-///   project-adapter lookup.
-/// - `guest-marker-held` (exit 2) when another guest execute run holds
+/// Refuses with `guest-marker-held` (exit 2) when another guest execute run holds
 ///   the D1 marker — or a stale marker survived a crash; the detail
 ///   says which file to delete.
-/// - propagates plan load/validate failures and marker I/O failures.
-/// - phase failures do **not** surface here — they return as
+/// Phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp,
@@ -202,7 +197,7 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
 /// slot and chdirs into `workspace/<project>/` for a `project`-scoped
 /// entry, and the guest loop has no counterpart yet — running anyway
 /// would create slices under the workspace root's own `.specify/`
-/// tree. The shared [`super::routing`] classification with this
+/// tree. Uses the shared [`super::routing`] classification with this
 /// operation's own refusal code; single-project plans are unaffected.
 fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
     let plan = Plan::load(&layout.plan_path())?;

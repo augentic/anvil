@@ -3,10 +3,6 @@
 use artifacts::task::*;
 use error::Error;
 
-// ---------------------------------------------------------------------------
-// Test 1: happy path — two groups, four tasks, mixed completion.
-// ---------------------------------------------------------------------------
-
 const HAPPY_PATH: &str = "\
 ## 1. Setup
 
@@ -19,131 +15,117 @@ const HAPPY_PATH: &str = "\
 - [ ] 2.2 Add tests
 ";
 
-#[test]
-fn parses_groups_and_tasks() {
-    let progress = parse_tasks(HAPPY_PATH);
+mod parse {
+    use super::*;
 
-    assert_eq!(progress.total, 4);
-    assert_eq!(progress.complete, 1);
-    assert_eq!(progress.tasks.len(), 4);
+    #[test]
+    fn groups_and_tasks() {
+        let progress = parse_tasks(HAPPY_PATH);
 
-    assert_eq!(progress.tasks[0].group, "1. Setup");
-    assert_eq!(progress.tasks[0].number, "1.1");
-    assert_eq!(progress.tasks[0].description, "Scaffold");
-    assert!(progress.tasks[0].complete);
-    assert_eq!(progress.tasks[0].skill_directive, None);
+        assert_eq!(progress.total, 4);
+        assert_eq!(progress.complete, 1);
+        assert_eq!(progress.tasks.len(), 4);
 
-    assert_eq!(progress.tasks[1].group, "1. Setup");
-    assert_eq!(progress.tasks[1].number, "1.2");
-    assert_eq!(progress.tasks[1].description, "Configure CI");
-    assert!(!progress.tasks[1].complete);
-    assert_eq!(
-        progress.tasks[1].skill_directive,
-        Some(SkillDirective {
-            plugin: "omnia".to_string(),
-            skill: "crate-writer".to_string(),
-        })
-    );
+        assert_eq!(progress.tasks[0].group, "1. Setup");
+        assert_eq!(progress.tasks[0].number, "1.1");
+        assert_eq!(progress.tasks[0].description, "Scaffold");
+        assert!(progress.tasks[0].complete);
+        assert_eq!(progress.tasks[0].skill_directive, None);
 
-    assert_eq!(progress.tasks[2].group, "2. Implementation");
-    assert_eq!(progress.tasks[2].number, "2.1");
-    assert_eq!(progress.tasks[2].description, "Write domain logic");
-    assert!(!progress.tasks[2].complete);
+        assert_eq!(progress.tasks[1].group, "1. Setup");
+        assert_eq!(progress.tasks[1].number, "1.2");
+        assert_eq!(progress.tasks[1].description, "Configure CI");
+        assert!(!progress.tasks[1].complete);
+        assert_eq!(
+            progress.tasks[1].skill_directive,
+            Some(SkillDirective {
+                plugin: "omnia".to_string(),
+                skill: "crate-writer".to_string(),
+            })
+        );
 
-    assert_eq!(progress.tasks[3].group, "2. Implementation");
-    assert_eq!(progress.tasks[3].number, "2.2");
-    assert_eq!(progress.tasks[3].description, "Add tests");
-    assert!(!progress.tasks[3].complete);
-}
+        assert_eq!(progress.tasks[2].group, "2. Implementation");
+        assert_eq!(progress.tasks[2].number, "2.1");
+        assert_eq!(progress.tasks[2].description, "Write domain logic");
+        assert!(!progress.tasks[2].complete);
 
-// ---------------------------------------------------------------------------
-// Test 5: skill directive regex accepts various plugin:skill shapes.
-// ---------------------------------------------------------------------------
+        assert_eq!(progress.tasks[3].group, "2. Implementation");
+        assert_eq!(progress.tasks[3].number, "2.2");
+        assert_eq!(progress.tasks[3].description, "Add tests");
+        assert!(!progress.tasks[3].complete);
+    }
 
-#[test]
-fn skill_directive_parses_variants() {
-    let input = "\
+    #[test]
+    fn skill_directive_variants() {
+        let input = "\
 ## 1. Group
 
 - [ ] 1.1 Generate crate <!-- skill: omnia:crate-writer -->
 - [ ] 1.2 Review core <!-- skill: vectis:core-reviewer -->
 - [ ] 1.3 Author contract <!-- skill: contract:openapi -->
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 3);
-    assert_eq!(
-        progress.tasks[0].skill_directive,
-        Some(SkillDirective {
-            plugin: "omnia".to_string(),
-            skill: "crate-writer".to_string()
-        })
-    );
-    assert_eq!(progress.tasks[0].description, "Generate crate");
-    assert_eq!(
-        progress.tasks[1].skill_directive,
-        Some(SkillDirective {
-            plugin: "vectis".to_string(),
-            skill: "core-reviewer".to_string()
-        })
-    );
-    assert_eq!(progress.tasks[1].description, "Review core");
-    assert_eq!(
-        progress.tasks[2].skill_directive,
-        Some(SkillDirective {
-            plugin: "contract".to_string(),
-            skill: "openapi".to_string()
-        })
-    );
-    assert_eq!(progress.tasks[2].description, "Author contract");
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 3);
+        assert_eq!(
+            progress.tasks[0].skill_directive,
+            Some(SkillDirective {
+                plugin: "omnia".to_string(),
+                skill: "crate-writer".to_string()
+            })
+        );
+        assert_eq!(progress.tasks[0].description, "Generate crate");
+        assert_eq!(
+            progress.tasks[1].skill_directive,
+            Some(SkillDirective {
+                plugin: "vectis".to_string(),
+                skill: "core-reviewer".to_string()
+            })
+        );
+        assert_eq!(progress.tasks[1].description, "Review core");
+        assert_eq!(
+            progress.tasks[2].skill_directive,
+            Some(SkillDirective {
+                plugin: "contract".to_string(),
+                skill: "openapi".to_string()
+            })
+        );
+        assert_eq!(progress.tasks[2].description, "Author contract");
+    }
 
-// ---------------------------------------------------------------------------
-// Test 6: non-matching comment stays in the description.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn non_skill_comment_preserved() {
-    let input = "\
+    #[test]
+    fn non_skill_comment_preserved() {
+        let input = "\
 ## 3. Notes
 
 - [ ] 3.1 Do thing <!-- TODO: reconsider -->
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 1);
-    let task = &progress.tasks[0];
-    assert_eq!(task.number, "3.1");
-    assert_eq!(task.skill_directive, None);
-    assert_eq!(task.description, "Do thing <!-- TODO: reconsider -->");
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 1);
+        let task = &progress.tasks[0];
+        assert_eq!(task.number, "3.1");
+        assert_eq!(task.skill_directive, None);
+        assert_eq!(task.description, "Do thing <!-- TODO: reconsider -->");
+    }
 
-// ---------------------------------------------------------------------------
-// Test 7: duplicate task numbers are both parsed; mark_complete targets
-// only the first unmarked occurrence.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn duplicate_task_numbers_are_both_parsed() {
-    let input = "\
+    #[test]
+    fn duplicate_numbers_preserved() {
+        let input = "\
 ## 1. Group
 
 - [ ] 1.1 First occurrence
 - [ ] 1.1 Second occurrence
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 2);
-    assert_eq!(progress.tasks[0].description, "First occurrence");
-    assert_eq!(progress.tasks[1].description, "Second occurrence");
-    assert_eq!(progress.total, 2);
-    assert_eq!(progress.complete, 0);
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 2);
+        assert_eq!(progress.tasks[0].description, "First occurrence");
+        assert_eq!(progress.tasks[1].description, "Second occurrence");
+        assert_eq!(progress.total, 2);
+        assert_eq!(progress.complete, 0);
+    }
 
-// ---------------------------------------------------------------------------
-// Test 8: nested headings don't reset the group.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn nested_headings_do_not_reset_group() {
-    let input = "\
+    #[test]
+    fn nested_headings_preserve_group() {
+        let input = "\
 ## 1. Implementation
 
 - [ ] 1.1 First task
@@ -152,98 +134,83 @@ fn nested_headings_do_not_reset_group() {
 
 - [ ] 1.2 After nested heading
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 2);
-    assert_eq!(progress.tasks[0].group, "1. Implementation");
-    assert_eq!(progress.tasks[1].group, "1. Implementation");
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 2);
+        assert_eq!(progress.tasks[0].group, "1. Implementation");
+        assert_eq!(progress.tasks[1].group, "1. Implementation");
+    }
 
-// ---------------------------------------------------------------------------
-// Test 9: task before any group heading gets an empty group.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn task_before_any_heading_has_empty_group() {
-    let input = "\
+    #[test]
+    fn task_before_heading_has_empty_group() {
+        let input = "\
 - [ ] 0.1 Lonely task
 
 ## 1. Later
 
 - [ ] 1.1 Grouped task
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 2);
-    assert_eq!(progress.tasks[0].group, "");
-    assert_eq!(progress.tasks[0].number, "0.1");
-    assert_eq!(progress.tasks[1].group, "1. Later");
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 2);
+        assert_eq!(progress.tasks[0].group, "");
+        assert_eq!(progress.tasks[0].number, "0.1");
+        assert_eq!(progress.tasks[1].group, "1. Later");
+    }
 
-// ---------------------------------------------------------------------------
-// Test 10: empty input.
-// ---------------------------------------------------------------------------
+    #[test]
+    fn empty_input() {
+        let progress = parse_tasks("");
+        assert_eq!(
+            progress,
+            Progress {
+                total: 0,
+                complete: 0,
+                tasks: vec![]
+            }
+        );
+    }
 
-#[test]
-fn empty_input_yields_empty_progress() {
-    let progress = parse_tasks("");
-    assert_eq!(
-        progress,
-        Progress {
-            total: 0,
-            complete: 0,
-            tasks: vec![]
-        }
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Test 11: capital X is accepted as complete.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn capital_x_parses_as_complete() {
-    let input = "\
+    #[test]
+    fn capital_x_complete() {
+        let input = "\
 ## 1. Group
 
 - [X] 1.1 foo
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 1);
-    assert!(progress.tasks[0].complete);
-    assert_eq!(progress.tasks[0].description, "foo");
-    assert_eq!(progress.complete, 1);
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 1);
+        assert!(progress.tasks[0].complete);
+        assert_eq!(progress.tasks[0].description, "foo");
+        assert_eq!(progress.complete, 1);
+    }
 
-// ---------------------------------------------------------------------------
-// Additional edge cases worth locking in.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn non_task_bullets_are_ignored() {
-    let input = "\
+    #[test]
+    fn non_task_bullets_are_ignored() {
+        let input = "\
 ## 1. Group
 
 - An explanatory bullet that isn't a task
 - [ ] 1.1 Real task
 - Not a task either
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 1);
-    assert_eq!(progress.tasks[0].number, "1.1");
-}
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 1);
+        assert_eq!(progress.tasks[0].number, "1.1");
+    }
 
-#[test]
-fn deep_task_numbers_preserved() {
-    let input = "\
+    #[test]
+    fn deep_task_numbers_preserved() {
+        let input = "\
 ## 1. Deep
 
 - [ ] 1.2.3 Nested numbering
 - [x] 1.2.3.4 Very deep
 ";
-    let progress = parse_tasks(input);
-    assert_eq!(progress.tasks.len(), 2);
-    assert_eq!(progress.tasks[0].number, "1.2.3");
-    assert_eq!(progress.tasks[1].number, "1.2.3.4");
-    assert!(progress.tasks[1].complete);
+        let progress = parse_tasks(input);
+        assert_eq!(progress.tasks.len(), 2);
+        assert_eq!(progress.tasks[0].number, "1.2.3");
+        assert_eq!(progress.tasks[1].number, "1.2.3.4");
+        assert!(progress.tasks[1].complete);
+    }
 }
 
 mod mark_complete {

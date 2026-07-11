@@ -13,13 +13,13 @@ const NOT_DETECTED: &str = "not detected";
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Detection {
     /// Detected language runtimes, sorted by label.
-    pub runtimes: Vec<RuntimeDetection>,
+    pub runtimes: Vec<Runtime>,
     /// Detected test commands.
-    pub tests: Vec<CommandDetection>,
+    pub tests: Vec<Command>,
     /// Detected lint commands and CI workflows.
-    pub linting: Vec<LintDetection>,
+    pub linting: Vec<Lint>,
     /// Unreadable or malformed marker files, sorted by path.
-    pub warnings: Vec<DetectionWarning>,
+    pub warnings: Vec<Warning>,
     /// Repo-relative marker paths that fed the detection, for fingerprinting.
     pub input_paths: Vec<String>,
 }
@@ -31,7 +31,7 @@ impl Detection {
         if self.runtimes.is_empty() {
             return vec![NOT_DETECTED.to_string()];
         }
-        self.runtimes.iter().map(RuntimeDetection::bullet).collect()
+        self.runtimes.iter().map(Runtime::bullet).collect()
     }
 
     /// `## Tests` bullet lines, or the "not detected" placeholder.
@@ -40,7 +40,7 @@ impl Detection {
         if self.tests.is_empty() {
             return vec![NOT_DETECTED.to_string()];
         }
-        self.tests.iter().map(CommandDetection::bullet).collect()
+        self.tests.iter().map(Command::bullet).collect()
     }
 
     /// `## Linting` bullet lines, or the "not detected" placeholder.
@@ -49,13 +49,13 @@ impl Detection {
         if self.linting.is_empty() {
             return vec![NOT_DETECTED.to_string()];
         }
-        self.linting.iter().map(LintDetection::bullet).collect()
+        self.linting.iter().map(Lint::bullet).collect()
     }
 }
 
 /// A marker file that existed but could not be parsed.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DetectionWarning {
+pub struct Warning {
     /// Repo-relative path of the offending marker.
     pub path: String,
     /// Human-readable parse failure.
@@ -64,12 +64,12 @@ pub struct DetectionWarning {
 
 /// One detected language runtime (`Rust`, `Go 1.22`, …).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RuntimeDetection {
+pub struct Runtime {
     id: &'static str,
     label: String,
 }
 
-impl RuntimeDetection {
+impl Runtime {
     const fn new(id: &'static str, label: String) -> Self {
         Self { id, label }
     }
@@ -81,12 +81,12 @@ impl RuntimeDetection {
 
 /// One detected tool invocation (`cargo test`, `npm test`, …).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CommandDetection {
+pub struct Command {
     id: &'static str,
     command: &'static str,
 }
 
-impl CommandDetection {
+impl Command {
     const fn new(id: &'static str, command: &'static str) -> Self {
         Self { id, command }
     }
@@ -98,14 +98,14 @@ impl CommandDetection {
 
 /// One detected linting surface.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LintDetection {
+pub enum Lint {
     /// A lint tool invocation (`cargo clippy`, `eslint`, …).
-    Command(CommandDetection),
+    Command(Command),
     /// A GitHub Actions workflow file, by name.
     Workflow(String),
 }
 
-impl LintDetection {
+impl Lint {
     const fn id(&self) -> &str {
         match self {
             Self::Command(command) => command.id,
@@ -120,8 +120,3 @@ impl LintDetection {
         }
     }
 }
-
-// Detection ordering and the corrupt-marker warning path are exercised
-// through the public API in `crates/workflow/tests/agents_detect.rs`; the
-// private per-marker grammars keep their unit matrices in
-// `detect/markers.rs`.

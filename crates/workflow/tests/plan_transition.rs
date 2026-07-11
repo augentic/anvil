@@ -42,12 +42,11 @@ fn journal_lines(project: &Project) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn repeated_approve_is_a_true_noop() {
+async fn repeated_approve_noop() {
     let project = Project::initialised();
     let plan_path = project.root.join("plan.yaml");
     fs::write(&plan_path, PENDING_PLAN).expect("stage plan.yaml");
 
-    // First stamp: lifecycle moves and exactly one event lands.
     let body = run::<Transition, _>(&project, approve_input()).await.expect("Gate 1 stamps");
     assert_eq!(body.previous, "pending");
     assert_eq!(body.current, "approved");
@@ -60,8 +59,7 @@ async fn repeated_approve_is_a_true_noop() {
     let stamped = fs::metadata(&plan_path).expect("plan metadata");
     let stamped_bytes = fs::read(&plan_path).expect("plan bytes");
 
-    // Second stamp: idempotent no-op — success envelope, no disk
-    // write, no journal event.
+    // Idempotent approval preserves both the inode and journal.
     let body = run::<Transition, _>(&project, approve_input()).await.expect("re-stamp is a no-op");
     assert_eq!(body.previous, "approved");
     assert_eq!(body.current, "approved");

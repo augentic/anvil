@@ -9,10 +9,10 @@ use std::path::Path;
 use artifacts::atomic::bytes_write;
 use error::Error;
 
-use super::MergePreviewEntry;
+use super::PreviewEntry;
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 
-/// Write each merged baseline produced by [`super::read::plan_three_way`]
+/// Write each merged baseline produced by [`super::read::three_way`]
 /// to its target path via [`bytes_write`], which creates parent
 /// directories and persists each file with a temp-file + rename so a
 /// reader never observes a torn baseline. Caller guarantees every entry
@@ -23,7 +23,7 @@ use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 /// flips the slice to `Merged` only after every write returns, so an
 /// interrupted commit leaves the slice `Built` and a retry re-writes the
 /// full set.
-pub(super) fn write_baselines(merged: &[MergePreviewEntry]) -> Result<(), Error> {
+pub(super) fn write_baselines(merged: &[PreviewEntry]) -> Result<(), Error> {
     for entry in merged {
         bytes_write(&entry.baseline_path, entry.result.output.as_bytes()).map_err(|err| {
             Error::Diag {
@@ -113,8 +113,8 @@ fn copy_opaque_recursive(
 /// outcome. Format: `Merged <count> <class>[, <count> <class>]* into
 /// baseline`. Empty merges (no work) round-trip as
 /// `Merged 0 entries into baseline` so the field is never blank.
-pub(super) fn build_merge_summary(
-    three_way: &[MergePreviewEntry], opaque_counts: &BTreeMap<String, usize>,
+pub(super) fn summary(
+    three_way: &[PreviewEntry], opaque_counts: &BTreeMap<String, usize>,
 ) -> String {
     let mut counts: BTreeMap<String, usize> = BTreeMap::new();
     for entry in three_way {

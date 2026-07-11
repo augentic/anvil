@@ -6,7 +6,7 @@ use schema::diagnostics::{Diagnostic, Severity};
 
 use super::ORPHAN_SOURCE;
 use crate::change::plan::core::Plan;
-use crate::change::plan::core::validate::plan_finding_structured;
+use crate::change::plan::core::validate::structured_finding;
 
 /// Top-level `sources:` keys declared but not referenced by any entry.
 ///
@@ -31,7 +31,7 @@ pub(super) fn detect(plan: &Plan) -> Vec<Diagnostic> {
     orphans
         .into_iter()
         .map(|key| {
-            plan_finding_structured(
+            structured_finding(
                 ORPHAN_SOURCE,
                 Severity::Suggestion,
                 format!(

@@ -21,14 +21,12 @@ struct ScannedSpec {
     parsed: ParsedSpec,
 }
 
-/// `(req-ids, synthesis-tags, provenance-findings)` from [`scan_slice_specs`].
+/// `(req-ids, synthesis-tags, provenance-findings)` from [`scan_specs`].
 pub(super) type ScanResult = (BTreeSet<String>, Vec<(String, RequirementTag)>, Vec<Diagnostic>);
 
 /// Scan slice specs once for requirement ids, synthesis tags, and
 /// provenance diagnostics.
-pub(super) fn scan_slice_specs(
-    slice_dir: &Path, source_keys: &BTreeSet<String>,
-) -> Result<ScanResult> {
+pub(super) fn scan_specs(slice_dir: &Path, source_keys: &BTreeSet<String>) -> Result<ScanResult> {
     let specs_dir = slice_dir.join("specs");
     if !specs_dir.is_dir() {
         return Ok((BTreeSet::new(), Vec::new(), Vec::new()));
@@ -99,7 +97,7 @@ pub(super) fn synopsis_thin(layout: Layout<'_>) -> Result<Vec<Diagnostic>> {
     Ok(discovery
         .leads()
         .iter()
-        .filter(|lead| synopsis_is_thin(&lead.synopsis))
+        .filter(|lead| is_synopsis_thin(&lead.synopsis))
         .map(|lead| {
             Diagnostic::review(
                 "discovery-lead-synopsis-thin",
@@ -121,7 +119,7 @@ pub(super) fn synopsis_thin(layout: Layout<'_>) -> Result<Vec<Diagnostic>> {
 }
 
 /// Coarse content floor for an advisory finding.
-pub(super) fn synopsis_is_thin(synopsis: &str) -> bool {
+pub(super) fn is_synopsis_thin(synopsis: &str) -> bool {
     let trimmed = synopsis.trim();
     let words = trimmed.split_whitespace().filter(|word| !word.is_empty()).count();
     let chars = trimmed.chars().filter(|character| !character.is_whitespace()).count();
@@ -158,9 +156,7 @@ fn override_orphans(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>> {
 }
 
 /// Resolve source keys bound to this slice.
-pub(super) fn resolve_slice_source_keys(
-    layout: Layout<'_>, name: &str,
-) -> Result<BTreeSet<String>> {
+pub(super) fn source_keys(layout: Layout<'_>, name: &str) -> Result<BTreeSet<String>> {
     let plan_path = layout.plan_path();
     if !plan_path.exists() {
         return Ok(BTreeSet::new());

@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Platform;
 use crate::adapter::{AdapterRef, PlatformsSurface, Resolver};
-use crate::change::plan_finding;
+use crate::change::finding;
 use crate::config::ProjectConfig;
 use crate::registry::Registry;
 
@@ -291,7 +291,7 @@ pub fn cache_staleness(
         {
             Ok(fresh) => fresh,
             Err(err) => {
-                results.push(plan_finding(
+                results.push(finding(
                     "workspace-slot-config-unreadable",
                     Severity::Important,
                     format!("workspace slot '{}' topology could not be derived: {err}", rp.name),
@@ -302,7 +302,7 @@ pub fn cache_staleness(
         };
         let stale = cached.get(rp.name.as_str()).is_none_or(|cached| **cached != fresh);
         if stale {
-            results.push(plan_finding(
+            results.push(finding(
                 "topology-cache-stale",
                 Severity::Suggestion,
                 format!(

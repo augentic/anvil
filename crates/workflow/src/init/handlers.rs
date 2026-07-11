@@ -142,7 +142,7 @@ impl From<&InitResult> for ScaffoldBody {
             wasm_pkg_config_written: result.wasm_pkg_config_written,
             context_generated: result.context_skip_reason.is_none(),
             context_skipped: result.context_skip_reason.is_some(),
-            context_skip_reason: result.context_skip_reason.map(super::ContextSkip::as_str),
+            context_skip_reason: result.context_skip_reason.map(super::Skip::as_str),
         }
     }
 }

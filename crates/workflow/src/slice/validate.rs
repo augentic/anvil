@@ -1,24 +1,9 @@
 //! Slice-validation kernel shared by `specify slice validate` and the
 //! guest refine orchestrator.
 //!
-//! [`run`] is the single findings collector: the pre-adapter gates
-//! (provenance scan, spec file-location, per-slice authority-override
-//! orphans, component-catalog drift, typed-model drift, and Decision
-//! Record gates), then the adapter rules
-//! (`artifacts::validate::validate_slice`) folded with the non-blocking
-//! synopsis advisories. Every entry point takes a [`Layout`] or plain
-//! paths rather than the CLI `Ctx`, so the gates are unit-testable
-//! without standing up a binary. Report rendering, journaling, and the
-//! error envelope stay at the caller boundaries — the handler renders a
-//! [`crate::handler::ReportBody`]; the orchestrator raises codes only.
-//!
-//! This module is the thin orchestrator: it owns the public entry
-//! points ([`run`], [`append_synthesis_journal`], the [`Validation`]
-//! outcome) and the two filesystem helpers shared across gates
-//! (`path_hint`, `collect_spec_files`). The gate machinery lives in the
-//! cohesive submodules — `pre_adapter` (spec scan, gate bundle,
-//! authority overrides, synopsis advisory), `model_drift`, `decisions`,
-//! `catalog`, and `spec_location`.
+//! [`run`] collects the ordered pre-adapter gates, then folds adapter
+//! findings with non-blocking synopsis advisories. Rendering, journaling,
+//! and error envelopes remain at the caller boundaries.
 
 use std::path::{Path, PathBuf};
 
@@ -86,9 +71,9 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
     let slice_dir = layout.slice_dir(name);
     let evidence_docs = validate_evidence_dir(&slice_dir)?;
 
-    let source_keys = pre_adapter::resolve_slice_source_keys(layout, name)?;
+    let source_keys = pre_adapter::source_keys(layout, name)?;
     let (_spec_req_ids, synthesis_tags, provenance_findings) =
-        pre_adapter::scan_slice_specs(&slice_dir, &source_keys)?;
+        pre_adapter::scan_specs(&slice_dir, &source_keys)?;
     if !provenance_findings.is_empty() {
         return Ok(Validation::Gate {
             code: "slice-provenance-invalid",

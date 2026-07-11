@@ -4,7 +4,7 @@ use std::io::Write;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
-use schema::diagnostics::{Diagnostic, blocking, blocking_present};
+use schema::diagnostics::{Diagnostic, has_blocking, is_blocking};
 use serde::{Deserialize, Serialize};
 
 use super::require_file;
@@ -39,7 +39,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let plan = Plan::load(&plan_path)?;
         let results = plan_full_report(context.provider, &plan, cx.layout());
 
-        let has_errors = blocking_present(&results);
+        let has_errors = has_blocking(&results);
         let body = ReportBody::new(results, Some("Plan OK"), write_row);
         if has_errors {
             Err(crate::handler::Error::report(
@@ -55,7 +55,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
 }
 
 fn write_row(w: &mut dyn Write, finding: &Diagnostic) -> std::io::Result<()> {
-    let label = if blocking(finding) { "ERROR  " } else { "WARNING" };
+    let label = if is_blocking(finding) { "ERROR  " } else { "WARNING" };
     let code = finding.rule_id.as_deref().unwrap_or("<unknown>");
     let entry_col = finding.slice.as_ref().map_or_else(String::new, |e| format!("[{e}]"));
     writeln!(w, "{label} {:<32} {:<24} {}", code, entry_col, finding.impact)

@@ -3,12 +3,12 @@
 use error::Error;
 use omnia_guest::Model;
 
-use super::{seam_failure, target_adapter_id};
+use super::{seam_failure, target_id};
 use crate::judgment;
 use crate::judgment::synthesize::{Kernel, Synthesized};
 use crate::registry::topology::Surface;
 use crate::seam::TargetSeam;
-use crate::slice::{BaselineDomainDetail, SynthesisSourceInput, build_inputs};
+use crate::slice::{DomainDetail, SourceInput, inputs};
 
 /// The caller-assembled inputs to [`synthesize`], minus the guidance
 /// brief the orchestrator fetches through the seam: the per-source
@@ -21,17 +21,17 @@ pub struct SynthesizeRequest<'a> {
     pub target: &'a str,
     /// One entry per bound source, carrying its inline `lead` and
     /// `claims`.
-    pub sources: &'a [SynthesisSourceInput],
+    pub sources: &'a [SourceInput],
     /// The slice's bound project baseline surface.
     pub baseline: &'a [Surface],
     /// Per-domain baseline `REQ` id facts.
-    pub baseline_detail: &'a [BaselineDomainDetail],
+    pub baseline_detail: &'a [DomainDetail],
 }
 
 /// Run the synthesis judgment leg with the guidance brief read
 /// through `seam.guidance(target)`.
 ///
-/// Assembles the inputs envelope ([`build_inputs`]) and runs
+/// Assembles the inputs envelope ([`inputs`]) and runs
 /// the [`judgment::synthesize::synthesize`] leg; per the judgment-leg
 /// contract, the caller still owns staging and persisting the
 /// synthesized artifacts and the `slice.synthesize.*` journal bracket
@@ -44,10 +44,10 @@ pub struct SynthesizeRequest<'a> {
 pub async fn synthesize<P: Model, T: TargetSeam>(
     model: &P, seam: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
-    let id = target_adapter_id(request.target);
+    let id = target_id(request.target);
     let guidance =
         seam.guidance(id.clone()).await.map_err(|err| seam_failure("guidance", &id, &err))?;
-    let inputs = build_inputs(
+    let inputs = inputs(
         request.slice,
         request.sources,
         &guidance,

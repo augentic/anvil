@@ -1,8 +1,8 @@
-//! Triage predicates over diagnostic slices: `blocking`,
-//! `blocking_present`, the severity tally, and `renumber`.
+//! Triage predicates over diagnostic slices: `is_blocking`,
+//! `has_blocking`, the severity tally, and `renumber`.
 
 use schema::diagnostics::{
-    DiagnosticKind, DiagnosticSummary, Severity, blocking, blocking_present, renumber,
+    DiagnosticKind, DiagnosticSummary, Severity, has_blocking, is_blocking, renumber,
 };
 
 use crate::diagnostics_support::diagnostic;
@@ -11,27 +11,27 @@ mod diagnostics_support;
 
 #[test]
 fn blocking_tiers_and_kind() {
-    assert!(blocking(&diagnostic("a", Severity::Critical)));
-    assert!(blocking(&diagnostic("a", Severity::Important)));
-    assert!(!blocking(&diagnostic("a", Severity::Suggestion)));
-    assert!(!blocking(&diagnostic("a", Severity::Optional)));
+    assert!(is_blocking(&diagnostic("a", Severity::Critical)));
+    assert!(is_blocking(&diagnostic("a", Severity::Important)));
+    assert!(!is_blocking(&diagnostic("a", Severity::Suggestion)));
+    assert!(!is_blocking(&diagnostic("a", Severity::Optional)));
 
     let mut review = diagnostic("a", Severity::Critical);
     review.kind = DiagnosticKind::Review;
-    assert!(!blocking(&review), "a review request never gates");
+    assert!(!is_blocking(&review), "a review request never gates");
 }
 
 #[test]
-fn blocking_present_scans() {
+fn blocking_scan() {
     let clean = [diagnostic("a", Severity::Suggestion), diagnostic("b", Severity::Optional)];
-    assert!(!blocking_present(&clean));
+    assert!(!has_blocking(&clean));
 
     let dirty = [diagnostic("a", Severity::Suggestion), diagnostic("b", Severity::Important)];
-    assert!(blocking_present(&dirty));
+    assert!(has_blocking(&dirty));
 }
 
 #[test]
-fn summary_tallies_by_severity() {
+fn summary_by_severity() {
     let diags = [
         diagnostic("a", Severity::Critical),
         diagnostic("b", Severity::Important),
@@ -50,7 +50,7 @@ fn summary_tallies_by_severity() {
 }
 
 #[test]
-fn renumber_is_sequential() {
+fn renumber_sequential() {
     let mut diags = [diagnostic("zzz", Severity::Critical), diagnostic("yyy", Severity::Important)];
     renumber(&mut diags);
     assert_eq!(diags[0].id, "DIAG-0001");

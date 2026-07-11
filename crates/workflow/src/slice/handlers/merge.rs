@@ -11,20 +11,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::handler::{Anchor, Ctx, Render};
 use crate::merge::{
-    BaselineConflict, MergeOperation, MergePreviewEntry, OpaqueAction, artifact_classes,
-    conflict_check, slice, summarise_operations,
+    BaselineConflict, MergeOperation, OpaqueAction, PreviewEntry, artifact_classes, conflict_check,
+    slice, summarise_operations,
 };
 use crate::orchestrate;
-
-// ---------------------------------------------------------------------------
-// slice merge run
-// ---------------------------------------------------------------------------
 
 /// Wire input for `slice merge run`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MergeRunInput {
-    /// Slice name (under `.specify/slices/`).
+    /// Slice to merge.
     pub name: String,
     /// Authorise a whole-document composition overwrite.
     #[serde(default)]
@@ -63,13 +59,13 @@ impl<P: Anchor> Operation<P> for MergeRun {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MergeBody {
-    /// Slice name.
+    /// Merged slice.
     pub slice: String,
-    /// Merged baseline spec names.
+    /// Updated baseline specs.
     pub merged: Vec<String>,
-    /// Merge decisions recorded.
+    /// Promoted Decision Records.
     pub decisions: Vec<String>,
-    /// Path of the archived slice directory.
+    /// Archived slice location.
     pub archive_path: PathBuf,
 }
 
@@ -86,15 +82,11 @@ impl Render for MergeBody {
     }
 }
 
-// ---------------------------------------------------------------------------
-// slice merge preview
-// ---------------------------------------------------------------------------
-
 /// Wire input for `slice merge preview`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PreviewInput {
-    /// Slice name.
+    /// Slice to preview.
     pub name: String,
 }
 
@@ -120,7 +112,7 @@ impl<P: Anchor> Operation<P> for Preview {
         // by grouping the engine's class-tagged entries by their `class_name`.
         // The literal output keys live here — alongside the omnia-default
         // synthesiser — rather than in the engine.
-        let specs: Vec<MergePreviewEntry> =
+        let specs: Vec<PreviewEntry> =
             result.three_way.into_iter().filter(|e| e.class_name == "specs").collect();
         let contracts: Vec<ContractItem> = result
             .opaque
@@ -144,11 +136,11 @@ impl<P: Anchor> Operation<P> for Preview {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PreviewBody {
-    /// Path of the slice directory (serialised as its display string).
+    /// Previewed slice location.
     pub slice_dir: PathBuf,
-    /// Three-way merge previews for the `specs` class.
-    pub specs: Vec<MergePreviewEntry>,
-    /// Opaque contract changes.
+    /// Three-way spec operations.
+    pub specs: Vec<PreviewEntry>,
+    /// Opaque contract operations.
     pub contracts: Vec<ContractItem>,
 }
 
@@ -188,15 +180,11 @@ pub struct ContractItem {
     pub action: OpaqueAction,
 }
 
-// ---------------------------------------------------------------------------
-// slice merge conflict-check
-// ---------------------------------------------------------------------------
-
 /// Wire input for `slice merge conflict-check`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ConflictCheckInput {
-    /// Slice name.
+    /// Slice to inspect.
     pub name: String,
 }
 
@@ -226,7 +214,7 @@ impl<P: Anchor> Operation<P> for ConflictCheck {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ConflictCheckBody {
-    /// Path of the slice directory (serialised as its display string).
+    /// Inspected slice location.
     pub slice_dir: PathBuf,
     /// Baselines modified after this slice's `defined_at`.
     pub conflicts: Vec<BaselineConflict>,
@@ -249,10 +237,6 @@ impl Render for ConflictCheckBody {
         Ok(())
     }
 }
-
-// ---------------------------------------------------------------------------
-// MergeOperation rendering.
-// ---------------------------------------------------------------------------
 
 fn operation_label(op: &MergeOperation) -> String {
     match op {

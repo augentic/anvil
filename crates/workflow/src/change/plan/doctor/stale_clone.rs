@@ -6,7 +6,7 @@ use std::path::Path;
 use schema::diagnostics::{Diagnostic, Severity};
 
 use super::{CloneSignature, STALE_CLONE, StaleReason};
-use crate::change::plan::core::validate::plan_finding_structured;
+use crate::change::plan::core::validate::structured_finding;
 use crate::registry::workspace::{SlotProblem, SlotProblemReason, slot_problem};
 use crate::registry::{Registry, RegistryProject};
 
@@ -49,7 +49,7 @@ fn diag(project: &RegistryProject, problem: &SlotProblem) -> Diagnostic {
     } else {
         StaleReason::SlotMismatch
     };
-    plan_finding_structured(
+    structured_finding(
         STALE_CLONE,
         Severity::Suggestion,
         format!(

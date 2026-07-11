@@ -12,7 +12,7 @@ use error::Result;
 use serde_json::Value as JsonValue;
 
 use crate::change::Entry;
-use crate::slice::synthesis::wire::SynthesisSourceInput;
+use crate::slice::synthesis::wire::SourceInput;
 
 /// The two kernel projection inputs distilled from on-disk Evidence:
 /// the per-source document-level `authority` map and the
@@ -20,19 +20,19 @@ use crate::slice::synthesis::wire::SynthesisSourceInput;
 pub type KernelEvidence = (BTreeMap<String, AuthorityClass>, BTreeMap<(String, String), ClaimKind>);
 
 /// Read each bound source's `evidence/<source>.yaml` into a
-/// [`SynthesisSourceInput`] for the agent inputs envelope.
+/// [`SourceInput`] for the agent inputs envelope.
 ///
 /// # Errors
 ///
 /// Propagates Evidence read and parse failures.
-pub fn read_source_inputs(slice_dir: &Path, entry: &Entry) -> Result<Vec<SynthesisSourceInput>> {
+pub fn read_source_inputs(slice_dir: &Path, entry: &Entry) -> Result<Vec<SourceInput>> {
     entry
         .sources
         .iter()
         .map(|binding| {
             let source = binding.source();
             let path = evidence_path(slice_dir, source);
-            SynthesisSourceInput::from_evidence_file(source, &path)
+            SourceInput::from_file(source, &path)
         })
         .collect()
 }

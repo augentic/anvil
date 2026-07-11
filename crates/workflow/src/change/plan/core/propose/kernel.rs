@@ -8,13 +8,11 @@ use artifacts::discovery::Discovery;
 use error::{Error, Result};
 use petgraph::algo::tarjan_scc;
 use schema::diagnostics::{
-    Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, blocking, fingerprint,
+    Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, fingerprint, is_blocking,
 };
 
-use super::super::model::{
-    Entry, Plan, SliceAuthorityOverride, SliceSourceBinding, Status, TargetRef,
-};
-use super::super::validate::entry_dependency_graph;
+use super::super::model::{AuthorityOverride, Entry, Plan, SliceSourceBinding, Status, TargetRef};
+use super::super::validate::dependency_graph;
 use super::catalog::{LeadCatalog, build_catalog};
 use super::wire::{ProjectRef, ProposalResponse, ResponseMember, ResponseSlice};
 use crate::name::is_kebab;
@@ -104,7 +102,7 @@ impl Plan {
         // Bulk replace, run the backstop validate, and roll back on any
         // blocking finding (e.g. unknown depends-on names).
         let previous = std::mem::replace(&mut self.entries, new_entries);
-        if let Some(finding) = self.validate(None, None).into_iter().find(blocking) {
+        if let Some(finding) = self.validate(None, None).into_iter().find(is_blocking) {
             self.entries = previous;
             return Err(Error::validation_failed(
                 finding.rule_id.clone().unwrap_or_default(),
@@ -407,7 +405,7 @@ fn build_entries(
             description: None,
             divergence: slice.divergence,
             disagreements: slice.disagreements,
-            authority_override: SliceAuthorityOverride::default(),
+            authority_override: AuthorityOverride::default(),
         })
         .collect()
 }
@@ -416,7 +414,7 @@ fn build_entries(
 /// cycle (including a self-loop), reusing the same Tarjan-SCC detection
 /// as the `cycle-in-depends-on` doctor diagnostic.
 fn has_dependency_cycle(entries: &[Entry]) -> bool {
-    let graph = entry_dependency_graph(entries);
+    let graph = dependency_graph(entries);
     tarjan_scc(&graph)
         .into_iter()
         .any(|scc| scc.len() > 1 || (scc.len() == 1 && graph.find_edge(scc[0], scc[0]).is_some()))

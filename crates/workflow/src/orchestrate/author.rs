@@ -27,7 +27,7 @@ use artifacts::discovery::Discovery;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use schema::diagnostics::blocking_present;
+use schema::diagnostics::has_blocking;
 
 use super::SurveyedSource;
 use crate::adapter::Resolver;
@@ -252,7 +252,7 @@ fn discovery_preamble(name: &str, gate: &GateProse) -> String {
 fn validate(layout: Layout<'_>) -> Result<(), Error> {
     let plan = Plan::load(&layout.plan_path())?;
     let findings = author_gate(&plan, &layout.slices_dir(), layout.project_dir())?;
-    if blocking_present(&findings) {
+    if has_blocking(&findings) {
         return Err(Error::validation_failed(
             "plan-structural-errors",
             "plan must be free of structural errors",

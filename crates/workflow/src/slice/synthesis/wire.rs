@@ -13,7 +13,7 @@
 //!
 //! The synthesis **inputs** the CLI hands the agent step are not
 //! schema-validated (no closed request shape).
-//! [`build_inputs`] assembles them — each bound
+//! [`inputs`] assembles them — each bound
 //! source's inline `lead` and `claims` plus the resolved target shape
 //! brief body — into the plain serialisable [`SynthesisInputs`] the
 //! guest refine orchestration hands the synthesis judgment. Authority
@@ -21,7 +21,7 @@
 //! after the response returns.
 //!
 //! The assembly is pure over already-read inputs so it unit-tests
-//! without a temp project; [`SynthesisSourceInput::from_evidence_file`]
+//! without a temp project; [`SourceInput::from_file`]
 //! is the only filesystem hook, kept off the core path and free of
 //! adapter resolution (the refine orchestration resolves the
 //! [`crate::adapter::TargetAdapter`] and reads the shape brief).
@@ -111,14 +111,14 @@ pub struct SynthesisSpec {
 /// closed discriminator for symmetry with the response.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum SynthesisInputsKind {
+pub enum InputKind {
     /// Agent synthesis inputs.
     Inputs,
 }
 
 /// The agent synthesis step's input envelope.
 ///
-/// Assembled by [`build_inputs`] for the guest refine
+/// Assembled by [`inputs`] for the guest refine
 /// orchestration. Not schema-validated —
 /// synthesis is always agent-dispatched, so there is no tool consumer
 /// and no closed request schema. Authority is deliberately absent: the
@@ -129,12 +129,12 @@ pub struct SynthesisInputs {
     /// Schema version.
     pub version: u32,
     /// Envelope kind.
-    pub kind: SynthesisInputsKind,
+    pub kind: InputKind,
     /// Slice name the step synthesises.
     pub slice: String,
     /// One entry per bound source, carrying its inline `lead` and
     /// `claims`.
-    pub sources: Vec<SynthesisSourceInput>,
+    pub sources: Vec<SourceInput>,
     /// The resolved target guidance body. Resolved and read by the
     /// refine orchestration — never by this module.
     pub guidance_brief: String,
@@ -150,13 +150,13 @@ pub struct SynthesisInputs {
     /// advisory context for id assignment in modified domains. Empty
     /// stays off the wire (greenfield).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub baseline_detail: Vec<BaselineDomainDetail>,
+    pub baseline_detail: Vec<DomainDetail>,
 }
 
 /// Advisory per-domain baseline id facts for the synthesis inputs envelope.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct BaselineDomainDetail {
+pub struct DomainDetail {
     /// Domain directory slug under `.specify/specs/`.
     pub domain: String,
     /// Existing baseline `REQ-NNN` ids in id order.
@@ -165,14 +165,14 @@ pub struct BaselineDomainDetail {
     pub max_req_num: u32,
 }
 
-impl From<&BaselineIndex> for Vec<BaselineDomainDetail> {
+impl From<&BaselineIndex> for Vec<DomainDetail> {
     fn from(index: &BaselineIndex) -> Self {
         let mut details: Self = index
             .domains()
             .map(|(domain, baseline)| {
                 let mut req_ids: Vec<String> = baseline.ids.keys().cloned().collect();
                 req_ids.sort();
-                BaselineDomainDetail {
+                DomainDetail {
                     domain: domain.to_string(),
                     req_ids,
                     max_req_num: baseline.max_req_num,
@@ -192,7 +192,7 @@ impl From<&BaselineIndex> for Vec<BaselineDomainDetail> {
 /// document-level `authority` is intentionally not carried.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct SynthesisSourceInput {
+pub struct SourceInput {
     /// Plan source binding key matching `plan.yaml.sources.<key>`.
     pub source: String,
     /// The source's discovery lead id (from `evidence/<source>.yaml`).
@@ -202,16 +202,16 @@ pub struct SynthesisSourceInput {
     pub claims: Vec<JsonValue>,
 }
 
-impl SynthesisSourceInput {
+impl SourceInput {
     /// Shape one already-read Evidence document into a
-    /// [`SynthesisSourceInput`], pulling its `lead` and `claims` and
+    /// [`SourceInput`], pulling its `lead` and `claims` and
     /// dropping everything else (notably the document-level
     /// `authority`, which the kernel resolves post-response).
     ///
     /// # Errors
     ///
     /// Returns [`Error::YamlDe`] when `raw` is not valid YAML.
-    pub(crate) fn from_evidence_yaml(source: &str, raw: &str) -> Result<Self> {
+    pub(crate) fn from_yaml(source: &str, raw: &str) -> Result<Self> {
         let doc: JsonValue = serde_saphyr::from_str(raw)?;
         let lead = doc.get("lead").and_then(JsonValue::as_str).unwrap_or_default().to_string();
         let claims = doc.get("claims").and_then(JsonValue::as_array).cloned().unwrap_or_default();
@@ -223,35 +223,35 @@ impl SynthesisSourceInput {
     }
 
     /// Read and shape one `evidence/<source>.yaml` into a
-    /// [`SynthesisSourceInput`].
+    /// [`SourceInput`].
     ///
     /// # Errors
     ///
     /// - [`error::Error::Filesystem`] when `path` cannot be read.
     /// - [`error::Error::YamlDe`] when the file is not valid YAML.
-    pub fn from_evidence_file(source: &str, path: &Path) -> Result<Self> {
-        Self::from_evidence_yaml(source, &crate::fs::read_text(path)?)
+    pub fn from_file(source: &str, path: &Path) -> Result<Self> {
+        Self::from_yaml(source, &crate::fs::read_text(path)?)
     }
 }
 
 /// Assemble the agent synthesis step's input envelope from
 /// already-read inputs.
 ///
-/// `sources` is one [`SynthesisSourceInput`] per bound source — the
+/// `sources` is one [`SourceInput`] per bound source — the
 /// caller builds the vec by reading each `evidence/<source>.yaml`
-/// (e.g. via [`SynthesisSourceInput::from_evidence_file`]).
+/// (e.g. via [`SourceInput::from_file`]).
 /// `guidance_brief` is the bound target's resolved guidance body,
 /// provided by the refine orchestration (which resolves the
 /// [`crate::adapter::TargetAdapter`] and reads the brief) so this
 /// function stays pure and adapter-free.
 #[must_use]
-pub fn build_inputs(
-    slice: &str, sources: &[SynthesisSourceInput], guidance_brief: &str, baseline: &[Surface],
-    baseline_detail: &[BaselineDomainDetail],
+pub fn inputs(
+    slice: &str, sources: &[SourceInput], guidance_brief: &str, baseline: &[Surface],
+    baseline_detail: &[DomainDetail],
 ) -> SynthesisInputs {
     SynthesisInputs {
         version: SYNTHESIS_VERSION,
-        kind: SynthesisInputsKind::Inputs,
+        kind: InputKind::Inputs,
         slice: slice.to_string(),
         sources: sources.to_vec(),
         guidance_brief: guidance_brief.to_string(),

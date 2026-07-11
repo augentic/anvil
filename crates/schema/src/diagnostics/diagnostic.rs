@@ -18,7 +18,7 @@
 //!   [`DiagnosticKind::Review`] is a deterministically-raised request
 //!   for agent or human judgment (e.g. a deferred semantic check).
 //!   Only `violation` diagnostics are default-blocking — see
-//!   [`blocking`].
+//!   [`is_blocking`].
 //!
 //! Field names are kebab-case at every nesting level. Producer-local
 //! `id` (e.g. `FIND-0001`) is distinct from the codex `rule_id` (e.g.
@@ -74,7 +74,7 @@ pub enum DiagnosticSource {
 /// Distinguishes a deterministic defect from a deterministically
 /// raised request for judgment. Defaults to [`Self::Violation`] so a
 /// diagnostic that omits the wire field deserialises as a defect, and
-/// so the [`blocking`] predicate keeps its pre-axis behaviour.
+/// so the [`is_blocking`] predicate keeps its pre-axis behaviour.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum DiagnosticKind {
@@ -384,15 +384,15 @@ pub fn renumber(findings: &mut [Diagnostic]) {
 /// (a `review` request never gates) and its severity is the blocking
 /// tier (`critical` or `important`).
 #[must_use]
-pub const fn blocking(diagnostic: &Diagnostic) -> bool {
+pub const fn is_blocking(diagnostic: &Diagnostic) -> bool {
     matches!(diagnostic.kind, DiagnosticKind::Violation)
         && matches!(diagnostic.severity, Severity::Critical | Severity::Important)
 }
 
-/// Whether any diagnostic in `diagnostics` blocks per [`blocking`].
+/// Whether any diagnostic in `diagnostics` blocks per [`is_blocking`].
 #[must_use]
-pub fn blocking_present(diagnostics: &[Diagnostic]) -> bool {
-    diagnostics.iter().any(blocking)
+pub fn has_blocking(diagnostics: &[Diagnostic]) -> bool {
+    diagnostics.iter().any(is_blocking)
 }
 
 /// Type-level pin of the [`DiagnosticReport`] envelope version.

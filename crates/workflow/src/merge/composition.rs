@@ -14,13 +14,8 @@ use crate::merge::engine::{MergeOperation, MergeResult};
 ///
 /// # Errors
 ///
-/// Returns an [`Error::Diag`] whose `code` names the failure: a
-/// malformed/empty/non-mapping delta (`composition-delta-malformed`,
-/// `composition-delta-empty`, `composition-delta-not-mapping`), an
-/// unparseable or screens-less baseline (`composition-baseline-malformed`,
-/// `composition-baseline-no-screens`), aggregated screen-level operation
-/// conflicts (`composition-screen-conflict`), or a re-serialisation
-/// failure (`composition-serialize-failed`).
+/// Distinguishes malformed delta or baseline shapes from aggregated
+/// screen-level conflicts and serialisation failure.
 pub fn merge(baseline: Option<&str>, delta_text: &str) -> Result<MergeResult, Error> {
     let delta_doc: Value = serde_saphyr::from_str(delta_text).map_err(|e| Error::Diag {
         code: "composition-delta-malformed",
@@ -175,8 +170,3 @@ pub fn baseline_is_non_empty(text: &str) -> bool {
         .and_then(Value::as_object)
         .is_some_and(|screens| !screens.is_empty())
 }
-
-// The merge kernel's delta-operation matrix and the two shape predicates are
-// exercised through the crate's public API in
-// `crates/workflow/tests/merge_composition.rs` (the screen-level delta matrix
-// has no CLI fixture).

@@ -48,7 +48,7 @@ pub enum EventKind {
     /// Gate 1 cleared — `specify plan transition <plan-name> approved`.
     #[serde(rename = "plan.transition.approved", rename_all = "kebab-case")]
     PlanTransitionApproved {
-        /// Plan name from `plan.yaml.name`.
+        /// Governing plan.
         plan_name: PlanName,
         /// Who drove the stamp. Self-reported via `--actor`
         /// (default `operator`); evidence for eval probes, never
@@ -65,9 +65,9 @@ pub enum EventKind {
     /// `plan.transition.approved` / `slice.transition.*` cadence.
     #[serde(rename = "plan.transition.undone", rename_all = "kebab-case")]
     PlanTransitionUndone {
-        /// Plan name from `plan.yaml.name`.
+        /// Governing plan.
         plan_name: PlanName,
-        /// Entry id under `plan.yaml.slices[].name`.
+        /// Affected entry.
         slice_name: SliceName,
         /// Status the entry held before the undo.
         from: crate::change::Status,
@@ -82,9 +82,9 @@ pub enum EventKind {
     /// loop parked rather than advancing.
     #[serde(rename = "plan.entry.advanced", rename_all = "kebab-case")]
     PlanEntryAdvanced {
-        /// Plan name from `plan.yaml.name`.
+        /// Governing plan.
         plan_name: PlanName,
-        /// Entry id under `plan.yaml.slices[].name` that advanced.
+        /// Advanced entry.
         slice_name: SliceName,
     },
     /// Stamped `slices[].divergence` via
@@ -96,9 +96,9 @@ pub enum EventKind {
     /// path that writes the `divergence` field.
     #[serde(rename = "plan.amend.divergence", rename_all = "kebab-case")]
     PlanAmendDivergence {
-        /// Plan name from `plan.yaml.name`.
+        /// Governing plan.
         plan_name: PlanName,
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Previous value — may be any of `none | likely | accepted | rejected`.
         /// Callers convert an absent on-disk slice field via
@@ -113,7 +113,7 @@ pub enum EventKind {
     /// slice is ready for `/spec:build`.
     #[serde(rename = "slice.transition.refined", rename_all = "kebab-case")]
     SliceTransitionRefined {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// The `source extract` finalize tail validated and
@@ -122,9 +122,9 @@ pub enum EventKind {
     /// never emits this via `specify journal emit`.
     #[serde(rename = "slice.extract.completed", rename_all = "kebab-case")]
     SliceExtractCompleted {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
-        /// Source key from `plan.yaml.sources.<key>`.
+        /// Extracted source binding.
         source: String,
     },
     /// `[conflict]` on a requirement in `spec.md` — same-authority
@@ -132,7 +132,7 @@ pub enum EventKind {
     /// `specify slice validate` after a successful run.
     #[serde(rename = "slice.synthesis.conflict", rename_all = "kebab-case")]
     SliceSynthesisConflict {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// `ID:` value on the tagged requirement block.
         requirement_id: String,
@@ -142,7 +142,7 @@ pub enum EventKind {
     /// `specify slice validate` after a successful run.
     #[serde(rename = "slice.synthesis.divergence", rename_all = "kebab-case")]
     SliceSynthesisDivergence {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// `ID:` value on the tagged requirement block.
         requirement_id: String,
@@ -152,7 +152,7 @@ pub enum EventKind {
     /// `specify slice validate` after a successful run.
     #[serde(rename = "slice.synthesis.unknown", rename_all = "kebab-case")]
     SliceSynthesisUnknown {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// `ID:` value on the tagged requirement block.
         requirement_id: String,
@@ -164,7 +164,7 @@ pub enum EventKind {
     /// lifecycle verb, `synthesis` is the requirement-tag noun.
     #[serde(rename = "slice.synthesize.started", rename_all = "kebab-case")]
     SliceSynthesizeStarted {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// Synthesis dispatched to the agent. Synthesis is always
@@ -172,7 +172,7 @@ pub enum EventKind {
     /// the journal records the handoff.
     #[serde(rename = "slice.synthesize.agent", rename_all = "kebab-case")]
     SliceSynthesizeAgent {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// Slice synthesis finished and the artifacts were persisted.
@@ -181,7 +181,7 @@ pub enum EventKind {
     /// `design.md`, `tasks.md`, `model.yaml`).
     #[serde(rename = "slice.synthesize.completed", rename_all = "kebab-case")]
     SliceSynthesizeCompleted {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Persisted artifact relative paths, in write order.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -193,7 +193,7 @@ pub enum EventKind {
     /// stalled.
     #[serde(rename = "slice.synthesize.failed", rename_all = "kebab-case")]
     SliceSynthesizeFailed {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Short human reason / finding code for the failure.
         reason: String,
@@ -203,7 +203,7 @@ pub enum EventKind {
     /// artifacts. One event per slice.
     #[serde(rename = "slice.build.started", rename_all = "kebab-case")]
     SliceBuildStarted {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// `/spec:build` finished implementing the slice — the target
@@ -211,7 +211,7 @@ pub enum EventKind {
     /// `/spec:merge`. One event per slice.
     #[serde(rename = "slice.build.succeeded", rename_all = "kebab-case")]
     SliceBuildSucceeded {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// `/spec:build` stopped before the slice was implemented.
@@ -220,7 +220,7 @@ pub enum EventKind {
     /// stalled.
     #[serde(rename = "slice.build.failed", rename_all = "kebab-case")]
     SliceBuildFailed {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Short human reason / finding code for the failure.
         reason: String,
@@ -231,7 +231,7 @@ pub enum EventKind {
     /// merge report. One event per slice.
     #[serde(rename = "slice.merge.started", rename_all = "kebab-case")]
     SliceMergeStarted {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// `specify slice merge` validated and applied the slice's deltas
@@ -239,7 +239,7 @@ pub enum EventKind {
     /// validator outcome, not on a merge report. One event per slice.
     #[serde(rename = "slice.merge.succeeded", rename_all = "kebab-case")]
     SliceMergeSucceeded {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// `specify slice merge` refused to fold the slice into the
@@ -249,7 +249,7 @@ pub enum EventKind {
     /// stalled.
     #[serde(rename = "slice.merge.failed", rename_all = "kebab-case")]
     SliceMergeFailed {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Short human reason / finding code for the failure.
         reason: String,
@@ -262,7 +262,7 @@ pub enum EventKind {
     /// outside a clone. Native `specify slice merge` never emits this.
     #[serde(rename = "slice.merge.commit-skipped", rename_all = "kebab-case")]
     SliceMergeCommitSkipped {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
     },
     /// The `source survey` finalize tail validated and merged
@@ -271,7 +271,7 @@ pub enum EventKind {
     /// survey)` run. CLI-owned.
     #[serde(rename = "source.survey.completed", rename_all = "kebab-case")]
     SourceSurveyCompleted {
-        /// Source key from `plan.yaml.sources.<key>`.
+        /// Surveyed source binding.
         source: String,
         /// Adapter name (kebab-case; the resolved adapter identity).
         adapter: String,
@@ -282,7 +282,7 @@ pub enum EventKind {
     /// (`survey | extract`).
     #[serde(rename = "source.execution.agent", rename_all = "kebab-case")]
     SourceExecutionAgent {
-        /// Source key from `plan.yaml.sources.<key>`.
+        /// Dispatched source binding.
         source: String,
         /// Adapter name (kebab-case; the resolved adapter identity).
         adapter: String,
@@ -299,7 +299,7 @@ pub enum EventKind {
     /// in v1, so the payload stays minimal at `{ slice, target }`.
     #[serde(rename = "target.execution.agent", rename_all = "kebab-case")]
     TargetExecutionAgent {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice: SliceName,
         /// Target name (`omnia`, `vectis`, …) the build dispatched to.
         target: String,
@@ -310,7 +310,7 @@ pub enum EventKind {
     /// not implemented the hook do not emit this event).
     #[serde(rename = "slice.replay.completed", rename_all = "kebab-case")]
     SliceReplayCompleted {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Replay-runner identity (e.g. `omnia-target@1.4 (cargo nextest)`).
         runner: String,
@@ -328,9 +328,9 @@ pub enum EventKind {
     /// `--clear-*` flags.
     #[serde(rename = "plan.amend.authority-override", rename_all = "kebab-case")]
     PlanAmendAuthorityOverride {
-        /// Plan name from `plan.yaml.name`.
+        /// Governing plan.
         plan_name: PlanName,
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Affected slice.
         slice_name: SliceName,
         /// Closed action discriminator.
         action: AuthorityOverrideAction,
@@ -349,7 +349,7 @@ pub enum EventKind {
     /// `specify journal emit` here.
     #[serde(rename = "plan.reconcile.completed", rename_all = "kebab-case")]
     PlanReconcileCompleted {
-        /// Plan name from `plan.yaml.name`.
+        /// Governing plan.
         plan_name: PlanName,
         /// Count of `plan.yaml.slices[]` rows written.
         slice_count: usize,
@@ -366,7 +366,7 @@ pub enum EventKind {
     /// event plus git history of `.specify/specs/` is.
     #[serde(rename = "slice.archive.created", rename_all = "kebab-case")]
     SliceArchiveCreated {
-        /// Slice id under `plan.yaml.slices[].name`.
+        /// Archived slice.
         slice_name: SliceName,
         /// Baseline spec/composition names this slice merged into, in
         /// the merge engine's `(class, name)` order.

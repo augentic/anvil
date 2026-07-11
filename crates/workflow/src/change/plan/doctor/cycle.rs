@@ -5,7 +5,7 @@ use schema::diagnostics::{Diagnostic, Severity};
 
 use super::CYCLE;
 use crate::change::plan::core::Entry;
-use crate::change::plan::core::validate::{entry_dependency_graph, plan_finding_structured};
+use crate::change::plan::core::validate::{dependency_graph, structured_finding};
 
 /// One [`CYCLE`] diagnostic per cycle in the depends-on graph.
 ///
@@ -17,7 +17,7 @@ use crate::change::plan::core::validate::{entry_dependency_graph, plan_finding_s
 /// `cycle`.
 #[must_use]
 pub fn detect(changes: &[Entry]) -> Vec<Diagnostic> {
-    let graph = entry_dependency_graph(changes);
+    let graph = dependency_graph(changes);
 
     let mut out = Vec::new();
     for scc in tarjan_scc(&graph) {
@@ -40,7 +40,7 @@ pub fn detect(changes: &[Entry]) -> Vec<Diagnostic> {
             }
         };
         let pretty = cycle_names.join(" → ");
-        out.push(plan_finding_structured(
+        out.push(structured_finding(
             CYCLE,
             Severity::Important,
             format!("dependency cycle: {pretty}"),

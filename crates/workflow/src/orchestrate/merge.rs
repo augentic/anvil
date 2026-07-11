@@ -8,13 +8,13 @@ use jiff::Timestamp;
 use crate::change::{Plan, Status};
 use crate::config::{Layout, Mutation, with_state};
 use crate::journal::{self, EventKind};
-use crate::merge::{MergeCommit, MergePreviewEntry, artifact_classes, slice as slice_merge};
+use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
 
 /// The result of a completed guest [`merge`].
 #[derive(Debug, Clone)]
 pub struct MergeOutcome {
     /// The 3-way merged spec/composition entries.
-    pub merged: Vec<MergePreviewEntry>,
+    pub merged: Vec<PreviewEntry>,
     /// `DEC-NNNN` ids promoted into the Decision Record catalogue.
     pub decisions: Vec<String>,
     /// Where the slice's working directory was archived.

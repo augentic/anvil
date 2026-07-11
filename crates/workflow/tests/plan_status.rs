@@ -97,7 +97,7 @@ mod next_action {
     use super::*;
 
     #[tokio::test]
-    async fn stuck_when_deps_unmet() {
+    async fn unmet_deps_stuck() {
         let project = Project::initialised();
         let plan =
             approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
@@ -115,7 +115,7 @@ mod next_action {
     }
 
     #[tokio::test]
-    async fn drained_renders_finalize_line() {
+    async fn drained_finalize_line() {
         // The drained projection and the literal stop-conditions
         // drained string, asserted through the text rendering.
         let project = Project::initialised();
@@ -136,7 +136,7 @@ mod failure_overlay {
     use super::*;
 
     #[tokio::test]
-    async fn merge_failure_maps_to_conflict() {
+    async fn merge_failure_conflict() {
         let project = Project::initialised();
         write_slice(&project.root, "a", LifecycleStatus::Built);
         append(
@@ -305,7 +305,7 @@ mod re_entry {
     use super::*;
 
     #[tokio::test]
-    async fn merge_incomplete_resumes_at_done_stamp() {
+    async fn merge_incomplete_done_stamp() {
         let project = Project::initialised();
         append(
             &project.root,
@@ -327,7 +327,7 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn drained_resumes_at_finalize() {
+    async fn drained_finalize() {
         let project = Project::initialised();
         let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
         let body = status(&project, &plan).await;
@@ -337,7 +337,7 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn gate_one_resumes_at_approved_stamp() {
+    async fn gate_one_approved_stamp() {
         let project = Project::initialised();
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
@@ -346,7 +346,7 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn repair_shaped_stops_have_no_resume() {
+    async fn repair_stops_no_resume() {
         // `stuck` and `slice-dropped` need operator repair — no single
         // command makes progress, so `resume` stays empty.
         let project = Project::initialised();
@@ -371,7 +371,7 @@ mod workspace_routing {
     use super::*;
 
     #[tokio::test]
-    async fn slot_bound_entry_reads_slot_state() {
+    async fn slot_bound_entry_uses_slot_state() {
         let project = Project::initialised();
         let slot = project.root.join("workspace").join("storefront");
         std::fs::create_dir_all(&slot).expect("create slot");

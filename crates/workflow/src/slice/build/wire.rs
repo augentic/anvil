@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 
 use error::{Error, Result};
-use schema::diagnostics::{Diagnostic, blocking};
+use schema::diagnostics::{Diagnostic, is_blocking};
 use serde::{Deserialize, Serialize};
 
 use crate::platform::Platform;
@@ -24,9 +24,7 @@ pub const BUILD_VERSION: u32 = 1;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildRequest {
-    /// Schema version.
     pub version: u32,
-    /// Slice being built (kebab-case).
     pub slice: String,
     /// Working tree the target builds into and validates against.
     pub project_dir: PathBuf,
@@ -49,11 +47,8 @@ pub struct BuildInputs {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildArtifacts {
-    /// Singular rendered `proposal.md`.
     pub proposal: String,
-    /// Singular rendered `design.md`.
     pub design: String,
-    /// Singular rendered `tasks.md`.
     pub tasks: String,
     /// One or more per-domain `spec.md` files (`specs/<domain>/spec.md`).
     pub specs: Vec<String>,
@@ -86,7 +81,7 @@ pub enum BuildStatus {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildOutput {
-    /// Platform this output was produced for.
+    /// Target platform.
     pub platform: Platform,
     /// Relative path (from `project-dir`) to the produced artifact.
     pub path: String,
@@ -115,13 +110,13 @@ pub struct UiSurface {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildReport {
-    /// Schema version.
+    /// Report schema version.
     pub version: u32,
     /// Slice that was built; must match the request.
     pub slice: String,
     /// Adapter that produced the report (e.g. `omnia@1.0.0`).
     pub target: String,
-    /// `success` or `failure`.
+    /// Adapter-reported outcome.
     pub status: BuildStatus,
     /// Diagnostic findings; defaults to `[]`.
     #[serde(default)]
@@ -131,8 +126,7 @@ pub struct BuildReport {
     /// path exists on disk.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub outputs: Vec<BuildOutput>,
-    /// Optional per-slice UI-surface signal (A4). Absent on reports
-    /// that predate the field.
+    /// Optional per-slice UI-surface signal.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ui_surface: Option<UiSurface>,
 }
@@ -141,7 +135,7 @@ impl BuildReport {
     /// Reject a [`BuildStatus::Success`] report carrying any blocking
     /// finding.
     ///
-    /// A finding blocks per the [`blocking`] predicate (an open
+    /// A finding blocks per the [`is_blocking`] predicate (an open
     /// `critical` / `important` violation). On [`BuildStatus::Failure`]
     /// blocking findings are allowed, so the gate is a no-op.
     ///
@@ -151,7 +145,7 @@ impl BuildReport {
     /// `target-build-success-with-blocking-finding` (exit code 2) when
     /// a `success` report carries a blocking finding.
     pub(crate) fn enforce_no_blocking(&self) -> Result<()> {
-        if self.status == BuildStatus::Success && self.findings.iter().any(blocking) {
+        if self.status == BuildStatus::Success && self.findings.iter().any(is_blocking) {
             return Err(Error::validation_failed(
                 "target-build-success-with-blocking-finding",
                 "a success build report carries no blocking finding",
