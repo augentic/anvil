@@ -12,9 +12,8 @@ use error::{Error, Result};
 use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 
 use super::wire::ProjectRef;
-use crate::adapter::Resolver;
+use crate::adapter::{AdapterRef, Resolver};
 use crate::config::{Layout, ProjectConfig};
-use crate::init::adapter_ref_from_value;
 use crate::registry::catalog::Registry;
 use crate::registry::topology::{Surface, TopologyLock};
 
@@ -180,7 +179,7 @@ fn regular_topology(
             "non-workspace project.yaml omits the `adapter` field",
         )
     })?;
-    let adapter = resolver.resolve_target(&adapter_ref_from_value(adapter_value), project_dir)?;
+    let adapter = resolver.resolve_target(&AdapterRef::from_value(adapter_value), project_dir)?;
     let target = format!("{}@{}", adapter.manifest.name, adapter.manifest.version);
     let projection = crate::registry::identity::project_baseline(project_dir)?;
     Ok(ProjectRef {

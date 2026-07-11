@@ -255,6 +255,77 @@ mod scaffold {
         );
     }
 
+    /// A provider whose resolver answers from memory — the
+    /// native-harness (linked crates) shape: no component file exists
+    /// anywhere on disk.
+    #[derive(Clone)]
+    struct Linked(Project);
+
+    impl workflow::handler::Anchor for Linked {
+        fn project_root(&self) -> &std::path::Path {
+            &self.0.root
+        }
+    }
+
+    impl workflow::adapter::Resolver for Linked {
+        fn resolve_source(
+            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &std::path::Path,
+        ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+            workflow::adapter::resolver::source(
+                adapter_ref,
+                workflow::adapter::metadata::Metadata::default(),
+                linked_origin(),
+            )
+        }
+
+        fn resolve_target(
+            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &std::path::Path,
+        ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+            workflow::adapter::resolver::target(
+                adapter_ref,
+                workflow::adapter::metadata::Metadata::default(),
+                linked_origin(),
+            )
+        }
+    }
+
+    fn linked_origin() -> workflow::adapter::Origin {
+        workflow::adapter::Origin {
+            label: "native".to_string(),
+            reference: "rust:target:demo".to_string(),
+        }
+    }
+
+    #[tokio::test]
+    async fn regular_mode_component_free() {
+        // A bare adapter name is an identity, not a file: init defers
+        // component resolution to the injected resolver, so no `.wasm`
+        // artifact is staged anywhere for this test.
+        let project = Project::bare();
+        let body = omnia_guest::api::invoke::Invoker::new("specify", Linked(project.clone()))
+            .invoke::<workflow::init::handlers::Scaffold>(
+                omnia_guest::api::invocation::Invocation::new(
+                    workflow::init::handlers::ScaffoldInput {
+                        adapter: Some("demo".into()),
+                        name: Some("demo-project".into()),
+                        description: None,
+                        workspace: false,
+                        platforms: None,
+                    },
+                ),
+            )
+            .await
+            .expect("component-free scaffold succeeds");
+        assert_eq!(body.adapter_name, "demo");
+        let config =
+            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+        assert!(config.contains("adapter: demo"), "the bare identity is recorded:\n{config}");
+        assert!(
+            !body.cache_present,
+            "no component is mirrored into the project cache for a bare name"
+        );
+    }
+
     #[tokio::test]
     async fn existing_agents_md_preserved() {
         let project = Project::bare();

@@ -18,7 +18,6 @@ use error::Error;
 use crate::adapter::{AdapterRef, ResolvedTarget, Resolver};
 use crate::agents::{detect, fences, fingerprint, lock, render};
 use crate::config::{Layout, ProjectConfig, is_slot};
-use crate::init::adapter_uri::adapter_ref_from_value;
 use crate::registry::{Registry, RegistryProject, TopologyLock, TopologyProject};
 use crate::slice::SliceMetadata;
 
@@ -75,7 +74,7 @@ pub(super) fn generate_initial(
     let config = ProjectConfig::load(project_dir)?;
     let assembly = render_input(resolver, project_dir, &config)?;
     let aggregate = fingerprint::aggregate(env!("CARGO_PKG_VERSION"), assembly.inputs.clone());
-    let generated = render::render_document_with_fingerprint(&assembly.input, &aggregate);
+    let generated = render::render_document(&assembly.input, &aggregate);
     let fenced = fences::parse_document(generated.as_bytes())
         .map_err(|err| Error::Diag {
             code: "context-generated-document-fence-error",
@@ -115,7 +114,7 @@ fn render_input(
 
     let adapter = match config.adapter.as_deref().filter(|_| !config.workspace) {
         Some(value) => {
-            let target_ref = adapter_ref_from_value(value);
+            let target_ref = AdapterRef::from_value(value);
             let target = resolver.resolve_target(&target_ref, project_dir)?;
             collect_adapter_input(&mut collector, &target_ref, &target);
             Some(render::Adapter {

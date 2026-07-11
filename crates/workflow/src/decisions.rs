@@ -339,7 +339,7 @@ fn resolve_target(
 /// the slice metadata only after every write returns, so an interrupted
 /// promotion is safely re-runnable.
 fn write_record(path: &Path, record: &DecisionRecord, body: &str) -> Result<(), Error> {
-    let yaml = crate::fs::yaml_document(record)?;
+    let yaml = crate::fs::yaml(record)?;
     let content = format!("---\n{yaml}---\n{body}");
     bytes_write(path, content.as_bytes()).map_err(|err| match err {
         Error::Io(source) => Error::Filesystem {

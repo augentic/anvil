@@ -273,7 +273,7 @@ struct EvidenceDocument<'a> {
 fn evidence_yaml(
     lead: &str, authority: AuthorityClass, claims: &[JsonValue],
 ) -> Result<String, Error> {
-    crate::fs::yaml_document(&EvidenceDocument {
+    crate::fs::yaml(&EvidenceDocument {
         lead,
         authority,
         claims,

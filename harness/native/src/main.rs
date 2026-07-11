@@ -5,8 +5,11 @@
 //!
 //! - **CLI mode** (default, [`command`]): the shared typed command
 //!   router against the native provider, plus an ephemeral MCP shelf.
+//!   A leading shim-global `--project-dir <path>` anchors the provider
+//!   (and the model's lent workspace) at another project root.
 //! - **`serve` mode** ([`http`]): the shared typed HTTP router merged
-//!   with the `/mcp/<name>` shelves on one `TcpListener`.
+//!   with the `/mcp/<name>` shelves on one `TcpListener`; carries its
+//!   own `--project-dir` flag.
 
 mod command;
 mod http;

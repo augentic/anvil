@@ -53,7 +53,7 @@ pub fn merge(
     layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
     preflight_completion(layout, slice)?;
-    journal::bracket_best_effort_sync(
+    journal::bracket_sync(
         layout,
         now,
         "slice.merge",

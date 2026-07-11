@@ -7,9 +7,7 @@
 
 use workflow::agents::detect::Detection;
 use workflow::agents::fences::{FenceError, WriteDisposition, plan_agents_write};
-use workflow::agents::render::{
-    Adapter, Dep, Input, Peer, Rule, render_body, render_document_with_fingerprint,
-};
+use workflow::agents::render::{Adapter, Dep, Input, Peer, Rule, render_body, render_document};
 
 const GENERATED: &[u8] = b"# demo - Agent Instructions\n\n<!-- specify:context begin\nfingerprint: sha256:new\ngenerated-by: specify 0.2.0\n-->\n\n## Runtime\n- new\n\n<!-- specify:context end -->\n";
 
@@ -189,7 +187,7 @@ fn render_body_matrix() {
 
 #[test]
 fn full_document_contains_context_fences() {
-    let rendered = render_document_with_fingerprint(&regular_input(), "sha256:pending");
+    let rendered = render_document(&regular_input(), "sha256:pending");
 
     assert!(rendered.starts_with("# demo - Agent Instructions\n\n"));
     assert!(rendered.contains("<!-- specify:context begin\n"));

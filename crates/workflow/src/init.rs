@@ -12,9 +12,7 @@ mod workspace;
 
 use std::path::{Path, PathBuf};
 
-pub use adapter_uri::{
-    AdapterPackage, adapter_name_from_value, adapter_ref_from_value, recognize_package,
-};
+pub use adapter_uri::{AdapterPackage, adapter_name_from_value, recognize_package};
 use artifacts::atomic::bytes_write;
 pub use cache::ComponentMeta;
 pub use context::ContextSkip;

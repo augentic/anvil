@@ -15,10 +15,9 @@ use std::path::Path;
 
 use error::Error;
 
-use crate::adapter::{ResolvedTarget, Resolver};
+use crate::adapter::{AdapterRef, ResolvedTarget, Resolver};
 use crate::change::{Entry, resolve_target, resolve_topology};
 use crate::config::{Layout, ProjectConfig};
-use crate::init::adapter_ref_from_value;
 use crate::slice::SliceMetadata;
 
 /// Resolve the project's declared target adapter.
@@ -44,7 +43,7 @@ pub fn project_adapter(
                 .to_string(),
         });
     };
-    resolver.resolve_target(&adapter_ref_from_value(adapter_value), project_dir)
+    resolver.resolve_target(&AdapterRef::from_value(adapter_value), project_dir)
 }
 
 /// Fresh policy: resolve `$TARGET` for a slice that does not exist yet

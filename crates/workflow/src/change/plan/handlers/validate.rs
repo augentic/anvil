@@ -42,7 +42,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let has_errors = blocking_present(&results);
         let body = ReportBody::new(results, Some("Plan OK"), write_validate_row_text);
         if has_errors {
-            Err(crate::handler::Error::validation_report(
+            Err(crate::handler::Error::report(
                 body,
                 "plan-structural-errors",
                 "plan must be free of structural errors",

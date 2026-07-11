@@ -23,10 +23,10 @@
 # Post-run probes per the scenario's assertion ids run at the end in
 # both modes; grading and the run record stay operator-owned.
 #
-# Not CI. Requires `cursor-agent` on PATH (logged in) and the sibling
-# augentic/specify-adapters checkout release-built (`cargo make release`
-# there; native mode needs only the omnia component for init). Makes
-# real model calls.
+# Not CI. Requires `cursor-agent` on PATH (logged in). Guest mode also
+# requires the sibling augentic/specify-adapters checkout release-built
+# (`cargo make release` there); native mode links the adapter crates
+# in-process and needs no wasm artifacts at all. Makes real model calls.
 set -eu
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -41,10 +41,12 @@ command -v cursor-agent >/dev/null || {
   exit 2
 }
 command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }
-[ -f "$release/omnia.wasm" ] || {
-  echo "release-built adapter components not found at $release; run \`cargo make release\` in the sibling specify-adapters checkout (override the root with SPECIFY_ADAPTERS=)" >&2
-  exit 2
-}
+if [ "$shim" != native ]; then
+  [ -f "$release/omnia.wasm" ] || {
+    echo "release-built adapter components not found at $release; run \`cargo make release\` in the sibling specify-adapters checkout (override the root with SPECIFY_ADAPTERS=)" >&2
+    exit 2
+  }
+fi
 
 # Build the binary under test. Guest mode also builds a fresh workflow
 # guest (the manifest below points at the debug guest so the loop under
@@ -56,8 +58,8 @@ if [ "$shim" = native ]; then
 else
   (
     cd "$root"
-    cargo build -q -p specify-cli
-    cargo build -q -p specify-cli --lib --target wasm32-wasip2
+    cargo build -q -p specify
+    cargo build -q -p specify --lib --target wasm32-wasip2
   )
   specify="$root/target/debug/specify"
   workflow_wasm="$root/target/wasm32-wasip2/debug/specify.wasm"
@@ -70,15 +72,12 @@ fi
 # Seed the sandbox. Guest mode inits from the release-built omnia
 # component (mirrored into the project component cache, so target
 # resolution works both natively and inside the guest). The native shim
-# carries only the scaffold leg of init (provisioning stays with the
-# shipped path), so native mode scaffolds against the bare `omnia` name
-# and stages the component at the resolver's development probe.
+# scaffolds against the bare `omnia` name: a bare identity resolves
+# through the linked-crate catalog, so no component file is staged.
 rm -rf "$sandbox"
 mkdir -p "$sandbox"
 cd "$sandbox"
 if [ "$shim" = native ]; then
-  mkdir -p "$sandbox/target/wasm32-wasip2/release"
-  cp "$release/omnia.wasm" "$sandbox/target/wasm32-wasip2/release/omnia.wasm"
   "$specify" init omnia --name guest-demo --scaffold-only
 else
   "$specify" init "$release/omnia.wasm" --name guest-demo

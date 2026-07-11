@@ -16,8 +16,8 @@ use crate::change::plan::wire::{
     parse_slice_pair_args,
 };
 use crate::change::{
-    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, entry_mut, mutate_authority_overrides,
-    reject_duplicate_source_keys, reject_orphan_overrides,
+    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, entry_mut,
+    reject_duplicate_source_keys,
 };
 use crate::config::with_state;
 use crate::handler::{Anchor, Ctx};
@@ -145,7 +145,7 @@ impl<P: Anchor> Operation<P> for Amend {
                 // `evidence/<source>.yaml` at refine time).
                 reject_duplicate_source_keys(plan)?;
 
-                let override_journal = mutate_authority_overrides(
+                let override_journal = authority_override::mutate(
                     plan,
                     &plan_name,
                     &override_sets,
@@ -153,7 +153,7 @@ impl<P: Anchor> Operation<P> for Amend {
                     &override_clear_all,
                     now,
                 )?;
-                reject_orphan_overrides(plan)?;
+                authority_override::reject_orphans(plan)?;
 
                 validate_plan(plan)?;
                 let amended = plan

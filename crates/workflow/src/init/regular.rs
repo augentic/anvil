@@ -9,9 +9,8 @@ use std::path::PathBuf;
 use error::Error;
 use jiff::Timestamp;
 
-use crate::adapter::Resolver;
+use crate::adapter::{AdapterRef, Resolver};
 use crate::config::{Layout, ProjectConfig};
-use crate::init::adapter_uri::adapter_ref_from_value;
 use crate::init::cache::{ComponentMeta, cache_adapter};
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
@@ -57,7 +56,7 @@ pub(super) fn run(
 
     let source = cache_adapter(adapter, opts.project_dir, now)?;
     let adapter_value = source.adapter_value;
-    let adapter_ref = adapter_ref_from_value(&adapter_value);
+    let adapter_ref = AdapterRef::from_value(&adapter_value);
     let target = resolver.resolve_target(&adapter_ref, opts.project_dir)?;
     let adapter_name = target.manifest.name.clone();
     let validated_platforms =

@@ -11,9 +11,9 @@ use std::fs;
 
 use error::Error;
 
-use crate::adapter::Resolver;
+use crate::adapter::{AdapterRef, Resolver};
 use crate::config::{Layout, ProjectConfig};
-use crate::init::adapter_uri::{adapter_name_from_value, adapter_ref_from_value};
+use crate::init::adapter_uri::adapter_name_from_value;
 use crate::init::cache::ComponentMeta;
 use crate::init::{InitOptions, InitResult, resolve_version, validate_platforms};
 
@@ -45,7 +45,7 @@ pub(super) fn run(resolver: &impl Resolver, opts: InitOptions<'_>) -> Result<Ini
                      have no adapter)"
                     .to_string(),
         })?;
-        let adapter_ref = adapter_ref_from_value(adapter_value);
+        let adapter_ref = AdapterRef::from_value(adapter_value);
         let target = resolver.resolve_target(&adapter_ref, opts.project_dir)?;
         let validated = validate_platforms(
             Some(incoming),

@@ -4,8 +4,7 @@
 //! `--clear-authority-override` / `--clear-authority-overrides`
 //! flags into the typed `(slice, kind, source)` tuples this
 //! module consumes, then drive the in-memory plan through
-//! [`mutate_authority_overrides`] and the post-mutation orphan gate
-//! [`reject_orphan_overrides`].
+//! [`mutate`] and the post-mutation orphan gate [`reject_orphans`].
 //!
 //! Set-then-clear on the same `(slice, kind)` resolves to the cleared
 //! state, and the journal records the clear (not the set) to match
@@ -25,7 +24,7 @@ use crate::journal::{self, AuthorityOverrideAction};
 
 /// Build the batched `plan.amend.authority-override` event list
 /// matching the on-disk outcome of the mutation walk in
-/// [`mutate_authority_overrides`]. Set events are emitted only for
+/// [`mutate`]. Set events are emitted only for
 /// survivors (sets not subsequently cleared); per-kind Clear events
 /// are deduplicated across the `--clear-authority-override` and
 /// `--clear-authority-overrides` surfaces.
@@ -107,7 +106,7 @@ fn emit_override_events(
 /// `plan add` (with empty clears), and `plan amend`, so all three
 /// paths emit byte-identical journal events for the same
 /// `(slice, kind)` set.
-pub fn mutate_authority_overrides(
+pub fn mutate(
     plan: &mut Plan, plan_name: &str, sets: &[(String, ClaimKind, String)],
     clears: &[(String, ClaimKind)], clear_all: &[String], now: jiff::Timestamp,
 ) -> Result<Vec<journal::Event>> {
@@ -190,7 +189,7 @@ pub fn emit_seed_events(
 ///
 /// Returns `Error::Validation` when at least one orphan-source
 /// finding blocks (a `critical`/`important` violation).
-pub fn reject_orphan_overrides(plan: &Plan) -> Result<()> {
+pub fn reject_orphans(plan: &Plan) -> Result<()> {
     let findings: Vec<_> = orphan_authority_override_keys(&plan.entries)
         .into_iter()
         .filter(schema::diagnostics::blocking)
@@ -229,7 +228,7 @@ fn refuse_unknown_slices(
 ///
 /// Returns the same `plan-authority-override-unknown-slice`
 /// diagnostic that pre-flight `refuse_unknown_slices` emits inside
-/// [`mutate_authority_overrides`] when no entry matches.
+/// [`mutate`] when no entry matches.
 ///
 /// # Errors
 ///

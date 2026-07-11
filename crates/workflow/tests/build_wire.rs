@@ -1,6 +1,6 @@
 //! Integration coverage for the target build wire DTOs re-exported at
 //! `workflow::slice`: the `BuildRequest` / `BuildReport` serde envelope
-//! and the output-existence gate (`enforce_report_outputs_exist`).
+//! and the output-existence gate (`BuildReport::enforce_outputs_exist`).
 //!
 //! The success-with-blocking gate is asserted end-to-end by the
 //! build-finalize blocking-finding test in the binary suite, and the
@@ -14,9 +14,7 @@ use std::path::Path;
 use error::Error;
 use serde_json::{Value, json};
 use workflow::Platform;
-use workflow::slice::{
-    BUILD_VERSION, BuildReport, BuildRequest, UiSurface, enforce_report_outputs_exist,
-};
+use workflow::slice::{BUILD_VERSION, BuildReport, BuildRequest, UiSurface};
 
 fn report(status: &str, findings: &[Value]) -> BuildReport {
     serde_json::from_value(json!({
@@ -133,35 +131,25 @@ fn wire_serde() {
 #[test]
 fn output_gate_accepts() {
     let dir = tempfile::tempdir().expect("tempdir");
-    enforce_report_outputs_exist(&report("success", &[]), dir.path())
-        .expect("empty outputs passes");
+    report("success", &[]).enforce_outputs_exist(dir.path()).expect("empty outputs passes");
 
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("shared/src")).expect("mkdir");
     std::fs::write(dir.path().join("shared/src/app.rs"), "fn main() {}").expect("write");
-    enforce_report_outputs_exist(
-        &report_with_outputs(
-            "success",
-            &[json!({ "platform": "core", "path": "shared/src/app.rs" })],
-        ),
-        dir.path(),
-    )
-    .expect("present file output passes");
+    report_with_outputs("success", &[json!({ "platform": "core", "path": "shared/src/app.rs" })])
+        .enforce_outputs_exist(dir.path())
+        .expect("present file output passes");
     // A non-empty tree output (a target declares per-platform `shared/` trees).
-    enforce_report_outputs_exist(
-        &report_with_outputs("success", &[json!({ "platform": "core", "path": "shared/" })]),
-        dir.path(),
-    )
-    .expect("non-empty tree output passes");
+    report_with_outputs("success", &[json!({ "platform": "core", "path": "shared/" })])
+        .enforce_outputs_exist(dir.path())
+        .expect("non-empty tree output passes");
 
     let dir = tempfile::tempdir().expect("tempdir");
-    enforce_report_outputs_exist(
-        &report_with_outputs(
-            "failure",
-            &[json!({ "platform": "ios", "path": "iOS/MyApp/ContentView.swift" })],
-        ),
-        dir.path(),
+    report_with_outputs(
+        "failure",
+        &[json!({ "platform": "ios", "path": "iOS/MyApp/ContentView.swift" })],
     )
+    .enforce_outputs_exist(dir.path())
     .expect("failure status skips the output check");
 }
 
@@ -171,7 +159,7 @@ fn output_gate_accepts() {
 #[test]
 fn output_gate_rejects() {
     fn assert_missing(report: &BuildReport, root: &Path, detail_contains: &str) {
-        match enforce_report_outputs_exist(report, root) {
+        match report.enforce_outputs_exist(root) {
             Err(Error::Validation { code, detail }) => {
                 assert_eq!(code, "target-build-output-missing");
                 assert!(detail.contains(detail_contains), "detail: {detail}");

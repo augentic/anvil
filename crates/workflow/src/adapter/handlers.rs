@@ -12,9 +12,8 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::{Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
+use super::{AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
 use crate::handler::{Anchor, Render};
-use crate::init::adapter_ref_from_value;
 
 /// Wire input for `source resolve` / `target resolve`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,7 +41,7 @@ impl<P: Anchor + Resolver> Operation<P> for SourceResolve {
     ) -> Result<Self::Output, Self::Error> {
         let project_dir = project_dir(&input, context.provider);
         let resolved =
-            context.provider.resolve_source(&adapter_ref_from_value(&input.value), &project_dir)?;
+            context.provider.resolve_source(&AdapterRef::from_value(&input.value), &project_dir)?;
         Ok(ResolveBody::from(resolved))
     }
 }
@@ -61,7 +60,7 @@ impl<P: Anchor + Resolver> Operation<P> for TargetResolve {
     ) -> Result<Self::Output, Self::Error> {
         let project_dir = project_dir(&input, context.provider);
         let resolved =
-            context.provider.resolve_target(&adapter_ref_from_value(&input.value), &project_dir)?;
+            context.provider.resolve_target(&AdapterRef::from_value(&input.value), &project_dir)?;
         Ok(ResolveBody::from(resolved))
     }
 }

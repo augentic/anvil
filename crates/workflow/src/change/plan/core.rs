@@ -17,10 +17,7 @@ pub mod status;
 pub mod transitions;
 pub mod validate;
 
-pub use authority_override::{
-    emit_seed_events as emit_authority_override_seed_events, entry_mut, mutate_authority_overrides,
-    reject_orphan_overrides, unknown_slice_err,
-};
+pub use authority_override::{entry_mut, unknown_slice_err};
 pub use model::{
     Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Lifecycle, Patch, Plan,
     SliceAuthorityOverride, SliceSourceBinding, SourceBinding, Status, TargetRef,

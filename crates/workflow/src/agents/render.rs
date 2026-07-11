@@ -68,9 +68,10 @@ pub struct Dep {
     pub description: Option<String>,
 }
 
-/// Render a complete fenced `AGENTS.md` document with a computed fingerprint.
+/// Render a complete fenced `AGENTS.md` document carrying the computed
+/// `fingerprint`.
 #[must_use]
-pub fn render_document_with_fingerprint(input: &Input, fingerprint: &str) -> String {
+pub fn render_document(input: &Input, fingerprint: &str) -> String {
     format!(
         "# {name} - Agent Instructions\n\n\
          <!-- specify:context begin\n\

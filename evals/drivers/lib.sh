@@ -33,11 +33,11 @@ SPECIFY_BIN="${SPECIFY_BIN:-}"
 # SPECIFY_CORE_PATH to replay against a different build.
 ensure_binary() {
   if [ -z "$SPECIFY_BIN" ]; then
-    ( cd "$FRAMEWORK" && cargo build -q -p specify-cli )
+    ( cd "$FRAMEWORK" && cargo build -q -p specify )
     SPECIFY_BIN="$FRAMEWORK/target/debug/specify"
   fi
   if [ -z "${SPECIFY_CORE_PATH:-}" ]; then
-    ( cd "$FRAMEWORK" && cargo build -q -p specify-cli --lib --target wasm32-wasip2 )
+    ( cd "$FRAMEWORK" && cargo build -q -p specify --lib --target wasm32-wasip2 )
     SPECIFY_CORE_PATH="$FRAMEWORK/target/wasm32-wasip2/debug/specify.wasm"
   fi
   export SPECIFY_CORE_PATH

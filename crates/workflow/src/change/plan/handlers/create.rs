@@ -1,7 +1,7 @@
 //! `specify plan create` — scaffold an empty `plan.yaml`. Composes the
 //! shared wire parsers in [`crate::change::plan::wire`] with the domain
 //! authority-override engine in
-//! [`crate::change::mutate_authority_overrides`] so the operation
+//! `crate::change::authority_override::mutate` so the operation
 //! stays declarative.
 
 use std::io::Write;
@@ -12,7 +12,7 @@ use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use crate::change::plan::wire::{SourceAssign, parse_override_assigns, source_map};
-use crate::change::{Lifecycle, mutate_authority_overrides, reject_orphan_overrides, scaffold};
+use crate::change::{Lifecycle, authority_override, scaffold};
 use crate::handler::{Anchor, Ctx, Render};
 use crate::journal;
 
@@ -93,13 +93,13 @@ impl<P: Anchor> Operation<P> for Create {
         let now = cx.now();
         let plan_name = plan.name.clone();
         let override_events =
-            mutate_authority_overrides(&mut plan, &plan_name, &override_assigns, &[], &[], now)?;
+            authority_override::mutate(&mut plan, &plan_name, &override_assigns, &[], &[], now)?;
         // Re-run the orphan-source gate after the override
         // pre-seeding: `Plan::init` ran no validation against the
         // override map (it didn't exist yet) and `validate_plan` only
         // checks JSON Schema. The orphan check is the only per-slice authority override
         // gate that fires on this code path.
-        reject_orphan_overrides(&plan)?;
+        authority_override::reject_orphans(&plan)?;
         if auto_approve {
             plan.transition_lifecycle(Lifecycle::Approved)?;
         }

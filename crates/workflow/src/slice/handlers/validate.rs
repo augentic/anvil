@@ -52,7 +52,7 @@ impl<P: Anchor> Operation<P> for Validate {
                 let body = ReportBody::new(findings, None, write_finding_row);
 
                 if blocking {
-                    Err(crate::handler::Error::validation_report(
+                    Err(crate::handler::Error::report(
                         body,
                         "slice-validation-failed",
                         "slice must satisfy adapter validation",
@@ -74,7 +74,7 @@ impl<P: Anchor> Operation<P> for Validate {
 /// full diagnostic surface before the gate fails the command.
 fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> crate::handler::Error {
     let count = findings.len();
-    crate::handler::Error::validation_report(
+    crate::handler::Error::report(
         ReportBody::new(findings, None, write_finding_row),
         code,
         "slice must satisfy structural invariants",

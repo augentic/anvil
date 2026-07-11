@@ -528,7 +528,7 @@ impl std::str::FromStr for Actor {
 /// per-kind expansion of `--clear-authority-overrides`).
 ///
 /// Variants are declared in the documented sort order `Set < Clear`
-/// so batched `mutate_authority_overrides` callers emit set-then-clear
+/// so batched `authority_override::mutate` callers emit set-then-clear
 /// journal events; the `set_sorts_before_clear` test guards drift.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, strum::Display,

@@ -12,9 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
 use crate::change::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
-use crate::change::{
-    Entry, Plan, SliceAuthorityOverride, Status, emit_authority_override_seed_events, entry_mut,
-};
+use crate::change::{Entry, Plan, SliceAuthorityOverride, Status, authority_override, entry_mut};
 use crate::config::with_state;
 use crate::handler::{Anchor, Ctx};
 use crate::journal;
@@ -110,7 +108,7 @@ impl<P: Anchor> Operation<P> for Add {
                 // (no clears on the add path) so all three handlers emit
                 // identically-shaped, identically-sorted Set events.
                 let created_entry = entry_mut(plan, &plan_name, name)?.clone();
-                let events = emit_authority_override_seed_events(&plan_name, &created_entry, now);
+                let events = authority_override::emit_seed_events(&plan_name, &created_entry, now);
                 Ok(crate::config::Mutation::changed((
                     EntryBody {
                         plan: plan_ref(plan, &plan_path),

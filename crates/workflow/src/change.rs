@@ -14,10 +14,12 @@ pub use plan::core::{
     StatusCounts, StopBody, StopReason, TargetRef, TargetRefParseError, apply_greenfield_seed,
     resolve_target, resolve_topology,
 };
-// Handler/orchestrator plumbing: reachable inside the crate only.
+// Handler/orchestrator plumbing: reachable inside the crate only. The
+// `authority_override` module rides along so call sites read
+// `authority_override::mutate` / `::reject_orphans` / `::emit_seed_events`.
 pub(crate) use plan::core::{
-    build_request, claim_next, drained_line, emit_authority_override_seed_events, entry_mut,
-    mutate_authority_overrides, orphan_authority_override_keys, plan_finding, plan_status_body,
-    reject_duplicate_source_keys, reject_orphan_overrides, scaffold, unknown_slice_err,
+    authority_override, build_request, claim_next, drained_line, entry_mut,
+    orphan_authority_override_keys, plan_finding, plan_status_body, reject_duplicate_source_keys,
+    scaffold, unknown_slice_err,
 };
 pub(crate) use plan::doctor::{author_gate, claim_gate, detect, full_report as plan_full_report};

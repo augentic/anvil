@@ -11,7 +11,7 @@ use super::*;
 // and `parse_first_party_shorthand` — no CLI fixture reaches them short
 // of a full `specify init`, and the store-resolve branches need a
 // hermetic `SPECIFY_ADAPTER_STORE`. The public projections
-// (`adapter_name_from_value`, `adapter_ref_from_value`,
+// (`adapter_name_from_value`, `AdapterRef::from_value`,
 // `recognize_package`) are covered in `tests/adapter_uri.rs`.
 
 /// Restores the previous `SPECIFY_ADAPTER_STORE` value on drop.
@@ -148,6 +148,17 @@ fn package_ref_resolves_from_store_entry() {
         .expect("resolve from store");
     assert_eq!(parsed.adapter_name, "demo-target");
     assert_eq!(parsed.adapter_value, "specify:demo-target@1.2.0");
-    assert_eq!(parsed.component, entry);
-    assert_eq!(parsed.origin, AdapterOrigin::Store);
+    assert_eq!(parsed.origin, AdapterOrigin::Store(entry));
+}
+
+#[test]
+fn bare_name_defers_to_resolver() {
+    // A bare development name is an identity, not a file: parse
+    // demands no component (the injected `Resolver` locates one —
+    // linked crates natively, the sibling release build in the shipped
+    // path — and owns the `adapter-not-found` miss).
+    let parsed = AdapterUri::parse("demo-target", Path::new("/tmp")).expect("bare name parses");
+    assert_eq!(parsed.adapter_name, "demo-target");
+    assert_eq!(parsed.adapter_value, "demo-target");
+    assert_eq!(parsed.origin, AdapterOrigin::Dev);
 }

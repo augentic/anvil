@@ -77,7 +77,7 @@ pub(super) fn validate_labelled_yaml(
 ///
 /// Returns [`Error::Validation`] (keyed on `code`) when parsing or
 /// schema validation fails.
-pub(super) fn validate_with_ref_validator(
+pub(super) fn validate_with_registry(
     content: &str, validator: &Validator, code: &'static str, rule: &str,
 ) -> Result<()> {
     let instance: JsonValue = serde_saphyr::from_str(content)

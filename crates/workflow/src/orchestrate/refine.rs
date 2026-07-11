@@ -133,7 +133,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
         },
         SYNTHESIZE_SCOPE,
     );
-    let artifacts = journal::bracket_best_effort(
+    let artifacts = journal::bracket(
         layout,
         now,
         SYNTHESIZE_SCOPE,
@@ -320,7 +320,7 @@ fn baseline_surface(
 /// Bare adapter name from a recorded target value (`omnia@1.0.0` →
 /// `omnia`) — the seam routes by the plan-bound name.
 fn target_name(target_value: &str) -> String {
-    crate::init::adapter_ref_from_value(target_value).name
+    crate::adapter::AdapterRef::from_value(target_value).name
 }
 
 /// Warning scope for the best-effort `slice.synthesize.*` brackets.

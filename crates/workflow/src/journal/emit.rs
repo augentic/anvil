@@ -45,7 +45,7 @@ pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, sco
 /// # Errors
 ///
 /// Whatever `body` returns, unchanged.
-pub async fn bracket_best_effort<T, Fut>(
+pub async fn bracket<T, Fut>(
     layout: Layout<'_>, now: Timestamp, scope: &str, started: EventKind, body: Fut,
     on_success: impl FnOnce(&T) -> EventKind, on_failure: impl FnOnce(&error::Error) -> EventKind,
 ) -> Result<T, error::Error>
@@ -56,13 +56,13 @@ where
     settle(layout, now, scope, body.await, on_success, on_failure)
 }
 
-/// [`bracket_best_effort`] for a synchronous phase body (the
-/// deterministic merge).
+/// [`bracket`] for a synchronous phase body (the deterministic
+/// merge).
 ///
 /// # Errors
 ///
 /// Whatever `body` returns, unchanged.
-pub fn bracket_best_effort_sync<T>(
+pub fn bracket_sync<T>(
     layout: Layout<'_>, now: Timestamp, scope: &str, started: EventKind,
     body: impl FnOnce() -> Result<T, error::Error>, on_success: impl FnOnce(&T) -> EventKind,
     on_failure: impl FnOnce(&error::Error) -> EventKind,

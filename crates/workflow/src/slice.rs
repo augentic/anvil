@@ -17,7 +17,7 @@ pub use actions::{CreateIfExists, Created, Overlap};
 pub use build::assemble::build_request;
 pub use build::wire::{
     BUILD_VERSION, BuildArtifacts, BuildInputs, BuildOutput, BuildReport, BuildRequest,
-    BuildStatus, UiSurface, enforce_report_no_blocking_on_success, enforce_report_outputs_exist,
+    BuildStatus, UiSurface,
 };
 pub use lifecycle::LifecycleStatus;
 pub use metadata::{Outcome, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec};

@@ -6,7 +6,7 @@
 //! of a full `specify init`.
 
 use workflow::adapter::AdapterRef;
-use workflow::init::{adapter_name_from_value, adapter_ref_from_value, recognize_package};
+use workflow::init::{adapter_name_from_value, recognize_package};
 
 #[test]
 fn value_identity() {
@@ -21,22 +21,22 @@ fn value_identity() {
     );
     assert_eq!(adapter_name_from_value("/abs/components/demo-target.wasm"), "demo-target");
 
-    // `adapter_ref_from_value` recovers a semver pin; a bare name, a
+    // `AdapterRef::from_value` recovers a semver pin; a bare name, a
     // `file://` path, and a non-semver suffix yield a bare ref; a package
     // reference recovers the bare `(name, version)` identity, stripping
     // `<namespace>:`.
-    assert_eq!(adapter_ref_from_value("demo-target"), AdapterRef::bare("demo-target"));
+    assert_eq!(AdapterRef::from_value("demo-target"), AdapterRef::bare("demo-target"));
     assert_eq!(
-        adapter_ref_from_value("demo-target@1.0.0"),
+        AdapterRef::from_value("demo-target@1.0.0"),
         AdapterRef::pinned("demo-target", semver::Version::new(1, 0, 0))
     );
-    assert_eq!(adapter_ref_from_value("demo-target@v1"), AdapterRef::bare("demo-target"));
+    assert_eq!(AdapterRef::from_value("demo-target@v1"), AdapterRef::bare("demo-target"));
     assert_eq!(
-        adapter_ref_from_value("file:///abs/components/demo-target.wasm"),
+        AdapterRef::from_value("file:///abs/components/demo-target.wasm"),
         AdapterRef::bare("demo-target")
     );
     assert_eq!(
-        adapter_ref_from_value("specify:demo-target@1.2.0"),
+        AdapterRef::from_value("specify:demo-target@1.2.0"),
         AdapterRef::pinned("demo-target", semver::Version::new(1, 2, 0))
     );
 }

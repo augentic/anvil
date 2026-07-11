@@ -43,13 +43,13 @@ Serve the same operations over HTTP, together with the linked adapters' MCP refe
 Run these from `harness/`:
 
 ```shell
-cargo make dev -- target resolve omnia --project-dir /path/to/project
+cargo make dev-run -- target resolve omnia --project-dir /path/to/project
 cargo make test-native  # full loop, seams, replay, and MCP shelves
 cargo make lint         # harness clippy gate
 cargo make build-guests # WASM core + echo fixtures; not needed for the native loop
 ```
 
-`cargo make dev` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`.
+`cargo make dev-run` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`. From either repo root, `make dev-run PROJECT=/path/to/project ARGS='plan status'` is the same shim without changing directory (see `scripts/dev.sh`).
 
 ## Contents
 

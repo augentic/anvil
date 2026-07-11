@@ -23,10 +23,9 @@ use schema::diagnostics::{Diagnostic, Severity};
 use serde::{Deserialize, Serialize};
 
 use crate::Platform;
-use crate::adapter::{PlatformsSurface, Resolver};
+use crate::adapter::{AdapterRef, PlatformsSurface, Resolver};
 use crate::change::plan_finding;
 use crate::config::ProjectConfig;
-use crate::init::adapter_ref_from_value;
 use crate::registry::Registry;
 
 /// Current `topology.lock` schema version.
@@ -228,7 +227,7 @@ impl TopologyProject {
             )
         })?;
         let target_adapter =
-            resolver.resolve_target(&adapter_ref_from_value(adapter_value), slot_dir)?;
+            resolver.resolve_target(&AdapterRef::from_value(adapter_value), slot_dir)?;
         let target =
             format!("{}@{}", target_adapter.manifest.name, target_adapter.manifest.version);
 

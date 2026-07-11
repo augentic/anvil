@@ -67,7 +67,7 @@ pub struct BuildArtifacts {
 ///
 /// Partial success is [`BuildStatus::Success`] carrying non-blocking
 /// findings only — the CLI rejects a `success` report with any blocking
-/// finding via [`enforce_report_no_blocking_on_success`].
+/// finding via [`BuildReport::enforce_no_blocking`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum BuildStatus {
@@ -137,103 +137,107 @@ pub struct BuildReport {
     pub ui_surface: Option<UiSurface>,
 }
 
-/// Reject a [`BuildStatus::Success`] report carrying any blocking
-/// finding.
-///
-/// A finding blocks per the [`blocking`] predicate (an open `critical`
-/// / `important` violation). On [`BuildStatus::Failure`] blocking
-/// findings are allowed, so the gate is a no-op.
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] keyed on
-/// `target-build-success-with-blocking-finding` (exit code 2) when a
-/// `success` report carries a blocking finding.
-pub fn enforce_report_no_blocking_on_success(report: &BuildReport) -> Result<()> {
-    if report.status == BuildStatus::Success && report.findings.iter().any(blocking) {
-        return Err(Error::validation_failed(
-            "target-build-success-with-blocking-finding",
-            "a success build report carries no blocking finding",
-            format!("slice `{}` reported success with a blocking finding", report.slice),
-        ));
-    }
-    Ok(())
-}
-
-/// Reject a [`BuildStatus::Success`] report whose `outputs[]` paths
-/// do not all exist under `project_dir`.
-///
-/// Each declared path must resolve to a non-empty file **or
-/// directory** (targets like vectis declare per-platform tree paths
-/// such as `shared/`). Empty `outputs` is accepted (backward
-/// compatibility — the field is optional). On [`BuildStatus::Failure`]
-/// the gate is a no-op (a failed build need not have produced
-/// outputs).
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] keyed on
-/// `target-build-output-missing` (exit code 2) when a success report
-/// declares an output path that is absent, empty (zero-length file or
-/// entry-less directory), or escapes the project directory.
-pub fn enforce_report_outputs_exist(report: &BuildReport, project_dir: &Path) -> Result<()> {
-    if report.status != BuildStatus::Success || report.outputs.is_empty() {
-        return Ok(());
-    }
-    for output in &report.outputs {
-        let path = Path::new(&output.path);
-        if path.is_absolute() || path.components().any(|c| c == std::path::Component::ParentDir) {
+impl BuildReport {
+    /// Reject a [`BuildStatus::Success`] report carrying any blocking
+    /// finding.
+    ///
+    /// A finding blocks per the [`blocking`] predicate (an open
+    /// `critical` / `important` violation). On [`BuildStatus::Failure`]
+    /// blocking findings are allowed, so the gate is a no-op.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Validation`] keyed on
+    /// `target-build-success-with-blocking-finding` (exit code 2) when
+    /// a `success` report carries a blocking finding.
+    pub fn enforce_no_blocking(&self) -> Result<()> {
+        if self.status == BuildStatus::Success && self.findings.iter().any(blocking) {
             return Err(Error::validation_failed(
-                "target-build-output-missing",
-                "every build output path is a relative path within the project",
-                format!(
-                    "output for platform `{}` at `{}` is absolute or contains `..`",
-                    output.platform, output.path
-                ),
+                "target-build-success-with-blocking-finding",
+                "a success build report carries no blocking finding",
+                format!("slice `{}` reported success with a blocking finding", self.slice),
             ));
         }
-        let full = project_dir.join(path);
-        match std::fs::metadata(&full) {
-            Ok(meta) if meta.is_file() && meta.len() > 0 => {}
-            // Tree outputs (e.g. vectis `shared/`, `iOS/`, `Android/`)
-            // are declared as directory paths; non-empty means at least
-            // one directory entry.
-            Ok(meta) if meta.is_dir() && dir_has_entries(&full) => {}
-            Ok(meta) if !meta.is_file() && !meta.is_dir() => {
+        Ok(())
+    }
+
+    /// Reject a [`BuildStatus::Success`] report whose `outputs[]`
+    /// paths do not all exist under `project_dir`.
+    ///
+    /// Each declared path must resolve to a non-empty file **or
+    /// directory** (targets like vectis declare per-platform tree
+    /// paths such as `shared/`). Empty `outputs` is accepted (backward
+    /// compatibility — the field is optional). On
+    /// [`BuildStatus::Failure`] the gate is a no-op (a failed build
+    /// need not have produced outputs).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Validation`] keyed on
+    /// `target-build-output-missing` (exit code 2) when a success
+    /// report declares an output path that is absent, empty
+    /// (zero-length file or entry-less directory), or escapes the
+    /// project directory.
+    pub fn enforce_outputs_exist(&self, project_dir: &Path) -> Result<()> {
+        if self.status != BuildStatus::Success || self.outputs.is_empty() {
+            return Ok(());
+        }
+        for output in &self.outputs {
+            let path = Path::new(&output.path);
+            if path.is_absolute() || path.components().any(|c| c == std::path::Component::ParentDir)
+            {
                 return Err(Error::validation_failed(
                     "target-build-output-missing",
-                    "every build output path is a regular file or directory",
+                    "every build output path is a relative path within the project",
                     format!(
-                        "output for platform `{}` at `{}` exists but is neither a regular file nor a directory",
+                        "output for platform `{}` at `{}` is absolute or contains `..`",
                         output.platform, output.path
                     ),
                 ));
             }
-            Ok(_) => {
-                return Err(Error::validation_failed(
-                    "target-build-output-missing",
-                    "every build output path exists and is non-empty",
-                    format!(
-                        "output for platform `{}` at `{}` exists but is empty",
-                        output.platform, output.path
-                    ),
-                ));
-            }
-            Err(_) => {
-                return Err(Error::validation_failed(
-                    "target-build-output-missing",
-                    "every build output path exists and is non-empty",
-                    format!(
-                        "output for platform `{}` at `{}` does not exist under {}",
-                        output.platform,
-                        output.path,
-                        project_dir.display()
-                    ),
-                ));
+            let full = project_dir.join(path);
+            match std::fs::metadata(&full) {
+                Ok(meta) if meta.is_file() && meta.len() > 0 => {}
+                // Tree outputs (e.g. vectis `shared/`, `iOS/`,
+                // `Android/`) are declared as directory paths;
+                // non-empty means at least one directory entry.
+                Ok(meta) if meta.is_dir() && dir_has_entries(&full) => {}
+                Ok(meta) if !meta.is_file() && !meta.is_dir() => {
+                    return Err(Error::validation_failed(
+                        "target-build-output-missing",
+                        "every build output path is a regular file or directory",
+                        format!(
+                            "output for platform `{}` at `{}` exists but is neither a regular file nor a directory",
+                            output.platform, output.path
+                        ),
+                    ));
+                }
+                Ok(_) => {
+                    return Err(Error::validation_failed(
+                        "target-build-output-missing",
+                        "every build output path exists and is non-empty",
+                        format!(
+                            "output for platform `{}` at `{}` exists but is empty",
+                            output.platform, output.path
+                        ),
+                    ));
+                }
+                Err(_) => {
+                    return Err(Error::validation_failed(
+                        "target-build-output-missing",
+                        "every build output path exists and is non-empty",
+                        format!(
+                            "output for platform `{}` at `{}` does not exist under {}",
+                            output.platform,
+                            output.path,
+                            project_dir.display()
+                        ),
+                    ));
+                }
             }
         }
+        Ok(())
     }
-    Ok(())
 }
 
 /// `true` when the directory contains at least one entry.

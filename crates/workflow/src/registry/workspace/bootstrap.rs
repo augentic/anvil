@@ -6,9 +6,8 @@ use std::path::Path;
 use error::Error;
 
 use super::git::{self, git_output_ok, git_porcelain_non_empty};
-use crate::adapter::Resolver;
+use crate::adapter::{AdapterRef, Resolver};
 use crate::config::Layout;
-use crate::init::adapter_ref_from_value;
 use crate::registry::gitignore::ensure_gitignore_entries;
 
 pub(super) fn bootstrap(
@@ -91,7 +90,7 @@ fn scaffold_greenfield(resolver: &impl Resolver, dest: &Path, adapter: &str) -> 
 fn resolve_default_platforms(
     resolver: &impl Resolver, adapter: &str, dest: &Path,
 ) -> Option<String> {
-    let target = resolver.resolve_target(&adapter_ref_from_value(adapter), dest).ok()?;
+    let target = resolver.resolve_target(&AdapterRef::from_value(adapter), dest).ok()?;
     let cap = target.manifest.platforms.as_ref()?;
     if !cap.required || cap.default.is_empty() {
         return None;

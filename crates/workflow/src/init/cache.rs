@@ -5,8 +5,9 @@
 //! resolver's probe set, mirrors it into the out-of-tree component
 //! cache at `<project-cache>/components/<name>.wasm` — the project-local
 //! leg the bare-name resolver probes first. Store entries (package
-//! references) and development release builds are read in place and
-//! never mirrored. Provenance is stamped in [`ComponentMeta`].
+//! references) are read in place, and bare development names carry no
+//! component at all (the injected resolver locates one downstream), so
+//! neither is mirrored. Provenance is stamped in [`ComponentMeta`].
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -46,10 +47,10 @@ impl ComponentMeta {
 /// (`source.adapter_value`).
 ///
 /// Store entries (package references) resolve from the global
-/// content-addressed store in place; development release builds resolve
-/// live from `target/wasm32-wasip2/release/` so the adapter dev loop
-/// (rebuild, re-run) never reads a stale mirror. Only an operator's own
-/// local `.wasm` file is copied — into
+/// content-addressed store in place, and bare development names defer
+/// component resolution to the injected resolver (which reads the
+/// release build live, so the adapter dev loop never hits a stale
+/// mirror). Only an operator's own local `.wasm` file is copied — into
 /// `<project-cache>/components/<name>.wasm`, the project-local probe leg
 /// of the bare-name resolver.
 pub(super) fn cache_adapter(
@@ -64,12 +65,12 @@ pub(super) fn cache_adapter(
     }
 
     let source = AdapterUri::parse(adapter, project_dir)?;
-    if source.origin == AdapterOrigin::Local {
+    if let AdapterOrigin::Local(component) = &source.origin {
         let entry = component_cache_entry(project_dir, &source.adapter_name);
         if let Some(parent) = entry.parent() {
             fs::create_dir_all(parent)?;
         }
-        fs::copy(&source.component, &entry)?;
+        fs::copy(component, &entry)?;
         write_component_meta(project_dir, &source.adapter_value, now)?;
     }
 

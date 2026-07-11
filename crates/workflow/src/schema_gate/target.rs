@@ -8,7 +8,7 @@ use schema::{
     compile_ref_validator,
 };
 
-use super::support::{validate_parsed_json, validate_with_ref_validator};
+use super::support::{validate_parsed_json, validate_with_registry};
 
 /// Validate a target build request against the embedded
 /// `schemas/target/build-request.schema.json`.
@@ -57,7 +57,7 @@ const DIAGNOSTIC_SCHEMA_URL: &str =
 /// `target-build-report-schema` (exit code 2) when parsing or schema
 /// validation fails.
 pub fn validate_build_report_json(content: &str) -> Result<()> {
-    validate_with_ref_validator(
+    validate_with_registry(
         content,
         &BUILD_REPORT_VALIDATOR,
         "target-build-report-schema",

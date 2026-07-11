@@ -20,7 +20,7 @@ use serde::Serialize;
 /// # Errors
 ///
 /// [`Error::YamlSer`] when serialisation fails.
-pub fn yaml_document<T: Serialize>(value: &T) -> Result<String> {
+pub fn yaml<T: Serialize>(value: &T) -> Result<String> {
     let mut yaml = serde_saphyr::to_string(value)?;
     if !yaml.ends_with('\n') {
         yaml.push('\n');

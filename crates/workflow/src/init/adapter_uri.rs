@@ -11,11 +11,13 @@
 //! as a local file; nothing installs into the store today — an
 //! install-on-fetch leg lands in-guest.
 //!
-//! A bare first-party name (`omnia`) is the development shorthand: it
-//! resolves the sibling/in-repo release build
+//! A bare first-party name (`omnia`) is the development shorthand: its
+//! resolution is *deferred to the injected `Resolver`* — linked Rust
+//! crates in the native harness, the sibling/in-repo release build
 //! (`target/wasm32-wasip2/release/<name>.wasm`, built by
-//! `cargo make release` in the adapters repo). GitHub URLs are refused;
-//! adapters resolve from the registry or a dev build.
+//! `cargo make release` in the adapters repo) in the shipped path.
+//! GitHub URLs are refused; adapters resolve from the registry or a
+//! dev build.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,34 +25,33 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use schema::cache::adapter_store_entry;
 
-use crate::adapter::{AdapterRef, dev_component_paths};
+use crate::adapter::AdapterRef;
 
-/// Where a parsed `<adapter>` argument's component came from — decides
-/// whether init mirrors the file into the project component cache.
+/// Where a parsed `<adapter>` argument came from — decides whether
+/// init mirrors a file into the project component cache.
 ///
 /// Store entries are read in place (version-pinned, globally shared);
-/// development release builds are read live so the adapter dev loop
-/// never hits a stale mirror; only an operator's own [`Self::Local`]
-/// file is copied into `<project-cache>/components/<name>.wasm`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// bare development names carry no component at parse time (the
+/// injected `Resolver` locates one, or a linked native adapter); only
+/// an operator's own [`Self::Local`] file is copied into
+/// `<project-cache>/components/<name>.wasm`.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum AdapterOrigin {
     /// Global content-addressed store entry (package reference).
-    Store,
-    /// Development release build resolved by the bare-name probe.
+    Store(PathBuf),
+    /// Bare development shorthand — component resolution is deferred
+    /// to the injected `Resolver`, so no artifact is demanded here.
     Dev,
-    /// Operator-supplied local `.wasm` component file.
-    Local,
+    /// Operator-supplied local `.wasm` component file (canonical).
+    Local(PathBuf),
 }
 
 #[derive(Debug)]
 pub(super) struct AdapterUri {
     pub(crate) adapter_value: String,
     pub(crate) adapter_name: String,
-    /// The resolved component file: a global store entry for package
-    /// references, a development release build for bare shorthand, or
-    /// the operator's own file for local paths.
-    pub(crate) component: PathBuf,
-    /// Which probe produced `component` (see [`AdapterOrigin`]).
+    /// Which branch recognised the argument, carrying the parse-time
+    /// component file where one exists (see [`AdapterOrigin`]).
     pub(crate) origin: AdapterOrigin,
 }
 
@@ -72,7 +73,7 @@ impl AdapterUri {
         }
         if let Some((name, version)) = parse_first_party_shorthand(adapter) {
             return version.map_or_else(
-                || Self::from_dev(name, project_dir),
+                || Ok(Self::from_dev(name)),
                 |version| {
                     Self::from_package(&AdapterPackageRef {
                         namespace: FIRST_PARTY_NAMESPACE.to_string(),
@@ -109,37 +110,23 @@ impl AdapterUri {
         Ok(Self {
             adapter_value: package.wire_value(),
             adapter_name: package.name.clone(),
-            component,
-            origin: AdapterOrigin::Store,
+            origin: AdapterOrigin::Store(component),
         })
     }
 
-    /// Resolve a bare first-party name to its development release
-    /// build (`target/wasm32-wasip2/release/<name>.wasm` under
-    /// the project or the sibling `specify-adapters` checkout).
-    fn from_dev(name: &str, project_dir: &Path) -> Result<Self, Error> {
-        let candidates = dev_component_paths(project_dir, name);
-        let Some(component) = candidates.iter().find(|path| path.is_file()).cloned() else {
-            let probed = candidates
-                .iter()
-                .map(|path| path.display().to_string())
-                .collect::<Vec<_>>()
-                .join(", ");
-            return Err(Error::Diag {
-                code: "adapter-not-found",
-                detail: format!(
-                    "bare adapter name `{name}` resolves the development release build, but no \
-                     component was found at {probed}; build it with `cargo make release` in the \
-                     adapters repo or pin a published version (`specify:{name}@<semver>`)"
-                ),
-            });
-        };
-        Ok(Self {
+    /// A bare first-party name — the development shorthand identity.
+    ///
+    /// No component is probed here: the injected `Resolver` locates
+    /// one downstream (the project component cache, then the
+    /// sibling/in-repo release build in the shipped path; linked Rust
+    /// crates in the native harness) and raises `adapter-not-found`
+    /// with the `cargo make release` remediation on a miss.
+    fn from_dev(name: &str) -> Self {
+        Self {
             adapter_value: name.to_string(),
             adapter_name: name.to_string(),
-            component,
             origin: AdapterOrigin::Dev,
-        })
+        }
     }
 
     fn from_local(adapter: &str, project_dir: &Path) -> Result<Self, Error> {
@@ -159,8 +146,7 @@ impl AdapterUri {
         Ok(Self {
             adapter_value,
             adapter_name,
-            component: canonical,
-            origin: AdapterOrigin::Local,
+            origin: AdapterOrigin::Local(canonical),
         })
     }
 }
@@ -395,18 +381,22 @@ fn package_ref_name(value: &str) -> Option<&str> {
     (!rest.starts_with('/') && is_first_party_name(namespace)).then_some(rest)
 }
 
-/// Build an [`AdapterRef`] identity from a `project.yaml.adapter` (or
-/// slice `target`) value: the kebab `name` plus an optional pinned
-/// semver `version` recovered from the `@<suffix>`.
-///
-/// The version is `Some(_)` only when the `@suffix` parses as exact
-/// semver — a bare name or a `file://` path yields `version: None`, so
-/// resolution falls back to the development artifact.
-#[must_use]
-pub fn adapter_ref_from_value(value: &str) -> AdapterRef {
-    let name = adapter_name_from_value(value);
-    let version = at_ref_suffix(value).and_then(|suffix| semver::Version::parse(suffix).ok());
-    AdapterRef { name, version }
+impl AdapterRef {
+    /// Build an [`AdapterRef`] identity from a `project.yaml.adapter`
+    /// (or slice `target`) value: the kebab `name` plus an optional
+    /// pinned semver `version` recovered from the `@<suffix>`.
+    ///
+    /// The version is `Some(_)` only when the `@suffix` parses as
+    /// exact semver — a bare name or a `file://` path yields
+    /// `version: None`, so resolution falls back to the development
+    /// artifact. (Housed here rather than beside the type because the
+    /// value grammar it inverts is this module's.)
+    #[must_use]
+    pub fn from_value(value: &str) -> Self {
+        let name = adapter_name_from_value(value);
+        let version = at_ref_suffix(value).and_then(|suffix| semver::Version::parse(suffix).ok());
+        Self { name, version }
+    }
 }
 
 fn strip_at_ref_suffix(value: &str) -> &str {

@@ -36,12 +36,12 @@ impl Error {
         }
     }
 
-    /// Bundle a diagnostic report with a payload-free
-    /// [`error::Error::validation_failed`] failure — the gate verbs'
-    /// contract (findings on stdout, the `code`-keyed envelope on
-    /// stderr, exit 2).
+    /// Construct [`Error::Report`]: a diagnostic report bundled with a
+    /// payload-free [`error::Error::validation_failed`] failure — the
+    /// gate verbs' contract (findings on stdout, the `code`-keyed
+    /// envelope on stderr, exit 2).
     #[must_use]
-    pub fn validation_report(
+    pub fn report(
         body: ReportBody, code: &'static str, rule: impl Into<String>, detail: impl Into<String>,
     ) -> Self {
         Self::Report {
