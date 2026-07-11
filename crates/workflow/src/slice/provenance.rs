@@ -31,7 +31,7 @@ pub struct ProvenanceIndex {
     /// UTC second-precision timestamp at which the projection was
     /// produced. Resolution is to the second so byte-stable diffs
     /// survive reasonably-fast clocks.
-    #[serde(with = "error::serde_rfc3339")]
+    #[serde(with = "crate::serde_time::rfc3339")]
     pub generated_at: Timestamp,
     /// CLI version that produced the projection (e.g. `specify@2.1.0`).
     pub generator: String,

@@ -33,7 +33,7 @@ pub struct Registry {
 #[serde(deny_unknown_fields)]
 pub struct RegistryProject {
     /// Kebab-case identifier for the project; validated by
-    /// [`error::is_kebab`].
+    /// [`crate::name::is_kebab`].
     pub name: String,
     /// Clone target — `.`, a repo-relative path (`../peer`, `./foo`,
     /// `pkg/sub`), `git@host:path`, or an `http(s)://`, `ssh://`, or

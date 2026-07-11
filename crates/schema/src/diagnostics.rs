@@ -27,6 +27,4 @@ pub use diagnostic::{
     blocking_present, renumber,
 };
 pub use fingerprint::{canonical_json, fingerprint, verify_fingerprint};
-pub use validate::{
-    DiagnosticError, validate_diagnostic, validate_diagnostic_json, validate_evidence_size,
-};
+pub use validate::{DiagnosticError, validate_diagnostic};

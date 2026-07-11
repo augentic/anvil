@@ -110,7 +110,7 @@ pub fn project_cache_dir(project_dir: &Path) -> PathBuf {
 /// to compute the expected location for a chosen temp root without
 /// mutating the process environment.
 #[must_use]
-pub fn project_cache_dir_in(projects_root: &Path, project_dir: &Path) -> PathBuf {
+fn project_cache_dir_in(projects_root: &Path, project_dir: &Path) -> PathBuf {
     projects_root.join(project_id(project_dir))
 }
 
@@ -199,7 +199,7 @@ pub fn adapter_store_root() -> PathBuf {
 /// sidecar is a writable provenance record that must not perturb the
 /// read-only immutability of the installed component file.
 #[must_use]
-pub fn store_meta_path(name: &str, version: &str) -> PathBuf {
+fn store_meta_path(name: &str, version: &str) -> PathBuf {
     adapter_store_root().join(format!("{name}@{version}.meta"))
 }
 
@@ -249,7 +249,7 @@ pub struct DigestMismatch {
 /// `tree_digest` is the [`file_content_digest`] of the freshly
 /// installed component; `layer_digest` is the registry content digest,
 /// recorded for provenance when known. The sidecar is a writable
-/// sibling of the read-only entry ([`store_meta_path`]).
+/// sibling of the read-only entry (`<name>@<version>.meta`).
 ///
 /// # Errors
 ///

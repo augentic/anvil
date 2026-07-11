@@ -24,7 +24,7 @@ use std::collections::BTreeMap;
 
 use artifacts::atomic::bytes_write;
 use artifacts::discovery::Discovery;
-use error::{Error, is_kebab};
+use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
 use schema::diagnostics::blocking_present;
@@ -38,7 +38,7 @@ use crate::change::{
 use crate::config::{Layout, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
 use crate::judgment::propose::{self, GateContext};
-use crate::name::SliceName;
+use crate::name::{SliceName, is_kebab};
 use crate::registry::Registry;
 use crate::seam::SourceSeam;
 

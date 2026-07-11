@@ -156,8 +156,7 @@ pub struct FindingLocation {
 /// Internally tagged on `kind`; the wire shape's `oneOf` is encoded
 /// by serde's `tag = "kind"` with `additionalProperties: false` per
 /// branch validated schema-side. The diagnostic contract caps the
-/// serialized evidence payload at 16 `KiB`, enforced by
-/// [`crate::diagnostics::validate::validate_evidence_size`], not here.
+/// serialized evidence payload at 16 `KiB` in [`super::validate_diagnostic`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum FindingEvidence {

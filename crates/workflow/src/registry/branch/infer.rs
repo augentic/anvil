@@ -4,9 +4,8 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use error::is_kebab;
-
 use super::{Diagnostic, git_output, git_output_optional};
+use crate::name::is_kebab;
 use crate::registry::catalog::RegistryProject;
 
 const ORIGIN_HEAD_UNRESOLVED: &str = "origin-head-unresolved";

@@ -26,6 +26,7 @@ pub mod plugins;
 pub mod registry;
 pub mod schema;
 pub mod seam;
+pub(crate) mod serde_time;
 pub mod slice;
 #[cfg(feature = "native")]
 pub mod upgrade;

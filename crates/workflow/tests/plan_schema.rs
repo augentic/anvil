@@ -4,8 +4,7 @@
 //! integration tests for the `specify plan *` group live in the binary
 //! harness under `tests/workflow/`.
 
-use jsonschema::Validator;
-use schema::PLAN_JSON_SCHEMA;
+use schema::{PLAN_JSON_SCHEMA, Validator, compile_schema};
 use serde_json::Value as JsonValue;
 
 /// `platform-v2` plan example, inline.
@@ -90,9 +89,7 @@ slices:
 ";
 
 fn load_validator() -> Validator {
-    let schema: JsonValue =
-        serde_json::from_str(PLAN_JSON_SCHEMA).expect("plan.schema.json is valid JSON");
-    jsonschema::validator_for(&schema).expect("plan.schema.json compiles as a JSON Schema")
+    compile_schema(PLAN_JSON_SCHEMA).expect("plan.schema.json compiles as a JSON Schema")
 }
 
 fn yaml_to_json(yaml: &str) -> JsonValue {

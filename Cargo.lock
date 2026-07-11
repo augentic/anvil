@@ -1298,10 +1298,7 @@ dependencies = [
 name = "error"
 version = "0.27.2"
 dependencies = [
- "jiff",
- "serde",
  "serde-saphyr",
- "serde_json",
  "thiserror 2.0.18",
 ]
 
@@ -6288,7 +6285,6 @@ dependencies = [
  "error",
  "glob",
  "jiff",
- "jsonschema 0.47.0",
  "omnia-guest",
  "petgraph",
  "proptest",

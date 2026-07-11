@@ -21,7 +21,7 @@ use schema::{ValidationStatus, join_details};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::schema::{SLICE_MODEL_JSON_SCHEMA, evidence_yaml_paths, validate_value};
+use crate::schema::{SLICE_MODEL_JSON_SCHEMA, evidence_yaml_paths, validate_value_cached};
 use crate::slice::provenance::{
     ContributingClaim, ProvenanceIndex, ProvenanceRequirement, ProvenanceResolution,
     ResolutionTrace,
@@ -162,7 +162,7 @@ pub struct ModelTask {
 pub fn validate_model_doc(value: &JsonValue) -> Result<()> {
     let rule = "model.yaml conforms to schemas/slice/model.schema.json";
     let failures: Vec<_> =
-        validate_value(value, SLICE_MODEL_JSON_SCHEMA, "slice-model-schema", rule)
+        validate_value_cached(value, SLICE_MODEL_JSON_SCHEMA, "slice-model-schema", rule)
             .into_iter()
             .filter(|summary| summary.status == ValidationStatus::Fail)
             .collect();

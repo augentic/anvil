@@ -20,15 +20,17 @@ use std::sync::LazyLock;
 
 use artifacts::discovery::Lead;
 use error::{Error, Result};
-use jsonschema::{Registry, Resource};
 pub(crate) use schema::{
     BUILD_REPORT_JSON_SCHEMA, BUILD_REQUEST_JSON_SCHEMA, COMPONENTS_JSON_SCHEMA,
     DIAGNOSTIC_JSON_SCHEMA, EVIDENCE_JSON_SCHEMA, LEAD_JSON_SCHEMA, PARTS_JSON_SCHEMA,
     PLAN_JSON_SCHEMA, PROPOSAL_JSON_SCHEMA, PROVENANCE_JSON_SCHEMA, SLICE_MODEL_JSON_SCHEMA,
     SYNTHESIS_JSON_SCHEMA, TOPOLOGY_LOCK_JSON_SCHEMA, read_yaml_as_json, validate_serialisable,
-    validate_value, validate_value_cached,
+    validate_value_cached,
 };
-use schema::{ValidationStatus, ValidationSummary, join_details};
+use schema::{
+    ValidationStatus, ValidationSummary, Validator, compile_ref_validator, join_details,
+    validation_errors,
+};
 use serde_json::Value as JsonValue;
 
 use crate::change::Plan;
@@ -113,7 +115,7 @@ const MODEL_SCHEMA_URL: &str =
 /// always agent-dispatched, so the only schema-validated wire is the
 /// returned `kind: response`. Its `model` property `$ref`s
 /// `model.schema.json` by a relative URI, so the validator is built
-/// through a [`Registry`] that pins [`SLICE_MODEL_JSON_SCHEMA`] under
+/// through a registry that pins [`SLICE_MODEL_JSON_SCHEMA`] under
 /// its `$id` (`MODEL_SCHEMA_URL`) — the same registry pattern the
 /// diagnostic-report renderer uses to resolve its relative finding
 /// `$ref`.
@@ -142,7 +144,7 @@ pub fn validate_synthesis_json(content: &str) -> Result<()> {
 /// binary), so the `expect` is genuinely unreachable in production and
 /// mirrors the `LazyLock<Regex>` pattern used elsewhere for static
 /// schema/regex compilation.
-static SYNTHESIS_VALIDATOR: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
+static SYNTHESIS_VALIDATOR: LazyLock<Validator> = LazyLock::new(|| {
     compile_ref_validator(SYNTHESIS_JSON_SCHEMA, MODEL_SCHEMA_URL, SLICE_MODEL_JSON_SCHEMA)
         .expect("embedded synthesis + model schemas compile (corrupt binary otherwise)")
 });
@@ -154,7 +156,7 @@ static SYNTHESIS_VALIDATOR: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
 /// ([`crate::slice::build_request`]) and writes to
 /// `.specify/slices/<slice>/build/request.yaml` is gated against this
 /// shape before handoff. The request carries no `$ref`, so the simple
-/// [`validate_value`] path (as in [`validate_plan_yaml`]) suffices.
+/// [`validate_value_cached`] path (as in [`validate_plan_yaml`]) suffices.
 /// Parsing through [`serde_saphyr::from_str`] accepts both the YAML the
 /// CLI persists and a JSON instance.
 ///
@@ -183,7 +185,7 @@ const DIAGNOSTIC_SCHEMA_URL: &str =
 /// `.specify/slices/<slice>/build/report.yaml` is gated against this
 /// shape before the `built` transition. Its `findings[]` `$ref`s
 /// `diagnostic.schema.json` by a relative URI, so the validator is built
-/// through a [`Registry`] that pins [`DIAGNOSTIC_JSON_SCHEMA`] under its
+/// through a registry that pins [`DIAGNOSTIC_JSON_SCHEMA`] under its
 /// `$id` (`DIAGNOSTIC_SCHEMA_URL`) — the same registry pattern
 /// `compile_synthesis_validator` uses for the relative `model` `$ref`.
 ///
@@ -205,7 +207,7 @@ pub fn validate_build_report_json(content: &str) -> Result<()> {
 ///
 /// See [`SYNTHESIS_VALIDATOR`] for the `expect`-on-corrupt-binary
 /// rationale.
-static BUILD_REPORT_VALIDATOR: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
+static BUILD_REPORT_VALIDATOR: LazyLock<Validator> = LazyLock::new(|| {
     compile_ref_validator(BUILD_REPORT_JSON_SCHEMA, DIAGNOSTIC_SCHEMA_URL, DIAGNOSTIC_JSON_SCHEMA)
         .expect("embedded build-report + diagnostic schemas compile (corrupt binary otherwise)")
 });
@@ -535,12 +537,11 @@ fn validate_labelled_yaml(
 /// Returns [`Error::Validation`] (keyed on `code`) when parsing or
 /// schema validation fails.
 fn validate_with_ref_validator(
-    content: &str, validator: &jsonschema::Validator, code: &'static str, rule: &str,
+    content: &str, validator: &Validator, code: &'static str, rule: &str,
 ) -> Result<()> {
     let instance: JsonValue = serde_saphyr::from_str(content)
         .map_err(|err| Error::validation_failed(code, rule, format!("parse failed: {err}")))?;
-    let failures: Vec<String> =
-        validator.iter_errors(&instance).map(|err| err.to_string()).collect();
+    let failures = validation_errors(validator, &instance);
     if failures.is_empty() {
         Ok(())
     } else {
@@ -549,29 +550,6 @@ fn validate_with_ref_validator(
             detail: failures.join("; "),
         })
     }
-}
-
-/// Compile an embedded `schema` whose relative `$ref` is satisfied by
-/// pinning `ref_schema` under `ref_url` in a [`Registry`].
-///
-/// Returns the joined failure string on any parse/registry/compile
-/// error; callers wrap it in a `LazyLock` and `expect` (a failure means
-/// a corrupt binary).
-fn compile_ref_validator(
-    schema: &str, ref_url: &str, ref_schema: &str,
-) -> std::result::Result<jsonschema::Validator, String> {
-    let schema_value: JsonValue =
-        serde_json::from_str(schema).map_err(|err| format!("schema parse failed: {err}"))?;
-    let ref_value: JsonValue = serde_json::from_str(ref_schema)
-        .map_err(|err| format!("ref schema parse failed: {err}"))?;
-    let registry = Registry::new()
-        .add(ref_url, Resource::from_contents(ref_value))
-        .and_then(jsonschema::RegistryBuilder::prepare)
-        .map_err(|err| format!("registry build failed: {err}"))?;
-    jsonschema::options()
-        .with_registry(&registry)
-        .build(&schema_value)
-        .map_err(|err| format!("schema compile failed: {err}"))
 }
 
 fn validation_failures(

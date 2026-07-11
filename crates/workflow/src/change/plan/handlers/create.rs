@@ -6,7 +6,7 @@
 
 use std::io::Write;
 
-use error::{Error, is_kebab};
+use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ use super::args::{SourceAssign, parse_override_assigns, source_map};
 use crate::change::{Lifecycle, Plan, mutate_authority_overrides, reject_orphan_overrides};
 use crate::handler::{Anchor, Ctx, Render};
 use crate::journal;
+use crate::name::is_kebab;
 
 /// Wire input for `plan create`.
 ///

@@ -162,7 +162,7 @@ pub struct BaselineConflict {
     /// Slice's `defined_at` stamp, copied verbatim from `metadata.yaml`.
     pub defined_at: String,
     /// Baseline file modification time.
-    #[serde(with = "error::serde_rfc3339")]
+    #[serde(with = "crate::serde_time::rfc3339")]
     pub baseline_modified_at: Timestamp,
 }
 

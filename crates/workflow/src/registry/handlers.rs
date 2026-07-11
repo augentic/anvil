@@ -129,7 +129,7 @@ impl<P: Anchor> Operation<P> for Add {
             adapter,
             description,
         } = input;
-        if !error::is_kebab(&name) {
+        if !crate::name::is_kebab(&name) {
             return Err(Error::Diag {
                 code: "registry-add-name-not-kebab",
                 detail: format!(

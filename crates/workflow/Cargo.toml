@@ -28,7 +28,6 @@ native = ["dep:ureq"]
 anyhow.workspace = true
 glob.workspace = true
 jiff.workspace = true
-jsonschema.workspace = true
 petgraph.workspace = true
 regex.workspace = true
 semver.workspace = true

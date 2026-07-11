@@ -15,9 +15,4 @@ workspace = true
 
 [dependencies]
 thiserror.workspace = true
-serde.workspace = true
 serde-saphyr.workspace = true
-jiff.workspace = true
-
-[dev-dependencies]
-serde_json.workspace = true

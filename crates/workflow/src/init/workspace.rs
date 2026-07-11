@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use error::{Error, is_kebab};
+use error::Error;
 
 use crate::config::{Layout, ProjectConfig};
 use crate::init::cache::ComponentMeta;
@@ -14,6 +14,7 @@ use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
     upsert_gitignore,
 };
+use crate::name::is_kebab;
 use crate::registry::Registry;
 
 /// Scaffold a registry-only workspace.

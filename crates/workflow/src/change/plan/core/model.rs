@@ -362,7 +362,7 @@ impl TargetRef {
     pub fn parse(input: &str) -> Result<Self, TargetRefParseError> {
         let (name, version_part) =
             input.split_once('@').ok_or_else(|| TargetRefParseError::new(input))?;
-        if !error::is_kebab_leading_alpha(name) {
+        if !crate::name::is_kebab_leading_alpha(name) {
             return Err(TargetRefParseError::new(input));
         }
         let version =

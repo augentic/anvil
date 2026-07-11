@@ -4,8 +4,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use error::{Error, is_kebab};
+use error::Error;
 
+use crate::name::is_kebab;
 use crate::registry::catalog::{Registry, RegistryProject};
 
 impl Registry {

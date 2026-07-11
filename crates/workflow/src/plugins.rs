@@ -24,7 +24,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use error::{Error, Result};
-use schema::{MARKETPLACE_JSON_SCHEMA, ValidationStatus, join_details, validate_value};
+use schema::{MARKETPLACE_JSON_SCHEMA, ValidationStatus, join_details, validate_value_cached};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -280,7 +280,7 @@ pub fn load_marketplace(path: &Path) -> Result<MarketplaceManifest> {
         code: "marketplace-parse-failed",
         detail: format!("{}: not valid JSON: {err}", path.display()),
     })?;
-    let failures: Vec<_> = validate_value(
+    let failures: Vec<_> = validate_value_cached(
         &value,
         MARKETPLACE_JSON_SCHEMA,
         "marketplace-schema",

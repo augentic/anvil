@@ -5,7 +5,7 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use artifacts::discovery::Discovery;
-use error::{Error, Result, is_kebab};
+use error::{Error, Result};
 use petgraph::algo::tarjan_scc;
 use schema::diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, blocking, fingerprint,
@@ -17,6 +17,7 @@ use super::super::model::{
 use super::super::validate::entry_dependency_graph;
 use super::catalog::{LeadCatalog, build_catalog};
 use super::wire::{ProjectRef, ProposalResponse, ResponseMember, ResponseSlice};
+use crate::name::is_kebab;
 use crate::registry::topology::Decision;
 
 /// Outcome of a successful [`Plan::propose_from`] projection.

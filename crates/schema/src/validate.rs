@@ -14,8 +14,9 @@ use std::path::Path;
 use std::sync::{Arc, LazyLock, RwLock};
 
 use error::{Error, Result};
-use jsonschema::Validator;
+pub use jsonschema::Validator;
 use jsonschema::error::{ValidationError, ValidationErrorKind};
+use jsonschema::{Registry, Resource};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 
@@ -224,8 +225,7 @@ fn poisoned() -> Error {
 fn summarise(
     validator: &Validator, instance: &JsonValue, rule_id: &str, rule: &str,
 ) -> Vec<ValidationSummary> {
-    let errors: Vec<String> =
-        validator.iter_errors(instance).map(|err| validation_error_detail(&err)).collect();
+    let errors = validation_errors(validator, instance);
     if errors.is_empty() {
         vec![ValidationSummary {
             status: ValidationStatus::Pass,
@@ -272,7 +272,44 @@ pub fn compile_schema(schema_source: &str) -> Result<Validator> {
     })
 }
 
-pub(crate) fn validation_error_detail(err: &ValidationError<'_>) -> String {
+/// Compile a schema with one external `$ref` pinned in its registry.
+///
+/// # Errors
+///
+/// Returns [`Error::Diag`] when either schema cannot be parsed, the
+/// registry cannot be prepared, or the root schema cannot compile.
+pub fn compile_ref_validator(
+    schema_source: &str, ref_url: &str, ref_schema_source: &str,
+) -> Result<Validator> {
+    let schema: JsonValue = serde_json::from_str(schema_source).map_err(|err| Error::Diag {
+        code: "schema-meta-loadable",
+        detail: format!("embedded JSON Schema does not parse as JSON: {err}"),
+    })?;
+    let ref_schema: JsonValue =
+        serde_json::from_str(ref_schema_source).map_err(|err| Error::Diag {
+            code: "schema-ref-meta-loadable",
+            detail: format!("embedded referenced JSON Schema does not parse as JSON: {err}"),
+        })?;
+    let registry = Registry::new()
+        .add(ref_url, Resource::from_contents(ref_schema))
+        .and_then(jsonschema::RegistryBuilder::prepare)
+        .map_err(|err| Error::Diag {
+            code: "schema-ref-registry",
+            detail: format!("embedded JSON Schema registry does not compile: {err}"),
+        })?;
+    jsonschema::options().with_registry(&registry).build(&schema).map_err(|err| Error::Diag {
+        code: "schema-meta-compilable",
+        detail: format!("embedded JSON Schema does not compile: {err}"),
+    })
+}
+
+/// Render every validation failure with its JSON pointer.
+#[must_use]
+pub fn validation_errors(validator: &Validator, instance: &JsonValue) -> Vec<String> {
+    validator.iter_errors(instance).map(|err| validation_error_detail(&err)).collect()
+}
+
+fn validation_error_detail(err: &ValidationError<'_>) -> String {
     let path = match err.kind() {
         ValidationErrorKind::AdditionalProperties { unexpected } if unexpected.len() == 1 => {
             child_pointer(&err.instance_path().to_string(), &unexpected[0])

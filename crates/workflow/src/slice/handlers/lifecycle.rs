@@ -150,16 +150,16 @@ pub struct TransitionBody {
     /// Status after the transition.
     pub status: LifecycleStatus,
     /// Lifecycle timestamps as persisted.
-    #[serde(with = "error::serde_rfc3339_opt")]
+    #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub defined_at: Option<Timestamp>,
     /// See `defined_at`.
-    #[serde(with = "error::serde_rfc3339_opt")]
+    #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub completed_at: Option<Timestamp>,
     /// See `defined_at`.
-    #[serde(with = "error::serde_rfc3339_opt")]
+    #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub merged_at: Option<Timestamp>,
     /// See `defined_at`.
-    #[serde(with = "error::serde_rfc3339_opt")]
+    #[serde(with = "crate::serde_time::rfc3339_opt")]
     pub dropped_at: Option<Timestamp>,
 }
 

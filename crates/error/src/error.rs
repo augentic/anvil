@@ -11,6 +11,7 @@ use std::borrow::Cow;
 /// Variants carry enough context for the CLI to assign exit codes and
 /// choose an output format without string-parsing.
 #[derive(Debug, thiserror::Error)]
+#[expect(missing_docs, reason = "variant-level docs cover self-explanatory error fields")]
 pub enum Error {
     /// The `.specify/project.yaml` file is missing.
     #[error("not initialized: .specify/project.yaml not found")]
@@ -22,12 +23,7 @@ pub enum Error {
     /// Promote a recurring `Diag` site to its own variant once the call
     /// shape stabilises.
     #[error("{code}: {detail}")]
-    Diag {
-        /// Stable kebab-case discriminant surfaced as the JSON `error` field.
-        code: &'static str,
-        /// Human-readable message.
-        detail: String,
-    },
+    Diag { code: &'static str, detail: String },
 
     /// A user-supplied CLI argument is invalid for reasons clap cannot
     /// catch (kebab-case names, mutually exclusive flag combinations,
@@ -36,12 +32,7 @@ pub enum Error {
     /// argument-shape validation so the CLI can map it onto the
     /// argument-error exit code.
     #[error("invalid argument {flag}: {detail}")]
-    Argument {
-        /// Argument name (e.g. `--adapter`, `<name>`, `phase`).
-        flag: &'static str,
-        /// Human-readable explanation, suitable for display alongside `--help`.
-        detail: String,
-    },
+    Argument { flag: &'static str, detail: String },
 
     /// A workflow-gating validation surface failed. Payload-free: the
     /// rendered findings (a `DiagnosticReport`) are emitted to stdout by
@@ -50,24 +41,11 @@ pub enum Error {
     /// and routes to exit code 2 (`Exit::ValidationFailed`). Construct
     /// via [`Self::validation_failed`].
     #[error("{code}: {detail}")]
-    Validation {
-        /// Stable kebab-case discriminant surfaced as the JSON `error`
-        /// field. `Cow` so the common literal-code path borrows a
-        /// `&'static str` (no per-construction or per-render allocation)
-        /// while dynamic codes can still own a `String`.
-        code: Cow<'static, str>,
-        /// Human-readable message.
-        detail: String,
-    },
+    Validation { code: Cow<'static, str>, detail: String },
 
     /// The installed CLI version is older than the project floor.
     #[error("specify version {found} is older than the project floor {required}; upgrade the CLI")]
-    CliTooOld {
-        /// Minimum version the project requires.
-        required: String,
-        /// Version currently installed.
-        found: String,
-    },
+    CliTooOld { required: String, found: String },
 
     /// The installed CLI version is older than an adapter's declared
     /// host-CLI compatibility floor (the `specify-floor` describe
@@ -77,38 +55,19 @@ pub enum Error {
     #[error(
         "specify version {found} is older than the floor {required} required by adapter {adapter}; upgrade the CLI"
     )]
-    AdapterCliTooOld {
-        /// Adapter identity (and manifest path) that declared the floor.
-        adapter: String,
-        /// Minimum version the adapter requires.
-        required: String,
-        /// Version currently installed.
-        found: String,
-    },
+    AdapterCliTooOld { adapter: String, required: String, found: String },
 
     /// A required artifact was not found at the expected path.
     #[error("{kind} not found at {}", path.display())]
-    ArtifactNotFound {
-        /// Kind of artifact (e.g. `metadata.yaml`).
-        kind: &'static str,
-        /// Path where the artifact was expected.
-        path: std::path::PathBuf,
-    },
+    ArtifactNotFound { kind: &'static str, path: std::path::PathBuf },
 
     /// A filesystem operation failed. The `op` field is a stable
     /// kebab-case suffix that, prefixed with `filesystem-`, becomes the
     /// JSON envelope's `error` discriminant (e.g. `filesystem-readdir`).
-    /// Canonical call sites: the slice-merge engine
-    /// (`workflow::merge::slice::{read, write}`), where every
-    /// recursive directory walk and file copy needs a stable, testable
-    /// discriminant for operator follow-up.
     #[error("filesystem-{op}: {} ({source})", path.display())]
     Filesystem {
-        /// Operation kind; the JSON discriminant is `filesystem-<op>`.
         op: &'static str,
-        /// Path the operation acted on (or attempted to).
         path: std::path::PathBuf,
-        /// The underlying I/O error.
         #[source]
         source: std::io::Error,
     },
@@ -150,12 +109,6 @@ impl Error {
                 "init-requires-adapter-or-workspace" => Some(
                     "`specify init <adapter>` for a regular project, or `specify init --workspace` for a workspace.\nsee: docs/init.md",
                 ),
-                "context-existing-unfenced-agents-md" => {
-                    Some("rerun with --force to rewrite AGENTS.md.")
-                }
-                "context-fenced-content-modified" => Some(
-                    "reconcile the edits or rerun with --force to replace the generated block.",
-                ),
                 "adapter-prefetch-unpinned" => Some(
                     "pin each `project.yaml.adapters:` entry to an exact version: `<name>@<semver>` or `<namespace>:<name>@<semver>`.",
                 ),
@@ -192,13 +145,7 @@ impl Error {
     /// `code` is the stable kebab discriminant surfaced as the JSON
     /// `error` field (and by [`Self::variant_str`]); `rule` (the
     /// human-readable invariant) and `detail` (the specific
-    /// explanation) are folded into the rendered message. This is the
-    /// operational counterpart to the rich [`Diagnostic`] report a
-    /// handler renders on stdout — use it when the failure is a single
-    /// operational signal (malformed YAML, unknown slice name, …)
-    /// rather than a set of findings.
-    ///
-    /// [`Diagnostic`]: https://docs.rs/diagnostics
+    /// explanation) are folded into the rendered message.
     #[must_use]
     pub fn validation_failed(
         code: impl Into<Cow<'static, str>>, rule: impl Into<String>, detail: impl Into<String>,

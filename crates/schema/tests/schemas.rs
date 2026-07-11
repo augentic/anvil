@@ -3,14 +3,13 @@
 //! surfaces here long before any production caller touches the
 //! validator.
 
-use jsonschema::{Registry, Resource};
 use schema::{
     BUILD_REPORT_JSON_SCHEMA, BUILD_REQUEST_JSON_SCHEMA, DECISION_JSON_SCHEMA,
     DIAGNOSTIC_JSON_SCHEMA, DIAGNOSTIC_REPORT_JSON_SCHEMA, EMBEDDED_SCHEMAS, PARTS_JSON_SCHEMA,
-    SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA, ValidationStatus, compile_schema,
-    validate_value,
+    SLICE_MODEL_JSON_SCHEMA, SYNTHESIS_JSON_SCHEMA, ValidationStatus, compile_ref_validator,
+    compile_schema, validate_value,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 
 /// Every embedded schema compiles, table-driven over the canonical
 /// [`EMBEDDED_SCHEMAS`] inventory so a new constant is covered the
@@ -97,20 +96,12 @@ fn slice_model_accepts_no_kernel() {
 /// schema under its `$id`, so the response's relative `model` `$ref`
 /// resolves (mirrors `lint_result_schema_compiles`).
 fn synthesis_validator() -> jsonschema::Validator {
-    let synthesis: Value =
-        serde_json::from_str(SYNTHESIS_JSON_SCHEMA).expect("synthesis schema parses");
-    let model: Value = serde_json::from_str(SLICE_MODEL_JSON_SCHEMA).expect("model schema parses");
-    let registry = Registry::new()
-        .add(
-            "https://github.com/augentic/specify/schemas/slice/model.schema.json",
-            Resource::from_contents(model),
-        )
-        .and_then(jsonschema::RegistryBuilder::prepare)
-        .expect("registry prepares");
-    jsonschema::options()
-        .with_registry(&registry)
-        .build(&synthesis)
-        .expect("synthesis schema compiles with model $ref resolved")
+    compile_ref_validator(
+        SYNTHESIS_JSON_SCHEMA,
+        "https://github.com/augentic/specify/schemas/slice/model.schema.json",
+        SLICE_MODEL_JSON_SCHEMA,
+    )
+    .expect("synthesis schema compiles with model $ref resolved")
 }
 
 /// The synthesis-response worked example validates against the
@@ -270,21 +261,12 @@ fn decision_accepts_baseline_form() {
 /// `diagnostic.schema.json` `$ref` resolves to — the standalone
 /// `compile_schema` helper has no resource registry.
 fn diagnostic_report_validator() -> jsonschema::Validator {
-    let envelope: Value =
-        serde_json::from_str(DIAGNOSTIC_REPORT_JSON_SCHEMA).expect("lint-result schema parses");
-    let finding: Value =
-        serde_json::from_str(DIAGNOSTIC_JSON_SCHEMA).expect("finding schema parses");
-    let registry = Registry::new()
-        .add(
-            "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
-            Resource::from_contents(finding),
-        )
-        .and_then(jsonschema::RegistryBuilder::prepare)
-        .expect("registry prepares");
-    jsonschema::options()
-        .with_registry(&registry)
-        .build(&envelope)
-        .expect("lint-result schema compiles with finding $ref resolved")
+    compile_ref_validator(
+        DIAGNOSTIC_REPORT_JSON_SCHEMA,
+        "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
+        DIAGNOSTIC_JSON_SCHEMA,
+    )
+    .expect("lint-result schema compiles with finding $ref resolved")
 }
 
 #[test]
@@ -355,21 +337,12 @@ fn build_request_schema_accepts_rfc_example() {
 /// `../diagnostics/diagnostic.schema.json` `findings[]` `$ref` resolves
 /// (mirrors `lint_result_schema_compiles`).
 fn build_report_validator() -> jsonschema::Validator {
-    let report: Value =
-        serde_json::from_str(BUILD_REPORT_JSON_SCHEMA).expect("build-report schema parses");
-    let diagnostic: Value =
-        serde_json::from_str(DIAGNOSTIC_JSON_SCHEMA).expect("diagnostic schema parses");
-    let registry = Registry::new()
-        .add(
-            "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
-            Resource::from_contents(diagnostic),
-        )
-        .and_then(jsonschema::RegistryBuilder::prepare)
-        .expect("registry prepares");
-    jsonschema::options()
-        .with_registry(&registry)
-        .build(&report)
-        .expect("build-report schema compiles with diagnostic $ref resolved")
+    compile_ref_validator(
+        BUILD_REPORT_JSON_SCHEMA,
+        "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json",
+        DIAGNOSTIC_JSON_SCHEMA,
+    )
+    .expect("build-report schema compiles with diagnostic $ref resolved")
 }
 
 /// The build-report success example validates.

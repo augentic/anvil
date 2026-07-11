@@ -124,7 +124,7 @@ Response DTOs (`*Body`, `*Row`) are **top-level** structs under `mod`. Declaring
 | Filesystem path | `PathBuf` | never `String`; serde's default carries the path losslessly |
 | Status / kind / phase with finite domain | the underlying enum + `#[serde(rename_all = "kebab-case")]` | drop `.to_string()` at construction |
 | Stable kebab discriminant | `&'static str` | lives in the binary |
-| Timestamp written into JSON | `jiff::Timestamp` with `#[serde(with = "error::serde_rfc3339")]` (or `serde_rfc3339_opt` on `Option<Timestamp>`) | serde owns the format |
+| Timestamp written into JSON | `jiff::Timestamp` with the workflow crate's `serde_time::rfc3339` adapter (or `rfc3339_opt` on `Option<Timestamp>`) | serde owns the format |
 | Count | `usize` | JSON has neither `u32` nor `u64` |
 
 **Single-variant enums are dead overhead.** Drop either the variant or the enum; the type's name already says "this DTO represents kind X". The `BriefAction::Init` pattern is the canonical example of what not to add.

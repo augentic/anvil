@@ -14,6 +14,22 @@ use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
+/// Matches the kebab-case identifier grammar used by project schemas.
+#[must_use]
+pub fn is_kebab(value: &str) -> bool {
+    !value.is_empty()
+        && value.split('-').all(|segment| {
+            !segment.is_empty()
+                && segment.chars().all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit())
+        })
+}
+
+/// Matches [`is_kebab`] and requires an ASCII lowercase first letter.
+#[must_use]
+pub fn is_kebab_leading_alpha(value: &str) -> bool {
+    value.starts_with(|ch: char| ch.is_ascii_lowercase()) && is_kebab(value)
+}
+
 /// Declares an identifier newtype around `String` with the ergonomics
 /// every call site relies on: cheap construction from string-likes,
 /// `Display`, `AsRef<str>` / `Deref<str>` / `Borrow<str>` so the inner

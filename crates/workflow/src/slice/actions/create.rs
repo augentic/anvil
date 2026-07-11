@@ -3,10 +3,11 @@
 
 use std::path::{Path, PathBuf};
 
-use error::{Error, is_kebab};
+use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
 
+use crate::name::is_kebab;
 use crate::slice::{LifecycleStatus, SliceMetadata};
 
 /// What to do when [`create`] finds an existing directory at the

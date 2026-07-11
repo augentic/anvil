@@ -109,30 +109,7 @@ pub fn report() -> Value {
         ),
     );
 
-    // The findings[] items `$ref` points at the sibling diagnostic file;
-    // a self-contained payload inlines it: the diagnostic's own `$defs`
-    // hoist to the root under a `diagnostic-` prefix (no collisions with
-    // the report's defs), its internal refs are rewritten to match, and
-    // the body lands at `#/$defs/diagnostic`.
-    let mut diagnostic = parse(DIAGNOSTIC_JSON_SCHEMA);
-    for key in ["$schema", "$id"] {
-        take(&mut diagnostic, key);
-    }
-    let mut hoisted = take(&mut diagnostic, "$defs");
-    rewrite_local_refs(&mut diagnostic, "diagnostic-");
-    rewrite_local_refs(&mut hoisted, "diagnostic-");
-
-    let defs = report
-        .get_mut("$defs")
-        .and_then(Value::as_object_mut)
-        .expect("build-report schema carries $defs");
-    defs.insert("diagnostic".to_string(), diagnostic);
-    if let Value::Object(entries) = hoisted {
-        for (name, def) in entries {
-            defs.insert(format!("diagnostic-{name}"), def);
-        }
-    }
-    set_pointer(&mut report, "/properties/findings/items", json!({ "$ref": "#/$defs/diagnostic" }));
+    inline_ref(&mut report, DIAGNOSTIC_JSON_SCHEMA, "diagnostic", "/properties/findings/items");
     report
 }
 
@@ -242,29 +219,7 @@ pub fn synthesis() -> Value {
         ),
     );
 
-    // The `model` property `$ref`s the sibling model.schema.json; a
-    // self-contained payload inlines it: the model schema's own `$defs`
-    // hoist to the root under a `model-` prefix, its internal refs are
-    // rewritten to match, and the body lands at `#/$defs/model`.
-    let mut model = parse(SLICE_MODEL_JSON_SCHEMA);
-    for key in ["$schema", "$id"] {
-        take(&mut model, key);
-    }
-    let mut hoisted = take(&mut model, "$defs");
-    rewrite_local_refs(&mut model, "model-");
-    rewrite_local_refs(&mut hoisted, "model-");
-
-    let defs = synthesis
-        .get_mut("$defs")
-        .and_then(Value::as_object_mut)
-        .expect("synthesis schema carries $defs");
-    defs.insert("model".to_string(), model);
-    if let Value::Object(entries) = hoisted {
-        for (name, def) in entries {
-            defs.insert(format!("model-{name}"), def);
-        }
-    }
-    set_pointer(&mut synthesis, "/properties/model", json!({ "$ref": "#/$defs/model" }));
+    inline_ref(&mut synthesis, SLICE_MODEL_JSON_SCHEMA, "model", "/properties/model");
     synthesis
 }
 
@@ -350,6 +305,27 @@ fn rewrite_local_refs(value: &mut Value, prefix: &str) {
         }
         _ => {}
     }
+}
+
+// Inline an external schema under the root `$defs`, prefixing its own
+// definitions so the resulting answer schema is self-contained.
+fn inline_ref(root: &mut Value, source: &str, name: &str, pointer: &str) {
+    let prefix = format!("{name}-");
+    let mut body = parse(source);
+    for key in ["$schema", "$id"] {
+        take(&mut body, key);
+    }
+    let mut hoisted = take(&mut body, "$defs");
+    rewrite_local_refs(&mut body, &prefix);
+    rewrite_local_refs(&mut hoisted, &prefix);
+
+    let defs =
+        root.get_mut("$defs").and_then(Value::as_object_mut).expect("root schema carries $defs");
+    defs.insert(name.to_string(), body);
+    if let Value::Object(entries) = hoisted {
+        defs.extend(entries.into_iter().map(|(key, value)| (format!("{prefix}{key}"), value)));
+    }
+    set_pointer(root, pointer, json!({ "$ref": format!("#/$defs/{name}") }));
 }
 
 fn take(schema: &mut Value, key: &str) -> Value {
