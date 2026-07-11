@@ -95,26 +95,30 @@ lead: User_Registration
 claims: []
 ";
 
-#[test]
-fn evidence_accepts_doc_legacy_and_spatial() {
-    let v = load(EVIDENCE_JSON_SCHEMA);
-    assert_valid(&v, &yaml(EVIDENCE_VALID_REQUIREMENT), "evidence/requirement");
-    assert_valid(&v, &yaml(EVIDENCE_VALID_SPATIAL), "evidence/spatial-region-container-leaf");
-    assert_valid(&v, &yaml(EVIDENCE_VALID_EMPTY_CLAIMS), "evidence/empty-claims");
-}
+mod evidence {
+    use super::*;
 
-#[test]
-fn evidence_rejects_bad_authority_and_kinds() {
-    let v = load(EVIDENCE_JSON_SCHEMA);
-    assert_invalid(&v, &yaml(EVIDENCE_INVALID_MISSING_AUTHORITY), "evidence/missing-authority");
-    assert_invalid(&v, &yaml(EVIDENCE_INVALID_BAD_AUTHORITY), "evidence/bad-authority");
-    assert_invalid(&v, &yaml(EVIDENCE_INVALID_BAD_KIND), "evidence/bad-kind");
-    assert_invalid(
-        &v,
-        &yaml(EVIDENCE_INVALID_REQUIREMENT_NO_CLAIM_ID),
-        "evidence/requirement-missing-id",
-    );
-    assert_invalid(&v, &yaml(EVIDENCE_INVALID_LEAD_NOT_KEBAB), "evidence/lead-not-kebab");
+    #[test]
+    fn accepts_requirement_spatial_and_empty() {
+        let v = load(EVIDENCE_JSON_SCHEMA);
+        assert_valid(&v, &yaml(EVIDENCE_VALID_REQUIREMENT), "evidence/requirement");
+        assert_valid(&v, &yaml(EVIDENCE_VALID_SPATIAL), "evidence/spatial-region-container-leaf");
+        assert_valid(&v, &yaml(EVIDENCE_VALID_EMPTY_CLAIMS), "evidence/empty-claims");
+    }
+
+    #[test]
+    fn rejects_invalid_authority_and_kinds() {
+        let v = load(EVIDENCE_JSON_SCHEMA);
+        assert_invalid(&v, &yaml(EVIDENCE_INVALID_MISSING_AUTHORITY), "evidence/missing-authority");
+        assert_invalid(&v, &yaml(EVIDENCE_INVALID_BAD_AUTHORITY), "evidence/bad-authority");
+        assert_invalid(&v, &yaml(EVIDENCE_INVALID_BAD_KIND), "evidence/bad-kind");
+        assert_invalid(
+            &v,
+            &yaml(EVIDENCE_INVALID_REQUIREMENT_NO_CLAIM_ID),
+            "evidence/requirement-missing-id",
+        );
+        assert_invalid(&v, &yaml(EVIDENCE_INVALID_LEAD_NOT_KEBAB), "evidence/lead-not-kebab");
+    }
 }
 
 // --- discovery/lead.schema.json --------------------------------
@@ -151,23 +155,27 @@ aliases:
   - account-registration
 ";
 
-#[test]
-fn lead_accepts_minimal_shape() {
-    let v = load(LEAD_JSON_SCHEMA);
-    assert_valid(&v, &yaml(LEAD_VALID), "lead/minimal");
-}
+mod lead {
+    use super::*;
 
-#[test]
-fn lead_rejects_source_id_tentative() {
-    let v = load(LEAD_JSON_SCHEMA);
-    assert_invalid(&v, &yaml(LEAD_INVALID_MISSING_SOURCE_KEY), "lead/missing-source");
-    assert_invalid(&v, &yaml(LEAD_INVALID_BAD_ID), "lead/bad-id");
-    // `tentative` is not a lead field; the schema
-    // is `additionalProperties: false`, so a lead carrying it fails.
-    assert_invalid(&v, &yaml(LEAD_INVALID_TENTATIVE_REMOVED), "lead/retired-tentative");
-    // `aliases` is not a lead field; the schema is `additionalProperties: false`, so a
-    // lead carrying it fails.
-    assert_invalid(&v, &yaml(LEAD_INVALID_ALIASES_REMOVED), "lead/retired-aliases");
+    #[test]
+    fn accepts_minimal_shape() {
+        let v = load(LEAD_JSON_SCHEMA);
+        assert_valid(&v, &yaml(LEAD_VALID), "lead/minimal");
+    }
+
+    #[test]
+    fn rejects_invalid_fields() {
+        let v = load(LEAD_JSON_SCHEMA);
+        assert_invalid(&v, &yaml(LEAD_INVALID_MISSING_SOURCE_KEY), "lead/missing-source");
+        assert_invalid(&v, &yaml(LEAD_INVALID_BAD_ID), "lead/bad-id");
+        // `tentative` is not a lead field; the schema
+        // is `additionalProperties: false`, so a lead carrying it fails.
+        assert_invalid(&v, &yaml(LEAD_INVALID_TENTATIVE_REMOVED), "lead/retired-tentative");
+        // `aliases` is not a lead field; the schema is `additionalProperties: false`, so a
+        // lead carrying it fails.
+        assert_invalid(&v, &yaml(LEAD_INVALID_ALIASES_REMOVED), "lead/retired-aliases");
+    }
 }
 
 // --- plan/plan.schema.json -------------------------------------------
@@ -180,53 +188,56 @@ fn plan_v2_fixture_path(name: &str) -> PathBuf {
         .join(name)
 }
 
-#[test]
-fn plan_schema_accepts_workflow_intent_n1() {
-    let v = load(PLAN_JSON_SCHEMA);
-    let raw = std::fs::read_to_string(plan_v2_fixture_path("intent-n1.yaml")).expect("read");
-    assert_valid(&v, &yaml(&raw), "plan/v2/intent-n1");
-}
+mod plan {
+    use super::*;
 
-#[test]
-fn plan_accepts_multi_source() {
-    let v = load(PLAN_JSON_SCHEMA);
-    let raw = std::fs::read_to_string(plan_v2_fixture_path("multi-source.yaml")).expect("read");
-    assert_valid(&v, &yaml(&raw), "plan/v2/multi-source");
-}
+    #[test]
+    fn accepts_intent_n1() {
+        let v = load(PLAN_JSON_SCHEMA);
+        let raw = std::fs::read_to_string(plan_v2_fixture_path("intent-n1.yaml")).expect("read");
+        assert_valid(&v, &yaml(&raw), "plan/v2/intent-n1");
+    }
 
-#[test]
-fn plan_accepts_divergence_likely() {
-    let v = load(PLAN_JSON_SCHEMA);
-    let raw =
-        std::fs::read_to_string(plan_v2_fixture_path("divergence-likely.yaml")).expect("read");
-    assert_valid(&v, &yaml(&raw), "plan/v2/divergence-likely");
-}
+    #[test]
+    fn accepts_multi_source() {
+        let v = load(PLAN_JSON_SCHEMA);
+        let raw = std::fs::read_to_string(plan_v2_fixture_path("multi-source.yaml")).expect("read");
+        assert_valid(&v, &yaml(&raw), "plan/v2/multi-source");
+    }
 
-#[test]
-fn plan_platform_v2_wire() {
-    let v = load(PLAN_JSON_SCHEMA);
-    let raw = std::fs::read_to_string(plan_v2_fixture_path("platform-v2.yaml")).expect("read");
-    assert_valid(&v, &yaml(&raw), "plan/v2/platform-v2");
+    #[test]
+    fn accepts_likely_divergence() {
+        let v = load(PLAN_JSON_SCHEMA);
+        let raw =
+            std::fs::read_to_string(plan_v2_fixture_path("divergence-likely.yaml")).expect("read");
+        assert_valid(&v, &yaml(&raw), "plan/v2/divergence-likely");
+    }
 
-    let bad_status = raw.replacen("status: in-progress", "status: maybe", 1);
-    assert_invalid(&v, &yaml(&bad_status), "plan/v2/platform-v2-bad-status");
-    let bad_name = raw.replacen("name: platform-v2", "name: Platform V2", 1);
-    assert_invalid(&v, &yaml(&bad_name), "plan/v2/platform-v2-bad-name");
-}
+    #[test]
+    fn platform_v2_wire() {
+        let v = load(PLAN_JSON_SCHEMA);
+        let raw = std::fs::read_to_string(plan_v2_fixture_path("platform-v2.yaml")).expect("read");
+        assert_valid(&v, &yaml(&raw), "plan/v2/platform-v2");
 
-#[test]
-fn plan_rejects_unknown_divergence() {
-    let v = load(PLAN_JSON_SCHEMA);
-    let raw =
-        std::fs::read_to_string(plan_v2_fixture_path("divergence-likely.yaml")).expect("read");
-    let mutated = raw.replace("divergence: likely", "divergence: maybe");
-    assert_invalid(&v, &yaml(&mutated), "plan/v2/divergence-bad-value");
-}
+        let bad_status = raw.replacen("status: in-progress", "status: maybe", 1);
+        assert_invalid(&v, &yaml(&bad_status), "plan/v2/platform-v2-bad-status");
+        let bad_name = raw.replacen("name: platform-v2", "name: Platform V2", 1);
+        assert_invalid(&v, &yaml(&bad_name), "plan/v2/platform-v2-bad-name");
+    }
 
-#[test]
-fn plan_rejects_slice_missing_lead() {
-    let v = load(PLAN_JSON_SCHEMA);
-    let bad = r"
+    #[test]
+    fn rejects_unknown_divergence() {
+        let v = load(PLAN_JSON_SCHEMA);
+        let raw =
+            std::fs::read_to_string(plan_v2_fixture_path("divergence-likely.yaml")).expect("read");
+        let mutated = raw.replace("divergence: likely", "divergence: maybe");
+        assert_invalid(&v, &yaml(&mutated), "plan/v2/divergence-bad-value");
+    }
+
+    #[test]
+    fn rejects_slice_missing_lead() {
+        let v = load(PLAN_JSON_SCHEMA);
+        let bad = r"
 name: bad
 slices:
   - name: only
@@ -235,5 +246,6 @@ slices:
       - source: docs
     status: pending
 ";
-    assert_invalid(&v, &yaml(bad), "plan/v2/source-missing-lead");
+        assert_invalid(&v, &yaml(bad), "plan/v2/source-missing-lead");
+    }
 }

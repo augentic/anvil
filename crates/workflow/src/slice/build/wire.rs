@@ -1,8 +1,8 @@
 //! Closed-shape target build request/report wire DTOs and the
 //! success-blocking gate.
 //!
-//! Both envelopes are schema-validated (`validate_build_request_json` /
-//! `validate_build_report_json`) before the verb deserialises here.
+//! Both envelopes are schema-validated (`validate_request` /
+//! `validate_report`) before the verb deserialises here.
 
 use std::path::{Path, PathBuf};
 
@@ -24,7 +24,7 @@ pub const BUILD_VERSION: u32 = 1;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildRequest {
-    /// Wire version; always [`BUILD_VERSION`] per the schema `const`.
+    /// Schema version.
     pub version: u32,
     /// Slice being built (kebab-case).
     pub slice: String,
@@ -115,7 +115,7 @@ pub struct UiSurface {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildReport {
-    /// Wire version; always [`BUILD_VERSION`] per the schema `const`.
+    /// Schema version.
     pub version: u32,
     /// Slice that was built; must match the request.
     pub slice: String,

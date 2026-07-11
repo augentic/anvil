@@ -1,5 +1,5 @@
 //! `.gitignore` upkeep for `.specify/`-internal directories. `init`
-//! calls [`ensure_gitignore_entries`] to keep the entries current.
+//! calls [`ensure_gitignore`] to keep the entries current.
 
 use std::fs;
 use std::path::Path;
@@ -29,7 +29,7 @@ const SPECIFY_GITIGNORE_ENTRIES: &[&str] = &[".specify/scratch/", "workspace/"];
 ///
 /// [`Error::Io`] if the existing `.gitignore` cannot be read, or if the
 /// rewritten file cannot be written back.
-pub fn ensure_gitignore_entries(project_dir: &Path) -> Result<(), Error> {
+pub fn ensure_gitignore(project_dir: &Path) -> Result<(), Error> {
     let path = project_dir.join(".gitignore");
     let existing = match fs::read_to_string(&path) {
         Ok(text) => text,

@@ -57,59 +57,6 @@ fn parses_groups_and_tasks() {
 }
 
 // ---------------------------------------------------------------------------
-// Test 2: mark_complete happy path.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn mark_complete_flips_checkbox() {
-    let out = mark_complete(HAPPY_PATH, "1.2").expect("1.2 exists and is unchecked");
-
-    assert!(out.contains("- [x] 1.2 Configure CI <!-- skill: omnia:crate-writer -->"));
-
-    // Every other line is byte-identical — i.e. the only change is in the
-    // `[ ]` → `[x]` substitution on a single line.
-    let original_lines: Vec<&str> = HAPPY_PATH.lines().collect();
-    let new_lines: Vec<&str> = out.lines().collect();
-    assert_eq!(original_lines.len(), new_lines.len());
-    let changed: Vec<(usize, &&str, &&str)> = original_lines
-        .iter()
-        .zip(new_lines.iter())
-        .enumerate()
-        .filter(|(_, (a, b))| a != b)
-        .map(|(i, (a, b))| (i, a, b))
-        .collect();
-    assert_eq!(changed.len(), 1, "exactly one line must change");
-    assert_eq!(*changed[0].1, "- [ ] 1.2 Configure CI <!-- skill: omnia:crate-writer -->");
-    assert_eq!(*changed[0].2, "- [x] 1.2 Configure CI <!-- skill: omnia:crate-writer -->");
-}
-
-// ---------------------------------------------------------------------------
-// Test 3: mark_complete is idempotent.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn mark_complete_idempotent() {
-    let out = mark_complete(HAPPY_PATH, "1.1").expect("1.1 exists");
-    assert_eq!(out, HAPPY_PATH);
-    assert_eq!(out.as_bytes(), HAPPY_PATH.as_bytes());
-}
-
-// ---------------------------------------------------------------------------
-// Test 4: mark_complete with unknown task number errors cleanly.
-// ---------------------------------------------------------------------------
-
-#[test]
-fn mark_complete_missing_task_errors() {
-    let err = mark_complete(HAPPY_PATH, "9.9").expect_err("9.9 does not exist");
-    match err {
-        Error::Diag { detail: msg, .. } => {
-            assert!(msg.contains("task 9.9 not found"), "unexpected message: {msg}");
-        }
-        other => panic!("expected Error::Diag, got {other:?}"),
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Test 5: skill directive regex accepts various plugin:skill shapes.
 // ---------------------------------------------------------------------------
 
@@ -190,31 +137,6 @@ fn duplicate_task_numbers_are_both_parsed() {
     assert_eq!(progress.complete, 0);
 }
 
-#[test]
-fn mark_complete_first_duplicate() {
-    let input = "\
-## 1. Group
-
-- [ ] 1.1 First occurrence
-- [ ] 1.1 Second occurrence
-";
-    let out = mark_complete(input, "1.1").expect("1.1 exists");
-    assert!(out.contains("- [x] 1.1 First occurrence"));
-    assert!(out.contains("- [ ] 1.1 Second occurrence"));
-}
-
-#[test]
-fn mark_complete_duplicate_complete_noop() {
-    let input = "\
-## 1. Group
-
-- [x] 1.1 First occurrence
-- [ ] 1.1 Second occurrence
-";
-    let out = mark_complete(input, "1.1").expect("1.1 exists");
-    assert_eq!(out, input);
-}
-
 // ---------------------------------------------------------------------------
 // Test 8: nested headings don't reset the group.
 // ---------------------------------------------------------------------------
@@ -291,17 +213,6 @@ fn capital_x_parses_as_complete() {
     assert_eq!(progress.complete, 1);
 }
 
-#[test]
-fn mark_complete_is_noop_for_capital_x() {
-    let input = "\
-## 1. Group
-
-- [X] 1.1 foo
-";
-    let out = mark_complete(input, "1.1").expect("1.1 exists");
-    assert_eq!(out, input);
-}
-
 // ---------------------------------------------------------------------------
 // Additional edge cases worth locking in.
 // ---------------------------------------------------------------------------
@@ -335,14 +246,95 @@ fn deep_task_numbers_preserved() {
     assert!(progress.tasks[1].complete);
 }
 
-#[test]
-fn mark_complete_preserves_crlf() {
-    // CRLF in the input — ensure `mark_complete` edits exactly one byte
-    // range and doesn't normalise line endings elsewhere.
-    let input = "## 1. Group\r\n\r\n- [ ] 1.1 task\r\n- [ ] 1.2 other\r\n";
-    let out = mark_complete(input, "1.1").expect("1.1 exists");
-    assert_eq!(
-        out, "## 1. Group\r\n\r\n- [x] 1.1 task\r\n- [ ] 1.2 other\r\n",
-        "only the targeted line's `[ ]` → `[x]` should change"
-    );
+mod mark_complete {
+    use super::*;
+
+    #[test]
+    fn flips_checkbox() {
+        let out = mark_complete(HAPPY_PATH, "1.2").expect("1.2 exists and is unchecked");
+
+        assert!(out.contains("- [x] 1.2 Configure CI <!-- skill: omnia:crate-writer -->"));
+
+        // Every other line is byte-identical — i.e. the only change is in the
+        // `[ ]` → `[x]` substitution on a single line.
+        let original_lines: Vec<&str> = HAPPY_PATH.lines().collect();
+        let new_lines: Vec<&str> = out.lines().collect();
+        assert_eq!(original_lines.len(), new_lines.len());
+        let changed: Vec<(usize, &&str, &&str)> = original_lines
+            .iter()
+            .zip(new_lines.iter())
+            .enumerate()
+            .filter(|(_, (a, b))| a != b)
+            .map(|(i, (a, b))| (i, a, b))
+            .collect();
+        assert_eq!(changed.len(), 1, "exactly one line must change");
+        assert_eq!(*changed[0].1, "- [ ] 1.2 Configure CI <!-- skill: omnia:crate-writer -->");
+        assert_eq!(*changed[0].2, "- [x] 1.2 Configure CI <!-- skill: omnia:crate-writer -->");
+    }
+
+    #[test]
+    fn idempotent() {
+        let out = mark_complete(HAPPY_PATH, "1.1").expect("1.1 exists");
+        assert_eq!(out, HAPPY_PATH);
+        assert_eq!(out.as_bytes(), HAPPY_PATH.as_bytes());
+    }
+
+    #[test]
+    fn missing_task_errors() {
+        let err = mark_complete(HAPPY_PATH, "9.9").expect_err("9.9 does not exist");
+        match err {
+            Error::Diag { detail: msg, .. } => {
+                assert!(msg.contains("task 9.9 not found"), "unexpected message: {msg}");
+            }
+            other => panic!("expected Error::Diag, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn first_duplicate() {
+        let input = "\
+## 1. Group
+
+- [ ] 1.1 First occurrence
+- [ ] 1.1 Second occurrence
+";
+        let out = mark_complete(input, "1.1").expect("1.1 exists");
+        assert!(out.contains("- [x] 1.1 First occurrence"));
+        assert!(out.contains("- [ ] 1.1 Second occurrence"));
+    }
+
+    #[test]
+    fn complete_duplicate_noop() {
+        let input = "\
+## 1. Group
+
+- [x] 1.1 First occurrence
+- [ ] 1.1 Second occurrence
+";
+        let out = mark_complete(input, "1.1").expect("1.1 exists");
+        assert_eq!(out, input);
+    }
+
+    #[test]
+    fn capital_x_noop() {
+        let input = "\
+## 1. Group
+
+- [X] 1.1 foo
+";
+        let out = mark_complete(input, "1.1").expect("1.1 exists");
+        assert_eq!(out, input);
+    }
+
+    #[test]
+    fn preserves_crlf() {
+        // CRLF in the input — ensure `mark_complete` edits exactly one byte
+        // range and doesn't normalise line endings elsewhere.
+        let input = "## 1. Group\r\n\r\n- [ ] 1.1 task\r\n- [ ] 1.2 other\r\n";
+        let out = mark_complete(input, "1.1").expect("1.1 exists");
+        assert_eq!(
+            out, "## 1. Group\r\n\r\n- [x] 1.1 task\r\n- [ ] 1.2 other\r\n",
+            "only the targeted line's `[ ]` → `[x]` should change"
+        );
+    }
 }

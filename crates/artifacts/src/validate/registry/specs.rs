@@ -2,7 +2,7 @@
 
 use crate::validate::{BriefContext, Classification, Rule, RuleOutcome, primitives};
 
-fn specs_requirements_have_scenarios(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn requirements_have_scenarios(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(spec) = ctx.parsed_spec else {
         return RuleOutcome::Fail {
             detail: "spec was not parsed".to_string(),
@@ -17,7 +17,7 @@ fn specs_requirements_have_scenarios(ctx: &BriefContext<'_>) -> RuleOutcome {
     }
 }
 
-fn specs_requirements_have_ids(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn requirements_have_ids(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(spec) = ctx.parsed_spec else {
         return RuleOutcome::Fail {
             detail: "spec was not parsed".to_string(),
@@ -32,7 +32,7 @@ fn specs_requirements_have_ids(ctx: &BriefContext<'_>) -> RuleOutcome {
     }
 }
 
-fn specs_ids_match_pattern(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn ids_match_pattern(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(spec) = ctx.parsed_spec else {
         return RuleOutcome::Fail {
             detail: "spec was not parsed".to_string(),
@@ -55,19 +55,19 @@ pub(super) const SPECS_RULES: &[Rule] = &[
         id: "specs.requirements-have-scenarios",
         description: "Every requirement has at least one scenario",
         classification: Classification::Structural,
-        check: Some(specs_requirements_have_scenarios),
+        check: Some(requirements_have_scenarios),
     },
     Rule {
         id: "specs.requirements-have-ids",
         description: "Every requirement has an `ID:` line",
         classification: Classification::Structural,
-        check: Some(specs_requirements_have_ids),
+        check: Some(requirements_have_ids),
     },
     Rule {
         id: "specs.ids-match-pattern",
         description: "IDs use the `REQ-[0-9]{3}` format",
         classification: Classification::Structural,
-        check: Some(specs_ids_match_pattern),
+        check: Some(ids_match_pattern),
     },
     Rule {
         id: "specs.uses-normative-language",

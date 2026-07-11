@@ -502,7 +502,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unparseable_current_version_is_permissive() {
+    fn unparseable_current_is_permissive() {
         let origin = Origin {
             label: "store".to_string(),
             reference: "/store/demo@1.0.0.wasm".to_string(),

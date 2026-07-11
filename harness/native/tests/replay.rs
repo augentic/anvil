@@ -1,11 +1,11 @@
-//! [`ReplayModel`] fixture semantics: answers are keyed on the reduced
+//! Omnia model replay semantics: answers are keyed on the reduced
 //! request (`ModelDefault`'s replay convention), a miss is a typed
 //! backend failure, and a missing fixture directory is an empty store.
 
 use omnia_guest::Model as _;
 use omnia_guest::model::{Format, Message, Request, Role};
+use omnia_testkit::model::Replay;
 use serde_json::json;
-use specify_dev::model::ReplayModel;
 use tempfile::TempDir;
 
 fn request(content: &str) -> Request {
@@ -43,7 +43,7 @@ async fn replays_recorded_answer() {
     });
     std::fs::write(tmp.path().join("survey.json"), fixture.to_string()).expect("write fixture");
 
-    let model = ReplayModel::load(tmp.path()).expect("load fixtures");
+    let model = Replay::from_dir(tmp.path()).expect("load fixtures");
     let reply = model.create(request("What is the plan?")).await.expect("replayed answer");
 
     assert_eq!(reply.answer, r#"{"leads":[]}"#);
@@ -53,7 +53,7 @@ async fn replays_recorded_answer() {
 #[tokio::test]
 async fn unmatched_request_refused() {
     let tmp = TempDir::new().expect("tempdir");
-    let model = ReplayModel::load(tmp.path()).expect("load empty dir");
+    let model = Replay::from_dir(tmp.path()).expect("load empty dir");
 
     let err = model.create(request("anything")).await.expect_err("no fixture");
     assert!(err.to_string().contains("no replay fixture"), "{err}");
@@ -62,7 +62,7 @@ async fn unmatched_request_refused() {
 #[test]
 fn missing_dir_is_empty_store() {
     let tmp = TempDir::new().expect("tempdir");
-    ReplayModel::load(&tmp.path().join("absent")).expect("missing dir loads empty");
+    Replay::from_dir(tmp.path().join("absent")).expect("missing dir loads empty");
 }
 
 #[test]
@@ -70,6 +70,6 @@ fn malformed_fixture_refused() {
     let tmp = TempDir::new().expect("tempdir");
     std::fs::write(tmp.path().join("bad.json"), "not json").expect("write fixture");
 
-    let err = ReplayModel::load(tmp.path()).expect_err("malformed fixture");
+    let err = Replay::from_dir(tmp.path()).expect_err("malformed fixture");
     assert!(err.to_string().contains("bad.json"), "{err:#}");
 }

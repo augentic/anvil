@@ -1,9 +1,9 @@
-//! Clap argument types for `specify archive *`.
+//! Clap argument types for `specify archive *`. Each `*Args` type
+//! mirrors its command's workflow wire input.
 
 use clap::Args;
 
-/// Argv mirror of `archive prune`'s wire input
-/// (`workflow::slice::handlers::PruneInput`).
+/// Arguments for `archive prune`.
 #[derive(Clone, Copy, Debug, Args)]
 pub struct PruneArgs {
     /// Keep at most this many most-recent archived slices.

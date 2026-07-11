@@ -1,33 +1,11 @@
 //! Projection kernel — `project(response) -> SliceModel`.
 //!
-//! The agent owns cross-modal reconciliation — which requirements exist
-//! and how claims merge or split. Everything around that judgment that
-//! can be made deterministic is a pure projection over the structure the
-//! agent returned: id assignment, authority resolution, status / winner
-//! derivation, the rendered source list, and the stamped header. The
-//! kernel **normalizes, never rejects** — any kernel-owned field the
-//! agent happened to set (`id`, `status`, claim `winner`, rendered
-//! `sources`) and any header field it supplied are ignored and
-//! re-derived / re-stamped.
+//! The agent decides which requirements exist and how claims reconcile.
+//! The kernel deterministically re-derives ids, authority outcomes,
+//! sources, and header fields rather than trusting agent-supplied values.
 //!
-//! Four conditions the kernel cannot project around are hard aborts,
-//! mirroring the drift findings `specify slice validate` re-checks:
-//! a claim that anchors no on-disk
-//! Evidence (`slice-model-source-orphan`), a claim whose `kind`
-//! disagrees with Evidence (`slice-model-claim-kind-mismatch`), a
-//! `satisfies[]` `REQ` ref with no projected target
-//! (`slice-model-cross-ref-orphan`), and an id outside its closed
-//! three-digit grammar (`slice-model-id-grammar`).
-//!
-//! [`project`] is pure: it performs no I/O and reads no clock. The
-//! caller (the guest refine orchestration) reads Evidence and
-//! the plan to build the [`ProjectionHeader`], the per-source
-//! `authority` map, the per-slice `overrides` map, and the
-//! `evidence_claims` anchor index, then hands them in. **Kernel
-//! determinism**: given fixed
-//! inputs the output is byte-identical, and target-independent by
-//! construction — no `target` or guidance-brief input reaches this
-//! function.
+//! Projection is pure and target-independent. It rejects only invalid
+//! evidence anchors, cross-references, and closed-form ids.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -38,14 +16,10 @@ use crate::slice::model::{ModelClaim, ModelRequirement, SliceModel};
 use crate::slice::synthesis::authority::{ClaimRef, resolve};
 use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
 
-/// Domain key used when a requirement carries no `domain` field.
+/// Domain used when a requirement has no explicit owner.
 const DEFAULT_DOMAIN: &str = "default";
 
-/// The header fields the kernel stamps onto the persisted `model.yaml`.
-///
-/// Built by the caller from the slice's name and its bound project;
-/// `target` is **not** a header field — it is resolved on demand from
-/// `project`.
+/// Header fields stamped onto persisted `model.yaml`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionHeader {
     /// Stored schema version (`const: 1` today).
@@ -56,48 +30,25 @@ pub struct ProjectionHeader {
     pub project: Option<String>,
 }
 
-/// Project the agent's synthesis-response `model` into a fully-derived
-/// persisted [`SliceModel`].
+/// Project an agent synthesis response into a persisted [`SliceModel`].
 ///
-/// `model` is the structure the agent returned; any kernel-owned or
-/// header field it set is ignored and re-derived. `header` is the
-/// kernel-stamped header. `authority` maps each source key to its
-/// document-level [`AuthorityClass`], `overrides` is the per-slice
-/// `authority-override` map (claim kind → winning source), and
-/// `evidence_claims` is the `(source, id) → kind` anchor index the
-/// caller distilled from the on-disk Evidence documents.
+/// Validation and derivation run in this order, returning the first
+/// violation:
 ///
-/// The projection runs in this order, returning the first violation:
-///
-/// 1. **Claim anchoring** — every `(source, id, kind)` claim must anchor
-///    an Evidence claim: an absent `(source, id)` aborts
-///    `slice-model-source-orphan`; a recorded kind that differs aborts
-///    `slice-model-claim-kind-mismatch`.
-/// 2. **Id assignment** — `requirements[].id` is re-derived as
-///    `REQ-NNN` in declaration order (zero-padded, no holes), ignoring
-///    any agent-supplied id.
-/// 3. **Resolve + derive** — per requirement, [`resolve`] derives
-///    `status` and per-claim `winner` markers, and the rendered
-///    `sources` list is ordered highest-effective-authority first
-///    (ties broken by declaration order via a stable sort).
-/// 4. **Header** — `version` / `slice` / `project` are stamped from
-///    `header`.
-/// 5. **Cross-refs + grammar** — every `tasks[].satisfies[]` `REQ` ref
-///    must name a projected requirement (`slice-model-cross-ref-orphan`)
-///    and every `tasks[].id` / `requirements[].id` must match its closed
-///    three-digit grammar (`slice-model-id-grammar`).
+/// 1. Anchor claim ids and kinds to Evidence.
+/// 2. Assign requirement ids.
+/// 3. Derive authority outcomes and source order.
+/// 4. Stamp the header.
+/// 5. Validate cross-references, uniqueness, and id grammar.
 ///
 /// # Errors
 ///
-/// Returns [`Error::Validation`] (exit 2) carrying the first of the four
-/// abort codes above that the response violates.
+/// Returns the first validation failure.
 pub fn project(
     mut model: SliceModel, header: ProjectionHeader, authority: &BTreeMap<String, AuthorityClass>,
     overrides: &BTreeMap<ClaimKind, String>,
     evidence_claims: &BTreeMap<(String, String), ClaimKind>, baseline_index: &BaselineIndex,
 ) -> Result<SliceModel> {
-    // Claim anchoring runs first: the kernel cannot project an
-    // unanchored claim.
     check_claim_anchors(&model, evidence_claims)?;
 
     let mut allocator = IdAllocator::new(baseline_index);
@@ -127,12 +78,10 @@ pub fn project(
         requirement.sources = sources;
     }
 
-    // Stamp the header, ignoring any agent-supplied values.
     model.version = Some(header.version);
     model.slice = Some(header.slice);
     model.project = header.project;
 
-    // Cross-ref then grammar over the now-projected ids.
     check_cross_refs(&model)?;
     check_unique_ids(&model)?;
     check_id_grammar(&model)?;
@@ -144,7 +93,7 @@ fn requirement_domain(requirement: &ModelRequirement) -> String {
     requirement.domain.clone().unwrap_or_else(|| DEFAULT_DOMAIN.to_string())
 }
 
-/// Slice-global id allocation seeded from every baseline `REQ-NNN`.
+/// Slice-global id allocation seeded from baseline requirement ids.
 struct IdAllocator {
     used: BTreeSet<u32>,
     next_additive: BTreeMap<String, u32>,
@@ -242,9 +191,6 @@ fn check_unique_ids(model: &SliceModel) -> Result<()> {
     Ok(())
 }
 
-/// Reject any claim that does not anchor an on-disk Evidence claim
-/// (`slice-model-source-orphan`) or whose `kind` disagrees with the kind
-/// Evidence records for that `(source, id)` (`slice-model-claim-kind-mismatch`).
 fn check_claim_anchors(
     model: &SliceModel, evidence_claims: &BTreeMap<(String, String), ClaimKind>,
 ) -> Result<()> {
@@ -279,8 +225,6 @@ fn check_claim_anchors(
     Ok(())
 }
 
-/// Reject any `tasks[].satisfies[]` `REQ` reference that does not name a
-/// projected `requirements[].id` (`slice-model-cross-ref-orphan`).
 fn check_cross_refs(model: &SliceModel) -> Result<()> {
     let projected: BTreeSet<&str> =
         model.requirements.iter().filter_map(|req| req.id.as_deref()).collect();
@@ -298,10 +242,8 @@ fn check_cross_refs(model: &SliceModel) -> Result<()> {
     Ok(())
 }
 
-/// Reject any `REQ` or `TASK` id outside its closed three-digit grammar
-/// (`slice-model-id-grammar`). `REQ` ids are
-/// kernel-assigned and always pass; `TASK` ids are agent-authored, so
-/// the gate is load-bearing for them.
+/// Task ids require a gate because, unlike requirement ids, they remain
+/// agent-authored.
 fn check_id_grammar(model: &SliceModel) -> Result<()> {
     for requirement in &model.requirements {
         let id = requirement.id.as_deref().unwrap_or_default();
@@ -317,8 +259,6 @@ fn check_id_grammar(model: &SliceModel) -> Result<()> {
     Ok(())
 }
 
-/// `true` when `id` is `<prefix>NNN` with exactly three ASCII digits —
-/// the closed `^REQ-[0-9]{3}$` / `^TASK-[0-9]{3}$` grammars.
 fn matches_grammar(id: &str, prefix: &str) -> bool {
     id.strip_prefix(prefix)
         .is_some_and(|digits| digits.len() == 3 && digits.bytes().all(|byte| byte.is_ascii_digit()))
@@ -332,11 +272,9 @@ fn id_grammar_error(kind: &str, id: &str) -> Error {
     )
 }
 
-/// Render the distinct source keys of `claims`, highest effective
-/// authority first. Each source's
-/// standing is the strongest effective level among its contributing
-/// claims; a stable sort over the declaration-order list breaks ties by
-/// first appearance.
+/// Order distinct sources by their strongest effective authority.
+///
+/// Stable sorting preserves first appearance for ties.
 fn rendered_sources(
     claims: &[ModelClaim], authority: &BTreeMap<String, AuthorityClass>,
     overrides: &BTreeMap<ClaimKind, String>,
@@ -354,8 +292,6 @@ fn rendered_sources(
     order
 }
 
-/// The strongest effective [`Level`] one source reaches across its
-/// contributing claims in a requirement.
 fn source_level(
     source: &str, claims: &[ModelClaim], authority: &BTreeMap<String, AuthorityClass>,
     overrides: &BTreeMap<ClaimKind, String>,
@@ -368,9 +304,6 @@ fn source_level(
         .unwrap_or(Level::Class(0))
 }
 
-/// Effective authority level of one `(source, kind)`, mirroring the
-/// authority kernel's resolution order: a per-slice override outranks
-/// every document class, otherwise the document-level class rank.
 fn effective_level(
     source: &str, kind: ClaimKind, authority: &BTreeMap<String, AuthorityClass>,
     overrides: &BTreeMap<ClaimKind, String>,
@@ -382,21 +315,16 @@ fn effective_level(
     Level::Class(class_rank(class))
 }
 
-/// Effective authority level for source ordering. The derived `Ord`
-/// places every [`Level::Class`] below [`Level::Override`] (variant
-/// declaration order), matching the authority kernel's `Override`
-/// outranks every class.
+/// Variant order makes every override outrank every document class.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Level {
-    /// Document-level class carried as its fixed rank
-    /// (`behaviour < documentation < intent`).
+    /// Ranked document-level authority.
     Class(u8),
     /// A per-slice `authority-override` forced this source to win.
     Override,
 }
 
-/// Default class ordering `intent > documentation > behaviour`,
-/// independent of the `AuthorityClass` enum declaration order.
+/// Rank authority independently of enum declaration order.
 const fn class_rank(class: AuthorityClass) -> u8 {
     match class {
         AuthorityClass::Behaviour => 0,

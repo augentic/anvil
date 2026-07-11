@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::super::model::{Disagreement, Divergence};
 use crate::registry::topology::{Decision, Surface};
 
-/// Closed `kind` discriminator for the reconciliation envelope.
+/// Reconciliation envelope kind.
 ///
 /// Serialises to the literal `"request"` / `"response"` the schema's
 /// `const` constraints require. [`ProposalRequest`] always carries
@@ -21,11 +21,9 @@ use crate::registry::topology::{Decision, Surface};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProposalKind {
-    /// `kind: request` — the lead catalog plus project topology the CLI
-    /// emits for the agent to group.
+    /// Lead catalog and project topology for the agent to group.
     Request,
-    /// `kind: response` — the agent's `slices[]` grouping the CLI reads
-    /// back.
+    /// Agent-authored `slices[]` grouping.
     Response,
 }
 
@@ -37,9 +35,9 @@ pub enum ProposalKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProposalRequest {
-    /// Wire version; always `1` per the schema `const`.
+    /// Schema version.
     pub version: u32,
-    /// Discriminator; always [`ProposalKind::Request`].
+    /// Envelope kind.
     pub kind: ProposalKind,
     /// Project topology — always at least one entry (schema
     /// `minItems: 1`).
@@ -132,9 +130,9 @@ pub struct LeadCatalogEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProposalResponse {
-    /// Wire version; always `1` per the schema `const`.
+    /// Schema version.
     pub version: u32,
-    /// Discriminator; always [`ProposalKind::Response`].
+    /// Envelope kind.
     pub kind: ProposalKind,
     /// The agent's slices, in response order — the kernel writes
     /// `plan.yaml.slices[]` in this order.

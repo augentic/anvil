@@ -33,6 +33,7 @@ workflow.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-guest.workspace = true
+omnia-testkit = { workspace = true, features = ["model", "replay"] }
 omnia-wasi-model.workspace = true
 
 # The sibling adapter crates, consumed as rlibs (the same crates whose
@@ -51,7 +52,6 @@ vectis = { path = "../../../specify-adapters/targets/vectis" }
 [dev-dependencies]
 jiff.workspace = true
 serde-saphyr.workspace = true
-specify-testkit.workspace = true
 tempfile.workspace = true
 tower.workspace = true
 

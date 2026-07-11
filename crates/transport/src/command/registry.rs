@@ -1,8 +1,9 @@
-//! Clap argument types for `specify registry *`.
+//! Clap argument types for `specify registry *`. Each `*Args` type
+//! mirrors its command's workflow wire input.
 
 use clap::Args;
 
-/// Argv mirror of `registry validate`'s wire input (no fields).
+/// Arguments for `registry validate`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
@@ -10,8 +11,7 @@ use clap::Args;
 )]
 pub struct ValidateArgs {}
 
-/// Argv mirror of `registry add`'s wire input
-/// (`workflow::registry::handlers::AddInput`).
+/// Arguments for `registry add`.
 #[derive(Debug, Args)]
 pub struct AddArgs {
     /// Kebab-case project name. Must be unique within the registry.
@@ -32,8 +32,7 @@ pub struct AddArgs {
     pub description: Option<String>,
 }
 
-/// Argv mirror of `registry remove`'s wire input
-/// (`workflow::registry::handlers::RemoveInput`).
+/// Arguments for `registry remove`.
 #[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Kebab-case project name to remove.

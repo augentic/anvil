@@ -1,9 +1,9 @@
-//! Clap argument types for `specify journal *`.
+//! Clap argument types for `specify journal *`. Each `*Args` type
+//! mirrors its command's workflow wire input.
 
 use clap::Args;
 
-/// Argv mirror of `journal emit`'s wire input
-/// (`workflow::journal::handlers::EmitInput`).
+/// Arguments for `journal emit`.
 #[derive(Debug, Args)]
 pub struct EmitArgs {
     /// Dotted-kebab event id (e.g. `slice.build.started`).
@@ -16,8 +16,7 @@ pub struct EmitArgs {
     pub payload: Option<String>,
 }
 
-/// Argv mirror of `journal show`'s wire input
-/// (`workflow::journal::handlers::ShowInput`).
+/// Arguments for `journal show`.
 #[derive(Debug, Args)]
 pub struct ShowArgs {
     /// Keep only events whose dotted-kebab id starts with this

@@ -1,7 +1,8 @@
 //! Clap argument types for the `specify plan *` routes, including the
 //! locked argv grammars for `--source` ([`source_assign`]) and
 //! `--sources` / `--add-source` ([`binding_arg`]). The parsed values
-//! land directly in the workflow wire DTOs.
+//! land directly in the workflow wire DTOs, with each `*Args` type
+//! mirroring its command's wire input.
 
 use clap::{ArgAction, Args};
 use workflow::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
@@ -93,8 +94,7 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
     }
 }
 
-/// Argv mirror of `plan create`'s wire input
-/// (`workflow::change::plan::handlers::CreateInput`).
+/// Arguments for `plan create`.
 #[derive(Debug, Args)]
 pub struct CreateArgs {
     /// Kebab-case change name
@@ -149,7 +149,7 @@ pub struct CreateArgs {
     pub authority_override: Vec<String>,
 }
 
-/// Argv mirror of `plan validate`'s wire input (no fields).
+/// Arguments for `plan validate`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
@@ -157,7 +157,7 @@ pub struct CreateArgs {
 )]
 pub struct ValidateArgs {}
 
-/// Argv mirror of `plan next`'s wire input (no fields).
+/// Arguments for `plan next`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
@@ -165,7 +165,7 @@ pub struct ValidateArgs {}
 )]
 pub struct NextArgs {}
 
-/// Argv mirror of `plan status`' wire input (no fields).
+/// Arguments for `plan status`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
@@ -173,7 +173,7 @@ pub struct NextArgs {}
 )]
 pub struct StatusArgs {}
 
-/// Argv mirror of `plan execute`'s wire input (no fields).
+/// Arguments for `plan execute`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
@@ -181,16 +181,14 @@ pub struct StatusArgs {}
 )]
 pub struct ExecuteArgs {}
 
-/// Argv mirror of `plan remove`'s wire input
-/// (`workflow::change::plan::handlers::RemoveInput`).
+/// Arguments for `plan remove`.
 #[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Kebab-case entry name to remove
     pub name: String,
 }
 
-/// Argv mirror of `plan transition`'s wire input
-/// (`workflow::change::plan::handlers::TransitionInput`).
+/// Arguments for `plan transition`.
 #[derive(Debug, Args)]
 pub struct TransitionArgs {
     /// Plan name (for plan-level `approved`) or kebab-case entry
@@ -219,8 +217,7 @@ pub struct TransitionArgs {
     pub actor: String,
 }
 
-/// Argv mirror of `plan author`'s wire input
-/// (`workflow::change::plan::handlers::AuthorInput`).
+/// Arguments for `plan author`.
 #[derive(Debug, Args)]
 pub struct AuthorArgs {
     /// Kebab-case change name
@@ -237,8 +234,7 @@ pub struct AuthorArgs {
     pub intent: Option<String>,
 }
 
-/// Argv mirror of `plan archive`'s wire input
-/// (`workflow::change::plan::handlers::ArchiveInput`).
+/// Arguments for `plan archive`.
 #[derive(Clone, Copy, Debug, Args)]
 pub struct ArchiveArgs {
     /// Archive even when the plan has pending or in-progress entries.
@@ -247,8 +243,7 @@ pub struct ArchiveArgs {
     pub force: bool,
 }
 
-/// Argv mirror of `plan add`'s wire input
-/// (`workflow::change::plan::handlers::AddInput`).
+/// Arguments for `plan add`.
 #[derive(Debug, Args)]
 pub struct AddArgs {
     /// Kebab-case plan entry (slice) name for the new row under `plan.yaml.slices[]`.
@@ -287,8 +282,7 @@ pub struct AddArgs {
     pub authority_override: Vec<KindAssign>,
 }
 
-/// Argv mirror of `plan amend`'s wire input
-/// (`workflow::change::plan::handlers::AmendInput`).
+/// Arguments for `plan amend`.
 #[derive(Debug, Args)]
 pub struct AmendArgs {
     /// Kebab-case plan entry (slice) name — the row under `plan.yaml.slices[]`

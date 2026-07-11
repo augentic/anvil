@@ -2,7 +2,7 @@
 
 use crate::validate::{BriefContext, Classification, Rule, RuleOutcome, primitives};
 
-fn contracts_schemas_dir_has_files(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn schemas_dir_has_files(ctx: &BriefContext<'_>) -> RuleOutcome {
     let schemas_dir = ctx.slice_dir.join("contracts").join("schemas");
     if !schemas_dir.is_dir() {
         return RuleOutcome::Fail {
@@ -25,7 +25,7 @@ fn contracts_schemas_dir_has_files(ctx: &BriefContext<'_>) -> RuleOutcome {
     }
 }
 
-fn contracts_refs_resolve(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn refs_resolve(ctx: &BriefContext<'_>) -> RuleOutcome {
     let contracts_dir = ctx.slice_dir.join("contracts");
     let mut failures: Vec<String> = Vec::new();
 
@@ -70,7 +70,7 @@ fn contracts_refs_resolve(ctx: &BriefContext<'_>) -> RuleOutcome {
     }
 }
 
-fn contracts_schema_metadata(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn schema_metadata(ctx: &BriefContext<'_>) -> RuleOutcome {
     let schemas_dir = ctx.slice_dir.join("contracts").join("schemas");
     if !schemas_dir.is_dir() {
         return RuleOutcome::Pass;
@@ -118,18 +118,18 @@ pub(super) const CONTRACTS_RULES: &[Rule] = &[
         id: "contracts.schemas-dir-has-files",
         description: "contracts/schemas/ directory exists and contains at least one .yaml file",
         classification: Classification::Structural,
-        check: Some(contracts_schemas_dir_has_files),
+        check: Some(schemas_dir_has_files),
     },
     Rule {
         id: "contracts.refs-resolve",
         description: "$ref pointers in OpenAPI/AsyncAPI files resolve to existing schema files",
         classification: Classification::Structural,
-        check: Some(contracts_refs_resolve),
+        check: Some(refs_resolve),
     },
     Rule {
         id: "contracts.schema-metadata",
         description: "JSON Schema files have $id, title, and description fields",
         classification: Classification::Structural,
-        check: Some(contracts_schema_metadata),
+        check: Some(schema_metadata),
     },
 ];

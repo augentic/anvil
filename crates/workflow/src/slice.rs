@@ -28,8 +28,7 @@ pub(crate) use synthesis::persist::{
     failure_reason as synthesize_failure_reason, persist_synthesized,
 };
 pub(crate) use synthesis::project::{ProjectionHeader, project};
-pub(crate) use synthesis::render::expected_provenance_lines;
+pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
-    BaselineDomainDetail, SynthesisInputs, SynthesisResponse, SynthesisSourceInput,
-    build_synthesis_inputs,
+    BaselineDomainDetail, SynthesisInputs, SynthesisResponse, SynthesisSourceInput, build_inputs,
 };

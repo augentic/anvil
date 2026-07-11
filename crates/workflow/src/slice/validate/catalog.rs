@@ -29,7 +29,7 @@ use crate::schema_gate::EvidenceDoc;
 /// `evidence_docs` is the parsed Evidence set the pre-adapter sweep
 /// already read and schema-validated, so the `component:` directives
 /// are inspected without re-reading `evidence/*.yaml`.
-pub(super) fn collect_catalog_drift_findings(
+pub(super) fn catalog_drift(
     layout: Layout<'_>, evidence_docs: &[EvidenceDoc],
 ) -> Result<Vec<Diagnostic>> {
     let Some(catalog) = ComponentsCatalog::load(layout.project_dir())? else {

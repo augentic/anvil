@@ -10,9 +10,9 @@ use std::fs;
 use omnia_guest::api::invocation::Invocation;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
+use omnia_testkit::model::{Harness, Scripted};
 use serde_json::json;
 use specify_dev::provider::Provider;
-use specify_testkit::MockModel;
 use workflow::change::plan::wire::SourceAssign;
 use workflow::change::{LoopStep, Status, plan};
 
@@ -20,10 +20,10 @@ mod common;
 
 /// Invoke one operation against the shared provider.
 async fn run<R, B>(
-    invoker: &Invoker<Provider<MockModel>>, input: R::Input,
+    invoker: &Invoker<Provider<Harness<Scripted>>>, input: R::Input,
 ) -> Result<B, workflow::handler::Error>
 where
-    R: Operation<Provider<MockModel>, Output = B, Error = workflow::handler::Error>,
+    R: Operation<Provider<Harness<Scripted>>, Output = B, Error = workflow::handler::Error>,
     B: Send,
 {
     invoker.invoke::<R>(Invocation::new(input)).await
@@ -102,7 +102,7 @@ async fn author_approve_execute_drains() {
     let project = common::Project::new();
     let invoker = Invoker::new(
         "specify",
-        Provider::new(project.root(), MockModel::answering(scripted_answers())),
+        Provider::new(project.root(), Harness::new(Scripted::answers(scripted_answers()))),
     );
 
     let resolved = run::<workflow::adapter::handlers::TargetResolve, _>(

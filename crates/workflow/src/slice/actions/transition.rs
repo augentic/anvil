@@ -64,7 +64,7 @@ pub fn transition(
     if target == LifecycleStatus::Refined {
         let slice_name =
             slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
-        if let Some(project_root) = project_root_from_slice_dir(slice_dir) {
+        if let Some(project_root) = project_root(slice_dir) {
             let event = Event::new(
                 now,
                 EventKind::SliceTransitionRefined {
@@ -79,7 +79,7 @@ pub fn transition(
 }
 
 /// Resolve the project root from `<project>/.specify/slices/<name>/`.
-fn project_root_from_slice_dir(slice_path: &Path) -> Option<std::path::PathBuf> {
+fn project_root(slice_path: &Path) -> Option<std::path::PathBuf> {
     let slices_parent = slice_path.parent()?;
     if slices_parent.file_name()? != std::ffi::OsStr::new(SLICES_DIR_NAME) {
         return None;

@@ -1,8 +1,7 @@
 //! The native [`Model`] backends behind [`crate::provider::Provider`].
 //!
-//! Two live here (both incubating upstream — cursor
-//! graduates to a feature-gated impl in `omnia-cursor`, replay to
-//! `omnia-testkit`, once proven):
+//! The live cursor backend remains local while the deterministic replay
+//! backend is supplied by `omnia-testkit`:
 //!
 //! - [`CursorModel`] — a thin shim over `omnia_cursor::Client` (the
 //!   host-side `WasiModelCtx` backend): map the guest [`Request`] onto
@@ -11,29 +10,24 @@
 //!   into a `ToolHost` whose `local_path` is the project root, which
 //!   is the only thing cursor-agent reads from it. Live-only: dev loop
 //!   and on-demand tasks, never CI.
-//! - [`ReplayModel`] — recorded fixtures served by canonical request
-//!   key, with the fixture format aligned to
-//!   `omnia_wasi_model::ModelDefault`'s replay conventions
-//!   (`{key_request, answer, usage?}` JSON files, keyed on the reduced
-//!   request) so graduation is a file move, not a format migration.
+//! - [`omnia_testkit::model::Replay`] — recorded fixtures served through
+//!   `omnia_wasi_model::ModelDefault`'s canonical request-key replay.
 //!
 //! [`DevModel`] is the closed selection the `specify-dev` binary
 //! constructs from the environment; tests bypass it and bind
-//! `specify_testkit::MockModel` directly.
+//! `omnia_testkit::model::Harness` around a scripted backend.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{Context as _, Result, anyhow};
-use omnia::Backend as _;
+use anyhow::{Result, anyhow};
 use omnia_guest::Model;
 use omnia_guest::model::{Effort, Error, Format, Reply, Request, Role, Tool, Usage};
+use omnia_testkit::model::Replay;
 use omnia_wasi_model as wire;
 use omnia_wasi_model::WasiModelCtx as _;
-use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 /// The closed backend selection for the dev binary: `cursor` (default)
 /// or `replay`, from `SPECIFY_DEV_MODEL`.
@@ -47,7 +41,7 @@ pub enum DevModel {
         cell: tokio::sync::OnceCell<CursorModel>,
     },
     /// Recorded fixtures from `MODEL_REPLAY_DIR`.
-    Replay(ReplayModel),
+    Replay(Replay),
 }
 
 impl fmt::Debug for DevModel {
@@ -75,7 +69,7 @@ impl DevModel {
             Ok("replay") => {
                 let dir = std::env::var_os("MODEL_REPLAY_DIR")
                     .map_or_else(|| PathBuf::from("fixtures"), PathBuf::from);
-                Ok(Self::Replay(ReplayModel::load(&dir)?))
+                Ok(Self::Replay(Replay::from_dir(&dir)?))
             }
             _ => Ok(Self::Cursor {
                 root: project_dir.to_path_buf(),
@@ -275,134 +269,4 @@ impl wire::ToolHost for LocalToolHost {
     fn local_path(&self) -> Option<&Path> {
         self.workspace.as_deref()
     }
-}
-
-/// The recorded-fixture [`Model`]: pre-recorded answers served by
-/// canonical request key.
-///
-/// Fixture files are `*.json` documents of the shape
-/// `{ "key_request": <reduced request>, "answer": <value>,
-/// "usage": <usage>? }` — the same rows `ModelDefault` replays, so a
-/// recorded deployment fixture drops in unchanged.
-#[derive(Debug, Default)]
-pub struct ReplayModel {
-    answers: HashMap<String, Fixture>,
-}
-
-impl ReplayModel {
-    /// Load every `*.json` fixture in `dir` (a missing directory is an
-    /// empty store, matching `ModelDefault`).
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when a fixture file cannot be read or parsed.
-    pub fn load(dir: &Path) -> Result<Self> {
-        let mut answers = HashMap::new();
-        if !dir.exists() {
-            return Ok(Self { answers });
-        }
-        for entry in std::fs::read_dir(dir)
-            .with_context(|| format!("reading replay dir {}", dir.display()))?
-        {
-            let path = entry?.path();
-            if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
-                continue;
-            }
-            let bytes = std::fs::read(&path)
-                .with_context(|| format!("reading fixture {}", path.display()))?;
-            let fixture: Fixture = serde_json::from_slice(&bytes)
-                .with_context(|| format!("parsing fixture {}", path.display()))?;
-            let key = serde_json::to_string(&fixture.key_request)?;
-            answers.insert(key, fixture);
-        }
-        Ok(Self { answers })
-    }
-}
-
-impl Model for ReplayModel {
-    async fn create(&self, request: Request) -> Result<Reply, Error> {
-        let key = serde_json::to_string(&reduced_value(&request))
-            .map_err(|err| Error::InvalidRequest(err.to_string()))?;
-        let fixture = self
-            .answers
-            .get(&key)
-            .ok_or_else(|| Error::Backend("no replay fixture for request".to_string()))?;
-        reply(wire::Answer {
-            value: fixture.answer.clone(),
-            usage: fixture.usage,
-            transcript: None,
-        })
-    }
-}
-
-/// A `request -> answer` replay row (`ModelDefault`'s fixture shape;
-/// the transcript is accepted and ignored).
-#[derive(Debug, Deserialize)]
-struct Fixture {
-    key_request: Value,
-    answer: Value,
-    #[serde(default)]
-    usage: Option<wire::Usage>,
-    #[serde(default)]
-    #[expect(dead_code, reason = "accepted for fixture-format parity, unused on replay")]
-    transcript: Option<Value>,
-}
-
-/// The canonical replay key over a guest [`Request`] — field-for-field
-/// the reduction `ModelDefault` applies to the wire request (the lent
-/// workspace is excluded there too).
-fn reduced_value(request: &Request) -> Value {
-    json!({
-        "model": request.model,
-        "system": request.system,
-        "messages": request.messages.iter().map(|message| json!({
-            "role": match message.role {
-                Role::System => "system",
-                Role::User => "user",
-                Role::Assistant => "assistant",
-            },
-            "content": message.content,
-        })).collect::<Vec<_>>(),
-        "generation": request.generation.as_ref().map(|generation| json!({
-            "temperature": generation.temperature,
-            "top_p": generation.top_p,
-            "max_tokens": generation.max_tokens,
-            "stop": generation.stop,
-            "seed": generation.seed,
-            "effort": generation.effort.map(|effort| match effort {
-                Effort::Minimal => "minimal",
-                Effort::Low => "low",
-                Effort::Medium => "medium",
-                Effort::High => "high",
-            }),
-        })),
-        "format": match &request.format {
-            Format::Text => json!({ "kind": "text" }),
-            Format::Json => json!({ "kind": "json" }),
-            Format::Schema(spec) => json!({
-                "kind": "schema",
-                "schema": { "name": spec.name, "schema": spec.schema },
-            }),
-        },
-        "tools": request.tools.iter().map(|tool| match tool {
-            Tool::Function(function) => json!({
-                "function": {
-                    "name": function.name,
-                    "description": function.description,
-                    "parameters": function.parameters,
-                },
-            }),
-            Tool::Mcp(grant) => json!({
-                "mcp": {
-                    "name": grant.name,
-                    "tools": grant.tools,
-                    "url": grant.url,
-                },
-            }),
-        }).collect::<Vec<_>>(),
-        "grants": {
-            "references": request.references,
-            "verify": request.verify,
-        },
-    })
 }

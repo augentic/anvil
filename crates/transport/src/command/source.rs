@@ -1,11 +1,11 @@
-//! Clap argument types for `specify source *`.
+//! Clap argument types for `specify source *`. Each `*Args` type mirrors
+//! its command's workflow wire input.
 
 use std::path::PathBuf;
 
 use clap::Args;
 
-/// Argv mirror of `source resolve`'s wire input
-/// (`workflow::adapter::handlers::ResolveInput`).
+/// Arguments for `source resolve`.
 #[derive(Debug, Args)]
 pub struct ResolveArgs {
     /// Kebab-case source-adapter name (e.g. `intent`,
@@ -18,8 +18,7 @@ pub struct ResolveArgs {
     pub project_dir: Option<PathBuf>,
 }
 
-/// Argv mirror of `source survey`'s wire input
-/// (`workflow::source::handlers::SurveyInput`).
+/// Arguments for `source survey`.
 #[derive(Debug, Args)]
 pub struct SurveyArgs {
     /// Source key from `plan.yaml.sources.<key>`.
@@ -29,8 +28,7 @@ pub struct SurveyArgs {
     pub plan: Option<String>,
 }
 
-/// Argv mirror of `source extract`'s wire input
-/// (`workflow::source::handlers::ExtractInput`).
+/// Arguments for `source extract`.
 #[derive(Debug, Args)]
 pub struct ExtractArgs {
     /// Source key from `plan.yaml.sources.<key>`.

@@ -1,7 +1,4 @@
-//! Pre-adapter gate machinery: the slice-spec provenance scan, the
-//! gate-collection bundle the orchestrator sequences, the per-slice
-//! authority-override orphan gate, the source-key resolution helper,
-//! and the non-blocking synopsis content-floor advisory.
+//! Validation gates that run before adapter-specific checks.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -11,31 +8,27 @@ use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
 use error::Result;
 use schema::diagnostics::{Artifact, Diagnostic};
 
-use super::catalog::collect_catalog_drift_findings;
-use super::decisions::collect_decision_gates;
-use super::model_drift::model_drift_findings;
-use super::spec_location::collect_spec_file_location_findings;
-use super::{collect_spec_files, path_hint};
+use super::catalog::catalog_drift;
+use super::decisions::decision_gates;
+use super::spec_location::file_location;
+use super::{collect_spec_files, model_drift, path_hint};
 use crate::change::{Plan, orphan_authority_override_keys};
 use crate::config::Layout;
 use crate::schema_gate::EvidenceDoc;
 
-/// One parsed `spec.md` from the slice specs walk.
 struct ScannedSpec {
     path: PathBuf,
     parsed: ParsedSpec,
 }
 
 /// `(req-ids, synthesis-tags, provenance-findings)` from [`scan_slice_specs`].
-pub(super) type ScanSliceSpecsResult =
-    (BTreeSet<String>, Vec<(String, RequirementTag)>, Vec<Diagnostic>);
+pub(super) type ScanResult = (BTreeSet<String>, Vec<(String, RequirementTag)>, Vec<Diagnostic>);
 
-/// Walk `<slice>/specs/**/*.md` once, parse each file, and fan out
-/// REQ ids (all files), synthesis tags (annotated files only), and
-/// provenance diagnostics (annotated files only).
+/// Scan slice specs once for requirement ids, synthesis tags, and
+/// provenance diagnostics.
 pub(super) fn scan_slice_specs(
     slice_dir: &Path, source_keys: &BTreeSet<String>,
-) -> Result<ScanSliceSpecsResult> {
+) -> Result<ScanResult> {
     let specs_dir = slice_dir.join("specs");
     if !specs_dir.is_dir() {
         return Ok((BTreeSet::new(), Vec::new(), Vec::new()));
@@ -77,52 +70,26 @@ pub(super) fn scan_slice_specs(
     Ok((req_ids, synthesis_tags, provenance_findings))
 }
 
-/// Bundle the pre-adapter gates that fire on a single slice:
+/// Run all pre-adapter gates for one slice.
 ///
-/// 1. Spec file-location check — root `spec.md` exists
-///    but no canonical `specs/<domain>/spec.md` files found. Fires
-///    first so the operator sees the structural cause before
-///    downstream drift noise.
-/// 2. per-slice authority override — orphan source keys on the slice's
-///    `plan.yaml.slices[].authority-override` map.
-/// 3. component catalog contract — catalog drift between Evidence `component:`
-///    directives and `.specify/design-system/components.yaml`.
-/// 4. typed-model drift — the seven drift-validation findings
-///    over `<slice>/model.yaml` (skipped when absent).
-///
-/// Provenance has no file-drift gate: it is carried inline in
-/// `model.yaml` and projected on demand (`specify slice provenance`),
-/// so there is no second representation to drift against. Spec-level
-/// `Sources:` / `Status:` coherence still runs in [`scan_slice_specs`].
-///
-/// All checks can fail independently; we collect every finding
-/// into one [`Diagnostic`] vector so the caller can render the full
-/// surface in one pass instead of one error per re-run.
-pub(super) fn collect_pre_adapter_gates(
+/// File location runs first so structural failures precede derivative
+/// drift noise. Independent findings are collected in one pass.
+pub(super) fn gates(
     layout: Layout<'_>, slice_dir: &Path, name: &str, evidence_docs: &[EvidenceDoc],
 ) -> Result<Vec<Diagnostic>> {
     let mut findings: Vec<Diagnostic> = Vec::new();
-    findings.extend(collect_spec_file_location_findings(slice_dir));
+    findings.extend(file_location(slice_dir));
     findings.extend(override_orphans(layout, name)?);
-    findings.extend(collect_catalog_drift_findings(layout, evidence_docs)?);
-    findings.extend(model_drift_findings(slice_dir, &layout.plan_path(), name, evidence_docs)?);
-    findings.extend(collect_decision_gates(layout, slice_dir)?);
+    findings.extend(catalog_drift(layout, evidence_docs)?);
+    findings.extend(model_drift::findings(slice_dir, &layout.plan_path(), name, evidence_docs)?);
+    findings.extend(decision_gates(layout, slice_dir)?);
     Ok(findings)
 }
 
-/// Synopsis content-floor advisory. Loads
-/// `<project_dir>/discovery.md` when present and emits one
-/// non-blocking `discovery-lead-synopsis-thin` finding per lead whose
-/// `synopsis` falls below a contentfulness heuristic. Absent
-/// `discovery.md` skips the check silently.
+/// Report thin discovery synopses when `discovery.md` exists.
 ///
-/// **Non-blocking by design** — surfaced at `suggestion` severity
-/// (`Diagnostic::review`), it never parks planning or transitions a
-/// plan. A thin synopsis is a nudge to improve the source adapter's
-/// `survey` brief output, not a gate: cross-source reconciliation is
-/// only ever as good as the discriminating power of each lead's
-/// `synopsis`, so the floor catches synopses the agent cannot match
-/// or split on at `propose` time.
+/// This remains advisory because the heuristic can produce false
+/// positives; its purpose is to improve cross-source reconciliation.
 pub(super) fn synopsis_thin(layout: Layout<'_>) -> Result<Vec<Diagnostic>> {
     let path = layout.discovery_path();
     if !path.exists() {
@@ -153,13 +120,7 @@ pub(super) fn synopsis_thin(layout: Layout<'_>) -> Result<Vec<Diagnostic>> {
         .collect())
 }
 
-/// Contentfulness heuristic for a lead `synopsis`.
-/// A synopsis is "thin" when it carries fewer than
-/// [`SYNOPSIS_MIN_WORDS`] whitespace-delimited words OR fewer than
-/// [`SYNOPSIS_MIN_CHARS`] non-whitespace characters once trimmed — too
-/// little for the agent to distinguish it from a same-slug lead in
-/// another source. Deliberately coarse: the finding is advisory, so a
-/// false positive costs the operator nothing.
+/// Coarse content floor for an advisory finding.
 pub(super) fn synopsis_is_thin(synopsis: &str) -> bool {
     let trimmed = synopsis.trim();
     let words = trimmed.split_whitespace().filter(|word| !word.is_empty()).count();
@@ -167,29 +128,18 @@ pub(super) fn synopsis_is_thin(synopsis: &str) -> bool {
     words < SYNOPSIS_MIN_WORDS || chars < SYNOPSIS_MIN_CHARS
 }
 
-/// Minimum whitespace-delimited word count below which a `synopsis` is
-/// flagged as thin.
 const SYNOPSIS_MIN_WORDS: usize = 4;
 
-/// Minimum non-whitespace character count below which a `synopsis` is
-/// flagged as thin.
 const SYNOPSIS_MIN_CHARS: usize = 20;
 
-/// per-slice authority override orphan-source gate. Loads `plan.yaml` (when
-/// present) and reports one finding per `(slice, kind)` pair
-/// whose source value is not in the slice's own `sources[]`
-/// list. Absent `plan.yaml` (e.g. ad-hoc slice without a plan)
-/// skips the check silently; the structural issue would already
-/// have surfaced earlier in workflow.
+/// Report authority overrides that name sources outside this slice.
 fn override_orphans(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>> {
     let plan_path = layout.plan_path();
     if !plan_path.exists() {
         return Ok(Vec::new());
     }
     let plan = Plan::load(&plan_path)?;
-    // Filter to the named slice only — `specify slice validate` is
-    // per-slice by definition, and surfacing findings from other
-    // slices would confuse the operator.
+    // Validation must not surface findings from other slices.
     let slice_entries: Vec<_> = plan.entries.iter().filter(|e| e.name == name).cloned().collect();
     let findings = orphan_authority_override_keys(&slice_entries);
     Ok(findings
@@ -207,11 +157,7 @@ fn override_orphans(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>> {
         .collect())
 }
 
-/// Resolve the plan-level source keys declared on the slice's plan
-/// entry (`Plan.sources` is the universe of keys; the slice's
-/// `sources[]` is the subset the slice actually binds). When no
-/// `plan.yaml` exists, returns an empty set so the cross-validation
-/// rule no-ops — structural rules still run.
+/// Resolve source keys bound to this slice.
 pub(super) fn resolve_slice_source_keys(
     layout: Layout<'_>, name: &str,
 ) -> Result<BTreeSet<String>> {
@@ -221,10 +167,7 @@ pub(super) fn resolve_slice_source_keys(
     }
     let plan = Plan::load(&plan_path)?;
     let Some(entry) = plan.entries.iter().find(|e| e.name == name) else {
-        // Plan exists but the slice is not in it (e.g. operator
-        // hand-created the slice). Fall back to the universe of plan
-        // sources so the operator still gets useful validation
-        // against any key spelt correctly.
+        // Ad-hoc slices can still validate against known plan sources.
         return Ok(plan.sources.keys().cloned().collect());
     };
     Ok(entry.sources.iter().map(|b| b.source().to_string()).collect())

@@ -26,11 +26,6 @@ pub(super) fn relabel(
 ///
 /// This is the shared kernel behind the simple `validate_*_json`
 /// entry points whose schema carries no relative `$ref`.
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] (keyed on `code`) when parsing or
-/// schema validation fails.
 pub(super) fn validate_parsed_json(
     content: &str, schema: &'static str, code: &'static str, rule: &str,
 ) -> Result<()> {
@@ -46,11 +41,6 @@ pub(super) fn validate_parsed_json(
 ///
 /// This is the shared kernel behind the file-anchored `validate_*_yaml`
 /// / `validate_evidence` entry points.
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] (keyed on `code`) when parsing or
-/// schema validation fails.
 pub(super) fn validate_labelled_yaml(
     content: &str, source_path: &std::path::Path, schema: &'static str, code: &'static str,
     rule: &str,
@@ -72,11 +62,6 @@ pub(super) fn validate_labelled_yaml(
 /// Parse `content` and validate it against a pre-compiled, registry-backed
 /// `validator` (one whose schema carries a relative `$ref`), folding every
 /// schema failure into one [`Error::Validation`] keyed on `code`.
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] (keyed on `code`) when parsing or
-/// schema validation fails.
 pub(super) fn validate_with_registry(
     content: &str, validator: &Validator, code: &'static str, rule: &str,
 ) -> Result<()> {

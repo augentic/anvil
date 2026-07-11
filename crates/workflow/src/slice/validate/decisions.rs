@@ -29,9 +29,7 @@ use crate::decisions::{is_dec_ref, list_md_files, read_baseline};
 ///
 /// Absent `decisions/` skips the gate silently — Decision Records are
 /// opt-in.
-pub(super) fn collect_decision_gates(
-    layout: Layout<'_>, slice_dir: &Path,
-) -> Result<Vec<Diagnostic>> {
+pub(super) fn decision_gates(layout: Layout<'_>, slice_dir: &Path) -> Result<Vec<Diagnostic>> {
     let decisions_dir = slice_dir.join("decisions");
     if !decisions_dir.is_dir() {
         return Ok(Vec::new());

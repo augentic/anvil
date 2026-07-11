@@ -10,9 +10,9 @@
 //!   in-process dispatch table over the sibling adapter crates'
 //!   `operations` modules, plus the matching describe runner.
 //! - [`model`] — the native `Model` backends: [`model::CursorModel`]
-//!   (cursor-agent, live-only) and [`model::ReplayModel`] (recorded
-//!   fixtures, CI-safe); tests bind `specify_testkit::MockModel` through the
-//!   provider's generic parameter.
+//!   (cursor-agent, live-only) and Omnia's recorded replay backend;
+//!   tests bind `omnia_testkit::model::Harness` through the provider's
+//!   generic parameter.
 //! - [`mcp`] — the per-adapter reference shelves, mounted at
 //!   `/mcp/<name>` on the serve-mode listener via
 //!   `omnia_guest::mcp::router`.

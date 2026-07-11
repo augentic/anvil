@@ -32,7 +32,7 @@ use crate::catalog;
 /// need, backed by the linked adapter crates and a native [`Model`].
 ///
 /// Generic over the model backend so the dev binary binds
-/// [`crate::model::DevModel`] and tests bind `specify_testkit::MockModel`.
+/// [`crate::model::DevModel`] and tests bind Omnia's recorded scripted harness.
 #[derive(Debug)]
 pub struct Provider<M> {
     /// The configured project root every project-scoped verb anchors at.

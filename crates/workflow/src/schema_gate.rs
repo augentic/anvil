@@ -31,5 +31,5 @@ pub use evidence::{
 };
 pub use judgment::{validate_proposal_json, validate_synthesis_json};
 pub use plan::{validate_plan, validate_plan_yaml};
-pub use target::{validate_build_report_json, validate_build_request_json};
+pub use target::{validate_report, validate_request};
 pub use topology::validate_topology_lock;

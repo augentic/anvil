@@ -13,7 +13,7 @@
 //!
 //! The synthesis **inputs** the CLI hands the agent step are not
 //! schema-validated (no closed request shape).
-//! [`build_synthesis_inputs`] assembles them — each bound
+//! [`build_inputs`] assembles them — each bound
 //! source's inline `lead` and `claims` plus the resolved target shape
 //! brief body — into the plain serialisable [`SynthesisInputs`] the
 //! guest refine orchestration hands the synthesis judgment. Authority
@@ -40,7 +40,7 @@ use crate::slice::synthesis::baseline::BaselineIndex;
 /// (`version` `const: 1`) and echoed onto the input envelope.
 const SYNTHESIS_VERSION: u32 = 1;
 
-/// Closed `kind` discriminator for the synthesis response.
+/// Synthesis response envelope kind.
 ///
 /// Serialises to the literal `"response"` the schema's `const`
 /// constraint requires. Mirrors `change::plan::core::propose`'s
@@ -49,8 +49,7 @@ const SYNTHESIS_VERSION: u32 = 1;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SynthesisKind {
-    /// `kind: response` — the agent's synthesis result the CLI reads
-    /// back.
+    /// The agent's synthesis result.
     Response,
 }
 
@@ -63,9 +62,9 @@ pub enum SynthesisKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisResponse {
-    /// Wire version; always `1` per the schema `const`.
+    /// Schema version.
     pub version: u32,
-    /// Discriminator; always [`SynthesisKind::Response`].
+    /// Envelope kind.
     pub kind: SynthesisKind,
     /// Slice name (kebab-case).
     pub slice: String,
@@ -105,7 +104,7 @@ pub struct SynthesisSpec {
     pub content: String,
 }
 
-/// Closed `kind` discriminator for the synthesis input envelope.
+/// Synthesis input envelope kind.
 ///
 /// The inputs are not schema-validated (there is no closed request
 /// shape), but the envelope still carries a
@@ -113,13 +112,13 @@ pub struct SynthesisSpec {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SynthesisInputsKind {
-    /// `kind: inputs` — the agent synthesis step's input envelope.
+    /// Agent synthesis inputs.
     Inputs,
 }
 
 /// The agent synthesis step's input envelope.
 ///
-/// Assembled by [`build_synthesis_inputs`] for the guest refine
+/// Assembled by [`build_inputs`] for the guest refine
 /// orchestration. Not schema-validated —
 /// synthesis is always agent-dispatched, so there is no tool consumer
 /// and no closed request schema. Authority is deliberately absent: the
@@ -127,9 +126,9 @@ pub enum SynthesisInputsKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SynthesisInputs {
-    /// Envelope version, mirroring the response.
+    /// Schema version.
     pub version: u32,
-    /// Discriminator; always [`SynthesisInputsKind::Inputs`].
+    /// Envelope kind.
     pub kind: SynthesisInputsKind,
     /// Slice name the step synthesises.
     pub slice: String,
@@ -246,7 +245,7 @@ impl SynthesisSourceInput {
 /// [`crate::adapter::TargetAdapter`] and reads the brief) so this
 /// function stays pure and adapter-free.
 #[must_use]
-pub fn build_synthesis_inputs(
+pub fn build_inputs(
     slice: &str, sources: &[SynthesisSourceInput], guidance_brief: &str, baseline: &[Surface],
     baseline_detail: &[BaselineDomainDetail],
 ) -> SynthesisInputs {

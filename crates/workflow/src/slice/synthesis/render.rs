@@ -1,26 +1,8 @@
-//! `spec.md` provenance-line rendering.
+//! Renders projected slice models as domain `spec.md` files.
 //!
-//! The render step is the third synthesis phase: given a projected
-//! [`SliceModel`], it emits one `specs/<domain>/spec.md` per owning domain,
-//! injecting the kernel-owned `ID:` / `Sources:` / `Status:` provenance
-//! lines (and the inline status tag) under each requirement heading.
-//!
-//! **Parser-symmetry decision.** The RFC's §"Rendering" sketch shows an
-//! `## <title>` h2 heading, but that example is illustrative. This
-//! renderer instead follows the requirement-block shape that
-//! [`artifacts::spec::provenance::parse_spec_md`] consumes —
-//! `### Requirement: <title>` plus an inline `[unknown]` / `[conflict]`
-//! / `[divergence]` tag suffix when the status is not `agreed`, then the
-//! three metadata lines, a blank line, and the body. Render and parse
-//! stay symmetric so the `slice-spec-provenance-stale` check (which
-//! parses the on-disk `spec.md` with that same parser) and
-//! `specify slice validate` round-trip the output cleanly. The tag is
-//! the status text itself (`divergence`, …), so the parser's
-//! tag↔status coherence rule is satisfied by construction.
-//!
-//! The body is rendered purely from the model's behavioral prose
-//! (`statement`, `scenarios`, `notes`) — the kernel fully owns the
-//! provenance lines and the block structure is deterministic.
+//! Output deliberately matches
+//! [`artifacts::spec::provenance::parse_spec_md`]: requirement headings,
+//! inline status tags, and provenance lines round-trip through validation.
 
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -31,7 +13,7 @@ use artifacts::spec::provenance::RequirementStatus;
 use crate::slice::model::{ModelRequirement, SliceModel};
 use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
 
-/// Domain key used to group requirements that carry no `domain` field.
+/// Domain used when a requirement has no explicit owner.
 const DEFAULT_DOMAIN: &str = "default";
 
 const HEADING_PREFIX: &str = "### Requirement:";
@@ -43,21 +25,14 @@ const MODIFIED_SECTION: &str = "## MODIFIED Requirements";
 pub struct RenderedSpec {
     /// Owning domain (the `specs/<domain>/spec.md` directory segment).
     pub domain: String,
-    /// Full rendered Markdown content, provenance lines injected.
+    /// Full rendered Markdown content.
     pub content: String,
 }
 
-/// The canonical `(ID, Sources, Status)` provenance triplet a single
-/// requirement renders, paired with its owning domain.
+/// Expected provenance for one rendered requirement.
 ///
-/// [`expected_provenance_lines`] returns one per requirement; the
-/// staleness check (`slice-spec-provenance-stale`) parses the on-disk
-/// `spec.md` with [`artifacts::spec::provenance::parse_spec_md`] and
-/// compares each parsed requirement's `id` / `sources` / `status`
-/// against this set. The field types mirror the parser's
-/// [`artifacts::spec::provenance::Requirement`] so the comparison is
-/// direct: `id` is a plain `String` (empty when unprojected), `status`
-/// is the optional enum the parser yields.
+/// Its field types mirror the parser output so staleness checks compare
+/// values directly.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedRequirement {
     /// Owning domain.
@@ -70,12 +45,7 @@ pub struct ExpectedRequirement {
     pub status: Option<RequirementStatus>,
 }
 
-/// Render every `specs/<domain>/spec.md` from a projected [`SliceModel`].
-///
-/// Requirements are grouped by `domain` (declaration order of first
-/// appearance), and within a domain render in declaration order. Each
-/// requirement becomes one `### Requirement:` block carrying the
-/// injected provenance lines followed by its behavioral body.
+/// Render one `specs/<domain>/spec.md` body per domain.
 #[must_use]
 pub fn render_spec_files(model: &SliceModel, baseline_index: &BaselineIndex) -> Vec<RenderedSpec> {
     let mut order: Vec<String> = Vec::new();
@@ -139,10 +109,9 @@ fn render_modified_domain(
     content
 }
 
-/// The canonical provenance triplet per requirement, in declaration
-/// order, for the staleness comparison against on-disk `spec.md`.
+/// Return expected provenance in requirement declaration order.
 #[must_use]
-pub fn expected_provenance_lines(model: &SliceModel) -> Vec<ExpectedRequirement> {
+pub fn provenance_lines(model: &SliceModel) -> Vec<ExpectedRequirement> {
     model
         .requirements
         .iter()
@@ -171,8 +140,7 @@ fn render_block(req: &ModelRequirement) -> String {
     }
     out.push('\n');
     let _ = writeln!(out, "ID: {}", req.id.as_deref().unwrap_or_default());
-    // Contract: an evidence-less (`unknown`) requirement renders the
-    // literal `Sources: []`, never a bare line with trailing space.
+    // The parser recognizes `Sources: []` as an explicitly empty list.
     if req.sources.is_empty() {
         out.push_str("Sources: []\n");
     } else {
@@ -191,10 +159,7 @@ fn render_body(req: &ModelRequirement) -> String {
     if !req.statement.is_empty() {
         parts.push(req.statement.clone());
     }
-    // Each scenario renders as a `#### Scenario:` H4 heading so the spec
-    // parser (and the `specs.requirements-have-scenarios` rule) recognises
-    // it. A bare-name entry yields a heading-only scenario; a multi-line
-    // entry keeps its WHEN/THEN body under the heading.
+    // Keep scenario headings symmetric with the spec parser.
     for scenario in &req.scenarios {
         parts.push(format!("{SCENARIO_HEADING} {scenario}"));
     }

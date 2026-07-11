@@ -37,7 +37,7 @@ pub const DECISIONS_CAP: usize = 8;
 /// `surface[]` / `recent[]` pair plus the accepted-decision
 /// `decisions[]` axis with its overflow count.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct IdentityProjection {
+pub struct Projection {
     /// Owned domains + bounded requirement titles.
     pub surface: Vec<Surface>,
     /// Recent per-merge outcome summaries.
@@ -62,11 +62,11 @@ pub struct IdentityProjection {
 ///
 /// Surfaces I/O errors reading the specs tree or a `spec.md`, and any
 /// error from reading the journal.
-pub fn project_baseline(project_dir: &Path) -> Result<IdentityProjection, Error> {
+pub fn project_baseline(project_dir: &Path) -> Result<Projection, Error> {
     let surface = project_surface(project_dir)?;
     let recent = project_recent(project_dir)?;
     let (decisions, decisions_more) = project_decisions(project_dir)?;
-    Ok(IdentityProjection {
+    Ok(Projection {
         surface,
         recent,
         decisions,

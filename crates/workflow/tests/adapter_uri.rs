@@ -44,7 +44,7 @@ async fn uninstalled_package_is_refused() {
 }
 
 #[tokio::test]
-async fn package_reference_is_recorded_and_resolves() {
+async fn package_reference_resolves() {
     let project = Project::bare();
     let store = tempfile::tempdir().expect("store");
     let _guard = scoped_store(store.path());

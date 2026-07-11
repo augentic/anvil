@@ -101,7 +101,7 @@ impl Registry {
     /// Returns the first base-shape error if `validate_shape` fails,
     /// or a `workspace-cannot-be-project` config error if any entry's `url`
     /// equals `.`.
-    pub(crate) fn validate_shape_workspace(&self) -> Result<(), Error> {
+    pub(crate) fn validate_workspace(&self) -> Result<(), Error> {
         self.validate_shape()?;
         for (idx, project) in self.projects.iter().enumerate() {
             if project.url == "." {
@@ -257,7 +257,7 @@ fn validate_project_url(url: &str, idx: usize, project_name: &str) -> Result<(),
     }
 
     #[cfg(windows)]
-    if looks_like_windows_drive_path(url) {
+    if is_windows_drive_path(url) {
         return Err(Error::Diag {
             code: "registry-project-url-absolute",
             detail: format!(
@@ -270,7 +270,7 @@ fn validate_project_url(url: &str, idx: usize, project_name: &str) -> Result<(),
 }
 
 #[cfg(windows)]
-fn looks_like_windows_drive_path(url: &str) -> bool {
+fn is_windows_drive_path(url: &str) -> bool {
     let mut chars = url.chars();
     let Some(c) = chars.next() else {
         return false;

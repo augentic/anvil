@@ -12,8 +12,8 @@ use serde_json::Value as JsonValue;
 
 use crate::change::Plan;
 use crate::schema_gate::EvidenceDoc;
-use crate::slice::expected_provenance_lines;
 use crate::slice::model::{SliceModel, validate_model_doc};
+use crate::slice::provenance_lines;
 
 /// Emit the drift-validation findings over the slice's
 /// `model.yaml`.
@@ -45,7 +45,7 @@ use crate::slice::model::{SliceModel, validate_model_doc};
 ///
 /// Returns [`Error::Filesystem`] when the model or a spec file cannot be
 /// read, or a YAML parse error when `model.yaml` is malformed.
-pub(super) fn model_drift_findings(
+pub(super) fn findings(
     slice_dir: &Path, plan_path: &Path, slice_name: &str, evidence: &[EvidenceDoc],
 ) -> Result<Vec<Diagnostic>> {
     let model_path = slice_dir.join("model.yaml");
@@ -68,12 +68,12 @@ pub(super) fn model_drift_findings(
     };
 
     let facts = EvidenceFacts::from_docs(evidence);
-    findings.extend(provenance_stale_findings(slice_dir, &model)?);
-    findings.extend(target_drift_findings(plan_path, &model, slice_name)?);
-    findings.extend(source_orphan_findings(&model, &facts));
-    findings.extend(cross_ref_orphan_findings(&model));
-    findings.extend(claim_kind_mismatch_findings(&model, &facts));
-    findings.extend(id_grammar_findings(&model));
+    findings.extend(provenance_stale(slice_dir, &model)?);
+    findings.extend(target_drift(plan_path, &model, slice_name)?);
+    findings.extend(source_orphans(&model, &facts));
+    findings.extend(cross_ref_orphans(&model));
+    findings.extend(claim_kind_mismatch(&model, &facts));
+    findings.extend(id_grammar(&model));
     Ok(findings)
 }
 
@@ -87,11 +87,11 @@ fn model_drift(code: &'static str, rule: &'static str, detail: String) -> Diagno
 /// disagreement (or an absent rendered requirement) means an operator
 /// hand-edited a kernel-rendered provenance line without
 /// re-synthesising.
-fn provenance_stale_findings(slice_dir: &Path, model: &SliceModel) -> Result<Vec<Diagnostic>> {
+fn provenance_stale(slice_dir: &Path, model: &SliceModel) -> Result<Vec<Diagnostic>> {
     const RULE: &str = "spec.md provenance lines agree with model.yaml";
     let mut parsed_domains: BTreeMap<String, Option<ParsedSpec>> = BTreeMap::new();
     let mut findings = Vec::new();
-    for exp in expected_provenance_lines(model) {
+    for exp in provenance_lines(model) {
         if exp.id.is_empty() {
             continue;
         }
@@ -179,9 +179,7 @@ fn render_status(status: Option<RequirementStatus>) -> String {
 /// disagree. Skipped when no `plan.yaml` exists or the slice has no
 /// matching entry. `target` is never persisted, so there is no
 /// target-vs-resolved-target half.
-fn target_drift_findings(
-    plan_path: &Path, model: &SliceModel, name: &str,
-) -> Result<Vec<Diagnostic>> {
+fn target_drift(plan_path: &Path, model: &SliceModel, name: &str) -> Result<Vec<Diagnostic>> {
     if !plan_path.exists() {
         return Ok(Vec::new());
     }
@@ -210,7 +208,7 @@ fn target_drift_findings(
 /// a real `(source, id)` in the slice's Evidence: the `source` key must
 /// own an `evidence/<source>.yaml`, and that file must carry a claim
 /// with the cited `id`.
-fn source_orphan_findings(model: &SliceModel, evidence: &EvidenceFacts) -> Vec<Diagnostic> {
+fn source_orphans(model: &SliceModel, evidence: &EvidenceFacts) -> Vec<Diagnostic> {
     const RULE: &str = "every claim traces to a real Evidence `(source, id)`";
     let mut findings = Vec::new();
     for claim in model.requirements.iter().flat_map(|req| &req.claims) {
@@ -239,7 +237,7 @@ fn source_orphan_findings(model: &SliceModel, evidence: &EvidenceFacts) -> Vec<D
 
 /// `slice-model-cross-ref-orphan` — every `tasks[].satisfies[]`
 /// reference must name an existing `requirements[].id`.
-fn cross_ref_orphan_findings(model: &SliceModel) -> Vec<Diagnostic> {
+fn cross_ref_orphans(model: &SliceModel) -> Vec<Diagnostic> {
     const RULE: &str = "every `satisfies[]` reference names an existing requirement";
     let req_ids: BTreeSet<&str> =
         model.requirements.iter().filter_map(|req| req.id.as_deref()).collect();
@@ -264,8 +262,8 @@ fn cross_ref_orphan_findings(model: &SliceModel) -> Vec<Diagnostic> {
 /// `slice-model-claim-kind-mismatch` — a claim's `kind` in
 /// `model.yaml` must equal the `kind` recorded on the matching Evidence
 /// claim. Claims with no matching Evidence `(source, id)` are left to
-/// [`source_orphan_findings`].
-fn claim_kind_mismatch_findings(model: &SliceModel, evidence: &EvidenceFacts) -> Vec<Diagnostic> {
+/// [`source_orphans`].
+fn claim_kind_mismatch(model: &SliceModel, evidence: &EvidenceFacts) -> Vec<Diagnostic> {
     const RULE: &str = "claim `kind` agrees with the Evidence claim it traces to";
     let mut findings = Vec::new();
     for claim in model.requirements.iter().flat_map(|req| &req.claims) {
@@ -290,7 +288,7 @@ fn claim_kind_mismatch_findings(model: &SliceModel, evidence: &EvidenceFacts) ->
 /// `slice-model-id-grammar` — `requirements[].id` matches `^REQ-[0-9]{3}$`,
 /// `tasks[].id` and `depends-on[]` match `^TASK-[0-9]{3}$`, and
 /// `satisfies[]` references match `^REQ-[0-9]{3}$`.
-fn id_grammar_findings(model: &SliceModel) -> Vec<Diagnostic> {
+fn id_grammar(model: &SliceModel) -> Vec<Diagnostic> {
     let mut findings = Vec::new();
     for id in model.requirements.iter().filter_map(|req| req.id.as_deref()) {
         if !is_req_id(id) {

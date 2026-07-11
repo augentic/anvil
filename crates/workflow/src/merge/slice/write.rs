@@ -23,7 +23,7 @@ use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 /// flips the slice to `Merged` only after every write returns, so an
 /// interrupted commit leaves the slice `Built` and a retry re-writes the
 /// full set.
-pub(super) fn write_three_way_baselines(merged: &[MergePreviewEntry]) -> Result<(), Error> {
+pub(super) fn write_baselines(merged: &[MergePreviewEntry]) -> Result<(), Error> {
     for entry in merged {
         bytes_write(&entry.baseline_path, entry.result.output.as_bytes()).map_err(|err| {
             Error::Diag {

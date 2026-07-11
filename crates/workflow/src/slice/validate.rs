@@ -96,8 +96,7 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
         });
     }
 
-    let gate_findings =
-        pre_adapter::collect_pre_adapter_gates(layout, &slice_dir, name, &evidence_docs)?;
+    let gate_findings = pre_adapter::gates(layout, &slice_dir, name, &evidence_docs)?;
     if !gate_findings.is_empty() {
         return Ok(Validation::Gate {
             code: "slice-pre-adapter-gate",

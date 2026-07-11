@@ -1,11 +1,11 @@
-//! Clap argument types for `specify target *`.
+//! Clap argument types for `specify target *`. Each `*Args` type mirrors
+//! its command's workflow wire input.
 
 use std::path::PathBuf;
 
 use clap::Args;
 
-/// Argv mirror of `target resolve`'s wire input
-/// (`workflow::adapter::handlers::ResolveInput`).
+/// Arguments for `target resolve`.
 #[derive(Debug, Args)]
 pub struct ResolveArgs {
     /// Target-adapter identifier — kebab name or `name@version`

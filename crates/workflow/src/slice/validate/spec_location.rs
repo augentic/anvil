@@ -12,7 +12,7 @@ use super::collect_spec_files;
 /// `specs/<domain>/spec.md` layout but does have a root-level
 /// `spec.md`. This fires first among the pre-adapter gates so the
 /// operator sees the structural cause before downstream drift noise.
-pub(super) fn collect_spec_file_location_findings(slice_dir: &Path) -> Vec<Diagnostic> {
+pub(super) fn file_location(slice_dir: &Path) -> Vec<Diagnostic> {
     let specs_dir = slice_dir.join("specs");
     let has_canonical_specs =
         specs_dir.is_dir() && collect_spec_files(&specs_dir).is_ok_and(|files| !files.is_empty());

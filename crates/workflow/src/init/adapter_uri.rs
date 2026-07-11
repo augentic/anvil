@@ -71,7 +71,7 @@ impl AdapterUri {
         if let Some(package) = AdapterPackageRef::recognize(adapter) {
             return Self::from_package(&package?);
         }
-        if let Some((name, version)) = parse_first_party_shorthand(adapter) {
+        if let Some((name, version)) = parse_shorthand(adapter) {
             return version.map_or_else(
                 || Ok(Self::from_dev(name)),
                 |version| {
@@ -141,7 +141,7 @@ impl AdapterUri {
                 component.display()
             ),
         })?;
-        let adapter_name = adapter_name_from_component(&canonical)?;
+        let adapter_name = name_from_component(&canonical)?;
         let adapter_value = format!("file://{}", canonical.display());
         Ok(Self {
             adapter_value,
@@ -237,7 +237,7 @@ const FIRST_PARTY_NAMESPACE: &str = "specify";
 /// for paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying
 /// `:` or `/`), and for a `@suffix` that is not exact semver — so
 /// those keep flowing through [`AdapterUri::from_local`].
-fn parse_first_party_shorthand(adapter: &str) -> Option<(&str, Option<semver::Version>)> {
+fn parse_shorthand(adapter: &str) -> Option<(&str, Option<semver::Version>)> {
     if adapter.contains('/') || adapter.contains(':') {
         return None;
     }
@@ -279,7 +279,7 @@ fn ensure_component_file(path: &Path, original: &str) -> Result<(), Error> {
 /// `specify_intent.wasm` → `intent`, `my-adapter.wasm` → `my-adapter`
 /// (the cargo `specify_` artifact prefix is stripped and underscores
 /// fold to kebab dashes).
-fn adapter_name_from_component(path: &Path) -> Result<String, Error> {
+fn name_from_component(path: &Path) -> Result<String, Error> {
     let stem = path.file_stem().and_then(|stem| stem.to_str()).ok_or_else(|| Error::Diag {
         code: "adapter-dir-name-unresolved",
         detail: format!("cannot derive adapter name from {}", path.display()),

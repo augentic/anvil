@@ -2,7 +2,7 @@
 
 use crate::validate::{BriefContext, Classification, Rule, RuleOutcome, primitives};
 
-fn tasks_use_checkbox_format(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn use_checkbox_format(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(tasks) = ctx.tasks else {
         return RuleOutcome::Fail {
             detail: "tasks were not parsed".to_string(),
@@ -18,7 +18,7 @@ fn tasks_use_checkbox_format(ctx: &BriefContext<'_>) -> RuleOutcome {
     }
 }
 
-fn tasks_grouped_under_headings(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn grouped_under_headings(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(tasks) = ctx.tasks else {
         return RuleOutcome::Fail {
             detail: "tasks were not parsed".to_string(),
@@ -38,12 +38,12 @@ pub(super) const TASKS_RULES: &[Rule] = &[
         id: "tasks.use-checkbox-format",
         description: "All tasks use `- [ ] X.Y` checkbox format",
         classification: Classification::Structural,
-        check: Some(tasks_use_checkbox_format),
+        check: Some(use_checkbox_format),
     },
     Rule {
         id: "tasks.grouped-under-headings",
         description: "Tasks grouped under `## ` headings",
         classification: Classification::Structural,
-        check: Some(tasks_grouped_under_headings),
+        check: Some(grouped_under_headings),
     },
 ];

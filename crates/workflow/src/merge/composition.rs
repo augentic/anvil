@@ -144,14 +144,14 @@ pub fn merge(baseline: Option<&str>, delta_text: &str) -> Result<MergeResult, Er
 /// takes when it treats a delta document as a wholesale baseline
 /// replacement. No I/O and no policy: the authorisation decision (may a
 /// whole-document replacement overwrite a non-empty baseline?) lives in
-/// the merge-side `composition_overwrite_gate` precondition, not here.
+/// the merge-side `overwrite_gate` precondition, not here.
 ///
 /// # Errors
 ///
 /// Returns [`Error::Diag { code: "composition-delta-malformed" }`] when
 /// `text` does not parse as YAML — the same code [`merge`] raises for an
 /// unparseable delta.
-pub fn is_whole_document_replacement(text: &str) -> Result<bool, Error> {
+pub fn is_full_replacement(text: &str) -> Result<bool, Error> {
     let doc: Value = serde_saphyr::from_str(text).map_err(|e| Error::Diag {
         code: "composition-delta-malformed",
         detail: format!("failed to parse composition delta: {e}"),

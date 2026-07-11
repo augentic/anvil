@@ -40,7 +40,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let results = plan_full_report(context.provider, &plan, cx.layout());
 
         let has_errors = blocking_present(&results);
-        let body = ReportBody::new(results, Some("Plan OK"), write_validate_row_text);
+        let body = ReportBody::new(results, Some("Plan OK"), write_row);
         if has_errors {
             Err(crate::handler::Error::report(
                 body,
@@ -54,7 +54,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
     }
 }
 
-fn write_validate_row_text(w: &mut dyn Write, finding: &Diagnostic) -> std::io::Result<()> {
+fn write_row(w: &mut dyn Write, finding: &Diagnostic) -> std::io::Result<()> {
     let label = if blocking(finding) { "ERROR  " } else { "WARNING" };
     let code = finding.rule_id.as_deref().unwrap_or("<unknown>");
     let entry_col = finding.slice.as_ref().map_or_else(String::new, |e| format!("[{e}]"));

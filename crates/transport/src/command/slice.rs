@@ -1,4 +1,5 @@
-//! Clap argument types for `specify slice *`.
+//! Clap argument types for `specify slice *`. Each `*Args` type mirrors
+//! its command's workflow wire input.
 
 use clap::builder::{PossibleValuesParser, TypedValueParser};
 use workflow::slice::{CreateIfExists, LifecycleStatus};
@@ -15,8 +16,7 @@ where
     PossibleValuesParser::new(T::VARIANTS).try_map(|value| value.parse::<T>())
 }
 
-/// Argv mirror of `slice create`'s wire input
-/// (`workflow::slice::handlers::CreateInput`).
+/// Arguments for `slice create`.
 #[derive(Debug, clap::Args)]
 pub struct CreateArgs {
     /// Kebab-case slice name
@@ -29,40 +29,35 @@ pub struct CreateArgs {
     pub if_exists: CreateIfExists,
 }
 
-/// Argv mirror of `slice validate`'s wire input
-/// (`workflow::slice::handlers::ValidateInput`).
+/// Arguments for `slice validate`.
 #[derive(Debug, clap::Args)]
 pub struct ValidateArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
 }
 
-/// Argv mirror of `slice provenance`'s wire input
-/// (`workflow::slice::handlers::ProvenanceInput`).
+/// Arguments for `slice provenance`.
 #[derive(Debug, clap::Args)]
 pub struct ProvenanceArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
 }
 
-/// Argv mirror of `slice refine`'s wire input
-/// (`workflow::slice::handlers::RefineInput`).
+/// Arguments for `slice refine`.
 #[derive(Debug, clap::Args)]
 pub struct RefineArgs {
     /// Slice name (a `plan.yaml.slices[]` entry)
     pub name: String,
 }
 
-/// Argv mirror of `slice build`'s wire input
-/// (`workflow::slice::handlers::BuildInput`).
+/// Arguments for `slice build`.
 #[derive(Debug, clap::Args)]
 pub struct BuildArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
 }
 
-/// Argv mirror of `slice transition`'s wire input
-/// (`workflow::slice::handlers::TransitionInput`).
+/// Arguments for `slice transition`.
 #[derive(Debug, clap::Args)]
 pub struct TransitionArgs {
     /// Slice name
@@ -74,8 +69,7 @@ pub struct TransitionArgs {
     pub target: LifecycleStatus,
 }
 
-/// Argv mirror of `slice touched-specs`' wire input
-/// (`workflow::slice::handlers::TouchedSpecsInput`).
+/// Arguments for `slice touched-specs`.
 #[derive(Debug, clap::Args)]
 pub struct TouchedSpecsArgs {
     /// Slice name
@@ -88,16 +82,14 @@ pub struct TouchedSpecsArgs {
     pub set: Vec<String>,
 }
 
-/// Argv mirror of `slice overlap`'s wire input
-/// (`workflow::slice::handlers::OverlapInput`).
+/// Arguments for `slice overlap`.
 #[derive(Debug, clap::Args)]
 pub struct OverlapArgs {
     /// Slice name
     pub name: String,
 }
 
-/// Argv mirror of `slice drop`'s wire input
-/// (`workflow::slice::handlers::DropInput`).
+/// Arguments for `slice drop`.
 #[derive(Debug, clap::Args)]
 pub struct DropArgs {
     /// Slice name
@@ -107,16 +99,14 @@ pub struct DropArgs {
     pub reason: Option<String>,
 }
 
-/// Argv mirror of `slice model show`'s wire input
-/// (`workflow::slice::handlers::ModelShowInput`).
+/// Arguments for `slice model show`.
 #[derive(Debug, clap::Args)]
 pub struct ModelShowArgs {
     /// Slice name (under `.specify/slices/`)
     pub name: String,
 }
 
-/// Argv mirror of `slice merge run`'s wire input
-/// (`workflow::slice::handlers::MergeRunInput`).
+/// Arguments for `slice merge run`.
 #[derive(Debug, clap::Args)]
 pub struct MergeRunArgs {
     /// Slice name
@@ -129,32 +119,28 @@ pub struct MergeRunArgs {
     pub allow_composition_replace: bool,
 }
 
-/// Argv mirror of `slice merge preview`'s wire input
-/// (`workflow::slice::handlers::PreviewInput`).
+/// Arguments for `slice merge preview`.
 #[derive(Debug, clap::Args)]
 pub struct MergePreviewArgs {
     /// Slice name
     pub name: String,
 }
 
-/// Argv mirror of `slice merge conflict-check`'s wire input
-/// (`workflow::slice::handlers::ConflictCheckInput`).
+/// Arguments for `slice merge conflict-check`.
 #[derive(Debug, clap::Args)]
 pub struct ConflictCheckArgs {
     /// Slice name
     pub name: String,
 }
 
-/// Argv mirror of `slice task progress`' wire input
-/// (`workflow::slice::handlers::TaskProgressInput`).
+/// Arguments for `slice task progress`.
 #[derive(Debug, clap::Args)]
 pub struct TaskProgressArgs {
     /// Slice name
     pub name: String,
 }
 
-/// Argv mirror of `slice task mark`'s wire input
-/// (`workflow::slice::handlers::TaskMarkInput`).
+/// Arguments for `slice task mark`.
 #[derive(Debug, clap::Args)]
 pub struct TaskMarkArgs {
     /// Slice name

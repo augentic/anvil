@@ -1,12 +1,12 @@
 //! Seam-level coverage of the native [`Provider`]: the in-process dispatch
 //! table reaches the real adapter operations (scripted through
-//! `specify_testkit::MockModel`), the DTO mappings match the guest shim's WIT
+//! `omnia_testkit::model::Harness`), the DTO mappings match the guest shim's WIT
 //! projections (claim JSON keys, report widening), and the metadata
 //! runner answers both axes.
 
+use omnia_testkit::model::{Harness, Scripted, mcp_grants};
 use serde_json::json;
 use specify_dev::provider::{Provider, metadata};
-use specify_testkit::MockModel;
 use tempfile::TempDir;
 use workflow::adapter::metadata::Request as MetadataRequest;
 use workflow::adapter::{AdapterRef, Axis, Resolver};
@@ -28,12 +28,15 @@ fn tree() -> WorkingTree {
     }
 }
 
+fn model(answers: impl IntoIterator<Item = &'static str>) -> Harness<Scripted> {
+    Harness::new(Scripted::answers(answers))
+}
+
 #[tokio::test]
 async fn survey_dispatches_to_intent() {
     let tmp = TempDir::new().expect("tempdir");
-    let model = MockModel::answering([
-        r#"{"leads":[{"lead":"password-reset","synopsis":"Let users reset passwords."}]}"#,
-    ]);
+    let model =
+        model([r#"{"leads":[{"lead":"password-reset","synopsis":"Let users reset passwords."}]}"#]);
     let provider = Provider::new(tmp.path(), model);
 
     let leads = provider.survey("source:intent".to_string()).await.expect("survey");
@@ -45,7 +48,7 @@ async fn survey_dispatches_to_intent() {
 #[tokio::test]
 async fn extract_projects_claim_json() {
     let tmp = TempDir::new().expect("tempdir");
-    let model = MockModel::answering([
+    let model = model([
         r#"{"authority":"intent","claims":[{"kind":"intent","id":"password-reset","statement":"Let users reset passwords."}]}"#,
     ]);
     let provider = Provider::new(tmp.path(), model);
@@ -64,13 +67,13 @@ async fn extract_projects_claim_json() {
 #[tokio::test]
 async fn mcp_base_grants_reference_url() {
     let tmp = TempDir::new().expect("tempdir");
-    let model = MockModel::answering([r#"{"leads":[]}"#]);
+    let model = model([r#"{"leads":[]}"#]);
     let provider = Provider::new(tmp.path(), model).mcp_base("http://127.0.0.1:7737".to_string());
 
     provider.survey("source:intent".to_string()).await.expect("survey");
 
     let requests = provider.model().requests();
-    let grants = specify_testkit::mcp_grants(&requests[0]);
+    let grants = mcp_grants(&requests[0]);
     assert_eq!(grants.len(), 1, "one references grant per judgment leg");
     assert_eq!(grants[0].name, "intent-references");
     assert_eq!(grants[0].url, "http://127.0.0.1:7737/mcp/intent");
@@ -79,7 +82,7 @@ async fn mcp_base_grants_reference_url() {
 #[tokio::test]
 async fn guidance_serves_embedded_prompts() {
     let tmp = TempDir::new().expect("tempdir");
-    let provider = Provider::new(tmp.path(), MockModel::answering([]));
+    let provider = Provider::new(tmp.path(), model([]));
 
     let omnia = provider.guidance("target:omnia".to_string()).await.expect("omnia guidance");
     assert!(omnia.starts_with("# Omnia target — guidance prompt"), "{omnia:.60}");
@@ -92,7 +95,7 @@ async fn guidance_serves_embedded_prompts() {
 #[tokio::test]
 async fn build_widens_report() {
     let tmp = TempDir::new().expect("tempdir");
-    let model = MockModel::answering([
+    let model = model([
         r#"{"applicable":true,"summary":"generation complete"}"#,
         r#"{"applicable":true,"summary":"review complete"}"#,
         r#"{"applicable":false,"summary":"no captures binding"}"#,
@@ -119,7 +122,7 @@ async fn build_widens_report() {
 #[tokio::test]
 async fn unlinked_adapter_refused() {
     let tmp = TempDir::new().expect("tempdir");
-    let provider = Provider::new(tmp.path(), MockModel::answering([]));
+    let provider = Provider::new(tmp.path(), model([]));
 
     let err = provider.survey("source:unknown".to_string()).await.expect_err("unlinked source");
     assert!(matches!(err, Error::InvalidRequest(detail) if detail.contains("source:unknown")));
@@ -173,7 +176,7 @@ async fn catalog_table_dispatches_every_entry() {
 
         match entry.axis() {
             Axis::Source => {
-                let provider = Provider::new(tmp.path(), MockModel::answering([r#"{"leads":[]}"#]));
+                let provider = Provider::new(tmp.path(), model([r#"{"leads":[]}"#]));
                 let resolved = provider
                     .resolve_source(&AdapterRef::bare(name), tmp.path())
                     .unwrap_or_else(|err| panic!("source `{name}` resolves: {err}"));
@@ -189,7 +192,7 @@ async fn catalog_table_dispatches_every_entry() {
                 assert!(leads.is_empty(), "the scripted empty survey answer crosses");
             }
             Axis::Target => {
-                let provider = Provider::new(tmp.path(), MockModel::answering([]));
+                let provider = Provider::new(tmp.path(), model([]));
                 let resolved = provider
                     .resolve_target(&AdapterRef::bare(name), tmp.path())
                     .unwrap_or_else(|err| panic!("target `{name}` resolves: {err}"));
@@ -211,7 +214,7 @@ async fn catalog_table_dispatches_every_entry() {
 #[test]
 fn resolver_uses_linked_catalog() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let provider = Provider::new(tmp.path(), MockModel::answering([]));
+    let provider = Provider::new(tmp.path(), model([]));
 
     let source = provider
         .resolve_source(&AdapterRef::bare("intent"), tmp.path())

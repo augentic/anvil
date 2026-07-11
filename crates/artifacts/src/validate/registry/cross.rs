@@ -2,7 +2,7 @@
 
 use crate::validate::{Classification, CrossContext, CrossRule, RuleOutcome, primitives};
 
-fn cross_proposal_domains_have_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
+fn proposal_domains_have_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
     let proposal_path = ctx.slice_dir.join("proposal.md");
     if !proposal_path.is_file() {
         return RuleOutcome::Pass;
@@ -25,7 +25,7 @@ fn cross_proposal_domains_have_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
     }
 }
 
-fn cross_design_references_valid(ctx: &CrossContext<'_>) -> RuleOutcome {
+fn design_references_valid(ctx: &CrossContext<'_>) -> RuleOutcome {
     let design_path = ctx.slice_dir.join("design.md");
     if !design_path.is_file() {
         return RuleOutcome::Pass;
@@ -48,7 +48,7 @@ fn cross_design_references_valid(ctx: &CrossContext<'_>) -> RuleOutcome {
     }
 }
 
-fn cross_composition_maps_to_consistent(ctx: &CrossContext<'_>) -> RuleOutcome {
+fn composition_consistent(ctx: &CrossContext<'_>) -> RuleOutcome {
     let comp_path = ctx.slice_dir.join("composition.yaml");
     let Ok(comp_text) = std::fs::read_to_string(&comp_path) else {
         return RuleOutcome::Pass;
@@ -116,19 +116,19 @@ const CROSS_RULES: &[CrossRule] = &[
         id: "cross.proposal-domains-have-specs",
         description: "Every domain listed in the proposal has a matching spec file",
         classification: Classification::Structural,
-        check: cross_proposal_domains_have_specs,
+        check: proposal_domains_have_specs,
     },
     CrossRule {
         id: "cross.design-references-valid",
         description: "Every requirement id referenced in design.md exists in specs",
         classification: Classification::Structural,
-        check: cross_design_references_valid,
+        check: design_references_valid,
     },
     CrossRule {
         id: "cross.composition-maps-to-consistent",
         description: "composition.yaml maps_to values are well-formed",
         classification: Classification::Structural,
-        check: cross_composition_maps_to_consistent,
+        check: composition_consistent,
     },
 ];
 

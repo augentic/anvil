@@ -150,110 +150,118 @@ fn synthesis_accepts_example() {
 /// The `parts.yaml` worked example validates: a kebab-case
 /// part slug carrying a composition `group` fragment (with a `*-when`
 /// key and `items`) plus an optional description.
-#[test]
-fn parts_schema_accepts_rfc_example() {
-    let instance = json!({
-        "version": 1,
-        "parts": {
-            "tab-bar": {
-                "description": "Bottom navigation across primary sections.",
-                "group": {
-                    "active-when": "$route",
-                    "items": [
-                        { "icon-button": { "bind": "home", "event": "Navigate(Home)" } },
-                        { "icon-button": { "bind": "search", "event": "Navigate(Search)" } },
-                        { "icon-button": { "bind": "settings", "event": "Navigate(Settings)" } }
-                    ]
+mod parts {
+    use super::*;
+
+    #[test]
+    fn accepts_example() {
+        let instance = json!({
+            "version": 1,
+            "parts": {
+                "tab-bar": {
+                    "description": "Bottom navigation across primary sections.",
+                    "group": {
+                        "active-when": "$route",
+                        "items": [
+                            { "icon-button": { "bind": "home", "event": "Navigate(Home)" } },
+                            { "icon-button": { "bind": "search", "event": "Navigate(Search)" } },
+                            { "icon-button": { "bind": "settings", "event": "Navigate(Settings)" } }
+                        ]
+                    }
                 }
             }
-        }
-    });
-    let summaries =
-        validate_value(&instance, PARTS_JSON_SCHEMA, "parts", "parts.yaml worked example");
-    assert!(
-        summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
-        "RFC parts example must validate; got {summaries:?}"
-    );
-}
+        });
+        let summaries =
+            validate_value(&instance, PARTS_JSON_SCHEMA, "parts", "parts.yaml worked example");
+        assert!(
+            summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
+            "RFC parts example must validate; got {summaries:?}"
+        );
+    }
 
-/// A part missing its required `group`, and a non-kebab slug, are both
-/// rejected.
-#[test]
-fn parts_schema_rejects_malformed() {
-    let missing_group = json!({
-        "version": 1,
-        "parts": { "tab-bar": { "description": "no group" } }
-    });
-    let summaries = validate_value(
-        &missing_group,
-        PARTS_JSON_SCHEMA,
-        "parts",
-        "part requires a group fragment",
-    );
-    assert!(
-        summaries.iter().any(|s| matches!(s.status, ValidationStatus::Fail)),
-        "a part without `group` must be rejected"
-    );
+    /// A part missing its required `group`, and a non-kebab slug, are both
+    /// rejected.
+    #[test]
+    fn rejects_malformed() {
+        let missing_group = json!({
+            "version": 1,
+            "parts": { "tab-bar": { "description": "no group" } }
+        });
+        let summaries = validate_value(
+            &missing_group,
+            PARTS_JSON_SCHEMA,
+            "parts",
+            "part requires a group fragment",
+        );
+        assert!(
+            summaries.iter().any(|s| matches!(s.status, ValidationStatus::Fail)),
+            "a part without `group` must be rejected"
+        );
 
-    let bad_slug = json!({
-        "version": 1,
-        "parts": { "TabBar": { "group": { "items": [{ "text": {} }] } } }
-    });
-    let summaries =
-        validate_value(&bad_slug, PARTS_JSON_SCHEMA, "parts", "part slug is kebab-case");
-    assert!(
-        summaries.iter().any(|s| matches!(s.status, ValidationStatus::Fail)),
-        "a non-kebab part slug must be rejected"
-    );
+        let bad_slug = json!({
+            "version": 1,
+            "parts": { "TabBar": { "group": { "items": [{ "text": {} }] } } }
+        });
+        let summaries =
+            validate_value(&bad_slug, PARTS_JSON_SCHEMA, "parts", "part slug is kebab-case");
+        assert!(
+            summaries.iter().any(|s| matches!(s.status, ValidationStatus::Fail)),
+            "a non-kebab part slug must be rejected"
+        );
+    }
 }
 
 /// The slice-authored Decision Record example validates without
 /// the engine-stamped `id` / `slice` / `date` fields — proving the
 /// optional-field design that lets one schema serve both the slice form
 /// and the persisted baseline form.
-#[test]
-fn decision_accepts_slice_form() {
-    let instance = json!({
-        "slug": "identity-store-postgres",
-        "status": "accepted",
-        "supersedes": ["DEC-0003"],
-        "related": ["REQ-001", "REQ-014"]
-    });
-    let summaries = validate_value(
-        &instance,
-        DECISION_JSON_SCHEMA,
-        "decision",
-        "slice-authored decision omits engine-stamped fields",
-    );
-    assert!(
-        summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
-        "slice-authored decision must validate; got {summaries:?}"
-    );
-}
+mod decision {
+    use super::*;
 
-/// The promoted baseline Decision Record example validates with
-/// the engine-stamped header fields present.
-#[test]
-fn decision_accepts_baseline_form() {
-    let instance = json!({
-        "id": "DEC-0007",
-        "slug": "identity-store-postgres",
-        "status": "accepted",
-        "slice": "identity-service",
-        "date": "2026-06-02",
-        "supersedes": ["DEC-0003"],
-        "related": ["REQ-001", "REQ-014"]
-    });
-    let summaries = validate_value(
-        &instance,
-        DECISION_JSON_SCHEMA,
-        "decision",
-        "promoted baseline decision carries engine-stamped fields",
-    );
-    assert!(
-        summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
-        "promoted baseline decision must validate; got {summaries:?}"
-    );
+    #[test]
+    fn accepts_slice_form() {
+        let instance = json!({
+            "slug": "identity-store-postgres",
+            "status": "accepted",
+            "supersedes": ["DEC-0003"],
+            "related": ["REQ-001", "REQ-014"]
+        });
+        let summaries = validate_value(
+            &instance,
+            DECISION_JSON_SCHEMA,
+            "decision",
+            "slice-authored decision omits engine-stamped fields",
+        );
+        assert!(
+            summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
+            "slice-authored decision must validate; got {summaries:?}"
+        );
+    }
+
+    /// The promoted baseline Decision Record example validates with
+    /// the engine-stamped header fields present.
+    #[test]
+    fn accepts_baseline_form() {
+        let instance = json!({
+            "id": "DEC-0007",
+            "slug": "identity-store-postgres",
+            "status": "accepted",
+            "slice": "identity-service",
+            "date": "2026-06-02",
+            "supersedes": ["DEC-0003"],
+            "related": ["REQ-001", "REQ-014"]
+        });
+        let summaries = validate_value(
+            &instance,
+            DECISION_JSON_SCHEMA,
+            "decision",
+            "promoted baseline decision carries engine-stamped fields",
+        );
+        assert!(
+            summaries.iter().all(|s| matches!(s.status, ValidationStatus::Pass)),
+            "promoted baseline decision must validate; got {summaries:?}"
+        );
+    }
 }
 
 /// Compile the diagnostic-report envelope through a registry that pins
@@ -304,7 +312,7 @@ fn lint_result_accepts_one_finding() {
 
 /// The build-request worked example validates.
 #[test]
-fn build_request_schema_accepts_rfc_example() {
+fn build_request_example() {
     let instance = json!({
         "version": 1,
         "slice": "identity-service",
@@ -346,142 +354,154 @@ fn build_report_validator() -> jsonschema::Validator {
 }
 
 /// The build-report success example validates.
-#[test]
-fn build_report_schema_accepts_success() {
-    let validator = build_report_validator();
-    let instance = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "omnia@1.0.0",
-        "status": "success",
-        "findings": []
-    });
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
-    assert!(errors.is_empty(), "success report must validate; errors: {errors:?}");
-}
+mod build_report {
+    use super::*;
 
-/// The build-report failure (no findings) example validates.
-#[test]
-fn build_report_failure_no_findings() {
-    let validator = build_report_validator();
-    let instance = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "omnia@1.0.0",
-        "status": "failure",
-        "findings": []
-    });
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
-    assert!(errors.is_empty(), "failure report must validate; errors: {errors:?}");
-}
+    #[test]
+    fn accepts_success() {
+        let validator = build_report_validator();
+        let instance = json!({
+            "version": 1,
+            "slice": "identity-service",
+            "target": "omnia@1.0.0",
+            "status": "success",
+            "findings": []
+        });
+        let errors: Vec<String> =
+            validator.iter_errors(&instance).map(|err| err.to_string()).collect();
+        assert!(errors.is_empty(), "success report must validate; errors: {errors:?}");
+    }
 
-/// A success report with `outputs[]` validates, proving the new
-/// `buildOutput` `$def` and `platform` enum resolve correctly.
-#[test]
-fn build_report_success_outputs() {
-    let validator = build_report_validator();
-    let instance = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "vectis@1.0.0",
-        "status": "success",
-        "findings": [],
-        "outputs": [
-            { "platform": "core", "path": "shared/src/app.rs" },
-            { "platform": "ios", "path": "iOS/MyApp/ContentView.swift" },
-            { "platform": "android", "path": "Android/app/src/main/kotlin/Main.kt" }
-        ]
-    });
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
-    assert!(errors.is_empty(), "success report with outputs must validate; errors: {errors:?}");
-}
+    /// The build-report failure (no findings) example validates.
+    #[test]
+    fn failure_no_findings() {
+        let validator = build_report_validator();
+        let instance = json!({
+            "version": 1,
+            "slice": "identity-service",
+            "target": "omnia@1.0.0",
+            "status": "failure",
+            "findings": []
+        });
+        let errors: Vec<String> =
+            validator.iter_errors(&instance).map(|err| err.to_string()).collect();
+        assert!(errors.is_empty(), "failure report must validate; errors: {errors:?}");
+    }
 
-/// A success report carrying the optional `ui-surface` field validates,
-/// proving the additive A4 signal resolves against the `uiSurface`
-/// `$def`.
-#[test]
-fn build_report_accepts_ui_surface() {
-    let validator = build_report_validator();
-    let instance = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "vectis@1.0.0",
-        "status": "success",
-        "findings": [],
-        "ui-surface": { "screens": 3 }
-    });
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
-    assert!(errors.is_empty(), "report with ui-surface must validate; errors: {errors:?}");
-}
+    /// A success report with `outputs[]` validates, proving the new
+    /// `buildOutput` `$def` and `platform` enum resolve correctly.
+    #[test]
+    fn success_outputs() {
+        let validator = build_report_validator();
+        let instance = json!({
+            "version": 1,
+            "slice": "identity-service",
+            "target": "vectis@1.0.0",
+            "status": "success",
+            "findings": [],
+            "outputs": [
+                { "platform": "core", "path": "shared/src/app.rs" },
+                { "platform": "ios", "path": "iOS/MyApp/ContentView.swift" },
+                { "platform": "android", "path": "Android/app/src/main/kotlin/Main.kt" }
+            ]
+        });
+        let errors: Vec<String> =
+            validator.iter_errors(&instance).map(|err| err.to_string()).collect();
+        assert!(errors.is_empty(), "success report with outputs must validate; errors: {errors:?}");
+    }
 
-/// `ui-surface.screens` is required and must be a non-negative integer;
-/// a stray sibling key is rejected by `additionalProperties: false`.
-#[test]
-fn build_report_rejects_bad_ui_surface() {
-    let validator = build_report_validator();
-    let missing_screens = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "vectis@1.0.0",
-        "status": "success",
-        "findings": [],
-        "ui-surface": {}
-    });
-    assert!(
-        validator.iter_errors(&missing_screens).next().is_some(),
-        "ui-surface without screens must be rejected"
-    );
-    let stray_key = json!({
-        "version": 1,
-        "slice": "identity-service",
-        "target": "vectis@1.0.0",
-        "status": "success",
-        "findings": [],
-        "ui-surface": { "screens": 1, "stray": true }
-    });
-    assert!(
-        validator.iter_errors(&stray_key).next().is_some(),
-        "ui-surface with a stray key must be rejected"
-    );
-}
+    /// A success report carrying the optional `ui-surface` field validates,
+    /// proving the additive A4 signal resolves against the `uiSurface`
+    /// `$def`.
+    #[test]
+    fn accepts_ui_surface() {
+        let validator = build_report_validator();
+        let instance = json!({
+            "version": 1,
+            "slice": "identity-service",
+            "target": "vectis@1.0.0",
+            "status": "success",
+            "findings": [],
+            "ui-surface": { "screens": 3 }
+        });
+        let errors: Vec<String> =
+            validator.iter_errors(&instance).map(|err| err.to_string()).collect();
+        assert!(errors.is_empty(), "report with ui-surface must validate; errors: {errors:?}");
+    }
 
-/// The build-report failure-with-findings example validates, proving
-/// the relative diagnostic `$ref` accepts a full finding.
-#[test]
-fn build_report_failure_with_findings() {
-    let validator = build_report_validator();
-    let instance = json!({
-        "version": 1,
-        "slice": "identity-contracts",
-        "target": "contracts@1.0.0",
-        "status": "failure",
-        "findings": [{
-            "id": "DIAG-0001",
-            "rule-id": "contract.id-unique",
-            "title": "Duplicate info.x-specify-id across baseline",
-            "severity": "critical",
-            "source": "tool",
-            "kind": "violation",
-            "target-adapter": "contracts",
+    /// `ui-surface.screens` is required and must be a non-negative integer;
+    /// a stray sibling key is rejected by `additionalProperties: false`.
+    #[test]
+    fn rejects_bad_ui_surface() {
+        let validator = build_report_validator();
+        let missing_screens = json!({
+            "version": 1,
+            "slice": "identity-service",
+            "target": "vectis@1.0.0",
+            "status": "success",
+            "findings": [],
+            "ui-surface": {}
+        });
+        assert!(
+            validator.iter_errors(&missing_screens).next().is_some(),
+            "ui-surface without screens must be rejected"
+        );
+        let stray_key = json!({
+            "version": 1,
+            "slice": "identity-service",
+            "target": "vectis@1.0.0",
+            "status": "success",
+            "findings": [],
+            "ui-surface": { "screens": 1, "stray": true }
+        });
+        assert!(
+            validator.iter_errors(&stray_key).next().is_some(),
+            "ui-surface with a stray key must be rejected"
+        );
+    }
+
+    /// The build-report failure-with-findings example validates, proving
+    /// the relative diagnostic `$ref` accepts a full finding.
+    #[test]
+    fn failure_with_findings() {
+        let validator = build_report_validator();
+        let instance = json!({
+            "version": 1,
             "slice": "identity-contracts",
-            "artifact": "contracts",
-            "location": {
-                "path": "contracts/http/user-api.yaml"
-            },
-            "evidence": {
-                "kind": "structured",
-                "summary": "x-specify-id user-api collides with legacy-api.yaml",
-                "data": {
-                    "detail": "info.x-specify-id user-api also present on contracts/http/legacy-api.yaml"
-                }
-            },
-            "impact": "Downstream consumers cannot resolve a unique contract id.",
-            "remediation": "Rename or remove the duplicate id before merge.",
-            "fingerprint": "sha256:a2e95674f838eb042eba78e16239f32199def3ca976e29499f8275beb30225e4"
-        }]
-    });
-    let errors: Vec<String> = validator.iter_errors(&instance).map(|err| err.to_string()).collect();
-    assert!(errors.is_empty(), "failure-with-findings report must validate; errors: {errors:?}");
+            "target": "contracts@1.0.0",
+            "status": "failure",
+            "findings": [{
+                "id": "DIAG-0001",
+                "rule-id": "contract.id-unique",
+                "title": "Duplicate info.x-specify-id across baseline",
+                "severity": "critical",
+                "source": "tool",
+                "kind": "violation",
+                "target-adapter": "contracts",
+                "slice": "identity-contracts",
+                "artifact": "contracts",
+                "location": {
+                    "path": "contracts/http/user-api.yaml"
+                },
+                "evidence": {
+                    "kind": "structured",
+                    "summary": "x-specify-id user-api collides with legacy-api.yaml",
+                    "data": {
+                        "detail": "info.x-specify-id user-api also present on contracts/http/legacy-api.yaml"
+                    }
+                },
+                "impact": "Downstream consumers cannot resolve a unique contract id.",
+                "remediation": "Rename or remove the duplicate id before merge.",
+                "fingerprint": "sha256:a2e95674f838eb042eba78e16239f32199def3ca976e29499f8275beb30225e4"
+            }]
+        });
+        let errors: Vec<String> =
+            validator.iter_errors(&instance).map(|err| err.to_string()).collect();
+        assert!(
+            errors.is_empty(),
+            "failure-with-findings report must validate; errors: {errors:?}"
+        );
+    }
 }
 
 /// The `FIND-0001` example for structured lint findings validates

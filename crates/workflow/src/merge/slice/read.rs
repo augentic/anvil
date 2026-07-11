@@ -225,10 +225,10 @@ fn merge_composition_delta(
 ///   when an unauthorised whole-document replacement is detected.
 /// - [`Error::Diag { code: "composition-delta-malformed" }`] when the
 ///   slice composition does not parse (propagated from
-///   [`crate::merge::composition::is_whole_document_replacement`]).
+///   [`crate::merge::composition::is_full_replacement`]).
 /// - [`Error::Filesystem`] (`op = "read"`) when the slice composition or
 ///   baseline file cannot be read.
-pub(super) fn composition_overwrite_gate(
+pub(super) fn overwrite_gate(
     slice_dir: &Path, class: &ArtifactClass, allow_replace: bool,
 ) -> Result<(), Error> {
     if allow_replace {
@@ -237,7 +237,7 @@ pub(super) fn composition_overwrite_gate(
     let Some(slice_text) = read_optional_file(&slice_dir.join(COMPOSITION_FILENAME))? else {
         return Ok(());
     };
-    if !crate::merge::composition::is_whole_document_replacement(&slice_text)? {
+    if !crate::merge::composition::is_full_replacement(&slice_text)? {
         return Ok(());
     }
     let Some(baseline_text) = read_optional_file(&class.baseline_dir.join(COMPOSITION_FILENAME))?

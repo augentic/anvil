@@ -153,7 +153,7 @@ pub(crate) fn resolve_version() -> String {
 }
 
 pub(crate) fn upsert_gitignore(project_dir: &Path) -> Result<(), Error> {
-    crate::registry::ensure_gitignore_entries(project_dir)
+    crate::registry::ensure_gitignore(project_dir)
 }
 
 /// Filename of the project-local wasm-pkg config inside `.specify/`.

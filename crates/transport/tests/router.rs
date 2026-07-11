@@ -74,7 +74,7 @@ fn command_router(
 }
 
 #[test]
-fn inventories_match_with_transport_allowlist() {
+fn http_parity() {
     let command = command_router(".");
     let command_types: BTreeSet<TypeId> = command
         .inventory()
@@ -110,7 +110,7 @@ fn inventories_match_with_transport_allowlist() {
 }
 
 #[tokio::test]
-async fn grammar_preserves_globals_aliases_and_completions() {
+async fn globals_and_completions() {
     let router = command_router(".");
 
     let help = router.execute(["specify", "slice", "merge", "run", "--help"]).await;
@@ -130,7 +130,7 @@ async fn grammar_preserves_globals_aliases_and_completions() {
 }
 
 #[tokio::test]
-async fn help_preserves_detailed_routes_and_namespaces() {
+async fn detailed_help() {
     let router = command_router(".");
 
     let route = router.execute(["specify", "plan", "status", "--help"]).await;
@@ -166,7 +166,7 @@ async fn help_preserves_detailed_routes_and_namespaces() {
 }
 
 #[tokio::test]
-async fn argv_zero_is_replaced_and_standard_name_is_accepted() {
+async fn argv_zero_replaced() {
     let router = command_router(".");
     let expected = router.execute(["specify", "plan", "transition"]).await;
     let forwarded = router.execute(["specify:core@0.1.0", "plan", "transition"]).await;

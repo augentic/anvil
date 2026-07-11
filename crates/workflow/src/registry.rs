@@ -9,5 +9,5 @@ mod validate;
 pub(crate) mod workspace;
 
 pub use catalog::{ContractRoles, GreenfieldSeed, Registry, RegistryProject};
-pub(crate) use gitignore::ensure_gitignore_entries;
+pub(crate) use gitignore::ensure_gitignore;
 pub(crate) use topology::{TopologyLock, TopologyProject, cache_staleness};

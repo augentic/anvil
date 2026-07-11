@@ -19,10 +19,10 @@ mod write;
 
 use parse::system_time_to_utc;
 use read::{
-    COMPOSITION_FILENAME, check_opaque_drift, composition_overwrite_gate, first_three_way,
-    plan_three_way, preview_opaque,
+    COMPOSITION_FILENAME, check_opaque_drift, first_three_way, overwrite_gate, plan_three_way,
+    preview_opaque,
 };
-use write::{build_merge_summary, commit_opaque, write_three_way_baselines};
+use write::{build_merge_summary, commit_opaque, write_baselines};
 
 /// One 3-way merged spec entry kept in memory by both
 /// [`preview`] and [`commit`].
@@ -217,7 +217,7 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 ///
 /// `allow_composition_replace` authorises a whole-document (`screens:`)
 /// slice composition to overwrite a non-empty baseline. It threads no
-/// further than this function: the A3 `composition_overwrite_gate`
+/// further than this function: the A3 `overwrite_gate`
 /// precondition reads it directly, and it never reaches the pure merge
 /// kernel (composition overwrite-gate placement).
 ///
@@ -257,7 +257,7 @@ pub fn commit(
     // `Built` gate. Threads the override exactly this far — it never
     // reaches `plan_three_way` or the pure composition kernel.
     if let Some(class) = first_three_way(classes) {
-        composition_overwrite_gate(slice_dir, class, allow_composition_replace)?;
+        overwrite_gate(slice_dir, class, allow_composition_replace)?;
     }
 
     let merged = plan_three_way(slice_dir, classes)?;
@@ -271,7 +271,7 @@ pub fn commit(
     // double-promoting.
     let decisions = promote_decisions(slice_dir, archive_dir, now)?;
 
-    write_three_way_baselines(&merged)?;
+    write_baselines(&merged)?;
     let opaque_counts = commit_opaque(classes)?;
 
     metadata.status = metadata.status.transition(LifecycleStatus::Merged)?;

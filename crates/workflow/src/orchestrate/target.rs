@@ -10,7 +10,7 @@ use super::{seam_failure, target_adapter_id};
 use crate::adapter::{AdapterRef, TargetAdapter};
 use crate::config::Layout;
 use crate::journal::{self, EventKind};
-use crate::schema_gate::{validate_build_report_json, validate_build_request_json};
+use crate::schema_gate::{validate_report, validate_request};
 use crate::seam::{Input, TargetSeam, WorkingTree};
 use crate::slice::{
     BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
@@ -82,7 +82,7 @@ pub async fn build(
         ));
     }
 
-    let request = assemble_and_write_request(layout, slice, &slice_dir, &adapter.inputs)?;
+    let request = write_request(layout, slice, &slice_dir, &adapter.inputs)?;
 
     journal::emit_best_effort(
         layout,
@@ -135,7 +135,7 @@ async fn dispatch_and_finalize(
     // the on-disk `build/report.yaml` matches what the tail validated
     // (parity with the native finalize reading the agent's file).
     let yaml = crate::fs::yaml(&report)?;
-    validate_build_report_json(&yaml)?;
+    validate_report(&yaml)?;
     bytes_write(&slice_dir.join("build").join("report.yaml"), yaml.as_bytes())?;
 
     if report.slice != slice {
@@ -173,13 +173,13 @@ async fn dispatch_and_finalize(
 /// the serialised envelope, and persist it atomically to
 /// `.specify/slices/<slice>/build/request.yaml` — the native prepare
 /// leg verbatim, minus the shell hooks.
-fn assemble_and_write_request(
+fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
     manifest_inputs: &[crate::adapter::BuildInputDeclaration],
 ) -> Result<BuildRequest, Error> {
     let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir())?;
     let yaml = crate::fs::yaml(&request)?;
-    validate_build_request_json(&yaml)?;
+    validate_request(&yaml)?;
 
     let build_dir = slice_dir.join("build");
     std::fs::create_dir_all(&build_dir).map_err(Error::Io)?;

@@ -60,7 +60,7 @@ impl<P: Anchor> Operation<P> for Validate {
         let path = Registry::path(&project_dir);
         let registry = Registry::load(&project_dir)?;
         if workspace_mode && let Some(reg) = registry.as_ref() {
-            reg.validate_shape_workspace()?;
+            reg.validate_workspace()?;
         }
         Ok(ValidateBody {
             registry,
@@ -186,13 +186,13 @@ impl<P: Anchor> Operation<P> for Add {
         let added = candidate.clone();
         registry.projects.push(candidate);
 
-        // Surface validate_shape / validate_shape_workspace errors verbatim —
+        // Surface validate_shape / validate_workspace errors verbatim —
         // their diagnostic codes (`description-missing-multi-repo`,
         // `workspace-cannot-be-project`, etc.) are the documented contract.
         // Returning Err here aborts before the atomic write, so the
         // on-disk registry is never left in a shape-invalid state.
         if workspace_mode {
-            registry.validate_shape_workspace()?;
+            registry.validate_workspace()?;
         } else {
             registry.validate_shape()?;
         }
@@ -286,7 +286,7 @@ impl<P: Anchor> Operation<P> for Remove {
             // invariant, so the post-write check should always
             // succeed; we run it anyway to pin the contract.
             if workspace_mode {
-                registry.validate_shape_workspace()?;
+                registry.validate_workspace()?;
             } else {
                 registry.validate_shape()?;
             }
