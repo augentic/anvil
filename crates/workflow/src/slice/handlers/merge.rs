@@ -218,10 +218,7 @@ impl<P: Anchor> Operation<P> for ConflictCheck {
         let classes = artifact_classes(&cx.project_dir, &slice_dir);
         let conflicts = conflict_check(&slice_dir, &classes)?;
 
-        Ok(ConflictCheckBody {
-            slice_dir,
-            conflicts,
-        })
+        Ok(ConflictCheckBody { slice_dir, conflicts })
     }
 }
 

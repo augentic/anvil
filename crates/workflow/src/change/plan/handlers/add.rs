@@ -9,9 +9,9 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::change::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
+use crate::change::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
 use crate::change::{
     Entry, Plan, SliceAuthorityOverride, Status, emit_authority_override_seed_events, entry_mut,
 };

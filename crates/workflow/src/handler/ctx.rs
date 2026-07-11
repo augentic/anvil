@@ -35,10 +35,7 @@ impl Ctx {
         let project_dir =
             ProjectConfig::find_root(anchor.project_root()).ok_or(Error::NotInitialized)?;
         let config = ProjectConfig::load(&project_dir)?;
-        Ok(Self {
-            project_dir,
-            config,
-        })
+        Ok(Self { project_dir, config })
     }
 
     /// Resolve this project's target adapter into a

@@ -44,7 +44,11 @@ fn load_validated<T: serde::de::DeserializeOwned>(
     let content = crate::fs::read_text(&path)?;
     gate(&content, &path)?;
     let value: T = serde_saphyr::from_str(&content).map_err(|err| {
-        Error::validation_failed(code, rule, format!("{}: deserialise failed: {err}", path.display()))
+        Error::validation_failed(
+            code,
+            rule,
+            format!("{}: deserialise failed: {err}", path.display()),
+        )
     })?;
     Ok(Some(value))
 }
@@ -249,4 +253,3 @@ impl Parts {
         self.parts.get(slug).and_then(|part| part.description.as_deref())
     }
 }
-

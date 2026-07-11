@@ -62,8 +62,7 @@ async fn repeated_approve_is_a_true_noop() {
 
     // Second stamp: idempotent no-op — success envelope, no disk
     // write, no journal event.
-    let body =
-        run::<Transition, _>(&project, approve_input()).await.expect("re-stamp is a no-op");
+    let body = run::<Transition, _>(&project, approve_input()).await.expect("re-stamp is a no-op");
     assert_eq!(body.previous, "approved");
     assert_eq!(body.current, "approved");
 

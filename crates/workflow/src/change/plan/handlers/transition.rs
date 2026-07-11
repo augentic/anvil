@@ -139,8 +139,7 @@ fn dispatch_undo(
 }
 
 fn dispatch_transition(
-    plan: &mut Plan, plan_path: &std::path::Path, name: &str, target: &str,
-    actor: journal::Actor,
+    plan: &mut Plan, plan_path: &std::path::Path, name: &str, target: &str, actor: journal::Actor,
 ) -> Result<Mutation<(TransitionBody, Option<EventKind>)>> {
     if name == plan.name.as_str() {
         // Plan-level transition: only `approved` is legal.

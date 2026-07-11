@@ -8,8 +8,8 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use crate::change::plan::wire::{SourceAssign, source_map};
 use crate::adapter::Resolver;
+use crate::change::plan::wire::{SourceAssign, source_map};
 use crate::handler::{Anchor, Ctx, Render};
 use crate::orchestrate;
 use crate::seam::SourceSeam;

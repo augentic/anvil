@@ -642,8 +642,9 @@ where
 fn invalid_proposal_response(slice: &str, domain: &str, claim_id: &str, req_id: &str) -> String {
     let good = synthesis_response(slice, domain, claim_id, req_id);
     let mut value: Value = serde_json::from_str(&good).expect("response parses");
-    value["artifacts"]["proposal"] =
-        json!(format!("# {slice}\n\n## Why\n\nThe operator asked for it.\n\n## Non-goals\n\n- Nothing else.\n"));
+    value["artifacts"]["proposal"] = json!(format!(
+        "# {slice}\n\n## Why\n\nThe operator asked for it.\n\n## Non-goals\n\n- Nothing else.\n"
+    ));
     serde_json::to_string(&value).expect("response serialises")
 }
 

@@ -257,11 +257,7 @@ pub(super) fn composition_overwrite_gate(
 }
 
 fn read_optional_file(path: &Path) -> Result<Option<String>, Error> {
-    if path.is_file() {
-        crate::fs::read_text(path).map(Some)
-    } else {
-        Ok(None)
-    }
+    if path.is_file() { crate::fs::read_text(path).map(Some) } else { Ok(None) }
 }
 
 fn count_requirement_headings(text: &str) -> usize {

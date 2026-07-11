@@ -25,11 +25,11 @@ pub mod metadata;
 pub(crate) mod operation;
 pub mod resolver;
 
+pub(crate) use core::PlatformsSurface;
 pub use core::{
     AdapterRef, Axis, BuildInputDeclaration, Origin, PlatformsCapability, PlatformsViolation,
     ResolvedSource, ResolvedTarget, SourceAdapter, TargetAdapter, dev_version,
 };
-pub(crate) use core::PlatformsSurface;
 
 pub use operation::{SourceOperation, TargetOperation};
 pub use resolver::{

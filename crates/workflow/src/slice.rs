@@ -37,4 +37,3 @@ pub use synthesis::wire::{
     BaselineDomainDetail, SynthesisArtifacts, SynthesisInputs, SynthesisResponse,
     SynthesisSourceInput, SynthesisSpec, build_synthesis_inputs,
 };
-

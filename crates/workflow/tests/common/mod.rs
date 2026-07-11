@@ -287,11 +287,13 @@ impl Project {
 }
 
 /// Invoke one operation against the project anchor.
-pub async fn run<R, B>(
-    project: &Project, input: R::Input,
-) -> Result<B, workflow::handler::Error>
+pub async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, workflow::handler::Error>
 where
-    R: omnia_guest::api::operation::Operation<Project, Output = B, Error = workflow::handler::Error>,
+    R: omnia_guest::api::operation::Operation<
+            Project,
+            Output = B,
+            Error = workflow::handler::Error,
+        >,
     B: Send,
 {
     omnia_guest::api::invoke::Invoker::new("specify", project.clone())

@@ -209,8 +209,9 @@ pub(crate) fn validate_platforms(
         return Ok(platforms);
     };
 
-    cap.check(&platforms)
-        .map_err(|violation| violation.into_error(PlatformsSurface::Init { target: target_name }))?;
+    cap.check(&platforms).map_err(|violation| {
+        violation.into_error(PlatformsSurface::Init { target: target_name })
+    })?;
 
     Ok(platforms)
 }

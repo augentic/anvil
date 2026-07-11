@@ -58,20 +58,14 @@ pub struct Mutation<B> {
 impl<B> Mutation<B> {
     /// The state was mutated; [`with_state`] persists it.
     pub const fn changed(body: B) -> Self {
-        Self {
-            body,
-            changed: true,
-        }
+        Self { body, changed: true }
     }
 
     /// The state was left untouched; [`with_state`] skips the write —
     /// an idempotent no-op leaves neither a disk write nor an mtime
     /// bump behind.
     pub const fn unchanged(body: B) -> Self {
-        Self {
-            body,
-            changed: false,
-        }
+        Self { body, changed: false }
     }
 }
 
