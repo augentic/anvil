@@ -207,9 +207,9 @@ mod scaffold {
         let project = Project::bare();
 
         // Stage a fake `demo` component at the resolver's in-repo dev
-        // probe path with a digest-valid describe sidecar beside it:
+        // probe path with a digest-valid metadata sidecar beside it:
         // the resolver probes file presence and the sidecar supplies
-        // the metadata, so no describe dispatch runs.
+        // the answer, so no metadata dispatch runs.
         let dev_dir = project.root.join("target/wasm32-wasip2/release");
         fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
         let component = dev_dir.join("demo.wasm");
@@ -219,7 +219,7 @@ mod scaffold {
             dev_dir.join("demo.wasm.metadata.json"),
             format!("{{ \"digest\": \"{digest}\", \"metadata\": {{}} }}"),
         )
-        .expect("stage describe sidecar");
+        .expect("stage metadata sidecar");
 
         let body = run::<workflow::init::handlers::Scaffold, _>(
             &project,

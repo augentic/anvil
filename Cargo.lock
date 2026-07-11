@@ -6256,7 +6256,6 @@ dependencies = [
  "jiff",
  "omnia-guest",
  "petgraph",
- "proptest",
  "regex",
  "schema",
  "semver",

@@ -498,4 +498,18 @@ pub(super) fn check_requires_specify(
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unparseable_current_version_is_permissive() {
+        let origin = Origin {
+            label: "store".to_string(),
+            reference: "/store/demo@1.0.0.wasm".to_string(),
+        };
+        let floor = semver::Version::new(2, 0, 0);
+
+        check_requires_specify(Some(&floor), "not-a-version", "demo-target", &origin)
+            .expect("an unparseable running version must not brick resolution");
+    }
+}

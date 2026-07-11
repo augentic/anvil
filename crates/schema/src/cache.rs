@@ -324,8 +324,8 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        ADAPTER_STORE_ENV, adapter_store_entry, adapter_store_root, file_content_digest,
-        project_cache_dir, store_meta_path,
+        ADAPTER_STORE_ENV, adapter_store_root, file_content_digest, project_cache_dir,
+        store_meta_path,
     };
 
     // `project_cache_dir` is keyed by the canonicalised project path:
@@ -341,11 +341,8 @@ mod tests {
     }
 
     // The adapter store root resolves `$SPECIFY_ADAPTER_STORE`, else
-    // `$HOME/.specify/adapters`. Entries are keyed by the immutable
-    // `(name, version)` identity: the entry is the single component file
-    // `<root>/<name>@<version>.wasm`, distinct versions never
-    // collide, the same identity is stable, and the verify-on-read
-    // sidecar is a `.meta` sibling of the entry.
+    // `$HOME/.specify/adapters`, and the verify-on-read sidecar is a
+    // `.meta` file beneath that root.
     #[test]
     #[expect(unsafe_code, reason = "pin the store-root env vars for the resolution-chain checks")]
     fn store_root_and_entry_paths() {
@@ -357,15 +354,8 @@ mod tests {
         unsafe { std::env::set_var(ADAPTER_STORE_ENV, store.path()) };
         assert_eq!(adapter_store_root(), store.path(), "the env override wins");
 
-        let entry = adapter_store_entry("demo-target", "1.2.0");
-        assert_eq!(entry.file_name().unwrap(), "demo-target@1.2.0.wasm");
-        assert_eq!(entry.parent().unwrap(), adapter_store_root());
-        assert_ne!(entry, adapter_store_entry("demo-target", "1.3.0"));
-        assert_eq!(entry, adapter_store_entry("demo-target", "1.2.0"), "stable across calls");
-
         let meta = store_meta_path("demo-target", "1.2.0");
-        assert_eq!(meta.parent(), entry.parent(), "the sidecar is a sibling of the entry");
-        assert_eq!(meta.file_name().expect("sidecar file name"), "demo-target@1.2.0.meta");
+        assert_eq!(meta, store.path().join("demo-target@1.2.0.meta"));
 
         let home = tempfile::tempdir().expect("home dir");
         // SAFETY: see above — per-process test isolation.

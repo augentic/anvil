@@ -356,4 +356,36 @@ fn at_ref_suffix(value: &str) -> Option<&str> {
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    use super::parse_first_party_shorthand;
+
+    #[test]
+    fn first_party_shorthand() {
+        assert_eq!(parse_first_party_shorthand("demo-target"), Some(("demo-target", None)));
+        assert_eq!(
+            parse_first_party_shorthand("demo-target@1.0.0"),
+            Some(("demo-target", Some(semver::Version::new(1, 0, 0))))
+        );
+        assert_eq!(parse_first_party_shorthand("demo-source"), Some(("demo-source", None)));
+        assert_eq!(
+            parse_first_party_shorthand("demo-source@2.3.1"),
+            Some(("demo-source", Some(semver::Version::new(2, 3, 1))))
+        );
+
+        for invalid in [
+            "./demo-target",
+            "/abs/demo-target",
+            "file:///abs/demo-target",
+            "https://github.com/augentic/specify/adapters/targets/demo-target",
+            "Demo-target",
+            "-demo-target",
+            "demo-target@v1",
+            "demo-target@1",
+            "demo-target@latest",
+            "demo-target@",
+            "",
+        ] {
+            assert_eq!(parse_first_party_shorthand(invalid), None, "{invalid}");
+        }
+    }
+}

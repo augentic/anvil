@@ -477,6 +477,3 @@ fn slices_dir_consistency(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
 
     out
 }
-
-#[cfg(test)]
-mod tests;

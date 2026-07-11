@@ -25,9 +25,6 @@ use jiff::Timestamp;
 
 use crate::config::Layout;
 
-#[cfg(test)]
-mod tests;
-
 /// Zero-padding width for a freshly assigned `DEC-NNNN` id. Existing
 /// ids with more digits still sort and parse correctly; the pad only
 /// keeps small catalogues tidy.

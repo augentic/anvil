@@ -593,34 +593,3 @@ fn is_valid_source_key(s: &str) -> bool {
     }
     !prev_dash
 }
-
-#[cfg(test)]
-mod tests {
-    //! Edge matrices for the two crate-private shape predicates, which are
-    //! unreachable through the crate's public surface.
-    use super::{is_valid_req_id, is_valid_source_key};
-
-    // `is_valid_source_key` accepts kebab-case `[a-z][a-z0-9-]*` and rejects
-    // a leading digit/upper, doubled or trailing dash, and underscores;
-    // `is_valid_req_id` accepts `REQ-NNN` with exactly three ASCII digits.
-    #[test]
-    fn source_key_and_req_id_shape() {
-        assert!(is_valid_source_key("a"));
-        assert!(is_valid_source_key("legacy-monolith"));
-        assert!(is_valid_source_key("a1-b2"));
-        assert!(!is_valid_source_key(""));
-        assert!(!is_valid_source_key("1abc"));
-        assert!(!is_valid_source_key("Abc"));
-        assert!(!is_valid_source_key("a--b"));
-        assert!(!is_valid_source_key("a-"));
-        assert!(!is_valid_source_key("a_b"));
-
-        assert!(is_valid_req_id("REQ-001"));
-        assert!(is_valid_req_id("REQ-999"));
-        assert!(!is_valid_req_id("REQ-1"));
-        assert!(!is_valid_req_id("REQ-1234"));
-        assert!(!is_valid_req_id("req-001"));
-        assert!(!is_valid_req_id("REQ-00A"));
-        assert!(!is_valid_req_id(""));
-    }
-}

@@ -6,11 +6,17 @@ use schema::diagnostics::{
     Confidence, DiagnosticKind, FindingEvidence, FindingLocation, Severity, canonical_json,
     fingerprint, verify_fingerprint,
 };
+use schema::digest::sha256_hex;
 use serde_json::json;
 
 use crate::diagnostics_support::sample_diagnostic;
 
 mod diagnostics_support;
+
+#[test]
+fn empty_digest_kat() {
+    assert_eq!(sha256_hex(b""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
 
 #[test]
 fn fp_is_deterministic() {

@@ -214,9 +214,8 @@ pub fn resolver() -> workflow::adapter::resolver::Component {
 
 /// Stage a stub adapter component for `name` at the resolver's in-repo
 /// development probe (`<root>/target/wasm32-wasip2/release/
-/// <name>.wasm`) and register the JSON-body describe stub, so a
-/// bare-name resolve inside `root` succeeds with an empty
-/// `Metadata`.
+/// <name>.wasm`), so a bare-name resolve inside `root` can dispatch
+/// the test metadata runner.
 pub fn stage_dev_component(root: &std::path::Path, name: &str) {
     let dev_dir = root.join("target/wasm32-wasip2/release");
     std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
@@ -303,6 +302,14 @@ where
     omnia_guest::api::invoke::Invoker::new("specify", project.clone())
         .invoke::<R>(omnia_guest::api::invocation::Invocation::new(input))
         .await
+}
+
+/// Rule ids carried by a failing validate operation's report.
+pub fn report_rule_ids(err: &workflow::handler::Error) -> Vec<String> {
+    let workflow::handler::Error::Report { body, .. } = err else {
+        panic!("expected report error, got {err:?}");
+    };
+    body.report().findings.iter().filter_map(|finding| finding.rule_id.clone()).collect()
 }
 
 // ---------------------------------------------------------------------------
