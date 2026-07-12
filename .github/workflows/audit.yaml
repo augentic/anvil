@@ -1,8 +1,6 @@
 name: Audit
 
-# Daily advisory-DB audit of the Rust workspace under engine/. Self-contained
-# (the repo has no root Cargo.toml), replacing the org reusable caller that
-# assumed a workspace at the repo root.
+# Daily advisory-DB audit of the Rust workspace at the repo root.
 
 on:
   schedule:
@@ -30,5 +28,4 @@ jobs:
           tool: cargo-audit
 
       - name: Audit dependencies
-        working-directory: engine
         run: cargo audit

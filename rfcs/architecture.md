@@ -24,8 +24,6 @@ This approach provides three major benefits:
 
 ## The shape of the system
 
-The shape of the system
-
 The system is two roles communicating over one contract: a generic runtime and the guests that run on it.
 
 - **Omnia is the foundation**: a command-line executable that instantiates a guest and satisfies its typed effect imports from the backends bound for this deployment. It knows nothing about adapters, workflows, or models.
@@ -76,14 +74,14 @@ Behind the host sits a **swappable model backend**. The backend runs an LLM tool
 
 ### Resolving references — the host calls back into a guest
 
-A brief points at internal references (e.g. `../references/business-logic.md`). The model emits a `resolve` tool call for each; the backend follows it by selecting the relevant **adapter guest**, instantiating it, and calling its exported reference shelf:
+A brief points at internal references (e.g. `../references/business-logic.md`). The model emits a `resolve` tool call for each; the backend follows it by selecting the relevant **adapter guest**, instantiating it, and calling its exported references:
 
 ```wit
-// adapter reference shelf — the model backend calls this back into the guest
+// adapter references — the model backend calls this back into the guest
 resolve: func(id: adapter-id, reference: reference) -> result<list<u8>, error>;
 ```
 
-Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The shelf is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime core stays free of any reference-injection machinery.
+Because recursively re-entering a live instance would trap, this resolution lands in a **fresh adapter instance** every time — isolated from whatever guest called `eval`. The adapter's prose (briefs and references) is **embedded in its module at build time**, so `resolve` is an in-module lookup, not a host filesystem read. The references server is the adapter's, not the runtime's: a *computed* reference is served by a fresh instance, and the runtime core stays free of any reference-injection machinery.
 
 Logical sequence: extract
 
@@ -104,13 +102,13 @@ Record/replay is a property of the backend boundary: a recording backend logs re
 
 A single operation spans several guests: the workflow guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
 
-- **How it works**: the caller imports the per-axis host interfaces (`source` / `target`) and names a plan-bound `adapter-id` as the first argument of each call (`build(id, …)`, `survey(id)`, …) — the very interfaces the adapters export, so there is no separate dispatch facade to keep in sync. The Omnia host intercepts these imports through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's matching export (`augentic:specify/source` / `target`) over the bound transport.
+- **How it works**: the caller imports the per-axis host interfaces (`source` / `target`) and names a plan-bound `adapter-id` as the first argument of each call (`build(id, …)`, `survey(id)`, …) — the very interfaces the adapters export, so there is no separate dispatch facade to keep in sync. The Omnia host intercepts these imports through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's matching export (`specify:adapter/source` / `target`) over the bound transport.
 - **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, carries the typed WIT records to it over wRPC, invokes the exported function, and returns the typed result.
 - **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so a dispatched call cannot recursively re-enter its caller. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
 
 Because the interfaces (`target` / `source` / `references`) are statically known and only the adapter *instances* are dynamic, the host serves them with `wit-bindgen-wrpc`**-generated typed bindings** rather than wRPC's dynamic value-introspection path; the dynamic path remains available if an interface is ever unknown at host-compile time.
 
-The seam is a contract, not a wire protocol: every selected call rides [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend that encodes the typed records (and their async `stream` / `future` values) — over whatever transport the deployment binds: an in-process or Unix-domain-socket transport on a single node, NATS or QUIC across a cluster. Moving from desktop to cloud is therefore a transport swap, not a code change. Plain records (`revision`, `changeset`, `input`, `report`, `lead`, `evidence`) cross by value; a live resource such as the [working tree](#the-working-tree)'s `descriptor` never crosses, so `build` / `merge` always ship the content-addressed `revision` / `changeset` and the serving node re-materializes its own tree ([RFC-55](future/rfc-55-working-tree.md)) — uniformly, local or remote. wRPC stays behind the backend boundary — pinned and swappable, never in the `augentic:specify` contract — so the guest's view stays purely typed and the seam keeps a native in-process fast-path available if it is ever needed.
+The seam is a contract, not a wire protocol: every selected call rides [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend that encodes the typed records (and their async `stream` / `future` values) — over whatever transport the deployment binds: an in-process or Unix-domain-socket transport on a single node, NATS or QUIC across a cluster. Moving from desktop to cloud is therefore a transport swap, not a code change. Plain records (`revision`, `changeset`, `input`, `report`, `lead`, `evidence`) cross by value; a live resource such as the [working tree](#the-working-tree)'s `descriptor` never crosses, so `build` / `merge` always ship the content-addressed `revision` / `changeset` and the serving node re-materializes its own tree ([RFC-55](future/rfc-55-working-tree.md)) — uniformly, local or remote. wRPC stays behind the backend boundary — pinned and swappable, never in the `specify:adapter` contract — so the guest's view stays purely typed and the seam keeps a native in-process fast-path available if it is ever needed.
 
 ### Many guests, selected by identity
 
@@ -118,10 +116,11 @@ The binary holds every guest on **one runtime** and picks among them in native c
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
-  "workflow"             -> InstancePre     (embedded in the binary via include_bytes!)
-  "source:typescript"    -> InstancePre   ┐  resolved by digest from an OCI store into a
-  "source:documentation" -> InstancePre   │  local cache — only the identities a plan
-  "target:omnia"         -> InstancePre   ┘  binds are instantiated
+  "workflow"             -> InstancePre     (the core guest, resolved from the global store
+                                             by the binary's own version: specify:core@<version>)
+  "source:typescript"    -> InstancePre   ┐  hydrated into the global single-file store
+  "source:documentation" -> InstancePre   │  ($HOME/.specify/adapters) — only the identities
+  "target:omnia"         -> InstancePre   ┘  the generated deployment manifest names are loaded
 ```
 
 Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
@@ -143,12 +142,12 @@ A `build` flows like this:
 1. The workflow guest resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
 2. It runs any deterministic setup (a `tool` adapter export, reached by host-mediated dynamic linking).
 3. For the judgment leg it calls `wasi-model.eval` with the `build` brief.
-4. The model backend drives the model. `resolve` follows the brief's reference shelf (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
+4. The model backend drives the model. `resolve` follows the brief's references (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
 5. When the brief calls for it the model emits `verify(<check>)`; the backend runs that vetted, sandboxed profile and feeds the severity-tiered `report` back; the model repairs and re-verifies.
 6. `eval` returns the validated, typed answer to the guest.
 7. The report carries only judgment (status and findings); the host extracts the resulting mutations as a content-addressed `change-set` (a `git diff` against the base revision), and the guest requests the lifecycle `transition` effect.
 
-In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the shelf, and what crosses out is a typed report plus a content-addressed change-set.
+In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the references server, and what crosses out is a typed report plus a content-addressed change-set.
 
 ## The working tree
 
@@ -195,14 +194,20 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 ## CLI bootstrapping
 
-Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The runtime acquires its guests two ways:
+Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `specify` binary is two strictly separated layers:
 
-- **Embedded core**: first-party guests (the workflow) compile into the binary via `include_bytes!`, ensuring offline startup and zero version skew.
-- **Config-driven resolution**: adapters and third-party guests resolve dynamically via digest-pinned references from an OCI store into a local cache.
+- **A narrow initialization surface** carrying project scaffolding through `init`; removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders. Other argv forwards **unparsed** to the core guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
+- **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime (`omnia::runtime!`), mounted **in-process** via the macro's public `drive` beside its `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the generated deployment manifest.
 
-## The incremental path
+The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/adapters` (relocatable via `$SPECIFY_ADAPTER_STORE`):
 
-The migration is sequenced by [RFC-61](rfc-61-omnia-migration.md): the runtime binary and a walking skeleton, one real adapter guest (contracts) as the pattern-setter, the remaining adapters, the workflow guest, and finally the retirement of the bespoke host — coexisting in place with the native CLI over the same `.specify/` state until the last cutover. The original S1–S4 staging (RFC-51–60) predates the Omnia refactoring; the Omnia runtime, the `wasi-model` host (`create`), and the cursor / genai / replay model backends landed in a changed shape, so those RFCs have been removed from the tree (recoverable from git history). [RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) remain deferred, not superseded.
+- **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command or workflow module advertised by the CLI.
+- **Core versioned by the binary**: the workflow (core) guest resolves as `specify:core@<the binary's own version>` from the same store — the binary version *is* the core version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_CORE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves core-guest iteration; it is a development affordance, never a release mode.
+- **Generated deployment manifest**: provisioning renders the manifest into the per-project derived cache from the resolved store entries — one `[[guest]]` per component, the writable `"."` project mount, per-adapter MCP routes, and the core's link allow-list. It is derived, never committed, never hand-edited; the host layer reads nothing else.
+
+## Deferred relatives
+
+[RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) are deferred, not superseded.
 
 ## Key trade-offs
 

@@ -1,13 +1,21 @@
-/// The `augentic:specify` adapter contract, revised per RFC-61.
+/// The `specify:adapter` adapter contract, revised per RFC-61.
 ///
 /// Adapter guests export exactly one axis interface (`source` xor `target`)
 /// plus `wasi:http/incoming-handler`, which serves the adapter's compiled-in
-/// reference shelf over MCP; there is no typed `references` interface — the
+/// references over MCP; there is no typed `references` interface — the
 /// spawned agent fetches documents lazily through the HTTP export. Judgment
 /// is an Omnia host effect, not part of this package: each judgment operation
 /// issues `omnia:model/completion.create` from inside the adapter guest, with
 /// `format: schema(...)` so the host gate validates the answer before the
 /// guest deserializes it into the records below.
+///
+/// The answer schemas are not hand-written: they derive from the embedded
+/// canonical schemas (`schemas/discovery/lead.schema.json`,
+/// `schemas/evidence.schema.json`, `schemas/target/build-report.schema.json`)
+/// as the generated documents under `schemas/answers/`, and the records below
+/// mirror what those schemas carry minus call-scoped envelope fields (the
+/// surveyed source, the extracted lead, the built slice and target) that the
+/// caller already knows.
 ///
 /// No resource types cross the guest-to-guest seam: Omnia's host-mediated
 /// dispatch carries plain values only, routed by each call's `adapter-id`
@@ -15,7 +23,7 @@
 /// preopens, so operations name trees by `revision` (plus an optional
 /// subpath) and open their own `"."` preopen rather than receiving a
 /// directory handle.
-package augentic:specify@0.1.0;
+package specify:adapter@0.1.0;
 
 interface types {
   /// The error returned by operations.
@@ -65,29 +73,59 @@ interface types {
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
-/// assembles a prompt from its compiled-in brief, issues `create` with an MCP
+/// assembles a prompt from its compiled-in prompt fragments, issues `create` with an MCP
 /// grant naming its own reference route and a workspace lend of its `"."`
 /// preopen, and deserializes the schema-gated answer into the records below.
 interface source {
   use types.{ adapter-id, error };
 
-  /// The lead returned by the survey operation.
+  /// The lead returned by the survey operation. Mirrors
+  /// `schemas/discovery/lead.schema.json` minus the envelope `source` key:
+  /// the workflow guest attributes every lead a survey produces to the
+  /// surveyed source itself.
   record lead {
-    /// The path to the section in the source that the lead corresponds to.
-    /// Uses the file#line syntax to identify the section.
-    path: string,
+    /// Stable kebab-case lead identifier, unique only within its source;
+    /// identity is the `(source, lead)` pair. Named `lead` to match the
+    /// schema key, so answers deserialize without a rename.
+    lead: string,
     /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
     synopsis: string,
+    /// Agent-authored per-lead topic slugs (kebab-case). Empty means
+    /// unclassified (an answer may omit the key); never blocks
+    /// reconciliation.
+    topics: list<string>,
   }
 
-  /// The weight to assign this evidence during conflict resolution.
-  enum weight {
-    /// Operator directives. Highest weight.
-    directive,
-    /// Written specifications. Medium weight.
-    specification,
-    /// Empirical observations. Lowest weight.
-    observation
+  /// Document-level authority class for an Evidence document, per the
+  /// workflow's closed authority hierarchy (`intent` > `documentation` >
+  /// `behaviour`). Controls who wins a cross-source disagreement.
+  enum authority {
+    /// Operator directives. Highest authority.
+    intent,
+    /// Written specifications and documentation.
+    documentation,
+    /// Empirically observed behaviour. Lowest authority.
+    behaviour
+  }
+
+  /// The closed claim-kind taxonomy from `schemas/evidence.schema.json`.
+  /// New kinds require updating the workflow contract and schemas together.
+  enum claim-kind {
+    intent,
+    requirement,
+    criterion,
+    decision,
+    section,
+    diagram,
+    contract,
+    /// Runtime capture claims emitted by the `captures` source adapter.
+    example,
+    excerpt,
+    %type,
+    call,
+    region,
+    container,
+    leaf
   }
 
   /// The backing data of the claim's evidence.
@@ -100,26 +138,59 @@ interface source {
 
   /// A claim extracted from the source adapter.
   record claim {
+    /// The claim's kind from the closed taxonomy.
+    kind: claim-kind,
+    /// Stable claim identifier (dotted kebab slug, e.g.
+    /// `password-reset.expiry`). Required when `kind` is `requirement`,
+    /// `criterion`, or `example`; optional on other kinds.
+    id: option<string>,
+    /// Per-claim source anchor: `<path>`, `<path>#L<n>`, or
+    /// `<path>#L<start>-L<end>`.
+    path: option<string>,
     /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
     /// Used by the synthesis engine to merge related claims across sources.
-    synopsis: string,
+    /// An open per-kind body field in the schema, so answers may omit it.
+    synopsis: option<string>,
     /// The backing data of the claim's evidence (either a path or a raw payload).
     backing: option<backing>,
   }
 
-  /// The evidence returned by the extract operation.
+  /// The evidence returned by the extract operation. Mirrors
+  /// `schemas/evidence.schema.json` minus the envelope `lead` key: the
+  /// extract call names the lead, so the answer never repeats it.
   record evidence {
-    /// The evidence's weight.
-    weight: weight,
+    /// The document-level authority class of this evidence.
+    authority: authority,
     /// The claims extracted from the source.
     claims: list<claim>,
   }
 
-  /// Lightly survey the source to create a map of its contents (decompose into leads).
-  survey: func(id: adapter-id) -> result<list<lead>, error>;
+  /// The adapter's deterministic metadata (RFC-64) — the facts
+  /// the host consumes before dispatching an operation. Identity lives
+  /// in the wasm-pkg package reference and axis in the exported world,
+  /// so only the compatibility floor remains on the record.
+  record adapter-metadata {
+    /// Optional host-CLI compatibility floor: the exact minimum
+    /// `specify` platform version this adapter needs. The host compares
+    /// it against the running binary at resolve time and aborts when
+    /// the binary is older. Absent means no floor.
+    specify-floor: option<string>,
+  }
+
+  /// Deterministic adapter metadata, read by the host at resolve time
+  /// and cached against the artifact digest. Metadata, not judgment:
+  /// effect-free and answerable from compiled-in constants — no model
+  /// call, no filesystem access.
+  metadata: func(id: adapter-id) -> adapter-metadata;
+
+  /// Lightly survey the source to create a map of its contents (decompose
+  /// into leads). An `async func` like every judgment operation: the guest
+  /// awaits the async `omnia:model/completion.create` import mid-call, and
+  /// a sync-lifted export cannot block on a pending host future.
+  survey: async func(id: adapter-id) -> result<list<lead>, error>;
 
   /// Thoroughly extract evidence from a source for a given lead.
-  extract: func(id: adapter-id, lead: lead) -> result<evidence, error>;
+  extract: async func(id: adapter-id, lead: lead) -> result<evidence, error>;
 }
 
 /// The target adapter contract. `build` and `merge` are judgment legs
@@ -150,43 +221,138 @@ interface target {
     subpath: option<string>,
   }
 
-  /// The severity of a finding.
+  /// The severity of a finding. The closed review severity enum from
+  /// `schemas/diagnostics/diagnostic.schema.json`, ordered for sort
+  /// stability (`critical` < `important` < `suggestion` < `optional`).
   enum severity {
     critical,
     important,
-    suggestion
+    suggestion,
+    optional
   }
 
-  /// A finding from the operation.
+  /// A finding from the operation: the compact projection of one
+  /// diagnostic from the schema-gated answer (whose `findings[]` carry
+  /// the full `schemas/diagnostics/diagnostic.schema.json` shape). The
+  /// guest maps `rule-id` and `severity` through and folds the
+  /// diagnostic's `title` / `impact` / `remediation` prose into
+  /// `detail`; the full diagnostic stays in the answer, not on the seam.
   record finding {
-    /// The finding's rule identifier.
-    rule-id: string,
+    /// The finding's rule identifier. Optional in the diagnostic shape —
+    /// absent for findings that do not cite codex policy.
+    rule-id: option<string>,
     /// The severity of the finding.
     severity: severity,
     /// The detail of the finding.
     detail: string,
   }
 
-  /// The outcome of the operation.
-  enum outcome {
+  /// The status of the operation.
+  enum status {
     success,
     failure,
   }
 
-  /// Judgment returned by the `build` and `merge` operations. The resulting
-  /// state — a build's delta, or the merged baseline — lives in the working
-  /// tree, not in this report.
-  record report {
-    /// The outcome of the operation.
-    outcome: outcome,
-    /// The findings from the operation.
-    findings: list<finding>,
+  /// The closed target platform taxonomy from
+  /// `schemas/target/build-report.schema.json`.
+  enum platform {
+    core,
+    ios,
+    android,
+    web,
+    desktop
   }
+
+  /// One per-platform build output: a relative path (from the project
+  /// root) to a produced artifact. The caller verifies each declared
+  /// path exists and is non-empty.
+  record build-output {
+    /// Platform this output was produced for.
+    platform: platform,
+    /// Relative path (from the project root) to the produced artifact.
+    path: string,
+  }
+
+  /// Per-slice UI-surface signal authored from the build's own screen
+  /// identification judgement. `screens: 0` means no UI surface.
+  record ui-surface {
+    /// Count of screen-bearing requirements this slice introduces or modifies.
+    screens: u32,
+  }
+
+  /// Judgment returned by the `build` and `merge` operations. Mirrors
+  /// `schemas/target/build-report.schema.json` minus the envelope keys
+  /// (`version`, `slice`, `target`) the caller already knows. The
+  /// resulting state — a build's delta, or the merged baseline — lives
+  /// in the working tree, not in this report.
+  record report {
+    /// The status of the operation. Named `status` to match the schema
+    /// key, so answers deserialize without a rename.
+    status: status,
+    /// The findings from the operation. On success, only non-blocking
+    /// findings (or none); partial success is `success` with
+    /// non-blocking findings.
+    findings: list<finding>,
+    /// Per-platform build outputs produced by the operation. Empty when
+    /// the answer omits the key.
+    outputs: list<build-output>,
+    /// Optional per-slice UI-surface signal; absent reports stay valid.
+    ui-surface: option<ui-surface>,
+  }
+
+  /// One adapter-declared build input: a path (relative to the slice
+  /// tree) the `build` operation consumes, flagged `required`.
+  record build-input {
+    /// Slice-tree-relative path of the input.
+    path: string,
+    /// Whether the build must abort when the path is absent.
+    required: bool,
+  }
+
+  /// Declarative platforms capability: when `required` is true,
+  /// projects using this target must declare a non-empty platform set
+  /// at init.
+  record platforms-capability {
+    /// Whether projects must declare a platform set.
+    required: bool,
+    /// The set of platforms this target accepts.
+    allowed: list<platform>,
+    /// The set assumed when the operator accepts the default.
+    default: list<platform>,
+  }
+
+  /// The adapter's deterministic metadata (RFC-64) — the facts
+  /// the host consumes before dispatching an operation. Identity lives
+  /// in the wasm-pkg package reference and axis in the exported world;
+  /// the record carries the compatibility floor plus the target's
+  /// declared build inputs and platform capability.
+  record adapter-metadata {
+    /// Optional host-CLI compatibility floor: the exact minimum
+    /// `specify` platform version this adapter needs. The host compares
+    /// it against the running binary at resolve time and aborts when
+    /// the binary is older. Absent means no floor.
+    specify-floor: option<string>,
+    /// Adapter-declared build inputs, each a slice-tree-relative path
+    /// the `build` operation consumes. Empty when the target declares
+    /// none.
+    inputs: list<build-input>,
+    /// Declarative platforms capability. Absent when the target is
+    /// platform-agnostic.
+    platforms: option<platforms-capability>,
+  }
+
+  /// Deterministic adapter metadata, read by the host at resolve time
+  /// and cached against the artifact digest. Metadata, not judgment:
+  /// effect-free and answerable from compiled-in constants — no model
+  /// call, no filesystem access.
+  metadata: func(id: adapter-id) -> adapter-metadata;
 
   /// Guidance on the expected build artifacts for this target, read by core
   /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary
-  /// called this operation `shape`; `guidance` is canonical.)
-  guidance: func(id: adapter-id) -> result<string, error>;
+  /// called this operation `shape`; `guidance` is canonical.) Deterministic
+  /// today, but an `async func` like the rest of the interface so an
+  /// adapter may consult its model without a contract change.
+  guidance: async func(id: adapter-id) -> result<string, error>;
 
   /// Build a slice against the shared project mount. The adapter opens its
   /// own `"."` preopen, reads existing code through it, and writes its
@@ -194,7 +360,7 @@ interface target {
   /// `create` call, with references served from its MCP export. The report
   /// carries only judgment — the resulting delta lives in the tree, and the
   /// caller extracts it as a `changeset` against `base` where one is needed.
-  build: func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
+  build: async func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
   /// Merge a built slice into the project's baseline. `delta` is the build's
   /// portable delta (theirs) against `delta.base`; the baseline (ours) is
@@ -203,17 +369,17 @@ interface target {
   /// `create`; validators re-run in guest code after the answer lands. The
   /// report carries the merge judgment; the caller commits the merged
   /// baseline.
-  merge: func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
+  merge: async func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
 }
 
 /// A source adapter component: one axis interface plus the MCP reference
-/// shelf served over `wasi:http`.
+/// references served over `wasi:http`.
 world source-adapter {
   export source;
 }
 
 /// A target adapter component: one axis interface plus the MCP reference
-/// shelf served over `wasi:http`.
+/// references served over `wasi:http`.
 world target-adapter {
   export target;
 }

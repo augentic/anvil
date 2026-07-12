@@ -17,7 +17,7 @@ At plan time, bind a code source alongside or instead of documentation:
 
 The source adapter's `survey` operation scans the bound tree and emits slice-sized **leads** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`.
 
-Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `/spec:execute` drives each slice through refine → build → merge.
+Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `specify plan execute` drives each slice through refine → build → merge.
 
 ## Capture and replay
 
@@ -37,7 +37,7 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 
 ## Eval scenarios
 
-The eval scenario pack includes a typescript-multi-slice scenario under [`evals/scenarios/typescript-multi-slice.md`](../../evals/scenarios/typescript-multi-slice.md) for operators validating releases. Contributors running evals should see [Evals](../contributing/evals.md).
+The quality scenario pack includes a typescript-multi-slice scenario under [`quality/runbooks/typescript-multi-slice.md`](../../quality/runbooks/typescript-multi-slice.md) for operators validating releases. Contributors running quality profiles should see [Live quality profiles](../contributing/quality-profiles.md).
 
 ## Next steps
 

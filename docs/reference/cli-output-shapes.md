@@ -6,7 +6,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 - `--format json` responses are a **flat envelope**: every successful body is a single JSON object whose first key is `envelope-version` and whose remaining keys are the command-specific body fields **at the same level** — there is no `ok` discriminant and no `data` wrapper. Example: `{"envelope-version": 6, "action": "create", "plan": {...}, "entry": {...}}`.
 - Failures keep the same flat shape with three extra top-level keys:
-  - `error` — a **kebab-case discriminant string** (e.g. `"plan-has-outstanding-work"`). The discriminant is grep-stable and forms part of the public contract; see [`engine/AGENTS.md`](../../engine/AGENTS.md#exit-codes) for the catalogue.
+  - `error` — a **kebab-case discriminant string** (e.g. `"plan-has-outstanding-work"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the catalogue.
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Body fields named `ok` / `passed` / `idempotent` are payload fields, not envelope discriminants — they describe the per-command result and do not change the envelope shape.
@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the full variant set — including failure envelopes, edge cases, and idempotent re-runs — browse the canonical fixtures in [`engine/tests/fixtures/plan/`](../../engine/tests/fixtures/plan) and [`engine/tests/fixtures/e2e/goldens/`](../../engine/tests/fixtures/e2e/goldens). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command. For the wire-schema accept/reject variant set, browse the canonical fixtures in [`tests/fixtures/plan/v2/`](../../tests/fixtures/plan/v2/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
 ### `specify plan create`
 
@@ -78,9 +78,9 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
-### `specify plan propose --dry-run`
+### Lead-reconciliation request envelope {#plan-reconcile-request}
 
-Emits the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
+The reconcile leg inside the guest-routed `specify plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
 
 ```json
 {
@@ -97,9 +97,9 @@ Emits the lead-reconciliation **request** envelope for the agent to group: a fla
 }
 ```
 
-### `specify plan propose --from`
+### Lead-reconciliation write summary {#plan-reconcile-write}
 
-Success summary after projecting the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
+Success summary after the reconcile kernel projects the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
 
 ```json
 {
@@ -179,7 +179,7 @@ A stopped plan carries the classification block:
 
 ### `specify plan validate`
 
-Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate` and `specify lint`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
+Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
 
 ```json
 {
@@ -265,9 +265,9 @@ Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pe
 }
 ```
 
-### `specify slice synthesize --dry-run`
+### Synthesis envelopes {#synthesis-envelopes}
 
-Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target `shape-brief` body. Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -290,11 +290,11 @@ Emits the agent **inputs** envelope (`kind: inputs`): the slice name, one entry 
       ]
     }
   ],
-  "shape-brief": "# Shape brief\n…"
+  "guidance-brief": "# Guidance brief\n…"
 }
 ```
 
-### `specify slice synthesize --from`
+### Synthesis persist summary
 
 Success summary after the projection kernel persisted the artifacts. `artifacts[]` lists the slice-relative paths written, in write order. Emits `slice.synthesize.started` then `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and exits non-zero.
 
@@ -313,21 +313,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 
 ### `specify slice build`
 
-Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** envelope after assembling and schema-validating the build request: `request` is the assembled `build/request.yaml` the agent's `build` brief consumes, `report` is where the brief writes its `build/report.yaml`, and `briefs-dir` / `build-brief` locate the brief. Emits `target.execution.agent` and returns without blocking.
-
-```json
-{
-  "slice": "identity-service",
-  "target": "omnia@1.0.0",
-  "execution": "agent",
-  "request": "<TEMPDIR>/.specify/slices/identity-service/build/request.yaml",
-  "report": "<TEMPDIR>/.specify/slices/identity-service/build/report.yaml",
-  "briefs-dir": "<TEMPDIR>/adapters/targets/omnia/briefs",
-  "build-brief": "<TEMPDIR>/adapters/targets/omnia/briefs/build.md"
-}
-```
-
-`--phase finalize` validates the agent-produced report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+One envelope shape inside the guest-routed orchestration: the request is assembled and schema-validated, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail validates the report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
 ```json
 {
@@ -340,7 +326,7 @@ Two output shapes, one per phase. `--phase prepare` emits the agent **handoff** 
 
 ### `specify slice validate`
 
-Runs the slice-shape brief and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`specify lint`, `specify lint framework`, `slice validate`). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
+Runs the slice-shape and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`plan validate`, `slice validate`, build reports). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
 
 Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.references-valid-ids` or `slice-model-source-orphan`), a `severity` (`critical | important | optional | suggestion`), a `source` (`deterministic | model-assisted | hybrid | human | tool`), and a `kind`:
 
@@ -376,65 +362,7 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
 }
 ```
 
-A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report. See the CLI workspace's [DECISIONS.md §"Drained `Error::Validation` and the `Diagnostic` substrate"](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate).
-
-## Bootstrap verbs
-
-The bootstrap lifecycle verbs (`specify upgrade`, `specify plugins doctor`) emit a self-describing body whose first key is a `version` integer **schema marker** (`1` today), rather than the `envelope-version` stamp the project/slice verbs carry. All keys stay `kebab-case`. The `/spec:init` runbook parses these shapes; skills link here rather than inlining them.
-
-### `specify upgrade --dry-run`
-
-Reports the detected channel and resolved target version without mutating. `commands` lists the channel-native commands that *would* run (empty for the `binary` channel, which instead carries `guidance`). `head-fallback` is `true` when the latest release tag could not be resolved and the `cargo` channel falls back to a HEAD install. On the apply path (`--yes`) `dry-run`/`applied` flip and `journaled` reports whether a `cli.upgraded` event was written.
-
-```json
-{
-  "version": 1,
-  "channel": "cargo",
-  "from": "0.3.0",
-  "to": "0.43.0",
-  "dry-run": true,
-  "applied": false,
-  "head-fallback": false,
-  "journaled": false,
-  "commands": [
-    { "program": "cargo", "args": ["install", "--git", "https://github.com/augentic/specify", "--tag", "v0.43.0"] }
-  ]
-}
-```
-
-The `binary` channel omits `commands` and carries `guidance` instead, because its in-process self-replace is deferred:
-
-```json
-{
-  "version": 1,
-  "channel": "binary",
-  "from": "0.3.0",
-  "to": "0.43.0",
-  "dry-run": true,
-  "applied": false,
-  "head-fallback": false,
-  "journaled": false,
-  "commands": [],
-  "guidance": "binary-channel self-replace is deferred; download the latest release manually"
-}
-```
-
-### `specify plugins doctor`
-
-Read-only Cursor plugin-cache drift report. One `plugins[]` row per declared plugin (then any `extra` cache entries), each with the marketplace-resolved `expected-sha` (`null` when unresolvable), the `cached-sha` (`null` when no cache entry), and a `status` from the closed set `ok | drifted | present | missing | extra`. Drift is a **finding**, never a non-zero exit — `doctor` exits non-zero only on filesystem / marketplace-parse failure.
-
-```json
-{
-  "version": 1,
-  "marketplace": "/abs/path/specify/.cursor-plugin/marketplace.json",
-  "cache-root": "/Users/me/.cursor/plugins/cache/augentic",
-  "plugins": [
-    { "name": "spec", "expected-sha": "f1b21b2…", "cached-sha": "a0c4d1e…", "status": "drifted" },
-    { "name": "capture", "expected-sha": "f1b21b2…", "cached-sha": "f1b21b2…", "status": "ok" }
-  ],
-  "summary": { "ok": 1, "drifted": 1, "present": 0, "missing": 0, "extra": 0 }
-}
-```
+A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report.
 
 ### `specify init --upgrade`
 

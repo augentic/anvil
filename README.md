@@ -13,35 +13,35 @@ Read the [Developer Guide](docs/index.md) in this order:
 3. [Quick start tutorial](docs/tutorials/quick-start.md)
 4. [Core concepts](docs/explanation/concepts.md)
 
-Initialize a project in Cursor Agent chat with a adapter:
+Initialize a project in Cursor Agent chat with an adapter:
 
 ```text
-/spec:init https://github.com/augentic/specify/adapters/targets/omnia
+/spec:init omnia@1.0.0
 ```
 
-Common targets:
+An adapter is named by a package reference (`specify:omnia@1.0.0`), the first-party shorthand (`omnia@1.0.0`), or the bare development shorthand (`omnia`, resolving a sibling checkout's release build). Common targets:
 
-| Target | URL | Use case |
-| ---------- | --- | -------- |
-| `omnia` | `https://github.com/augentic/specify/adapters/targets/omnia` | [Omnia](https://omnia.host) Rust WASM services |
-| `vectis` | `https://github.com/augentic/specify/adapters/targets/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
-| `contracts` | `https://github.com/augentic/specify/adapters/targets/contracts` | API/interface contract work |
+| Target      | Use case                                                      |
+| ----------- | ------------------------------------------------------------- |
+| `omnia`     | [Omnia](https://omnia.host) Rust WASM services                |
+| `vectis`    | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | API/interface contract work                                   |
 
 Then work through a slice:
 
 ```text
 /spec:plan "Add a new feature"
 specify plan transition <name> approved
-/spec:execute
+specify plan execute
 ```
 
-`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specify plan transition <name> approved`, `/spec:execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, top-level `workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+`/spec:plan` authors `change.md` + `plan.yaml`, the operator stamps `approved` with `specify plan transition <name> approved`, `specify plan execute` drives each planned slice through the per-slice `refine → build → merge` loop, and `/spec:finalize` archives the change after the operator has published branches and completed the required repository workflow. Cross-repo work adds `registry.yaml`, top-level `workspace/` slots, and operator-owned slot materialization and branch publication. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
 Specify ships as a Cursor plugin marketplace with three plugins:
 
-- **Specify** (`spec`) -- End-to-end workflow: `/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:execute`, `/spec:finalize`. Plan authoring, execution driving, and finalization all live in the same plugin.
+- **Specify** (`spec`) -- End-to-end workflow: `/spec:init`, `/spec:plan`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:finalize` — each an ultrathin wrapper over one `specify` verb; the execute loop is the CLI verb `specify plan execute`.
 - **Capture** (`capture`) -- Runtime capture for migration workflows
 - **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
 
@@ -58,8 +58,14 @@ Two lifecycle nouns — **slice** and **change** — appear constantly in this c
 The `specify` binary backs every workflow skill. `/spec:init` can bootstrap a missing CLI after confirmation; for manual setup use:
 
 ```bash
-brew install augentic/tap/specify
+cargo install --git https://github.com/augentic/specify   # from source
 ```
+
+or download the platform archive from the [GitHub Releases page](https://github.com/augentic/specify/releases) and verify it against its `.sha256` companion (see [docs/release.md](docs/release.md)). A Homebrew tap is planned but not yet published.
+
+Once installed, keep the binary current through the same install channel: rerun `cargo install`, upgrade through your package manager, or replace the downloaded release binary. `specify init --upgrade` updates an existing project's Specify pin and preservation-safe scaffold; it does not self-update the CLI binary.
+
+`specify completions <shell>` writes a completion script to stdout for any clap-supported shell (`bash`, `elvish`, `fish`, `powershell`, `zsh`), generated from the live clap surface so it stays in sync with every verb the binary exposes.
 
 See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and adapter-specific tooling.
 
@@ -70,46 +76,31 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-make lint
+cargo test --test framework
 ```
 
-This builds the in-tree `specify` binary under `engine/` and runs `lint framework` over the prose. Only a Rust toolchain is required. The runtime lives in-tree (`engine/`), so there is no source pin or sibling checkout to resolve. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
+The framework checks are plain cargo tests over the prose and manifest surfaces. Only a Rust toolchain is required; the same tests run inside the full `cargo make ci` gate. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
 
 ### Local plugin development
 
-Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The local plugin script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
+Cursor Agent can load working-tree plugins directly with `--plugin-dir`. The agent then uses local skill, rule, and reference content instead of the published versions.
 
 #### Dev iteration loop
 
 1. Edit skills, rules, or references in `plugins/`.
-2. Run `make use-local-plugins` to copy local files into the cache.
-3. Restart Cursor.
-4. Test in a target project.
-5. Repeat from step 1.
+2. Start Cursor Agent with the plugin directory.
+3. Test in a target project.
+4. Repeat from step 1.
 
 ```bash
-make use-local-plugins    # copy local plugins into cache
+cursor-agent --plugin-dir plugins/spec
 ```
 
-When finished, revert to published plugins:
-
-```bash
-make use-team-plugins   # clear cache; Cursor refetches from server on restart
-```
-
-> [!NOTE]  
-> Restart Cursor after running either command. A window reload is not sufficient.
+Pass `--plugin-dir` once per local plugin when testing more than one. Omit it to use the published plugins.
 
 #### Testing adapter changes
 
-Adapters are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on adapters in a separate project, symlink them from this repo:
-
-```bash
-SPECIFY_REPO="path/to/augentic/specify"
-ln -sf "$SPECIFY_REPO/adapters" adapters
-```
-
-Adapter edits take effect immediately — no cache clear or restart needed.
+Adapters live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). For local iteration, run `cargo make release` there and initialise the consuming project with the bare development shorthand (`/spec:init omnia`) — a bare name resolves the sibling checkout's release build at `target/wasm32-wasip2/release/<name>.wasm`. Rebuild the component to pick up changes; no cache clear or restart is needed.
 
 #### Publishing a new plugin
 

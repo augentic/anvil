@@ -1,0 +1,51 @@
+version: 1
+id: target-shape
+owner: scenarios
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: runbook
+  kind: prompt
+  run: Follow quality/runbooks/target-shape.md
+profiles:
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: runbook
+  probe:
+    kind: path-exists
+    path: plan.yaml
+semantic-rubrics:
+- id: spec-reflects-shape-idioms
+  after: runbook
+  criterion: "`spec.md` reflects the target `shape` idiom guidance."
+  evidence: &1
+  - plan.yaml
+  - ".specify/slices/greeting/spec.md"
+  - ".specify/slices/greeting/design.md"
+- id: design-reflects-shape-idioms
+  after: runbook
+  criterion: "`design.md` reflects the target `shape` idiom guidance (provider DI,
+    error conventions, validation placement)."
+  evidence: *1
+- id: intent-and-doc-fixtures-agree
+  after: runbook
+  criterion: the intent and documentation fixtures honour the same `shape`-derived
+    sections.
+  evidence: *1
+expected-outputs:
+- path: plan.yaml
+  kind: file
+- path: ".specify/slices/greeting/spec.md"
+  kind: file
+- path: ".specify/slices/greeting/design.md"
+  kind: file

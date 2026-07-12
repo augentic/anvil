@@ -23,7 +23,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 
 ## Code style
 
-### Rust (engine/)
+### Rust (the workspace at the repo root)
 
 - Format with `cargo fmt`
 - Lint with `cargo clippy -- -D warnings`
@@ -32,7 +32,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 ### Skills and documentation (specify)
 
 - Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Skill Authoring Standards](docs/standards/skill-authoring.md)
-- `make lint` must pass before submitting a pull request. It needs only a Rust toolchain: it builds the in-tree `specify` binary under `engine/` and runs the checks. See [Consistency Checks](docs/contributing/checks.md).
+- `cargo test --test framework` must pass before submitting a pull request. It needs only a Rust toolchain: the framework checks are plain cargo tests. See [Consistency Checks](docs/contributing/checks.md).
 - Use kebab-case for file names, change names, and adapter identifiers
 
 ## Developer's Certificate of Origin
@@ -92,12 +92,12 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 1. Create a feature branch off of `main`.
 2. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against `main`.
-3. Run checks: `make lint` for the prose surface; `make ci` (or `cargo make ci` under `cli/`) for the full Rust + prose gate.
+3. Run checks: `cargo test --test framework` for the prose surface; `make ci` (`cargo make ci`) for the full gate.
 4. Accept the Developer's Certificate of Origin on all commits (see above).
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that cover your change. For skill changes, this means `make lint` passes and you have manually verified the skill in a target project. For CLI changes, add or update integration tests in the `tests/` directory.
+Normally, all pull requests must include tests that cover your change. For skill changes, this means `cargo test --test framework` passes and you have manually verified the skill in a target project. For CLI changes, add or update integration tests in the `tests/` directory.
 
 ## Conduct
 

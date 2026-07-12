@@ -128,7 +128,7 @@
           "items": {
             "$ref": "#/$defs/modelClaim"
           },
-          "description": "Agent-authored claim-level provenance, carried inline (this replaces the former separate `provenance.yaml` `contributing-claims[]`): every `(source, id, kind)` claim that fed this requirement, winners and losers alike. Empty for an `unknown` requirement. `kind` (D13) lets the kernel resolve per-kind authority; the `winner` marker on each entry is kernel-projected. The claim `value` / `path` payload is read from on-disk Evidence by the provenance projection rather than copied here."
+          "description": "Agent-authored claim-level provenance, carried inline: every `(source, id, kind)` claim that fed this requirement, winners and losers alike. Empty for an `unknown` requirement. `kind` (D13) lets the kernel resolve per-kind authority; the `winner` marker on each entry is kernel-projected. The claim `value` / `path` payload is read from on-disk Evidence by the provenance projection rather than copied here."
         },
         "sources": {
           "type": "array",

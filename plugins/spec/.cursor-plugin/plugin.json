@@ -1,7 +1,7 @@
 {
   "name": "spec",
   "displayName": "Specify Workflow",
-  "description": "Specify workflow orchestration: init, plan, execute, refine, build, merge, finalize, drop.",
+  "description": "Specify workflow skills: init, plan, refine, build, merge, finalize, drop.",
   "version": "0.27.2",
   "author": {
     "name": "Augentic",

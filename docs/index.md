@@ -25,7 +25,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
     <div class="proof-value">Gate 1</div>
-    <div class="proof-copy">The operator reviews and stamps the plan before <code>/spec:execute</code> can run.</div>
+    <div class="proof-copy">The operator reviews and stamps the plan before <code>specify plan execute</code> can run.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
@@ -115,11 +115,11 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
 specify plan transition fix-typo approved
   --> operator review step (Gate 1)
 
-/spec:execute
+specify plan execute
   --> /spec:refine + /spec:build + /spec:merge per slice until drained
 
 /spec:finalize fix-typo
-  --> push branches, archive plan
+  --> publish outside Specify, archive plan
 ```
 
 ## Built for the Augentic stack

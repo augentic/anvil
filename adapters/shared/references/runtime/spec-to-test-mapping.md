@@ -1,1 +1,0 @@
-../../../../plugins/spec/references/spec-to-test-mapping.md

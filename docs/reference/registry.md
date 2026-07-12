@@ -6,7 +6,7 @@ The registry is a first-party Specify component — it owns project membership a
 
 The registry owns *project membership and location* — the declared list of projects and their repository locations — **and** the local *materialised view* of those projects under top-level `workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter manifest protocol.
 
-The registry does **not** author a project's target adapter or description for plan-time topology — `adapter` and `description` are authored in each project's `.specify/project.yaml`, and the project's *derived* routing identity (`surface[]` / `recent[]`) is projected from that project's own baseline into the committed `.specify/topology.lock` by `specify workspace sync`. The registry's `adapter` field survives only as an optional *greenfield scaffold seed* used when `workspace sync` clones a brand-new, empty project.
+The registry does **not** author a project's target adapter or description for plan-time topology — `adapter` and `description` are authored in each project's `.specify/project.yaml`, and the project's *derived* routing identity (`surface[]` / `recent[]`) is projected from that project's own baseline into the committed `.specify/topology.lock`. Regenerating that lock and materializing slots are operator-owned. The registry's `adapter` field survives only as an optional greenfield scaffold seed for surrounding repository tooling.
 
 Target adapters own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The plan (`/spec:plan`, `specify plan *`) coordinates *when* — sequencing slices across one or more registered projects.
 
@@ -15,12 +15,12 @@ Target adapters own outcome artefacts and their mechanics; the registry coordina
 | Path                          | Owner    | Purpose |
 | ----------------------------- | -------- | ------- |
 | `registry.yaml`               | operator | Membership + location ledger at the repo root. Optional: absent or single-entry registries behave like single-repo mode. |
-| `.specify/topology.lock`      | derived  | Committed projection of each member project's identity: authored `target` / `description` plus the deterministic baseline projection `surface[]` (owned domains + requirement titles) and `recent[]` (merge-outcome tail). Machine-written by `specify workspace sync`; never hand-edited. |
-| `workspace/<peer>/`  | derived  | Materialised view of each registry entry at the project root — a `git clone` for remote URLs or a symlink for `.` / repo-relative paths. Refreshed by `specify workspace sync`. |
-| `<project-cache>/` (out-of-tree) | derived  | Memoization root in the out-of-tree per-project cache (owned by the plugin resolver: adapter manifests under `manifests/sources/` and `manifests/targets/`, and the shared codex under `codex/`). |
+| `.specify/topology.lock`      | derived  | Committed projection of each member project's identity: authored `target` / `description` plus the deterministic baseline projection `surface[]` (owned domains + requirement titles) and `recent[]` (merge-outcome tail). Machine-written by operator-owned topology tooling; never hand-edited. |
+| `workspace/<peer>/`  | derived  | Materialised view of each registry entry at the project root — typically a checkout/worktree for remote URLs or a symlink for `.` / repo-relative paths. |
+| `<project-cache>/` (out-of-tree) | derived  | Memoization root in the out-of-tree per-project cache, including operator-supplied components mirrored under `components/`. |
 | `.specify/scratch/`          | derived  | Transient working state: per-operation agent scratch lanes under `<adapter>/{survey,<slice>}/` and the plan handoff lane under `plan/`. Lanes are recreated empty by their owning verb. |
 
-`.specify/scratch/` and top-level `workspace/` are framework-managed and regenerable and must never be checked in; the per-project manifest/codex cache now lives out-of-tree. `specify init` and `specify workspace sync` append the matching `.gitignore` lines idempotently.
+`.specify/scratch/` and top-level `workspace/` are regenerable and must never be checked in; the per-project cache lives out-of-tree. `specify init` appends the matching `.gitignore` lines idempotently.
 
 ## Topology shape
 
@@ -44,9 +44,9 @@ projects:
 | `projects`                  | optional (defaults to empty) | Ordered list of registered projects. Empty or single-entry registries behave like single-repo mode. |
 | `projects[].name`           | yes                          | Kebab-case identifier. Must be unique within the registry. The slot name and the binding key written to `plan.yaml.slices[].project`. |
 | `projects[].url`            | yes                          | Clone target — `.`, a repo-relative path (`../peer`, `./foo`), `git@host:path`, or an `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://` remote. |
-| `projects[].adapter`        | optional                     | Greenfield scaffold seed only — the adapter written into a brand-new project's `project.yaml` when `workspace sync` clones an empty repo. Not read for plan-time topology; the project's own `project.yaml` is authoritative once it exists. |
+| `projects[].adapter`        | optional                     | Greenfield scaffold seed for operator tooling. Not read for plan-time topology; the project's own `project.yaml` is authoritative once it exists. |
 | `projects[].contracts`      | optional                     | Per-project contract role declarations (`produces`, `consumes`). |
-| `projects[].greenfield_seed.domains` | optional            | Greenfield routing seed only — kebab-case domain slugs that project into the project's plan-time `surface[]` as domains with empty requirements *while the project has no baseline*. The greenfield analog of the derived `surface[]` domain list, it lets a fresh project route leads before `.specify/specs/` exists. Ignored once a real baseline exists (the derived surface supersedes it); a still-declared seed then surfaces the advisory `greenfield-seed-shadowed` finding at `specify plan propose`. Carries domain slugs only — never adapter or description material. |
+| `projects[].greenfield_seed.domains` | optional            | Greenfield routing seed only — kebab-case domain slugs that project into the project's plan-time `surface[]` as domains with empty requirements *while the project has no baseline*. The greenfield analog of the derived `surface[]` domain list, it lets a fresh project route leads before `.specify/specs/` exists. Ignored once a real baseline exists (the derived surface supersedes it); a still-declared seed then surfaces the advisory `greenfield-seed-shadowed` finding at plan-authoring time. Carries domain slugs only — never adapter or description material. |
 
 A project's `description` is **not** a registry field — it is authored in the project's own `.specify/project.yaml`. Routing identity (`surface[]` / `recent[]`) is derived from that project's baseline and projected into `.specify/topology.lock`; the hand-authored `capabilities` / `keywords` facets are removed.
 
@@ -56,7 +56,6 @@ The registry is hand-curated YAML — operators edit `registry.yaml` directly; f
 
 | Caller                          | Validation timing |
 | ------------------------------- | ----------------- |
-| `specify workspace sync`        | Validates the registry before materialising any slot; refuses to operate on a malformed registry. |
 | `/spec:plan`                    | Validates the registry before propose; refuses to write a plan against a malformed registry. |
 
 None of these go through the per-slice loop. The registry is substrate: it is what the slice loop runs *over*, not something the slice loop produces.
@@ -65,44 +64,39 @@ None of these go through the per-slice loop. The registry is substrate: it is wh
 
 Top-level `workspace/` is **derived registry state**, not a separate component-owned topology. The workspace owns `registry.yaml`; each child path under `workspace/<project>/` is a workspace slot for one registry entry. Slots may be refreshed, inspected, published from, or removed during final cleanup without changing the registry ledger.
 
-The registry crate owns the materialiser and workspace verbs:
+Specify exposes no workspace materialization or publication verbs. The operator or surrounding repository automation owns:
 
-| Verb                                                | Purpose |
-| --------------------------------------------------- | ------- |
-| `specify workspace sync [<project>...]`              | Materialise selected workspace slots. With no selectors, materialises every registry project; with selectors, materialises only those slots. Unknown selectors fail before filesystem or Git side effects. |
-| `specify workspace prepare <project>`         | Prepare the selected slot on `specify/<change-name>` from `origin/HEAD` before mutation. |
-| `specify workspace push [<project>...]`              | Transport-only publication for selected slots already on `specify/<change-name>`. Creates or updates PRs; never creates local branches, commits files, pushes default branches, or merges PRs. |
+- Creating or refreshing each slot from `projects[].url`.
+- Regenerating `.specify/topology.lock` from member project metadata and baselines.
+- Preparing branches and clean working trees before execution.
+- Committing, publishing, reviewing, and merging repository changes after execution.
 
-Selection is resolved once, before side effects. A human-invoked `workspace sync` with no selectors refreshes every registered project. `/spec:execute` uses selected sync behavior to materialise only the next plan entry's target slot before execution.
-
-Before `/spec:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run refine/build/merge. There is no `workspace merge` verb — landing is an explicit operator action outside Specify.
-
-After `workspace push` publishes the change branch, opening the pull request and landing it is an explicit operator action outside Specify. Use the forge UI, `gh pr create` / `gh pr merge`, or the repository's normal merge queue. `/spec:finalize` runs `specify workspace push` then `specify plan archive`; it never creates, observes, or merges PRs.
+`specify plan execute` expects required slots to exist and routes project-bound work into them. `/spec:finalize` archives only after the operator confirms publication is complete.
 
 ## Dependency direction
 
 The dependency edge is one-way; `specify-core` never depends on the registry.
 
 ```text
-specify (binary) → specify-workflow → specify-tool → specify-error
+specify (binary) → workflow → specify-tool → error
                                   ↑
                                   plugin loader (routes by axis)
 ```
 
-The invariant: the slice and plan layers MAY depend on the registry because workspace routing composes registry materialisation; the reverse is forbidden.
+The invariant: the slice and plan layers MAY depend on the registry because workspace routing consumes registry topology; the reverse is forbidden.
 
 ## What the registry must NOT own
 
-The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata:
+The registry is topology plus the declaration behind operator-owned local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata:
 
 - Plan or slice status — owned by `specify plan *` and `specify slice *`.
 - Contract relationships beyond the per-project role declarations — owned by the `contracts` target adapter.
 - Validation findings — owned by adapter skills and helper binaries.
 - Synthesis output — owned by core (`/spec:refine`).
-- PR metadata — owned entirely by the forge and the operator; Specify pushes the branch and does not track pull-request state.
+- PR metadata — owned entirely by the forge and the operator; Specify does not publish branches or track pull-request state.
 
 ## See also
 
 - [Target Adapters](targets/index.md) — target adapter manifest protocol.
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — the source/target split.
-- [`specify registry`](cli/registry.md) and [`specify workspace`](cli/workspace.md) — current CLI command reference.
+- [`specify registry`](cli/registry.md) and [Workspace topology](cli/workspace.md) — registry commands and operator-owned workspace setup.

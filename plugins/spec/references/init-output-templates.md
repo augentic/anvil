@@ -38,7 +38,7 @@ Next steps:
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
 2. Run `/spec:plan initial-baseline source typescript=.` (or whichever language source matches the codebase) to survey leads
-3. Stamp Gate 1 with `specify plan transition initial-baseline approved`, then run `/spec:execute` to drive `refine -> build -> merge`
+3. Stamp Gate 1 with `specify plan transition initial-baseline approved`, then run `specify plan execute` to drive `refine -> build -> merge`
 4. Run `/spec:plan <name> ...` for future changes
 ```
 
@@ -52,10 +52,10 @@ Next steps:
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
-**Workspace sync**: $WORKSPACE_SYNC_MESSAGE (from init JSON `workspace-sync-message`; typically `workspace sync complete` on first run)
 
 Next steps:
 1. Add registered projects with `specify registry add`
-2. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
-3. Stamp Gate 1 with `specify plan transition <name> approved`, then run `/spec:execute` to drive `refine -> build -> merge` per slice, and `/spec:finalize <name>` to push and archive
+2. Materialize `workspace/<project>/` slots through your normal repository tooling
+3. Run `/spec:plan <name>` to author `change.md` + `plan.yaml` together
+4. Stamp Gate 1 with `specify plan transition <name> approved`, then run `specify plan execute` to drive `refine -> build -> merge` per slice; publish through your normal repository workflow before `/spec:finalize <name>` archives the plan
 ```

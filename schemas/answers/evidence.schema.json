@@ -1,0 +1,140 @@
+{
+  "$defs": {
+    "authorityClass": {
+      "description": "Closed authority class per workflow §Authority hierarchy. New classes require updating the workflow contract and schemas together.",
+      "enum": [
+        "intent",
+        "documentation",
+        "behaviour"
+      ],
+      "type": "string"
+    },
+    "claim": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "requirement"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "criterion"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "example"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "id"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "id": {
+          "description": "Stable claim identifier (dotted kebab slug, e.g. `password-reset.expiry`). Required when `kind` is `requirement`, `criterion`, or `example`; optional on other kinds.",
+          "minLength": 1,
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/claimKind"
+        },
+        "path": {
+          "$ref": "#/$defs/claimPath"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "claimKind": {
+      "description": "Closed claim-kind enum. New kinds require updating the workflow contract and schemas together. `example` is the runtime capture kind emitted by `captures` and carries open `replay-digest` / `input` / `output` body fields.",
+      "enum": [
+        "intent",
+        "requirement",
+        "criterion",
+        "decision",
+        "section",
+        "diagram",
+        "contract",
+        "example",
+        "excerpt",
+        "type",
+        "call",
+        "region",
+        "container",
+        "leaf"
+      ],
+      "type": "string"
+    },
+    "claimPath": {
+      "description": "Per-claim path: `<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`.",
+      "pattern": "^[^\\s][^\\s]*(#L[1-9][0-9]*(-L[1-9][0-9]*)?)?$",
+      "type": "string"
+    },
+    "kebabName": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/schemas/answers/evidence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "Generated judgment-answer schema — derived from schemas/evidence.schema.json by schema's answer derivation; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the canonical Evidence shape minus the envelope `lead` key (the extract call names the lead).",
+  "properties": {
+    "authority": {
+      "$ref": "#/$defs/authorityClass",
+      "description": "Document-level authority class for this Evidence per workflow §Authority hierarchy. v1 resolves authority at document level; the only override surface is the per-slice `authority-override` on `plan.yaml` (a per-Evidence `authority-overrides` surface is deferred to a future RFC)."
+    },
+    "claims": {
+      "description": "Per-claim extraction records. Empty `claims: []` is valid; failure is signalled by not writing the Evidence file at all.",
+      "items": {
+        "$ref": "#/$defs/claim"
+      },
+      "type": "array"
+    },
+    "lead": false
+  },
+  "required": [
+    "authority",
+    "claims"
+  ],
+  "title": "Specify extract answer",
+  "type": "object"
+}

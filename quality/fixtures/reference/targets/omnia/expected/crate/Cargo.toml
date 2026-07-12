@@ -1,0 +1,25 @@
+[package]
+name = "password_reset"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
+omnia-guest = "0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
+
+[workspace]
+
+[patch.crates-io]
+omnia-guest = { path = "../../../../../../../omnia/crates/omnia-guest" }
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc" }

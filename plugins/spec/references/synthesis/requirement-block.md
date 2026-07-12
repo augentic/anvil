@@ -1,6 +1,6 @@
 # Requirement block
 
-Every requirement in a spec file (`specs/<domain>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the response); `specify slice synthesize` **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `specify slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
+Every requirement in a spec file (`specs/<domain>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the response); the `specify slice refine` synthesis kernel **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `specify slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
 
 ## Canonical template (kernel-rendered)
 
@@ -121,7 +121,7 @@ Greenfield domains (no baseline file) still render flat `### Requirement:` block
 
 ## Failure modes the parser surfaces
 
-The kernel renders the provenance lines, so these arise only from a **post-synthesis hand-edit** (caught by `slice-spec-provenance-stale`) — the fix is to re-run `specify slice synthesize` rather than to hand-correct the line:
+The kernel renders the provenance lines, so these arise only from a **post-synthesis hand-edit** (caught by `slice-spec-provenance-stale`) — the fix is to re-run the `specify slice refine` synthesis rather than to hand-correct the line:
 
 | Symptom                                                       | Cause                                                                                       |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |

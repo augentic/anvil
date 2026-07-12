@@ -82,7 +82,7 @@ For each requirement block written with a `[unknown]` / `[conflict]` / `[diverge
 | `[conflict]`    | `slice.synthesis.conflict`     | `{ slice-name, requirement-id }`         |
 | `[divergence]`  | `slice.synthesis.divergence`   | `{ slice-name, requirement-id }`         |
 
-The event is the durable hand-off `/spec:execute` and downstream review tooling consume to surface synthesis tags at loop boundaries. The journal event is emitted regardless of whether the operator subsequently reconciles by re-running `/spec:refine` (after amending an `authority-override` or the source set).
+The event is the durable hand-off `specify plan execute` and downstream review tooling consume to surface synthesis tags at loop boundaries. The journal event is emitted regardless of whether the operator subsequently reconciles by re-running `/spec:refine` (after amending an `authority-override` or the source set).
 
 ## Anti-patterns
 

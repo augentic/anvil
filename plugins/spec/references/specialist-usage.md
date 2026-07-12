@@ -2,7 +2,7 @@
 
 Augentic-specific supplement: how specialist skills (Omnia, Vectis, and friends) *consume* the standard artifacts. For artifact structure see [Artifact format](https://specify.augentic.io/reference/artifact-format.html) and [Artifacts in depth](https://specify.augentic.io/explanation/artifacts.html).
 
-Augentic uses stock Specify as its executable workflow contract. Specialist skills read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:plan → /spec:execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice), but they must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
+Augentic uses stock Specify as its executable workflow contract. Specialist skills read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:plan → specify plan execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice), but they must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
 
 ## Where specialists read and write
 
@@ -26,7 +26,7 @@ The dividing line matters because it keeps specs portable across targets:
 
 - **Specs stay behavioral.** They must not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions. See [spec format](https://specify.augentic.io/reference/artifact-format.html#spec-files-behavioral-what).
 - **`design.md` carries the technical "how"** — domain models, API and message shapes, business logic, integrations, configuration, and risks. See [design format](https://specify.augentic.io/reference/artifact-format.html#design-document-technical-how). Cite stable requirement IDs (e.g. `REQ-003`) rather than requirement titles.
-- **Generator-owned binding decisions stay in the target adapter's build brief**, never in the artifacts. Omnia trait composition and Crux effect types are decided by the target adapter's `build` brief that writes the code, guided by its `shape` brief — not hardcoded into the behavioral contract.
+- **Generator-owned binding decisions stay in the target adapter's build brief**, never in the artifacts. Omnia trait composition and Crux effect types are decided by the target adapter's `build` brief that writes the code, guided by its `guidance` brief — not hardcoded into the behavioral contract.
 
 ## Deriving specs from source code
 

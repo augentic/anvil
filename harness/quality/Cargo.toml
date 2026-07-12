@@ -1,0 +1,34 @@
+# The live quality orchestrator: repeated trials of a canonical
+# workflow scenario's live profile, graded through the shared
+# scenario::grade pipeline and persisted as a scenario::bundle. A
+# workspace member (linted and built by the --workspace gates) but not
+# a default member — live runs are operator-invoked, never CI.
+[package]
+name = "quality"
+description = "Live quality orchestrator for the Specify workflow scenarios"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+jiff.workspace = true
+libc.workspace = true
+omnia.workspace = true
+omnia-cursor.workspace = true
+omnia-wasi-http.workspace = true
+omnia-wasi-model.workspace = true
+scenario.workspace = true
+schema.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+toml.workspace = true
+
+[lints]
+workspace = true

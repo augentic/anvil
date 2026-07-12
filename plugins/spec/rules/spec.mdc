@@ -7,18 +7,18 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, execute the full loop, and finalize. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Capture, Client) and target adapters (Omnia, Vectis, Contracts) build on.
+This plugin provides the core Specify workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `specify` CLI verb and relays its output; the drained execute loop is the guest-routed `specify plan execute` verb, with no skill wrapper.
 
-**Purpose**: Drive the `plan -> execute` loop (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
+**Purpose**: Drive the `plan -> execute` rhythm (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
 ## Source / target adapter structure
 
 Adapters split into two roles:
 
 - **Source adapters** (`adapters/sources/<name>/`) supply input — `survey` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `typescript`, `screenshots`.
-- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `shape`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.
+- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `guidance`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.
 
-Each directory contains `adapter.yaml` plus operation briefs under `briefs/`.
+Each directory contains operation prompts under `prose/prompts/`; adapter identity and metadata come from the compiled component (`describe`), not a manifest file.
 
 ## Slice lifecycle
 
@@ -47,17 +47,17 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 
 specify plan transition <name> approved   (Gate 1; operator-only)
 
-/spec:execute                     (drives /spec:refine -> /spec:build -> /spec:merge per slice)
+specify plan execute              (guest-routed loop: refine -> build -> merge per slice)
 
-/spec:finalize <name>             (push branches, archive plan)
+/spec:finalize <name>             (confirm publication, archive plan)
 ```
 
-Breakouts share skill bodies with the loop and are reached when `/spec:execute` parks or the operator wants to inspect a slice by hand:
+Breakouts invoke the same guest orchestrations one slice at a time, when the execute loop parks or the operator wants to drive a slice by hand:
 
-- **/spec:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
-- **/spec:build**: Validate artifacts and implement tasks for one slice.
-- **/spec:merge**: Fold a slice's deltas into the baseline and archive it.
-- **/spec:drop**: Abandon a slice without merging.
+- **/spec:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined` (`specify slice refine`).
+- **/spec:build**: Build one slice through its target adapter (`specify slice build`).
+- **/spec:merge**: Fold a slice's deltas into the baseline and archive it (`specify slice merge run`).
+- **/spec:drop**: Abandon a slice without merging (`specify slice drop`).
 
 ## Troubleshooting
 
@@ -86,7 +86,6 @@ Breakouts share skill bodies with the loop and are reached when `/spec:execute` 
 - [Build SKILL.md](skills/build/SKILL.md) — Validate artifacts and implement tasks
 - [Merge SKILL.md](skills/merge/SKILL.md) — Finalize completed slices
 - [Drop SKILL.md](skills/drop/SKILL.md) — Discard a slice without merging specs
-- [Execute SKILL.md](skills/execute/SKILL.md) — Drive the full loop
 - [Finalize SKILL.md](skills/finalize/SKILL.md) — Close out a change
 - [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
 

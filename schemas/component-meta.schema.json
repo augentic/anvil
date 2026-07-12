@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/component-meta.schema.json",
+  "title": "Specify component-meta.yaml",
+  "description": "Validates the structure of `components/component-meta.yaml` in the out-of-tree per-project cache — the component mirror's provenance stamp, the structural twin of `codex/codex-meta.yaml`. Written whenever the component cache is populated or refreshed; read by the CLI to decide whether the cache is populated.",
+  "type": "object",
+  "required": ["source", "fetched_at"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The adapter source value the mirror was populated from (a `file://` component URI)."
+    },
+    "fetched_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO-8601 timestamp (UTC) of when the mirror was written."
+    }
+  }
+}

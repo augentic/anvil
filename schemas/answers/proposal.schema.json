@@ -1,0 +1,174 @@
+{
+  "$defs": {
+    "disagreement": {
+      "additionalProperties": false,
+      "description": "One field on which a slice's matched leads materially disagree, recorded by the reconciling agent alongside a `divergence` flag.",
+      "properties": {
+        "field": {
+          "description": "The aspect the matched leads disagree on (a free-form label, e.g. `password-min-length`).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "values": {
+          "description": "The per-source disagreeing values; a genuine disagreement records ≥2 distinct source values.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/kebabName"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "field",
+        "values"
+      ],
+      "type": "object"
+    },
+    "gateProse": {
+      "additionalProperties": false,
+      "description": "Gate 1 review prose authored alongside the grouping. Canonically optional; the derived judgment-answer schema requires it, so the guest `plan author` orchestration always receives the prose and persists it into `change.md` / `discovery.md`. Section bodies only — the orchestrator owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, the `##` headings).",
+      "properties": {
+        "change": {
+          "description": "The `change.md` operator brief body rendered below the deterministic `# Change — <name>` heading: intent, scope, and the Gate 1 review prose the skill flow authored by hand (`## Tentative merges`, `## Cross-cutting leads`, `## Likely divergences` when applicable).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "discovery-source-inventory": {
+          "description": "The `discovery.md` `## Source inventory` section body — one row per bound source under `plan.yaml.sources.<key>`: key, adapter, path or value. Body only, no heading.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "discovery-summary": {
+          "description": "The `discovery.md` `## Summary` section body — one-line counts (`Sources: N. Leads: M.`); adapter-specific tallies are permitted. Body only, no heading.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "change",
+        "discovery-summary",
+        "discovery-source-inventory"
+      ],
+      "type": "object"
+    },
+    "kebabName": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "responseMember": {
+      "additionalProperties": false,
+      "properties": {
+        "lead": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Discovery lead id; with `source`, must match a request catalog row."
+        },
+        "source": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Plan source binding key; must match a request catalog row."
+        }
+      },
+      "required": [
+        "source",
+        "lead"
+      ],
+      "type": "object"
+    },
+    "responseSlice": {
+      "additionalProperties": false,
+      "properties": {
+        "depends-on": {
+          "description": "Slice names this row depends on. Each name must resolve to a projected `plan.yaml.slices[]` entry.",
+          "items": {
+            "$ref": "#/$defs/kebabName"
+          },
+          "type": "array"
+        },
+        "disagreements": {
+          "description": "The per-field disagreeing values backing a `divergence` flag. Recommended non-empty (with ≥2 distinct source values per field) when `divergence` is `likely`; the CLI advises on structural consistency (`slice-divergence-unrecorded` / `slice-divergence-orphan-values`) but never decides materiality and never blocks the write.",
+          "items": {
+            "$ref": "#/$defs/disagreement"
+          },
+          "type": "array"
+        },
+        "divergence": {
+          "description": "Agent-flagged slice-level divergence: `likely` when the matched leads materially disagree. Absent means no divergence. The kernel carries it onto `plan.yaml.slices[].divergence`; the operator adjudicates `accepted` / `rejected` later via `specify plan amend --divergence`.",
+          "enum": [
+            "likely",
+            "accepted",
+            "rejected"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Explicit plan slice name — required. The `scope` noun was removed (scope noun removed): with no kernel grouping the agent names every slice directly and the kernel writes the name verbatim to `plan.yaml.slices[].name`. A body of work that spans more than one project is expressed as multiple slices (which may legally reference the same lead) joined by `depends-on`, distinguished by their names."
+        },
+        "project": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Project this slice binds to, chosen by the agent from the request's `projects[]`. Required on every slice when the request offers more than one project; optional when exactly one project exists, in which case the kernel auto-binds it and derives `target` from that project's entry."
+        },
+        "rationale": {
+          "description": "Agent's reason for the cross-source match in this slice. The agent renders it into `change.md` for Gate 1 review; the kernel ignores it and does not echo it into the journal. Recommended when the match is not obvious from shared slugs or synopsis content.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "sources": {
+          "description": "Matched catalog rows for this slice, each referenced by `{ source, lead }`. At most one entry per `source`: a slice matches leads across sources but never fuses two leads from the same source (the kernel enforces this as `plan-reconcile-slice-source-collision`). A lead may appear in more than one slice — that is fan-out, not a double-count. The kernel writes the set to `plan.yaml.slices[].sources[]`.",
+          "items": {
+            "$ref": "#/$defs/responseMember"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "name",
+        "sources"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/schemas/answers/proposal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — derived from schemas/discovery/proposal.schema.json by schema's answer derivation; do not edit. Validates the schema-gated answer to the plan-time lead-reconciliation judgment: the canonical `kind: response` envelope arm the guest `plan author` orchestration consumes, with the request-only definitions trimmed.",
+  "properties": {
+    "gate": {
+      "$ref": "#/$defs/gateProse"
+    },
+    "kind": {
+      "const": "response"
+    },
+    "slices": {
+      "items": {
+        "$ref": "#/$defs/responseSlice"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "version": {
+      "const": 1
+    }
+  },
+  "required": [
+    "version",
+    "kind",
+    "slices",
+    "gate"
+  ],
+  "title": "Specify plan reconciliation answer",
+  "type": "object"
+}

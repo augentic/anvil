@@ -1,96 +1,66 @@
 # CLI Architecture
 
-The `specify` CLI lives in the in-tree [`engine/`](../../engine) Cargo workspace. It is a Rust workspace producing a single host binary that skills invoke as a subprocess for core deterministic operations. Adapter-specific deterministic helpers run as declared WASI tools through `specify extension run`.
+The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a Rust workspace producing a single binary that skills invoke as a subprocess. Adapter-specific deterministic helpers run as in-guest adapter library code inside each adapter's published WebAssembly component.
+
+## One binary, one guest
+
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
+
+The core guest identity is versioned by the binary (`specify:core@<binary version>`); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
 
 ## Core crate dependency graph
 
-The workspace is leaf → root with three crates plus the root binary:
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; `workflow` owns the workflow domain and every command operation (`Operation<P>` impl in `workflow::<domain>::handlers`, shared plumbing in `workflow::handler`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
 
-```text
-specify (binary)
-└── specify-workflow      Change orchestration, plan/slice lifecycle, registry,
-    │                   merge engine, spec/task parsing, adapter resolution,
-    │                   journal, schema validation (every domain module)
-    ├── specify-tool    Declared WASI tool resolution and execution
-    └── specify-error   thiserror + serde-saphyr error variants (leaf)
-```
+Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
-Adapter extension crates no longer live in a sibling `wasi-tools/` workspace in `cli/`; they sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) under each adapter's `extension/` directory, and `specify adapter build` compiles each into the committed `adapter.wasm` bundled with the adapter.
-
-The crates form a layered dependency graph with `specify-error` at the base:
-
-![specify CLI crate dependency graph](../assets/diagrams/contributing/cli-crate-graph.svg)
-
-Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers ship as a committed `adapter.wasm` declared by [`adapters/targets/vectis/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/adapter.yaml) (its singular `extension` block): the `vectis` extension exposes `validate` for UI artifact validation and `scaffold` for render-only scaffolding. The root CLI is responsible for resolving, permissioning, and running that extension; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/briefs/merge.md) briefs (which carry the Vectis writer / reviewer / template-updater behavior).
+Vectis does not link an adapter-specific crate into the root `specify` binary. Its deterministic helpers (UI artifact validation, render-only scaffolding) are in-guest library code inside its published component; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build.md) and [`merge`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/merge.md) prompts (which carry the Vectis writer / reviewer / template-updater behavior).
 
 ## Dispatch pattern
 
 The binary entry point is thin:
 
 ```text
-src/main.rs  →  Cli::parse()  →  commands::run(cli)  →  ExitCode
+src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest  →  typed command router
 ```
 
-The CLI definition lives in `src/cli.rs`:
+The full operator grammar — unsupported provisioning commands included — is assembled in `crates/transport/src/command.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/transport/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
-- **`Cli`** -- top-level struct with a global `--format text|json` flag and a `Commands` subcommand
-- **`Commands`** -- enum with one variant per top-level subcommand (`Init`, `Status`, `Context`, `Adapter`, `Codex`, `Tool`, `Compatibility`, `Slice`, `Change`, `Registry`, `Workspace`, and hidden `Completions`). The standalone `Validate`, `Merge`, `Spec`, and `Task` families have been folded into `Slice`; `Schema` has been renamed to `Adapter`.
-- **Nested enums** -- subcommands with their own variants (e.g. `ChangeAction`, `RegistryAction`, `WorkspaceAction`, `ToolAction`, `AdapterAction`)
+The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`. Each shim constructs an `Invoker`; the route inventories remain in `crates/transport`.
 
-The dispatcher in `src/commands.rs` matches on the command variant and routes to a handler function. Most commands load a `CommandContext` from `.specify/project.yaml` (via `CommandContext::load`); a few unscoped commands (like `Init` and `Adapter Resolve`) run without project context.
-
-Each handler function returns an `Exit` that maps to an exit code.
-
-## JSON Envelope Contract
+## JSON envelope contract
 
 All JSON output follows the shared envelope contract:
 
-- **Kebab-case keys** -- `app-name`, `project-dir`, `envelope-version` (never `app_name` or `projectDir`); the `envelope-version` JSON envelope key is intentionally kept as the wire-protocol version stamp and is unrelated to the Specify adapter noun
-- **`envelope-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `ENVELOPE_VERSION` in `engine/src/runtime/output.rs`.
-- **Kebab-case error variants** -- `missing-prerequisites`, `invalid-project`, `io` (never `missing_prerequisites`)
+- **Kebab-case keys** — `app-name`, `project-dir` (never `app_name` or `projectDir`)
+- **Flat bodies** — every successful body is the typed `*Body` rendered directly; every failure body is `ErrorBody`. There is no top-level envelope-version stamp.
+- **Kebab-case error discriminants** — `adapter-not-installed`, `invalid-project`, `io` (never `missing_prerequisites`); skills and tests grep on the `error` / `code` fields, so renaming one is a breaking change.
 
-The `--format` flag is global on `Cli` and controls output:
-
-| Format | Success | Error |
-|--------|---------|-------|
-| `text` | Humanised summary | `error: <message>` on stderr |
-| `json` | `{ "envelope-version": N, ...payload }` | `{ "envelope-version": N, "error": "<variant>", "message": "...", "exit-code": N }` |
-
-Key helpers in the binary:
-
-- `emit_response(value)` -- injects `envelope-version` into an object and prints to stdout
-- `emit(format, value)` / `emit_err(format, value)` -- route typed `Render` bodies to text or JSON
-- `emit_error` / `emit_json_error` -- maps `specify_error::Error` variants to kebab-case error envelopes
+The `--format text|json` flag controls output shape; `SPECIFY_FORMAT=json` is the environment equivalent.
 
 ## Exit codes
 
-The exit-code contract is documented in `src/main.rs` and is part of the public interface for skill authors:
+The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/transport/src/command/output.rs` is the single source of truth:
 
 | Code | Constant | Meaning |
 |------|----------|---------|
-| `0` | `Success` | Operation completed successfully |
-| `1` | `GenericFailure` | I/O error, parse error, or any unclassified failure |
-| `2` | `ValidationFailed` / `ArgumentError` | Validation failure, argument-shape failure discovered after clap parsing, or a declared tool resolver / permission failure |
-| `3` | `VersionTooOld` | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
+| `0` | `EXIT_SUCCESS` | Operation completed successfully |
+| `1` | `EXIT_GENERIC_FAILURE` | I/O error, parse error, or any unclassified failure |
+| `2` | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors |
+| `3` | `EXIT_VERSION_TOO_OLD` | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
 
-The mapping from error variants to exit codes:
-
-- `Error::CliTooOld` maps to exit `3` and serializes as `specify-version-too-old`
-- `Error::AdapterCliTooOld` (an adapter's declared `specify` compatibility floor) maps to exit `3` and serializes as `adapter-cli-too-old`
-- `Error::Validation` maps to exit `2`
-- `Error::Argument`, declared-tool denials, and structural plan errors map to exit `2`
-- All other `Error` variants map to exit `1`
+Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI seam forwards its exit and the binary passes it through verbatim.
 
 ## Error handling
 
-Most commands use `specify_error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, declared-tool resolver failures, permission failures, runtime failures, and more. Adapter tool diagnostics written by a WASI guest pass through `specify extension run` on stdout/stderr when the guest starts successfully.
+Most commands use `error::Error`, a unified error enum with structured variants covering I/O, YAML parsing, validation, lifecycle violations, permission failures, runtime failures, and more.
 
-The pattern for a command handler:
+The pattern for a command operation:
 
-1. Call into a library crate function that returns `Result<T, specify_error::Error>`
-2. On success, format the result as text or JSON depending on `--format`
-3. On error, emit the error envelope and return the appropriate `Exit`
+1. Call into a library crate function that returns `Result<T, error::Error>`
+2. Return a typed body implementing `Serialize + Render`
+3. Let the command or HTTP projector render success or apply the shared error contract
 
 ## Public Rust API
 
-The root `specify` package is a binary-only crate. It does not expose `src/lib.rs` or re-export workspace types. Code that needs Rust APIs imports the member crates directly, for example `specify_workflow::Plan`, `specify_workflow::ProjectConfig`, or `specify_error::Error`.
+The root `specify` package is the Omnia deployment unit. It does not expose a public Rust library surface for consumers. Code that needs Rust APIs imports the member crates directly, for example `workflow::Plan`, `workflow::ProjectConfig`, or `error::Error`.

@@ -1,0 +1,4 @@
+name: omnia
+version: "1.0.0"
+axis: target
+description: Omnia WASM target.

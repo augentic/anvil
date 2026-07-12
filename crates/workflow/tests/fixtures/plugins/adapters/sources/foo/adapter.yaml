@@ -1,0 +1,4 @@
+name: foo
+version: "1.0.0"
+axis: source
+description: Test fixture for the source axis collision case.

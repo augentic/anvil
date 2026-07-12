@@ -1,6 +1,6 @@
 # Substep contract
 
-The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `shape` brief; later sections never rewrite earlier ones. `specify slice synthesize --from` projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
+The synthesis response carries prose for four artifacts, authored in this fixed order: `proposal → specs → design → tasks`. Each section reads the prior sections plus the inputs-envelope `Evidence[]` (each source's inline `lead` + `claims`) and the resolved target `guidance` prompt; later sections never rewrite earlier ones. The `specify slice refine` persist tail projects the kernel-owned fields and persists every artifact; the agent never writes `ID:` / `Sources:` / `Status:` lines, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
 
 ## 1. `proposal.md`
 
@@ -15,7 +15,7 @@ Required H2 sections, in order: `## Why`, `## Domains`, `## Non-goals`. Each `##
 
 ## 2. `specs/<domain>/spec.md`
 
-Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Domains` entry, keyed by `domain`; `specify slice synthesize` writes one file per domain at `specs/<domain>/spec.md`. The domain slug is kebab-case and maps directly from the `## Domains` bullet. The target shape brief explains how to choose domains for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
+Behavioural requirements. **This is the artifact the provenance parser validates after the kernel renders it.** The response carries one spec body per `proposal.md` `## Domains` entry, keyed by `domain`; the synthesis kernel writes one file per domain at `specs/<domain>/spec.md`. The domain slug is kebab-case and maps directly from the `## Domains` bullet. The target guidance prompt explains how to choose domains for that target (Vectis feature, Omnia crate/service surface, contracts contract surface), but the file layout is workflow-owned and identical for every target. Root-level `spec.md` is not a valid refine artifact.
 
 Author each requirement as prose only — heading and body. The kernel injects the `ID:` / `Sources:` / `Status:` lines and the headline tag from `model.yaml`; see [`requirement-block.md`](requirement-block.md) for the prose you write and the block the kernel renders.
 
@@ -32,14 +32,14 @@ Each requirement may include one or more scenarios (rendered as `#### Scenario:`
 
 ## 3. `design.md`
 
-Technical implementation guidance. Folds in the target `shape` brief (`adapters/targets/<target>/briefs/shape.md`) and any source claim that informs implementation but not behaviour. Required H2s, in order:
+Technical implementation guidance. Folds in the target `guidance` prompt (`adapters/targets/<target>/prose/prompts/guidance.md`) and any source claim that informs implementation but not behaviour. Required H2s, in order:
 
-1. `## Domain model` — types, IDs, newtypes. Drawn from `type` claims on code Evidence and from `requirement` claim subjects on documentation Evidence; shaped by the target's `shape` (Omnia provider DI, Vectis Crux idioms, contracts format choice).
+1. `## Domain model` — types, IDs, newtypes. Drawn from `type` claims on code Evidence and from `requirement` claim subjects on documentation Evidence; shaped by the target's `guidance` (Omnia provider DI, Vectis Crux idioms, contracts format choice).
 2. `## APIs and integrations` — external surfaces (HTTP routes, message topics, WebSocket exports, contract endpoints). Drawn from `excerpt` and `call` claims and from `requirement` claims that name an external surface.
-3. `## Configuration` — every config key the slice reads. For Omnia targets the shape brief enumerates the closed `Config::get` surface; for Vectis it lists tokens / asset bindings; for contracts it lists baseline-directory inputs.
-4. `## Technical logic` — handler delegation, validation placement (edge vs core), error mapping. Folds in `excerpt` claims that show behaviour the requirements abstract over.
-5. `## UI / layout` — required only when spatial Evidence (`region` / `container` / `leaf` claims from the `screenshots` source adapter) contributes. Carries the region / container / leaf tree per claim; the Vectis target's `build` brief reads this section to regenerate `composition.yaml`. Targets that do not consume spatial Evidence omit this H2.
-6. `## Observability` — metrics, traces, log shapes the target shape brief prescribes.
+3. `## Configuration` — every config key the slice reads. For Omnia targets the guidance prompt enumerates the closed `Config::get` surface; for Vectis it lists tokens / asset bindings; for contracts it lists baseline-directory inputs.
+4. `## Technical logic` — operation delegation, validation placement (edge vs core), error mapping. Folds in `excerpt` claims that show behaviour the requirements abstract over.
+5. `## UI / layout` — required only when spatial Evidence (`region` / `container` / `leaf` claims from the `screenshots` source adapter) contributes. Carries the region / container / leaf tree per claim; the Vectis target's `build` prompt reads this section to regenerate `composition.yaml`. Targets that do not consume spatial Evidence omit this H2.
+6. `## Observability` — metrics, traces, log shapes the target guidance prompt prescribes.
 
 `decision` and `section` claims fold into the H2 they inform (a decision about transport routing lands in `## APIs and integrations`; a decision about error strategy lands in `## Technical logic`). Quote `decision` text verbatim where useful and cite the source key in parentheses: `(from product-notes)`.
 
@@ -47,7 +47,7 @@ Technical implementation guidance. Folds in the target `shape` brief (`adapters/
 
 ## 4. `tasks.md`
 
-Implementation sequencing as numbered markdown checkboxes grouped under `## N. <Group>` headings. Group order follows the target's `shape` brief's `tasks.md` skeleton (the Omnia shape brief prescribes `crate → tests → guest wiring → review`; Vectis prescribes `core → tests → shells`; contracts prescribes `author → import → verify`).
+Implementation sequencing as numbered markdown checkboxes grouped under `## N. <Group>` headings. Group order follows the target guidance prompt's `tasks.md` skeleton (the Omnia guidance prompt prescribes `crate → tests → guest wiring → review`; Vectis prescribes `core → tests → shells`; contracts prescribes `author → import → verify`).
 
 Format — one `## N. <Group>` heading per stage, then one `- [ ] N.M <description>` checkbox per task:
 
@@ -62,7 +62,7 @@ Format — one `## N. <Group>` heading per stage, then one `- [ ] N.M <descripti
 
 ## What synthesis never does
 
-- **Never edit `metadata.yaml`, `plan.yaml`, or `discovery.md`.** The skill body's CLI calls own those.
+- **Never edit `metadata.yaml`, `plan.yaml`, or `discovery.md`.** The CLI orchestrations own those.
 - **Never rewrite an earlier response section.** Author `proposal` before specs; specs before `design`.
 - **Never author kernel-owned fields.** `REQ` ids, `status`, `winner` markers, and rendered `Sources:` lists are the kernel's; the agent records `(source, id, kind)` claims and an `agreement` verdict and lets the kernel project the rest. A claim citing a `(source, id)` absent from Evidence fails projection with `slice-model-source-orphan`.
 - **Never park the slice on uncertainty.** Record the `agreement` verdict and proceed; the kernel derives `[unknown]` / `[conflict]` / `[divergence]`.

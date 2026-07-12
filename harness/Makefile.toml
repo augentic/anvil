@@ -1,0 +1,58 @@
+# Manual entry points for the harness surfaces. Run from inside
+# harness/ (`cargo make <task>`); nothing here is wired into the root
+# workspace's CI tasks.
+
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+skip_crate_env_info = true
+skip_git_env_info = true
+skip_rust_env_info = true
+
+# Build guests
+#
+# wasm32-wasip2 guest components: the core `specify` guest plus the
+# echo adapter fixtures (cdylib examples of the `fixtures` package,
+# landing under target/wasm32-wasip2/debug/examples/). Two invocations:
+# `--examples` narrows target selection to example targets only, so the
+# core guest's lib needs its own build.
+[tasks.guests]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo build -p specify --lib --target wasm32-wasip2)
+(cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
+'''
+
+# The shipped binary, for the subprocess smoke in the replay suite.
+[tasks.binary]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo build -p specify)
+'''
+
+# Model-free replay WASM/WIT smoke. Guest construction is explicit so the
+# host test never shells out to Cargo or hides a missing CI build prerequisite.
+[tasks.test-replay]
+dependencies = ["guests", "binary"]
+command = "cargo"
+args = ["nextest", "run", "-p", "replay", "--no-tests=pass"]
+
+# Lint — the harness crates are not covered by the root workspace's
+# clippy gate; run this before extending them.
+[tasks.lint]
+command = "cargo"
+args = [
+    "clippy",
+    "-p",
+    "fixtures",
+    "-p",
+    "replay",
+    "--all-targets",
+    "--",
+    "-D",
+    "warnings",
+]

@@ -1,0 +1,52 @@
+# Sibling asset manifest for the task-list-two-screen fixture. Every
+# asset id referenced by `expected.layout.yaml` (`icon-button` / `icon`
+# / `image` / `fab` items) is declared here so the references resolve
+# cleanly under `vectis validate composition` — the contract
+# bars inferers from emitting asset ids that no manifest defines unless
+# the reference is paired with a `# TODO` comment, and this fixture
+# demonstrates the resolved-id path. Symbol-kind entries are used for
+# every glyph in the fixture (no binary files needed); a future fixture
+# can demonstrate the `vector` / `raster` paths.
+
+version: 1
+
+provenance:
+  sources:
+    - kind: manual
+      captured_at: "2026-05-06T07:55:00Z"
+
+assets:
+  chevron-right:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: chevron.right
+      android: chevron_right
+
+  chevron-left:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: chevron.left
+      android: chevron_left
+
+  settings:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: gearshape
+      android: settings
+
+  plus:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: plus
+      android: add
+
+  empty-tasks-hero:
+    kind: symbol
+    role: illustration
+    symbols:
+      ios: tray
+      android: inbox

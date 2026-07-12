@@ -1,1 +1,0 @@
-../../../../plugins/spec/references/standards-layer-snippet.md

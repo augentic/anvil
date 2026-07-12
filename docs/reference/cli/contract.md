@@ -1,14 +1,6 @@
-# Contract validator (WASI tool)
+# Contract validator (in-guest)
 
-The contracts adapter declares a `contract` WASI tool that walks a baseline `contracts/` directory, projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files.
-
-The canonical user-visible merge gate is the declared WASI tool:
-
-```bash
-specify extension run contract -- <BASELINE_DIR> [--format text|json]
-```
-
-`<BASELINE_DIR>` is typically `<project>/contracts/`. `--format json` is the canonical output shape for briefs and skills; `--format text` is a human-readable variant for local debugging.
+The contracts adapter ships a `contract` validator as in-guest library code inside its published component; there is no host dispatch verb. It walks a baseline `contracts/` directory (typically `<project>/contracts/`), projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the contract validation rules. It is read-only and never modifies files. The contracts build and merge orchestrations invoke it directly; the JSON envelope below is the canonical output shape.
 
 ## Validation Rules
 
@@ -26,13 +18,13 @@ Format detection: a YAML file is top-level iff its root carries `openapi:` or `a
 |---|---|
 | `0` | Clean — no findings. The baseline is well-formed under all three rules. |
 | `1` | One or more findings. Caller (typically the contracts merge brief) MUST treat as `failure`. |
-| `2` | The tool could not run, either because `specify` could not resolve/instantiate it or because the validator rejected its invocation. Caller MUST treat as `failure`. |
+| `2` | The validator could not run or rejected its invocation. Caller MUST treat as `failure`. |
 
 The `0` / `1` / `2` mapping is the conventional shell-friendly shape so adapter skills can branch on the exit code without needing the broader `specify` `Exit` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
 
 ## JSON Envelope
 
-`--format json` writes the validator envelope directly to stdout. `specify extension run` does not wrap successful guest output:
+The validator envelope is emitted directly, unwrapped:
 
 ```json
 {
@@ -60,22 +52,14 @@ Field semantics:
 - `findings[].detail` — single-line human-readable description.
 - `exit-code` — mirrors the validator's process-style exit code.
 
-Resolver, permission, or runtime failures come from `specify extension run` and use the standard Specify error envelope.
-
 This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views; that product surface is deferred until a real consumer workflow exists.
 
 ## Distribution
 
-The contracts target adapter declares the WASI extension inline in [`adapters/targets/contracts/adapter.yaml`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/adapter.yaml) under the singular `extension` object. The declaration carries the run handle `contract` and a read-only permission on `$PROJECT_DIR/contracts`; the extension's bytes ship as a committed `adapter.wasm` built from the co-located `extension/` crate and bundled into the published adapter artifact.
-
-Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify extension run contract` resolves the extension from the installed adapter tree, applies the filesystem preopen, and runs it through the embedded WASI host.
-
-During local development, project authors may override the adapter declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
+The validator is library code inside the contracts adapter's published component ([`targets/contracts/`](https://github.com/augentic/specify-adapters/tree/main/targets/contracts)). Operators install `specify`; no separate contract-validator binary exists.
 
 ## See Also
 
-- [specify extension](extension.md) — the declared WASI tool runner surface.
-- [Tool declarations](../../explanation/tool-declarations.md) — project and adapter declaration sites, precedence, cache, permissions, and digest pins.
-- [`adapters/targets/contracts/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
+- [`adapters/targets/contracts/prose/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/prose/briefs/build.md) — the contracts target build brief whose OpenAPI, AsyncAPI, and JSON Schema sub-flows produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
-- [`adapters/targets/contracts/briefs/merge.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.
+- [`adapters/targets/contracts/prose/briefs/merge.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/prose/briefs/merge.md) — merge brief that owns the post-merge invocation and the three-branch merge outcome wiring.

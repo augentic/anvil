@@ -1,4 +1,0 @@
-auth-rate-limit	Add per-IP auth rate limiting for login attempts.
-password-hash-rotate	Rotate password hashing parameters for stored credentials.
-session-cookie-harden	Harden session cookies with Secure and HttpOnly flags.
-reset-flow-retire	Retire the legacy password reset flow.

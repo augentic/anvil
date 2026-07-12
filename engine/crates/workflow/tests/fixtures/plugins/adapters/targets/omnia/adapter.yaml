@@ -1,9 +1,0 @@
-name: omnia
-version: "1.0.0"
-axis: target
-execution: agent
-briefs:
-  shape: briefs/shape.md
-  build: briefs/build.md
-  merge: briefs/merge.md
-description: Omnia WASM target.

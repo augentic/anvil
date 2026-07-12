@@ -1,0 +1,377 @@
+{
+  "$defs": {
+    "adapterRef": {
+      "pattern": "^[a-z][a-z0-9-]*(?:@\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?)?$",
+      "type": "string"
+    },
+    "buildOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Relative path (from project-dir) to the produced artifact. The CLI finalize gate verifies each path exists and is non-empty.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "platform": {
+          "$ref": "#/$defs/platform",
+          "description": "Platform this output was produced for."
+        }
+      },
+      "required": [
+        "platform",
+        "path"
+      ],
+      "type": "object"
+    },
+    "diagnostic": {
+      "additionalProperties": false,
+      "description": "Wire shape for a single structured diagnostic — the neutral currency shared by every Specify check surface: the workflow-gating validate surface (`specify slice validate`), plan validation, target-adapter review prompts, model-assisted scorers, CI annotations, and dashboards. Field names are kebab-case at every nesting level. Producer-local `id` is distinct from the codex `rule-id` — `id` is a stable per-run handle (e.g. `FIND-0001`) and `rule-id` is the durable codex citation (e.g. `UNI-014`). Conditional requirements that JSON Schema cannot express (e.g. `confidence` required for `source: model-assisted`) are enforced producer-side.",
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/diagnostic-artifact"
+        },
+        "change": {
+          "$ref": "#/$defs/diagnostic-kebabName",
+          "description": "Change name when known."
+        },
+        "confidence": {
+          "description": "Producer confidence. Producers MUST set `confidence` for `source: model-assisted`; the conditional rule is enforced producer-side, not by this schema.",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/diagnostic-evidence"
+        },
+        "fingerprint": {
+          "description": "Stable hash of `(rule-id, location, evidence-payload)` for the diagnostic fingerprint algorithm. Excludes producer-controlled fields (`id`, `title`, `severity`, `confidence`, `change`, `slice`, `target-adapter`, `source-adapter`).",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/diagnostic-findingId",
+          "description": "Producer-local stable id for this run (e.g. `FIND-0001`). NOT the rule id; report-local heading ids such as `SEC-1` or `UNI-3` also live here when emitted as JSON."
+        },
+        "impact": {
+          "description": "Operator-facing risk.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/diagnostic-diagnosticKind",
+          "description": "Nature of the diagnostic: `violation` (a defect) or `review` (a deterministically-raised request for agent/human judgment). Omitted defaults to `violation`."
+        },
+        "location": {
+          "$ref": "#/$defs/diagnostic-location",
+          "description": "File path plus optional line, column, and end positions. Omitted for findings without a single anchor location; per-file evidence may carry `locations[]` instead."
+        },
+        "related-rule-ids": {
+          "description": "Additional codex ids that informed the finding.",
+          "items": {
+            "$ref": "#/$defs/diagnostic-ruleId"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "remediation": {
+          "description": "Concrete action to clear the finding.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "rule-id": {
+          "$ref": "#/$defs/diagnostic-ruleId",
+          "description": "Rule id (e.g. `UNI-014`). Required when the finding maps to a rule; absent for findings that do not cite codex policy."
+        },
+        "severity": {
+          "$ref": "#/$defs/diagnostic-severity"
+        },
+        "slice": {
+          "$ref": "#/$defs/diagnostic-kebabName",
+          "description": "Slice name when the finding is slice-scoped."
+        },
+        "source": {
+          "enum": [
+            "deterministic",
+            "model-assisted",
+            "hybrid",
+            "human",
+            "tool"
+          ],
+          "type": "string"
+        },
+        "source-adapter": {
+          "$ref": "#/$defs/diagnostic-adapterRef",
+          "description": "Source-adapter name when the finding is source-extraction-specific."
+        },
+        "target-adapter": {
+          "$ref": "#/$defs/diagnostic-adapterRef",
+          "description": "Target-adapter name when the finding is adapter-specific."
+        },
+        "title": {
+          "description": "Short finding title.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "source",
+        "artifact",
+        "evidence",
+        "impact",
+        "remediation",
+        "fingerprint"
+      ],
+      "title": "Specify Diagnostic",
+      "type": "object"
+    },
+    "diagnostic-adapterRef": {
+      "pattern": "^[a-z][a-z0-9-]*(?:@\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?)?$",
+      "type": "string"
+    },
+    "diagnostic-artifact": {
+      "enum": [
+        "code",
+        "tests",
+        "contracts",
+        "specs",
+        "design",
+        "decisions",
+        "tasks",
+        "assets",
+        "tokens",
+        "composition",
+        "plan",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "diagnostic-diagnosticKind": {
+      "description": "Orthogonal nature axis. `violation` marks a deterministic defect; `review` marks a deterministically-raised request for agent or human judgment (e.g. a deferred semantic check). Only `violation` findings are default-blocking.",
+      "enum": [
+        "violation",
+        "review"
+      ],
+      "type": "string"
+    },
+    "diagnostic-evidence": {
+      "description": "Evidence union for structured diagnostics. Closed `kind` discriminator with one legal field set per branch. Evidence payloads have a 16 KiB cap after UTF-8 serialization (enforced producer-side, not by this schema). Diagnostics MUST NOT include secrets, full prompts, model transcripts, or full source files.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "snippet"
+            },
+            "value": {
+              "description": "Bounded verbatim excerpt for local code or prose evidence.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "digest"
+            },
+            "locations": {
+              "$ref": "#/$defs/diagnostic-locationList",
+              "description": "Optional contributing locations referenced by the digest."
+            },
+            "sha256": {
+              "description": "Hex-encoded SHA-256 digest of the underlying evidence.",
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "summary": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sha256",
+            "summary"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "data": {
+              "description": "Domain evidence payload (e.g. contract compatibility metadata). Producers must keep `data` bounded and secret-free.",
+              "type": "object"
+            },
+            "kind": {
+              "const": "structured"
+            },
+            "locations": {
+              "$ref": "#/$defs/diagnostic-locationList"
+            },
+            "summary": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "summary",
+            "data"
+          ],
+          "type": "object"
+        }
+      ],
+      "type": "object"
+    },
+    "diagnostic-findingId": {
+      "description": "Producer-local stable id. Examples: `FIND-0001`, `SEC-1`, `UNI-3`. Letters and digits with internal hyphens; ends with a numeric tail. Distinct from the codex `rule-id` namespace.",
+      "pattern": "^[A-Z][A-Z0-9-]*-[0-9]+$",
+      "type": "string"
+    },
+    "diagnostic-kebabName": {
+      "description": "Kebab-case identifier matching slice and plan naming. No cross-artifact regex is pinned for `slice` / `change`; this kebab shape is consistent with existing Specify naming.",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "type": "string"
+    },
+    "diagnostic-location": {
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end-column": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end-line": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "line": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "$ref": "#/$defs/diagnostic-relativePathPattern"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "diagnostic-locationList": {
+      "items": {
+        "$ref": "#/$defs/diagnostic-location"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "diagnostic-relativePathPattern": {
+      "description": "Project-relative path. Absolute paths, URI strings, and `..` segments are rejected.",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+      "type": "string"
+    },
+    "diagnostic-ruleId": {
+      "description": "Two namespaces share this field. The codex family (`UNI-014`, `OMNIA-021`, …) cites the engineering-standards rules shipped inside each target adapter. The dot-/kebab-namespaced runtime-validation family (`spec.requirement-id-missing`, `merge.no-duplicate-ids`, `slice-model-source-orphan`) carries the structural workflow invariant ids that `validate` surfaces emit as diagnostics.",
+      "pattern": "^((UNI|SRC|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}|[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)$",
+      "type": "string"
+    },
+    "diagnostic-severity": {
+      "description": "Closed review severity enum, ordered for sort stability (`critical < important < suggestion < optional`).",
+      "enum": [
+        "critical",
+        "important",
+        "suggestion",
+        "optional"
+      ],
+      "type": "string"
+    },
+    "kebabName": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "platform": {
+      "description": "Closed target platform enum. Mirrors the `platform` $def in `target.schema.json`.",
+      "enum": [
+        "core",
+        "ios",
+        "android",
+        "web",
+        "desktop"
+      ],
+      "type": "string"
+    },
+    "uiSurface": {
+      "additionalProperties": false,
+      "properties": {
+        "screens": {
+          "description": "Count of screen-bearing requirements this slice introduces or modifies, per the build brief's own `spec.md` judgement. `0` means the slice has no UI surface.",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screens"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/schemas/answers/report.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — derived from schemas/target/build-report.schema.json (with schemas/diagnostics/diagnostic.schema.json inlined) by schema's answer derivation; do not edit. Validates the schema-gated answer to a target adapter's build or merge operation: the canonical report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
+  "properties": {
+    "findings": {
+      "default": [],
+      "description": "Diagnostics; default `[]`. On `success`, only non-blocking findings (or empty). On `failure`, populated with blocking (`critical` / `important`) violations when the target can map them.",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      },
+      "type": "array"
+    },
+    "outputs": {
+      "default": [],
+      "description": "Per-platform build outputs produced by the target adapter. Each entry declares a platform and a relative path (from project-dir) to the produced artifact. The CLI finalize gate verifies every declared path exists and is non-empty (`target-build-output-missing`).",
+      "items": {
+        "$ref": "#/$defs/buildOutput"
+      },
+      "type": "array"
+    },
+    "slice": false,
+    "status": {
+      "description": "`success` or `failure`. Partial success is `success` with non-blocking findings only.",
+      "enum": [
+        "success",
+        "failure"
+      ],
+      "type": "string"
+    },
+    "target": false,
+    "ui-surface": {
+      "$ref": "#/$defs/uiSurface",
+      "description": "Per-slice UI-surface signal authored by the build brief from its own `spec.md` screen-identification judgement (never from `## Platforms`). Optional and additive — reports without it stay valid. The CLI finalize phase compares it against the produced `composition.yaml` and emits the non-blocking `composition-unexpected-for-non-ui-slice` / `composition-empty-for-ui-slice` warnings on a mismatch."
+    },
+    "version": false
+  },
+  "required": [
+    "status",
+    "findings"
+  ],
+  "title": "Specify build/merge answer",
+  "type": "object"
+}

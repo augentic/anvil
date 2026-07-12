@@ -1,0 +1,28 @@
+[package]
+name = "schema"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Embedded JSON Schemas and JSON-Schema validation plumbing shared by Specify crates"
+categories = ["development-tools"]
+keywords = ["specify", "json-schema"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+base16ct.workspace = true
+jsonschema.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+error.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true

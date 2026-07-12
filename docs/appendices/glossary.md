@@ -5,19 +5,22 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Adapter**
-A versioned Specify extension. Specify splits adapters by direction: **source adapters** (`axis: source`, operations `survey` + `extract`) and **target adapters** (`axis: target`, operations `shape` + `build` + `merge`). Both ship `adapter.yaml` validated by an axis-specific schema (`source.schema.json` for sources, `target.schema.json` for targets). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Specify extension. Specify splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+
+**Action**
+A grammar leaf in the `specify` CLI — the executable command path (`slice build`, `journal emit`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `specify plan next` writes `in-progress`; `/spec:refine` and the breakouts resolve the active slice before doing per-slice work.
 
 **API contract**
-A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the declared `contract` WASI tool (`specify extension run contract`).
+A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the contracts adapter's in-guest validator.
 
 **Archive**
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
-Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract` (not in `adapter.yaml`), applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
+Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract`, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
 A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
@@ -28,18 +31,24 @@ A structured document that defines part of a slice. The core slice artifacts are
 The accumulated set of merged specs at `.specify/specs/` and merged contracts at `contracts/`. Represents the current known behavioural and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file shipped by a source or target adapter that drives one operation. Briefs live under `adapters/sources/<name>/briefs/{survey,extract}.md` or `adapters/targets/<name>/briefs/{shape,build,merge}.md`.
+A markdown prompt file shipped by a source or target adapter that drives one operation, compiled into the adapter guest. Prompts live under `adapters/sources/<name>/prose/prompts/{survey,extract}.md` or `adapters/targets/<name>/prose/prompts/{guidance,build,merge}.md`.
 
 **Breakout verb**
-`/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `/spec:execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Shares the same skill body as the in-loop call.
+`/spec:refine`, `/spec:build`, or `/spec:merge` invoked outside the `specify plan execute` loop — typically after execute parks or when an operator wants to drive one slice by hand. Invokes the same guest orchestration as the in-loop call.
 
 ## C
 
 **Change**
-The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/spec:plan`, `/spec:execute`, `/spec:finalize`.
+The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/spec:plan`, `specify plan execute`, `/spec:finalize`.
 
 **Change branch**
-The Git branch used to publish a multi-repo change from a workspace slot. Form: `specify/<change-name>`. `/spec:execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` publishes them.
+The Git branch an operator may use to publish a multi-repo change from a workspace slot. Branch preparation and publication are repository operations outside Specify.
+
+**Command**
+One operator-facing `specify` invocation (`specify slice build my-slice`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation routing](../../rfcs/handler-routing.md).
+
+**Command group**
+The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `specify slice *` is the slice command group.
 
 **Claim**
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
@@ -56,7 +65,7 @@ An Augentic product: a cross-platform application framework (Rust core, native i
 ## D
 
 **Diagnostic**
-The neutral finding currency every check surface emits (`specify slice validate`, `specify lint`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
+The neutral finding currency every check surface emits (`specify slice validate`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
 **Discovery**
 The plan-time discovery artifact at `discovery.md` in the project root (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/spec:plan` through CLI helpers.
@@ -73,7 +82,7 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
 
 **Execute**
-The supervised driver skill (`/spec:execute`) that loops per slice: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge` → repeat. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
+The guest-routed driver loop (`specify plan execute`) that claims each entry and runs refine → build → merge until the plan drains. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
 The slice-time operation declared by a source adapter. Reads one `Lead` plus the bound source and returns `Evidence` content the CLI persists.
@@ -81,12 +90,20 @@ The slice-time operation declared by a source adapter. Reads one `Lead` plus the
 ## F
 
 **Finalize**
-The closure skill (`/spec:finalize`) that pushes the prepared branches with `specify workspace push`, then runs `specify plan archive`. It does not create, observe, or merge pull requests — opening and merging PRs is operator-owned and happens outside Specify.
+The closure skill (`/spec:finalize`) that verifies the plan is drained, confirms operator-owned publication is complete, then runs `specify plan archive`.
 
 ## G
 
 **Gate 1**
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
+
+**Gate (quality)**
+A cadence and threshold applied to scenario reports: repository correctness, cross-repository native workflow, composed WebAssembly conformance, or live semantic quality. Distinct from the operator's plan Gate 1.
+
+## H
+
+**Hard assertion**
+A mechanically decidable scenario result, such as lifecycle state, exit status, schema validity, journal cadence, filesystem shape, or generated-output verification. Every applicable profile executes it automatically.
 
 ## I
 
@@ -109,6 +126,14 @@ The slice phase that applies spec deltas to the baseline, archives the slice, an
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
 
+**Model backend**
+The implementation serving judgment requests for a scenario profile: ordered scripted responses, canonical request-key replay, or a live model.
+
+## O
+
+**Operation**
+The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `workflow::<domain>::handlers` submodules beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation routing](../../rfcs/handler-routing.md).
+
 **model.yaml**
 The single structured artifact per refined slice, at `.specify/slices/<slice>/model.yaml`. Holds the requirement set with **inline provenance** (per requirement: contributing claims and the winning one), the task list, and a small header. Validated by `specify slice validate`; the audit `provenance` view is projected from it on demand (there is no persisted `provenance.yaml`). See [From sources to slices](../explanation/reconciliation.md).
 
@@ -122,17 +147,17 @@ An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. T
 **Plan**
 The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `specify plan {create, add, amend, transition, next, archive}` only.
 
+**Profile**
+The execution selection for one canonical scenario: runtime, model backend, grading mode, trial count, and report destination. Profiles do not redefine scenario steps or assertions.
+
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
-
-**Prepare and finalize (slice build)**
-The two phases of `specify slice build <slice>`. `--phase prepare` (default) assembles and schema-validates the build request and hands it to the target's `build` brief; `--phase finalize` validates the report the brief writes and gates the `refined → built` transition. The same two-phase pattern (`prepare` builds the sandbox, `finalize` validates output) governs source `survey` / `extract` under `execution: agent`.
 
 **Project (plan routing)**
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
 
 **Propose**
-The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via `specify plan propose`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
+The `/spec:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via the reconcile leg inside `specify plan author`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override at Gate 1. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `specify plan amend`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
@@ -148,10 +173,22 @@ The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`,
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
 
+**Run report**
+The structured result of executing a scenario profile, including source revisions, trial outcomes, hard assertions, semantic rubric scores, model metadata, and retained evidence.
+
+**Runtime (quality)**
+The environment executing a scenario: native linked-adapter operations or a composed WebAssembly deployment. Distinct from the shipped Omnia runtime product.
+
 ## S
 
+**Scenario**
+A canonical YAML workflow case declaring setup, workflow steps, fixtures, hard assertions, semantic rubrics, expected outputs, and gate tier. Profiles execute the same scenario through different runtimes and model backends.
+
+**Semantic rubric**
+An evidence-backed grading rule for meaning or usefulness, such as decomposition quality or artifact fidelity. Rubrics run only in live profiles; mechanically decidable behavior is a hard assertion instead.
+
 **Shape**
-The idiom-guidance brief shipped by a target adapter. Read by core synthesis as context; not executed. Empty `shape` is valid.
+The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.
 
 **Skill**
 An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/spec:build`). Skills delegate deterministic work to the CLI and use judgment for everything else.
@@ -160,7 +197,7 @@ An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:pl
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.
 
 **Source adapter**
-Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Lives at `adapters/sources/<name>/adapter.yaml`. See the [Source adapters](../reference/sources/index.md) reference.
+Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `specify:<name>@<semver>`; the guest crate lives at `adapters/sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
 An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
@@ -169,7 +206,7 @@ An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chose
 A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
-The single CLI binary produced by the in-tree `cli/` workspace that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, plan and slice management, consumer-project linting (`specify lint`), and framework **authoring** checks for contributors to the `augentic/specify` repo (`specify lint framework`, invoked locally as `make lint`). See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
+The single CLI binary produced by the Rust workspace at the repo root that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Framework **authoring** checks for contributors to the `augentic/specify` repo run as plain cargo tests (`tests/framework/`), not as a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **Survey**
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.
@@ -177,13 +214,13 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `shape` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Lives at `adapters/targets/<name>/adapter.yaml`.
+Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Published as `specify:<name>@<semver>`; the guest crate lives at `adapters/targets/<name>/` in the adapters repo.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present).
 
 **topology.lock**
-A committed file at `.specify/topology.lock` (workspace mode only). A machine-written projection of each member project's `project.yaml` topology facets — `name`, `target`, `description`, `capabilities[]`, `keywords[]` — regenerated by `specify workspace sync`. Plan-time reconciliation reads it so the agent can route slices to the right project without cloning every repo.
+A committed file at `.specify/topology.lock` (workspace mode only). A machine-written projection of each member project's `project.yaml` topology facets and baseline routing identity. Plan-time reconciliation reads it so the agent can route slices to the right project; regeneration is operator-owned.
 
 ## V
 
@@ -193,10 +230,10 @@ An Augentic product: a target that applies spec-first generation to cross-platfo
 ## W
 
 **WASI**
-The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Specify runs adapter operations and declared tools under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
+The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Specify runs adapter operations under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
 
 **Workspace**
-The top-level `workspace/` directory holding per-project slots in a multi-repo change. Each child is a workspace slot — a Git clone for remote registry URLs or a symlink for local targets. Materialised by `specify workspace sync` from `registry.yaml`. Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
+The top-level `workspace/` directory holding per-project slots in a multi-repo change. Each child is a workspace slot — typically a Git checkout/worktree for a remote registry URL or a symlink for a local target. Materialization and publication are operator-owned outside Specify.
 
 **Workspace mode**
 The project topology declared by `project.yaml: workspace: true`. The repository holds `registry.yaml`, plan artifacts at the repository root, and project slots under top-level `workspace/<project>/`. Contrast with single-repo mode (`workspace: false`).

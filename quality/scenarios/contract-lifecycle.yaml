@@ -1,0 +1,97 @@
+version: 1
+id: contract-lifecycle
+owner: scenarios
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: runbook
+  kind: prompt
+  run: Follow quality/runbooks/contract-lifecycle.md
+profiles:
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: runbook
+  probe:
+    kind: path-exists
+    path: plan.yaml
+- id: plan-validates
+  after: runbook
+  probe:
+    kind: registered
+- id: contract-slice-first
+  after: runbook
+  probe:
+    kind: registered
+- id: implementation-slices-routed
+  after: runbook
+  probe:
+    kind: registered
+- id: dependencies-contract-before-implementations
+  after: runbook
+  probe:
+    kind: registered
+- id: draft-stops-at-handoff
+  after: runbook
+  probe:
+    kind: registered
+- id: review-step-no-op
+  after: runbook
+  probe:
+    kind: registered
+- id: execute-loop-all-done
+  after: runbook
+  probe:
+    kind: registered
+- id: workspace-branches-prepared
+  after: runbook
+  probe:
+    kind: registered
+- id: publication-complete-before-finalize
+  after: runbook
+  probe:
+    kind: registered
+- id: finalize-archives-plan
+  after: runbook
+  probe:
+    kind: registered
+- id: archived-change-md-present
+  after: runbook
+  probe:
+    kind: registered
+- id: rerun-finalize-plan-not-found
+  after: runbook
+  probe:
+    kind: registered
+semantic-rubrics:
+- id: archived-plan-path-recorded
+  after: runbook
+  criterion: the wrap-up names the archived plan path under `.specify/archive/plans/`.
+  evidence: &1
+  - plan.yaml
+  - registry.yaml
+  - workspace
+  - ".specify/archive/plans"
+- id: publication-confirmation-recorded
+  after: runbook
+  criterion: the captured finalize interaction records the operator's publication
+    confirmation before the archive command runs.
+  evidence: *1
+expected-outputs:
+- path: plan.yaml
+  kind: file
+- path: registry.yaml
+  kind: file
+- path: workspace
+  kind: directory
+- path: ".specify/archive/plans"
+  kind: directory

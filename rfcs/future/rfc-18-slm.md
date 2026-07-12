@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: RFC-28, RFC-32, RFC-10, and RFC-13 (durable enforcement spec in [`engine/DECISIONS.md`](../../engine/DECISIONS.md)) - Architecture: an SLM model backend behind the `wasi-model` boundary ([RFC-61](../rfc-61-omnia-migration.md)) — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
+> Status: Draft - Depends: the durable enforcement decisions in [`DECISIONS.md`](../../DECISIONS.md) - Architecture: an SLM model backend behind the `wasi-model` boundary — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 
@@ -85,7 +85,7 @@ Start with a strong code-oriented base model, likely Qwen3 Coder 7B Instruct or 
 
 The preferred framework strategy is one shared base model with separate LoRA adapters: one for Omnia first, then one for Vectis once the scorer and training loop are stable. A single adapter with a framework tag is cheaper but risks cross-pollinating Omnia and Vectis conventions.
 
-The SLM should not memorize the whole reference corpus. Keep `adapters/targets/omnia/references/*.md` and examples in retrieval, then train the model to follow retrieved references and emit the expected crate shape. This keeps SDK changes cheap: update the reference docs first, run a delta fine-tune only when behavior actually drifts.
+The SLM should not memorize the whole reference corpus. Keep `adapters/targets/omnia/prose/references/*.md` and examples in retrieval, then train the model to follow retrieved references and emit the expected crate shape. This keeps SDK changes cheap: update the reference docs first, run a delta fine-tune only when behavior actually drifts.
 
 ### Training Pipeline
 
@@ -124,7 +124,7 @@ The assistant output starts with the implementation plan because the existing Om
 
 ### Workflow Integration
 
-The Omnia adapter guest continues to drive the `build/crate.md` brief through `create` ([RFC-61](../rfc-61-omnia-migration.md)). The only new behavior is backend selection behind the `wasi-model` host — and RFC-61's compile-time-binding constraint rules out a per-call router, so the SLM slots in either as a dedicated deployment binding or as routing internal to one backend; decide which at activation time. The existing repair loop remains unchanged:
+The Omnia adapter guest continues to drive the `build/crate.md` prompt through `create`. The only new behavior is backend selection behind the `wasi-model` host — the compile-time-binding constraint rules out a per-call router, so the SLM slots in either as a dedicated deployment binding or as routing internal to one backend; decide which at activation time. The existing repair loop remains unchanged:
 
 ```text
 generate -> score -> repair -> score -> fallback if still failing
@@ -177,7 +177,6 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- RFC-28 — [DECISIONS.md §Diagnostic substrate](../../engine/DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
-- RFC-32 — [DECISIONS.md §Standards layer split](../../engine/DECISIONS.md#standards-layer-split-into-specify-standards-and-specify-schema)
-- RFC-10 / RFC-13
-- [`adapters/targets/omnia/briefs/build/crate.md`](../../adapters/targets/omnia/briefs/build/crate.md)
+- [DECISIONS.md §Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
+- [DECISIONS.md §Standards chain moved to the adapters](../../DECISIONS.md#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema)
+- [`targets/omnia/prose/prompts/build/crate.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md)

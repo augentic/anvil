@@ -1,0 +1,18 @@
+[package]
+name = "error"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Unified error types for the Specify CLI"
+categories = ["development-tools"]
+keywords = ["specify", "errors"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde-saphyr.workspace = true

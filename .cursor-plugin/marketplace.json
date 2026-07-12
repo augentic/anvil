@@ -24,7 +24,7 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for the Specify workflow: `/spec:init` scaffolds a project, `/spec:plan` authors the change-level plan, `/spec:execute` drives the per-slice loop, and the per-slice breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) plus `/spec:finalize` round out the operator surface."
+      "description": "Skills for the Specify workflow: `/spec:init` scaffolds a project, `/spec:plan` authors the change-level plan, the per-slice breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) drive one slice at a time, and `/spec:finalize` closes the change; the drained execute loop is the guest-routed `specify plan execute` verb."
     }
   ]
 }

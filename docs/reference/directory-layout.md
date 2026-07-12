@@ -29,11 +29,10 @@ workspace/                                  # Workspace slots (workspace mode on
 ├── project.yaml                            # Project configuration (target, sources, workspace, specify-version)
 ├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
-├── plan.lock                               # Advisory lock held by /spec:execute and breakouts
+├── guest.lock                              # Create-exclusive marker held by guest orchestrations
 │
 ├── scratch/                                # Transient working state (per-run lanes; wiped freely; gitignored)
 │   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
-│   └── plan/propose-response.json          # Plan reconciliation handoff lane
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
@@ -77,16 +76,10 @@ The regenerable **cache** lives outside the working tree, in a per-project direc
 
 ```text
 $XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
-├── manifests/sources/<name>/                     # Source adapter manifest mirror
-│   ├── adapter.yaml
-│   └── briefs/{survey,extract}.md
-├── manifests/targets/<name>/                     # Target adapter manifest mirror
-│   ├── adapter.yaml
-│   └── briefs/{shape,build,merge}.md
-├── manifests/manifest-meta.yaml                  # Manifest mirror provenance stamp
-└── codex/                                        # Distributed shared-rules codex (+ codex-meta.yaml)
-
-$XDG_CACHE_HOME/specify/mirrors/<url-id>.git      # Persistent bare mirror per remote peer URL
+└── components/                                   # Project component cache
+    ├── <name>.wasm                               # Local adapter component mirrored at init
+    ├── <name>.wasm.metadata.json                 # Digest-keyed describe answer sidecar
+    └── component-meta.yaml                       # Component mirror provenance stamp
 ```
 
 ## Key directories
@@ -95,7 +88,7 @@ $XDG_CACHE_HOME/specify/mirrors/<url-id>.git      # Persistent bare mirror per r
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create` (which `/spec:refine` invokes immediately before per-source `extract`). `specify plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; `specify slice synthesize --from` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside `specify slice refine` / `specify plan execute` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -109,17 +102,17 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### Cache (out-of-tree)
 
-The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `manifests/{sources,targets}/<name>/` mirrors each resolved adapter's `adapter.yaml` and briefs — populated by `specify source resolve` / `specify target resolve` on first use, with provenance stamped at `manifests/manifest-meta.yaml`. `codex/` carries the distributed shared-rules codex with provenance at `codex/codex-meta.yaml`. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the brief every time, with the journal's completion events as the audit trail.
+The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `components/` is the project component cache — an operator-supplied local adapter component mirrored at `specify init` (`<name>.wasm`, with provenance stamped at `components/component-meta.yaml`); pinned identities resolve from the global store and development builds resolve live, so neither is mirrored here. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 
-The transient working-state root and the lone gitignored tenant *inside* `.specify/` — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. `<adapter>/{survey,<slice>}/` holds the per-operation agent scratch lanes (the write-only `$SCRATCH_DIR` preopen), recreated empty at `prepare` time. `plan/` is the plan-phase handoff lane: `specify plan propose --dry-run` recreates it empty and the agent writes the reconciliation response envelope to `plan/propose-response.json`. Because the cache is out-of-tree, "a scratch write never pollutes a cache artifact" is structural rather than conventional.
+The transient working-state root and the lone gitignored tenant *inside* `.specify/` — per-run lanes recreated empty by their owning verb, so the tree can be wiped at any time at zero cost. Per-run lanes are recreated empty by their owning verb. Because the cache is out-of-tree, "a scratch write never pollutes a cache artifact" is structural rather than conventional.
 
 ### `workspace/` (top-level)
 
-Workspace slots for multi-repo changes, materialised at the project root (not under `.specify/`) and gitignored. Created or refreshed by `specify workspace sync`: remote URLs become `git worktree`s of a persistent out-of-tree bare mirror (so a peer's object store is shared across changes and fresh checkouts), and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registered project.
+Workspace slots for multi-repo changes are materialised at the project root (not under `.specify/`) and gitignored. The operator or surrounding repository automation creates each `workspace/<project>/` path from the matching `registry.yaml` entry, using an ordinary checkout/worktree for a remote repository or a symlink for a local path.
 
-Slots are read-only during planning and writable during execution. Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch to `origin`. Opening and merging pull requests is operator-owned through the forge, entirely outside Specify; `/spec:finalize` runs `specify workspace push` and then `specify plan archive`.
+Slots are read-only during planning and writable during execution. Branch creation, checkout, commits, publication, pull requests, and merges are operator-owned repository operations outside Specify. After publication is complete, `/spec:finalize` verifies the plan is drained and runs `specify plan archive`.
 
 ### `archive/`
 

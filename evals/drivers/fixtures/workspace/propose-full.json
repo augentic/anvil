@@ -1,9 +1,0 @@
-{
-  "version": 1,
-  "kind": "response",
-  "slices": [
-    { "name": "oauth-contract", "project": "contracts", "sources": [{ "source": "brief", "lead": "oauth-contract" }], "rationale": "Contract-first shared OAuth API surface." },
-    { "name": "oauth-backend", "project": "backend", "sources": [{ "source": "brief", "lead": "backend-implementation" }], "depends-on": ["oauth-contract"], "rationale": "Backend token exchange against the shared contract." },
-    { "name": "oauth-mobile", "project": "mobile", "sources": [{ "source": "brief", "lead": "mobile-implementation" }], "depends-on": ["oauth-contract"], "rationale": "Mobile OAuth UI consuming the shared contract." }
-  ]
-}

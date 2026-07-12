@@ -12,14 +12,12 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Skills
 
-- [Change Skills](change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize`
+- [Change Skills](change-skills/index.md) — `/spec:plan`, `specify plan execute`, `/spec:finalize`
 - [Slice Skills](slice-skills/index.md) — `/spec:init`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`
 
 ### CLI
 
 - [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
-- [Declared Tool Helper Inventory](declared-tool-helper-inventory.md) — first-party helper migration boundary for `specify extension run`.
-
 ### Plugins
 
 - [Plugins](plugins/index.md) — specialist skills organized by plugin (Specify, Capture, Client).
@@ -27,15 +25,13 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### Adapters
 
 - [Source Adapters](sources/index.md) — `survey` + `extract` per first-party source adapter (intent, documentation, typescript, screenshots, captures).
-- [Target Adapters](targets/index.md) — `shape` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
+- [Target Adapters](targets/index.md) — `guidance` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
 
 ### Configuration
 
 - [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `metadata.yaml`.
 
 ### Engineering standards
-
-- [Ignore Directives](ignore-directives.md) — in-source `specify-ignore` grammar, status taxonomy, and `specify lint` exit semantics.
 
 ## Finding what you need
 

@@ -1,4 +1,4 @@
-/* Specify Developer Guide — system font stack (overrides mdbook bundled faces). */
+/* Omnia Developer Guide — system font stack (overrides mdbook bundled faces). */
 
 :root {
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;

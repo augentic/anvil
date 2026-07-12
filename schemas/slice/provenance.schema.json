@@ -41,7 +41,7 @@
     "reqId": {
       "type": "string",
       "pattern": "^REQ-[0-9]{3}$",
-      "description": "Requirement id in the `REQ-NNN` form (three ASCII digits) per `crates/model/src/spec/provenance.rs`."
+      "description": "Requirement id in the `REQ-NNN` form (three ASCII digits) per `crates/artifacts/src/spec/provenance.rs`."
     },
     "claimKind": {
       "type": "string",
@@ -71,7 +71,7 @@
     "requirementStatus": {
       "type": "string",
       "enum": ["agreed", "unknown", "conflict", "divergence"],
-      "description": "Mirrors the closed `RequirementStatus` enum in `crates/model/src/spec/provenance.rs`. Per the workflow contract \u00a7Authority hierarchy: `agreed` (one source or single-value cross-source agreement), `unknown` (no contributing evidence), `conflict` (tied top-authority disagreement), `divergence` (authority-resolved disagreement; loser preserved as commentary)."
+      "description": "Mirrors the closed `RequirementStatus` enum in `crates/artifacts/src/spec/provenance.rs`. Per the workflow contract \u00a7Authority hierarchy: `agreed` (one source or single-value cross-source agreement), `unknown` (no contributing evidence), `conflict` (tied top-authority disagreement), `divergence` (authority-resolved disagreement; loser preserved as commentary)."
     },
     "provenanceResolution": {
       "type": "string",

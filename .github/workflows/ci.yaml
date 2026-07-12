@@ -3,25 +3,20 @@ name: CI
 on:
   push:
 
+concurrency:
+  group: specify-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
 
 jobs:
-  # Full Rust workspace gate (clippy, fmt, test, doctests, doc, vet, deny)
-  # via the shared org workflow. The workspace lives under engine/, so the
-  # reusable workflow is pointed there with working-directory.
-  rust:
+  ci:
     uses: augentic/.github/.github/workflows/ci.yaml@main
-    with:
-      working-directory: engine
     secrets: inherit
 
-  # Repo-specific prose gate: spec-runtime symlink integrity plus the
-  # framework lint over the in-tree prose surface (plugins/, docs/,
-  # adapters/), built from the in-tree binary. Not part of the generic
-  # Rust workspace CI, so it stays a first-class job here.
-  framework-lint:
-    name: Framework lint
+  wasm:
+    name: Wasm
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,33 +24,16 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Symlink integrity — fail early if a spec-runtime link is missing
-      # or broken (no materialised copies allowed). First-party adapter
-      # trees now live in augentic/specify-adapters, so `nullglob` lets
-      # this guard no-op cleanly until/unless an adapter tree returns to
-      # this repo (the adapters/shared/ rule pack carries no such links).
-      - name: Verify symlinks
-        run: |
-          shopt -s nullglob
-          status=0
-          for d in adapters/sources/*/references/spec-runtime adapters/targets/*/references/spec-runtime; do
-            if [ ! -L "$d" ]; then
-              echo "error: $d must be a symlink to ../../../shared/references/runtime (no materialised copies)" >&2
-              status=1
-            elif [ ! -e "$d" ]; then
-              echo "error: $d is a broken symlink" >&2
-              status=1
-            fi
-          done
-          exit $status
-
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: engine
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - name: Verify framework
-        run: make lint
+      - name: Check wasm guests
+        run: cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+        env:
+          RUSTFLAGS: -Dwarnings

@@ -23,8 +23,8 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
-| `/spec:execute`          | Drive the per-slice refine → build → merge loop                                                |
-| `/spec:finalize`         | Push branches, then archive the plan (PRs are opened and merged by the operator outside Specify) |
+| `specify plan execute`   | Drive the per-slice refine → build → merge loop (CLI verb, no skill wrapper)                   |
+| `/spec:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
 | `/spec:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
@@ -76,14 +76,13 @@ specify target resolve <value>                           # validate a target ada
 
 # Plan management
 specify plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specify plan propose --dry-run --format json                   # request the flat lead catalog + project topology
-specify plan propose --from <response.json>                    # default slice writer after survey
+specify plan author                                            # survey + reconcile + validate; exits at pending
 specify plan add <entry> --sources <key>=<lead> --project <name>
 specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
 specify plan transition <plan-name> approved                 # Gate 1; operator-only (lock-exempt)
 specify plan status                                      # read-only next-action projection
-specify plan next                                        # active in-progress, or pick next pending (requires the plan lock)
+specify plan next                                        # active in-progress, or pick next pending
 specify plan archive
 
 # Slice management
@@ -92,22 +91,11 @@ specify slice transition <name> <refining|refined|built|dropped> [--reason "..."
 specify slice validate <name>
 specify slice merge <name> [--dry-run|--check-only]
 
-# Workspace (multi-repo)
-specify workspace sync [<project>...]                    # materialise slots from registry.yaml
-specify workspace prepare <project> --change <name>
-specify workspace push [<project>...]                    # publish specify/<name> branch as PR
-
-# Tools
-specify extension run <name> [args...]                        # run a declared WASI tool
-
 # Maintenance & bootstrap
-specify upgrade [--channel cargo|brew|binary] [--dry-run|--yes]  # channel-aware CLI self-update
-specify plugins doctor [--marketplace <path>] [--format json]    # read-only Cursor plugin-cache drift report
-specify plugins refresh --yes                            # clear the plugin cache; restart Cursor to repopulate
 specify init --upgrade                                   # bump specify pin + re-scaffold preservation-safe files only
 ```
 
-A pin newer than the binary is exit `3` (upgrade the binary first); an older pin loads normally — pre-1.0 majors are re-init, not migration. For `specify upgrade`, the `cargo` and `brew` channels are fully wired; the `binary`-channel self-replace is deferred, so that channel prints planned-action plus manual-upgrade guidance. `specify plugins doctor` never exits non-zero on drift — drift is a finding (`ok | drifted | present | missing | extra`).
+A pin newer than the binary is exit `3` (update the binary through its install channel first); an older pin loads normally — pre-1.0 majors are re-init, not migration. `specify init --upgrade` updates the project pin and preservation-safe scaffold, not the installed CLI.
 
 ## Adapters
 
@@ -133,8 +121,8 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
     ├── change.md         # operator brief (per active change)
     ├── plan.yaml         # change plan
     ├── discovery.md      # plan-time lead inventory
-    ├── plan.lock         # advisory file lock for /spec:execute and breakouts (CLI-probed: unlocked drivers get plan-lock-not-held)
-    ├── cache/           # cached adapter manifests + briefs ({sources,targets}/)
+    ├── guest.lock        # create-exclusive marker held by guest orchestrations (second driver gets guest-marker-held)
+    ├── cache/           # cached adapter manifests + prompts ({sources,targets}/)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
     ├── specs/            # merged baseline
     ├── workspace/        # workspace slots (workspace mode only)
@@ -144,5 +132,7 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 ## Install
 
 ```bash
-brew install augentic/tap/specify
+cargo install --git https://github.com/augentic/specify
 ```
+
+Or download a platform archive (verify against its `.sha256` companion) from the GitHub Releases page.

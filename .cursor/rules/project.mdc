@@ -15,7 +15,7 @@ See [AGENTS.md](../../AGENTS.md#vocabulary).
 
 See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; this repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
-Workflow skills orchestrate phases; **engineering standards** live in rules (`adapters/**/rules/`); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
+Workflow skills orchestrate phases; **engineering standards** live in rules (`codex/rules/` and per-adapter `prose/rules/` overlays); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
 
 ## Main Inputs
 
@@ -28,7 +28,7 @@ When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
 2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
-3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **adapters/sources/`<name>`/briefs/** / **adapters/targets/`<name>`/briefs/** (+ each adapter's local `references/`) - authoritative patterns and examples
+3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **sources/`<name>`/prose/prompts/** / **targets/`<name>`/prose/prompts/** in specify-adapters (+ each adapter's local `references/`) - authoritative patterns and examples
 4. **Evidence** - source-extracted material; reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
@@ -53,33 +53,27 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 /.cursor-plugin/          # Multi-plugin marketplace manifest
 /docs/                    # Extended documentation (explanation, contributing)
 /plugins/
-  ├── spec/               # Specify workflow plugin (init, plan, refine, execute, build, merge, finalize, drop) + shared references/
+  ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop) + shared references/
   ├── capture/            # Runtime capture plugin (wiretap / migration capture)
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/adapters/
-  ├── sources/            # Source adapters: adapter.yaml + briefs/{survey,extract}.md
-  │   ├── intent/             # operator brief; degenerate N=1 entry point
-  │   ├── documentation/      # operator-provided written intent
-  │   ├── typescript/    # legacy TypeScript survey + extract
-  │   ├── captures/       # runtime capture trees -> kind: example Evidence (workflow §D1)
-  │   └── screenshots/        # vision-assisted spatial inference (Vectis input)
-  ├── targets/              # Target adapters: adapter.yaml + briefs/{shape,build,merge}.md
-  │   ├── omnia/
-  │   ├── vectis/
-  │   └── contracts/
-  └── shared/               # Shared adapter support material, not adapters
-      ├── rules/universal/  # Shared UNI-* engineering rules read by per-target review briefs
-      └── target-hooks/replay/
+/tests/framework/ # Prose/manifest framework checks as cargo tests
 /scripts/                 # Validation and plugin management
 ```
+
+Shared codex rule packs (`codex/rules/universal/`, the `UNI-*` engineering rules) live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) alongside the adapter trees.
+
+Source and target adapter trees (guest crates + `prose/prompts/`, per-adapter `prose/rules/` overlays, and the `codex/references/` prose embedded into components) live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters).
 
 ## Validation
 
 ```bash
-make lint   # builds the in-tree binary and runs specify lint framework
+cargo test --test framework   # the prose/manifest framework checks
+make ci                               # the full Rust workspace gate (cargo make ci)
 ```
 
-`make lint` builds the in-tree `specify` binary under `engine/` and runs `specify lint framework --framework-root ..` — only a Rust toolchain is required. The runtime is in-tree (`engine/`), so there is no source pin or sibling checkout to resolve; `make ci` runs the full Rust workspace gate (`cargo make ci` under `engine/`) plus `make lint`.
+The framework checks are plain cargo tests at `tests/framework/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
+
+Test placement, canonical workflow scenarios, native/WASM/live profiles, and assertion ownership are defined in [`docs/standards/testing.md`](../../docs/standards/testing.md). The contributor-facing gate model is [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). Generic model/runtime mechanics belong to `omnia-testkit`; Specify owns only workflow-specific scenarios, execution, and grading.
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
 
@@ -138,7 +132,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are [`CORE-*` rules](../../adapters/shared/rules/core/) resolved by a generic `specify lint framework` dispatcher — each rule is either a declarative hint (Road A) or a name-resolved in-process checker (Road B), with all policy carried in the rule's `config:`. The authoritative JSON Schemas are embedded in the `specify` binary. `specify lint framework` (`make lint` locally) enforces them. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are plain cargo tests at [`tests/framework/`](../../tests/framework/), with policy as constants in each test module. The authoritative JSON Schemas are embedded in the `specify` binary and consumed by the same tests. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
 
 ## For Contributors
 
@@ -150,6 +144,6 @@ Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](
 
 - Review `docs/explanation/augentic-specify-usage.md`
 - Review the relevant `SKILL.md`
-- Review `adapters/targets/omnia/references/`
-- Review `adapters/targets/vectis/references/`
+- Review `targets/omnia/prose/references/` in specify-adapters
+- Review `targets/vectis/prose/references/` in specify-adapters
 - Open an issue for bugs or enhancement requests

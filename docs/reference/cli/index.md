@@ -7,10 +7,10 @@ The `specify` CLI is the foundation every skill builds on. It owns all determini
 When setting up a project through the Specify plugin, `/spec:init` can bootstrap a missing CLI after confirmation. For manual setup:
 
 ```bash
-brew install augentic/tap/specify
+cargo install --git https://github.com/augentic/specify
 ```
 
-See [Prerequisites](../../orientation/prerequisites.md) for all install paths and adapter-specific tooling.
+or download a platform archive (with `.sha256` verification) from the GitHub Releases page. See [Prerequisites](../../orientation/prerequisites.md) for all install paths and adapter-specific tooling.
 
 ## Conventions
 
@@ -41,9 +41,8 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 | [specify plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify source / target resolve](adapter.md) | Resolve source and target adapter manifests | Adapter infrastructure |
-| [specify extension](extension.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
-| [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`, `sync`) run through `specify extension run` | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |
+| [Vectis in-guest tools](vectis.md) | In-guest `vectis` behaviours (`validate`, `scaffold`, `sync`) inside the adapter guest | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |
 
 Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specify slice`](slice.md).

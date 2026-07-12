@@ -2,13 +2,13 @@
 <div class="eyebrow">How-to</div>
 <h1 class="hero-title">Drive a slice manually</h1>
 
-Resume or run one slice phase when `/spec:execute` parks or when you want operator control.
+Resume or run one slice phase when `specify plan execute` parks or when you want operator control.
 
 <div class="meta-row">
 
 <span class="meta-chip"><strong>Assumes</strong> Reviewed plan</span>
 
-<span class="meta-chip"><strong>Skill</strong> /spec:execute breakout</span>
+<span class="meta-chip"><strong>Skill</strong> specify plan execute breakout</span>
 
 </div>
 
@@ -43,7 +43,7 @@ Use this guide when execute stops on build or merge failure, when you cancel a r
 —or—
 
 ```text
-/spec:execute
+specify plan execute
 ```
 
 Execute re-enters at the active `in-progress` entry and skips phases already complete.
@@ -68,12 +68,12 @@ Execute re-enters at the active `in-progress` entry and skips phases already com
 
 <h2><span class="num">3</span> Breakout mid-execute</h2>
 
-Cancel a running `/spec:execute` session and drive phases yourself:
+Cancel a running `specify plan execute` session and drive phases yourself:
 
 ```text
 /spec:build <slice-name>
 /spec:merge <slice-name>
-/spec:execute
+specify plan execute
 ```
 
 The execute loop reads on-disk lifecycle state — no resume flags required.
@@ -82,9 +82,9 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <section id="plan-lock" markdown="1">
 
-<h2><span class="num">4</span> Plan lock</h2>
+<h2><span class="num">4</span> Guest lock</h2>
 
-Standalone breakouts acquire `.specify/plan.lock` the same way execute does. If you see `plan-lock-busy`, another process holds the lock. When the holder is dead, remove the stale lock file manually. The CLI also probes the lock itself: `specify plan next`, per-entry `specify plan transition`, and `specify slice merge run` refuse with `plan-lock-not-held` (exit 2) when no session holds it — so a breakout that skipped the lock cannot advance plan state.
+The `specify plan execute` loop holds the create-exclusive `.specify/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge run`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.specify/guest.lock` by hand.
 </section>
 
 
@@ -94,7 +94,7 @@ Standalone breakouts acquire `.specify/plan.lock` the same way execute does. If 
 <div class="see-also">
 <strong>See also</strong>
 
-- [/spec:execute](../reference/change-skills/execute.md) — stop conditions and re-entry
+- [specify plan execute](../reference/cli/plan.md#specify-plan-execute) — stop conditions and re-entry
 - [Drop down a layer](drop-down-a-layer.md) — full manual Layer 2 control
 - [Slice skills](../reference/slice-skills/index.md) — refine, build, merge reference
 </div>

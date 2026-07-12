@@ -1,0 +1,48 @@
+version: 1
+id: documentation-one-slice
+owner: scenarios
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: runbook
+  kind: prompt
+  run: Follow quality/runbooks/documentation-one-slice.md
+profiles:
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: runbook
+  probe:
+    kind: path-exists
+    path: plan.yaml
+- id: plan-validates
+  after: runbook
+  probe:
+    kind: registered
+- id: single-slice-from-doc
+  after: runbook
+  probe:
+    kind: registered
+- id: sources-documentation-only
+  after: runbook
+  probe:
+    kind: registered
+- id: execute-loop-all-done
+  after: runbook
+  probe:
+    kind: registered
+semantic-rubrics: []
+expected-outputs:
+- path: plan.yaml
+  kind: file
+- path: discovery.md
+  kind: file

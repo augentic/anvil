@@ -1,0 +1,48 @@
+version: 1
+id: workspace-stale-recovery
+owner: scenarios
+gate-tier: full
+isolation: fresh-project
+setup:
+  commands: []
+  environment: {}
+workflow:
+- id: runbook
+  kind: prompt
+  run: Follow quality/runbooks/workspace-stale-recovery.md
+profiles:
+- id: wasm-live
+  runtime: wasm
+  model: live
+  grading: semantic
+  trials: 3
+  environment: {}
+fixtures: []
+hard-assertions:
+- id: plan-exists
+  after: runbook
+  probe:
+    kind: path-exists
+    path: plan.yaml
+- id: dirty-slot-preserved
+  after: runbook
+  probe:
+    kind: registered
+- id: slice-state-preserved
+  after: runbook
+  probe:
+    kind: registered
+- id: resume-continues-from-in-progress
+  after: runbook
+  probe:
+    kind: registered
+- id: execute-loop-all-done
+  after: runbook
+  probe:
+    kind: registered
+semantic-rubrics: []
+expected-outputs:
+- path: plan.yaml
+  kind: file
+- path: workspace
+  kind: directory

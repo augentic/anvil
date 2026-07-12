@@ -30,18 +30,18 @@ cargo install --git https://github.com/augentic/specify
 For manual setup, install via one of the following methods:
 
 ```bash
-# macOS + Linux (primary)
-brew install augentic/tap/specify
-
-# Any platform with a Rust toolchain
-cargo install specify
+# GitHub Release archive: download for your platform, verify against the
+# companion .sha256 file, and place `specify` on PATH
+# https://github.com/augentic/specify/releases
 
 # Pre-built binary, any POSIX shell
 curl -sSfL https://specify.sh/install.sh | sh
 
 # Local checkout of this repo
-make install-cli
+cargo install --path . --locked
 ```
+
+A Homebrew tap (`brew install augentic/tap/specify`) is planned but not yet published.
 
 Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` command, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
 
@@ -55,28 +55,26 @@ specify --version
 
 ### Keeping the CLI current
 
-`specify upgrade` self-updates the binary in place. It detects the install channel from the running binary's path — `cargo` (under `$CARGO_HOME/bin`, or `~/.cargo/bin`), `brew` (a Homebrew Cellar/prefix), `binary` (a system install such as `/usr/local/bin` or `/opt/specify`), or `unknown` (it then prints manual-upgrade guidance via a structured `unknown-install-channel` diagnostic). Pass `--channel` to override detection.
-
-It resolves the latest release before upgrading — `SPECIFY_RELEASE_TAG` env override first, then `gh release view -R augentic/specify` when `gh` is on `PATH`, then an unauthenticated `api.github.com` request. A probe failure is a warning, not an error: the upgrade proceeds against `HEAD` with a journal note. Preview with `--dry-run`; apply with `--yes`.
+Update the CLI through the same channel used to install it:
 
 ```bash
-specify upgrade --dry-run            # report channel + target version, write nothing
-specify upgrade --yes                # self-update and journal `cli.upgraded`
+cargo install --git https://github.com/augentic/specify   # source install
+# or upgrade with your package manager / replace the release binary
 ```
 
-The `cargo` and `brew` executors are fully wired; the `binary`-channel in-process self-replace is deferred to a follow-up, so today that channel emits planned-action plus manual-upgrade guidance.
+`specify init --upgrade` is a separate project re-entry command: it updates the project's Specify pin and preservation-safe scaffold while retaining operator-authored artifacts. It does not update the installed CLI.
 
 ### Contributing to the repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI under [`engine/`](https://github.com/augentic/specify/tree/main/engine) — needs only a Rust toolchain, not a separately installed `specify`. The CLI is an in-tree Cargo workspace, so the framework checks build it from source:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `specify`. The framework checks are cargo tests inside the same workspace:
 
 ```bash
-make lint        # build engine/ and run specify lint framework over the prose tree
-make ci          # the full Rust workspace gate under engine/, then make lint
-make install-cli # build engine/target/release/specify and symlink it onto your PATH
+cargo test --test framework  # the prose/manifest invariants only
+make ci          # the full Rust workspace gate (cargo make ci)
+cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
 ```
 
-No published binary is downloaded — every invocation builds from the in-tree `engine/` Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`engine/rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/engine/rust-toolchain.toml) (`cargo make fmt` uses nightly rustfmt). (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
+No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `cargo make dev -- <command>` loop uses nightly Cargo Script. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
 
 ## Adapter-specific prerequisites
 

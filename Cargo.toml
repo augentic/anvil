@@ -1,0 +1,266 @@
+[package]
+name = "specify"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Specify — a generic Omnia command-mode runtime over the cursor-bound backends"
+categories = ["command-line-utilities", "development-tools"]
+keywords = ["specify", "cli", "spec", "workflow", "automation"]
+readme = "README.md"
+publish = false
+# The root package carries no tests: the framework-quality suite lives
+# in the lightweight tests/framework package, crate behavior lives in
+# each crate's tests/, and tests/fs_git.rs is a `#[path]`-shared helper
+# that must not become a (Wasmtime-heavy) empty test binary.
+autotests = false
+
+[lib]
+name = "specify"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+test = false
+doctest = false
+
+[[bin]]
+name = "specify"
+path = "src/runtime.rs"
+test = false
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anyhow.workspace = true
+cfg-if.workspace = true
+omnia.workspace = true
+omnia-cursor.workspace = true
+omnia-wasi-http.workspace = true
+omnia-wasi-model.workspace = true
+omnia-wasi-otel.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+omnia-guest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+transport.workspace = true
+error.workspace = true
+schema.workspace = true
+artifacts.workspace = true
+workflow.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
+
+[lints]
+workspace = true
+
+[workspace]
+members = ["crates/*", "harness/*", "tests/framework"]
+# The ordinary test group: crate suites plus the framework-quality
+# package. The root runtime package and the harness packages are
+# explicit opt-ins (`-p specify`, `-p replay`), keeping
+# Wasmtime execution out of the per-commit build.
+default-members = ["crates/*", "tests/framework"]
+
+[workspace.package]
+authors = ["Augentic"]
+edition = "2024"
+homepage = "https://augentic.io"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/augentic/specify"
+rust-version = "1.95"
+version = "0.27.2"
+
+[workspace.lints.rust]
+# https://dirname.github.io/rust-std-doc/rustc/lints/listing/allowed-by-default.html
+elided_lifetimes_in_paths = "warn"
+explicit_outlives_requirements = "warn"
+let_underscore_drop = "warn"
+macro_use_extern_crate = "warn"
+meta_variable_misuse = "warn"
+missing_copy_implementations = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+redundant_lifetimes = "warn"
+single_use_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unsafe_code = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+# https://doc.rust-lang.org/stable/clippy/index.html
+# Groups carry priority = -1 so individual lints below can override them.
+all = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# The `cargo` group's `multiple_crate_versions` lint is the wrong signal in a
+# workspace this size: transitive duplicates accrete from upstream crates we do
+# not control (windows-sys generations, wasmparser/wit-* cycles, rand v0.8/0.9),
+# and the ratchet allowlist that used to live in `clippy.toml` grew without ever
+# shrinking. A quarterly `cargo tree --duplicates` audit is the cheaper signal.
+multiple_crate_versions = "allow"
+
+# Cherry-picked lints are from the `restriction` lint group in order to drive up
+# consistency, quality, and brevity
+# See https://microsoft.github.io/rust-guidelines/guidelines/universal/index.html
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+as_pointer_underscore = "warn"
+assertions_on_result_states = "warn"
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+deref_by_slicing = "warn"
+disallowed_script_idents = "warn"
+empty_drop = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+fn_to_numeric_cast_any = "warn"
+if_then_some_else_none = "warn"
+infinite_loop = "warn"
+iter_over_hash_type = "warn"
+map_err_ignore = "warn"
+mixed_read_write_in_expression = "warn"
+mod_module_files = "warn"
+non_zero_suggestions = "warn"
+partial_pub_fields = "warn"
+pub_without_shorthand = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+redundant_type_annotations = "warn"
+ref_patterns = "warn"
+renamed_function_params = "warn"
+same_name_method = "warn"
+semicolon_outside_block = "warn"
+string_add = "warn"
+todo = "warn"
+try_err = "warn"
+undocumented_unsafe_blocks = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+unneeded_field_pattern = "warn"
+unseparated_literal_suffix = "warn"
+unused_result_ok = "warn"
+verbose_file_reads = "warn"
+
+# Recommended-but-skipped restriction lints with rationale:
+# - `tests_outside_test_module`: fires on every integration test in `tests/*.rs`
+# - `str_to_string`: opinionated against `.to_string()` on `&str`;
+# - `field_scoped_visibility_modifiers`
+
+[workspace.dependencies]
+anyhow = "1.0.103"
+assert_cmd = "2.2.2"
+base16ct = { version = "1.0.0", features = ["alloc"] }
+cfg-if = "1.0.4"
+clap = { version = "4.6.1", features = ["derive", "env"] }
+clap_complete = "4.6.7"
+glob = "0.3.3"
+jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
+jsonschema = { version = "0.47", default-features = false }
+libc = "0.2"
+petgraph = "0.8.3"
+proptest = "1.11.0"
+regex = "1.13.0"
+schema = { path = "crates/schema" }
+semver = { version = "1.0.28", features = ["serde"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde-saphyr = "0.0.29"
+serde_json = "1.0.150"
+sha2 = "0.11"
+strum = { version = "0.28", features = ["derive"] }
+tempfile = "3.27.0"
+thiserror = "2.0.18"
+tokio = { version = "1.52.3", features = ["fs", "io-util", "rt"] }
+toml = "1.1.2"
+tower = "0.5.3"
+wasip3 = { version = "0.7.0", features = ["http-compat"] }
+wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
+
+artifacts = { path = "crates/artifacts" }
+error = { path = "crates/error" }
+scenario = { path = "crates/scenario" }
+transport = { path = "crates/transport" }
+workflow = { path = "crates/workflow" }
+
+omnia = "0.35.0"
+omnia-cursor = "0.28.0"
+omnia-guest = "0.35.0"
+omnia-guest-macros = "0.35.0"
+omnia-host-macros = "0.35.0"
+omnia-wasi-http = "0.35.0"
+omnia-wasi-model = "0.35.0"
+omnia-wasi-otel = "0.35.0"
+
+[patch.crates-io]
+omnia = { git = "https://github.com/augentic/omnia.git" }
+omnia-cursor = { git = "https://github.com/augentic/backends.git" }
+omnia-guest = { git = "https://github.com/augentic/omnia.git" }
+omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
+
+# omnia = { path = "../omnia/crates/omnia" }
+# omnia-cursor = { path = "../backends/crates/cursor" }
+# omnia-guest = { path = "../omnia/crates/omnia-guest" }
+# omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+# omnia-host-macros = { path = "../omnia/crates/host-macros" }
+# omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
+# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+# omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
+
+# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc" }
+
+[profile.release]
+lto = true
+opt-level = 2
+strip = true
+
+# Cranelift JIT-compiles WASI components at run time; built at debug
+# opt-level the vectis component costs 40-70s per compile, so the
+# compiler-path crates are optimized even in dev/test profiles. Only
+# these crates: a blanket `package."*"` override forces an optimized
+# rebuild of every dependency, which dominates cold CI builds.
+[profile.dev.package.cranelift-codegen]
+opt-level = 2
+
+[profile.dev.package.cranelift-frontend]
+opt-level = 2
+
+[profile.dev.package.cranelift-entity]
+opt-level = 2
+
+[profile.dev.package.cranelift-bforest]
+opt-level = 2
+
+[profile.dev.package.cranelift-bitset]
+opt-level = 2
+
+[profile.dev.package.cranelift-control]
+opt-level = 2
+
+[profile.dev.package.cranelift-native]
+opt-level = 2
+
+[profile.dev.package.cranelift-assembler-x64]
+opt-level = 2
+
+[profile.dev.package.regalloc2]
+opt-level = 2
+
+[profile.dev.package.wasmparser]
+opt-level = 2
+
+[profile.dev.package.wasmtime-internal-cranelift]
+opt-level = 2
+
+[profile.dev.package.wasmtime-environ]
+opt-level = 2
+
