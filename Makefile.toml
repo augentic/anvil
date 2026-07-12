@@ -37,7 +37,7 @@ args = [
 ]
 
 # Live quality orchestrator. Pass the subcommand and its arguments after `--`,
-# e.g. `cargo make quality -- run native-live --trials 1`.
+# e.g. `cargo make quality -- run wasm-live --trials 1`.
 [tasks.quality]
 command = "cargo"
 args = ["run", "-q", "-p", "quality", "--", "${@}"]

@@ -3,16 +3,16 @@
 //! [`scenario::bundle`] under `quality/runs/`.
 //!
 //! ```text
-//! cargo make quality -- run native-live [--trials N] [--scenario guest-execute-loop]
-//! cargo make quality -- run wasm-live
+//! cargo make quality -- run wasm-live [--trials N] [--scenario guest-execute-loop]
 //! ```
 //!
-//! `native-live` drives the in-process `specify-dev guest-loop` driver
-//! (adapters checkout, engine crates patched to this working tree);
 //! `wasm-live` hosts the composed deployment in-process through the
 //! [`quality::executor::ComposedExecutor`] over the freshly built
-//! workflow guest and the release-built adapter components. Never CI:
-//! requires an authenticated cursor-agent on PATH.
+//! workflow guest and the release-built adapter components. The
+//! `native-live` profile is owned by the adapters repo's runner
+//! (`specify-dev quality` in `specify-adapters/harness/native`),
+//! driven against its declared engine pin. Never CI: requires an
+//! authenticated cursor-agent on PATH.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -26,20 +26,11 @@ use quality::executor::{ComposedExecutor, Executor as _};
 use quality::judge::LiveJudge;
 use quality::manifest;
 use scenario::bundle::Bundle;
-use scenario::grade::{Evaluators, Execution, StepResult};
+use scenario::grade::{Evaluators, Execution};
 use scenario::{
     AssertionId, ModelBackend, Outcome, RunMetadata, Runtime, Scenario, ScenarioReport,
     ScenarioReportVersion, catalog, evaluate,
 };
-
-/// The engine crates the standalone native harness pins by revision;
-/// the native driver build overrides each with this checkout's working
-/// tree through generated `--config` patch flags (mirrors `dev.rs`).
-const ENGINE_CRATES: [&str; 6] =
-    ["artifacts", "error", "scenario", "schema", "transport", "workflow"];
-
-/// The git source the native harness pins its engine crates to.
-const ENGINE_GIT: &str = "https://github.com/augentic/specify.git";
 
 /// Live quality orchestrator over the canonical workflow scenarios.
 #[derive(Debug, Parser)]
@@ -47,7 +38,7 @@ const ENGINE_GIT: &str = "https://github.com/augentic/specify.git";
 enum Cli {
     /// Run repeated live trials of one profile.
     Run {
-        /// Live profile id (`native-live` or `wasm-live`).
+        /// Live wasm profile id (`wasm-live`).
         profile: String,
         /// Trial count override (defaults to the profile's declared
         /// count; the `TRIALS` environment variable wins over both).
@@ -103,6 +94,12 @@ impl Quality {
             "profile `{profile_id}` is not a live profile; the deterministic profiles run as \
              plain tests (`cargo make dev -- check` / the replay suite)"
         );
+        ensure!(
+            profile.runtime == Runtime::Wasm,
+            "profile `{profile_id}` is native; the adapters repo owns native-live \
+             (`cargo run --manifest-path harness/native/Cargo.toml -- quality` in \
+             specify-adapters, or `cargo make dev -- live` here)"
+        );
         let judge = LiveJudge::connect().await.context(
             "cursor-agent not runnable; install it, then `cursor-agent login` or export \
              CURSOR_API_KEY (`cargo make dev -- doctor --live` verifies command-mode credentials)",
@@ -131,11 +128,7 @@ impl Quality {
                 AssertionId::GuestGeneratedCrateVerifies,
                 quality::verify::generated_crates_verify,
             );
-        let executor = if profile.runtime == Runtime::Wasm {
-            Some(self.wasm_executor(&scenario)?)
-        } else {
-            None
-        };
+        let executor = self.wasm_executor(&scenario)?;
 
         println!("== {run_id}: {trials} trial(s) ==");
         let mut results = Vec::new();
@@ -146,14 +139,8 @@ impl Quality {
             let sandbox = bundle.workspace(trial);
             let log = bundle.driver_log(trial);
             let started = Instant::now();
-            let execution = match &executor {
-                None => Execution::new(&sandbox, self.drive_native(&sandbox, &log)?),
-                Some(executor) => {
-                    let execution = executor.execute(&scenario, profile, &sandbox).await?;
-                    write_driver_log(&log, &execution)?;
-                    execution
-                }
-            };
+            let execution = executor.execute(&scenario, profile, &sandbox).await?;
+            write_driver_log(&log, &execution)?;
             let duration = usize::try_from(started.elapsed().as_millis()).unwrap_or(usize::MAX);
             let setting = quality::trial::Setting {
                 scenario: &scenario,
@@ -177,14 +164,7 @@ impl Quality {
             version: ScenarioReportVersion,
             scenario: scenario_id.to_owned(),
             outcome,
-            run: self.metadata(
-                run_id,
-                profile_id,
-                scenario_id,
-                profile.runtime,
-                &judge,
-                started_at,
-            )?,
+            run: self.metadata(run_id, profile_id, scenario_id, &judge, started_at)?,
             trials: results,
         };
         scenario::bundle::validate(&scenario, &report)
@@ -197,8 +177,8 @@ impl Quality {
 
     /// Assemble the run-level provenance and timing record.
     fn metadata(
-        &self, run_id: String, profile_id: &str, scenario_id: &str, runtime: Runtime,
-        judge: &LiveJudge, started_at: jiff::Timestamp,
+        &self, run_id: String, profile_id: &str, scenario_id: &str, judge: &LiveJudge,
+        started_at: jiff::Timestamp,
     ) -> Result<RunMetadata> {
         Ok(RunMetadata {
             id: run_id,
@@ -212,11 +192,7 @@ impl Quality {
             ),
             judge_model: Some(judge.model_identity()),
             prompt_digest: Some(self.prompt_digest(scenario_id)?),
-            component_digests: if runtime == Runtime::Wasm {
-                self.component_digests()?
-            } else {
-                BTreeMap::new()
-            },
+            component_digests: self.component_digests()?,
             started_at,
             completed_at: jiff::Timestamp::now(),
         })
@@ -257,42 +233,6 @@ impl Quality {
             executor = executor.seed(["init", "./omnia.wasm", "--name", "demo", "--scaffold-only"]);
         }
         Ok(executor)
-    }
-
-    /// Drive one native trial through `specify-dev guest-loop` in the
-    /// adapters checkout, its revision-pinned engine crates patched to
-    /// this working tree (the same generated `--config` overrides
-    /// `dev.rs` uses; the pinned lockfile is snapshotted and restored).
-    fn drive_native(&self, sandbox: &Path, log: &Path) -> Result<Vec<(String, StepResult)>> {
-        let manifest = self.adapters.join("harness/native/Cargo.toml");
-        let lock = self.adapters.join("harness/native/Cargo.lock");
-        let saved = fs::read(&lock).ok();
-        let mut command = Command::new("cargo");
-        command.current_dir(&self.adapters);
-        for name in ENGINE_CRATES {
-            command.arg("--config");
-            command.arg(format!(
-                "patch.\"{ENGINE_GIT}\".{name}.path=\"{}\"",
-                self.framework.join("crates").join(name).display()
-            ));
-        }
-        command
-            .arg("run")
-            .arg("-q")
-            .arg("--manifest-path")
-            .arg(&manifest)
-            .arg("--")
-            .arg("guest-loop")
-            .arg("--sandbox")
-            .arg(sandbox);
-        let output = command.output().context("running the native guest-loop driver")?;
-        if let Some(bytes) = saved {
-            fs::write(&lock, bytes).context("restoring the pinned native-harness lockfile")?;
-        }
-        fs::write(log, &output.stderr).context("writing the driver log")?;
-
-        serde_json::from_slice(&output.stdout)
-            .context("the native driver did not return step JSON (see driver.log)")
     }
 
     fn rubrics_file(&self) -> PathBuf {

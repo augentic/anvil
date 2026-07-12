@@ -36,6 +36,11 @@ pub trait Judge: Sync {
     ) -> impl Future<Output = std::result::Result<String, String>> + Send;
 }
 
+/// The shared rubric catalog document (`quality/rubrics/semantic.yaml`)
+/// compiled into the crate so revision-pinned downstream harnesses
+/// grade with the catalog shipped at the engine revision they target.
+pub const CATALOG_YAML: &str = include_str!("../../../../quality/rubrics/semantic.yaml");
+
 /// The shared rubric catalog: grading scale plus one question per
 /// assertion id.
 #[derive(Debug, Clone, Deserialize)]
@@ -84,6 +89,16 @@ impl Rubrics {
             source,
         })?;
         Ok(serde_saphyr::from_str(&input)?)
+    }
+
+    /// Parse the embedded shared catalog ([`CATALOG_YAML`]).
+    ///
+    /// # Errors
+    ///
+    /// Returns YAML errors (only when the embedded document drifts
+    /// from the catalog schema).
+    pub fn embedded() -> Result<Self> {
+        Ok(serde_saphyr::from_str(CATALOG_YAML)?)
     }
 }
 

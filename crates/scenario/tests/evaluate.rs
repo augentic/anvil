@@ -182,6 +182,16 @@ mod rubric_catalog {
             "guest-spec-sensible is catalogued"
         );
     }
+
+    #[test]
+    fn embedded_catalog_matches_disk() {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../quality/rubrics/semantic.yaml");
+        let disk = fs::read_to_string(&path).expect("shared rubric catalog reads");
+        assert_eq!(semantic::CATALOG_YAML, disk, "embedded catalog drifted from disk");
+        let rubrics = semantic::Rubrics::embedded().expect("embedded catalog parses");
+        assert_eq!(rubrics.scale.pass, 80);
+    }
 }
 
 mod step_argv {

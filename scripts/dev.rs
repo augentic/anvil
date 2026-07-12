@@ -222,8 +222,16 @@ impl Dev {
         ensure!(args.len() <= 2, "live accepts at most an adapter and scenario");
         let adapter = args.first().filter(|value| !value.is_empty());
         let Some(adapter) = adapter else {
-            println!("== live workflow profile: native-live ==");
-            return self.quality("native-live");
+            // The adapters repo owns native-live: its runner drives the
+            // linked-adapter loop against its declared engine pin (no
+            // working-tree patch flags — pin green is the contract).
+            println!("== live workflow profile: native-live (adapters-repo runner) ==");
+            let mut command = self.cargo_command(&self.adapters);
+            command
+                .args(["run", "-q", "--manifest-path"])
+                .arg(self.native_manifest())
+                .args(["--", "quality"]);
+            return execute(&mut command, "native-live quality profile");
         };
         let adapter = adapter.to_string_lossy();
         self.ensure_adapter(&adapter)?;
