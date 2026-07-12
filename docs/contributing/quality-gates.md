@@ -25,7 +25,7 @@ The native profile runs canonical workflow scenarios through `specify-dev` with 
 
 ## Gate 3 — composed WebAssembly
 
-The composed profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, HTTP/reference wiring, and one replay-backed `init → author → approve → execute` loop. Checked-in fixtures use Omnia's replay format; Specify owns only scenario inputs and expected answers. Adapter-local composed tests remain responsible for each adapter component; Specify's composed profile is responsible for workflow-core orchestration across components. Cadence: the scheduled/manual composed workflow and `cargo make test-composed`, not the per-commit gate — every push still proves the guest crates compile for `wasm32-wasip2`.
+The composed profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, HTTP/reference wiring, and one replay-backed `init → author → approve → execute` loop. Checked-in fixtures use Omnia's replay format; Specify owns only scenario inputs and expected answers. Adapter-local composed tests remain responsible for each adapter component; Specify's composed profile is responsible for workflow-core orchestration across components. Cadence: the scheduled/manual composed workflow and `cargo make test-wasm`, not the per-commit gate — every push still proves the guest crates compile for `wasm32-wasip2`.
 
 ## Gate 4 — live quality
 

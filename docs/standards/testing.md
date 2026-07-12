@@ -4,7 +4,7 @@ Integration-first test posture: `cargo nextest` over public crate and binary bou
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*` plus the `tests/framework` package; the composed harness is opt-in through `cargo make test-composed` so ordinary test runs never compile the Wasmtime execution path.
+Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*` plus the `tests/framework` package; the composed harness is opt-in through `cargo make test-wasm` so ordinary test runs never compile the Wasmtime execution path.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
@@ -16,7 +16,7 @@ The four gates have distinct owners:
 
 1. **Repository correctness** — crate/binary integration and authoring checks under `cargo make ci` in each repository. No model or sibling checkout.
 2. **Engine-pinned workflow** — canonical scenarios (from `scenario::catalog`) through `specify-dev`, linked adapters, and `omnia_testkit::model::{Harness, Scripted, Replay}`. Model-free and CI-safe; runs in the adapters repo's standalone `harness/native` workspace against its declared engine revision, not against Specify HEAD.
-3. **Composed WebAssembly conformance** — canonical scenarios through the hosted workflow guest and adapter components. Owns WIT, dispatch-by-id, mount/preopen, and component-linking assertions. Runs on the scheduled/manual composed workflow and `cargo make test-composed`, not per push — per-push CI keeps only the `wasm32-wasip2` compile check. Do not duplicate Omnia's private replay-key projection to force a full-loop fixture.
+3. **Composed WebAssembly conformance** — canonical scenarios through the hosted workflow guest and adapter components. Owns WIT, dispatch-by-id, mount/preopen, and component-linking assertions. Runs on the scheduled/manual composed workflow and `cargo make test-wasm`, not per push — per-push CI keeps only the `wasm32-wasip2` compile check. Do not duplicate Omnia's private replay-key projection to force a full-loop fixture.
 4. **Live quality** — selected scenarios against the live model backend. Hard assertions remain mechanical; semantic rubrics assess decomposition, prose, and generated output. Live profiles are deliberate release/development runs, never ordinary per-commit CI.
 
 The ownership boundary is strict: `omnia-testkit` owns reusable model doubles, replay, temporary manifests, runtime hosting, and HTTP driving; `crates/scenario` owns Specify scenario vocabulary, reports, assertion metadata, and the embedded canonical catalog; `specify-adapters/harness/native` owns the linked-adapter developer runtime. Do not add another local mock model, replay store, deployment harness, scenario copy, or scenario-specific lifecycle driver.

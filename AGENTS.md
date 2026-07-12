@@ -128,7 +128,7 @@ All commands are run from the repository root:
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the framework-quality test suite.
 - `cursor-agent --plugin-dir plugins/<name>` — load a working-tree plugin directly.
 
-Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*` plus `tests/framework` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. Composed WASM runtime execution runs on the scheduled/manual `.github/workflows/composed.yaml` workflow (locally: `cargo make test-composed`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*` plus `tests/framework` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. Composed WASM runtime execution runs on the scheduled/manual `.github/workflows/composed.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 The complete quality model lives under [`quality/`](quality/README.md): canonical scenarios, runtime profiles, reference fixtures, operator runbooks, and archived reports share one tree, while `harness/` contains only native and composed executors.
 
@@ -270,7 +270,7 @@ All driven by `cargo make` (see [`Makefile.toml`](./Makefile.toml)). Run the ful
 cargo make ci             # fmt-check + lint + wasm + test + test-docs + doc + vet + deny
 cargo make check          # fmt-check + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
 cargo make test           # cargo nextest run --locked --all-features --no-tests=pass over the default members, under -Dwarnings
-cargo make test-composed  # builds the WASM guests then runs the opt-in composed harness suite
+cargo make test-wasm  # builds the WASM guests then runs the opt-in composed harness suite
 cargo make lint           # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt            # nightly cargo fmt --all
 cargo make audit          # cargo-audit; cargo make deny / outdated / deps / vet for the rest

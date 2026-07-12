@@ -1995,6 +1995,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
+name = "live"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "scenario",
+ "tempfile",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3769,29 +3778,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "specify-composed-tests"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "omnia",
- "omnia-testkit",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "scenario",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "specify-live-harness"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "scenario",
- "tempfile",
-]
-
-[[package]]
 name = "sqlite-wasm-rs"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4533,6 +4519,20 @@ dependencies = [
  "http-body",
  "thiserror 2.0.18",
  "wit-bindgen 0.57.1",
+]
+
+[[package]]
+name = "wasm"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "omnia",
+ "omnia-testkit",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "scenario",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

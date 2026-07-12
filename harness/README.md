@@ -7,14 +7,14 @@ The day-to-day command surface is the three-rung `cargo make dev -- <command>` l
 Run these from `harness/`:
 
 ```shell
-cargo make test-composed # workflow-core WASM/WIT init and replayed full loop
+cargo make test-wasm # workflow-core WASM/WIT init and replayed full loop
 cargo make lint         # harness clippy gate
 cargo make guests # WASM core + echo fixtures; not needed for the native loop
 ```
 
 ## Contents
 
-This directory holds non-shipped workspace surfaces. They are workspace members of the root Cargo workspace (outside the default-member test group) and use its shared lockfile, path dependencies, and lint tables. The scheduled/manual composed workflow (`.github/workflows/composed.yaml`; locally `cargo make test-composed` from the repo root) builds their guests explicitly; per-push CI only checks that the guest crates compile for `wasm32-wasip2`, and the ordinary per-repository `cargo make ci` gate requires no sibling checkout.
+This directory holds non-shipped workspace surfaces. They are workspace members of the root Cargo workspace (outside the default-member test group) and use its shared lockfile, path dependencies, and lint tables. The scheduled/manual composed workflow (`.github/workflows/composed.yaml`; locally `cargo make test-wasm` from the repo root) builds their guests explicitly; per-push CI only checks that the guest crates compile for `wasm32-wasip2`, and the ordinary per-repository `cargo make ci` gate requires no sibling checkout.
 
 | Path        | What                                                                                                                                                                                                                                                                                                                                      |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

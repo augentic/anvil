@@ -6,7 +6,7 @@
 # crate owns sandbox staging, the deployment manifest, and step
 # capture, so the quality orchestrator can link it directly.
 [package]
-name = "specify-live-harness"
+name = "live"
 description = "Live composed-WASM driver for the Specify workflow scenarios"
 version.workspace = true
 edition.workspace = true

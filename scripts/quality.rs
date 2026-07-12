@@ -9,7 +9,7 @@ jiff = { version = "0.2", default-features = false, features = ["serde", "std"] 
 scenario = { path = "../crates/scenario" }
 schema = { path = "../crates/schema" }
 serde_json = "1"
-specify-live-harness = { path = "../harness/live" }
+live = { path = "../harness/live" }
 ---
 
 //! The live quality orchestrator: repeated trials of a canonical
@@ -334,7 +334,7 @@ impl Quality {
 fn drive_wasm(
     framework: &Path, adapters: &Path, sandbox: &Path, log: &Path,
 ) -> Result<BTreeMap<String, StepResult>> {
-    let steps = specify_live_harness::driver::drive(&specify_live_harness::driver::Config {
+    let steps = live::driver::drive(&live::driver::Config {
         framework: framework.to_owned(),
         adapters: adapters.to_owned(),
         sandbox: sandbox.to_owned(),

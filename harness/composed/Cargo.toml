@@ -1,5 +1,5 @@
 [package]
-name = "specify-composed-tests"
+name = "wasm"
 description = "Composed WASM replay tests for the Specify workflow core"
 version.workspace = true
 edition.workspace = true

@@ -16,7 +16,7 @@ This map names the primary owner of each seam so coverage can move without being
 
 ## Composed WebAssembly profiles
 
-- `quality/scenarios/composed-init.yaml` plus `harness/composed/tests/workflow.rs` owns workflow-guest command dispatch, target adapter linking, and project/cache writable preopens — run by the scheduled/manual composed workflow and `cargo make test-composed`; per-push CI checks only that the guest crates compile for `wasm32-wasip2`.
+- `quality/scenarios/composed-init.yaml` plus `harness/composed/tests/workflow.rs` owns workflow-guest command dispatch, target adapter linking, and project/cache writable preopens — run by the scheduled/manual composed workflow and `cargo make test-wasm`; per-push CI checks only that the guest crates compile for `wasm32-wasip2`.
 - `quality/scenarios/composed-loop.yaml` drives `init → author → approve → execute` through the hosted workflow, echo source, and echo target components with checked-in Omnia replay fixtures.
 - `specify-adapters`' `harness` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
 

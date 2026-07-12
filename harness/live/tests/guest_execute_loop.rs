@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::{env, fs};
 
 use scenario::{Grading, ModelBackend, Outcome, Runtime, catalog, evaluate, grade};
-use specify_live_harness::driver;
+use live::driver;
 
 fn cursor_agent_on_path() -> bool {
     env::var_os("PATH").is_some_and(|paths| {

@@ -27,10 +27,10 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 
 # Model-free composed WASM/WIT smoke. Guest construction is explicit so the
 # host test never shells out to Cargo or hides a missing CI build prerequisite.
-[tasks.test-composed]
+[tasks.test-wasm]
 dependencies = ["guests"]
 command = "cargo"
-args = ["nextest", "run", "-p", "specify-composed-tests", "--no-tests=pass"]
+args = ["nextest", "run", "-p", "wasm", "--no-tests=pass"]
 
 # Lint — the harness crates are not covered by the root workspace's
 # clippy gate; run this before extending them.
@@ -41,7 +41,7 @@ args = [
     "-p",
     "fixtures",
     "-p",
-    "specify-composed-tests",
+    "wasm",
     "--all-targets",
     "--",
     "-D",

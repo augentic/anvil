@@ -46,4 +46,4 @@ jobs:
         run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
 
       - name: Composed workflow smoke
-        run: cargo nextest run --locked -p specify-composed-tests --no-tests=pass
+        run: cargo nextest run --locked -p wasm --no-tests=pass

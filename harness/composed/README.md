@@ -6,7 +6,7 @@ Build the guests before running the host test:
 
 ```shell
 cd harness
-cargo make test-composed
+cargo make test-wasm
 ```
 
 `omnia-testkit` supplies the temporary deployment manifest while `omnia_wasi_model::ModelDefault` owns request matching and replay through `WasiModelCtx`; Specify does not fork either mechanism. The checked-in fixture corpus contains only the deterministic plan-reconciliation and synthesis requests required by the echo loop. Broader workflow combinations stay in the cheaper native profile.
