@@ -20,10 +20,11 @@ The Rust types, loader, assertion registry, and report shape live in `crates/sce
 ## Profiles
 
 - **native-scripted** — linked adapters with ordered scripted responses; fast deterministic integration.
-- **native-replay** — linked adapters with canonical request-key replay; cross-repository CI.
 - **replay** — hosted workflow and adapter components; the scheduled/manual composed workflow (and `cargo make test-replay`) runs both the model-free `composed-init` seam and the replay-backed `composed-loop` scenario.
-- **native-live** — linked adapters with the live Cursor backend; prompt and workflow iteration.
-- **wasm-live** — composed deployment with the live Cursor backend; explicit release confidence.
+- **native-live** — linked adapters with the live Cursor backend; prompt and workflow iteration, owned by the adapters repo's `specify-dev quality` runner against its declared engine pin.
+- **wasm-live** — composed deployment with the live Cursor backend; explicit release confidence, owned by this repo's `harness/quality` orchestrator.
+
+A profile appears in a scenario's YAML only when a named runner executes it; the declared-vs-executed matrix in [`COVERAGE.md`](COVERAGE.md) records every cell's owner and cadence.
 
 Hard assertions execute automatically in every applicable profile. Semantic rubrics execute only in live profiles. Markdown may explain a case, but YAML is the executable authority.
 

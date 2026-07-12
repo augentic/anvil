@@ -29,7 +29,7 @@ The `replay` profile hosts the workflow guest and adapter components. It owns WI
 
 ## Gate 4 — live quality
 
-Live profiles run selected scenarios with the Cursor-backed model. Hard assertions must pass mechanically on every trial. Semantic rubrics score decomposition, artifact fidelity, generated implementation, and operator ergonomics with evidence. Reports record model identity, source and prompt digests, tokens, latency, generated-output verification, and retained artifacts.
+Live profiles run selected scenarios with the Cursor-backed model. Each has one owning runner: `wasm-live` is the engine repo's `harness/quality` orchestrator over the in-process composed executor; `native-live` is the adapters repo's `specify-dev quality` runner over the in-process guest loop, against its declared engine pin. Hard assertions must pass mechanically on every trial. Semantic rubrics score decomposition, artifact fidelity, generated implementation, and operator ergonomics with evidence, graded through the shared `Judge` seam on the omnia model backend. Reports record subject and judge model identity, source and prompt digests, tokens, latency, generated-output verification, and retained artifacts.
 
 Live profiles are explicit development or release gates, not ordinary CI. Release blockers run for each release; the full catalog runs per the documented release cadence. Ambiguous rubric results and publication approval remain human decisions.
 
@@ -39,7 +39,7 @@ When adding coverage:
 
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
-3. Put deterministic cross-crate workflow behavior in a canonical scenario with native replay.
+3. Put deterministic cross-crate workflow behavior in a canonical scenario with the native scripted profile.
 4. Add the `replay` profile only when the behavior crosses a WebAssembly/WIT/runtime seam.
 5. Add a semantic rubric only when no deterministic predicate can decide the result.
 

@@ -1,6 +1,6 @@
 # Harness — workflow-core support surfaces
 
-The day-to-day command surface is the three-rung `cargo make dev -- <command>` loop documented in [the developer loop](../docs/contributing/dev-loop.md). The linked-adapter `specify-dev` runtime and its deterministic full-loop suite live with the adapters at `specify-adapters/harness/native`; this repository keeps only workflow-core WebAssembly fixtures and replay tests.
+The day-to-day command surface is the three-rung `cargo make dev -- <command>` loop documented in [the developer loop](../docs/contributing/dev-loop.md). The linked-adapter `specify-dev` runtime, its deterministic full-loop suite, and the `native-live` quality runner live with the adapters at `specify-adapters/harness/native`; this repository keeps the workflow-core WebAssembly fixtures and replay tests plus the `quality/` live orchestrator for the wasm profiles.
 
 ## Harness commands
 
@@ -19,6 +19,7 @@ This directory holds non-shipped workspace surfaces. They are workspace members 
 | Path       | What                                                                                                                                                                                                                                                                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `replay/`  | The workflow-core `replay` profile: hosts `specify.wasm` with echo source/target fixtures, proves adapter links, ID dispatch, and writable preopens, then drives a full loop with checked-in Omnia replay fixtures.                                                                                                                            |
+| `quality/` | The live quality orchestrator binary (`cargo make quality -- run wasm-live`): the in-process `ComposedExecutor`, typed manifest builder, live `Judge`, spawning evaluators, and the trial grading loop.                                                                                                                                    |
 | `fixtures/` | The echo adapter guests — skeleton `specify:adapter` components usable in composed deployments so the WIT imports resolve without the sibling adapters checkout.                                                                                                                                                                          |
 
 The larger composed-deployment rig that previously lived at `harness/runtime/` remains retired: the focused `harness/replay/` package owns only the workflow core's WASM boundary, while `specify-adapters/harness/native` owns deterministic linked-adapter behavior.

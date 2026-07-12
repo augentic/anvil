@@ -11,24 +11,6 @@ workflow:
   kind: prompt
   run: Follow quality/runbooks/execute-pause-resume.md
 profiles:
-- id: native-replay
-  runtime: native
-  model: replay
-  grading: hard
-  trials: 1
-  environment: {}
-- id: replay
-  runtime: wasm
-  model: replay
-  grading: hard
-  trials: 1
-  environment: {}
-- id: native-live
-  runtime: native
-  model: live
-  grading: semantic
-  trials: 3
-  environment: {}
 - id: wasm-live
   runtime: wasm
   model: live

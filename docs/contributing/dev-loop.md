@@ -30,7 +30,7 @@ An engine change that breaks the harness fails here at compile time — that is 
 
 ### 2. `dev live` — deliberate repeated model trials
 
-Live-model runs are always explicit, never a side effect. Bare `dev live` selects the workflow scenario's `native-live` profile (`specify-dev`, no WASM builds); naming an adapter runs exactly one adapter-local live quality case:
+Live-model runs are always explicit, never a side effect. Bare `dev live` selects the workflow scenario's `native-live` profile by delegating to the adapters repo's runner (`specify-dev quality` in `specify-adapters/harness/native` — no WASM builds, driven against its declared engine pin rather than working-tree patch flags); naming an adapter runs exactly one adapter-local live quality case:
 
 ```bash
 cargo make dev -- live                       # native-shim guest execute loop

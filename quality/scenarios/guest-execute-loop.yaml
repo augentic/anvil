@@ -23,18 +23,6 @@ profiles:
   grading: hard
   trials: 1
   environment: {}
-- id: native-replay
-  runtime: native
-  model: replay
-  grading: hard
-  trials: 1
-  environment: {}
-- id: replay
-  runtime: wasm
-  model: replay
-  grading: hard
-  trials: 1
-  environment: {}
 - id: native-live
   runtime: native
   model: live
