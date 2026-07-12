@@ -15,6 +15,7 @@ use crate::merge::{
     slice, summarise_operations,
 };
 use crate::orchestrate;
+use crate::seam::TargetSeam;
 
 /// Wire input for `slice merge run`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,12 +28,12 @@ pub struct MergeRunInput {
     pub allow_composition_replace: bool,
 }
 
-/// `specify slice merge run <name>` → the internal merge orchestration
-/// (deterministic-only — no target merge brief is dispatched).
+/// `specify slice merge run <name>` → the merge orchestration: the
+/// target's phased merge gates around the deterministic core merge.
 #[derive(Clone, Copy, Debug)]
 pub struct MergeRun;
 
-impl<P: Anchor> Operation<P> for MergeRun {
+impl<P: Anchor + TargetSeam> Operation<P> for MergeRun {
     type Error = crate::handler::Error;
     type Input = MergeRunInput;
     type Output = MergeBody;
@@ -45,7 +46,14 @@ impl<P: Anchor> Operation<P> for MergeRun {
             name,
             allow_composition_replace,
         } = input;
-        let outcome = orchestrate::merge(cx.layout(), cx.now(), &name, allow_composition_replace)?;
+        let outcome = orchestrate::merge(
+            context.provider,
+            cx.layout(),
+            cx.now(),
+            &name,
+            allow_composition_replace,
+        )
+        .await?;
         Ok(MergeBody {
             slice: name,
             merged: outcome.merged.into_iter().map(|entry| entry.name).collect(),

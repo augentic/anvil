@@ -1,6 +1,6 @@
 # Provenance projection (`specify slice provenance`)
 
-The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `specify slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](authority.md); this page covers only the shape of the projected view that records which rule fired.
+The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `specify slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](../../crates/workflow/prompts/synthesis/authority.md); this page covers only the shape of the projected view that records which rule fired.
 
 ## How it's produced
 
@@ -164,9 +164,9 @@ Boolean, optional:
 | `per-slice-authority-override` | The slice's `authority-override.<kind>` named a source key in the reconciled group; that source won. Paired with `resolution: per-slice-override`. |
 | `document-authority-ordering` | Fallback to the document-level `authority:` enum (`intent > documentation > behaviour`); highest class won. Paired with `resolution: authority-resolved`. |
 
-> The deferred per-Evidence `authority-overrides` surface (a future RFC — see [`authority.md`](authority.md)) would add a `per-evidence-authority-override` step here. It is out of scope for v1.
+> The deferred per-Evidence `authority-overrides` surface (a future RFC — see [`authority.md`](../../crates/workflow/prompts/synthesis/authority.md)) would add a `per-evidence-authority-override` step here. It is out of scope for v1.
 
-The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specify slice validate` will not refuse it.
+The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](../../crates/workflow/prompts/synthesis/authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specify slice validate` will not refuse it.
 
 ## Audit posture
 
@@ -245,7 +245,6 @@ REQ-001 is the agreed cross-source case (one shared statement; no winner / loser
 
 ## References
 
-- [`authority.md`](authority.md) — authority hierarchy, override surfaces, and the resolution-order taxonomy the `resolution-trace.step` names mirror.
-- [`claim-reconciliation.md`](claim-reconciliation.md) — per-kind landing rules; the `kind` field on each contributing claim copies from the source Evidence claim.
-- [`tags.md`](tags.md) — tag / `Status:` coherence on the matching `spec.md` requirement block.
-- [`provenance.md`](provenance.md) — normative provenance-index shape and rationale.
+- [`authority.md`](../../crates/workflow/prompts/synthesis/authority.md) — authority hierarchy, override surfaces, and the resolution-order taxonomy the `resolution-trace.step` names mirror.
+- [`claim-reconciliation.md`](../../crates/workflow/prompts/synthesis/claim-reconciliation.md) — per-kind landing rules; the `kind` field on each contributing claim copies from the source Evidence claim.
+- [`tags.md`](../../crates/workflow/prompts/synthesis/tags.md) — tag / `Status:` coherence on the matching `spec.md` requirement block.

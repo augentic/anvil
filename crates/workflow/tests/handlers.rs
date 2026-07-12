@@ -327,6 +327,57 @@ mod scaffold {
     }
 
     #[tokio::test]
+    async fn local_component_mirrored() {
+        // The only route an externally built adapter has into a project
+        // (there is no sibling-checkout probe): an operator-supplied
+        // local `.wasm` at init is mirrored into the project component
+        // cache, where the bare-name resolver finds it afterwards.
+        let project = Project::bare();
+        let staged = project.root.join("downloads/demo.wasm");
+        fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir downloads");
+        fs::write(&staged, b"\0asm-component").expect("stage local component");
+
+        let body = run::<workflow::init::handlers::Scaffold, _>(
+            &project,
+            workflow::init::handlers::ScaffoldInput {
+                adapter: Some(staged.display().to_string()),
+                name: Some("demo-project".into()),
+                description: None,
+                workspace: false,
+                platforms: None,
+            },
+        )
+        .await
+        .expect("local-component scaffold succeeds");
+        assert_eq!(body.adapter_name, "demo", "the name derives from the component filename");
+        assert!(body.cache_present, "the local component is mirrored into the project cache");
+
+        let components = common::expected_cache_dir(&project.root).join("components");
+        assert_eq!(
+            fs::read(components.join("demo.wasm")).expect("mirrored component"),
+            b"\0asm-component",
+            "the mirror is a byte-copy of the supplied file"
+        );
+        let meta =
+            fs::read_to_string(components.join("component-meta.yaml")).expect("provenance stamp");
+        assert!(meta.contains("file://"), "provenance records the local source:\n{meta}");
+        let config =
+            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+        assert!(
+            config.contains("file://"),
+            "the recorded adapter value is the file URI:\n{config}"
+        );
+
+        let resolved = workflow::adapter::Resolver::resolve_target(
+            &common::resolver(),
+            &workflow::adapter::AdapterRef::bare("demo"),
+            &project.root,
+        )
+        .expect("the mirrored component resolves the bare name");
+        assert_eq!(resolved.manifest.name, "demo");
+    }
+
+    #[tokio::test]
     async fn existing_agents_md_preserved() {
         let project = Project::bare();
         let agents_path = project.root.join("AGENTS.md");

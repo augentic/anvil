@@ -17,11 +17,6 @@
       "description": "Skills to capture runtime fixtures from legacy TypeScript services for Specify migration workflows."
     },
     {
-      "name": "client",
-      "source": "client",
-      "description": "Experimental: skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts. One skill, no eval scenario; status under review."
-    },
-    {
       "name": "spec",
       "source": "spec",
       "description": "Skills for the Specify workflow: `/spec:init` scaffolds a project, `/spec:plan` authors the change-level plan, the per-slice breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) drive one slice at a time, and `/spec:finalize` closes the change; the drained execute loop is the guest-routed `specify plan execute` verb."

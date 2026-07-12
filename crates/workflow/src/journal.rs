@@ -29,7 +29,7 @@ use error::Error;
 use serde_json::Value;
 
 pub(crate) use self::append::{append_batch, append_one};
-pub(crate) use self::emit::{bracket, bracket_sync, emit_best_effort};
+pub(crate) use self::emit::{bracket, emit_best_effort};
 pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind};
 use crate::config::Layout;
 

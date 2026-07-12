@@ -8,8 +8,8 @@ The workflow engine and operator plugins live in [`augentic/specify`](https://gi
 
 | Path                                                                   | Contents                                                                                         | Language       |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
-| `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `quality/` | Skills, references, documentation, marketplace manifest, and canonical workflow scenarios | Markdown, YAML |
-| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/composed execution surfaces | Rust |
+| `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Skills, references, documentation, and the marketplace manifest | Markdown, YAML |
+| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/composed/live test surfaces | Rust |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 
 The prose defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace at the repo root implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
@@ -36,7 +36,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 **For tooling and CLI work** (the Rust workspace at the repo root):
 
-- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `cargo make dev -- <command>` loop uses nightly Cargo Script
+- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
 - [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the root `Makefile` forwards unknown targets to `Makefile.toml`
 - [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks
@@ -52,9 +52,9 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 ## What to read next
 
-- [Quality gates](quality-gates.md) -- canonical scenarios, execution profiles, assertion ownership, and release cadence
-- [The developer loop](dev-loop.md) -- the three-rung `cargo make dev -- <command>` surface shared with `specify-adapters`: `check` (model-free), `live` (live model), `full` (WASM boundary)
-- [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
+- [Quality gates](quality-gates.md) -- test rungs, assertion ownership, and release cadence
+- [The developer loop](dev-loop.md) -- the three local rungs: `cargo make test` (native), `cargo make test-wasm` (composed smoke), `cargo make test-live` (explicit live trial)
+- [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/workflow/prompts/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
@@ -67,4 +67,3 @@ Advanced examples live beside the skills that own them, so they stay close to th
 
 - [`adapters/targets/omnia/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this prompt carries the crate-writer and test-writer behavior).
 - [`adapters/targets/vectis/prose/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/) and [`adapters/targets/vectis/prose/references/examples/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/prose/prompts/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/prompts/).
-- [`quality/`](../../quality/) -- unified workflow-quality tree containing canonical scenarios, profiles, runbooks, fixtures, reports, and shared references.

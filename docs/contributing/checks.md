@@ -1,6 +1,6 @@
 # Consistency Checks
 
-Framework invariants over this repo's prose and manifest surfaces are plain cargo tests at `tests/framework/` (links, skills, scenarios, plugins, docs prose). They run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
+Framework invariants over this repo's prose and manifest surfaces are plain cargo tests at `tests/framework/` (links, skills, plugins, docs prose). They run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
 
 ```bash
 cargo test --test framework   # prose/manifest invariants only
@@ -14,9 +14,9 @@ Framework validation splits into two surfaces:
 | Surface                          | When it runs                      | What it covers                                                                                                                                                   |
 | -------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Editor-first (YAML/JSON LSP)** | While you edit plain YAML or JSON | Shape violations for files the language server can bind to a schema: `.cursor-plugin/marketplace.json` and other plain YAML/JSON artifacts that declare a schema |
-| **`tests/framework/` (cargo)**   | `cargo make ci` locally and in CI | Markdown frontmatter (`SKILL.md`, scenario docs), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other cross-file predicate     |
+| **`tests/framework/` (cargo)**   | `cargo make ci` locally and in CI | Markdown frontmatter (`SKILL.md`), symlink integrity, marketplace ↔ plugin consistency, link resolution, and every other cross-file predicate                    |
 
-**Authoritative schemas** live in-tree under [`schemas/`](../../schemas) and are embedded in the `specify` binary via `schema`; the framework-quality tests validate against those embedded constants (`SKILL_JSON_SCHEMA`, `SCENARIO_JSON_SCHEMA`, `MARKETPLACE_JSON_SCHEMA`). Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
+**Authoritative schemas** live in-tree under [`schemas/`](../../schemas) and are embedded in the `specify` binary via `schema`; the framework-quality tests validate against those embedded constants (`SKILL_JSON_SCHEMA`, `MARKETPLACE_JSON_SCHEMA`). Editors resolve the same contract by binding to the published schemas via the remote `raw.githubusercontent.com` URLs in [`.vscode/settings.json`](../../.vscode/settings.json) — there is no vendored mirror to keep in sync.
 
 **Plain YAML/JSON wiring.** Plain YAML control files can carry a first-line schema directive when a framework or runtime schema exists:
 
@@ -24,9 +24,9 @@ Framework validation splits into two surfaces:
 # yaml-language-server: $schema=https://raw.githubusercontent.com/augentic/specify/main/schemas/plan/plan.schema.json
 ```
 
-Workflow and consumer schemas (`plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/scenario`, `authoring/marketplace`) all ship in-tree under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json). (Adapters have no manifest file — adapter metadata comes from the component's `metadata` export, so there is no adapter schema to bind.)
+Workflow and consumer schemas (`plan`, `evidence`, …) and framework authoring schemas (`authoring/skill`, `authoring/marketplace`) all ship in-tree under `schemas/`. JSON manifests can use a top-level `"$schema"` property — see [`.cursor-plugin/marketplace.json`](../../.cursor-plugin/marketplace.json). (Adapters have no manifest file — adapter metadata comes from the component's `metadata` export, so there is no adapter schema to bind.)
 
-**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. The framework-quality tests extract the leading `---` block from `SKILL.md` and scenario Markdown files and validate it against the same JSON Schemas under `schemas/authoring/`.
+**Markdown frontmatter.** Cursor's YAML language server validates standalone `.yaml` control files reliably, but does not yet surface the same diagnostics for YAML embedded in Markdown frontmatter. The framework-quality tests extract the leading `---` block from `SKILL.md` files and validate it against the same JSON Schemas under `schemas/authoring/`.
 
 ## Enforcement surfaces (authoring vs engineering standards)
 
@@ -64,19 +64,6 @@ Every `SKILL.md` under `plugins/` is validated against the embedded `schemas/aut
 - **Argument-hint grammar** — every whitespace-separated `argument-hint` token matches the `<placeholder>` / `[optional]` grammar.
 - **No frontmatter restatement** — skill bodies must not restate frontmatter with `## Input`-style headings.
 
-### `scenarios.rs`
-
-The authoring schema accepts canonical YAML and legacy Markdown frontmatter during migration. `tests/framework/scenarios.rs` validates legacy records and cross-file audit consistency; `crates/scenario/tests/catalog.rs` loads every canonical YAML file through the typed DTOs and enforces one-to-one legacy migration plus assertion-registry documentation parity.
-
-- **Stages contiguity** — `stages` must be a contiguous slice of `[plan, refine, build, merge, drop]`.
-- **Body-id consistency** — a visible `Scenario ID:` body line must equal the frontmatter `id`.
-- **Expected-artifact path safety** — no `..` segments or leading `/`.
-- **Cross-file id uniqueness** — scenario ids are unique across the repo.
-- **Assertion registry** — every legacy assertion resolves to the documented taxonomy; canonical YAML deserialises through the closed `scenario::AssertionId` enum.
-- **Run assertion coverage** — completed historical records cover exactly the assertions declared by their scenario.
-- **Negative-expectation policy** — live model calls stay outside ordinary CI and semantic output is not byte-golden tested.
-- **Catalog ↔ runs drift** — the [`quality/runbooks/README.md`](../../quality/runbooks/README.md) catalog's Status/Gate columns must agree with the committed run records under `quality/runs/archive/`.
-
 ### `prose.rs`
 
 - **Marketplace manifest consistency** — `.cursor-plugin/marketplace.json` lists exactly the on-disk plugins, and validates against the embedded marketplace schema.
@@ -99,4 +86,4 @@ cargo make ci     # fmt-check + clippy + all tests (incl. framework) + docs + ve
 cargo make check  # the pre-commit subset
 ```
 
-Per-push CI ([`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml)) needs no sibling checkout: the shared org workflow runs the workspace gates (its test leg covers the default members, `crates/*` plus `tests/framework`), and a slim job checks the guest crates compile for `wasm32-wasip2`. Composed runtime execution lives in the scheduled/manual [`.github/workflows/composed.yaml`](../../.github/workflows/composed.yaml).
+Per-push CI ([`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml)) needs no sibling checkout: the shared org workflow runs the workspace gates (its test leg covers the default members: `crates/*`, `harness/fixtures`, and `tests/framework`), and a slim job checks the guest crates compile for `wasm32-wasip2`. Composed runtime execution lives in the scheduled/manual [`.github/workflows/composed.yaml`](../../.github/workflows/composed.yaml).

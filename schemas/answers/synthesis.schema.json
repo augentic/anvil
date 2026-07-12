@@ -3,6 +3,13 @@
     "artifacts": {
       "additionalProperties": false,
       "properties": {
+        "decisions": {
+          "description": "Optional slice-authored Decision Records. Each entry carries only the agent-authored fields of `decision.schema.json`'s slice-authored form plus the Nygard prose; the persist tail renders each entry to `.specify/slices/<slice>/decisions/<slug>.md` with exact-set replacement, and the engine stamps `id` / `slice` / `date` (and any `superseded-by`) at merge. Omit the key (or emit `[]`) when the slice sets no durable decision.",
+          "items": {
+            "$ref": "#/$defs/decision"
+          },
+          "type": "array"
+        },
         "design": {
           "minLength": 1,
           "type": "string"
@@ -42,6 +49,74 @@
         "design",
         "tasks",
         "specs"
+      ],
+      "type": "object"
+    },
+    "decision": {
+      "additionalProperties": false,
+      "properties": {
+        "consequences": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "context": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "decision": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "related": {
+          "items": {
+            "pattern": "^REQ-\\d{3,}$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "slug": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "rejected"
+          ],
+          "type": "string"
+        },
+        "supersedes": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^(DEC-\\d{4,}|[a-z][a-z0-9-]*)$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "topics": {
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "slug",
+        "status",
+        "title",
+        "context",
+        "decision",
+        "consequences"
       ],
       "type": "object"
     },

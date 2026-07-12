@@ -570,6 +570,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "composed"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "omnia",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "omnia-wasi-otel",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "const-hex"
 version = "1.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1995,6 +2011,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
+name = "live"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "artifacts",
+ "error",
+ "fixtures",
+ "omnia",
+ "omnia-cursor",
+ "omnia-guest",
+ "omnia-testkit",
+ "omnia-wasi-model",
+ "schema",
+ "serde-saphyr",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "workflow",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2342,6 +2379,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "omnia-testkit"
+version = "0.35.0"
+source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
+dependencies = [
+ "omnia-guest",
 ]
 
 [[package]]
@@ -2889,27 +2934,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "quality"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "clap",
- "jiff",
- "libc",
- "omnia",
- "omnia-cursor",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "scenario",
- "schema",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3198,17 +3222,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "replay"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "quality",
- "scenario",
- "tempfile",
- "tokio",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3477,20 +3490,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "scenario"
-version = "0.27.2"
-dependencies = [
- "error",
- "jiff",
- "schema",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum",
- "tempfile",
 ]
 
 [[package]]
@@ -5369,9 +5368,11 @@ dependencies = [
  "anyhow",
  "artifacts",
  "error",
+ "fixtures",
  "glob",
  "jiff",
  "omnia-guest",
+ "omnia-testkit",
  "petgraph",
  "regex",
  "schema",

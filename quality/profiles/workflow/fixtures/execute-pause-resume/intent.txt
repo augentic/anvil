@@ -1,1 +1,0 @@
-Dashboard backend: metrics summary KPIs and a recent user activity feed.

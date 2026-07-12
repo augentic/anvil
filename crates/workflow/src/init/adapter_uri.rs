@@ -52,7 +52,8 @@ impl AdapterUri {
                     "GitHub adapter URIs are not supported (`{adapter}`): a source checkout \
                      does not yield a usable adapter artifact. Pin a published component \
                      (`specify:<name>@<semver>`), point at a local `.wasm` component file, or \
-                     build the development sibling with `cargo make release`"
+                     build the in-repo development artifact (`cargo build --release --target \
+                     wasm32-wasip2`)"
                 ),
             });
         }
@@ -105,10 +106,10 @@ impl AdapterUri {
     /// Defer a bare development identity to the injected `Resolver`.
     ///
     /// The resolver locates
-    /// one downstream (the project component cache, then the
-    /// sibling/in-repo release build in the shipped path; linked Rust
+    /// one downstream (the project component cache, then the project's
+    /// in-repo release build in the shipped path; linked Rust
     /// crates in the native harness) and raises `adapter-not-found`
-    /// with the `cargo make release` remediation on a miss.
+    /// with build/install remediation on a miss.
     fn from_dev(name: &str) -> Self {
         Self {
             adapter_value: name.to_string(),

@@ -151,7 +151,7 @@ When a requirement's `agreement` verdict is `disagreed`, the kernel walks the fo
 2. **`document-authority-ordering`** — fall back to the document-level `authority:` enum (`intent > documentation > behaviour`). Highest class wins; ties at the top class continue to step 3.
 3. **`tied-conflict`** — still tied. The kernel derives `status: conflict` with the `[conflict]` tag; no winner markers. The operator reconciles by re-running `/spec:refine` (after amending the override or the source set) before `/spec:build`.
 
-Steps 1–2 yield `status: divergence` when the chosen source disagrees with at least one other contributor and `status: agreed` when every contributor's value matches the winner's. Step 3 yields `status: conflict`. Step names are byte-stable across runs and match the projected `requirements[].resolution-trace.step` exactly — see [`provenance.md`](./provenance.md) for the audit shape and [`claim-reconciliation.md`](./claim-reconciliation.md) for the per-kind body landing rules. (The deferred per-Evidence surface would insert a `per-evidence-authority-override` step between 1 and 2.)
+Steps 1–2 yield `status: divergence` when the chosen source disagrees with at least one other contributor and `status: agreed` when every contributor's value matches the winner's. Step 3 yields `status: conflict`. Step names are byte-stable across runs and match the projected `requirements[].resolution-trace.step` exactly — the audit shape is projected on demand by `specify slice provenance`; see [`claim-reconciliation.md`](./claim-reconciliation.md) for the per-kind body landing rules. (The deferred per-Evidence surface would insert a `per-evidence-authority-override` step between 1 and 2.)
 
 ### Worked example — both overrides at play
 

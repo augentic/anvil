@@ -14,7 +14,9 @@ use workflow::adapter::{
     AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource, ResolvedTarget,
     Resolver,
 };
-use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
+use workflow::seam::{
+    self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree,
+};
 use workflow::slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::specify::adapter::{source, target, types};
@@ -87,6 +89,25 @@ impl TargetSeam for Provider {
                 subpath: tree.subpath,
             };
             let report = target::build(id.clone(), slice.clone(), wire_inputs, wire_tree)
+                .await
+                .map_err(map_error)?;
+            Ok(widen_report(&id, slice, report))
+        }
+    }
+
+    fn merge(
+        &self, id: String, slice: String, phase: MergePhase, tree: WorkingTree,
+    ) -> impl Future<Output = Result<BuildReport, seam::Error>> + Send {
+        async move {
+            let wire_phase = match phase {
+                MergePhase::Preflight => target::MergePhase::Preflight,
+                MergePhase::Postflight => target::MergePhase::Postflight,
+            };
+            let wire_tree = target::WorkingTree {
+                base: tree.base,
+                subpath: tree.subpath,
+            };
+            let report = target::merge(id.clone(), slice.clone(), wire_phase, wire_tree)
                 .await
                 .map_err(map_error)?;
             Ok(widen_report(&id, slice, report))

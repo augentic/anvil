@@ -34,6 +34,8 @@ jobs:
           cache-on-failure: true
 
       - name: Check wasm guests
-        run: cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+        run: |
+          cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+          cargo check --locked -p fixtures --examples --target wasm32-wasip2
         env:
           RUSTFLAGS: -Dwarnings

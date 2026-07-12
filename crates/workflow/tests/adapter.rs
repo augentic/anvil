@@ -47,6 +47,48 @@ mod resolve {
         assert_eq!(body.version, "0.0.0");
         assert_eq!(body.axis, "targets");
     }
+
+    #[tokio::test]
+    async fn bare_identity_from_project_cache() {
+        // The other bare-name probe: a component mirrored into the
+        // project component cache (init's local-file path) resolves
+        // without any in-repo release build.
+        let project = Project::bare();
+        let components = common::expected_cache_dir(&project.root).join("components");
+        std::fs::create_dir_all(&components).expect("mkdir component cache");
+        std::fs::write(components.join("demo.wasm"), "{}").expect("stage cached component");
+
+        let body = run::<workflow::adapter::handlers::TargetResolve, _>(
+            &project,
+            workflow::adapter::handlers::ResolveInput {
+                value: "demo".to_string(),
+                project_dir: None,
+            },
+        )
+        .await
+        .expect("cached component resolves");
+        assert_eq!(body.name, "demo");
+    }
+
+    #[test]
+    fn sibling_checkout_never_probed() {
+        // Resolution is project-contained: an artifact in a sibling
+        // `specify-adapters` checkout (the retired development probe)
+        // must not resolve a bare name.
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let outer = tmp.path().canonicalize().expect("canonical tempdir");
+        let _cache = common::scoped_cache(&outer);
+        let project_dir = outer.join("project");
+        std::fs::create_dir_all(&project_dir).expect("mkdir project");
+        let sibling = outer.join("specify-adapters/target/wasm32-wasip2/release");
+        std::fs::create_dir_all(&sibling).expect("mkdir sibling layout");
+        std::fs::write(sibling.join("demo.wasm"), "{}").expect("stage sibling component");
+
+        let err = common::resolver()
+            .resolve_target(&workflow::adapter::AdapterRef::bare("demo"), &project_dir)
+            .expect_err("sibling artifact must not resolve");
+        assert!(err.to_string().contains("adapter-not-found"), "{err}");
+    }
 }
 
 #[test]

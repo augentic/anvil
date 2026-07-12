@@ -98,10 +98,6 @@ pub const DIAGNOSTIC_REPORT_JSON_SCHEMA: &str =
 /// Schema for `SKILL.md` YAML frontmatter (framework authoring).
 pub const SKILL_JSON_SCHEMA: &str = include_str!("../../../schemas/authoring/skill.schema.json");
 
-/// Schema for scenario-pack YAML frontmatter (framework authoring).
-pub const SCENARIO_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/authoring/scenario.schema.json");
-
 /// Schema for `.cursor-plugin/marketplace.json` (framework authoring).
 pub const MARKETPLACE_JSON_SCHEMA: &str =
     include_str!("../../../schemas/authoring/marketplace.schema.json");
@@ -158,7 +154,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         DIAGNOSTIC_REPORT_JSON_SCHEMA,
     ),
     ("SKILL_JSON_SCHEMA", "schemas/authoring/skill.schema.json", SKILL_JSON_SCHEMA),
-    ("SCENARIO_JSON_SCHEMA", "schemas/authoring/scenario.schema.json", SCENARIO_JSON_SCHEMA),
     (
         "MARKETPLACE_JSON_SCHEMA",
         "schemas/authoring/marketplace.schema.json",

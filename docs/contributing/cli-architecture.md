@@ -6,7 +6,7 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
 
-The core guest identity is versioned by the binary (`specify:core@<binary version>`); in development the repo-root `omnia.toml` names the in-repo `specify.wasm` build.
+The core guest identity is versioned by the binary (`specify:core@<binary version>`).
 
 ## Core crate dependency graph
 

@@ -10,12 +10,13 @@ use std::{env, fs};
 const CORPUS: &[(&str, &str)] = &[
     ("propose.md", "prompts/propose.md"),
     ("synthesize.md", "prompts/synthesize.md"),
-    ("substeps.md", "../../plugins/spec/references/synthesis/substeps.md"),
-    ("requirement-block.md", "../../plugins/spec/references/synthesis/requirement-block.md"),
-    ("authority.md", "../../plugins/spec/references/synthesis/authority.md"),
-    ("claim-reconciliation.md", "../../plugins/spec/references/synthesis/claim-reconciliation.md"),
-    ("tags.md", "../../plugins/spec/references/synthesis/tags.md"),
-    ("spec-format.md", "../../plugins/spec/references/spec-format.md"),
+    ("substeps.md", "prompts/synthesis/substeps.md"),
+    ("requirement-block.md", "prompts/synthesis/requirement-block.md"),
+    ("authority.md", "prompts/synthesis/authority.md"),
+    ("claim-reconciliation.md", "prompts/synthesis/claim-reconciliation.md"),
+    ("tags.md", "prompts/synthesis/tags.md"),
+    ("decisions.md", "prompts/synthesis/decisions.md"),
+    ("spec-format.md", "prompts/synthesis/spec-format.md"),
 ];
 
 fn main() {

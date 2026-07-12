@@ -19,7 +19,7 @@ Status: <agreed|unknown|conflict|divergence>
 - **THEN** <expected behavior>
 ```
 
-The `#### Scenario:` heading is optional per requirement block — include it when the requirement has meaningful acceptance criteria. GIVEN is optional context that precedes the WHEN/THEN pair. Multiple `#### Scenario:` headings may appear within one requirement block. The heading level is fixed at H4; see [`spec-format.md`](../spec-format.md) for the canonical heading conventions.
+The `#### Scenario:` heading is optional per requirement block — include it when the requirement has meaningful acceptance criteria. GIVEN is optional context that precedes the WHEN/THEN pair. Multiple `#### Scenario:` headings may appear within one requirement block. The heading level is fixed at H4; see [`spec-format.md`](spec-format.md) for the canonical heading conventions.
 
 Invariants the kernel guarantees and the parser re-checks:
 

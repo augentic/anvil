@@ -12,7 +12,7 @@ skip_rust_env_info = true
 # Build guests
 #
 # wasm32-wasip2 guest components: the core `specify` guest plus the
-# echo adapter fixtures (cdylib examples of the `fixtures` package,
+# combined fixture adapter (a cdylib example of the `fixtures` package,
 # landing under target/wasm32-wasip2/debug/examples/). Two invocations:
 # `--examples` narrows target selection to example targets only, so the
 # core guest's lib needs its own build.
@@ -25,21 +25,13 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 (cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
 '''
 
-# The shipped binary, for the subprocess smoke in the replay suite.
-[tasks.binary]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
-(cd "${root}" && cargo build -p specify)
-'''
-
-# Model-free replay WASM/WIT smoke. Guest construction is explicit so the
-# host test never shells out to Cargo or hides a missing CI build prerequisite.
-[tasks.test-replay]
-dependencies = ["guests", "binary"]
+# Model-free composed WASM/WIT smoke. Guest construction is explicit so
+# the host test never shells out to Cargo or hides a missing CI build
+# prerequisite.
+[tasks.test-wasm]
+dependencies = ["guests"]
 command = "cargo"
-args = ["nextest", "run", "-p", "replay", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "-p", "composed", "--no-tests=pass"]
 
 # Lint — the harness crates are not covered by the root workspace's
 # clippy gate; run this before extending them.
@@ -50,7 +42,9 @@ args = [
     "-p",
     "fixtures",
     "-p",
-    "replay",
+    "composed",
+    "-p",
+    "live",
     "--all-targets",
     "--",
     "-D",

@@ -72,7 +72,7 @@ Only after this transition will `specify plan execute` start.
 
 ## Splitting one slice into two
 
-When Gate 1 review shows a slice should split, add a second row with `specify plan add`, narrow the original with `specify plan amend <original> --sources …`, and `specify plan remove <original>` when the original entry is empty. Scenario coverage lives in eval scenario #7.
+When Gate 1 review shows a slice should split, add a second row with `specify plan add`, narrow the original with `specify plan amend <original> --sources …`, and `specify plan remove <original>` when the original entry is empty.
 
 ## See also
 

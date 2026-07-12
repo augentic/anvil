@@ -2,7 +2,7 @@
 
 House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css).
 
-**Runtime vs book:** Agent-critical prose is canonical under [`plugins/spec/references/`](../../plugins/spec/references/) and vendored into cached adapters at `references/spec-runtime/`. Skills and adapter briefs must not link into `docs/` with relative paths. Use `https://specify.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
+**Runtime vs book:** Core judgment prose is embedded in the `specify` binary from `crates/workflow/prompts/`; adapter prompts and references ship inside each adapter component in `augentic/specify-adapters`. The plugin cache ships only `plugins/`, so skill bodies link only to plugin-local `references/…` siblings — never into `docs/` with relative paths. Use `https://specify.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
 
 ## Document types (Diátaxis)
 

@@ -5,9 +5,10 @@
 //! Survey fan-out feeds `Discovery::merge_survey`, extract persists
 //! schema-gated Evidence, build runs the finalize tail (report schema
 //! gate, `enforce_report_*`, the `built` transition, the
-//! `slice.build.*` bracket), and merge is deterministic-only. `specify
-//! source survey/extract`, `specify slice build`, and `specify slice
-//! merge run` route here through the guest.
+//! `slice.build.*` bracket), and merge dispatches the target's phased
+//! merge gates (preflight / postflight) around the deterministic core
+//! commit. `specify source survey/extract`, `specify slice build`, and
+//! `specify slice merge run` route here through the guest.
 //!
 //! Time is injected: every orchestrator takes the caller's `now`
 //! (architecture.md §"Time injection"); library code never reads the
@@ -49,7 +50,7 @@ pub struct Capabilities<'a, P, S, T, R> {
     pub model: &'a P,
     /// Source-axis seam (survey / extract).
     pub sources: &'a S,
-    /// Target-axis seam (guidance / build).
+    /// Target-axis seam (guidance / build / merge).
     pub targets: &'a T,
     /// Adapter resolver.
     pub resolver: &'a R,
@@ -95,7 +96,8 @@ impl<P, S, T, R> Copy for Capabilities<'_, P, S, T, R> {}
 /// Map a seam dispatch failure onto the wire contract.
 ///
 /// `operation` is the seam method (`survey`, `extract`, `guidance`,
-/// `build`); `id` is the routed adapter id (e.g. `source:typescript`).
+/// `build`, `merge`); `id` is the routed adapter id (e.g.
+/// `source:typescript`).
 fn seam_failure(operation: &'static str, id: &str, err: &seam::Error) -> Error {
     Error::Diag {
         code: "seam-dispatch-failed",

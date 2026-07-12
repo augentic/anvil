@@ -33,7 +33,7 @@ use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
-use crate::registry::topology::Surface;
+use crate::registry::topology::{Decision, Surface};
 use crate::seam::{SourceSeam, TargetSeam};
 use crate::slice::validate::{Validation, append_synthesis_journal};
 use crate::slice::{
@@ -98,7 +98,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
-    let baseline = baseline_surface(caps.resolver, layout, &entry)?;
+    let (baseline, baseline_decisions) = baseline_identity(caps.resolver, layout, &entry)?;
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
     let header = ProjectionHeader {
         version: 1,
@@ -118,6 +118,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
         sources: &source_inputs,
         baseline: &baseline,
         baseline_detail: &baseline_detail,
+        baseline_decisions: &baseline_decisions,
     };
 
     // Synthesis is model-dispatched — record the handoff, then bracket
@@ -300,13 +301,14 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
         .map_or_else(|| layout.specify_dir().join("specs"), |class| class.baseline_dir.clone())
 }
 
-/// The slice's bound-project baseline surface for the
-/// synthesis inputs envelope. Baseline is advisory context, so any
-/// topology resolution miss degrades to an empty surface (the native
-/// handler's posture).
-fn baseline_surface(
+/// The slice's bound-project baseline identity for the synthesis
+/// inputs envelope: its `surface[]` plus the accepted baseline
+/// Decision Record projection (`decisions[]`). Baseline is advisory
+/// context, so any topology resolution miss degrades to empty vectors
+/// (the native handler's posture).
+fn baseline_identity(
     resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry,
-) -> Result<Vec<Surface>, Error> {
+) -> Result<(Vec<Surface>, Vec<Decision>), Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
     let topology = resolve_topology(resolver, &config, layout.project_dir())?;
     let bound = match entry.project.as_deref() {
@@ -314,7 +316,7 @@ fn baseline_surface(
         None if topology.len() == 1 => topology.first(),
         None => None,
     };
-    Ok(bound.map(|p| p.surface.clone()).unwrap_or_default())
+    Ok(bound.map(|p| (p.surface.clone(), p.decisions.clone())).unwrap_or_default())
 }
 
 /// Bare adapter name from a recorded target value (`omnia@1.0.0` →

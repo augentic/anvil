@@ -1,6 +1,6 @@
 //! `tasks.md` parser. Public surface is `parse_tasks` and
 //! `mark_complete`; selection helpers stay private. Format is
-//! documented in `plugins/spec/references/specify.md` §"Tasks Document".
+//! documented in `docs/reference/artifact-format.md` §"Tasks document".
 
 use std::sync::OnceLock;
 

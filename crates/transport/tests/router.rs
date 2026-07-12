@@ -62,6 +62,12 @@ impl TargetSeam for TestProvider {
     ) -> Result<workflow::slice::BuildReport, seam::Error> {
         unreachable!("router grammar tests do not invoke adapters")
     }
+
+    async fn merge(
+        &self, _id: String, _slice: String, _phase: seam::MergePhase, _tree: WorkingTree,
+    ) -> Result<workflow::slice::BuildReport, seam::Error> {
+        unreachable!("router grammar tests do not invoke adapters")
+    }
 }
 
 fn command_router(

@@ -39,8 +39,6 @@ const CANONICAL_DOCUMENTS: &[&str] = &[
     "docs/reference/review-team-protocol.md",
     "docs/standards/testing.md",
     "docs/contributing/quality-gates.md",
-    "quality/README.md",
-    "quality/COVERAGE.md",
 ];
 
 /// Reference-corpus roots (one directory depth per `*`; `*` does not

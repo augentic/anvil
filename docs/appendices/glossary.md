@@ -20,7 +20,7 @@ A machine-readable interface definition at `contracts/`. Uses three formats: JSO
 The `.specify/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
-Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). Set on each `Evidence` document during `extract`, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
+Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../crates/workflow/prompts/synthesis/authority.md)). Set on each `Evidence` document during `extract`, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
 A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
@@ -45,7 +45,7 @@ The operator-defined umbrella that coordinates one or more slices through `chang
 The Git branch an operator may use to publish a multi-repo change from a workspace slot. Branch preparation and publication are repository operations outside Specify.
 
 **Command**
-One operator-facing `specify` invocation (`specify slice build my-slice`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation routing](../../rfcs/handler-routing.md).
+One operator-facing `specify` invocation (`specify slice build my-slice`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation shape](../standards/handler-shape.md).
 
 **Command group**
 The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `specify slice *` is the slice command group.
@@ -98,12 +98,12 @@ The closure skill (`/spec:finalize`) that verifies the plan is drained, confirms
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 **Gate (quality)**
-A cadence and threshold applied to scenario reports: repository correctness, cross-repository native workflow, composed WebAssembly conformance, or live semantic quality. Distinct from the operator's plan Gate 1.
+One of the three engine test rungs and its cadence: repository correctness (`cargo make ci`, every push), composed WebAssembly smoke (`cargo make test-wasm`, scheduled/manual), or the explicit live-model trial (`cargo make test-live`, operator-invoked). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
 
 ## H
 
 **Hard assertion**
-A mechanically decidable scenario result, such as lifecycle state, exit status, schema validity, journal cadence, filesystem shape, or generated-output verification. Every applicable profile executes it automatically.
+A mechanically decidable test result, such as lifecycle state, exit status, schema validity, journal cadence, or filesystem shape. Every engine test — including the live-model trial — is graded by hard assertions only; there is no semantic grading machinery.
 
 ## I
 
@@ -127,12 +127,12 @@ The slice phase that applies spec deltas to the baseline, archives the slice, an
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
 
 **Model backend**
-The implementation serving judgment requests for a scenario profile: ordered scripted responses, canonical request-key replay, or a live model.
+The implementation serving judgment requests in a test: `omnia-testkit` scripted responses on the native and composed rungs, or the configured live model on the explicit live rung.
 
 ## O
 
 **Operation**
-The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `workflow::<domain>::handlers` submodules beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation routing](../../rfcs/handler-routing.md).
+The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `workflow::<domain>::handlers` submodules beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation shape](../standards/handler-shape.md).
 
 **model.yaml**
 The single structured artifact per refined slice, at `.specify/slices/<slice>/model.yaml`. Holds the requirement set with **inline provenance** (per requirement: contributing claims and the winning one), the task list, and a small header. Validated by `specify slice validate`; the audit `provenance` view is projected from it on demand (there is no persisted `provenance.yaml`). See [From sources to slices](../explanation/reconciliation.md).
@@ -146,9 +146,6 @@ An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. T
 
 **Plan**
 The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `specify plan {create, add, amend, transition, next, archive}` only.
-
-**Profile**
-The execution selection for one canonical scenario: runtime, model backend, grading mode, trial count, and report destination. Profiles do not redefine scenario steps or assertions.
 
 **Plugin**
 The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/workflow/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
@@ -173,19 +170,7 @@ The breakout skill (`/spec:refine`) that runs per slice: `specify slice create`,
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
 
-**Run report**
-The structured result of executing a scenario profile, including source revisions, trial outcomes, hard assertions, semantic rubric scores, model metadata, and retained evidence.
-
-**Runtime (quality)**
-The environment executing a scenario: native linked-adapter operations or a composed WebAssembly deployment. Distinct from the shipped Omnia runtime product.
-
 ## S
-
-**Scenario**
-A canonical YAML workflow case declaring setup, workflow steps, fixtures, hard assertions, semantic rubrics, expected outputs, and gate tier. Profiles execute the same scenario through different runtimes and model backends.
-
-**Semantic rubric**
-An evidence-backed grading rule for meaning or usefulness, such as decomposition quality or artifact fidelity. Rubrics run only in live profiles; mechanically decidable behavior is a hard assertion instead.
 
 **Shape**
 The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.

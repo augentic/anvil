@@ -1,6 +1,6 @@
 [package]
-name = "replay"
-description = "Deterministic replay harness for the Specify workflow core"
+name = "composed"
+description = "Composed WASM smoke over the Specify workflow guest and the fixture adapter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,10 +10,15 @@ publish = false
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 anyhow.workspace = true
-quality = { path = "../quality" }
-scenario.workspace = true
+omnia.workspace = true
+omnia-wasi-http.workspace = true
+omnia-wasi-model.workspace = true
+omnia-wasi-otel.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+toml.workspace = true
 
 [lints]
 workspace = true

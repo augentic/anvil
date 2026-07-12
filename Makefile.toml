@@ -24,24 +24,6 @@ dependencies = ["check", "vet", "deny"]
 # Individual Actions
 # -------------------------------------
 
-# Cross-repo developer loop. Pass the subcommand and its arguments after `--`.
-[tasks.dev]
-command = "rustup"
-args = [
-  "run",
-  "nightly",
-  "cargo",
-  "-Zscript",
-  "scripts/dev.rs",
-  "${@}",
-]
-
-# Live quality orchestrator. Pass the subcommand and its arguments after `--`,
-# e.g. `cargo make quality -- run wasm-live --trials 1`.
-[tasks.quality]
-command = "cargo"
-args = ["run", "-q", "-p", "quality", "--", "${@}"]
-
 # Audit
 [tasks.audit]
 command = "cargo"
@@ -90,23 +72,18 @@ command = "cargo"
 args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
-# Check wasm core — the per-push WASM boundary gate
+# Check wasm core — the per-push WASM boundary gate: the shipped guest
+# crates plus the fixture-adapter shim, so a WIT revision and its seam
+# land (and break) in the same push without Wasmtime execution.
 [tasks.wasm]
-command = "cargo"
-args = [
-    "check",
-    "--locked",
-    "--lib",
-    "-p",
-    "specify",
-    "-p",
-    "transport",
-    "--target",
-    "wasm32-wasip2",
-]
+script_runner = "@shell"
+script = '''
+cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+cargo check --locked -p fixtures --examples --target wasm32-wasip2
+'''
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# Build guests — the workflow core plus the echo adapter fixtures
+# Build guests — the workflow core plus the fixture adapter
 [tasks.guests]
 script_runner = "@shell"
 script = '''
@@ -115,20 +92,41 @@ cargo build --locked -p fixtures --examples --target wasm32-wasip2
 '''
 
 # Test — the ordinary suite over the default workspace members
-# (crates/* plus tests/framework); the replay harness is opt-in via
-# test-replay.
+# (crates/*, harness/fixtures, tests/framework); the composed WASM
+# smoke is opt-in via test-wasm.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# replay smoke — hosts the freshly built guests in one Omnia
+# Composed WASM smoke — hosts the freshly built guests in one Omnia
 # deployment. Matches the scheduled composed workflow; not part of
 # check/ci.
-[tasks.test-replay]
+[tasks.test-wasm]
 command = "cargo"
-args = ["nextest", "run", "--locked", "-p", "replay", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "-p", "composed", "--no-tests=pass"]
 dependencies = ["guests"]
+
+# Live-model workflow test — the single ignored native trial over the
+# adversarial fixture lead set. Operator-invoked (release tagging,
+# judgment-prompt or answer-schema changes); requires cursor-agent
+# credentials; never CI. `--no-capture` keeps the repair-count report
+# and the retained-project path visible; `--no-tests=fail` makes an
+# empty run fail loudly — the operator invocation is this rung's only
+# cadence, so a silently-skipped trial must not read as green.
+[tasks.test-live]
+command = "cargo"
+args = [
+    "nextest",
+    "run",
+    "--locked",
+    "-p",
+    "live",
+    "--run-ignored",
+    "all",
+    "--no-capture",
+    "--no-tests=fail",
+]
 
 # Test Doc
 [tasks.test-docs]

@@ -1,5 +1,5 @@
 //! Enforce the repo-local framework-quality predicates over the prose
-//! and manifest surfaces (links, skills, scenarios, plugins, docs).
+//! and manifest surfaces (links, skills, plugins, docs).
 //!
 //! Run with `cargo nextest run -p framework`. Any finding fails CI.
 //! Policy lives as constants in each module; failures are test failures.
@@ -7,7 +7,6 @@
 mod boundaries;
 mod links;
 mod prose;
-mod scenarios;
 mod skills;
 mod support;
 
@@ -32,7 +31,6 @@ fn run_all(root: &Path) -> Vec<Finding> {
     let mut findings = boundaries::run(root);
     findings.extend(links::run(root));
     findings.extend(skills::run(root));
-    findings.extend(scenarios::run(root));
     findings.extend(prose::run(root));
     findings
 }
@@ -87,7 +85,7 @@ fn boundary_checks_fire_on_bad_fixtures() {
 
     // The expanded `[dependencies.<name>]` table syntax fires.
     let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "harness/replay/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
+    write(dir.path(), "harness/composed/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
     assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
     // A target-specific dependency table fires.
@@ -268,119 +266,31 @@ fn skill_checks_fire_on_bad_fixtures() {
         &VALID_SKILL.replace("Body.", "## Input\n\nBody."),
     );
     assert!(fired(&skills::run(dir.path()), skills::CHECK_FRONTMATTER_RESTATEMENT));
-}
 
-/// A schema-valid scenario frontmatter block keyed by `id`, plus the
-/// catalog row and run record that keep the catalog check silent.
-fn write_valid_scenario_tree(root: &Path, id: &str) {
-    write(
-        root,
-        &format!("quality/runbooks/{id}.md"),
-        &format!(
-            "---\nid: {id}\nowner: spec\nkind: skill\nentrypoint: /spec:refine\nstages: [refine, build]\nisolation: fresh-project\nassertions: [plan-exists]\nnegative-expectations:\n  - live-model-ci-required\n  - semantic-byte-golden-required\n---\n\nBody.\n"
-        ),
-    );
-    write(root, "quality/reference/assertions.md", "### `plan-exists`\n\n**Probe.**\n");
-    write(
-        root,
-        "quality/runbooks/README.md",
-        &format!(
-            "| Scenario | File | Status | Gate |\n| --- | --- | --- | --- |\n| One | [`{id}`]({id}.md) | pending | full |\n"
-        ),
-    );
-}
-
-#[test]
-fn scenario_checks_fire_on_bad_fixtures() {
-    // A schema-valid scenario with a consistent catalog is silent.
+    // An orchestration/judgment heading in a spec skill body fires; the
+    // same heading quoted inside a code fence, or in another plugin's
+    // skill, stays silent.
     let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "good");
-    assert!(scenarios::run(dir.path()).is_empty());
-
-    // A frontmatter block missing required fields fires the schema check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "bad");
-    write(dir.path(), "quality/runbooks/bad.md", "---\nid: bad\n---\n\nBody.\n");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_SCHEMA_VIOLATION));
-
-    // Two scenarios sharing one id fire the duplicate check (the second
-    // lives in a plugin fixture so the catalog stays consistent).
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "twin");
     write(
         dir.path(),
-        "plugins/spec/skills/refine/fixtures/case/scenario.md",
-        "---\nid: twin\nowner: spec\nkind: skill\nentrypoint: /spec:refine\nstages: [refine]\nisolation: fresh-project\n---\n\nBody.\n",
+        "plugins/spec/skills/refine/SKILL.md",
+        &VALID_SKILL.replace("Body.", "## Synthesis playbook\n\nBody."),
     );
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_DUPLICATE_ID));
-
-    // A body Scenario ID line disagreeing with the frontmatter fires.
+    assert!(fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
     let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "real");
-    let path = dir.path().join("quality/runbooks/real.md");
-    let content = fs::read_to_string(&path).expect("read");
-    fs::write(&path, format!("{content}\nScenario ID: `other`\n")).expect("write");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_BODY_ID_MISMATCH));
-
-    // A non-contiguous stages list fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "stages");
-    let path = dir.path().join("quality/runbooks/stages.md");
-    let content = fs::read_to_string(&path).expect("read");
-    fs::write(&path, content.replace("[refine, build]", "[plan, build]")).expect("write");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_STAGES_NOT_CONTIGUOUS));
-
-    // An escaping expected-artifact path fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "arts");
-    let path = dir.path().join("quality/runbooks/arts.md");
-    let content = fs::read_to_string(&path).expect("read");
-    fs::write(
-        &path,
-        content.replace(
-            "isolation: fresh-project\n",
-            "isolation: fresh-project\nexpected-artifacts: ['../escape.txt']\n",
-        ),
-    )
-    .expect("write");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_ARTIFACT_PATH_UNSAFE));
-
-    // A status-bearing catalog row without its run record fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "gate");
-    let path = dir.path().join("quality/runbooks/README.md");
-    let content = fs::read_to_string(&path).expect("read");
-    fs::write(&path, content.replace("| pending |", "| passed |")).expect("write");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_CATALOG_RUNS_DRIFT));
-
-    // A scenario assertion absent from the shared taxonomy fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "assertion");
-    let path = dir.path().join("quality/runbooks/assertion.md");
-    let content = fs::read_to_string(&path).expect("read");
-    fs::write(&path, content.replace("plan-exists", "unknown-assertion")).expect("write");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_ASSERTION_UNRESOLVED));
-
-    // A completed run must cover exactly the scenario assertion ids.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "coverage");
-    let catalog = dir.path().join("quality/runbooks/README.md");
-    let content = fs::read_to_string(&catalog).expect("read");
-    fs::write(&catalog, content.replace("| pending |", "| passed |")).expect("write");
     write(
         dir.path(),
-        "quality/runs/archive/coverage.pass.md",
-        "# Run: `coverage` — **pass**\n\n## Assertions\n\n| Assertion | Verdict | Evidence |\n| --- | --- | --- |\n",
+        "plugins/spec/skills/refine/SKILL.md",
+        &VALID_SKILL.replace("Body.", "```md\n## Synthesis playbook\n```\n\nBody."),
     );
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_RUN_ASSERTION_COVERAGE));
-
-    // Every catalog scenario carries the same manual-driving prohibitions.
+    assert!(!fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
     let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_scenario_tree(dir.path(), "negative");
-    let path = dir.path().join("quality/runbooks/negative.md");
-    let content = fs::read_to_string(&path).expect("read");
-    fs::write(&path, content.replace("  - live-model-ci-required\n", "")).expect("write");
-    assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_NEGATIVE_EXPECTATIONS));
+    write(
+        dir.path(),
+        "plugins/capture/skills/wiretap/SKILL.md",
+        "---\nname: capture-wiretap\ndescription: Run the wiretap capture. Use when capturing runtime traffic.\n---\n\n## Validation notes\n\nBody.\n",
+    );
+    assert!(!fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
 }
 
 /// A marketplace manifest declaring exactly one `spec` plugin.
@@ -399,8 +309,6 @@ fn write_valid_prose_tree(root: &Path) {
     write(root, "docs/reference/review-team-protocol.md", "# Review team protocol\n");
     write(root, "docs/standards/testing.md", "# Testing\n");
     write(root, "docs/contributing/quality-gates.md", "# Quality gates\n");
-    write(root, "quality/README.md", "# Workflow quality\n");
-    write(root, "quality/COVERAGE.md", "# Scenario coverage map\n");
     write(
         root,
         "docs/standards/skill-authoring.md",

@@ -6,7 +6,7 @@ use omnia_guest::Model;
 use super::{seam_failure, target_id};
 use crate::judgment;
 use crate::judgment::synthesize::{Kernel, Synthesized};
-use crate::registry::topology::Surface;
+use crate::registry::topology::{Decision, Surface};
 use crate::seam::TargetSeam;
 use crate::slice::{DomainDetail, SourceInput, inputs};
 
@@ -26,6 +26,8 @@ pub struct SynthesizeRequest<'a> {
     pub baseline: &'a [Surface],
     /// Per-domain baseline `REQ` id facts.
     pub baseline_detail: &'a [DomainDetail],
+    /// The bound project's accepted baseline Decision Records.
+    pub baseline_decisions: &'a [Decision],
 }
 
 /// Run the synthesis judgment leg with the guidance brief read
@@ -53,6 +55,7 @@ pub async fn synthesize<P: Model, T: TargetSeam>(
         &guidance,
         request.baseline,
         request.baseline_detail,
+        request.baseline_decisions,
     );
     judgment::synthesize::synthesize(model, &synthesis_inputs, kernel).await
 }

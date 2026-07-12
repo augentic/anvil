@@ -22,7 +22,6 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | ------------ | ----------- | ------------------------------------------------------------------------------------------------------------------ | -------------------- |
 | **Specify**  | `/spec:`    | Workflow orchestration: `init`, `plan`, `refine`, `execute`, `build`, `merge`, `finalize`, `drop`.                  | [Slice Skills](../slice-skills/index.md) |
 | **Capture**  | `/capture:` | Runtime capture for legacy TypeScript migration workflows                                                          | [Capture](../../../plugins/capture/README.md) |
-| **Client**   | `/client:`  | Client-facing deliverables (SoW, proposals, pricing)                                                               | [Client](client.md)  |
 
 The Omnia and Vectis target adapters are not Cursor plugins — they live under [`adapters/targets/`](../targets/index.md) and contribute their `guidance`, `build`, and `merge` operations to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
 
@@ -34,7 +33,7 @@ The **Specify** plugin provides the workflow skeleton. **Target adapters** (unde
 - **Vectis target** drives composition, core, iOS, and Android phases inline from [`adapters/targets/vectis/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build.md).
 - **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside [`adapters/targets/contracts/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/prose/prompts/build.md).
 
-The Capture and Client plugins are target-independent — Capture supports legacy runtime capture regardless of the target platform; Client supports operator-facing deliverables.
+The Capture plugin is target-independent — it supports legacy runtime capture regardless of the target platform.
 
 ## Artifact flow
 

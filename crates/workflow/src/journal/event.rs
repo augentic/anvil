@@ -265,6 +265,18 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
+    /// The target's postflight merge gate raised a blocking finding
+    /// **after** the deterministic commit: the slice is already merged,
+    /// archived, and stamped `done`, so this is a terminal diagnostic —
+    /// never a rollback. `reason` carries a short human reason or
+    /// finding code; the merged baseline stands.
+    #[serde(rename = "slice.merge.postflight-failed", rename_all = "kebab-case")]
+    SliceMergePostflightFailed {
+        /// Affected slice — already merged and archived.
+        slice_name: SliceName,
+        /// Short human reason / finding code for the failed gate.
+        reason: String,
+    },
     /// The `source survey` finalize tail validated and merged
     /// one source's lead set into `discovery.md`. The plan-time peer
     /// of [`Self::SliceExtractCompleted`]; one event per `(source,

@@ -248,11 +248,12 @@ pub enum AdapterLocation {
     /// the wasm-pkg transport. Probed whenever the [`AdapterRef`]
     /// carries a pinned version.
     Store(PathBuf),
-    /// Resolved from a development release build —
-    /// `target/wasm32-wasip2/release/<name>.wasm` under the
-    /// project itself or the sibling `specify-adapters` checkout
-    /// (`cargo make release`). Probed for bare-name
-    /// (unpinned) references.
+    /// Resolved from the project component cache
+    /// (`<project-cache>/components/<name>.wasm`) or the project's own
+    /// development release build at
+    /// `target/wasm32-wasip2/release/<name>.wasm` (`cargo make
+    /// release`). Probed for bare-name (unpinned) references; never
+    /// outside the project tree.
     Dev(PathBuf),
 }
 
@@ -281,7 +282,8 @@ impl AdapterLocation {
 /// Resolution keys on `(name, version)`. A `Some(_)` version is an
 /// exact pin resolved against the global store entry installed for
 /// that identity; `version: None` is the bare-name development
-/// shorthand resolved against the sibling/in-repo release build.
+/// shorthand resolved against the project component cache or the
+/// in-repo release build.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdapterRef {
     /// Kebab-case adapter name.

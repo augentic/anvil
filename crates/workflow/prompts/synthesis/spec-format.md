@@ -1,6 +1,6 @@
 # Spec Format
 
-Hard-coded heading conventions used by all Specify skills for parsing and generating requirement specs. These are not configurable per-schema.
+Hard-coded heading conventions the workflow uses for parsing and generating requirement specs. These are not configurable per-schema.
 
 ## Requirement Blocks
 

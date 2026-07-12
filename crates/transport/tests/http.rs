@@ -95,6 +95,12 @@ impl TargetSeam for Provider {
     ) -> Result<BuildReport, seam::Error> {
         Err(seam::Error::Internal("no target seam behind the router test".to_string()))
     }
+
+    async fn merge(
+        &self, _: String, _: String, _: seam::MergePhase, _: WorkingTree,
+    ) -> Result<BuildReport, seam::Error> {
+        Err(seam::Error::Internal("no target seam behind the router test".to_string()))
+    }
 }
 
 async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json::Value) {

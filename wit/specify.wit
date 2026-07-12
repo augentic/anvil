@@ -1,6 +1,8 @@
 /// The `specify:adapter` adapter contract, revised per RFC-61.
 ///
-/// Adapter guests export exactly one axis interface (`source` xor `target`)
+/// External adapter guests export exactly one axis interface (`source` xor
+/// `target`; the additive `adapter` world below exists only for components
+/// that deliberately serve both axes, such as the Specify-owned fixture)
 /// plus `wasi:http/incoming-handler`, which serves the adapter's compiled-in
 /// references over MCP; there is no typed `references` interface — the
 /// spawned agent fetches documents lazily through the HTTP export. Judgment
@@ -38,38 +40,12 @@ interface types {
   /// first argument.
   type adapter-id = string;
 
-  /// A node-independent, content-addressed reference, e.g. "sha256: …".
-  /// Stable identity for caching, dedup, and replay. Forward hook for
-  /// distributed working trees (RFC-55, deferred): with today's shared
-  /// mounts, content is reachable directly through the `"."` preopen.
-  type artifact = string;
-
   /// A content-addressed snapshot identity (a git commit oid in the git
   /// backend). Portable: it names a build's starting point independently of
   /// which node the working tree lives on. With today's shared mounts it
   /// names the state of the one live project tree; it is the forward hook
   /// for distributed working trees (RFC-55, deferred).
   type revision = string;
-
-  /// One path-scoped edit, relative to a working tree's root. A present
-  /// `content` is an add or a modify; an absent `content` is a delete.
-  record edit {
-    /// The edited file's path, relative to the working tree root.
-    path: string,
-    /// The new content as a content-addressed handle, or absent for a deletion.
-    content: option<artifact>,
-  }
-
-  /// How a build changed a working tree, relative to `base`. With today's
-  /// shared mounts the edits also land in place in the live tree; the
-  /// changeset is the portable record of them, and the forward hook for
-  /// crossing nodes (RFC-55, deferred).
-  record changeset {
-    /// The revision the edits apply against.
-    base: revision,
-    /// The per-path edits the build produced.
-    edits: list<edit>,
-  }
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
@@ -198,7 +174,7 @@ interface source {
 /// call in the middle, validate-before-visible checks compiled in after the
 /// answer lands.
 interface target {
-  use types.{ adapter-id, changeset, error, revision };
+  use types.{ adapter-id, error, revision };
 
   /// Types of inputs used to build a slice.
   variant input {
@@ -280,6 +256,21 @@ interface target {
     screens: u32,
   }
 
+  /// Which side of the deterministic core merge a `merge` dispatch runs
+  /// on. The engine folds the slice's deltas, promotes Decision Records,
+  /// and archives the slice deterministically in Rust; the target's
+  /// judgment brackets that commit.
+  enum merge-phase {
+    /// Before the deterministic commit: staged composition / contract /
+    /// build checks over the built slice. A blocking finding aborts the
+    /// merge with the slice still `built`.
+    preflight,
+    /// After the deterministic commit: merged-baseline validators over
+    /// the updated tree. The slice is already merged and archived, so a
+    /// blocking finding is a terminal diagnostic, never a rollback.
+    postflight,
+  }
+
   /// Judgment returned by the `build` and `merge` operations. Mirrors
   /// `schemas/target/build-report.schema.json` minus the envelope keys
   /// (`version`, `slice`, `target`) the caller already knows. The
@@ -358,18 +349,17 @@ interface target {
   /// own `"."` preopen, reads existing code through it, and writes its
   /// changes in place; the judgment leg runs behind the adapter's own
   /// `create` call, with references served from its MCP export. The report
-  /// carries only judgment — the resulting delta lives in the tree, and the
-  /// caller extracts it as a `changeset` against `base` where one is needed.
+  /// carries only judgment — the resulting delta lives in the tree.
   build: async func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
-  /// Merge a built slice into the project's baseline. `delta` is the build's
-  /// portable delta (theirs) against `delta.base`; the baseline (ours) is
-  /// reached through the shared mount named by `tree` and folded into in
-  /// place — a 3-way merge. Conflict resolution is a judgment leg behind
-  /// `create`; validators re-run in guest code after the answer lands. The
-  /// report carries the merge judgment; the caller commits the merged
-  /// baseline.
-  merge: async func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
+  /// Run one target-specific merge gate around the engine's deterministic
+  /// core merge. Dispatched twice per slice merge: `preflight` before the
+  /// engine folds the slice's deltas into the baseline, `postflight` after
+  /// the commit and archive. The adapter reads both the built slice and the
+  /// baseline through the shared mount named by `tree`; the report carries
+  /// only judgment — lifecycle transitions, baseline spec merging, and
+  /// archive moves stay engine-owned.
+  merge: async func(id: adapter-id, slice: string, phase: merge-phase, tree: working-tree) -> result<report, error>;
 }
 
 /// A source adapter component: one axis interface plus the MCP reference
@@ -384,11 +374,15 @@ world target-adapter {
   export target;
 }
 
-// /// A combined source and target adapter component
-// world adapter {
-//   export source;
-//   export target;
-// }
+/// A combined source and target adapter component. Additive: external
+/// adapters remain single-axis (`source-adapter` xor `target-adapter`);
+/// this world exists for components that deliberately serve both axes,
+/// such as the Specify-owned fixture adapter, bound under one artifact
+/// at both a `source:<name>` and a `target:<name>` dispatch id.
+world adapter {
+  export source;
+  export target;
+}
 
 /// The workflow guest: the deployment's only `wasi:cli/run` exporter. Its
 /// `source` / `target` imports are satisfied by Omnia's host-mediated

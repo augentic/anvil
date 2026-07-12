@@ -29,7 +29,7 @@ The W1.3 provenance parser refuses output where the headline tag and `Status:` f
 | `### Requirement: <Name> [conflict]`         | `conflict`         |
 | `### Requirement: <Name> [divergence]`       | `divergence`       |
 
-A headline tag without the matching `Status:` (or vice versa) is a parser failure that keeps the slice in `refining`. The skill body refuses to transition until validation passes.
+A headline tag without the matching `Status:` (or vice versa) is a parser failure that keeps the slice in `refining` until validation passes.
 
 ## Per-tag body conventions
 
@@ -72,17 +72,7 @@ Note: legacy-monolith observed 24-hour expiry; the documentation authority overr
 
 ## Journal-event hand-off
 
-Each line appended to `.specify/journal.jsonl` must be one JSON object, newline-terminated, with kebab-case keys only — no snake_case field names. Wire shape is adjacency-tagged `{ timestamp, event, payload }` (see the worked line in [plan divergence journal fixture](https://github.com/augentic/specify/blob/main/plugins/spec/skills/plan/fixtures/divergence-journal/journal.jsonl)).
-
-For each requirement block written with a `[unknown]` / `[conflict]` / `[divergence]` tag, `specify slice validate` (step 6 of `/spec:refine`) appends one journal event after validation succeeds:
-
-| Tag             | Event id                       | Payload                                  |
-| --------------- | ------------------------------ | ---------------------------------------- |
-| `[unknown]`     | `slice.synthesis.unknown`      | `{ slice-name, requirement-id }`         |
-| `[conflict]`    | `slice.synthesis.conflict`     | `{ slice-name, requirement-id }`         |
-| `[divergence]`  | `slice.synthesis.divergence`   | `{ slice-name, requirement-id }`         |
-
-The event is the durable hand-off `specify plan execute` and downstream review tooling consume to surface synthesis tags at loop boundaries. The journal event is emitted regardless of whether the operator subsequently reconciles by re-running `/spec:refine` (after amending an `authority-override` or the source set).
+For each requirement the kernel derives a `[unknown]` / `[conflict]` / `[divergence]` tag for, `specify slice validate` appends one matching `slice.synthesis.{unknown|conflict|divergence}` journal event after validation succeeds. The kernel owns the event emission and wire shape; the agent's job is only to record verdicts honestly so the events surface real gaps.
 
 ## Anti-patterns
 

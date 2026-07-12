@@ -56,9 +56,9 @@ workspace = true
 members = ["crates/*", "harness/*", "tests/framework"]
 # The ordinary test group: crate suites plus the framework-quality
 # package. The root runtime package and the harness packages are
-# explicit opt-ins (`-p specify`, `-p replay`), keeping
+# explicit opt-ins (`-p specify`, `-p composed`), keeping
 # Wasmtime execution out of the per-commit build.
-default-members = ["crates/*", "tests/framework"]
+default-members = ["crates/*", "harness/fixtures", "tests/framework"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -161,7 +161,6 @@ clap_complete = "4.6.7"
 glob = "0.3.3"
 jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
 jsonschema = { version = "0.47", default-features = false }
-libc = "0.2"
 petgraph = "0.8.3"
 proptest = "1.11.0"
 regex = "1.13.0"
@@ -182,7 +181,7 @@ wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 artifacts = { path = "crates/artifacts" }
 error = { path = "crates/error" }
-scenario = { path = "crates/scenario" }
+fixtures = { path = "harness/fixtures" }
 transport = { path = "crates/transport" }
 workflow = { path = "crates/workflow" }
 
@@ -190,6 +189,7 @@ omnia = "0.35.0"
 omnia-cursor = "0.28.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
+omnia-testkit = { version = "0.35.0", default-features = false, features = ["model"] }
 omnia-host-macros = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
@@ -200,6 +200,7 @@ omnia = { git = "https://github.com/augentic/omnia.git" }
 omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }

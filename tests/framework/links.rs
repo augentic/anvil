@@ -25,25 +25,23 @@ pub const CHECK_DOCS_IN_DEPLOYABLE: &str = "links.docs-in-deployable-surface";
 
 /// Markdown trees whose relative links must resolve on disk. Archival
 /// trees (`rfcs/`) are excluded by design: they cite future or
-/// deferred work whose targets may not exist yet.
+/// deferred work whose targets may not exist yet. The embedded
+/// judgment-prose corpus under `crates/workflow/prompts/` is in scope:
+/// its links are also build-checked at embed time, but the framework
+/// gate catches drift without a workflow rebuild.
 const LINK_SCOPE_PREFIXES: &[&str] = &[
     "codex/",
     "sources/",
     "targets/",
     "plugins/",
     "docs/",
-    "quality/runbooks/",
-    "quality/reference/",
-    "quality/fixtures/reference/",
-    "quality/profiles/",
     ".cursor/",
+    "crates/workflow/prompts/",
 ];
 
 /// Trees walked for skill directives (the framework include set).
-const DIRECTIVE_SCOPE_PREFIXES: &[&str] = &[
-    "codex/", "sources/", "targets/", "plugins/", "docs/", ".cursor/", "rfcs/", "scripts/",
-    "schemas/", "quality/",
-];
+const DIRECTIVE_SCOPE_PREFIXES: &[&str] =
+    &["codex/", "sources/", "targets/", "plugins/", "docs/", ".cursor/", "rfcs/", "schemas/"];
 
 /// Tool → schema-name registry for `schemas.specify.dev` URLs cited in
 /// adapter prompts and references.

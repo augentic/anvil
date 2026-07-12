@@ -166,7 +166,9 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
                     .await
                     .map(drop)
             }
-            LoopStep::Merge => super::merge(layout, now, &slice, false).map(drop),
+            LoopStep::Merge => {
+                super::merge(caps.targets, layout, now, &slice, false).await.map(drop)
+            }
         };
 
         match result {

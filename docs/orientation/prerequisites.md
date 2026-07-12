@@ -74,7 +74,7 @@ make ci          # the full Rust workspace gate (cargo make ci)
 cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
 ```
 
-No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `cargo make dev -- <command>` loop uses nightly Cargo Script. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
+No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md#the-in-tree-binary) for the full check model.
 
 ## Adapter-specific prerequisites
 

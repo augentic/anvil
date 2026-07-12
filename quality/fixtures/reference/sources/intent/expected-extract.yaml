@@ -1,6 +1,0 @@
-authority: intent
-lead: add-search-filter
-claims:
-  - id: add-search-filter
-    kind: intent
-    statement: "Add a search filter to the user list."

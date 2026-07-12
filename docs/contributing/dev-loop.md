@@ -1,62 +1,37 @@
 # The Developer Loop
 
-One command surface drives day-to-day development across the two sibling checkouts (`specify` and `specify-adapters`). The same `cargo make dev -- <command> [args...]` task exists at both repo roots, backed by one canonical Cargo Script, [`scripts/dev.rs`](https://github.com/augentic/specify/blob/main/scripts/dev.rs); the adapters root delegates to its sibling. `SPECIFY_FRAMEWORK` and `SPECIFY_ADAPTERS` override the sibling layout. The underlying cases are canonical scenarios; each rung selects a runtime/model profile and gate from the [quality model](quality-gates.md).
-
-Start with the doctor, then climb the rungs only as far as the change demands:
+Specify's developer loop is self-contained: every rung runs from this checkout alone, with no sibling repository, no adapter component build, and no model credentials on the default path. The three local rungs mirror the [testing standards](../standards/testing.md#the-three-rungs); climb only as far as the change demands.
 
 ```bash
-cargo make dev -- doctor          # layout, toolchain, WASI target, cursor-agent
-cargo make dev -- doctor --live   # + one real model call proving command-mode credentials
+cargo make test       # fast native integration tests; model-free and no Wasmtime
+cargo make test-wasm  # build two guests and run the composed smoke test
+cargo make test-live  # run the explicit live-model workflow test
 ```
 
-`cursor-agent status` proves an IDE login, not command-mode auth — only the `doctor --live` probe (or a live run) exercises the `--print` path the model backends spawn, which needs `cursor-agent login` or `CURSOR_API_KEY`.
+## 1. `cargo make test` — the default edit loop
 
-## The three rungs
+Runs `cargo nextest` over the default workspace members: the workspace crates, the fixture adapter's native core, and the framework-quality checks at `tests/framework/`. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the fixture adapter's native seams and `omnia-testkit` scripted models, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
-Every edit loop lives on exactly one rung. Escalate only when the lower rung cannot observe the change.
+Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
-### 1. `dev check` — model-free, no WASM
+`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, docs, and a compile-only `wasm32-wasip2` check (which includes the fixture-adapter shim, so a WIT revision and its seam break in the same push). `cargo make ci` adds vet/deny.
 
-The default edit loop. Runs native scripted/replay scenario profiles and seam tests in the `specify-adapters` checkout, plus the named adapter's native crate tests when scoped:
+## 2. `cargo make test-wasm` — the WASM boundary
 
-```bash
-cargo make dev -- check         # harness suite only
-cargo make dev -- check omnia   # + that adapter's native tests
-```
+Builds `specify.wasm` and the combined `fixture_adapter.wasm`, hosts them in one temporary deployment, and runs the single composed smoke (`harness/composed`). It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest reaches the model host, preopens and the component cache are wired — and that the loop lands in the same terminal state as the native test.
 
-Nothing here builds a component or calls a live model: the `specify-dev` shim lives at `specify-adapters/harness/native` — a standalone workspace pinned to a declared engine revision — and links that repo's adapter crates directly. `dev check` and `dev run` automatically override that pin with this checkout's working-tree crates through generated `--config` patch flags (the tracked manifest and lockfile stay revision-pinned; nothing is written to either repo), so uncommitted engine changes are exercised against the real adapters. Omnia's testkit supplies scripted/replay responses and request recording. `specify-dev init <bare-name> --scaffold-only` needs no `.wasm` artifact. `cargo make dev -- run /path/to/project plan status` drives the same shim against any consumer project without changing directory.
+Escalate here only when the change crosses a WIT, dispatch, hosting, or preopen seam. Cadence: the scheduled/manual composed workflow (`.github/workflows/composed.yaml`), not per push. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
-An engine change that breaks the harness fails here at compile time — that is the design working, not a defect: fix nothing in this repo, land the engine change, then update the harness and advance its pin in `specify-adapters`. The repositories move at independent paces; the pin (not HEAD) is the harness's supported engine revision.
+## 3. `cargo make test-live` — the explicit live trial
 
-### 2. `dev live` — deliberate repeated model trials
+Runs the one ignored native live-model test (`harness/live`): the same fixture workflow over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
 
-Live-model runs are always explicit, never a side effect. Bare `dev live` selects the workflow scenario's `native-live` profile by delegating to the adapters repo's runner (`specify-dev quality` in `specify-adapters/harness/native` — no WASM builds, driven against its declared engine pin rather than working-tree patch flags); naming an adapter runs exactly one adapter-local live quality case:
-
-```bash
-cargo make dev -- live                       # native-shim guest execute loop
-cargo make dev -- live contracts             # that adapter's default scenario
-cargo make dev -- live vectis single_screen
-```
-
-For adapter prompt iteration, the prose overlay turns on automatically once the run artifacts exist (a re-run skips cargo entirely; `SPECIFY_PROSE_OVERLAY=0` opts out). To watch one prose tree from the adapters repo, run `EVAL_FILTER=contracts::design cargo watch -w targets/contracts/prose -s 'SPECIFY_PROSE_OVERLAY=1 cargo test -p harness --test live -- --ignored --nocapture --exact "$EVAL_FILTER"'`.
-
-### 3. `dev full` — the WASM boundary
-
-The explicit outer gate, never the default edit loop: `doctor --live`, the deterministic rung, adapter-component WASM/WIT conformance (`cargo test -p harness --test composed` in the adapters repo), the workflow-core `replay` profile, and the selected workflow scenario's `wasm-live` profile:
-
-```bash
-cargo make dev -- full
-```
-
-This is the only developer rung that combines live judgment with the wasm-only surface. The deterministic `replay` profile covers WIT bindings, dispatch-by-id, and mount/preopen wiring on the scheduled composed workflow (and `cargo make test-replay`); `dev full` adds current-model output quality.
+Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/workflow/prompts/`) or the answer schemas (`schemas/answers/`). See `harness/live/README.md`.
 
 ## What CI runs
 
-The deterministic halves are gated automatically; the model legs never are:
+- Per push: `cargo make ci` — the self-contained workspace gate (nextest over default members, clippy/doc/doctest/vet/deny, the `wasm32-wasip2` compile check). No sibling checkout, no component hosting, no model.
+- Scheduled/manual: the composed workflow, running rung 2.
+- Never: rung 3. CI never requires model credentials.
 
-- `cargo make ci` in each repo — the per-repo workspace gate; neither resolves the other repository. On Specify the test leg covers the default workspace members (`crates/*` plus `tests/framework`), and a `wasm32-wasip2` compile check guards the guest crates.
-- `specify-adapters`' ordinary workspace gate — adapter crate tests and adapter-local component conformance, with no Specify dependency in its graph.
-- `specify-adapters`' dedicated `native-harness` job — the standalone `harness/native` workspace against its declared engine pin (the only job holding the read-only `SPECIFY_READ_TOKEN`).
-- Specify's composed workflow (scheduled/manual, `.github/workflows/composed.yaml`; locally `cargo make test-replay`) — the model-free workflow-core scenario with echo adapters and no sibling checkout. Not a per-push gate.
-- Neither repo gates on the other's HEAD: compatibility is owned by the adapters repo's pin, advanced deliberately.
-- Live-model profiles stay operator-triggered (rungs 2 and 3); CI never requires model credentials.
+`specify-adapters` gates its own crates and components against the published WIT contract and its declared engine pin; neither repository gates on the other's HEAD.

@@ -1,39 +1,36 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over public crate and binary boundaries, canonical workflow scenarios across native/WASM/live profiles, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a test, scenario, or profile.
+Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained fixture adapter supplying both `specify:adapter` axes, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a test.
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*` plus the `tests/framework` package; the replay harness is opt-in through `cargo make test-replay` so ordinary test runs never compile the Wasmtime execution path.
+Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*`, `harness/fixtures`, and the `tests/framework` package; the composed smoke and the live test are opt-in rungs (below) so ordinary test runs never compile Wasmtime or call a model.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
-## Quality gates
+## The three rungs
 
-Specify separates the case being proved from the environment used to prove it. A canonical scenario declares setup, workflow steps, fixtures, hard assertions, and any semantic rubrics once. Profiles select the runtime (`native` or composed WebAssembly), model backend (`scripted`, `replay`, or `live`), and gate cadence.
+Specify is tested as a self-contained engine against its own WIT contract (see [the engine-testing RFC](../../rfcs/rfc-engine-testing.md)). No rung resolves, builds, or inspects `specify-adapters`; external adapters prove their own behavior against the published WIT package.
 
-The four gates have distinct owners:
+| Rung | Command | Proves | Cadence |
+| ---- | ------- | ------ | ------- |
+| **Native integration** | `cargo make test` | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the `workflow` crate's public operations, the fixture adapter's native seams, and `omnia-testkit` scripted models | Every push (part of `cargo make ci`) |
+| **Composed smoke** | `cargo make test-wasm` | The WASM boundary only: the combined `fixture_adapter.wasm` loads, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the loop reaches the same terminal state as the native test | Scheduled/manual (`.github/workflows/composed.yaml`); per-push CI keeps the `wasm32-wasip2` compile check |
+| **Live model** | `cargo make test-live` | One ignored native test: the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/workflow/prompts/`) or answer-schema changes — never ordinary CI |
 
-1. **Repository correctness** — crate/binary integration and authoring checks under `cargo make ci` in each repository. No model or sibling checkout.
-2. **Engine-pinned workflow** — canonical scenarios (from `scenario::catalog`) through `specify-dev`, linked adapters, and `omnia_testkit::model::{Harness, Scripted, Replay}`. Model-free and CI-safe; runs in the adapters repo's standalone `harness/native` workspace against its declared engine revision, not against Specify HEAD.
-3. **Composed WebAssembly conformance** — canonical scenarios through the hosted workflow guest and adapter components. Owns WIT, dispatch-by-id, mount/preopen, and component-linking assertions. Runs on the scheduled/manual composed workflow and `cargo make test-replay`, not per push — per-push CI keeps only the `wasm32-wasip2` compile check. Do not duplicate Omnia's private replay-key projection to force a full-loop fixture.
-4. **Live quality** — selected scenarios against the live model backend. Hard assertions remain mechanical; semantic rubrics assess decomposition, prose, and generated output. Live profiles are deliberate release/development runs, never ordinary per-commit CI. `wasm-live` is owned by the engine repo's `harness/quality` orchestrator; `native-live` by the adapters repo's `specify-dev quality` runner against its declared engine pin.
+Each fact has one owning rung. The native suites own workflow behavior; the composed smoke owns only facts unique to the component boundary; the live test owns only "a real model can do this" — it adds no new workflow assertions. Do not copy an assertion onto another rung for reassurance.
 
-The ownership boundary is strict: `omnia-testkit` owns reusable model doubles, replay, temporary manifests, runtime hosting, and HTTP driving; `crates/scenario` owns Specify scenario vocabulary, reports, assertion metadata, the registered-probe `Evaluators` grading registry, the semantic `Judge` trait, the run-bundle layout, and the embedded canonical scenario and rubric catalogs — it spawns no processes; the harnesses own execution: an **executor** drives one profile's workflow (`quality::executor::ComposedExecutor` in-process for wasm profiles, the `specify-dev` guest loop for native), a **judge** implementation turns rubric prompts into verdicts on the omnia model seam, and process-spawning evaluators (generated-crate verification) register with the grading registry from the owning harness. `specify-adapters/harness/native` owns the linked-adapter developer runtime. Do not add another local mock model, replay store, deployment harness, scenario copy, or scenario-specific lifecycle driver.
+### The fixture adapter
 
-### Scenario admission and assertion ownership
+One test-support package (`harness/fixtures`) implements both adapter axes as ordinary native Rust: controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/workflow/tests/common/`; the composed smoke reaches the identical core through the combined-world WIT shim (`fixture_adapter.wasm`). Do not add another mock adapter, mock model, or fixture copy — extend the fixture core and let both rungs inherit the behavior.
 
-- A behavior reducible to a crate API, CLI result, filesystem predicate, validator, compiler, or journal query is a **hard assertion**. It must execute automatically in every applicable profile.
-- A behavior requiring judgment about meaning or usefulness is a **semantic rubric**. It belongs only in a live profile and carries evidence plus a calibrated score.
-- Runtime wiring is not a semantic rubric. Native and WebAssembly profiles may execute the same scenario, but each assertion has one primary seam owner.
-- Markdown explains a scenario; YAML defines it. Shell scripts may select a profile but must not reimplement setup, lifecycle scheduling, assertions, or grading.
-- A passed report must cover every declared assertion. Substituting stubs or a different invocation is a different scenario, not a permissible deviation.
+Model doubles come from upstream: `omnia-testkit` owns the scripted/recording harness and runtime hosting. Specify owns only workflow scenario content — the leads, evidence, scripted answers, and assertions.
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/handlers.rs`, `crates/workflow/tests/plan_status.rs`, and so on — matching the layout `specify-adapters` uses. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`; native model tests use the recorded scripted harness from Omnia's dev-only `omnia-testkit`. The repo-root `tests/` carries the framework-quality gate (the lightweight `framework` package at `tests/framework/`) and the shared fixture trees under `tests/fixtures/`; the native harness (`harness/`, see `harness/README.md`) owns end-to-end operation-loop coverage.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/handlers.rs`, `crates/workflow/tests/full_loop.rs`, and so on. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`. The repo-root `tests/` carries the framework-quality gate (the lightweight `framework` package at `tests/framework/`) and the shared fixture trees under `tests/fixtures/`.
 
-If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatcher contract"](./handler-shape.md#dispatcher-contract).
+If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
 ## The three layers — minimize the unit layer
 
@@ -43,7 +40,7 @@ Every behavior gets a home in exactly one of three layers. Decide the layer **be
 | ----- | -------- | ------------- | -------------- |
 | **Kernel unit** | `#[cfg(test)] mod tests` (or a sibling `tests.rs`) next to the code | The branch is genuinely unreachable through the CLI (an error variant no flag can trigger, a defensive guard), **or** the behavior is a dense parse/projection edge matrix whose case-per-cell integration port would inflate the 4-wide subprocess pool | The behavior is reachable through the binary and an integration test already covers it — or could, without a matrix explosion |
 | **Crate integration** | `crates/<name>/tests/` | The behavior spans modules within one crate and is unreachable (or impractical to reach) through the binary — internal invariants, filesystem-shape corner cases, registry-pinned schema compilation | The same observable behavior is already asserted through the binary; if a CLI test exists, the crate test must cover a *different* edge, not re-derive the happy path in-process |
-| **Binary integration** | `tests/<area>.rs` | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, journal events, filesystem effects of a verb | The assertion re-tests kernel logic already covered unit-side — binary tests buy wiring confidence, not rule-by-rule behavior matrices |
+| **Wire-contract integration** | `crates/transport/tests/` (the routing crate; the root package carries no test binaries — repo-root `tests/` holds only `framework/` and `fixtures/`) | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, route dispatch | The assertion re-tests kernel logic already covered elsewhere — wire tests buy routing/projection confidence, not rule-by-rule behavior matrices |
 
 Rules of thumb:
 
@@ -76,6 +73,12 @@ cargo llvm-cov nextest -p <crate> --summary-only
 
 A `TOTAL` drop on lines that are still live means real coverage was lost: backfill it with an integration assertion (preferred) or revert that specific deletion. A reduction lands only when coverage holds (a pure collapse of redundant cases is coverage-neutral by construction). Use `cargo llvm-cov nextest` (not bare `cargo test`/`cargo llvm-cov`): nextest's process isolation is what makes the CWD/env-mutating suites pass, and it is the runner CI uses.
 
+## Assertion ownership
+
+- A behavior reducible to a crate API, CLI result, filesystem predicate, validator, compiler, or journal query is a **hard assertion**. It executes automatically on the rung that owns its seam.
+- The live test carries **no semantic grading**: its pass condition is the same deterministic validators the native suites use (coverage, schema gates, provenance completeness, tag checks, lifecycle). A judgment about meaning or usefulness that no deterministic predicate can decide has no automated home in this repository.
+- Runtime wiring belongs to the composed smoke; workflow behavior belongs to the native suites. Name the seam an assertion owns before writing it.
+
 ## Test naming
 
 Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 40-char cap below counts the bare `fn` identifier, not the module path.
@@ -89,12 +92,11 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common/mod.rs`; end-to-end provider and operation-loop coverage belongs in the native harness.
+- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common/mod.rs` — the `Project` anchor, the fixture provider, and the scripted-answer builders.
 - Compare structured output against checked-in goldens (the merge-engine goldens under `tests/fixtures/merge/`, the wire-schema fixtures under `tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
-
-The end-to-end fan-in-twice / fan-out-once path runs through the public plan operations; its coverage lives in `specify-adapters/harness/native/tests/full_loop.rs`. The wasm-only seams (WIT bindings, dispatch-by-id, mount/preopen wiring) stay with the shipped guest and targeted adapter tests.
+- Scripted model answers are concise checked-in test inputs colocated with their consuming tests — not a replay catalogue, fixture corpus, or scenario format.
 
 ## Golden file discipline
 
@@ -103,3 +105,4 @@ The end-to-end fan-in-twice / fan-out-once path runs through the public plan ope
 ## Test-side gotchas
 
 - Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or the stamped-outcome helpers in `crates/workflow/tests/common/mod.rs` when a test needs a stamped phase outcome.
+- The live test retains its temporary project tree on failure and prints the path at start — inspect it rather than re-running blind.

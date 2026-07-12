@@ -94,6 +94,28 @@ impl WorkingTree {
     }
 }
 
+/// Which side of the deterministic core merge a `merge` dispatch runs
+/// on, mirroring the WIT `merge-phase` enum. The engine's merge stays
+/// deterministic; the target's judgment brackets it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MergePhase {
+    /// Before the deterministic commit: a blocking finding aborts the
+    /// merge with the slice still `built`.
+    Preflight,
+    /// After the commit and archive: a blocking finding is a terminal
+    /// diagnostic, never a rollback.
+    Postflight,
+}
+
+impl std::fmt::Display for MergePhase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Preflight => "preflight",
+            Self::Postflight => "postflight",
+        })
+    }
+}
+
 /// Plan-time discovery and slice-time extraction for a source adapter.
 pub trait SourceSeam: Send + Sync {
     /// Lightly survey the source into a lead set.
@@ -105,10 +127,8 @@ pub trait SourceSeam: Send + Sync {
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 }
 
-/// Synthesis guidance and slice builds for a target adapter.
-///
-/// Merge is omitted because the merge orchestrator is deterministic and
-/// does not dispatch to a target.
+/// Synthesis guidance, slice builds, and phased merge gates for a
+/// target adapter.
 pub trait TargetSeam: Send + Sync {
     /// Guidance on the expected build artifacts for this target.
     fn guidance(&self, id: String) -> impl Future<Output = Result<String, Error>> + Send;
@@ -116,5 +136,12 @@ pub trait TargetSeam: Send + Sync {
     /// Build `slice` against the shared project mount.
     fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
+    ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
+
+    /// Run one target-specific merge gate (`phase`) around the engine's
+    /// deterministic core merge. Dispatched twice per slice merge —
+    /// preflight before the commit, postflight after it.
+    fn merge(
+        &self, id: String, slice: String, phase: MergePhase, tree: WorkingTree,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
 }

@@ -13,6 +13,9 @@
     reason = "mock dispatch closures share a Result<Output> signature for parity with real_cmd"
 )]
 
+pub mod answers;
+pub mod fixture;
+
 use std::cell::RefCell;
 use std::io;
 use std::path::PathBuf;
@@ -257,6 +260,37 @@ impl workflow::adapter::Resolver for Project {
         &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
     ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
         workflow::adapter::Resolver::resolve_target(&resolver(), adapter_ref, project_dir)
+    }
+}
+
+// An always-passing target seam: guidance is a stub brief, and both
+// merge gates acknowledge with a success report, so suites exercising
+// the deterministic merge core through `MergeRun` run unchanged.
+impl workflow::seam::TargetSeam for Project {
+    async fn guidance(&self, _id: String) -> Result<String, workflow::seam::Error> {
+        Ok("stub guidance".to_string())
+    }
+
+    async fn build(
+        &self, _id: String, _slice: String, _inputs: Vec<workflow::seam::Input>,
+        _tree: workflow::seam::WorkingTree,
+    ) -> Result<workflow::slice::BuildReport, workflow::seam::Error> {
+        Err(workflow::seam::Error::Internal("the Project helper stubs no build".to_string()))
+    }
+
+    async fn merge(
+        &self, id: String, slice: String, _phase: workflow::seam::MergePhase,
+        _tree: workflow::seam::WorkingTree,
+    ) -> Result<workflow::slice::BuildReport, workflow::seam::Error> {
+        Ok(workflow::slice::BuildReport {
+            version: workflow::slice::BUILD_VERSION,
+            slice,
+            target: id.strip_prefix("target:").unwrap_or(&id).to_string(),
+            status: workflow::slice::BuildStatus::Success,
+            findings: Vec::new(),
+            outputs: Vec::new(),
+            ui_surface: None,
+        })
     }
 }
 

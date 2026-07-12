@@ -10,9 +10,11 @@
 //! Resolution keys on the [`AdapterRef`] identity: a pinned
 //! `(name, version)` resolves the single-file global store entry at
 //! `<store-root>/<name>@<version>.wasm` (verify-on-read
-//! included); a bare name resolves the development release build at
-//! `target/wasm32-wasip2/release/<name>.wasm` under the project
-//! or the sibling `specify-adapters` checkout.
+//! included); a bare name resolves the project component cache
+//! (`<project-cache>/components/<name>.wasm`) then the in-repo
+//! development release build at
+//! `target/wasm32-wasip2/release/<name>.wasm` under the project.
+//! Resolution never probes outside the project tree, cache, or store.
 
 mod core;
 pub mod handlers;

@@ -10,7 +10,6 @@ Specify ships as a Cursor plugin marketplace. Each plugin provides skills and op
 | ------- | ------------------ | ----------- | -------------------------------------------------------------- |
 | Specify | `plugins/spec/`    | `/spec:`    | Core workflow (define, build, merge, verify, etc.)             |
 | Capture | `plugins/capture/` | `/capture:` | Runtime capture and regression testing                         |
-| Client  | `plugins/client/`  | `/client:`  | Client-facing deliverables (SoW, proposals, pricing summaries) |
 
 Each plugin directory follows the same structure:
 
@@ -88,23 +87,19 @@ Adapter edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 
-Agent-critical prose is **runtime-canonical** under [`plugins/spec/references/`](../../plugins/spec/references/). The Cursor plugin cache ships only `plugins/`, so skills must link to `references/…` siblings (or `../../references/…` from a skill directory), never to `docs/` via `../` escapes.
+The Cursor plugin cache ships only `plugins/`, so any prose a skill links at runtime must live under the plugin (`references/…` siblings, or `../../references/…` from a skill directory) — never in `docs/` via `../` escapes. The spec plugin keeps a single runtime reference: [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md), the cross-cutting "do not / never / always" rules the seven wrappers link to.
 
-| Runtime file                                                                                       | Purpose                                                  |
-| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md)             | Cross-cutting "do not / never / always" rules for skills |
-| [`plugins/spec/references/specialist-usage.md`](../../plugins/spec/references/specialist-usage.md) | How specialists consume the four artifacts               |
-| [`plugins/spec/references/reconciliation.md`](../../plugins/spec/references/reconciliation.md)     | Plan-time leads and slice-time evidence                  |
+Everything else lives with its owner:
 
-Contributor book and encyclopedic material stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
+- **Core judgment prose** (lead reconciliation, the synthesis playbook, spec formatting, Decision Record authoring) is embedded in the `specify` binary from `crates/workflow/prompts/` — it is not plugin material.
+- **Adapter prompts and references** live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters): each adapter's `references/spec-runtime` is a directory symlink to that repo's `codex/references/runtime/` shared bundle, embedded into the published adapter components at build time. That bundle is self-contained; there is no mirror to maintain against this repository.
+- **Contributor book and encyclopedic material** stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
 
-Adapter prompts in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) link to `references/spec-runtime/` inside each adapter: each adapter's `references/spec-runtime` is a directory symlink to that repo's `codex/references/runtime/`, whose files are embedded into the published adapter components at build time. That tree is the canonical copy of the spec-runtime bundle; when a change to `plugins/spec/references/` here affects prose the adapters mirror, port it to `codex/references/runtime/` in specify-adapters in the same change.
-
-| Book-only (not agent runtime)                                                    | Purpose                                                                                |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`docs/reference/artifact-format.md`](../reference/artifact-format.md)           | Full artifact format reference                                                         |
-| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md)       | JSON envelope shapes for CLI commands                                                  |
-| [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Review-team protocol (canonical for mdBook; mirrored into `spec-runtime` for adapters) |
+| Book-only (not agent runtime)                                                    | Purpose                                                                                          |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [`docs/reference/artifact-format.md`](../reference/artifact-format.md)           | Full artifact format reference                                                                   |
+| [`docs/reference/cli-output-shapes.md`](../reference/cli-output-shapes.md)       | JSON envelope shapes for CLI commands                                                            |
+| [`docs/reference/review-team-protocol.md`](../reference/review-team-protocol.md) | Review-team protocol (canonical for mdBook; forked into the adapters repo's shared bundle)       |
 
 ## Publishing a new plugin
 

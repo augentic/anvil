@@ -1,0 +1,299 @@
+//! Synthesis over the adversarial fixture evidence: an authority
+//! disagreement resolves to a `[divergence]` with the documentation
+//! source winning, an evidence gap projects an `[unknown]`
+//! requirement, and the provenance projection stays complete — all
+//! through the public refine / model / provenance operations.
+
+use std::fs;
+
+use omnia_guest::api::invoke::Invoker;
+use serde_json::json;
+use workflow::change::plan;
+
+mod common;
+
+use common::answers;
+use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project};
+
+/// Synthesis for `session-policy`: the two `session.timeout` claims
+/// disagree, so the answer carries the `disagreed` verdict and the
+/// kernel resolves documentation over behaviour.
+fn session_synthesis_answer() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slice": "session-policy",
+        "model": {
+            "requirements": [{
+                "title": "sessions expire after inactivity",
+                "domain": "session",
+                "agreement": "disagreed",
+                "claims": [
+                    { "source": "docs", "id": "session.timeout", "kind": "requirement" },
+                    { "source": "code", "id": "session.timeout", "kind": "requirement" }
+                ],
+                "statement": "Sessions expire after 30 minutes of inactivity.",
+                "scenarios": ["An idle session expires"],
+                "notes": "Documentation states 30 minutes; observed behaviour is 15."
+            }],
+            "tasks": [
+                { "id": "TASK-001", "text": "Align the session TTL with the documented policy.", "satisfies": ["REQ-001"] }
+            ]
+        },
+        "artifacts": {
+            "proposal": "# session-policy\n\n## Why\n\nThe sources disagree on expiry.\n\n## Domains\n\n- session — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
+            "design": "# Design\n\nHow session-policy lands.\n",
+            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Align the TTL (TASK-001)\n",
+            "specs": [{ "domain": "session", "content": "## session\nAgent prose body.\n" }]
+        }
+    }))
+    .expect("synthesis serialises")
+}
+
+/// Synthesis for `password-reset`: the evidence gap — the sole lead
+/// carries no behavioural detail, so the faithful answer records an
+/// unanchored requirement (zero claims) the kernel marks `[unknown]`.
+fn reset_synthesis_answer() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slice": "password-reset",
+        "model": {
+            "requirements": [{
+                "title": "password reset behaviour",
+                "domain": "password-reset",
+                "claims": [],
+                "statement": "A password reset flow exists; its behaviour is not evidenced.",
+                "scenarios": ["A user requests a password reset (behaviour unspecified)"]
+            }],
+            "tasks": [
+                { "id": "TASK-001", "text": "Specify the password reset flow.", "satisfies": ["REQ-001"] }
+            ]
+        },
+        "artifacts": {
+            "proposal": "# password-reset\n\n## Why\n\nDocs mention it without detail.\n\n## Domains\n\n- password-reset — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
+            "design": "# Design\n\nHow password-reset lands.\n",
+            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Specify the flow (TASK-001)\n",
+            "specs": [{ "domain": "password-reset", "content": "## password-reset\nAgent prose body.\n" }]
+        }
+    }))
+    .expect("synthesis serialises")
+}
+
+async fn author_and_approve(invoker: &Invoker<ScriptedProvider>) {
+    run::<plan::handlers::Author, _>(
+        invoker,
+        plan::handlers::AuthorInput {
+            name: "auth".to_string(),
+            sources: answers::adversarial_bindings(),
+            intent: None,
+        },
+    )
+    .await
+    .expect("author walks to pending");
+    run::<plan::handlers::Transition, _>(
+        invoker,
+        plan::handlers::TransitionInput {
+            name: "auth".to_string(),
+            target: Some("approved".to_string()),
+            undo: false,
+            actor: "operator".to_string(),
+        },
+    )
+    .await
+    .expect("the operator stamps Gate 1");
+}
+
+#[tokio::test]
+async fn divergence_resolves_documentation_over_behaviour() {
+    let (_tmp, root, _cache) = scripted_project("fixture");
+    let invoker =
+        scripted_invoker(&root, vec![answers::adversarial_grouping(), session_synthesis_answer()]);
+    author_and_approve(&invoker).await;
+
+    let refined = run::<workflow::slice::handlers::Refine, _>(
+        &invoker,
+        workflow::slice::handlers::RefineInput {
+            name: "session-policy".to_string(),
+        },
+    )
+    .await
+    .expect("refine synthesises the divergent slice");
+    assert_eq!(refined.slice, "session-policy");
+
+    // The kernel resolved the disagreement: divergence, docs winning.
+    let model = run::<workflow::slice::handlers::ModelShow, _>(
+        &invoker,
+        workflow::slice::handlers::ModelShowInput {
+            name: "session-policy".to_string(),
+        },
+    )
+    .await
+    .expect("model.yaml loads");
+    let requirement = &model.requirements[0];
+    assert_eq!(requirement.status.map(|s| s.to_string()), Some("divergence".to_string()));
+    // Documentation outranks behaviour: the docs claim wins, sources
+    // render highest-authority first.
+    assert_eq!(requirement.sources, ["docs", "code"]);
+    let winners: Vec<(String, Option<bool>)> =
+        requirement.claims.iter().map(|c| (c.source.clone(), c.winner)).collect();
+    assert_eq!(winners, [("docs".to_string(), Some(true)), ("code".to_string(), Some(false))]);
+
+    // The written spec carries the inline `[divergence]` tag.
+    let spec =
+        fs::read_to_string(root.join(".specify/slices/session-policy/specs/session/spec.md"))
+            .expect("slice spec written");
+    assert!(spec.contains("[divergence]"), "{spec}");
+
+    // The provenance projection recomputes the authority-resolved
+    // label with the docs source as winner.
+    let provenance = run::<workflow::slice::handlers::Provenance, _>(
+        &invoker,
+        workflow::slice::handlers::ProvenanceInput {
+            name: "session-policy".to_string(),
+        },
+    )
+    .await
+    .expect("provenance projects");
+    let req = &provenance.requirements[0];
+    assert_eq!(req.resolution.to_string(), "authority-resolved");
+    let trace = req.resolution_trace.as_ref().expect("authority-resolved carries a trace");
+    assert_eq!(trace.winner.as_deref(), Some("docs"));
+
+    invoker.provider().model().assert_exhausted();
+}
+
+/// [`session_synthesis_answer`] plus one accepted Decision Record
+/// superseding the baseline `DEC-0001`.
+fn session_synthesis_with_decision() -> String {
+    let mut answer: serde_json::Value =
+        serde_json::from_str(&session_synthesis_answer()).expect("answer parses");
+    answer["artifacts"]["decisions"] = json!([{
+        "slug": "session-ttl-source",
+        "status": "accepted",
+        "title": "Documented TTL wins over observed behaviour",
+        "context": "Documentation and observed behaviour disagree on the session TTL.",
+        "decision": "The documented 30-minute TTL is authoritative.",
+        "consequences": "The observed 15-minute TTL is treated as a defect.",
+        "supersedes": ["DEC-0001"],
+        "related": ["REQ-001"],
+        "topics": ["session"]
+    }]);
+    serde_json::to_string(&answer).expect("answer serialises")
+}
+
+#[tokio::test]
+async fn decisions_persist_with_baseline_context_and_exact_set_replacement() {
+    let (_tmp, root, _cache) = scripted_project("fixture");
+
+    // A baseline Decision Record the slice can legally supersede — and
+    // the projection the synthesis inputs must surface.
+    let baseline_dir = root.join(".specify/decisions");
+    fs::create_dir_all(&baseline_dir).expect("create baseline decisions");
+    fs::write(
+        baseline_dir.join("DEC-0001-session-ttl.md"),
+        "---\nid: DEC-0001\nslug: session-ttl\nstatus: accepted\nslice: earlier\ndate: \
+         2026-01-01\ntopics: [session]\n---\n# Session TTL\n\n## Context\n\nContext.\n\n## \
+         Decision\n\nDecision.\n\n## Consequences\n\nConsequences.\n",
+    )
+    .expect("write baseline decision");
+
+    let invoker = scripted_invoker(
+        &root,
+        vec![
+            answers::adversarial_grouping(),
+            session_synthesis_with_decision(),
+            session_synthesis_answer(),
+        ],
+    );
+    author_and_approve(&invoker).await;
+
+    run::<workflow::slice::handlers::Refine, _>(
+        &invoker,
+        workflow::slice::handlers::RefineInput {
+            name: "session-policy".to_string(),
+        },
+    )
+    .await
+    .expect("refine persists the decision sidecar");
+
+    // The sidecar carries only slice-authored fields; the engine stamps
+    // `id` / `slice` / `date` at merge.
+    let sidecar = root.join(".specify/slices/session-policy/decisions/session-ttl-source.md");
+    let record = fs::read_to_string(&sidecar).expect("decision sidecar written");
+    assert!(record.contains("slug: session-ttl-source"), "{record}");
+    assert!(record.contains("status: accepted"), "{record}");
+    assert!(record.contains("- DEC-0001"), "{record}");
+    assert!(record.contains("## Consequences"), "{record}");
+    assert!(!record.contains("id:"), "{record}");
+    assert!(!record.contains("date:"), "{record}");
+
+    // The synthesis inputs surfaced the baseline decision projection.
+    let requests = invoker.provider().model().requests();
+    let synthesis_inputs = &requests[1].messages[0].content;
+    assert!(synthesis_inputs.contains("baseline-decisions"), "{synthesis_inputs}");
+    assert!(synthesis_inputs.contains("DEC-0001"), "{synthesis_inputs}");
+
+    // Re-refine with a decision-free response: the exact-set
+    // replacement clears both the generated record and any stray file.
+    let slice_dir = root.join(".specify/slices/session-policy");
+    fs::write(slice_dir.join("decisions/stale.md"), "stale").expect("plant stray file");
+    let metadata_path = slice_dir.join("metadata.yaml");
+    let metadata = fs::read_to_string(&metadata_path).expect("read metadata");
+    fs::write(&metadata_path, metadata.replace("status: refined", "status: refining"))
+        .expect("rewind lifecycle for the re-refine");
+
+    run::<workflow::slice::handlers::Refine, _>(
+        &invoker,
+        workflow::slice::handlers::RefineInput {
+            name: "session-policy".to_string(),
+        },
+    )
+    .await
+    .expect("re-refine replaces the decision set");
+
+    let survivors: Vec<String> = fs::read_dir(slice_dir.join("decisions"))
+        .expect("decisions dir")
+        .map(|entry| entry.expect("entry").file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(survivors.is_empty(), "{survivors:?}");
+
+    invoker.provider().model().assert_exhausted();
+}
+
+#[tokio::test]
+async fn evidence_gap_projects_unknown() {
+    let (_tmp, root, _cache) = scripted_project("fixture");
+    let invoker =
+        scripted_invoker(&root, vec![answers::adversarial_grouping(), reset_synthesis_answer()]);
+    author_and_approve(&invoker).await;
+
+    run::<workflow::slice::handlers::Refine, _>(
+        &invoker,
+        workflow::slice::handlers::RefineInput {
+            name: "password-reset".to_string(),
+        },
+    )
+    .await
+    .expect("refine synthesises the gapped slice");
+
+    let model = run::<workflow::slice::handlers::ModelShow, _>(
+        &invoker,
+        workflow::slice::handlers::ModelShowInput {
+            name: "password-reset".to_string(),
+        },
+    )
+    .await
+    .expect("model.yaml loads");
+    let requirement = &model.requirements[0];
+    assert_eq!(requirement.status.map(|s| s.to_string()), Some("unknown".to_string()));
+    assert!(requirement.claims.is_empty(), "{requirement:?}");
+
+    let spec = fs::read_to_string(
+        root.join(".specify/slices/password-reset/specs/password-reset/spec.md"),
+    )
+    .expect("slice spec written");
+    assert!(spec.contains("[unknown]"), "{spec}");
+
+    invoker.provider().model().assert_exhausted();
+}

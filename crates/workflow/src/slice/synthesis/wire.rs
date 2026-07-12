@@ -32,7 +32,7 @@ use error::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::registry::topology::Surface;
+use crate::registry::topology::{Decision, Surface};
 use crate::slice::model::SliceModel;
 use crate::slice::synthesis::baseline::BaselineIndex;
 
@@ -92,6 +92,45 @@ pub struct SynthesisArtifacts {
     pub tasks: String,
     /// Per-domain spec bodies (`specs/<domain>/spec.md`).
     pub specs: Vec<SynthesisSpec>,
+    /// Optional slice-authored Decision Records, rendered by the
+    /// persist tail to `decisions/<slug>.md` with exact-set
+    /// replacement. Empty means the slice sets no durable decision.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub decisions: Vec<SynthesisDecision>,
+}
+
+/// One slice-authored Decision Record under
+/// [`SynthesisArtifacts::decisions`].
+///
+/// Carries only the agent-authored fields of the slice-authored form in
+/// `decision.schema.json` plus the Nygard prose; the engine stamps
+/// `id` / `slice` / `date` (and any `superseded-by`) at merge.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SynthesisDecision {
+    /// Stable kebab-case slug — the baseline filename derives from it.
+    pub slug: String,
+    /// `accepted` or `rejected` (`superseded` is engine-only and
+    /// refused by the answer schema).
+    pub status: artifacts::decision::DecisionStatus,
+    /// The record's H1 title.
+    pub title: String,
+    /// `## Context` body.
+    pub context: String,
+    /// `## Decision` body.
+    pub decision: String,
+    /// `## Consequences` body.
+    pub consequences: String,
+    /// Records this decision supersedes — baseline `DEC-NNNN` ids or
+    /// sibling slugs from this same slice.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub supersedes: Vec<String>,
+    /// Optional traceability into this slice's requirements (`REQ-NNN`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub related: Vec<String>,
+    /// Optional kebab-case topic slugs the decision governs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topics: Vec<String>,
 }
 
 /// One per-domain spec body under [`SynthesisArtifacts::specs`].
@@ -151,6 +190,13 @@ pub struct SynthesisInputs {
     /// stays off the wire (greenfield).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub baseline_detail: Vec<DomainDetail>,
+    /// The bound project's accepted baseline Decision Records
+    /// (`id` / `title` / `topics`), projected through the registry
+    /// identity machinery. Gives the response's optional `decisions[]`
+    /// valid `supersedes:` targets without filesystem discovery. Empty
+    /// stays off the wire (no catalogue).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub baseline_decisions: Vec<Decision>,
 }
 
 /// Advisory per-domain baseline id facts for the synthesis inputs envelope.
@@ -247,7 +293,7 @@ impl SourceInput {
 #[must_use]
 pub fn inputs(
     slice: &str, sources: &[SourceInput], guidance_brief: &str, baseline: &[Surface],
-    baseline_detail: &[DomainDetail],
+    baseline_detail: &[DomainDetail], baseline_decisions: &[Decision],
 ) -> SynthesisInputs {
     SynthesisInputs {
         version: SYNTHESIS_VERSION,
@@ -257,5 +303,6 @@ pub fn inputs(
         guidance_brief: guidance_brief.to_string(),
         baseline: baseline.to_vec(),
         baseline_detail: baseline_detail.to_vec(),
+        baseline_decisions: baseline_decisions.to_vec(),
     }
 }

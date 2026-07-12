@@ -32,6 +32,8 @@ tempfile.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+fixtures.workspace = true
+omnia-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 toml.workspace = true

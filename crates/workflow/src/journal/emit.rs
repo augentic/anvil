@@ -56,22 +56,7 @@ where
     settle(layout, now, scope, body.await, on_success, on_failure)
 }
 
-/// [`bracket`] for a synchronous phase body (the deterministic
-/// merge).
-///
-/// # Errors
-///
-/// Whatever `body` returns, unchanged.
-pub fn bracket_sync<T>(
-    layout: Layout<'_>, now: Timestamp, scope: &str, started: EventKind,
-    body: impl FnOnce() -> Result<T, error::Error>, on_success: impl FnOnce(&T) -> EventKind,
-    on_failure: impl FnOnce(&error::Error) -> EventKind,
-) -> Result<T, error::Error> {
-    emit_best_effort(layout, now, started, scope);
-    settle(layout, now, scope, body(), on_success, on_failure)
-}
-
-/// Shared terminal emit for both bracket shapes.
+/// Shared terminal emit for the bracket.
 fn settle<T>(
     layout: Layout<'_>, now: Timestamp, scope: &str, result: Result<T, error::Error>,
     on_success: impl FnOnce(&T) -> EventKind, on_failure: impl FnOnce(&error::Error) -> EventKind,

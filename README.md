@@ -19,7 +19,7 @@ Initialize a project in Cursor Agent chat with an adapter:
 /spec:init omnia@1.0.0
 ```
 
-An adapter is named by a package reference (`specify:omnia@1.0.0`), the first-party shorthand (`omnia@1.0.0`), or the bare development shorthand (`omnia`, resolving a sibling checkout's release build). Common targets:
+An adapter is named by a package reference (`specify:omnia@1.0.0`), the first-party shorthand (`omnia@1.0.0`), a local `.wasm` component path, or the bare development shorthand (`omnia`, resolving the project component cache or the project's own release build). Common targets:
 
 | Target      | Use case                                                      |
 | ----------- | ------------------------------------------------------------- |
@@ -100,7 +100,7 @@ Pass `--plugin-dir` once per local plugin when testing more than one. Omit it to
 
 #### Testing adapter changes
 
-Adapters live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). For local iteration, run `cargo make release` there and initialise the consuming project with the bare development shorthand (`/spec:init omnia`) — a bare name resolves the sibling checkout's release build at `target/wasm32-wasip2/release/<name>.wasm`. Rebuild the component to pick up changes; no cache clear or restart is needed.
+Adapters live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). For local iteration, build the component there (`cargo make adapter omnia` for the fast profile, or `cargo make release`) and initialise the consuming project with the component path — `/spec:init /path/to/specify-adapters/target/wasm32-wasip2/release/omnia.wasm` — which mirrors it into the project component cache. Resolution is project-contained: there is no sibling-checkout probe, so re-run init with the rebuilt component to pick up changes.
 
 #### Publishing a new plugin
 

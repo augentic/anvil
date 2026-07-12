@@ -122,16 +122,18 @@ pub(crate) fn component_cache_entry(project_dir: &Path, name: &str) -> PathBuf {
     component_cache_dir(project_dir).join(format!("{name}.wasm"))
 }
 
-/// Development release-build candidates for a bare-name identity.
+/// The in-repo development release-build candidate for a bare-name
+/// identity. Resolution is project-contained: there is no sibling
+/// checkout probe — an adapter built elsewhere reaches the project as
+/// an explicitly supplied component path at init (mirrored into the
+/// project component cache) or a pinned store install.
 #[must_use]
-pub(crate) fn dev_component_paths(project_dir: &Path, name: &str) -> Vec<PathBuf> {
-    let file = dev_component_filename(name);
-    let release = Path::new("target").join("wasm32-wasip2").join("release");
-    let mut candidates = vec![project_dir.join(&release).join(&file)];
-    if let Some(parent) = project_dir.parent() {
-        candidates.push(parent.join("specify-adapters").join(&release).join(&file));
-    }
-    candidates
+pub(crate) fn dev_component_path(project_dir: &Path, name: &str) -> PathBuf {
+    project_dir
+        .join("target")
+        .join("wasm32-wasip2")
+        .join("release")
+        .join(dev_component_filename(name))
 }
 
 /// Cargo artifact filename for an adapter guest crate.
@@ -173,8 +175,8 @@ fn locate(
         return Ok(AdapterLocation::Store(entry));
     }
 
-    let mut candidates = vec![component_cache_entry(project_dir, name)];
-    candidates.extend(dev_component_paths(project_dir, name));
+    let candidates =
+        [component_cache_entry(project_dir, name), dev_component_path(project_dir, name)];
     if let Some(hit) = candidates.iter().find(|path| path.is_file()) {
         return Ok(AdapterLocation::Dev(hit.clone()));
     }
@@ -183,8 +185,9 @@ fn locate(
     Err(Error::Diag {
         code: "adapter-not-found",
         detail: format!(
-            "adapter `{name}` (axis `{axis}`) has no development artifact at {probed}; build it \
-             with `cargo make release` in the adapters repo or pin a published version \
+            "adapter `{name}` (axis `{axis}`) has no development artifact at {probed}; supply a \
+             local `.wasm` component at init, build the in-repo release artifact (`cargo build \
+             --release --target wasm32-wasip2`), or pin a published version \
              (`specify:{name}@<semver>`)",
         ),
     })

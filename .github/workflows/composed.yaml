@@ -1,7 +1,8 @@
 # The deterministic shipped-guest boundary: build the workflow core and
-# both echo adapter fixtures, then host them in one Omnia command-mode
-# deployment. This proves WIT linking, dispatch, writable preopens, and
-# the replay-backed full loop without a sibling checkout or credentials.
+# the combined fixture adapter, then host them in one Omnia command-mode
+# deployment. This proves WIT linking, dispatch on both axes, writable
+# preopens, and the scripted full loop without a sibling checkout or
+# credentials.
 #
 # Scheduled/manual rather than per-push: the Wasmtime execution path is
 # too slow for the ordinary commit gate, and per-push CI already checks
@@ -42,11 +43,8 @@ jobs:
       - name: Build workflow guest
         run: cargo build --locked -p specify --lib --target wasm32-wasip2
 
-      - name: Build adapter fixtures
+      - name: Build fixture adapter
         run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
 
-      - name: Build shipped binary
-        run: cargo build --locked -p specify
-
       - name: Composed workflow smoke
-        run: cargo nextest run --locked -p replay -p quality --no-tests=pass
+        run: cargo nextest run --locked -p composed --no-tests=pass

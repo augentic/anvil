@@ -6,7 +6,7 @@ The contract every command operation obeys: how a command becomes an `omnia_gues
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
-- **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`. See [handler-routing.md §"Design"](../../rfcs/handler-routing.md#design).
+- **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
 - **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = workflow::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
@@ -27,7 +27,7 @@ impl<P: Anchor> Operation<P> for Frob {
 }
 ```
 
-Operations live in each domain module's `handlers` submodule beside its kernels (see [handler-routing.md §"Where operations live"](../../rfcs/handler-routing.md#where-operations-live)).
+Operations live in each domain module's `handlers` submodule beside its kernels.
 
 ## Ctx construction and the Anchor
 
@@ -64,7 +64,7 @@ The four-slot CLI exit-code table is fixed:
 
 `crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Specify command/HTTP projectors, and the fixed exit contract.
 
-`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
+`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`.
 
 ## The HTTP route table (`http.rs`)
 

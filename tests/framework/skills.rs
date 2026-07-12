@@ -27,6 +27,8 @@ pub const CHECK_ARGUMENT_HINT: &str = "skill.argument-hint-grammar";
 pub const CHECK_DESCRIPTION_VERB: &str = "skill.description-grammar";
 /// A skill body restates frontmatter with a `## Input` H2.
 pub const CHECK_FRONTMATTER_RESTATEMENT: &str = "skill.frontmatter-restatement";
+/// A spec skill body carries an orchestration/judgment heading.
+pub const CHECK_ORCHESTRATION_HEADING: &str = "skill.orchestration-heading";
 
 /// Plugin directories whose published discovery prefix differs from
 /// the directory name.
@@ -115,6 +117,22 @@ const DESCRIPTION_VERBS: &[&str] = &[
     "write",
 ];
 
+/// Heading terms naming engine-owned behavior. A spec skill is an
+/// invoke-and-relay wrapper: orchestration, synthesis, validation, and
+/// lifecycle mechanics live in the `specify` CLI and its embedded
+/// judgment prose, so a body heading about them signals prose that
+/// belongs to the workflow crate or an adapter, not the wrapper.
+const ORCHESTRATION_HEADING_TERMS: &[&str] = &[
+    "synthes",
+    "reconcil",
+    "orchestrat",
+    "validat",
+    "lifecycle",
+    "extraction",
+    "judgment",
+    "algorithm",
+];
+
 static SKILL_NAME_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z][a-z0-9-]*$").expect("skill name pattern"));
 static ARGUMENT_HINT_TOKEN_RE: LazyLock<Regex> =
@@ -148,6 +166,9 @@ pub fn run(root: &Path) -> Vec<Finding> {
         check_argument_hint(&relative, &fields, &mut findings);
         check_description_verb(&relative, &fields, &mut findings);
         check_input_heading(&relative, &content, &mut findings);
+        if plugin == "spec" {
+            check_orchestration_headings(&relative, &content, &mut findings);
+        }
 
         if let Some(name) = fields.get("name").and_then(JsonValue::as_str) {
             let name = name.trim();
@@ -268,6 +289,34 @@ fn check_description_verb(
                  imperative verb"
             ),
         ));
+    }
+}
+
+/// A spec skill body heading must not name engine-owned behavior
+/// (fenced code blocks are exempt — they quote CLI output, not body
+/// structure).
+fn check_orchestration_headings(relative: &str, content: &str, findings: &mut Vec<Finding>) {
+    let mut in_fence = false;
+    for (line_idx, line) in content.lines().enumerate() {
+        if line.trim_start().starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if in_fence || !line.starts_with('#') {
+            continue;
+        }
+        let lower = line.to_ascii_lowercase();
+        if let Some(term) = ORCHESTRATION_HEADING_TERMS.iter().find(|term| lower.contains(**term)) {
+            findings.push(Finding::new(
+                CHECK_ORCHESTRATION_HEADING,
+                format!(
+                    "{relative}:{} — heading '{}' names engine-owned behavior ('{term}'); spec \
+                     skills are invoke-and-relay wrappers",
+                    line_idx + 1,
+                    line.trim()
+                ),
+            ));
+        }
     }
 }
 

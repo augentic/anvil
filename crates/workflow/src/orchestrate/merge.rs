@@ -1,14 +1,20 @@
-//! Deterministic guest merge orchestrator.
+//! The merge orchestrator: target merge gates around the deterministic
+//! core merge.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
 
+use super::{seam_failure, target_id};
 use crate::change::{Plan, Status};
 use crate::config::{Layout, Mutation, with_state};
 use crate::journal::{self, EventKind};
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
+use crate::schema_gate::validate_report;
+use crate::seam::{MergePhase, TargetSeam, WorkingTree};
+use crate::slice::{BuildReport, BuildStatus};
 
 /// The result of a completed guest [`merge`].
 #[derive(Debug, Clone)]
@@ -22,53 +28,184 @@ pub struct MergeOutcome {
 }
 
 /// Merge one built slice into the baseline and stamp its plan entry
-/// `done`.
+/// `done`, bracketed by the bound target's phased merge gates.
 ///
-/// The guest collapse of `specify slice merge run`, deterministic-only
-/// (no target merge brief is ever dispatched, so there is no
-/// `seam.merge`): the `slice.merge.*` pair
-/// brackets [`slice_merge::commit`], the workspace-clone git commit
-/// leg is skipped with an explicit `slice.merge.commit-skipped` event
-/// (the guest owns no git surface; lifecycle authority is `.specify/`
-/// state), the durable `slice.archive.created` ledger entry lands with
-/// no `merge-sha`, and the plan entry stamps `done`. No plan-lock gate:
-/// the lock fences separate OS processes racing the plan, and the
-/// guest collapses every breakout in-process — this assumes the guest
-/// is the sole `.specify/` writer during a run (non-concurrent stack
-/// use is the documented coexistence rule).
+/// The guest collapse of `specify slice merge run`. The transaction
+/// order is: completion preflight → `slice.merge.started` → the
+/// target's **preflight** gate (`seam.merge`, phase `preflight`) → the
+/// deterministic [`slice_merge::commit`] (validators, 3-way spec fold,
+/// Decision Record promotion, lifecycle, archive) → the plan entry's
+/// `done` stamp → the target's **postflight** gate (phase
+/// `postflight`). Each gate's report is schema-gated and persisted:
+/// preflight to `<slice>/merge/preflight.yaml` (archived with the
+/// slice), postflight to `<archive>/merge/postflight.yaml`.
 ///
-/// The deltas merge under the omnia-default artifact-class set
-/// ([`artifact_classes`]), resolved here so every merge entry point
-/// shares one prelude.
+/// Failure semantics are phase-specific:
+///
+/// - a preflight failure aborts before any baseline write — the slice
+///   stays `built` and the entry stays claimable
+///   (`target-merge-preflight-failed`, journalled as
+///   `slice.merge.failed`);
+/// - a core commit failure retains the deterministic merge's existing
+///   behaviour (journalled as `slice.merge.failed`);
+/// - a postflight failure is a **non-rollback terminal diagnostic** —
+///   the slice is already merged, archived, and `done`, so the error
+///   (`target-merge-postflight-failed`) reports the irreversible state
+///   and the journal carries `slice.merge.postflight-failed` instead
+///   of `slice.merge.failed`.
+///
+/// The workspace-clone git commit leg is skipped with an explicit
+/// `slice.merge.commit-skipped` event (the guest owns no git surface),
+/// and the durable `slice.archive.created` ledger entry lands with no
+/// `merge-sha`. No plan-lock gate: the guest collapses every breakout
+/// in-process — non-concurrent stack use is the documented coexistence
+/// rule.
 ///
 /// # Errors
 ///
 /// - `plan-entry-not-found` / `slice-merge-entry-not-in-progress` from
-///   the completion preflight, raised **before** any baseline write —
-///   a plan-owned merge only runs for an `in-progress` entry (skipped
-///   when no `plan.yaml` exists, matching native standalone merges).
+///   the completion preflight, raised **before** any baseline write.
+/// - `target-merge-preflight-failed` / seam dispatch failures from the
+///   preflight gate, with the slice still `built`.
 /// - propagates the `lifecycle` gate, validator, and apply failures
 ///   from [`slice_merge::commit`].
-pub fn merge(
-    layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
+/// - `target-merge-postflight-failed` after a committed merge — the
+///   outcome is irreversible; the error is diagnostic, not a rollback.
+pub async fn merge<T: TargetSeam>(
+    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
     preflight_completion(layout, slice)?;
-    journal::bracket_sync(
+    let slice_dir = layout.slice_dir(slice);
+    let target = crate::target_policy::resumed(layout, slice)?;
+    let id = target_id(&crate::adapter::AdapterRef::from_value(&target).name);
+
+    journal::emit_best_effort(
         layout,
         now,
-        "slice.merge",
         EventKind::SliceMergeStarted {
             slice_name: slice.into(),
         },
-        || commit_run(layout, now, slice, allow_composition_replace),
-        |_| EventKind::SliceMergeSucceeded {
+        "slice.merge",
+    );
+
+    // Target preflight: a failure aborts with the slice still `built`.
+    let preflight = run_gate(targets, &id, slice, MergePhase::Preflight).await;
+    let preflight = journal_on_failure(layout, now, slice, preflight)?;
+    persist_gate_report(&slice_dir.join("merge"), MergePhase::Preflight, &preflight)?;
+
+    // The deterministic core: validators, spec fold, Decision Record
+    // promotion, lifecycle, archive, and the plan entry's `done` stamp.
+    let outcome = journal_on_failure(
+        layout,
+        now,
+        slice,
+        commit_run(layout, now, slice, allow_composition_replace),
+    )?;
+
+    // Target postflight: the slice is already merged and archived, so a
+    // failure is a terminal diagnostic — never a rollback.
+    match run_gate(targets, &id, slice, MergePhase::Postflight).await {
+        Ok(report) => {
+            persist_gate_report(
+                &outcome.archive_path.join("merge"),
+                MergePhase::Postflight,
+                &report,
+            )?;
+        }
+        Err(err) => {
+            journal::emit_best_effort(
+                layout,
+                now,
+                EventKind::SliceMergePostflightFailed {
+                    slice_name: slice.into(),
+                    reason: err.variant_str().into_owned(),
+                },
+                "slice.merge",
+            );
+            return Err(Error::Diag {
+                code: "target-merge-postflight-failed",
+                detail: format!(
+                    "target postflight merge gate failed for slice `{slice}` after the merge \
+                     committed — the baseline, archive, and plan entry `done` stamp stand \
+                     (non-rollback); inspect the diagnostic and land a follow-up slice: {err}"
+                ),
+            });
+        }
+    }
+
+    journal::emit_best_effort(
+        layout,
+        now,
+        EventKind::SliceMergeSucceeded {
             slice_name: slice.into(),
         },
-        |err| EventKind::SliceMergeFailed {
-            slice_name: slice.into(),
-            reason: err.variant_str().into_owned(),
-        },
-    )
+        "slice.merge",
+    );
+    Ok(outcome)
+}
+
+/// Journal a `slice.merge.failed` terminal on the error arm — the
+/// pre-commit phases share one failure event.
+fn journal_on_failure<V>(
+    layout: Layout<'_>, now: Timestamp, slice: &str, result: Result<V, Error>,
+) -> Result<V, Error> {
+    if let Err(err) = &result {
+        journal::emit_best_effort(
+            layout,
+            now,
+            EventKind::SliceMergeFailed {
+                slice_name: slice.into(),
+                reason: err.variant_str().into_owned(),
+            },
+            "slice.merge",
+        );
+    }
+    result
+}
+
+/// Dispatch one target merge gate and gate its report: schema shape,
+/// slice-name match, blocking findings, and status.
+async fn run_gate<T: TargetSeam>(
+    targets: &T, id: &str, slice: &str, phase: MergePhase,
+) -> Result<BuildReport, Error> {
+    let report = targets
+        .merge(id.to_string(), slice.to_string(), phase, WorkingTree::live())
+        .await
+        .map_err(|err| seam_failure("merge", id, &err))?;
+
+    let yaml = crate::fs::yaml(&report)?;
+    validate_report(&yaml)?;
+    if report.slice != slice {
+        return Err(Error::validation_failed(
+            "target-merge-report-slice-mismatch",
+            "the merge gate report's slice matches the slice being merged",
+            format!("report names slice `{}`, but the merge ran for `{slice}`", report.slice),
+        ));
+    }
+    report.enforce_no_blocking()?;
+    if report.status == BuildStatus::Failure {
+        return Err(Error::Diag {
+            code: match phase {
+                MergePhase::Preflight => "target-merge-preflight-failed",
+                MergePhase::Postflight => "target-merge-postflight-gate",
+            },
+            detail: format!(
+                "target `{}` reported a failed {phase} merge gate for slice `{slice}` ({} \
+                 finding(s))",
+                report.target,
+                report.findings.len()
+            ),
+        });
+    }
+    Ok(report)
+}
+
+/// Persist one gate's validated report to `<dir>/<phase>.yaml`, so the
+/// archived slice carries both gate outcomes.
+fn persist_gate_report(dir: &Path, phase: MergePhase, report: &BuildReport) -> Result<(), Error> {
+    std::fs::create_dir_all(dir).map_err(Error::Io)?;
+    let yaml = crate::fs::yaml(report)?;
+    bytes_write(&dir.join(format!("{phase}.yaml")), yaml.as_bytes())
 }
 
 /// Read-only completion preflight, run before the `slice.merge.*`
@@ -103,8 +240,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
 
 /// Validator + apply core: commit the deltas, journal the skipped git
 /// leg, append the outcome-ledger entry, and stamp the plan entry
-/// `done`. Wrapped by [`merge`] so the `slice.merge.*` pair brackets
-/// it.
+/// `done`.
 fn commit_run(
     layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {

@@ -28,7 +28,7 @@ Authoring loop (per requirement, in declaration order):
 
 Each spec file opens with a short `## Overview` paragraph (one to three sentences) summarising the domain's behavioural surface; the overview carries no provenance lines.
 
-Each requirement may include one or more scenarios (rendered as `#### Scenario:` H4 headings after the body and before the next requirement). Scenarios use WHEN/THEN format (GIVEN is optional context). The `#### Scenario:` heading level is fixed — see [`spec-format.md`](../spec-format.md) for the canonical heading conventions. Scenarios do not carry their own provenance lines.
+Each requirement may include one or more scenarios (rendered as `#### Scenario:` H4 headings after the body and before the next requirement). Scenarios use WHEN/THEN format (GIVEN is optional context). The `#### Scenario:` heading level is fixed — see [`spec-format.md`](spec-format.md) for the canonical heading conventions. Scenarios do not carry their own provenance lines.
 
 ## 3. `design.md`
 
@@ -58,7 +58,7 @@ Format — one `## N. <Group>` heading per stage, then one `- [ ] N.M <descripti
 - [ ] 1.2 <Next task>
 ```
 
-`specify slice validate` gates the shape: every task line MUST match `- [ ] X.Y <description>` (the dotted number is required) and sit under a `## ` heading — a bare `- <item>` or an un-numbered `- [ ] <item>` fails `tasks.use-checkbox-format` / `tasks.grouped-under-headings`. An optional `<!-- skill: plugin:skill-name -->` directive may trail a task (see [`../artifact-conventions.md`](../artifact-conventions.md)). `tasks.md` carries no provenance and no narrative prose outside the checkbox list.
+`specify slice validate` gates the shape: every task line MUST match `- [ ] X.Y <description>` (the dotted number is required) and sit under a `## ` heading — a bare `- <item>` or an un-numbered `- [ ] <item>` fails `tasks.use-checkbox-format` / `tasks.grouped-under-headings`. An optional `<!-- skill: plugin:skill-name -->` directive may trail a task when a build step should be executed by a named specialist skill; emit one only when the target guidance prompt asks for it. `tasks.md` carries no provenance and no narrative prose outside the checkbox list.
 
 ## What synthesis never does
 
