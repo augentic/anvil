@@ -15,7 +15,6 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  # Prove wasm guests compile
   wasm:
     name: Wasm
     runs-on: ubuntu-latest
