@@ -52,6 +52,7 @@ schema.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+toml.workspace = true
 transport.workspace = true
 workflow.workspace = true
 

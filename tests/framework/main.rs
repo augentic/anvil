@@ -61,6 +61,7 @@ fn fired(findings: &[Finding], check: &str) -> bool {
 
 #[test]
 fn boundary_checks_fire_on_bad_fixtures() {
+    // A plain adapter dependency (name and path both offend) fires.
     let dir = tempfile::tempdir().expect("tempdir");
     write(
         dir.path(),
@@ -69,9 +70,49 @@ fn boundary_checks_fire_on_bad_fixtures() {
     );
     assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
+    // A renamed dependency is caught by its effective `package` name.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "crates/workflow/Cargo.toml",
+        "[dev-dependencies]\nharmless = { package = \"captures\", version = \"1\" }\n",
+    );
+    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+
+    // The expanded `[dependencies.<name>]` table syntax fires.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "harness/composed/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
+    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+
+    // A target-specific dependency table fires.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "Cargo.toml", "[target.'cfg(unix)'.dependencies]\ntypescript = \"1\"\n");
+    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+
+    // A source reaching into specify-adapters fires even when the name
+    // collides with a legitimate crate (the omnia runtime vs target).
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "Cargo.toml",
+        "[workspace.dependencies]\nomnia = { package = \"omnia\", path = \"../specify-adapters/targets/omnia\" }\n",
+    );
+    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+
+    // The legitimate omnia runtime dependency stays silent.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "Cargo.toml",
+        "[workspace.dependencies]\nomnia = \"0.35.0\"\nworkflow = { path = \"crates/workflow\" }\n",
+    );
+    assert!(boundaries::run(dir.path()).is_empty());
+
+    // Rust imports alone no longer fire: an undeclared crate cannot be
+    // imported, so the manifest is the only enforcement point.
     let dir = tempfile::tempdir().expect("tempdir");
     write(dir.path(), "crates/workflow/src/lib.rs", "use captures::operations;\n");
-    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+    assert!(boundaries::run(dir.path()).is_empty());
 }
 
 // Each ported check must fire on a known-bad fixture; the matrices

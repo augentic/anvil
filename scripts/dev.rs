@@ -22,6 +22,15 @@ struct Dev {
     adapters: PathBuf,
 }
 
+/// The engine crates the standalone native harness pins by revision;
+/// cross-repo developer commands override each with this checkout's
+/// working tree through generated `--config` patch flags.
+const ENGINE_CRATES: [&str; 6] =
+    ["artifacts", "error", "scenario", "schema", "transport", "workflow"];
+
+/// The git source the native harness pins its engine crates to.
+const ENGINE_GIT: &str = "https://github.com/augentic/specify.git";
+
 #[derive(Deserialize)]
 struct Metadata {
     packages: Vec<Package>,
@@ -179,8 +188,14 @@ impl Dev {
         } else {
             println!("== no adapter scoped (`check <name>` adds its native tests) ==");
         }
-        println!("== native harness seam/replay tests (adapters checkout) ==");
-        self.cargo(&self.adapters, ["nextest", "run", "-p", "specify-dev"])
+        println!("== native harness full-loop/seam tests (standalone workspace, sibling engine) ==");
+        // Builtin `cargo test`, not nextest: an external subcommand spawns
+        // its own inner cargo, which does not inherit `--config` patches.
+        self.native_cargo(&[
+            OsString::from("test"),
+            OsString::from("--manifest-path"),
+            self.native_manifest(),
+        ])
     }
 
     fn run_project(&self, args: &[OsString]) -> Result<()> {
@@ -193,14 +208,14 @@ impl Dev {
         let mut cargo_args = vec![
             OsString::from("run"),
             OsString::from("-q"),
-            OsString::from("-p"),
-            OsString::from("specify-dev"),
+            OsString::from("--manifest-path"),
+            self.native_manifest(),
             OsString::from("--"),
             OsString::from("--project-dir"),
             project.into_os_string(),
         ];
         cargo_args.extend_from_slice(args);
-        self.cargo_os(&self.adapters, &cargo_args)
+        self.native_cargo(&cargo_args)
     }
 
     fn live(&self, args: &[OsString]) -> Result<()> {
@@ -321,13 +336,37 @@ impl Dev {
         Ok(format!("{}@{}", package.name, package.version))
     }
 
-    fn cargo<const N: usize>(&self, directory: &Path, args: [&str; N]) -> Result<()> {
-        let mut command = self.cargo_command(directory);
-        command.args(args);
-        execute(&mut command, "cargo")
+    /// The standalone native-harness manifest in the adapters checkout.
+    fn native_manifest(&self) -> OsString {
+        self.adapters.join("harness/native/Cargo.toml").into_os_string()
     }
 
-    fn cargo_os(&self, directory: &Path, args: &[OsString]) -> Result<()> {
+    /// Run cargo against the standalone native-harness workspace with its
+    /// engine pin patched to this checkout's crates. The default manifest
+    /// stays revision-pinned — the overrides live only on this command
+    /// line, never in tracked Cargo configuration. Cargo rewrites the
+    /// harness lockfile while a patch is active, so the pinned lock is
+    /// snapshotted and restored around the invocation.
+    fn native_cargo(&self, args: &[OsString]) -> Result<()> {
+        let lock = self.adapters.join("harness/native/Cargo.lock");
+        let saved = fs::read(&lock).ok();
+        let mut command = self.cargo_command(&self.adapters);
+        for name in ENGINE_CRATES {
+            command.arg("--config");
+            command.arg(format!(
+                "patch.\"{ENGINE_GIT}\".{name}.path=\"{}\"",
+                self.framework.join("crates").join(name).display()
+            ));
+        }
+        command.args(args);
+        let result = execute(&mut command, "cargo (native harness, sibling engine)");
+        if let Some(bytes) = saved {
+            fs::write(&lock, bytes).context("restoring the pinned native-harness lockfile")?;
+        }
+        result
+    }
+
+    fn cargo<const N: usize>(&self, directory: &Path, args: [&str; N]) -> Result<()> {
         let mut command = self.cargo_command(directory);
         command.args(args);
         execute(&mut command, "cargo")

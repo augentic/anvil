@@ -163,7 +163,7 @@ schema                   # depends on error (embedded JSON Schemas + jsonschema 
 artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on workflow or anything named lint)
 workflow                 # workflow layer — depends on {error,schema,artifacts,omnia-guest} (owns the command operations too: each domain module carries its family in a `handlers` submodule — journal::handlers, slice::handlers, change::plan::handlers, orchestrate::handlers, registry::handlers, adapter::handlers, init::handlers — as omnia_guest::api::operation::Operation<P> impls over flat serde Input DTOs, with shared plumbing in workflow::handler: Anchor, Ctx, Render, ReportBody, and the operation-layer Error; also owns workflow::agents — init-time AGENTS.md context-fence generation — and workflow::judgment — the guest judgment legs over the upstream omnia_guest::Model capability); no wasmtime in its graph
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract
-scenario                 # non-shipped quality layer — canonical scenario DTOs, typed assertion registry, deterministic grading, and structured reports
+scenario                 # non-shipped quality layer — canonical scenario DTOs, typed assertion registry, deterministic grading, structured reports, and the embedded canonical scenario catalog (scenario::catalog, consumed by revision-pinned downstream harnesses)
 harness/fixtures         # echo adapter fixtures (skeleton specify:adapter components for composed deployments)
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
@@ -200,8 +200,8 @@ src/command.rs              struct Cli + Guest::run + route(cli)
 src/http.rs              struct Http + Guest impl + the HTTP route table
 crates/transport/         shared command/HTTP routing, clap grammar, conversions, projectors, and exit contract
 crates/workflow/         workflow domain logic
-crates/scenario/         non-shipped canonical scenario, assertion, grading, and report types
-harness/{native,composed}/ deterministic linked-adapter and hosted-WASM profile executors
+crates/scenario/         non-shipped canonical scenario, assertion, grading, and report types + the embedded scenario catalog
+harness/composed/        deterministic hosted-WASM profile executor (the linked-adapter native executor lives in specify-adapters/harness/native)
 harness/fixtures/        echo adapter fixtures (skeleton specify:adapter components)
 quality/                 canonical YAML cases, profiles, rubrics, and structured live reports
 tests/framework/         prose/manifest framework checks as cargo tests

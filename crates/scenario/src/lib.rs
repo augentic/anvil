@@ -6,6 +6,8 @@
 //! and model mechanics.
 
 mod assertion;
+/// Embedded catalog of the canonical workflow scenarios.
+pub mod catalog;
 /// Deterministic grading over captured workflow-step evidence.
 pub mod grade;
 mod model;

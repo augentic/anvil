@@ -17,11 +17,11 @@ The authoritative placement rules live in [testing standards](../standards/testi
 
 ## Gate 1 — repository correctness
 
-`cargo make ci` in each repository owns formatting, lints, schemas, authoring checks, crate integration, transport contracts, adapter-native operations, and adapter-component conformance. The adapters workspace consumes revision-pinned engine crates from git, so neither repository gate requires a sibling checkout. It is model-free and runs on every commit.
+`cargo make ci` in each repository owns formatting, lints, schemas, authoring checks, crate integration, transport contracts, adapter-native operations, and adapter-component conformance. Neither repository gate resolves the other repository: the adapters root workspace carries no Specify dependency at all, and Specify's gates use its own echo WIT fixtures. It is model-free and runs on every commit.
 
-## Gate 2 — cross-repository workflow
+## Gate 2 — engine-pinned workflow
 
-The native profile runs canonical workflow scenarios through `specify-dev` with linked adapter crates. Omnia's `omnia-testkit` supplies request-recording `Harness`, `Scripted`, and canonical `Replay`; Specify supplies only workflow setup, execution, assertions, and reports. This model-free gate lives in `specify-adapters/harness/native` and runs in that repository's ordinary CI workspace gate.
+The native profile runs canonical workflow scenarios through `specify-dev` with linked adapter crates. Omnia's `omnia-testkit` supplies request-recording `Harness`, `Scripted`, and canonical `Replay`; Specify supplies only workflow setup, execution, assertions, and reports (the canonical scenarios themselves ship embedded in the pinned `scenario` crate's catalog). This model-free gate lives in `specify-adapters/harness/native` — a standalone workspace pinned to a declared engine revision — and runs in that repository's dedicated `native-harness` CI job against that pin, never against arbitrary Specify HEAD. Compatibility with a newer engine is claimed by advancing the pin, not by a cross-repo HEAD gate.
 
 ## Gate 3 — composed WebAssembly
 
@@ -53,7 +53,7 @@ Do not copy an assertion into another layer for reassurance. Name the seam it ow
 - `replay` — `omnia-wasi-model` request-key fixture replay.
 - `runtime` — temporary manifests, guest discovery, in-process runtime hosting, and HTTP driving.
 
-`crates/scenario` must not duplicate those facilities. It owns Specify's scenario schema, typed assertion registry, report types, and workflow execution vocabulary. `specify-adapters/harness/native` remains the native linked-adapter runtime and live Cursor adapter, not a second scenario catalog.
+`crates/scenario` must not duplicate those facilities. It owns Specify's scenario schema, typed assertion registry, report types, workflow execution vocabulary, and the embedded canonical scenario catalog (`scenario::catalog`). `specify-adapters/harness/native` remains the native linked-adapter runtime and live Cursor adapter, not a second scenario catalog — it loads scenarios through the pinned crate.
 
 ## Reader acceptance
 

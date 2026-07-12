@@ -10,7 +10,7 @@ This map names the primary owner of each seam so coverage can move without being
 
 ## Native workflow profiles
 
-- `specify-adapters/harness/native/tests/full_loop.rs` executes the `intent-only`, `guest-execute-loop` happy path, and `execute-fail-resume` pilots from canonical YAML with Omnia's recorded scripted model harness.
+- `specify-adapters/harness/native/tests/full_loop.rs` executes the `intent-only`, `guest-execute-loop` happy path, and `execute-fail-resume` pilots from the embedded canonical catalog (`scenario::catalog`, at that harness's pinned engine revision) with Omnia's recorded scripted model harness.
 - `specify-adapters/harness/native/tests/replay.rs` owns canonical request-key replay compatibility.
 - Canonical YAML owns every case and assertion id. `registered` probes deliberately select profile-specific evaluators under `quality/profiles/workflow/` when a generic path/exit/JSON probe cannot express a multi-project or interruption check.
 

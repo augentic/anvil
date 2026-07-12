@@ -3816,6 +3816,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "toml",
  "transport",
  "wasip3",
  "wit-bindgen 0.59.0",

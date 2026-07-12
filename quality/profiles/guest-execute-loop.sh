@@ -14,9 +14,12 @@
 # `specify` with the live cursor backend, stamping Gate 1 natively in
 # between.
 #
-# Native mode builds `specify-dev` (the adapters repo's harness/native shim: in-process
-# adapter dispatch, cursor model, ephemeral MCP shelves) and drives the
-# same loop with no wasm builds and no deployment manifest.
+# Native mode builds `specify-dev` (the adapters repo's harness/native
+# shim: in-process adapter dispatch, cursor model, ephemeral MCP
+# shelves) from its standalone workspace, patching its revision-pinned
+# engine crates to this checkout's working tree with the same generated
+# `--config` overrides `scripts/dev.rs` uses, and drives the same loop
+# with no wasm builds and no deployment manifest.
 #
 # Post-run evidence is printed in both modes. `quality/run-live.sh`
 # grades hard assertions and semantic rubrics into a structured bundle.
@@ -51,8 +54,27 @@ fi
 # test is the branch head, not a published core); native mode links the
 # same verb handlers and the adapter crates in-process.
 if [ "$shim" = native ]; then
-  (cd "$adapters" && cargo build -q -p specify-dev)
-  specify="$adapters/target/debug/specify-dev"
+  # The standalone harness workspace, patched to this checkout's engine
+  # crates. The pinned lockfile is snapshotted and restored: cargo
+  # rewrites it while a patch override is active.
+  native_manifest="$adapters/harness/native/Cargo.toml"
+  native_lock="$adapters/harness/native/Cargo.lock"
+  native_target="$adapters/harness/native/target"
+  config_flags=()
+  for crate in artifacts error scenario schema transport workflow; do
+    config_flags+=(--config "patch.\"https://github.com/augentic/specify.git\".$crate.path=\"$root/crates/$crate\"")
+  done
+  saved_lock=""
+  if [ -f "$native_lock" ]; then
+    saved_lock="$(mktemp)"
+    cp "$native_lock" "$saved_lock"
+  fi
+  (cd "$adapters" && cargo "${config_flags[@]}" build -q \
+    --manifest-path "$native_manifest" --target-dir "$native_target")
+  if [ -n "$saved_lock" ]; then
+    mv "$saved_lock" "$native_lock"
+  fi
+  specify="$native_target/debug/specify-dev"
 else
   (
     cd "$root"

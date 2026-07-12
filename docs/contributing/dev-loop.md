@@ -24,7 +24,9 @@ cargo make dev -- check         # harness suite only
 cargo make dev -- check omnia   # + that adapter's native tests
 ```
 
-Nothing here builds a component or calls a live model: the `specify-dev` shim lives at `specify-adapters/harness/native` and links that workspace's adapter crates directly, while consuming the engine crates through a revision-pinned git dependency. Omnia's testkit supplies scripted/replay responses and request recording. `specify-dev init <bare-name> --scaffold-only` needs no `.wasm` artifact. `cargo make dev -- run /path/to/project plan status` drives the same shim against any consumer project without changing directory.
+Nothing here builds a component or calls a live model: the `specify-dev` shim lives at `specify-adapters/harness/native` — a standalone workspace pinned to a declared engine revision — and links that repo's adapter crates directly. `dev check` and `dev run` automatically override that pin with this checkout's working-tree crates through generated `--config` patch flags (the tracked manifest and lockfile stay revision-pinned; nothing is written to either repo), so uncommitted engine changes are exercised against the real adapters. Omnia's testkit supplies scripted/replay responses and request recording. `specify-dev init <bare-name> --scaffold-only` needs no `.wasm` artifact. `cargo make dev -- run /path/to/project plan status` drives the same shim against any consumer project without changing directory.
+
+An engine change that breaks the harness fails here at compile time — that is the design working, not a defect: fix nothing in this repo, land the engine change, then update the harness and advance its pin in `specify-adapters`. The repositories move at independent paces; the pin (not HEAD) is the harness's supported engine revision.
 
 ### 2. `dev live` — deliberate repeated model trials
 
@@ -52,7 +54,9 @@ This is the only developer rung that combines live judgment with the wasm-only s
 
 The deterministic halves are gated automatically; the model legs never are:
 
-- `cargo make ci` in each repo — the per-repo workspace gate.
-- `specify-adapters`' ordinary workspace gate — native scripted/replay profiles, linked-runtime seams, adapter crate tests, and adapter-local component conformance.
+- `cargo make ci` in each repo — the per-repo workspace gate; neither resolves the other repository.
+- `specify-adapters`' ordinary workspace gate — adapter crate tests and adapter-local component conformance, with no Specify dependency in its graph.
+- `specify-adapters`' dedicated `native-harness` job — the standalone `harness/native` workspace against its declared engine pin (the only job holding the read-only `SPECIFY_READ_TOKEN`).
 - Specify's composed job — the model-free workflow-core scenario with echo adapters and no sibling checkout.
+- Neither repo gates on the other's HEAD: compatibility is owned by the adapters repo's pin, advanced deliberately.
 - Live-model profiles stay operator-triggered (rungs 2 and 3); CI never requires model credentials.
