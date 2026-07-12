@@ -6,6 +6,8 @@
 //! and model mechanics.
 
 mod assertion;
+/// Run-bundle layout and report-completeness validation.
+pub mod bundle;
 /// Embedded catalog of the canonical workflow scenarios.
 pub mod catalog;
 /// Profile-specific evaluators over trial workspaces.

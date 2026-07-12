@@ -29,7 +29,7 @@ profiles:
   grading: hard
   trials: 1
   environment: {}
-- id: wasm-replay
+- id: replay
   runtime: wasm
   model: replay
   grading: hard

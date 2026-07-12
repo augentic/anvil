@@ -87,7 +87,7 @@ fn boundary_checks_fire_on_bad_fixtures() {
 
     // The expanded `[dependencies.<name>]` table syntax fires.
     let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "harness/composed/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
+    write(dir.path(), "harness/replay/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
     assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
     // A target-specific dependency table fires.

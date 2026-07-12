@@ -20,7 +20,7 @@ workflow:
     kind: command
     run: specify plan execute
 profiles:
-  - id: wasm-replay
+  - id: replay
     runtime: wasm
     model: replay
     grading: hard

@@ -54,9 +54,14 @@ pub struct RunMetadata {
     /// Repository revisions under evaluation, keyed by repository.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub revisions: BTreeMap<String, String>,
-    /// Live model identity, when the profile uses one.
+    /// Live subject-model identity, when the profile uses one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    /// Semantic-judge model identity, recorded separately from the
+    /// subject model so future runs can diverge them. Today both ride
+    /// the same cursor backend.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub judge_model: Option<String>,
     /// Digest of the prompt/reference inputs offered to the model.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt_digest: Option<String>,
@@ -117,6 +122,10 @@ pub struct TrialResult {
     pub hard_assertions: Vec<AssertionResult>,
     /// Semantic grades in scenario declaration order.
     pub semantic_rubrics: Vec<RubricResult>,
+    /// Declared `expected-outputs` absent from the trial workspace;
+    /// non-empty fails the trial.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub missing_outputs: Vec<String>,
     /// Resource and timing measurements for this trial.
     #[serde(default)]
     pub metrics: TrialMetrics,

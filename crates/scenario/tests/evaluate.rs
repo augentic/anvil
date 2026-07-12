@@ -1,18 +1,89 @@
-//! Public-boundary tests for the profile-specific evaluators.
+//! Public-boundary tests for the grading registry and the pure
+//! profile-specific evaluators.
 
 use std::fs;
 use std::path::Path;
 
-use scenario::evaluate::{guest, semantic};
-use scenario::{AssertionId, AssertionResult, Outcome, catalog};
+use scenario::evaluate::{composed, guest, semantic};
+use scenario::grade::{Evaluators, Execution, StepResult, Verdict};
+use scenario::{AssertionId, Outcome, catalog};
 use tempfile::tempdir;
 
-fn unresolved(id: AssertionId) -> AssertionResult {
-    AssertionResult {
-        id,
-        outcome: Outcome::Fail,
-        evidence: None,
-        detail: Some("requires a profile-specific evaluator".into()),
+fn execution(root: &Path) -> Execution {
+    Execution::new(
+        root,
+        [(
+            "execute".to_owned(),
+            StepResult {
+                exit_code: 0,
+                stdout: r#"{"status":"drained"}"#.to_owned(),
+                stderr: String::new(),
+            },
+        )],
+    )
+}
+
+mod registry {
+    use super::*;
+
+    #[test]
+    fn unregistered_probe_fails_with_detail() {
+        let workspace = tempdir().expect("tempdir");
+        let scenario = catalog::load("guest-execute-loop").expect("canonical scenario");
+        let results = scenario::grade::hard(&scenario, &execution(workspace.path()));
+        let cadence = results
+            .iter()
+            .find(|result| result.id == AssertionId::GuestJournalCadence)
+            .expect("cadence result");
+        assert_eq!(cadence.outcome, Outcome::Fail);
+        let detail = cadence.detail.as_deref().expect("failure detail");
+        assert!(detail.contains("requires a profile-specific evaluator"), "{detail}");
+    }
+
+    #[test]
+    fn registered_evaluator_settles_probe() {
+        let workspace = tempdir().expect("tempdir");
+        let scenario = catalog::load("guest-execute-loop").expect("canonical scenario");
+        let evaluators = Evaluators::default()
+            .with(AssertionId::GuestJournalCadence, |_| Verdict::pass("stubbed"))
+            .with(AssertionId::GuestGeneratedCrateVerifies, |_| {
+                Verdict::fail("crates/", "stub failure")
+            });
+        let results =
+            scenario::grade::hard_with(&scenario, &execution(workspace.path()), &evaluators);
+        let by_id =
+            |id: AssertionId| results.iter().find(|result| result.id == id).expect("graded");
+        assert_eq!(by_id(AssertionId::GuestJournalCadence).outcome, Outcome::Pass);
+        assert_eq!(by_id(AssertionId::GuestJournalCadence).evidence.as_deref(), Some("stubbed"));
+        let failed = by_id(AssertionId::GuestGeneratedCrateVerifies);
+        assert_eq!(failed.outcome, Outcome::Fail);
+        assert_eq!(failed.detail.as_deref(), Some("stub failure"));
+    }
+
+    #[test]
+    fn steps_keep_execution_order() {
+        let steps = [
+            (
+                "z-first".to_owned(),
+                StepResult {
+                    exit_code: 0,
+                    stdout: String::new(),
+                    stderr: String::new(),
+                },
+            ),
+            (
+                "a-second".to_owned(),
+                StepResult {
+                    exit_code: 1,
+                    stdout: String::new(),
+                    stderr: String::new(),
+                },
+            ),
+        ];
+        let execution = Execution::new("/tmp", steps);
+        let order: Vec<&str> = execution.steps().map(|(id, _)| id).collect();
+        assert_eq!(order, ["z-first", "a-second"]);
+        assert_eq!(execution.step("a-second").expect("lookup").exit_code, 1);
     }
 }
 
@@ -29,10 +100,9 @@ mod journal_cadence {
         )
         .expect("journal fixture");
 
-        let mut results = vec![unresolved(AssertionId::GuestJournalCadence)];
-        guest::guest(&mut results, workspace.path());
-        assert_eq!(results[0].outcome, Outcome::Pass, "{results:?}");
-        assert_eq!(results[0].evidence.as_deref(), Some(".specify/journal.jsonl"));
+        let verdict = guest::journal_cadence(&execution(workspace.path()));
+        assert!(verdict.passed, "{verdict:?}");
+        assert_eq!(verdict.evidence, ".specify/journal.jsonl");
     }
 
     #[test]
@@ -45,67 +115,56 @@ mod journal_cadence {
         )
         .expect("journal fixture");
 
-        let mut results = vec![unresolved(AssertionId::GuestJournalCadence)];
-        guest::guest(&mut results, workspace.path());
-        assert_eq!(results[0].outcome, Outcome::Fail);
-        let detail = results[0].detail.as_deref().expect("failure detail");
+        let verdict = guest::journal_cadence(&execution(workspace.path()));
+        assert!(!verdict.passed);
+        let detail = verdict.detail.as_deref().expect("failure detail");
         assert!(detail.contains("slice.archive.created"), "{detail}");
     }
 
     #[test]
     fn fails_without_journal() {
         let workspace = tempdir().expect("tempdir");
-        let mut results = vec![unresolved(AssertionId::GuestJournalCadence)];
-        guest::guest(&mut results, workspace.path());
-        assert_eq!(results[0].outcome, Outcome::Fail);
+        let verdict = guest::journal_cadence(&execution(workspace.path()));
+        assert!(!verdict.passed);
     }
 }
 
-mod generated_crates {
+mod composed_evaluators {
     use super::*;
 
-    fn write_crate(root: &Path, name: &str, lib: &str) {
-        let crate_root = root.join("crates").join(name);
-        fs::create_dir_all(crate_root.join("src")).expect("mkdir");
+    #[test]
+    fn drained_plan_passes() {
+        let workspace = tempdir().expect("tempdir");
+        fs::write(workspace.path().join("plan.yaml"), "entries:\n- status: done\n")
+            .expect("plan fixture");
+        assert!(composed::plan_drained(&execution(workspace.path())).passed);
+    }
+
+    #[test]
+    fn pending_plan_fails() {
+        let workspace = tempdir().expect("tempdir");
         fs::write(
-            crate_root.join("Cargo.toml"),
-            format!(
-                "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[workspace]\n"
-            ),
+            workspace.path().join("plan.yaml"),
+            "entries:\n- status: done\n- status: pending\n",
         )
-        .expect("manifest fixture");
-        fs::write(crate_root.join("src/lib.rs"), lib).expect("lib fixture");
+        .expect("plan fixture");
+        assert!(!composed::plan_drained(&execution(workspace.path())).passed);
     }
 
     #[test]
-    fn passes_when_crate_checks() {
+    fn baseline_checks_track_the_merged_spec() {
         let workspace = tempdir().expect("tempdir");
-        write_crate(workspace.path(), "demo", "pub fn answer() -> u8 { 42 }\n");
+        assert!(!composed::baseline_merge_visible(&execution(workspace.path())).passed);
+        assert!(!composed::artifacts_complete(&execution(workspace.path())).passed);
 
-        let mut results = vec![unresolved(AssertionId::GuestGeneratedCrateVerifies)];
-        guest::guest(&mut results, workspace.path());
-        assert_eq!(results[0].outcome, Outcome::Pass, "{results:?}");
-    }
-
-    #[test]
-    fn fails_when_crate_does_not_compile() {
-        let workspace = tempdir().expect("tempdir");
-        write_crate(workspace.path(), "broken", "pub fn answer() -> u8 { \"not a u8\" }\n");
-
-        let mut results = vec![unresolved(AssertionId::GuestGeneratedCrateVerifies)];
-        guest::guest(&mut results, workspace.path());
-        assert_eq!(results[0].outcome, Outcome::Fail);
-        let detail = results[0].detail.as_deref().expect("failure detail");
-        assert!(detail.contains("cargo check failed"), "{detail}");
-    }
-
-    #[test]
-    fn fails_without_generated_crates() {
-        let workspace = tempdir().expect("tempdir");
-        let mut results = vec![unresolved(AssertionId::GuestGeneratedCrateVerifies)];
-        guest::guest(&mut results, workspace.path());
-        assert_eq!(results[0].outcome, Outcome::Fail);
-        assert_eq!(results[0].detail.as_deref(), Some("no generated crates/ directory"));
+        fs::create_dir_all(workspace.path().join(".specify/specs/echo")).expect("mkdir");
+        fs::write(
+            workspace.path().join(".specify/specs/echo/spec.md"),
+            "ID: REQ-001\nSources: echo\n",
+        )
+        .expect("spec fixture");
+        assert!(composed::baseline_merge_visible(&execution(workspace.path())).passed);
+        assert!(composed::artifacts_complete(&execution(workspace.path())).passed);
     }
 }
 

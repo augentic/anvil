@@ -6,7 +6,7 @@ All workflow-quality material shares the `quality/` tree: YAML scenarios are exe
 
 ## What live profiles prove
 
-Deterministic native replay owns workflow lifecycle state, schemas, journals, files, and exit contracts. The composed `wasm-replay` profile drives the canonical full loop through the hosted workflow, source, and target components with checked-in Omnia replay fixtures. Live profiles add only what requires a current model:
+Deterministic native replay owns workflow lifecycle state, schemas, journals, files, and exit contracts. The composed `replay` profile drives the canonical full loop through the hosted workflow, source, and target components with checked-in Omnia replay fixtures. Live profiles add only what requires a current model:
 
 - decomposition and reconciliation quality;
 - behavioral artifact fidelity;
@@ -28,7 +28,7 @@ TRIALS=3 SPECIFY_EVAL_MODEL=<model-id> cargo make quality -- run wasm-live
 
 Both profiles require `cursor-agent` on `PATH` with command-mode credentials. `cargo make dev -- doctor --live` verifies that path. The WebAssembly profile also requires release-built adapter components in the sibling `specify-adapters` checkout.
 
-The live orchestrator is the Cargo Script [`scripts/quality.rs`](../../scripts/quality.rs). It creates one isolated workspace per trial, drives the canonical profile through the owning Rust harness — `specify-dev guest-loop` (in-process linked adapters) for `native-live`, `harness/live` (the shipped binary over a composed deployment) for `wasm-live` — settles hard assertions through `scenario::grade` plus the registered guest evaluators in `scenario::evaluate`, verifies generated crates, grades semantic rubrics through the live model, and writes a structured evidence bundle under `quality/runs/`. The report's `runner` field names the orchestrator and profile (`scripts/quality.rs <profile>`).
+The live orchestrator is the workspace binary [`harness/quality`](../../harness/quality/src/main.rs). It creates one isolated workspace per trial, drives the canonical profile through the owning executor — `specify-dev guest-loop` (in-process linked adapters) for `native-live`, the in-process composed executor (`quality::executor::ComposedExecutor` over the workflow guest and the release-built adapter components) for `wasm-live` — settles hard assertions through `scenario::grade` plus the registered evaluators, verifies generated crates, checks the scenario's declared `expected-outputs`, grades semantic rubrics through the `Judge` seam on the omnia model backend, and writes a `scenario::bundle`-validated evidence bundle under `quality/runs/`. The report's `runner` field names the orchestrator and profile (`quality <profile>`).
 
 ## Report contract
 
@@ -52,7 +52,7 @@ Gate tiers are declared in canonical YAML:
 - `full` scenarios run per minor release or monthly, whichever comes first;
 - live calls never run in ordinary per-commit CI.
 
-The three native pilots (`intent-only`, the full-loop happy path, and `execute-fail-resume`) are deterministic scenario executions in `specify-adapters/harness/native/tests/full_loop.rs`. The composed init seam and replay-backed full loop run under `harness/composed/` on the scheduled/manual composed workflow (`cargo make test-wasm` locally). The live workflow runner currently exercises the complete guest loop through `native-live` and `wasm-live`; additional live cases should reuse the same report and rubric vocabulary.
+The three native pilots (`intent-only`, the full-loop happy path, and `execute-fail-resume`) are deterministic scenario executions in `specify-adapters/harness/native/tests/full_loop.rs`. The composed init seam and replay-backed full loop run under `harness/replay/` on the scheduled/manual composed workflow (`cargo make test-replay` locally). The live workflow runner currently exercises the complete guest loop through `native-live` and `wasm-live`; additional live cases should reuse the same report and rubric vocabulary.
 
 ## Historical records
 

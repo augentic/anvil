@@ -70,10 +70,6 @@ criteria = "safe-to-deploy"
 version = "0.12.16"
 criteria = "safe-to-deploy"
 
-[[exemptions.assert_cmd]]
-version = "2.2.2"
-criteria = "safe-to-run"
-
 [[exemptions.autocfg]]
 version = "1.5.1"
 criteria = "safe-to-deploy"
@@ -125,10 +121,6 @@ criteria = "safe-to-deploy"
 [[exemptions.borrow-or-share]]
 version = "0.2.4"
 criteria = "safe-to-deploy"
-
-[[exemptions.bstr]]
-version = "1.12.3"
-criteria = "safe-to-run"
 
 [[exemptions.bytecount]]
 version = "0.6.9"

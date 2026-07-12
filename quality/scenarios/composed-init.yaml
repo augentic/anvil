@@ -11,7 +11,7 @@ workflow:
     kind: command
     run: specify init ./echo-target.wasm --name composed-smoke --scaffold-only
 profiles:
-  - id: wasm-replay
+  - id: replay
     runtime: wasm
     model: replay
     grading: hard

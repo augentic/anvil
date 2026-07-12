@@ -39,15 +39,8 @@ args = [
 # Live quality orchestrator. Pass the subcommand and its arguments after `--`,
 # e.g. `cargo make quality -- run native-live --trials 1`.
 [tasks.quality]
-command = "rustup"
-args = [
-  "run",
-  "nightly",
-  "cargo",
-  "-Zscript",
-  "scripts/quality.rs",
-  "${@}",
-]
+command = "cargo"
+args = ["run", "-q", "-p", "quality", "--", "${@}"]
 
 # Audit
 [tasks.audit]
@@ -122,19 +115,19 @@ cargo build --locked -p fixtures --examples --target wasm32-wasip2
 '''
 
 # Test — the ordinary suite over the default workspace members
-# (crates/* plus tests/framework); the composed harness is opt-in via
-# test-wasm.
+# (crates/* plus tests/framework); the replay harness is opt-in via
+# test-replay.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# Composed WASM smoke — hosts the freshly built guests in one Omnia
+# replay smoke — hosts the freshly built guests in one Omnia
 # deployment. Matches the scheduled composed workflow; not part of
 # check/ci.
-[tasks.test-wasm]
+[tasks.test-replay]
 command = "cargo"
-args = ["nextest", "run", "--locked", "-p", "wasm", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "-p", "replay", "--no-tests=pass"]
 dependencies = ["guests"]
 
 # Test Doc

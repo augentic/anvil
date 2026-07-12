@@ -45,5 +45,8 @@ jobs:
       - name: Build adapter fixtures
         run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
 
+      - name: Build shipped binary
+        run: cargo build --locked -p specify
+
       - name: Composed workflow smoke
-        run: cargo nextest run --locked -p wasm --no-tests=pass
+        run: cargo nextest run --locked -p replay -p quality --no-tests=pass

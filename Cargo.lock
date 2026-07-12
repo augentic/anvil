@@ -1995,15 +1995,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
-name = "live"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "scenario",
- "tempfile",
-]
-
-[[package]]
 name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2351,23 +2342,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "omnia-testkit"
-version = "0.35.0"
-source = "git+https://github.com/augentic/omnia.git#47eff78b1a4b21947c80b3b2ccb312d018a3952b"
-dependencies = [
- "anyhow",
- "bytes",
- "futures",
- "http",
- "http-body-util",
- "omnia",
- "tokio",
- "wasmtime",
- "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -2915,6 +2889,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "quality"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "jiff",
+ "libc",
+ "omnia",
+ "omnia-cursor",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "scenario",
+ "schema",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3201,6 +3196,17 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "replay"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "quality",
+ "scenario",
+ "tempfile",
+ "tokio",
+]
 
 [[package]]
 name = "reqwest"
@@ -4519,20 +4525,6 @@ dependencies = [
  "http-body",
  "thiserror 2.0.18",
  "wit-bindgen 0.57.1",
-]
-
-[[package]]
-name = "wasm"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "omnia",
- "omnia-testkit",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "scenario",
- "tempfile",
- "tokio",
 ]
 
 [[package]]

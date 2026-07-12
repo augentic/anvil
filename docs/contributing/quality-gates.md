@@ -25,7 +25,7 @@ The native profile runs canonical workflow scenarios through `specify-dev` with 
 
 ## Gate 3 — composed WebAssembly
 
-The composed profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, HTTP/reference wiring, and one replay-backed `init → author → approve → execute` loop. Checked-in fixtures use Omnia's replay format; Specify owns only scenario inputs and expected answers. Adapter-local composed tests remain responsible for each adapter component; Specify's composed profile is responsible for workflow-core orchestration across components. Cadence: the scheduled/manual composed workflow and `cargo make test-wasm`, not the per-commit gate — every push still proves the guest crates compile for `wasm32-wasip2`.
+The `replay` profile hosts the workflow guest and adapter components. It owns WIT bindings, component dispatch, links, mount/preopen behavior, HTTP/reference wiring, and one replay-backed `init → author → approve → execute` loop. Checked-in fixtures use Omnia's replay format; Specify owns only scenario inputs and expected answers. Adapter-local composed tests remain responsible for each adapter component; Specify's `replay` profile is responsible for workflow-core orchestration across components. Cadence: the scheduled/manual composed workflow and `cargo make test-replay`, not the per-commit gate — every push still proves the guest crates compile for `wasm32-wasip2`.
 
 ## Gate 4 — live quality
 
@@ -40,7 +40,7 @@ When adding coverage:
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
 3. Put deterministic cross-crate workflow behavior in a canonical scenario with native replay.
-4. Add the composed profile only when the behavior crosses a WebAssembly/WIT/runtime seam.
+4. Add the `replay` profile only when the behavior crosses a WebAssembly/WIT/runtime seam.
 5. Add a semantic rubric only when no deterministic predicate can decide the result.
 
 Do not copy an assertion into another layer for reassurance. Name the seam it owns and let other profiles reuse the same scenario result.

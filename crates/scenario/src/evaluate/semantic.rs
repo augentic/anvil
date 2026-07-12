@@ -1,22 +1,40 @@
-//! Live semantic rubric grading through `cursor-agent`.
+//! Semantic rubric grading behind the [`Judge`] seam.
 //!
 //! Rubric criteria live in two places: the canonical scenario carries
 //! each rubric's criterion sentence, and the shared rubric catalog
 //! (`quality/rubrics/semantic.yaml`) carries the grading scale and the
-//! canonical question per assertion id. The grader spawns one
-//! `cursor-agent --print` completion from the trial workspace so the
-//! model reads the evidence in place, then validates the returned JSON
-//! verdict.
+//! canonical question per assertion id. This module owns the prompt,
+//! the verdict validation, and the catalog loading; producing a raw
+//! verdict is the owning harness's [`Judge`] implementation (the live
+//! one runs on the omnia model seam) — this crate spawns nothing.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use error::{Error, Result};
 use serde::Deserialize;
 
 use crate::{Outcome, RubricResult, SemanticRubric};
+
+/// A semantic grader: turns one rubric prompt into a raw JSON verdict.
+///
+/// Implementations own the model transport (live cursor backend,
+/// scripted fake, …). The verdict contract is one JSON object with
+/// keys `score` (integer on the catalog scale), `outcome` (`pass` or
+/// `fail`), and `detail` (evidence-based explanation);
+/// [`grade`] validates it either way, so a judge may return its
+/// transport's raw output unchecked. An `Err` is a judge that could
+/// not run at all and grades as [`Outcome::Error`].
+///
+/// `Sync` is a supertrait so grading futures stay `Send` for
+/// multi-threaded runtimes.
+pub trait Judge: Sync {
+    /// Produce the raw verdict for `prompt`, judged from `workspace`.
+    fn judge(
+        &self, prompt: String, workspace: &Path,
+    ) -> impl Future<Output = std::result::Result<String, String>> + Send;
+}
 
 /// The shared rubric catalog: grading scale plus one question per
 /// assertion id.
@@ -70,35 +88,28 @@ impl Rubrics {
 }
 
 /// One completed semantic grade: the structured verdict plus the raw
-/// grader streams for the evidence bundle.
+/// judge output for the evidence bundle.
 #[derive(Debug, Clone)]
 pub struct Graded {
     /// The validated verdict.
     pub result: RubricResult,
-    /// Raw grader standard output (the verdict JSON on success).
+    /// Raw judge output (the verdict JSON on success).
     pub raw: String,
-    /// Raw grader standard error.
-    pub stderr: String,
 }
 
-/// Grade one rubric by spawning `cursor-agent --print` from the trial
-/// workspace. A grader that cannot run or returns malformed JSON is an
+/// Grade one rubric through `judge` from the trial workspace. A judge
+/// that cannot run or returns a malformed verdict is an
 /// [`Outcome::Error`], never a silent pass.
-#[must_use]
-pub fn grade(rubric: &SemanticRubric, rubrics: &Rubrics, workspace: &Path) -> Graded {
+pub async fn grade(
+    rubric: &SemanticRubric, rubrics: &Rubrics, workspace: &Path, judge: &impl Judge,
+) -> Graded {
     let prompt = prompt(rubric, rubrics);
-    let output =
-        Command::new("cursor-agent").arg("--print").arg(&prompt).current_dir(workspace).output();
-    let (raw, stderr) = match output {
-        Ok(output) => (
-            String::from_utf8_lossy(&output.stdout).into_owned(),
-            String::from_utf8_lossy(&output.stderr).into_owned(),
-        ),
-        Err(error) => {
+    let raw = match judge.judge(prompt, workspace).await {
+        Ok(raw) => raw,
+        Err(detail) => {
             return Graded {
-                result: error_result(rubric, format!("cursor-agent could not run: {error}")),
+                result: error_result(rubric, format!("semantic judge could not run: {detail}")),
                 raw: String::new(),
-                stderr: String::new(),
             };
         }
     };
@@ -108,11 +119,11 @@ pub fn grade(rubric: &SemanticRubric, rubrics: &Rubrics, workspace: &Path) -> Gr
             id: rubric.id,
             outcome: if score >= rubrics.scale.pass { Outcome::Pass } else { Outcome::Fail },
             score: Some(score),
-            evidence: "rubric.json".to_owned(),
+            evidence: format!("rubric-{}.json", rubric.id),
             detail: Some(detail),
         },
     );
-    Graded { result, raw, stderr }
+    Graded { result, raw }
 }
 
 /// Build the one-shot grading prompt from the scenario rubric and the
@@ -141,29 +152,29 @@ fn prompt(rubric: &SemanticRubric, rubrics: &Rubrics) -> String {
     )
 }
 
-/// Validate the grader's JSON verdict, returning `(score, detail)`.
+/// Validate the judge's JSON verdict, returning `(score, detail)`.
 fn parse_verdict(raw: &str, pass: u8) -> std::result::Result<(u8, String), String> {
     let value: serde_json::Value = serde_json::from_str(raw.trim())
-        .map_err(|error| format!("semantic grader did not return valid JSON: {error}"))?;
+        .map_err(|error| format!("semantic judge did not return valid JSON: {error}"))?;
     let score = value
         .get("score")
         .and_then(serde_json::Value::as_u64)
         .filter(|score| *score <= 100)
-        .ok_or_else(|| "semantic grader returned no integer score in 0-100".to_owned())?;
+        .ok_or_else(|| "semantic judge returned no integer score in 0-100".to_owned())?;
     let outcome = value.get("outcome").and_then(serde_json::Value::as_str);
     if !matches!(outcome, Some("pass" | "fail")) {
-        return Err("semantic grader returned no pass/fail outcome".to_owned());
+        return Err("semantic judge returned no pass/fail outcome".to_owned());
     }
     let detail = value
         .get("detail")
         .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| "semantic grader returned no detail string".to_owned())?;
+        .ok_or_else(|| "semantic judge returned no detail string".to_owned())?;
     let score = u8::try_from(score).expect("score is bounded by 100");
     let claimed_pass = outcome == Some("pass");
     let detail = if claimed_pass == (score >= pass) {
         detail.to_owned()
     } else {
-        format!("{detail} (grader outcome disagreed with its score; the score decides)")
+        format!("{detail} (judge outcome disagreed with its score; the score decides)")
     };
     Ok((score, detail))
 }
@@ -174,7 +185,7 @@ fn error_result(rubric: &SemanticRubric, detail: String) -> RubricResult {
         id: rubric.id,
         outcome: Outcome::Error,
         score: None,
-        evidence: "rubric.json".to_owned(),
+        evidence: format!("rubric-{}.json", rubric.id),
         detail: Some(detail),
     }
 }

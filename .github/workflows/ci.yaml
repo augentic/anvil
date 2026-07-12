@@ -3,31 +3,21 @@ name: CI
 on:
   push:
 
-# Superseded pushes to the same ref stop consuming runners; main always
-# runs to completion so its caches and required checks stay warm.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: specify-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 jobs:
-  # The full Rust gate via the shared org workflow. Its test job runs
-  # nextest over the workspace default members (crates/* plus
-  # tests/framework), so crate integration and the framework-quality
-  # suite execute here without a separate job. Clippy runs --workspace,
-  # which also lints the opt-in composed harness.
   ci:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  # The per-push WASM boundary: prove the guest-facing crates still
-  # compile for wasm32-wasip2. Composed runtime execution (WIT linking,
-  # dispatch, preopens, the replay-backed loop) runs on the scheduled
-  # composed workflow, not per push.
+  # Prove the guest-facing crates compile for wasm32-wasip2.
   wasm:
-    name: WASM guest check
+    name: Wasm guest check
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

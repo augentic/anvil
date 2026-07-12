@@ -114,6 +114,7 @@ fn report_round_trips() {
             runner: "native-harness@0.27.2".into(),
             revisions: [("specify".into(), "abc123".into())].into(),
             model: Some("cursor".into()),
+            judge_model: None,
             prompt_digest: Some("sha256:abc".into()),
             component_digests: BTreeMap::default(),
             started_at,
@@ -136,6 +137,7 @@ fn report_round_trips() {
                 evidence: "plan.yaml".into(),
                 detail: None,
             }],
+            missing_outputs: vec![],
             metrics: TrialMetrics {
                 usage_available: true,
                 input_tokens: 10,

@@ -21,7 +21,7 @@ The Rust types, loader, assertion registry, and report shape live in `crates/sce
 
 - **native-scripted** — linked adapters with ordered scripted responses; fast deterministic integration.
 - **native-replay** — linked adapters with canonical request-key replay; cross-repository CI.
-- **wasm-replay** — hosted workflow and adapter components; the scheduled/manual composed workflow (and `cargo make test-wasm`) runs both the model-free `composed-init` seam and the replay-backed `composed-loop` scenario.
+- **replay** — hosted workflow and adapter components; the scheduled/manual composed workflow (and `cargo make test-replay`) runs both the model-free `composed-init` seam and the replay-backed `composed-loop` scenario.
 - **native-live** — linked adapters with the live Cursor backend; prompt and workflow iteration.
 - **wasm-live** — composed deployment with the live Cursor backend; explicit release confidence.
 
