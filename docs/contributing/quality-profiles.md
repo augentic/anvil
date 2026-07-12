@@ -52,7 +52,7 @@ Gate tiers are declared in canonical YAML:
 - `full` scenarios run per minor release or monthly, whichever comes first;
 - live calls never run in ordinary per-commit CI.
 
-The three native pilots (`intent-only`, the full-loop happy path, and `execute-fail-resume`) are deterministic scenario executions in `specify-adapters/harness/native/tests/full_loop.rs`. The composed init seam and replay-backed full loop run in CI under `harness/composed/`. The live workflow runner currently exercises the complete guest loop through `native-live` and `wasm-live`; additional live cases should reuse the same report and rubric vocabulary.
+The three native pilots (`intent-only`, the full-loop happy path, and `execute-fail-resume`) are deterministic scenario executions in `specify-adapters/harness/native/tests/full_loop.rs`. The composed init seam and replay-backed full loop run under `harness/composed/` on the scheduled/manual composed workflow (`cargo make test-composed` locally). The live workflow runner currently exercises the complete guest loop through `native-live` and `wasm-live`; additional live cases should reuse the same report and rubric vocabulary.
 
 ## Historical records
 

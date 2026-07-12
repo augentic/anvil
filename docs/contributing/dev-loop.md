@@ -48,15 +48,15 @@ The explicit outer gate, never the default edit loop: `doctor --live`, the deter
 cargo make dev -- full
 ```
 
-This is the only developer rung that combines live judgment with the wasm-only surface. The deterministic composed profile covers WIT bindings, dispatch-by-id, and mount/preopen wiring in CI; `dev full` adds current-model output quality.
+This is the only developer rung that combines live judgment with the wasm-only surface. The deterministic composed profile covers WIT bindings, dispatch-by-id, and mount/preopen wiring on the scheduled composed workflow (and `cargo make test-composed`); `dev full` adds current-model output quality.
 
 ## What CI runs
 
 The deterministic halves are gated automatically; the model legs never are:
 
-- `cargo make ci` in each repo — the per-repo workspace gate; neither resolves the other repository.
+- `cargo make ci` in each repo — the per-repo workspace gate; neither resolves the other repository. On Specify the test leg covers the default workspace members (`crates/*` plus `tests/framework`), and a `wasm32-wasip2` compile check guards the guest crates.
 - `specify-adapters`' ordinary workspace gate — adapter crate tests and adapter-local component conformance, with no Specify dependency in its graph.
 - `specify-adapters`' dedicated `native-harness` job — the standalone `harness/native` workspace against its declared engine pin (the only job holding the read-only `SPECIFY_READ_TOKEN`).
-- Specify's composed job — the model-free workflow-core scenario with echo adapters and no sibling checkout.
+- Specify's composed workflow (scheduled/manual, `.github/workflows/composed.yaml`; locally `cargo make test-composed`) — the model-free workflow-core scenario with echo adapters and no sibling checkout. Not a per-push gate.
 - Neither repo gates on the other's HEAD: compatibility is owned by the adapters repo's pin, advanced deliberately.
 - Live-model profiles stay operator-triggered (rungs 2 and 3); CI never requires model credentials.

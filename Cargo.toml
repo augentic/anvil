@@ -9,15 +9,23 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
+# The root package carries no tests: the framework-quality suite lives
+# in the lightweight tests/framework package, crate behavior lives in
+# each crate's tests/, and tests/fs_git.rs is a `#[path]`-shared helper
+# that must not become a (Wasmtime-heavy) empty test binary.
+autotests = false
 
 [lib]
 name = "specify"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
+test = false
+doctest = false
 
 [[bin]]
 name = "specify"
 path = "src/runtime.rs"
+test = false
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -41,33 +49,16 @@ workflow.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
 
-[dev-dependencies]
-assert_cmd.workspace = true
-clap.workspace = true
-clap_complete.workspace = true
-jiff.workspace = true
-omnia-guest.workspace = true
-regex.workspace = true
-schema.workspace = true
-serde-saphyr.workspace = true
-serde_json.workspace = true
-tempfile.workspace = true
-toml.workspace = true
-transport.workspace = true
-workflow.workspace = true
-
-# `framework` gates the prose/manifest surfaces (links, skills,
-# scenarios, plugins, docs) — the rehomed framework checks.
-[[test]]
-name = "framework"
-path = "tests/framework/main.rs"
-
 [lints]
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/*"]
-# default-members = [".", "crates/*" ]
+members = ["crates/*", "harness/*", "tests/framework"]
+# The ordinary test group: crate suites plus the framework-quality
+# package. The root runtime package and the harness packages are
+# explicit opt-ins (`-p specify`, `-p specify-composed-tests`), keeping
+# Wasmtime execution out of the per-commit build.
+default-members = ["crates/*", "tests/framework"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -236,8 +227,42 @@ strip = true
 
 # Cranelift JIT-compiles WASI components at run time; built at debug
 # opt-level the vectis component costs 40-70s per compile, so the
-# compiler-path crates are optimized even in dev/test profiles. Sole
-# cost is one cold rebuild of these dependencies.
-[profile.dev.package."*"]
+# compiler-path crates are optimized even in dev/test profiles. Only
+# these crates: a blanket `package."*"` override forces an optimized
+# rebuild of every dependency, which dominates cold CI builds.
+[profile.dev.package.cranelift-codegen]
+opt-level = 2
+
+[profile.dev.package.cranelift-frontend]
+opt-level = 2
+
+[profile.dev.package.cranelift-entity]
+opt-level = 2
+
+[profile.dev.package.cranelift-bforest]
+opt-level = 2
+
+[profile.dev.package.cranelift-bitset]
+opt-level = 2
+
+[profile.dev.package.cranelift-control]
+opt-level = 2
+
+[profile.dev.package.cranelift-native]
+opt-level = 2
+
+[profile.dev.package.cranelift-assembler-x64]
+opt-level = 2
+
+[profile.dev.package.regalloc2]
+opt-level = 2
+
+[profile.dev.package.wasmparser]
+opt-level = 2
+
+[profile.dev.package.wasmtime-internal-cranelift]
+opt-level = 2
+
+[profile.dev.package.wasmtime-environ]
 opt-level = 2
 

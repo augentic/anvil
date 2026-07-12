@@ -15,7 +15,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "wasm", "test", "test-docs", "doc"]
+dependencies = ["fmt-check", "lint", "wasm", "test", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
@@ -66,15 +66,29 @@ command = "rustup"
 args = ["run", "nightly", "cargo", "udeps", "--all-targets"]
 install_crate = "cargo-udeps"
 
-# Fmt
+# Fmt — mutates; the gates use fmt-check
 [tasks.fmt]
 command = "rustup"
 args = ["run", "nightly", "cargo", "fmt"]
 
-# Lint
+# Fmt check — what CI enforces; run `cargo make fmt` to fix
+[tasks.fmt-check]
+command = "rustup"
+args = ["run", "nightly", "cargo", "fmt", "--all", "--", "--check"]
+
+# Lint — --workspace so the opt-in harness packages stay linted, matching CI
 [tasks.lint]
 command = "cargo"
-args = ["clippy", "--locked", "--all-targets", "--all-features", "--", "-D", "warnings"]
+args = [
+    "clippy",
+    "--locked",
+    "--workspace",
+    "--all-targets",
+    "--all-features",
+    "--",
+    "-D",
+    "warnings",
+]
 install_crate = { rustup_component_name = "clippy" }
 
 # Outdated
@@ -83,11 +97,12 @@ command = "cargo"
 args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
-# Check wasm core
+# Check wasm core — the per-push WASM boundary gate
 [tasks.wasm]
 command = "cargo"
 args = [
     "check",
+    "--locked",
     "--lib",
     "-p",
     "specify",
@@ -98,16 +113,29 @@ args = [
 ]
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# Build guests
+# Build guests — the workflow core plus the echo adapter fixtures
 [tasks.guests]
-command = "cargo"
-args = ["build", "--lib", "-p", "specify", "--target", "wasm32-wasip2"]
+script_runner = "@shell"
+script = '''
+cargo build --locked --lib -p specify --target wasm32-wasip2
+cargo build --locked -p fixtures --examples --target wasm32-wasip2
+'''
 
-# Test
+# Test — the ordinary suite over the default workspace members
+# (crates/* plus tests/framework); the composed harness is opt-in via
+# test-composed.
 [tasks.test]
 command = "cargo"
-args = ["nextest", "run", "--all-features", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
+
+# Composed WASM smoke — hosts the freshly built guests in one Omnia
+# deployment. Matches the scheduled composed workflow; not part of
+# check/ci.
+[tasks.test-composed]
+command = "cargo"
+args = ["nextest", "run", "--locked", "-p", "specify-composed-tests", "--no-tests=pass"]
+dependencies = ["guests"]
 
 # Test Doc
 [tasks.test-docs]

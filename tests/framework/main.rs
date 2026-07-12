@@ -1,7 +1,7 @@
 //! Enforce the repo-local framework-quality predicates over the prose
 //! and manifest surfaces (links, skills, scenarios, plugins, docs).
 //!
-//! Run with `cargo test --test framework`. Any finding fails CI.
+//! Run with `cargo nextest run -p framework`. Any finding fails CI.
 //! Policy lives as constants in each module; failures are test failures.
 
 mod boundaries;
@@ -19,7 +19,13 @@ use std::path::{Path, PathBuf};
 use support::Finding;
 
 fn repo_root() -> PathBuf {
+    // The package manifest lives at tests/framework/, two levels under
+    // the repository root the predicates walk.
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("tests/framework sits two levels under the repo root")
+        .to_path_buf()
 }
 
 fn run_all(root: &Path) -> Vec<Finding> {

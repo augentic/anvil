@@ -3,46 +3,33 @@ name: CI
 on:
   push:
 
+# Superseded pushes to the same ref stop consuming runners; main always
+# runs to completion so its caches and required checks stay warm.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
 
 jobs:
+  # The full Rust gate via the shared org workflow. Its test job runs
+  # nextest over the workspace default members (crates/* plus
+  # tests/framework), so crate integration and the framework-quality
+  # suite execute here without a separate job. Clippy runs --workspace,
+  # which also lints the opt-in composed harness.
   ci:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  # The non-Rust checks: the framework-quality suite — prose/manifest
-  # invariants (links, skills, scenarios, docs) as plain cargo tests at
-  # tests/framework/. The test target lives on the root package
-  # (no `workflow` crate in its graph), so no specify-adapters checkout
-  # is needed here.
-  framework:
-    name: Framework quality
+  # The per-push WASM boundary: prove the guest-facing crates still
+  # compile for wasm32-wasip2. Composed runtime execution (WIT linking,
+  # dispatch, preopens, the replay-backed loop) runs on the scheduled
+  # composed workflow, not per push.
+  wasm:
+    name: WASM guest check
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: true
-
-      - name: Framework quality checks
-        run: cargo test --test framework
-
-  # The deterministic shipped-guest boundary: build the workflow core and
-  # both echo adapter fixtures, then host them in one Omnia command-mode
-  # deployment. This proves WIT linking, dispatch, writable preopens, and
-  # the replay-backed full loop without a sibling checkout or credentials.
-  composed:
-    name: Composed workflow core
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
         with:
@@ -51,23 +38,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip2
-          components: clippy
-
-      - uses: taiki-e/install-action@nextest
 
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - name: Build workflow guest
-        run: cargo build --locked -p specify --lib --target wasm32-wasip2
-
-      - name: Build adapter fixtures
-        run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
-
-      - name: Composed workflow smoke
-        run: cargo nextest run --locked -p specify-composed-tests --no-tests=pass
-
-      - name: Composed harness clippy
-        run: cargo clippy --locked -p specify-composed-tests --all-targets -- -D warnings
+      - name: Check wasm guests
+        run: cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+        env:
+          RUSTFLAGS: -Dwarnings

@@ -99,4 +99,4 @@ cargo make ci     # fmt-check + clippy + all tests (incl. framework) + docs + ve
 cargo make check  # the pre-commit subset
 ```
 
-CI is one job: [`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml) checks out this repo plus `augentic/specify-adapters` (the `SPECIFY_ADAPTERS` checkout feeds the universal rules pack embed) and runs `cargo make ci`.
+Per-push CI ([`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml)) needs no sibling checkout: the shared org workflow runs the workspace gates (its test leg covers the default members, `crates/*` plus `tests/framework`), and a slim job checks the guest crates compile for `wasm32-wasip2`. Composed runtime execution lives in the scheduled/manual [`.github/workflows/composed.yaml`](../../.github/workflows/composed.yaml).
