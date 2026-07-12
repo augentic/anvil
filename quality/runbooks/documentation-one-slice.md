@@ -29,7 +29,7 @@ Prove `documentation` survey correctness at the new entry point: a single bound 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Create a short single-feature brief at `docs/feature-doc.md` describing one self-contained behavior (e.g. a single validated endpoint).
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md) with `specify init omnia@1.0.0`. Create a short single-feature brief at `docs/feature-doc.md` describing one self-contained behavior (e.g. a single validated endpoint).
 
 ## Invocation
 
@@ -51,4 +51,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

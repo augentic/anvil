@@ -1,6 +1,6 @@
 # `/spec:execute` worked-example fixtures
 
-Static fixtures pinning the four `/spec:execute` eval scenarios (see the [scenario catalog](../../../scenarios/README.md) and [`docs/reference/lifecycle.md`](../../../../docs/reference/lifecycle.md)):
+Static fixtures pinning the four `/spec:execute` quality scenarios (see the [scenario runbooks](../../../../runbooks/README.md) and [`docs/reference/lifecycle.md`](../../../../../../docs/reference/lifecycle.md)):
 
 | Scenario | Fixture directory | What it pins |
 |---|---|---|

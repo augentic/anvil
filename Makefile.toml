@@ -24,6 +24,18 @@ dependencies = ["check", "vet", "deny"]
 # Individual Actions
 # -------------------------------------
 
+# Cross-repo developer loop. Pass the subcommand and its arguments after `--`.
+[tasks.dev]
+command = "rustup"
+args = [
+  "run",
+  "nightly",
+  "cargo",
+  "-Zscript",
+  "scripts/dev.rs",
+  "${@}",
+]
+
 # Audit
 [tasks.audit]
 command = "cargo"

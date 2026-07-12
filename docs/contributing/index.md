@@ -36,7 +36,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 **For tooling and CLI work** (the Rust workspace at the repo root):
 
-- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `make dev-*` loop uses nightly Cargo Script
+- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `cargo make dev -- <command>` loop uses nightly Cargo Script
 - [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the root `Makefile` forwards unknown targets to `Makefile.toml`
 - [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks
@@ -53,7 +53,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 ## What to read next
 
 - [Quality gates](quality-gates.md) -- canonical scenarios, execution profiles, assertion ownership, and release cadence
-- [The developer loop](dev-loop.md) -- the three-rung `make dev-*` surface shared with `specify-adapters`: `dev-check` (model-free), `dev-live` (live model), `dev-full` (WASM boundary)
+- [The developer loop](dev-loop.md) -- the three-rung `cargo make dev -- <command>` surface shared with `specify-adapters`: `check` (model-free), `live` (live model), `full` (WASM boundary)
 - [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
@@ -67,4 +67,4 @@ Advanced examples live beside the skills that own them, so they stay close to th
 
 - [`adapters/targets/omnia/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this prompt carries the crate-writer and test-writer behavior).
 - [`adapters/targets/vectis/prose/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/) and [`adapters/targets/vectis/prose/references/examples/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/prose/prompts/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/prompts/).
-- [`quality/scenarios/`](../../quality/scenarios/) -- canonical executable workflow cases; historical operator records remain under `evals/` during migration.
+- [`quality/`](../../quality/) -- unified workflow-quality tree containing canonical scenarios, profiles, runbooks, fixtures, reports, and shared references.

@@ -26,13 +26,23 @@ pub const CHECK_DOCS_IN_DEPLOYABLE: &str = "links.docs-in-deployable-surface";
 /// Markdown trees whose relative links must resolve on disk. Archival
 /// trees (`rfcs/`) are excluded by design: they cite future or
 /// deferred work whose targets may not exist yet.
-const LINK_SCOPE_PREFIXES: &[&str] =
-    &["codex/", "sources/", "targets/", "plugins/", "docs/", ".cursor/"];
+const LINK_SCOPE_PREFIXES: &[&str] = &[
+    "codex/",
+    "sources/",
+    "targets/",
+    "plugins/",
+    "docs/",
+    "quality/runbooks/",
+    "quality/reference/",
+    "quality/fixtures/reference/",
+    "quality/profiles/",
+    ".cursor/",
+];
 
 /// Trees walked for skill directives (the framework include set).
 const DIRECTIVE_SCOPE_PREFIXES: &[&str] = &[
     "codex/", "sources/", "targets/", "plugins/", "docs/", ".cursor/", "rfcs/", "scripts/",
-    "schemas/", "evals/",
+    "schemas/", "quality/",
 ];
 
 /// Tool → schema-name registry for `schemas.specify.dev` URLs cited in

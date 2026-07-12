@@ -1,6 +1,6 @@
 //! Scenario-pack predicates: frontmatter schema, id uniqueness, body
 //! id agreement, stage contiguity, artifact-path safety, assertion
-//! contracts, and the catalog↔runs drift check over `evals/`.
+//! contracts, and the catalog↔runs drift check over `quality/`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -26,7 +26,7 @@ pub const CHECK_ARTIFACT_PATH_UNSAFE: &str = "scenarios.artifact-path-unsafe";
 pub const CHECK_ASSERTION_UNRESOLVED: &str = "scenarios.assertion-unresolved";
 /// A completed run record does not cover exactly its scenario assertions.
 pub const CHECK_RUN_ASSERTION_COVERAGE: &str = "scenarios.run-assertion-coverage";
-/// An eval scenario omits or invents a required negative expectation.
+/// A quality scenario omits or invents a required negative expectation.
 pub const CHECK_NEGATIVE_EXPECTATIONS: &str = "scenarios.negative-expectations";
 /// The catalog, scenario files, and run records disagree.
 pub const CHECK_CATALOG_RUNS_DRIFT: &str = "scenarios.catalog-runs-drift";
@@ -36,10 +36,10 @@ pub const CHECK_CATALOG_RUNS_DRIFT: &str = "scenarios.catalog-runs-drift";
 const STAGES_ORDER: [&str; 5] = ["plan", "refine", "build", "merge", "drop"];
 
 /// Catalog↔runs policy.
-const CATALOG: &str = "evals/scenarios/README.md";
-const SCENARIOS_DIR: &str = "evals/scenarios";
-const RUNS_DIR: &str = "evals/runs";
-const ASSERTIONS: &str = "evals/shared/assertions.md";
+const CATALOG: &str = "quality/runbooks/README.md";
+const SCENARIOS_DIR: &str = "quality/runbooks";
+const RUNS_DIR: &str = "quality/runs/archive";
+const ASSERTIONS: &str = "quality/reference/assertions.md";
 const STATUSES: &[&str] = &["pending", "parked", "passed", "failed", "deferred"];
 const GATES: &[&str] = &["release-blocker", "full"];
 const REQUIRED_NEGATIVE_EXPECTATIONS: &[&str] =
@@ -71,12 +71,12 @@ struct ScenarioFile {
     frontmatter: JsonMap<String, JsonValue>,
 }
 
-/// Discover scenario candidates: flat `evals/scenarios/<id>.md` files
+/// Discover scenario candidates: flat `quality/runbooks/<id>.md` files
 /// (skipping the catalog `README.md`), `targets/<a>/tests/…` scenario
 /// files, and `plugins/<p>/skills/<s>/fixtures/<case>/scenario.md`.
 fn discover_candidates(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
-    collect_evals(&root.join("evals").join("scenarios"), &mut out);
+    collect_runbooks(&root.join(SCENARIOS_DIR), &mut out);
     collect_targets(root, &mut out);
     collect_plugin_fixtures(&root.join("plugins"), &mut out);
     out.sort();
@@ -84,7 +84,7 @@ fn discover_candidates(root: &Path) -> Vec<PathBuf> {
     out
 }
 
-fn collect_evals(dir: &Path, out: &mut Vec<PathBuf>) {
+fn collect_runbooks(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

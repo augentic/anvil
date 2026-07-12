@@ -43,7 +43,7 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 # Run the native `specify-dev` binary — the same verb handlers as the
 # wasm guest against the NativeProvider (in-process adapter dispatch,
 # cursor-agent model). Requires the ../specify-adapters sibling
-# checkout. Named to match the root `make dev-run` vocabulary; forward
+# checkout. This lower-level harness task underpins the root `dev run`; forward
 # arguments after `--`:
 #   cargo make dev-run -- plan status
 #   cargo make dev-run -- serve --port 7737

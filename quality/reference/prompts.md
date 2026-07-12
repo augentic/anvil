@@ -2,7 +2,7 @@
 
 Reusable prompts an operator pastes into a live `cursor-agent` session to drive a single platform eval scenario. They let the agent do the clerical and deterministically-checkable work — environment setup, driving the slash-command lifecycle, capturing per-stage output, self-grading the structural assertions, and filling the run-summary — while leaving the irreducible human seams to the operator. Every scenario sanctions an agent-as-operator ("a human **or** agent follows this script").
 
-**These prompts are operator aids, not a harness.** They are pasted interactively per run; they add no checked-in runner, no CI target, no fake forge, and no golden-output comparison, so every scenario `negative-expectation` still holds. Multi-step execute scenarios may also be replayed via checked-in helpers under [`evals/drivers/`](../drivers/README.md) — those scripts shell out to the real CLI and are not wired into CI.
+**These prompts are operator aids, not a harness.** They are pasted interactively per run; they add no checked-in runner, no CI target, no fake forge, and no golden-output comparison, so every scenario `negative-expectation` still holds. Multi-step execute scenarios may also be replayed via checked-in helpers under [`quality/profiles/workflow/`](../profiles/workflow/README.md) — those scripts shell out to the real CLI and are not wired into CI.
 
 The three human seams the prompts always hand back to the operator:
 
@@ -25,15 +25,15 @@ Inputs:
   symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
   other call; if the bare command does not resolve to that build, prepend the symlink dir to
   PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
-  `target/release/specify` path (see evals/shared/setup.md).
-- Scenario: evals/scenarios/<id>.md
-- Shared setup: evals/shared/setup.md (Prerequisites + the matching
+  `target/release/specify` path (see quality/reference/setup.md).
+- Scenario: quality/runbooks/<id>.md
+- Shared setup: quality/reference/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).
 
 Do, in order, capturing each exact command and its verbatim output:
 1. Create the disposable directories the scenario/setup names under the pinned
-   sandbox `evals/.sandbox/<id>/` (recreate it clean, per
-   evals/shared/setup.md). Never reuse an existing project or a non-empty
+   sandbox `quality/.sandbox/<id>/` (recreate it clean, per
+   quality/reference/setup.md). Never reuse an existing project or a non-empty
    Specify state.
 2. Run the init / registry-add / brief-file steps verbatim using the bare
    `specify` command (which the PATH export resolves to the build under test).
@@ -56,14 +56,14 @@ grade the assertions through their probes, and fill the run-summary.
 Pause at the human-only seams; never fabricate a result.
 
 Inputs:
-- The environment left by the SETUP prompt (the `evals/.sandbox/<id>/`
+- The environment left by the SETUP prompt (the `quality/.sandbox/<id>/`
   sandbox, the PATH-resolved `specify` build).
-- evals/scenarios/<id>.md (Invocation, Assertions, Negative
+- quality/runbooks/<id>.md (Invocation, Assertions, Negative
   Expectations).
-- evals/shared/assertions.md (the assertion taxonomy: per-id probe or
+- quality/reference/assertions.md (the assertion taxonomy: per-id probe or
   judgment flag).
-- evals/shared/run-template.md (simplified pass/fail layout).
-- evals/shared/inspect.md (the read-only render verbs for reviewing state).
+- quality/reference/run-template.md (simplified pass/fail layout).
+- quality/reference/inspect.md (the read-only render verbs for reviewing state).
 
 Drive, in order, recording the exact invocation and verbatim output for each
 stage the scenario's `stages` declares:
@@ -72,7 +72,7 @@ stage the scenario's `stages` declares:
    auto-stamp approval.
 2. Review seam: run `specify plan validate` and inspect plan.yaml read-only;
    record the slice shape. Use the read-only render verbs in
-   evals/shared/inspect.md to review state through the CLI rather than
+   quality/reference/inspect.md to review state through the CLI rather than
    hunting raw files.
 3. If the scenario executes: stamp Gate 1 only by running the literal
    `specify plan transition <name> approved` the plan printed.
@@ -88,7 +88,7 @@ stage the scenario's `stages` declares:
    `no active plan` re-entry exits 0.
 
 Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
-- For each assertion id, look it up in evals/shared/assertions.md: run its
+- For each assertion id, look it up in quality/reference/assertions.md: run its
   **probe** verbatim and record pass/fail/skipped from the probe output, or —
   for a **judgment flag** — record the named evidence pointer and mark
   needs-human unless the evidence is unambiguous. Fill the **Assertions**
@@ -96,7 +96,7 @@ Confirm (grade on durable STRUCTURE only — never a byte/golden compare):
 - On a normal pass, record negative expectations as one line: held.
 - Point **Evidence** at the retained sandbox (see [`inspect.md`](inspect.md) for
   read-only inspection commands).
-- Fill the run-summary template and file it under evals/runs/
+- Fill the run-summary template and file it under quality/runs/archive/
   <id>.<result>.md; set the title verdict; update the scenario's status
   in the catalog.
 

@@ -37,7 +37,7 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 
 ## Eval scenarios
 
-The eval scenario pack includes a typescript-multi-slice scenario under [`evals/scenarios/typescript-multi-slice.md`](../../evals/scenarios/typescript-multi-slice.md) for operators validating releases. Contributors running evals should see [Evals](../contributing/evals.md).
+The quality scenario pack includes a typescript-multi-slice scenario under [`quality/runbooks/typescript-multi-slice.md`](../../quality/runbooks/typescript-multi-slice.md) for operators validating releases. Contributors running quality profiles should see [Live quality profiles](../contributing/quality-profiles.md).
 
 ## Next steps
 

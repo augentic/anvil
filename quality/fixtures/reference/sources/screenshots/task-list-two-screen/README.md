@@ -1,6 +1,6 @@
 # `screenshots` source adapter fixture — `task-list-two-screen`
 
-Worked example for the [`screenshots` source adapter](../../../../../adapters/sources/screenshots/). Exercises both operations of the contract: `survey` emits one lead per screen under `## Lead inventory` in `discovery.md`; `extract` returns one Evidence YAML per lead with `documentation` authority and the `region` / `container` / `leaf` claim kinds co-introduced for spatial Evidence.
+Worked example for the [`screenshots` source adapter](https://github.com/augentic/specify-adapters/tree/main/sources/screenshots). Exercises both operations of the contract: `survey` emits one lead per screen under `## Lead inventory` in `discovery.md`; `extract` returns one Evidence YAML per lead with `documentation` authority and the `region` / `container` / `leaf` claim kinds co-introduced for spatial Evidence.
 
 This fixture preserves the regression input for the `vectis-image-layout-inferer` behavior, which now lives in the `screenshots` source adapter. The `input/` directory holds the synthetic screen image; the `design-system/` directory holds the sibling token and asset manifests downstream `targets/vectis/build` consumes when reconciling the Evidence back into `composition.yaml`.
 

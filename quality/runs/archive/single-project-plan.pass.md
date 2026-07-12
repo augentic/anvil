@@ -5,7 +5,7 @@
 - **Scenario:** `single-project-plan`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/single-project-plan/` (recreated fresh 2026-06-15)
+- **Sandbox:** `quality/.sandbox/single-project-plan/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -33,5 +33,5 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `spe
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/single-project-plan/`
+- **Retained at:** `quality/.sandbox/single-project-plan/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/inventory-adjustments.md`, `.specify/scratch/plan/propose-response.json`, `.specify/journal.jsonl`

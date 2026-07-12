@@ -116,7 +116,7 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Design against the public surface:** before adding a unit test, ask whether integration can reach the behavior — reachable through a CLI input or `pub` fn, observable at a public boundary (stdout JSON, exit code, filesystem), and affordable to assert there without a subprocess explosion. If yes, write the integration test; the unit test is redundant.
 - **Default to Deletion:** a `src` unit test survives only when it is reachable and observable but cheap *only* in-process against a **private** kernel (a proptest or dense matrix), or covers a genuinely CLI-unreachable branch. If the kernel is already `pub`, re-home the test to `crates/<name>/tests/` instead.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
-- **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced by the WIT contract plus each adapter crate's `tests/` suite and the adapters repo's composed-deployment tests (the `composed` test target in `evals/`).
+- **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced by the WIT contract plus each adapter crate's `tests/` suite and the adapters repo's composed-deployment tests (the `composed` test target in `adapter-host-tests/`).
 
 Canonical workflow scenarios separate the case from its execution profile: native scripted/replay and composed WASM replay are deterministic gates; live profiles add semantic rubrics. Hard assertions are automated in every applicable profile. `omnia-testkit` owns generic model/replay/runtime test mechanics; Specify owns scenario semantics and grading. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
 
@@ -130,7 +130,7 @@ All commands are run from the repository root:
 
 CI is one job: `.github/workflows/ci.yaml` runs `cargo make ci` from the repo root (no sibling checkout required — the engine embeds no adapter-authored prose). See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
-The quality-gate model and canonical scenarios live under [`quality/`](quality/README.md); historical operator eval guidance and run records remain under [`evals/`](evals/README.md) during migration.
+The complete quality model lives under [`quality/`](quality/README.md): canonical scenarios, runtime profiles, reference fixtures, operator runbooks, and archived reports share one tree, while `harness/` contains only native and composed executors.
 
 ## Skill authoring
 

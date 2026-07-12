@@ -1,13 +1,13 @@
 # Run: `<id>` — **`<pass | fail | deferred>`**
 
-> Copy into `evals/runs/<id>.<result>.md` (e.g. `intent-only.pass.md`), fill against the live run, and update the scenario's status in the [catalog](../scenarios/README.md). Assertion ids and negative-expectations come from the scenario file — do not duplicate them in prose. On `fail` or `deferred`, file a follow-up issue in `augentic/specify` and link it from **Notes**.
+> Historical Markdown record shape retained for interpreting `quality/runs/archive/`. New executions write `scenario::ScenarioReport` bundles under `quality/runs/`; assertion ids come from canonical YAML and `scenario::AssertionId`.
 
 ## Context
 
 - **Scenario:** `<id>`
 - **Operator:** `<name or model identifier>`
 - **CLI:** `<command -v specify>` — `<specify --version>`
-- **Sandbox:** `<evals/.sandbox/<id>/>` (or list multiple roots for multi-fixture runs)
+- **Sandbox:** `<quality/.sandbox/<id>/>` (or list multiple roots for multi-fixture runs)
 
 ## Assertions
 

@@ -9,7 +9,7 @@ setup:
 workflow:
 - id: runbook
   kind: prompt
-  run: Follow evals/scenarios/contract-lifecycle.md
+  run: Follow quality/runbooks/contract-lifecycle.md
 profiles:
 - id: native-replay
   runtime: native

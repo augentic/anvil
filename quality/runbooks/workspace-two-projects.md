@@ -30,7 +30,7 @@ Prove workspace-driven execution across projects: a plan with slices targeting t
 
 ## Setup
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan whose slices route to `backend` and `mobile`.
+Follow the **cross-repo workspace setup** in [`reference/setup.md`](../reference/setup.md) and the **OAuth login brief**. Author and approve a plan whose slices route to `backend` and `mobile`.
 
 ## Invocation
 
@@ -51,4 +51,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

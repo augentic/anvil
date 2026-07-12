@@ -12,24 +12,24 @@ This map names the primary owner of each seam so coverage can move without being
 
 - `harness/native/tests/full_loop.rs` executes the `intent-only`, `guest-execute-loop` happy path, and `execute-fail-resume` pilots from canonical YAML with Omnia's recorded scripted model harness.
 - `harness/native/tests/replay.rs` owns canonical request-key replay compatibility.
-- The remaining canonical YAML files preserve the historical scenario contract. Their `registered` hard probes name profile-specific evaluators still supplied by the legacy runbooks; concrete path/exit/JSON probes move into YAML as each runbook becomes directly executable.
+- Canonical YAML owns every case and assertion id. `registered` probes deliberately select profile-specific evaluators under `quality/profiles/workflow/` when a generic path/exit/JSON probe cannot express a multi-project or interruption check.
 
 ## Composed WebAssembly profiles
 
 - `quality/scenarios/composed-init.yaml` plus `harness/composed/tests/workflow.rs` owns workflow-guest command dispatch, target adapter linking, and project/cache writable preopens in CI.
 - `quality/scenarios/composed-loop.yaml` drives `init → author → approve → execute` through the hosted workflow, echo source, and echo target components with checked-in Omnia replay fixtures.
-- `specify-adapters`' `evals` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
+- `specify-adapters`' `adapter-host-tests` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
 
 ## Live quality profiles
 
 - `quality/run-live.sh native-live` runs three independent linked-adapter trials by default.
 - `quality/run-live.sh wasm-live` runs three independent composed-deployment trials by default.
 - Every trial requires all hard assertions and the `guest-spec-sensible` semantic rubric to pass. Reports retain command logs, rubric evidence, source revisions, component digests, prompt/rubric digest, model identity, duration, and generated-output verification.
-- `evals/runs/` remains immutable historical evidence; new reports live under `quality/runs/`.
+- `quality/runs/archive/` remains immutable historical evidence; new reports live under `quality/runs/`.
 
-## Legacy compatibility
+## Runbooks and profile-specific evaluators
 
-- `evals/scenarios/*.md` remains explanatory operator guidance while `quality/scenarios/*.yaml` is executable authority.
-- `evals/shared/assertions.md` retains expanded probe instructions; `scenario::AssertionId` is the closed registry.
-- `evals/drivers/guest-execute-loop.sh` is a compatibility wrapper. Its implementation and grading now live under `quality/`.
-- Other legacy drivers remain only where a registered profile-specific evaluator has not yet become a concrete YAML probe. Do not add new lifecycle logic there.
+- `quality/runbooks/*.md` is explanatory operator guidance while `quality/scenarios/*.yaml` is executable authority.
+- `quality/reference/assertions.md` retains expanded probe instructions; `scenario::AssertionId` is the closed registry.
+- `quality/profiles/workflow/` owns evaluators that require controlled pauses, resumptions, or multiple workspace slots; `quality/profiles/guest-execute-loop.sh` owns the shared guest-loop implementation.
+- Profile code executes YAML-owned workflow and assertion contracts; it must not define a second catalog or report shape.

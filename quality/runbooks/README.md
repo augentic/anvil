@@ -1,6 +1,6 @@
-# Historical scenario catalog
+# Scenario runbook index
 
-These Markdown files are expanded operator guidance and historical status for the canonical YAML cases under [`quality/scenarios/`](../../quality/scenarios/). The executable scenario, profile, hard-assertion, rubric, and expected-output contract is YAML; each legacy `<id>.md` must have a matching canonical id.
+These Markdown files are expanded operator guidance and historical status for the canonical YAML cases under [`quality/scenarios/`](../scenarios/). The executable scenario, profile, hard-assertion, rubric, and expected-output contract is YAML; each `<id>.md` has a matching canonical id.
 
 This README preserves grouping and historical run status. Current gate tiers live in YAML and the gate model lives in [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). New structured reports land under [`quality/runs/`](../../quality/runs/).
 
@@ -42,7 +42,7 @@ The catalog drains in groups. The N=1 hard halt (`intent-only`) is a **hard halt
 | --------------------------- | --------------------------------------------- | ------ | ---- |
 | Composed guest execute loop | [`guest-execute-loop`](guest-execute-loop.md) | failed | full |
 
-14 scenarios, one `<id>.md` file each, all driven by the sweep. Each file is named for its frontmatter `id` (`<id>.md`) — the single identity the scenario schema validates; run order lives in the group tables above, not in the filename. Fully deterministic behavior is never a scenario: it is a named test in the [Rust workspace](https://github.com/augentic/specify), run under `cargo make test` on every commit; the create-exclusive `.specify/guest.lock` is covered through the native operation harness.
+Fourteen runbooks correspond one-to-one with canonical YAML and are driven by the declared profiles. Run order lives in the group tables above, not in the filename. Narrow deterministic behavior remains a named Rust integration test, run under `cargo make test` on every commit; the create-exclusive `.specify/guest.lock` is covered through the native operation harness.
 
 ## Status legend
 
@@ -59,6 +59,6 @@ The **Gate** column tiers the catalog into two signals:
 - **release-blocker** — the blocking set, re-proven **per release**: `intent-only` (the N=1 hard halt), `execute-fail-resume`, and `workspace-two-projects`. The **release gate is green** when every `release-blocker` row is `passed`. The `intent-only` hard halt is unchanged: if it fails, record it, run nothing else, triage, resume once green.
 - **full** — the remaining scenarios, drained **per minor release or monthly**, whichever comes first. A non-blocking `failed` row is triaged via its linked follow-up issue but does not hold a release on its own. `parked` rows sit outside the drain expectation until they gain an owner.
 
-Groups keep carrying execution order; the Gate tier never moves a scenario between groups. Flipping any row's status requires the matching committed record at [`evals/runs/<id>.<result>.md`](../runs/README.md) — the catalog↔runs check in `tests/framework/scenarios.rs` enforces the agreement. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here.
+Groups keep carrying execution order; the Gate tier never moves a scenario between groups. Flipping any row's status requires the matching committed record at [`quality/runs/archive/<id>.<result>.md`](../runs/README.md) — the catalog↔runs check in `tests/framework/scenarios.rs` enforces the agreement. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here.
 
-Owner-local adapter scenarios stay under [`evals/<name>/scenarios/`](https://github.com/augentic/specify-adapters/blob/main/evals/contracts/scenarios/README.md) in `augentic/specify-adapters`.
+Owner-local adapter scenarios stay under [`adapter-host-tests/<name>/scenarios/`](https://github.com/augentic/specify-adapters/blob/main/adapter-host-tests/contracts/scenarios/README.md) in `augentic/specify-adapters`.

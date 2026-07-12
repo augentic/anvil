@@ -16,8 +16,8 @@ rustc-ice-*
 .DS_Store
 docs/book/
 
-# Stable, browsable eval sandbox (replaces ad-hoc mktemp temp roots)
-evals/.sandbox/
+# Stable, browsable quality-profile sandbox
+quality/.sandbox/
 
 # Specify project state and integration-run scratch logs
 .specify/.cache/

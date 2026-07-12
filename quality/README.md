@@ -6,10 +6,13 @@ This tree is the canonical case and report surface for Specify workflow quality.
 
 ```text
 quality/
-├── scenarios/  # canonical YAML cases
-├── fixtures/   # inputs and replay rows referenced by scenarios
+├── scenarios/  # canonical executable YAML cases
+├── runbooks/   # expanded operator guidance keyed by scenario id
+├── profiles/   # runtime/profile drivers; no scenario definitions
+├── fixtures/   # executable and reference inputs plus replay rows
+├── reference/  # shared assertion, setup, and inspection guidance
 ├── rubrics/    # semantic grading definitions for live profiles
-└── runs/       # structured live/release reports
+└── runs/       # structured reports, with immutable records in archive/
 ```
 
 The Rust types, loader, assertion registry, and report shape live in `crates/scenario`. Generic model and runtime test mechanics come from `omnia-testkit`.
@@ -24,4 +27,4 @@ The Rust types, loader, assertion registry, and report shape live in `crates/sce
 
 Hard assertions execute automatically in every applicable profile. Semantic rubrics execute only in live profiles. Markdown may explain a case, but YAML is the executable authority.
 
-Historical operator explanations and reports remain under `evals/` for audit and compatibility. New executable behavior belongs here; do not add another lifecycle driver to `evals/drivers/`. The exact seam ownership and remaining registered-evaluator boundary is recorded in [`COVERAGE.md`](COVERAGE.md).
+The former workflow eval tree has been fully absorbed here. There is no second scenario framework: YAML is authoritative, runbooks explain it, profiles execute it, and `harness/` supplies native/WASM runtime hosts. Adapter-local hosted quality tests live in the sibling repository's `adapter-host-tests/` package. The exact seam ownership is recorded in [`COVERAGE.md`](COVERAGE.md).

@@ -5,7 +5,7 @@
 - **Scenario:** `execute-pause-resume`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/execute-pause-resume/` (recreated fresh 2026-06-15)
+- **Sandbox:** `quality/.sandbox/execute-pause-resume/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -27,14 +27,14 @@ Probe transcript highlights: two-slice `dashboard` plan (`metrics-summary`, `use
 - Pause simulated by stopping `/spec:execute` after `build --phase prepare` on second slice while entry remained `in-progress` at `refined`; breakout completed build+finalize for `user-activity-feed`.
 - Plan lock held for the session via `specify plan lock -- <cmd>` (same posture as other eval runs).
 - Minimal serde-only library crates (`metrics_summary`, `user_activity_feed`) with `cargo test` — no wasm32 guest pre-merge gate in this sandbox.
-- Driver: `evals/drivers/execute-pause-resume.sh` over shared helpers `evals/drivers/single-repo.sh` + `evals/drivers/lib.sh`.
+- Driver: `quality/profiles/workflow/execute-pause-resume.sh` over shared helpers `quality/profiles/workflow/single-repo.sh` + `quality/profiles/workflow/lib.sh`.
 
 ## Notes
 
 - Resume path after breakout: `specify plan status` named `merge user-activity-feed` directly — no `--continue` or other flags.
-- Subagent driver `evals/drivers/execute-pause-resume.sh` authored the multi-slice plan and full pause/breakout/resume sequence.
+- Subagent driver `quality/profiles/workflow/execute-pause-resume.sh` authored the multi-slice plan and full pause/breakout/resume sequence.
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/execute-pause-resume/`
-- **Key paths:** `plan.yaml`, `crates/`, `.specify/specs/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute-pause-resume.sh`
+- **Retained at:** `quality/.sandbox/execute-pause-resume/`
+- **Key paths:** `plan.yaml`, `crates/`, `.specify/specs/`, `.specify/archive/`, `.specify/journal.jsonl`, `quality/profiles/workflow/execute-pause-resume.sh`

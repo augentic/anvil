@@ -2,7 +2,7 @@
 
 Live evaluation is a profile of the canonical scenario system, not a separate test framework. Canonical executable cases live under [`quality/scenarios/`](../../quality/scenarios/); the assertion registry and report types live in `crates/scenario`; the complete gate model is [Quality gates](quality-gates.md).
 
-Historical scenario prose, operator drivers, and Markdown run records remain under `evals/` as migration guidance and audit evidence. Do not add new executable behavior there.
+All workflow-quality material shares the `quality/` tree: YAML scenarios are executable authority, runbooks provide operator guidance, profiles select runtimes, and archived Markdown records remain audit evidence. `harness/` implements the native and composed hosts rather than a second scenario catalog.
 
 ## What live profiles prove
 
@@ -18,15 +18,15 @@ Every mechanically decidable condition remains a hard assertion and must pass on
 ## Running workflow quality
 
 ```bash
-make dev-live   # guest-execute-loop, native-live, three trials
-make dev-full   # deterministic gates plus wasm-live, three trials
+cargo make dev -- live   # guest-execute-loop, native-live, three trials
+cargo make dev -- full   # deterministic gates plus wasm-live, three trials
 
 # Direct profile selection and overrides
 TRIALS=1 quality/run-live.sh native-live
 TRIALS=3 SPECIFY_EVAL_MODEL=<model-id> quality/run-live.sh wasm-live
 ```
 
-Both profiles require `cursor-agent` on `PATH` with command-mode credentials. `make dev-doctor LIVE=1` verifies that path. The WebAssembly profile also requires release-built adapter components in the sibling `specify-adapters` checkout.
+Both profiles require `cursor-agent` on `PATH` with command-mode credentials. `cargo make dev -- doctor --live` verifies that path. The WebAssembly profile also requires release-built adapter components in the sibling `specify-adapters` checkout.
 
 `quality/run-live.sh` creates one isolated workspace per trial, executes the canonical profile, runs hard assertions, verifies generated crates, grades semantic rubrics through the live model, and writes a structured evidence bundle under `quality/runs/`.
 
@@ -56,9 +56,9 @@ The three native pilots (`intent-only`, the full-loop happy path, and `execute-f
 
 ## Historical records
 
-`evals/runs/` is immutable historical evidence. Its deviations and workarounds describe the binaries used at the time and are not rewritten as current success. New release evidence belongs under `quality/runs/`.
+`quality/runs/archive/` is immutable historical evidence. Its deviations and workarounds describe the binaries used at the time and are not rewritten as current success. New release evidence belongs under `quality/runs/`.
 
-`evals/scenarios/*.md` remains expanded operator guidance corresponding one-to-one with canonical YAML. `crates/scenario/tests/catalog.rs` enforces that mapping and keeps the assertion document aligned with the typed registry.
+`quality/runbooks/*.md` remains expanded operator guidance corresponding one-to-one with canonical YAML. `crates/scenario/tests/catalog.rs` enforces that mapping and keeps the assertion document aligned with the typed registry.
 
 ## Adding coverage
 

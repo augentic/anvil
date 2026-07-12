@@ -4,7 +4,7 @@ Operators want a simple, cross-platform task-tracking app to validate the Vectis
 
 ## Source
 
-Manual (this fixture's `Sources:` lines are stand-ins for real plan-resolved bindings — the matching source-side fixture lives at `evals/fixtures/sources/screenshots/task-list-two-screen/`).
+Manual (this fixture's `Sources:` lines are stand-ins for real plan-resolved bindings — the matching source-side fixture lives at `quality/fixtures/reference/sources/screenshots/task-list-two-screen/`).
 
 ## What Changes
 

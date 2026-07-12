@@ -51,7 +51,13 @@ fn run() -> Result<()> {
     let dev = Dev { framework, adapters };
 
     let mut args = env::args_os().skip(1);
-    let command = args.next().and_then(|value| value.into_string().ok()).unwrap_or_default();
+    let first = args.next();
+    let command = match first {
+        Some(separator) if separator == "--" => args.next(),
+        command => command,
+    }
+    .and_then(|value| value.into_string().ok())
+    .unwrap_or_default();
     let rest: Vec<_> = args.collect();
     match command.as_str() {
         "doctor" => dev.doctor(&rest),
@@ -143,7 +149,7 @@ impl Dev {
                 );
             } else {
                 println!(
-                    "  ..    credential probe skipped (doctor --live / LIVE=1 runs one real model call)"
+                    "  ..    credential probe skipped (`doctor --live` runs one real model call)"
                 );
             }
         } else {
@@ -171,7 +177,7 @@ impl Dev {
             println!("== native tests: {spec} (adapters checkout) ==");
             self.cargo(&self.adapters, ["nextest", "run", "-p", &spec, "--no-tests=pass"])?;
         } else {
-            println!("== no adapter scoped (ADAPTER=<name> adds its native tests) ==");
+            println!("== no adapter scoped (`check <name>` adds its native tests) ==");
         }
         println!("== native harness seam/replay tests (specify checkout) ==");
         self.cargo(&self.framework, ["nextest", "run", "-p", "specify-dev"])
@@ -213,7 +219,7 @@ impl Dev {
             .or_else(|| default_scenario(&adapter).map(str::to_owned))
             .with_context(|| {
                 format!(
-                    "no default live scenario for `{adapter}`; pass SCENARIO=<live-test name from evals/live.rs>"
+                    "no default live scenario for `{adapter}`; pass `live {adapter} <live-test name from adapter-host-tests/live.rs>`"
                 )
             })?;
 
@@ -237,7 +243,7 @@ impl Dev {
         command.args([
             "test",
             "-p",
-            "evals",
+            "adapter-host-tests",
             "--test",
             "live",
             "--",
@@ -253,15 +259,18 @@ impl Dev {
     }
 
     fn full(&self) -> Result<()> {
-        println!("==== dev-full: the explicit outer gate (WASM + live model) ====");
+        println!("==== dev full: the explicit outer gate (WASM + live model) ====");
         self.doctor(&[OsString::from("--live")])?;
         println!("== deterministic native rung ==");
         self.check(&[])?;
         println!("== composed WASM/WIT coverage (adapters checkout) ==");
-        self.cargo(&self.adapters, ["test", "-p", "evals", "--test", "composed"])?;
+        self.cargo(
+            &self.adapters,
+            ["test", "-p", "adapter-host-tests", "--test", "composed"],
+        )?;
         println!("== composed workflow profile: wasm-live ==");
         self.quality("wasm-live")?;
-        println!("==== dev-full: complete ====");
+        println!("==== dev full: complete ====");
         Ok(())
     }
 

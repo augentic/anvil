@@ -2,7 +2,7 @@
 
 Reusable environment setup for the platform eval scenarios. Individual scenarios link here for the common steps and inline only the delta that is specific to them (a different brief, a different adapter, an injected fault).
 
-Run every scenario from the repo-local sandbox at `evals/.sandbox/<scenario>/` (gitignored). Pin it instead of an ad-hoc `mktemp` root so the tree is stable across runs, survives reboots, and is browsable in the IDE — add `evals/.sandbox/` as a second Cursor workspace folder to watch `.specify/`, `plan.yaml`, and `journal.jsonl` populate live. Isolation comes from recreating the directory at the start of each run, not from a unique suffix. Override the base with `SPECIFY_SANDBOX=/abs/path` if you want it outside the repo. These are throwaway projects, branches, and Specify state — never run a scenario from an important working tree. To inspect what a run produced, see [`inspect.md`](inspect.md).
+Run every scenario from the repo-local sandbox at `quality/.sandbox/<scenario>/` (gitignored). Pin it instead of an ad-hoc `mktemp` root so the tree is stable across runs, survives reboots, and is browsable in the IDE — add `quality/.sandbox/` as a second Cursor workspace folder to watch `.specify/`, `plan.yaml`, and `journal.jsonl` populate live. Isolation comes from recreating the directory at the start of each run, not from a unique suffix. Override the base with `SPECIFY_SANDBOX=/abs/path` if you want it outside the repo. These are throwaway projects, branches, and Specify state — never run a scenario from an important working tree. To inspect what a run produced, see [`inspect.md`](inspect.md).
 
 ## Prerequisites
 
@@ -11,14 +11,14 @@ Run every scenario from the repo-local sandbox at `evals/.sandbox/<scenario>/` (
 - Source adapters a scenario binds (`documentation`, `typescript`, …) are components too: a pinned identity in `plan.yaml` resolves the global store entry; a bare name resolves the sibling/in-repo release build. `plan author` runs before `plan.yaml` binds sources, so dev runs give the deployment its source adapters through a project-root `omnia.toml` listing the release-built components (the drivers write one; see the checked-in repo-root [`omnia.toml`](../../omnia.toml) for the shape). Confirm a binding with `specify source resolve <name>`.
 - Git is available for operator-owned slot setup and publication. Cross-repo scenarios may use a local bare repository (`git init --bare`) reached via a `file://` URL to model publication without network or forge access.
 - No forge client (`gh`) is required. `/spec:finalize` confirms publication and archives the plan; it performs no Git or pull-request operations.
-- The replay drivers under [`drivers/`](../drivers/README.md) need `jq` on PATH (the only structured-data dependency). They are bash 3.2-compatible, so the stock macOS `/bin/bash` works — no Homebrew bash 4 required.
+- The workflow profile drivers under [`profiles/workflow/`](../profiles/workflow/README.md) need `jq` on PATH (the only structured-data dependency). They are bash 3.2-compatible, so the stock macOS `/bin/bash` works — no Homebrew bash 4 required.
 
 ## Single-project setup
 
 For scenarios that run against one initialized project (no registry):
 
 ```bash
-SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/evals/.sandbox}/<scenario>"
+SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/quality/.sandbox}/<scenario>"
 rm -rf "$SANDBOX" && mkdir -p "$SANDBOX" && cd "$SANDBOX"
 specify init <adapter>     # e.g. omnia@1.0.0
 ```
@@ -32,16 +32,16 @@ For scenarios that coordinate work across multiple project repos from a registry
 Create the disposable project directories under the pinned sandbox. Every project the plan routes a slice to must be a registered project with its own remote — the contract-routing scenario routes a contract slice to a dedicated `contracts` project, so it is set up alongside `backend` and `mobile`:
 
 ```text
-evals/.sandbox/<scenario>/platform/    # registry-only workspace
-evals/.sandbox/<scenario>/backend/     # omnia@1.0.0 project
-evals/.sandbox/<scenario>/mobile/      # vectis@1.0.0 project
-evals/.sandbox/<scenario>/contracts/   # contracts@1.0.0 project (contract-routing scenarios)
+quality/.sandbox/<scenario>/platform/    # registry-only workspace
+quality/.sandbox/<scenario>/backend/     # omnia@1.0.0 project
+quality/.sandbox/<scenario>/mobile/      # vectis@1.0.0 project
+quality/.sandbox/<scenario>/contracts/   # contracts@1.0.0 project (contract-routing scenarios)
 ```
 
 Initialize them:
 
 ```bash
-SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/evals/.sandbox}/<scenario>"
+SANDBOX="${SPECIFY_SANDBOX:-$(git rev-parse --show-toplevel)/quality/.sandbox}/<scenario>"
 rm -rf "$SANDBOX" && mkdir -p "$SANDBOX"/{platform,backend,mobile,contracts} && cd "$SANDBOX"
 
 cd platform
@@ -138,4 +138,4 @@ the callback, and call the backend exchange endpoint using the shared contract.
 
 ## Recording the run
 
-Capture each run with [`run-template.md`](run-template.md) as `evals/runs/<id>.<result>.md`, then update the scenario's status in the [catalog](../scenarios/README.md).
+Capture each run with [`run-template.md`](run-template.md) as `quality/runs/archive/<id>.<result>.md`, then update the scenario's status in the [catalog](../runbooks/README.md).

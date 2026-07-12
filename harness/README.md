@@ -1,6 +1,6 @@
 # Harness — non-default-member support surfaces
 
-The day-to-day command surface over this harness is the three-rung `make dev-*` loop — `dev-check` (model-free), `dev-live` (live model), `dev-full` (WASM boundary) — documented in [the developer loop](../docs/contributing/dev-loop.md).
+The day-to-day command surface over this harness is the three-rung `cargo make dev -- <command>` loop — `check` (model-free), `live` (live model), `full` (WASM boundary) — documented in [the developer loop](../docs/contributing/dev-loop.md).
 
 ## Quick start
 
@@ -52,7 +52,7 @@ cargo make lint         # harness clippy gate
 cargo make guests # WASM core + echo fixtures; not needed for the native loop
 ```
 
-`cargo make dev-run` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`. From either repo root, `make dev-run PROJECT=/path/to/project ARGS='plan status'` is the same shim without changing directory (see `scripts/dev.rs`).
+`cargo make dev-run` itself runs from `harness/`; use the built `specify-dev` binary from the project directory for workflow commands that do not accept `--project-dir`. From either repo root, `cargo make dev -- run /path/to/project plan status` is the same shim without changing directory (see `scripts/dev.rs`).
 
 ## Contents
 

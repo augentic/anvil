@@ -5,7 +5,7 @@
 - **Scenario:** `intent-only`
 - **Operator:** Cursor agent (agent-as-operator, per the agent runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/intent-only/` (recreated fresh 2026-06-15)
+- **Sandbox:** `quality/.sandbox/intent-only/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -36,5 +36,5 @@ Probe transcript highlights: fresh sandbox recreated; `plan.yaml` existed with `
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/intent-only/`
+- **Retained at:** `quality/.sandbox/intent-only/`
 - **Key paths:** `plan.yaml`, `discovery.md`, `.specify/slices/fix-typo/`, `.specify/journal.jsonl`

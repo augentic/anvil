@@ -9,7 +9,7 @@ setup:
 workflow:
 - id: runbook
   kind: prompt
-  run: Follow evals/scenarios/workspace-two-projects.md
+  run: Follow quality/runbooks/workspace-two-projects.md
 profiles:
 - id: native-replay
   runtime: native

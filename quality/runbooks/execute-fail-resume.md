@@ -27,7 +27,7 @@ Prove the build-failure recovery path: a slice's `cargo test` fails during `spec
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Author a plan named `rate-limit` whose build will fail on first attempt (e.g. a task that needs an operator-supplied fix). Stamp Gate 1.
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md) with `specify init omnia@1.0.0`. Author a plan named `rate-limit` whose build will fail on first attempt (e.g. a task that needs an operator-supplied fix). Stamp Gate 1.
 
 ## Invocation
 
@@ -48,4 +48,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

@@ -101,4 +101,4 @@
 - [CLI architecture](contributing/cli-architecture.md)
 - [Consistency checks](contributing/checks.md)
 - [Skills test coverage](contributing/skills-test-coverage.md)
-- [Evals](contributing/evals.md)
+- [Live quality profiles](contributing/quality-profiles.md)

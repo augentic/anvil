@@ -31,11 +31,11 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 adapters="${SPECIFY_ADAPTERS:-$root/../specify-adapters}"
 release="$adapters/target/wasm32-wasip2/release"
 shim="${SPECIFY_SHIM:-guest}"
-sandbox="${SPECIFY_SANDBOX:-$root/evals/.sandbox}/guest-execute-loop"
+sandbox="${SPECIFY_SANDBOX:-$root/quality/.sandbox}/guest-execute-loop"
 [ "$shim" = native ] && sandbox="$sandbox-native"
 
 command -v cursor-agent >/dev/null || {
-  echo "cursor-agent not found on PATH; install it, then \`cursor-agent login\` or export CURSOR_API_KEY (\`make dev-doctor LIVE=1\` verifies command-mode credentials)" >&2
+  echo "cursor-agent not found on PATH; install it, then \`cursor-agent login\` or export CURSOR_API_KEY (\`cargo make dev -- doctor --live\` verifies command-mode credentials)" >&2
   exit 2
 }
 command -v jq >/dev/null || { echo "jq not found on PATH" >&2; exit 2; }

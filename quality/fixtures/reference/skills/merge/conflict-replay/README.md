@@ -1,6 +1,6 @@
 # `merge/conflict-replay/`
 
-Pins the merge-conflict stop hint contract from [`plugins/spec/skills/merge/SKILL.md`](../../../../../plugins/spec/skills/merge/SKILL.md) §Stop hint contract. Stress-tests the merge-baseline-conflict branch of workflow §Execution model trigger table.
+Pins the merge-conflict stop hint contract from [`plugins/spec/skills/merge/SKILL.md`](../../../../../../plugins/spec/skills/merge/SKILL.md) §Stop hint contract. Stress-tests the merge-baseline-conflict branch of workflow §Execution model trigger table.
 
 ## Scenario
 

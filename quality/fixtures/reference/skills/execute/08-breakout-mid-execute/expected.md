@@ -12,7 +12,7 @@ Pins the contract that `/spec:execute` re-entry is implicit. The operator cancel
 ## Trace
 
 1. **Operator runs `/spec:execute`.**
-   - Acquires `.specify/plan.lock` by driving the loop under `specify plan lock -- <cmd>` per [`../../../../../plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md).
+   - Acquires the execution marker described by [`specify plan execute`](../../../../../../docs/reference/cli/plan.md#specify-plan-execute).
    - `specify plan status` returns `next-action: build group-list-search-filter` (slice 2 is `in-progress`, lifecycle `refined`); `specify plan next` confirms the active entry; the loop dispatches `/spec:build`.
    - Operator interrupts mid-build with Ctrl-C. The `specify plan lock` process holding the lock exits; the lock auto-releases. The plan entry stays `in-progress`; the slice lifecycle stays `refined`.
 

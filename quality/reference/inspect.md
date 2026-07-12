@@ -2,7 +2,7 @@
 
 Read-only ways to see what an eval run produced. Prefer the CLI's own render verbs over hunting raw files: the rendered views are the canonical surface, they stay stable while on-disk artifact locations are still settling, and they read state the same way the skills and CI do.
 
-Every run lives at the pinned sandbox `evals/.sandbox/<scenario>/` ([`setup.md`](setup.md)). Run these from that directory (or the routed project / workspace root within it). All are read-only — none drive a `/spec:*` command or mutate state.
+Every run lives at the pinned sandbox `quality/.sandbox/<scenario>/` ([`setup.md`](setup.md)). Run these from that directory (or the routed project / workspace root within it). All are read-only — none drive a `/spec:*` command or mutate state.
 
 ## The event timeline
 

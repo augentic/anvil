@@ -5,7 +5,7 @@
 - **Scenario:** `workspace-two-projects`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
-- **Sandbox:** `evals/.sandbox/workspace-two-projects/` (`platform/`, `backend/`, `mobile/`, `contracts/`)
+- **Sandbox:** `quality/.sandbox/workspace-two-projects/` (`platform/`, `backend/`, `mobile/`, `contracts/`)
 
 ## Assertions
 
@@ -27,7 +27,7 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 - Symlinked the `documentation` source adapter into the workspace (`adapters/sources/documentation`) per setup prerequisite.
 - Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
 - Plan authored headlessly (`specify plan create`, survey finalize, `propose --from`) rather than a live `/spec:plan` skill session; default-on platform bootstrap inserted `app-foundation` bootstrap slice for mobile.
-- Execute driven by `evals/drivers/workspace.sh workspace-two-projects` following `/spec:execute` routing (`SPECIFY_PLAN_DIR`, refine → build → merge per slice) with minimal omnia/vectis/contracts build stubs; slots and branches were prepared through operator-owned Git setup, and finalize was not run (execute-only per scenario stages).
+- Execute driven by `quality/profiles/workflow/workspace.sh workspace-two-projects` following `/spec:execute` routing (`SPECIFY_PLAN_DIR`, refine → build → merge per slice) with minimal omnia/vectis/contracts build stubs; slots and branches were prepared through operator-owned Git setup, and finalize was not run (execute-only per scenario stages).
 - Inter-slice residue commits after refine/build kept each operator-prepared slot clean between phases.
 
 ## Notes
@@ -36,5 +36,5 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: approved` befo
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/workspace-two-projects/`
+- **Retained at:** `quality/.sandbox/workspace-two-projects/`
 - **Key paths:** `platform/plan.yaml`, `platform/change.md`, `platform/discovery.md`, `platform/registry.yaml`, `platform/workspace/{backend,mobile,contracts}`, `platform/.specify/journal.jsonl`, `backend/.specify/specs/`, `mobile/.specify/specs/`

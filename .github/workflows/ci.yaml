@@ -74,7 +74,7 @@ jobs:
 
   # The deterministic cross-repo gate over the native harness: check
   # out the sibling specify-adapters repo (the shim links its adapter
-  # crates by path) and run the model-free dev-check content — the
+  # crates by path) and run the model-free `dev check` content — the
   # native harness seam/replay suite plus its clippy gate. No WASM
   # builds and no model calls; live evaluation stays operator-triggered
   # and the composed tests remain the WASM/WIT gate in the adapters

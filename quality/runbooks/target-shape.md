@@ -25,11 +25,11 @@ Scenario ID: `target-shape`
 
 ## Intent
 
-Prove that core synthesis folds a non-empty `target.shape` brief into a slice's `spec.md` and `design.md` regardless of source. Two fixtures — one pure-intent, one documentation-sourced — should both pick up the same target-idiom guidance. See the worked fixture in [`evals/fixtures/targets/omnia/`](../fixtures/targets/omnia/README.md).
+Prove that core synthesis folds a non-empty `target.shape` brief into a slice's `spec.md` and `design.md` regardless of source. Two fixtures — one pure-intent, one documentation-sourced — should both pick up the same target-idiom guidance. See the worked fixture in [`quality/fixtures/reference/targets/omnia/`](../fixtures/reference/targets/omnia/README.md).
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0` (a target whose `shape` brief is non-empty). Prepare two one-slice inputs for slice `greeting`: one driven by pure intent, one by a short docs path describing the same behavior.
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md) with `specify init omnia@1.0.0` (a target whose `shape` brief is non-empty). Prepare two one-slice inputs for slice `greeting`: one driven by pure intent, one by a short docs path describing the same behavior.
 
 ## Invocation
 
@@ -50,4 +50,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

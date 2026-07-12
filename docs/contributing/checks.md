@@ -75,7 +75,7 @@ The authoring schema accepts canonical YAML and legacy Markdown frontmatter duri
 - **Assertion registry** — every legacy assertion resolves to the documented taxonomy; canonical YAML deserialises through the closed `scenario::AssertionId` enum.
 - **Run assertion coverage** — completed historical records cover exactly the assertions declared by their scenario.
 - **Negative-expectation policy** — live model calls stay outside ordinary CI and semantic output is not byte-golden tested.
-- **Catalog ↔ runs drift** — the [`evals/scenarios/README.md`](../../evals/scenarios/README.md) catalog's Status/Gate columns must agree with the committed run records under `evals/runs/`.
+- **Catalog ↔ runs drift** — the [`quality/runbooks/README.md`](../../quality/runbooks/README.md) catalog's Status/Gate columns must agree with the committed run records under `quality/runs/archive/`.
 
 ### `prose.rs`
 

@@ -33,7 +33,7 @@ The entrypoint names `/spec:plan` because the run begins at plan authoring; the 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md), except `init` uses a local component path: `specify init <sibling>/target/wasm32-wasip2/release/omnia.wasm` against the release-built sibling `augentic/specify-adapters` checkout (`cargo make release` there), which mirrors the component into the project component cache. Pin the in-tree workflow guest as the core with `SPECIFY_CORE_PATH` so init never hydrates `specify:core` from the registry. `cursor-agent` must be on PATH and logged in. The [`guest-execute-loop` driver](../drivers/README.md) automates the clerical setup below and the invocation's runtime calls; driving through it is equivalent to typing the steps.
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md), except `init` uses a local component path: `specify init <sibling>/target/wasm32-wasip2/release/omnia.wasm` against the release-built sibling `augentic/specify-adapters` checkout (`cargo make release` there), which mirrors the component into the project component cache. Pin the in-tree workflow guest as the core with `SPECIFY_CORE_PATH` so init never hydrates `specify:core` from the registry. `cursor-agent` must be on PATH and logged in. The [`guest-execute-loop` driver](../profiles/workflow/README.md) automates the clerical setup below and the invocation's runtime calls; driving through it is equivalent to typing the steps.
 
 Write the deployment manifest at the sandbox root: workflow guest (built by `cargo build --lib -p specify --target wasm32-wasip2` from the repo root) plus the eight release-built adapter components from the sibling checkout, each adapter's MCP references routed at `/mcp/<name>`, one writable `"."` mount at the sandbox — the checked-in [`omnia.toml`](../../omnia.toml) shape with the mount re-pointed. The forwarding `specify` binary honors a project-root `omnia.toml` over the generated manifest in the project cache, so the guest legs below run against this manifest (and `plan author` can dispatch to the `source:intent` guest before `plan.yaml` binds it). The cursor backend advertises the `/mcp/<name>` routes to the spawned agent itself (via `.cursor/mcp.json`); no environment exports are needed.
 
@@ -44,7 +44,7 @@ All from the sandbox root, through the one `specify` binary — guest-owned verb
 1. **Author** — `specify plan author guest-demo --intent "Provide a greeting service with one operation that returns a fixed greeting string."`. The workflow guest scaffolds the plan, surveys through the `source:intent` guest (judgment leg on the live cursor backend), reconciles the leads into `plan.yaml.slices[]`, and exits at `pending`; confirm one lead named `greeting-service` lands in `discovery.md`.
 2. **Gate 1** — `specify plan transition guest-demo approved` (native — the operator's stamp).
 3. **Execute** — `specify plan execute`. The guest loop claims the entry, refines (extract through the intent guest, synthesis through the workflow guest's own judgment leg), builds through the `target:omnia` guest (generated crate lands under `crates/` in the sandbox), merges, and exits drained.
-4. **Verify the generated output** — `cargo check` (and `cargo test` where tests were generated) in the generated crate, per the [generated-output-correctness gate](../../docs/contributing/evals.md#fan-in--fan-out-proof).
+4. **Verify the generated output** — `cargo check` (and `cargo test` where tests were generated) in the generated crate, per the [generated-output-correctness gate](../../docs/contributing/quality-profiles.md#fan-in--fan-out-proof).
 
 ## Assertions
 
@@ -64,4 +64,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

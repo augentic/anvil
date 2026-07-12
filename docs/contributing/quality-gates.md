@@ -57,6 +57,6 @@ Do not copy an assertion into another layer for reassurance. Name the seam it ow
 
 ## Reader acceptance
 
-- **First-time contributor choosing a command:** start with `make dev-check`; use `make dev-live` only for model-sensitive behavior and `make dev-full` only when the WebAssembly boundary or release quality matters.
+- **First-time contributor choosing a command:** start with `cargo make dev -- check`; use `cargo make dev -- live` only for model-sensitive behavior and `cargo make dev -- full` only when the WebAssembly boundary or release quality matters.
 - **Framework developer placing coverage:** use the placement decision above, name one primary seam owner, and add canonical YAML only for cross-phase workflow behavior or semantic quality.
 - **Release owner interpreting reports:** require every hard assertion in every trial, review semantic scores below the review threshold, retain the structured bundle, and never treat a schema-valid build report alone as generated-output proof.

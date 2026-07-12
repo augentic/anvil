@@ -5,7 +5,7 @@
 - **Scenario:** `documentation-multi-slice`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/documentation-multi-slice/` (recreated fresh 2026-06-15)
+- **Sandbox:** `quality/.sandbox/documentation-multi-slice/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -36,5 +36,5 @@ Probe transcript highlights: `plan.yaml` present with `lifecycle: pending`; `spe
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/documentation-multi-slice/`
+- **Retained at:** `quality/.sandbox/documentation-multi-slice/`
 - **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `docs/catalog-revamp.md`, `docs/conventions.md`, `.specify/journal.jsonl`

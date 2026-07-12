@@ -1,13 +1,13 @@
-# `evals/fixtures/targets/vectis/task-list/`
+# `quality/fixtures/reference/targets/vectis/task-list/`
 
 End-to-end fixture covering a Vectis slice that exercises `screenshots`-sourced spatial Evidence → `spec.md` + `design.md` → `composition.yaml` regeneration (scenario #5h).
 
-The fixture is paired with [`evals/fixtures/sources/screenshots/task-list-two-screen/`](../../../sources/screenshots/task-list-two-screen/) — the source-side fixture whose `expected/evidence/` is the same shape as this fixture's `input/evidence/screens.yaml`. The two fixtures are intentionally aligned so the full plan-time → slice-time chain can be wired end-to-end.
+The fixture is paired with [`quality/fixtures/reference/sources/screenshots/task-list-two-screen/`](../../../sources/screenshots/task-list-two-screen/) — the source-side fixture whose `expected/evidence/` is the same shape as this fixture's `input/evidence/screens.yaml`. The two fixtures are intentionally aligned so the full plan-time → slice-time chain can be wired end-to-end.
 
 ## Layout
 
 ```text
-evals/fixtures/targets/vectis/task-list/
+quality/fixtures/reference/targets/vectis/task-list/
 ├── README.md
 ├── design-system/                  # operator-curated manifests + committed exports (RFC-46)
 │   ├── assets.yaml                 # app-icon + vector illustration + symbol chrome
@@ -53,6 +53,6 @@ Re-commit `assets/exports/` and any auto-written `sources.<platform>` pins. Gold
 
 ## See also
 
-- [`evals/fixtures/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
+- [`quality/fixtures/reference/targets/vectis/README.md`](../README.md) — the index for Vectis target fixtures.
 - [`adapters/targets/vectis/prose/briefs/shape.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/briefs/shape.md) — the shape brief whose injection produced `input/specs/task-list/spec.md` + `input/design.md`.
 - [`adapters/targets/vectis/prose/briefs/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/briefs/build.md) — the build brief that regenerates `expected/composition.yaml` from `input/`.

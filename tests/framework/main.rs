@@ -211,15 +211,15 @@ fn skill_checks_fire_on_bad_fixtures() {
 fn write_valid_scenario_tree(root: &Path, id: &str) {
     write(
         root,
-        &format!("evals/scenarios/{id}.md"),
+        &format!("quality/runbooks/{id}.md"),
         &format!(
             "---\nid: {id}\nowner: spec\nkind: skill\nentrypoint: /spec:refine\nstages: [refine, build]\nisolation: fresh-project\nassertions: [plan-exists]\nnegative-expectations:\n  - live-model-ci-required\n  - semantic-byte-golden-required\n---\n\nBody.\n"
         ),
     );
-    write(root, "evals/shared/assertions.md", "### `plan-exists`\n\n**Probe.**\n");
+    write(root, "quality/reference/assertions.md", "### `plan-exists`\n\n**Probe.**\n");
     write(
         root,
-        "evals/scenarios/README.md",
+        "quality/runbooks/README.md",
         &format!(
             "| Scenario | File | Status | Gate |\n| --- | --- | --- | --- |\n| One | [`{id}`]({id}.md) | pending | full |\n"
         ),
@@ -236,7 +236,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // A frontmatter block missing required fields fires the schema check.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "bad");
-    write(dir.path(), "evals/scenarios/bad.md", "---\nid: bad\n---\n\nBody.\n");
+    write(dir.path(), "quality/runbooks/bad.md", "---\nid: bad\n---\n\nBody.\n");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_SCHEMA_VIOLATION));
 
     // Two scenarios sharing one id fire the duplicate check (the second
@@ -253,7 +253,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // A body Scenario ID line disagreeing with the frontmatter fires.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "real");
-    let path = dir.path().join("evals/scenarios/real.md");
+    let path = dir.path().join("quality/runbooks/real.md");
     let content = fs::read_to_string(&path).expect("read");
     fs::write(&path, format!("{content}\nScenario ID: `other`\n")).expect("write");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_BODY_ID_MISMATCH));
@@ -261,7 +261,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // A non-contiguous stages list fires.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "stages");
-    let path = dir.path().join("evals/scenarios/stages.md");
+    let path = dir.path().join("quality/runbooks/stages.md");
     let content = fs::read_to_string(&path).expect("read");
     fs::write(&path, content.replace("[refine, build]", "[plan, build]")).expect("write");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_STAGES_NOT_CONTIGUOUS));
@@ -269,7 +269,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // An escaping expected-artifact path fires.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "arts");
-    let path = dir.path().join("evals/scenarios/arts.md");
+    let path = dir.path().join("quality/runbooks/arts.md");
     let content = fs::read_to_string(&path).expect("read");
     fs::write(
         &path,
@@ -284,7 +284,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // A status-bearing catalog row without its run record fires.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "gate");
-    let path = dir.path().join("evals/scenarios/README.md");
+    let path = dir.path().join("quality/runbooks/README.md");
     let content = fs::read_to_string(&path).expect("read");
     fs::write(&path, content.replace("| pending |", "| passed |")).expect("write");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_CATALOG_RUNS_DRIFT));
@@ -292,7 +292,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // A scenario assertion absent from the shared taxonomy fires.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "assertion");
-    let path = dir.path().join("evals/scenarios/assertion.md");
+    let path = dir.path().join("quality/runbooks/assertion.md");
     let content = fs::read_to_string(&path).expect("read");
     fs::write(&path, content.replace("plan-exists", "unknown-assertion")).expect("write");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_ASSERTION_UNRESOLVED));
@@ -300,12 +300,12 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // A completed run must cover exactly the scenario assertion ids.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "coverage");
-    let catalog = dir.path().join("evals/scenarios/README.md");
+    let catalog = dir.path().join("quality/runbooks/README.md");
     let content = fs::read_to_string(&catalog).expect("read");
     fs::write(&catalog, content.replace("| pending |", "| passed |")).expect("write");
     write(
         dir.path(),
-        "evals/runs/coverage.pass.md",
+        "quality/runs/archive/coverage.pass.md",
         "# Run: `coverage` — **pass**\n\n## Assertions\n\n| Assertion | Verdict | Evidence |\n| --- | --- | --- |\n",
     );
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_RUN_ASSERTION_COVERAGE));
@@ -313,7 +313,7 @@ fn scenario_checks_fire_on_bad_fixtures() {
     // Every catalog scenario carries the same manual-driving prohibitions.
     let dir = tempfile::tempdir().expect("tempdir");
     write_valid_scenario_tree(dir.path(), "negative");
-    let path = dir.path().join("evals/scenarios/negative.md");
+    let path = dir.path().join("quality/runbooks/negative.md");
     let content = fs::read_to_string(&path).expect("read");
     fs::write(&path, content.replace("  - live-model-ci-required\n", "")).expect("write");
     assert!(fired(&scenarios::run(dir.path()), scenarios::CHECK_NEGATIVE_EXPECTATIONS));

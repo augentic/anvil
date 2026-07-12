@@ -5,7 +5,7 @@
 - **Scenario:** `contract-lifecycle`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source)
-- **Sandbox:** `evals/.sandbox/contract-lifecycle/platform/` (workspace root; routed projects at `../backend`, `../mobile`, `../contracts`)
+- **Sandbox:** `quality/.sandbox/contract-lifecycle/platform/` (workspace root; routed projects at `../backend`, `../mobile`, `../contracts`)
 
 ## Assertions
 
@@ -34,7 +34,7 @@ Probe transcript highlights: fresh sandbox with offline local adapter paths (`om
 ## Deviations
 
 - Used offline init with local adapter paths per `shared/setup.md` (no `@v1` network fetch).
-- Plan draft and execute phases driven headlessly (CLI + `evals/drivers/contract-lifecycle.sh`) following `/spec:plan` / `/spec:execute` / `/spec:finalize` skill routing rather than live slash-command skill sessions; Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
+- Plan draft and execute phases driven headlessly (CLI + `quality/profiles/workflow/contract-lifecycle.sh`) following `/spec:plan` / `/spec:execute` / `/spec:finalize` skill routing rather than live slash-command skill sessions; Gate 1 stamped with `specify plan transition oauth-login approved --actor agent`.
 - Platform reconciliation inserted `app-foundation` bootstrap slice; first journal advance is bootstrap, not the contract slice — contract still precedes implementation slices via `depends-on`.
 - Build/merge used minimal target stubs (success `build/report.yaml`, `specify slice merge run`) rather than full Omnia/Vectis/Contracts brief codegen; durable lifecycle and workspace routing exercised against real CLI verbs.
 - `grep -c 'project: mobile'` returns 2 on the archived plan because `app-foundation` also routes to `mobile`; exactly one implementation slice each targets `backend` (`oauth-backend`) and `mobile` (`oauth-mobile`).
@@ -47,7 +47,7 @@ Probe transcript highlights: fresh sandbox with offline local adapter paths (`om
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/contract-lifecycle/`
+- **Retained at:** `quality/.sandbox/contract-lifecycle/`
 - **Key paths:** `.specify/archive/plans/oauth-login-20260615.yaml`, `.specify/archive/plans/oauth-login-20260615/change.md`, `workspace/{backend,mobile,contracts}/` on `specify/oauth-login`, `../{backend,mobile,contracts}-origin.git` bare remotes
 
 ### Finalize wrap-up

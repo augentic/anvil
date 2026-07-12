@@ -1,6 +1,6 @@
 # `/spec:merge` worked-example fixtures
 
-Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge/SKILL.md`](../../../../plugins/spec/skills/merge/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `metadata.yaml`) and the visible output the body must emit.
+Pinned scenarios for the `/spec:merge` skill body at [`plugins/spec/skills/merge/SKILL.md`](../../../../../plugins/spec/skills/merge/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `metadata.yaml`) and the visible output the body must emit.
 
 ## Fixture matrix
 

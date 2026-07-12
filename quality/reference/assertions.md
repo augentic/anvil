@@ -9,7 +9,7 @@ Canonical profiles may automate setup, driving, and hard grading. The remaining 
 
 Conventions:
 
-- Run probes from the scenario sandbox root (`evals/.sandbox/<id>/`, or the workspace root for workspace scenarios) after the stage the assertion grades.
+- Run probes from the scenario sandbox root (`quality/.sandbox/<id>/`, or the workspace root for workspace scenarios) after the stage the assertion grades.
 - Journal probes read through `specify journal show [--filter <event-id-prefix>] [--limit N]` — text mode emits the journal's canonical JSONL lines, so payload projection pipes to `jq -c .payload`. Wire shape per line: `{ timestamp, event, payload }` with kebab-case payload keys. Probes never read `.specify/journal.jsonl` directly.
 - `<slice>`, `<key>`, `<plan>` placeholders come from the run's own plan; substitute before running.
 - Record probe output (or its absence) as the **Evidence** entry in the [run-template](run-template.md) assertion table for any non-`pass` verdict; on `pass` the probe command itself is sufficient evidence.

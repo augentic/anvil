@@ -32,7 +32,7 @@ Prove the degenerate N=1 path: a one-line intent becomes one justifiable slice, 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. No brief file — the intent is the `/spec:plan` argument.
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md) with `specify init omnia@1.0.0`. No brief file — the intent is the `/spec:plan` argument.
 
 ## Invocation
 
@@ -53,7 +53,7 @@ Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) w
 
 This scenario is the **N=1 planning-and-synthesis gate**, not a codegen gate. Its `stages` stop at `refine` deliberately: every in-scope assertion is deterministic structure (plan shape, Gate-1 ergonomics, `Sources:` provenance, lifecycle `refined`), so the N=1 hard halt never depends on a non-deterministic surface.
 
-`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface. That gate belongs to a dedicated per-target build scenario; the orchestration half (`specify plan execute` reaching drained) is proven by the execute scenarios' deterministic probes (see the [assertion taxonomy](../shared/assertions.md)), with recorded-transcript replay parked under [roadmap ideas, "Orchestration trace replay for eval scenarios"](../../rfcs/roadmap.md#ideas-parked).
+`build` / `merge` are excluded on purpose. Driving them here would force Omnia WASM create-mode codegen from a deliberately degenerate "fix typo" intent and then grade *generated-output correctness* — the framework's thinnest, irreducibly non-deterministic surface. That gate belongs to a dedicated per-target build scenario; the orchestration half (`specify plan execute` reaching drained) is proven by the execute scenarios' deterministic probes (see the [assertion taxonomy](../reference/assertions.md)), with recorded-transcript replay parked under [roadmap ideas, "Orchestration trace replay for eval scenarios"](../../rfcs/roadmap.md#ideas-parked).
 
 ## Negative expectations
 
@@ -61,4 +61,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

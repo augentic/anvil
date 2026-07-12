@@ -29,7 +29,7 @@ Prove `typescript` survey and the enumerate / repair loop under `/spec:plan`: a 
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Bind a small legacy TypeScript service as a `typescript` source (a repo with several distinct handlers/services). Record the exact `specify` binding command in the run summary.
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md) with `specify init omnia@1.0.0`. Bind a small legacy TypeScript service as a `typescript` source (a repo with several distinct handlers/services). Record the exact `specify` binding command in the run summary.
 
 ## Invocation
 
@@ -51,4 +51,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

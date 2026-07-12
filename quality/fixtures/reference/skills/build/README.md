@@ -1,6 +1,6 @@
 # `/spec:build` worked-example fixtures
 
-Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build/SKILL.md`](../../../../plugins/spec/skills/build/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `metadata.yaml` + env vars) and the visible output the body must emit.
+Pinned scenarios for the `/spec:build` skill body at [`plugins/spec/skills/build/SKILL.md`](../../../../../plugins/spec/skills/build/SKILL.md). Each fixture documents the inputs the skill is invoked with (active plan entry + slice `metadata.yaml` + env vars) and the visible output the body must emit.
 
 ## Fixture matrix
 

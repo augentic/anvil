@@ -25,11 +25,11 @@ fn every_scenario_loads() {
 }
 
 #[test]
-fn legacy_catalog_is_migrated() {
+fn runbooks_match_canonical_catalog() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let legacy = fs::read_dir(repo.join("evals/scenarios"))
-        .expect("legacy scenarios")
-        .map(|entry| entry.expect("legacy entry").path())
+    let runbooks = fs::read_dir(repo.join("quality/runbooks"))
+        .expect("quality runbooks")
+        .map(|entry| entry.expect("runbook entry").path())
         .filter(|path| path.extension().is_some_and(|extension| extension == "md"))
         .filter_map(|path| {
             let stem = path.file_stem()?.to_str()?;
@@ -45,14 +45,14 @@ fn legacy_catalog_is_migrated() {
         .map(|scenario| scenario.id)
         .collect::<BTreeSet<_>>();
 
-    assert_eq!(canonical, legacy);
+    assert_eq!(canonical, runbooks);
 }
 
 #[test]
 fn assertion_documentation_matches_registry() {
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let document =
-        fs::read_to_string(repo.join("evals/shared/assertions.md")).expect("assertion document");
+    let document = fs::read_to_string(repo.join("quality/reference/assertions.md"))
+        .expect("assertion document");
     let documented = document
         .lines()
         .filter_map(|line| line.strip_prefix("### `")?.strip_suffix('`'))

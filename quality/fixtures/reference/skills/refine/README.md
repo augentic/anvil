@@ -1,6 +1,6 @@
 # `/spec:refine` synthesis fixtures
 
-Worked-example fixtures for the synthesis playbook at [`plugins/spec/references/synthesis/`](../../../../plugins/spec/references/synthesis/) and the `/spec:refine` skill at [`plugins/spec/skills/refine/`](../../../../plugins/spec/skills/refine/).
+Worked-example fixtures for the synthesis playbook at [`plugins/spec/references/synthesis/`](../../../../../plugins/spec/references/synthesis/) and the `/spec:refine` skill at [`plugins/spec/skills/refine/`](../../../../../plugins/spec/skills/refine/).
 
 Each fixture is one slice. The layout per fixture is:
 

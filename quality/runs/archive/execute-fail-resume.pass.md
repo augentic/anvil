@@ -5,7 +5,7 @@
 - **Scenario:** `execute-fail-resume`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
-- **Sandbox:** `evals/.sandbox/execute-fail-resume/` (recreated fresh 2026-06-15)
+- **Sandbox:** `quality/.sandbox/execute-fail-resume/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -32,9 +32,9 @@ Probe transcript highlights: `plan.yaml` present for plan `rate-limit` with four
 
 - `.build-log` at `.specify/slices/session-cookie-harden/.build-log` captures failing `cargo test` output naming `session_cookie_secure_flag_set`.
 - `plan.entry.advanced` events cover each slice claim; no duplicate advance after the build-failed park.
-- Driver: `evals/drivers/execute-fail-resume.sh` over shared helpers `evals/drivers/single-repo.sh` + `evals/drivers/lib.sh`.
+- Driver: `quality/profiles/workflow/execute-fail-resume.sh` over shared helpers `quality/profiles/workflow/single-repo.sh` + `quality/profiles/workflow/lib.sh`.
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/execute-fail-resume/`
-- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/`, `.specify/journal.jsonl`, `evals/drivers/execute-fail-resume.sh`
+- **Retained at:** `quality/.sandbox/execute-fail-resume/`
+- **Key paths:** `plan.yaml`, `change.md`, `discovery.md`, `crates/session_cookie_harden/`, `.specify/archive/`, `.specify/journal.jsonl`, `quality/profiles/workflow/execute-fail-resume.sh`

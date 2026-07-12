@@ -5,7 +5,7 @@
 - **Scenario:** `documentation-one-slice`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/documentation-one-slice/` (recreated fresh 2026-06-15)
+- **Sandbox:** `quality/.sandbox/documentation-one-slice/` (recreated fresh 2026-06-15)
 
 ## Assertions
 
@@ -37,5 +37,5 @@ Probe transcript highlights: fresh sandbox recreated; `plan.reconcile.completed`
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/documentation-one-slice/`
+- **Retained at:** `quality/.sandbox/documentation-one-slice/`
 - **Key paths:** `plan.yaml`, `crates/health_check/`, `.specify/specs/health-check/spec.md`, `.specify/archive/`, `.specify/journal.jsonl`

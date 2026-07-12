@@ -1,6 +1,6 @@
 # `build/breakout-from-execute/`
 
-Pins the plan-lock re-entrancy contract from [`plugins/spec/references/plan-lock.md`](../../../../../plugins/spec/references/plan-lock.md). Stress-tests workflow §Eval scenario `#11` (workspace breakout after build failure) at the env-var-detection layer — the same logic applies whether the parent is single-repo `/spec:execute` or workspace `/spec:execute`.
+Historical fixture for the execution-lock behavior now documented by [`specify plan execute`](../../../../../../docs/reference/cli/plan.md#specify-plan-execute). It preserves the earlier breakout case for comparison with the current guest-lock contract.
 
 ## Scenario
 
@@ -13,4 +13,4 @@ The contract is:
 3. The env var stays in the environment for any further descendants (brief-loaded child shells, the verify-repair loop sub-shells, `specify` invocations).
 4. Otherwise the body behaves identically to the standalone path — same slice resolution, same brief execution, same success/failure transitions.
 
-The same contract applies symmetrically to `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` from the loop. See [`evals/fixtures/skills/merge/`](../../merge/) for the merge-side success/failure fixtures.
+The same contract applies symmetrically to `/spec:merge` invoked under `SPECIFY_PLAN_LOCK_HELD=1` from the loop. See [`quality/fixtures/reference/skills/merge/`](../../merge/) for the merge-side success/failure fixtures.

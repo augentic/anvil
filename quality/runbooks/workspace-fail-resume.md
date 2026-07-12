@@ -29,7 +29,7 @@ Prove breakout-verb routing across the workspace/slot boundary: `specify plan ex
 
 ## Setup
 
-Follow the **cross-repo workspace setup** in [`shared/setup.md`](../shared/setup.md) and the **OAuth login brief**. Author and approve a plan that parks on a slice (e.g. `auth-rotate`) in `backend`.
+Follow the **cross-repo workspace setup** in [`reference/setup.md`](../reference/setup.md) and the **OAuth login brief**. Author and approve a plan that parks on a slice (e.g. `auth-rotate`) in `backend`.
 
 ## Invocation
 
@@ -51,4 +51,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

@@ -1,7 +1,7 @@
 //! Password reset slice — Omnia crate skeleton.
 //!
 //! This is the expected output of `targets/omnia/briefs/build.md` § Crate writer
-//! when run against `evals/fixtures/targets/omnia/input/`. It is a skeleton: operation
+//! when run against `quality/fixtures/reference/targets/omnia/input/`. It is a skeleton: operation
 //! bodies are stubbed but the structural shape — module layout, error enum, operation
 //! delegation, provider trait bounds — is the contract the build brief must produce.
 

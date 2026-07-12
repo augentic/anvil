@@ -9,7 +9,7 @@ setup:
 workflow:
 - id: runbook
   kind: prompt
-  run: Follow evals/scenarios/execute-pause-resume.md
+  run: Follow quality/runbooks/execute-pause-resume.md
 profiles:
 - id: native-replay
   runtime: native

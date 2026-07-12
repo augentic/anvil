@@ -28,7 +28,7 @@ Prove that `/spec:plan` turns a short brief in one initialized project into a sm
 
 ## Setup
 
-Follow the **single-project setup** in [`shared/setup.md`](../shared/setup.md) with `specify init omnia@1.0.0`. Create a short feature brief at `docs/inventory-adjustments.md`:
+Follow the **single-project setup** in [`reference/setup.md`](../reference/setup.md) with `specify init omnia@1.0.0`. Create a short feature brief at `docs/inventory-adjustments.md`:
 
 ```markdown
 # Inventory Adjustments
@@ -67,4 +67,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md).
+Capture with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md).

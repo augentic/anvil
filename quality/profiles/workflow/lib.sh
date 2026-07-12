@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# Shared helpers for the evals/drivers bash scenarios. bash 3.2-safe (no
+# Shared helpers for the quality/profiles/workflow bash scenarios. bash 3.2-safe (no
 # associative arrays). Sourced by each scenario script. Requires jq and git;
 # the `specify` binary under test is built from this checkout by default.
 # Operator replay only; never wired into CI.
@@ -18,9 +18,9 @@
 set -euo pipefail
 
 DRIVERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRAMEWORK="${SPECIFY_FRAMEWORK:-$(cd "$DRIVERS_DIR/../.." && pwd)}"
+FRAMEWORK="${SPECIFY_FRAMEWORK:-$(cd "$DRIVERS_DIR/../../.." && pwd)}"
 FIXTURES_DIR="$DRIVERS_DIR/fixtures"
-SANDBOX_ROOT="${SPECIFY_SANDBOX:-$FRAMEWORK/evals/.sandbox}"
+SANDBOX_ROOT="${SPECIFY_SANDBOX:-$FRAMEWORK/quality/.sandbox}"
 ADAPTERS="${SPECIFY_ADAPTERS:-$FRAMEWORK/../specify-adapters}"
 SPECIFY_BIN="${SPECIFY_BIN:-}"
 
@@ -154,7 +154,7 @@ require_tools() {
 # cursor-agent through the composed runtime; setup-only legs skip this.
 require_model() {
   command -v cursor-agent >/dev/null 2>&1 || {
-    echo "cursor-agent not found on PATH; install it, then \`cursor-agent login\` or export CURSOR_API_KEY (\`make dev-doctor LIVE=1\` verifies command-mode credentials)" >&2
+    echo "cursor-agent not found on PATH; install it, then \`cursor-agent login\` or export CURSOR_API_KEY (\`cargo make dev -- doctor --live\` verifies command-mode credentials)" >&2
     exit 2
   }
 }

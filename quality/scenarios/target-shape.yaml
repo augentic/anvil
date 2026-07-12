@@ -9,7 +9,7 @@ setup:
 workflow:
 - id: runbook
   kind: prompt
-  run: Follow evals/scenarios/target-shape.md
+  run: Follow quality/runbooks/target-shape.md
 profiles:
 - id: native-replay
   runtime: native

@@ -55,7 +55,7 @@ feature brief
 
 ## Setup
 
-Follow [`shared/setup.md`](../shared/setup.md): the **cross-repo workspace setup** (workspace `platform` plus registered `backend`, `mobile`, and `contracts`, each with a local bare-repo `origin`) and the **OAuth login brief** at `docs/oauth-login.md`.
+Follow [`reference/setup.md`](../reference/setup.md): the **cross-repo workspace setup** (workspace `platform` plus registered `backend`, `mobile`, and `contracts`, each with a local bare-repo `origin`) and the **OAuth login brief** at `docs/oauth-login.md`.
 
 ## Invocation
 
@@ -91,4 +91,4 @@ Live profiles remain outside per-commit CI, and semantic output is rubric-graded
 
 ## Recording
 
-Capture the run with [`shared/run-template.md`](../shared/run-template.md) as [`evals/runs/<id>.<result>.md`](../runs/README.md). Preserve on failure: `plan.yaml` (or archived path), `registry.yaml`, every `/spec:finalize` output, workspace status, and branch identifiers.
+Capture the run with [`reference/run-template.md`](../reference/run-template.md) as [`quality/runs/archive/<id>.<result>.md`](../runs/README.md). Preserve on failure: `plan.yaml` (or archived path), `registry.yaml`, every `/spec:finalize` output, workspace status, and branch identifiers.

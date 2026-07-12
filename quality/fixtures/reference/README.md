@@ -18,4 +18,4 @@ No fixture family in this directory is currently executable. The live operator-d
 | [`targets/omnia/`](targets/omnia/) | reference | Static Omnia output-shape examples. |
 | [`targets/vectis/`](targets/vectis/) | reference | Static Vectis output-shape examples. |
 
-Executable operator helpers live under [`evals/drivers/`](../drivers/README.md), outside the fixture tree.
+Executable operator helpers live under [`quality/profiles/workflow/`](../../profiles/workflow/README.md), outside the fixture tree.

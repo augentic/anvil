@@ -9,7 +9,7 @@ setup:
 workflow:
 - id: runbook
   kind: prompt
-  run: Follow evals/scenarios/workspace-stale-recovery.md
+  run: Follow quality/runbooks/workspace-stale-recovery.md
 profiles:
 - id: native-replay
   runtime: native

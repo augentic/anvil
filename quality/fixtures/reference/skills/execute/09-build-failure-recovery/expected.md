@@ -15,7 +15,7 @@ Pins the structured stop on a build non-zero exit and the resume-from-failed-tas
    - Lock acquired.
    - `specify plan status` returns `next-action: build session-cookie-harden`; `specify plan next` confirms the active entry; the loop dispatches `/spec:build`.
    - `/spec:build` runs tasks 1–4 successfully (each `specify slice task mark` flips the checkbox). Task 5 (`cargo test`) fails: a regression test asserts session cookie `Secure` flag is set; production code path forgot it. The brief writes a `status: failure` report; `specify slice build --phase finalize` journals `slice.build.failed` (reason `task-5 cargo test failed: session_cookie_secure_flag_set`) and exits non-zero. The build skill prints its own stop hint (failing task + log path).
-   - The next `specify plan status` classifies the failure from the journal; `/spec:execute` renders its block verbatim per [`../../../../../plugins/spec/references/stop-conditions.md`](../../../../../plugins/spec/references/stop-conditions.md):
+   - The next `specify plan status` classifies the failure from the journal; `/spec:execute` renders its block verbatim per [`../../../../../plugins/spec/references/stop-conditions.md`](../../../../../../plugins/spec/references/stop-conditions.md):
 
      ```text
      stop: build-failed

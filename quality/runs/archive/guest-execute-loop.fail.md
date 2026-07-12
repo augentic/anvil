@@ -3,9 +3,9 @@
 ## Context
 
 - **Scenario:** `guest-execute-loop`
-- **Operator:** Cursor agent (Fable 5), driving `evals/drivers/guest-execute-loop.sh` on the RFC-61 `specify-wasm` branch
+- **Operator:** Cursor agent (Fable 5), driving `quality/profiles/workflow/guest-execute-loop.sh` on the RFC-61 `specify-wasm` branch
 - **CLI:** `engine/target/debug/specify` — `specify 0.27.2` (in-tree build under test; `runtime` from the same workspace)
-- **Sandbox:** `evals/.sandbox/guest-execute-loop/`
+- **Sandbox:** `quality/.sandbox/guest-execute-loop/`
 
 ## Assertions
 
@@ -28,13 +28,13 @@
 
 - Everything up to the model boundary worked as designed: the nine-guest deployment composed, `source survey intent` dispatched through `augentic:specify/source` to the committed intent guest, the guest's judgment leg reached `omnia:model/completion`, and the cursor backend's spawn failure came back across both guest boundaries as the typed `seam-dispatch-failed` envelope (exit 1) — no trap. `plan execute` then claimed the entry and parked with the typed `refine-failed` stop, leaving a consistent, resumable state.
 - The fault is environment authentication, not the framework: `cursor-agent status` reports an IDE login, but `--print` mode (what `omnia-cursor` spawns) requires CLI credentials — `cursor-agent login` or `CURSOR_API_KEY` — and neither is present in the run environment. A bare `cursor-agent --print "say OK"` outside the deployment fails identically.
-- Re-run is one operator action away: complete `cursor-agent login` (or export `CURSOR_API_KEY`), then re-run `bash evals/drivers/guest-execute-loop.sh`.
+- Re-run is one operator action away: complete `cursor-agent login` (or export `CURSOR_API_KEY`), then re-run `bash quality/profiles/workflow/guest-execute-loop.sh`.
 - Follow-up: re-run under the parent RFC-61 session once CLI auth is in place; no separate issue filed — this record is the branch's tracking artifact until then.
 
 ## Evidence
 
-- **Reproduce:** `bash evals/drivers/guest-execute-loop.sh` (recreates the sandbox; requires authenticated `cursor-agent`)
-- **Retained at:** `evals/.sandbox/guest-execute-loop/`
+- **Reproduce:** `bash quality/profiles/workflow/guest-execute-loop.sh` (recreates the sandbox; requires authenticated `cursor-agent`)
+- **Retained at:** `quality/.sandbox/guest-execute-loop/`
 - **Key paths:** `plan.yaml` (entry `in-progress`), `.specify/journal.jsonl` (three events, above), `guest-execute-loop.log`
 
 ---

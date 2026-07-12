@@ -5,7 +5,7 @@
 - **Scenario:** `target-shape`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
 - **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0`
-- **Sandbox:** `evals/.sandbox/target-shape-intent/` (intent fixture), `evals/.sandbox/target-shape-docs/` (documentation fixture)
+- **Sandbox:** `quality/.sandbox/target-shape-intent/` (intent fixture), `quality/.sandbox/target-shape-docs/` (documentation fixture)
 
 ## Assertions
 
@@ -33,6 +33,6 @@
 
 ## Evidence
 
-- **Retained at:** `evals/.sandbox/target-shape-intent/`, `evals/.sandbox/target-shape-docs/`
+- **Retained at:** `quality/.sandbox/target-shape-intent/`, `quality/.sandbox/target-shape-docs/`
 - **Key paths:** `plan.yaml`, `.specify/slices/greeting/` (`specs/greeting/spec.md`, `design.md`, `model.yaml`, `evidence/`), `.specify/journal.jsonl`
 - **Shape comparison:** `diff -u target-shape-intent/.specify/slices/greeting/design.md target-shape-docs/.specify/slices/greeting/design.md` (no output); spec diff shows only `Sources:` lines

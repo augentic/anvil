@@ -1,6 +1,6 @@
 # `captures` source adapter fixture — `user-registration`
 
-Worked example for the [`captures`](../../../../../adapters/sources/captures/) source adapter (the capture-backed replay workflow). Exercises both operations of the source contract: `survey` emits one lead per `tests/data/replays/<handler>/` directory under `## Lead inventory`; `extract` emits one `kind: example` claim per scenario file, each carrying a `sha256:` fixture digest computed over the on-disk bytes.
+Worked example for the [`captures`](https://github.com/augentic/specify-adapters/tree/main/sources/captures) source adapter (the capture-backed replay workflow). Exercises both operations of the source contract: `survey` emits one lead per `tests/data/replays/<handler>/` directory under `## Lead inventory`; `extract` emits one `kind: example` claim per scenario file, each carrying a `sha256:` fixture digest computed over the on-disk bytes.
 
 ## Layout
 
@@ -30,4 +30,4 @@ The `expected/evidence.yaml` document validates against [`schemas/evidence.schem
 
 ## What the provenance projection sample demonstrates
 
-The slice binds one source (`runtime` → `captures`); every requirement carries exactly one contributing claim. Both entries land on `resolution: single-source` with `status: agreed`. The cross-source resolutions (`single-value-agreement`, `authority-resolved`, `per-slice-override`, `unknown-no-evidence`, `tied-conflict`) live in [`plugins/spec/references/synthesis/provenance.md`](../../../../../plugins/spec/references/synthesis/provenance.md); this fixture pins the simplest shape. Provenance is carried inline in `model.yaml`; this `provenance.yaml` golden is the projected audit view, not a file the workflow writes.
+The slice binds one source (`runtime` → `captures`); every requirement carries exactly one contributing claim. Both entries land on `resolution: single-source` with `status: agreed`. The cross-source resolutions (`single-value-agreement`, `authority-resolved`, `per-slice-override`, `unknown-no-evidence`, `tied-conflict`) live in [`plugins/spec/references/synthesis/provenance.md`](../../../../../../plugins/spec/references/synthesis/provenance.md); this fixture pins the simplest shape. Provenance is carried inline in `model.yaml`; this `provenance.yaml` golden is the projected audit view, not a file the workflow writes.

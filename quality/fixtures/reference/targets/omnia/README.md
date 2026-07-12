@@ -1,4 +1,4 @@
-# `evals/fixtures/targets/omnia/`
+# `quality/fixtures/reference/targets/omnia/`
 
 Fixture for the Omnia target adapter (eval scenario #5h: "Target `shape` injection — synthesis consumes a non-empty `target.shape` brief").
 
@@ -11,7 +11,7 @@ This fixture pins the *output* shape: it shows what synthesised `spec.md`, `desi
 ## Layout
 
 ```text
-evals/fixtures/targets/omnia/
+quality/fixtures/reference/targets/omnia/
 ├── README.md
 ├── input/                       # synthesised slice artifacts (post-shape-injection)
 │   ├── spec.md                  # requirement blocks with ID / Sources / Status
@@ -35,4 +35,4 @@ This fixture is a documentation pin for the target adapter. No automated harness
 
 - `targets/omnia/briefs/shape.md` — the idiom guidance this fixture's `input/` reflects.
 - `targets/omnia/briefs/build.md` — the orchestration this fixture's `expected/crate/` reflects.
-- [`target-shape` scenario](../../../scenarios/target-shape.md) and the [evals entry point](../../../../docs/contributing/evals.md).
+- [`target-shape` runbook](../../../../runbooks/target-shape.md) and the [quality-profile entry point](../../../../../docs/contributing/quality-profiles.md).

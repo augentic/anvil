@@ -9,7 +9,7 @@ setup:
 workflow:
 - id: runbook
   kind: prompt
-  run: Follow evals/scenarios/documentation-multi-slice.md
+  run: Follow quality/runbooks/documentation-multi-slice.md
 profiles:
 - id: native-replay
   runtime: native

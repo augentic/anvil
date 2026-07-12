@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # contract-lifecycle execute-phase replay — operator aid, not CI.
 # Plan setup and Gate 1 remain agent-driven per
-# evals/scenarios/contract-lifecycle.md; this driver runs the guest-owned
+# quality/runbooks/contract-lifecycle.md; this driver runs the guest-owned
 # execute loop over the already-approved plan: `specify plan execute` claims
 # each entry, routes it to its workspace slot, and drives refine -> build ->
 # merge until the plan drains.
