@@ -4,6 +4,7 @@
 //! Run with `cargo test --test framework`. Any finding fails CI.
 //! Policy lives as constants in each module; failures are test failures.
 
+mod boundaries;
 mod links;
 mod prose;
 mod scenarios;
@@ -22,7 +23,8 @@ fn repo_root() -> PathBuf {
 }
 
 fn run_all(root: &Path) -> Vec<Finding> {
-    let mut findings = links::run(root);
+    let mut findings = boundaries::run(root);
+    findings.extend(links::run(root));
     findings.extend(skills::run(root));
     findings.extend(scenarios::run(root));
     findings.extend(prose::run(root));
@@ -55,6 +57,21 @@ fn write(root: &Path, relative: &str, body: &str) {
 
 fn fired(findings: &[Finding], check: &str) -> bool {
     findings.iter().any(|finding| finding.check == check)
+}
+
+#[test]
+fn boundary_checks_fire_on_bad_fixtures() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "crates/workflow/Cargo.toml",
+        "[dependencies]\nvectis = { path = \"../../specify-adapters/targets/vectis\" }\n",
+    );
+    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "crates/workflow/src/lib.rs", "use captures::operations;\n");
+    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 }
 
 // Each ported check must fire on a known-bad fixture; the matrices

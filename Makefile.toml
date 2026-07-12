@@ -99,12 +99,12 @@ env = { RUSTFLAGS = "-Dwarnings" }
 # Test Doc
 [tasks.test-docs]
 command = "cargo"
-args = ["test", "--doc", "--all-features"]
+args = ["test", "--doc", "--workspace", "--all-features"]
 
 # Docs
 [tasks.doc]
 command = "cargo"
-args = ["doc", "--no-deps", "--all-features", "--locked"]
+args = ["doc", "--no-deps", "--workspace", "--all-features", "--locked"]
 env = { RUSTDOCFLAGS = "-Dwarnings" }
 
 # Miri

@@ -10,15 +10,15 @@ This map names the primary owner of each seam so coverage can move without being
 
 ## Native workflow profiles
 
-- `harness/native/tests/full_loop.rs` executes the `intent-only`, `guest-execute-loop` happy path, and `execute-fail-resume` pilots from canonical YAML with Omnia's recorded scripted model harness.
-- `harness/native/tests/replay.rs` owns canonical request-key replay compatibility.
+- `specify-adapters/harness/native/tests/full_loop.rs` executes the `intent-only`, `guest-execute-loop` happy path, and `execute-fail-resume` pilots from canonical YAML with Omnia's recorded scripted model harness.
+- `specify-adapters/harness/native/tests/replay.rs` owns canonical request-key replay compatibility.
 - Canonical YAML owns every case and assertion id. `registered` probes deliberately select profile-specific evaluators under `quality/profiles/workflow/` when a generic path/exit/JSON probe cannot express a multi-project or interruption check.
 
 ## Composed WebAssembly profiles
 
 - `quality/scenarios/composed-init.yaml` plus `harness/composed/tests/workflow.rs` owns workflow-guest command dispatch, target adapter linking, and project/cache writable preopens in CI.
 - `quality/scenarios/composed-loop.yaml` drives `init → author → approve → execute` through the hosted workflow, echo source, and echo target components with checked-in Omnia replay fixtures.
-- `specify-adapters`' `adapter-host-tests` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
+- `specify-adapters`' `harness` composed target owns each adapter component's WIT exports, model bridge, MCP references, and route isolation.
 
 ## Live quality profiles
 

@@ -14,7 +14,7 @@
 # `specify` with the live cursor backend, stamping Gate 1 natively in
 # between.
 #
-# Native mode builds `specify-dev` (the harness/native shim: in-process
+# Native mode builds `specify-dev` (the adapters repo's harness/native shim: in-process
 # adapter dispatch, cursor model, ephemeral MCP shelves) and drives the
 # same loop with no wasm builds and no deployment manifest.
 #
@@ -49,10 +49,10 @@ fi
 # Build the binary under test. Guest mode also builds a fresh workflow
 # guest (the manifest below points at the debug guest so the loop under
 # test is the branch head, not a published core); native mode links the
-# same verb handlers and the sibling adapter crates in-process.
+# same verb handlers and the adapter crates in-process.
 if [ "$shim" = native ]; then
-  (cd "$root" && cargo build -q -p specify-dev)
-  specify="$root/target/debug/specify-dev"
+  (cd "$adapters" && cargo build -q -p specify-dev)
+  specify="$adapters/target/debug/specify-dev"
 else
   (
     cd "$root"

@@ -67,10 +67,8 @@ impl TargetSeam for TestProvider {
 fn command_router(
     root: impl Into<PathBuf>,
 ) -> omnia_guest::api::command::Router<TestProvider, transport::command::Globals> {
-    transport::command::router(Invoker::new("specify", TestProvider { root: root.into() }), |_| {
-        Ok(())
-    })
-    .expect("router")
+    transport::command::router(Invoker::new("specify", TestProvider { root: root.into() }))
+        .expect("router")
 }
 
 #[test]

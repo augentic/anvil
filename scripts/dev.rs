@@ -179,8 +179,8 @@ impl Dev {
         } else {
             println!("== no adapter scoped (`check <name>` adds its native tests) ==");
         }
-        println!("== native harness seam/replay tests (specify checkout) ==");
-        self.cargo(&self.framework, ["nextest", "run", "-p", "specify-dev"])
+        println!("== native harness seam/replay tests (adapters checkout) ==");
+        self.cargo(&self.adapters, ["nextest", "run", "-p", "specify-dev"])
     }
 
     fn run_project(&self, args: &[OsString]) -> Result<()> {
@@ -200,7 +200,7 @@ impl Dev {
             project.into_os_string(),
         ];
         cargo_args.extend_from_slice(args);
-        self.cargo_os(&self.framework, &cargo_args)
+        self.cargo_os(&self.adapters, &cargo_args)
     }
 
     fn live(&self, args: &[OsString]) -> Result<()> {
@@ -219,7 +219,7 @@ impl Dev {
             .or_else(|| default_scenario(&adapter).map(str::to_owned))
             .with_context(|| {
                 format!(
-                    "no default live scenario for `{adapter}`; pass `live {adapter} <live-test name from adapter-host-tests/live.rs>`"
+                    "no default live scenario for `{adapter}`; pass `live {adapter} <live-test name from harness/live.rs>`"
                 )
             })?;
 
@@ -243,7 +243,7 @@ impl Dev {
         command.args([
             "test",
             "-p",
-            "adapter-host-tests",
+            "harness",
             "--test",
             "live",
             "--",
@@ -266,7 +266,7 @@ impl Dev {
         println!("== composed WASM/WIT coverage (adapters checkout) ==");
         self.cargo(
             &self.adapters,
-            ["test", "-p", "adapter-host-tests", "--test", "composed"],
+            ["test", "-p", "harness", "--test", "composed"],
         )?;
         println!("== composed workflow profile: wasm-live ==");
         self.quality("wasm-live")?;

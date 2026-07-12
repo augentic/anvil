@@ -117,7 +117,7 @@ pub struct Profile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Runtime {
-    /// Linked Rust adapter crates through `specify-dev`.
+    /// Linked Rust adapter crates through `specify-adapters/harness/native`.
     Native,
     /// Hosted workflow and adapter WebAssembly components.
     Wasm,

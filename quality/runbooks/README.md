@@ -61,4 +61,4 @@ The **Gate** column tiers the catalog into two signals:
 
 Groups keep carrying execution order; the Gate tier never moves a scenario between groups. Flipping any row's status requires the matching committed record at [`quality/runs/archive/<id>.<result>.md`](../runs/README.md) — the catalog↔runs check in `tests/framework/scenarios.rs` enforces the agreement. When the whole catalog is `passed` (or `deferred` with sign-off), record the gate as green here.
 
-Owner-local adapter scenarios stay under [`adapter-host-tests/<name>/scenarios/`](https://github.com/augentic/specify-adapters/blob/main/adapter-host-tests/contracts/scenarios/README.md) in `augentic/specify-adapters`.
+Owner-local adapter scenarios stay under [`harness/<name>/scenarios/`](https://github.com/augentic/specify-adapters/blob/main/harness/contracts/scenarios/README.md) in `augentic/specify-adapters`.

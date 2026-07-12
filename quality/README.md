@@ -27,4 +27,4 @@ The Rust types, loader, assertion registry, and report shape live in `crates/sce
 
 Hard assertions execute automatically in every applicable profile. Semantic rubrics execute only in live profiles. Markdown may explain a case, but YAML is the executable authority.
 
-The former workflow eval tree has been fully absorbed here. There is no second scenario framework: YAML is authoritative, runbooks explain it, profiles execute it, and `harness/` supplies native/WASM runtime hosts. Adapter-local hosted quality tests live in the sibling repository's `adapter-host-tests/` package. The exact seam ownership is recorded in [`COVERAGE.md`](COVERAGE.md).
+The former workflow eval tree has been fully absorbed here. There is no second scenario framework: YAML is authoritative, runbooks explain it, profiles execute it, and `harness/` supplies native/WASM runtime hosts. Adapter-local hosted quality tests live in the sibling repository's `harness/` package. The exact seam ownership is recorded in [`COVERAGE.md`](COVERAGE.md).

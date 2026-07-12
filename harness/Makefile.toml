@@ -25,26 +25,6 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 (cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
 '''
 
-# Dev shim
-#
-# Run the native `specify-dev` binary — the same verb handlers as the
-# wasm guest against the NativeProvider (in-process adapter dispatch,
-# cursor-agent model). Requires the ../specify-adapters sibling
-# checkout. This lower-level harness task underpins the root `dev run`; forward
-# arguments after `--`:
-#   cargo make dev-run -- plan status
-#   cargo make dev-run -- serve --port 7737
-[tasks.dev-run]
-command = "cargo"
-args = ["run", "-p", "specify-dev", "${@}"]
-
-# Native harness suite — the full-loop, seam, replay, and MCP-shelf
-# tests over the real adapter operations with scripted models; no wasm
-# builds. On-demand until the sibling checkout is guaranteed in CI.
-[tasks.test-native]
-command = "cargo"
-args = ["nextest", "run", "-p", "specify-dev"]
-
 # Model-free composed WASM/WIT smoke. Guest construction is explicit so the
 # host test never shells out to Cargo or hides a missing CI build prerequisite.
 [tasks.test-composed]
@@ -62,8 +42,6 @@ args = [
     "fixtures",
     "-p",
     "specify-composed-tests",
-    "-p",
-    "specify-dev",
     "--all-targets",
     "--",
     "-D",

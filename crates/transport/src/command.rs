@@ -180,10 +180,7 @@ fn operation_response(
     clippy::too_many_lines,
     reason = "the exhaustive typed route inventory is one auditable assembly"
 )]
-pub fn router<P>(
-    invoker: Invoker<P>,
-    preflight: impl Fn(&Globals) -> Result<(), error::Error> + Send + Sync + 'static,
-) -> Result<Router<P, Globals>, BuildError>
+pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
     P: Provider + Anchor + Model + Resolver + SourceSeam + TargetSeam,
 {
@@ -193,10 +190,7 @@ where
             Completions::new()
                 .about("Print a shell-completion script for `<shell>` to stdout")
                 .long_about("Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `specify completions zsh > ~/.zsh/_specify`). Generated via `clap_complete`; the output tracks the live clap surface so every new verb is auto-discovered."),
-        )
-        .before_dispatch(move |globals: &Globals| {
-            preflight(globals).err().map(|error| failure_response(globals.format, &error))
-        });
+        );
 
     macro_rules! route {
         ($path:expr, $args:ty, $operation:ty, $about:literal) => {

@@ -19,7 +19,7 @@ The four gates have distinct owners:
 3. **Composed WebAssembly conformance** — canonical scenarios through the hosted workflow guest and adapter components. Owns WIT, dispatch-by-id, mount/preopen, and component-linking assertions. The current workflow-core CI case is model-free; do not duplicate Omnia's private replay-key projection to force a full-loop fixture.
 4. **Live quality** — selected scenarios against the live model backend. Hard assertions remain mechanical; semantic rubrics assess decomposition, prose, and generated output. Live profiles are deliberate release/development runs, never ordinary per-commit CI.
 
-The ownership boundary is strict: `omnia-testkit` owns reusable model doubles, replay, temporary manifests, runtime hosting, and HTTP driving; `crates/scenario` owns Specify scenario vocabulary, reports, and assertion metadata; `harness/native` owns the linked-adapter developer runtime. Do not add another local mock model, replay store, deployment harness, or scenario-specific lifecycle driver.
+The ownership boundary is strict: `omnia-testkit` owns reusable model doubles, replay, temporary manifests, runtime hosting, and HTTP driving; `crates/scenario` owns Specify scenario vocabulary, reports, and assertion metadata; `specify-adapters/harness/native` owns the linked-adapter developer runtime. Do not add another local mock model, replay store, deployment harness, or scenario-specific lifecycle driver.
 
 ### Scenario admission and assertion ownership
 
@@ -94,7 +94,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 
-The end-to-end fan-in-twice / fan-out-once path runs through the public plan operations; its coverage lives in `harness/native/tests/full_loop.rs`. The wasm-only seams (WIT bindings, dispatch-by-id, mount/preopen wiring) stay with the shipped guest and targeted adapter tests.
+The end-to-end fan-in-twice / fan-out-once path runs through the public plan operations; its coverage lives in `specify-adapters/harness/native/tests/full_loop.rs`. The wasm-only seams (WIT bindings, dispatch-by-id, mount/preopen wiring) stay with the shipped guest and targeted adapter tests.
 
 ## Golden file discipline
 
