@@ -22,13 +22,13 @@ cargo make dev -- live   # guest-execute-loop, native-live, three trials
 cargo make dev -- full   # deterministic gates plus wasm-live, three trials
 
 # Direct profile selection and overrides
-TRIALS=1 quality/run-live.sh native-live
-TRIALS=3 SPECIFY_EVAL_MODEL=<model-id> quality/run-live.sh wasm-live
+TRIALS=1 cargo make quality -- run native-live
+TRIALS=3 SPECIFY_EVAL_MODEL=<model-id> cargo make quality -- run wasm-live
 ```
 
 Both profiles require `cursor-agent` on `PATH` with command-mode credentials. `cargo make dev -- doctor --live` verifies that path. The WebAssembly profile also requires release-built adapter components in the sibling `specify-adapters` checkout.
 
-`quality/run-live.sh` creates one isolated workspace per trial, executes the canonical profile, runs hard assertions, verifies generated crates, grades semantic rubrics through the live model, and writes a structured evidence bundle under `quality/runs/`.
+The live orchestrator is the Cargo Script [`scripts/quality.rs`](../../scripts/quality.rs). It creates one isolated workspace per trial, drives the canonical profile through the owning Rust harness — `specify-dev guest-loop` (in-process linked adapters) for `native-live`, `harness/live` (the shipped binary over a composed deployment) for `wasm-live` — settles hard assertions through `scenario::grade` plus the registered guest evaluators in `scenario::evaluate`, verifies generated crates, grades semantic rubrics through the live model, and writes a structured evidence bundle under `quality/runs/`. The report's `runner` field names the orchestrator and profile (`scripts/quality.rs <profile>`).
 
 ## Report contract
 

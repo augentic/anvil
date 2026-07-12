@@ -3838,6 +3838,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "specify-live-harness"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "scenario",
+ "tempfile",
+]
+
+[[package]]
 name = "sqlite-wasm-rs"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

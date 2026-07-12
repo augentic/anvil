@@ -8,6 +8,8 @@
 mod assertion;
 /// Embedded catalog of the canonical workflow scenarios.
 pub mod catalog;
+/// Profile-specific evaluators over trial workspaces.
+pub mod evaluate;
 /// Deterministic grading over captured workflow-step evidence.
 pub mod grade;
 mod model;

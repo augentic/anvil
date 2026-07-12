@@ -36,6 +36,19 @@ args = [
   "${@}",
 ]
 
+# Live quality orchestrator. Pass the subcommand and its arguments after `--`,
+# e.g. `cargo make quality -- run native-live --trials 1`.
+[tasks.quality]
+command = "rustup"
+args = [
+  "run",
+  "nightly",
+  "cargo",
+  "-Zscript",
+  "scripts/quality.rs",
+  "${@}",
+]
+
 # Audit
 [tasks.audit]
 command = "cargo"

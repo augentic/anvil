@@ -1,0 +1,26 @@
+# The wasm-live workflow driver: executes the canonical
+# guest-execute-loop scenario against the shipped `specify` binary over
+# a composed deployment of the release-built sibling adapter
+# components. Deliberately free of runtime dependencies — the shipped
+# binary owns deployment, dispatch, and the live cursor backend; this
+# crate owns sandbox staging, the deployment manifest, and step
+# capture, so the quality orchestrator can link it directly.
+[package]
+name = "specify-live-harness"
+description = "Live composed-WASM driver for the Specify workflow scenarios"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+scenario.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

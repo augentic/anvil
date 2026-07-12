@@ -290,11 +290,16 @@ impl Dev {
     }
 
     fn quality(&self, profile: &str) -> Result<()> {
-        let mut command = Command::new("bash");
-        command
-            .current_dir(&self.framework)
-            .arg(self.framework.join("quality/run-live.sh"))
-            .arg(profile);
+        let mut command = Command::new("rustup");
+        command.current_dir(&self.framework).args([
+            "run",
+            "nightly",
+            "cargo",
+            "-Zscript",
+            "scripts/quality.rs",
+            "run",
+            profile,
+        ]);
         execute(&mut command, &format!("{profile} quality profile"))
     }
 

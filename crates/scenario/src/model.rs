@@ -94,6 +94,62 @@ pub struct WorkflowStep {
     pub fixtures: Vec<String>,
 }
 
+impl WorkflowStep {
+    /// Split a `kind: command` step's `run` line into argv words.
+    ///
+    /// Canonical command lines are simple: whitespace-separated words
+    /// with single- or double-quoted groups (no escape sequences). The
+    /// first word is the binary name (`specify`), which each executor
+    /// substitutes with its own dispatch surface.
+    ///
+    /// # Errors
+    ///
+    /// Returns `scenario-step-command` for a prompt step or an
+    /// unterminated quote.
+    pub fn argv(&self) -> Result<Vec<String>> {
+        if self.kind != WorkflowStepKind::Command {
+            return Err(Error::Diag {
+                code: "scenario-step-command",
+                detail: format!("workflow step `{}` is a prompt, not a command", self.id),
+            });
+        }
+        let mut words = Vec::new();
+        let mut word = String::new();
+        let mut quote: Option<char> = None;
+        let mut in_word = false;
+        for character in self.run.chars() {
+            match quote {
+                Some(open) if character == open => quote = None,
+                Some(_) => word.push(character),
+                None if character == '"' || character == '\'' => {
+                    quote = Some(character);
+                    in_word = true;
+                }
+                None if character.is_whitespace() => {
+                    if in_word {
+                        words.push(std::mem::take(&mut word));
+                        in_word = false;
+                    }
+                }
+                None => {
+                    word.push(character);
+                    in_word = true;
+                }
+            }
+        }
+        if quote.is_some() {
+            return Err(Error::Diag {
+                code: "scenario-step-command",
+                detail: format!("workflow step `{}` has an unterminated quote", self.id),
+            });
+        }
+        if in_word {
+            words.push(word);
+        }
+        Ok(words)
+    }
+}
+
 /// Named runtime, model, and grading selection for repeated trials.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
