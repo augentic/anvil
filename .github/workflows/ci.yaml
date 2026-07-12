@@ -37,3 +37,4 @@ jobs:
         run: cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
         env:
           RUSTFLAGS: -Dwarnings
+          
