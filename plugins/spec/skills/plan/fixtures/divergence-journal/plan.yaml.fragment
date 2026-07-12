@@ -1,9 +1,0 @@
-  - name: identity-session-expiry
-    project: identity-svc
-    sources:
-      - source: identity-design-notes
-        lead: session-expiry
-      - source: legacy-monolith
-        lead: session-expiry
-    divergence: likely
-    status: pending

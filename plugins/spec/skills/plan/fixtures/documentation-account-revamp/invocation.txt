@@ -1,1 +1,0 @@
-/spec:plan account-revamp source docs=./design-notes/account
