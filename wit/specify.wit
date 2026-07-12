@@ -384,6 +384,12 @@ world target-adapter {
   export target;
 }
 
+// /// A combined source and target adapter component
+// world adapter {
+//   export source;
+//   export target;
+// }
+
 /// The workflow guest: the deployment's only `wasi:cli/run` exporter. Its
 /// `source` / `target` imports are satisfied by Omnia's host-mediated
 /// dispatch, routed to the exporting adapter guest by each call's
