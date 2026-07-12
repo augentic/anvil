@@ -4,7 +4,7 @@
 
 - **Scenario:** `execute-fail-resume`
 - **Operator:** Cursor agent (agent-as-operator, per the single-scenario runbook)
-- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the `Specify.toml` `cli` source via `make install-cli`)
+- **CLI:** `/Users/andrewweston/.local/bin/specify` — `specify 0.2.0` (built from the in-tree source)
 - **Sandbox:** `quality/.sandbox/execute-fail-resume/` (recreated fresh 2026-06-15)
 
 ## Assertions

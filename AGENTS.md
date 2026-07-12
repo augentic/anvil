@@ -126,7 +126,7 @@ All commands are run from the repository root:
 
 - `cargo test --test framework` — the documentation and workflow consistency checks over the prose and manifest surfaces (plain cargo tests at `tests/framework/`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the framework-quality test suite.
-- `make use-local-plugins` / `make use-team-plugins` — choose plugin source (reload Cursor after either).
+- `cursor-agent --plugin-dir plugins/<name>` — load a working-tree plugin directly.
 
 CI is one job: `.github/workflows/ci.yaml` runs `cargo make ci` from the repo root (no sibling checkout required — the engine embeds no adapter-authored prose). See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 

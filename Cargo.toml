@@ -65,11 +65,8 @@ path = "tests/framework/main.rs"
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/composed", "harness/fixtures", "harness/native"]
-default-members = [
-    ".",
-    "crates/*",
-]
+members = ["crates/*", "harness/*"]
+# default-members = [".", "crates/*" ]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -243,16 +240,3 @@ strip = true
 [profile.dev.package."*"]
 opt-level = 2
 
-# [profile.dev.package]
-# cranelift-codegen = { opt-level = 2 }
-# cranelift-frontend = { opt-level = 2 }
-# cranelift-entity = { opt-level = 2 }
-# cranelift-bforest = { opt-level = 2 }
-# cranelift-bitset = { opt-level = 2 }
-# cranelift-control = { opt-level = 2 }
-# cranelift-native = { opt-level = 2 }
-# cranelift-assembler-x64 = { opt-level = 2 }
-# regalloc2 = { opt-level = 2 }
-# wasmparser = { opt-level = 2 }
-# wasmtime-internal-cranelift = { opt-level = 2 }
-# wasmtime-environ = { opt-level = 2 }

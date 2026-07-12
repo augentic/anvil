@@ -21,11 +21,9 @@ scenario describes, using only real `specify` CLI commands. Do NOT drive any
 /spec:* command yet.
 
 Inputs:
-- `specify`: runbook step 1 already built the binary under test via `make install-cli`, which
-  symlinks the build under test into ~/.local/bin. Confirm with `specify --version` before any
-  other call; if the bare command does not resolve to that build, prepend the symlink dir to
-  PATH (`export PATH="$HOME/.local/bin:$PATH"`) or call the absolute
-  `target/release/specify` path (see quality/reference/setup.md).
+- `specify`: runbook step 1 already installed the working-tree binary with
+  `cargo install --path . --locked`. Confirm its path with `command -v specify` and run
+  `specify --help` before any other call (see quality/reference/setup.md).
 - Scenario: quality/runbooks/<id>.md
 - Shared setup: quality/reference/setup.md (Prerequisites + the matching
   single-project or cross-repo workspace setup, and the brief the scenario names).

@@ -312,7 +312,7 @@ fn guest_wasm(relative: &str) -> PathBuf {
     let path = target_dir().join("wasm32-wasip2/debug").join(relative);
     assert!(
         path.is_file(),
-        "guest `{relative}` not found at {}; run `cargo make build-composed-guests` in harness/",
+        "guest `{relative}` not found at {}; run `cargo make guests` in harness/",
         path.display()
     );
     path

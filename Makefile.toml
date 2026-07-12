@@ -41,11 +41,6 @@ args = [
 command = "cargo"
 args = ["audit"]
 
-# Clean
-[tasks.clean]
-command = "cargo"
-args = ["clean"]
-
 # Deny
 [tasks.deny]
 command = "cargo"
@@ -128,9 +123,4 @@ cargo vet regenerate unpublished
 cargo vet --locked
 '''
 install_crate = "cargo-vet"
-
-# Publish (dry-run to augentic registry)
-[tasks.publish]
-command = "cargo"
-args = ["publish", "--registry=augentic", "--allow-dirty", "--dry-run"]
 

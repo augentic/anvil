@@ -83,28 +83,20 @@ The framework checks are plain cargo tests over the prose and manifest surfaces.
 
 ### Local plugin development
 
-Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The local plugin script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
+Cursor Agent can load working-tree plugins directly with `--plugin-dir`. The agent then uses local skill, rule, and reference content instead of the published versions.
 
 #### Dev iteration loop
 
 1. Edit skills, rules, or references in `plugins/`.
-2. Run `make use-local-plugins` to copy local files into the cache.
-3. Restart Cursor.
-4. Test in a target project.
-5. Repeat from step 1.
+2. Start Cursor Agent with the plugin directory.
+3. Test in a target project.
+4. Repeat from step 1.
 
 ```bash
-make use-local-plugins    # copy local plugins into cache
+cursor-agent --plugin-dir plugins/spec
 ```
 
-When finished, revert to published plugins:
-
-```bash
-make use-team-plugins   # clear cache; Cursor refetches from server on restart
-```
-
-> [!NOTE]  
-> Restart Cursor after running either command. A window reload is not sufficient.
+Pass `--plugin-dir` once per local plugin when testing more than one. Omit it to use the published plugins.
 
 #### Testing adapter changes
 
