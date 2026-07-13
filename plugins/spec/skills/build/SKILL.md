@@ -19,4 +19,4 @@ When `[slice-name]` is omitted, run `specify plan status` and use the slice it n
 ## Relay
 
 - Surface the CLI output verbatim. On success the orchestration has already stamped `built`; never write the lifecycle yourself.
-- On non-zero exit, surface the structured error verbatim and stop; the slice stays `refined`, so re-running after a fix re-enters cleanly. Never patch adapters, templates, or cache in-band — [Consumer tooling boundary](../../references/guardrails.md#consumer-tooling-boundary).
+- On non-zero exit, surface the structured error verbatim and stop; the slice stays `refined`, so re-running after a fix re-enters cleanly. Never patch adapters, templates, or cache in-band — during a build the agent is a consumer of Specify and adapters, not a maintainer.

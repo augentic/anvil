@@ -167,6 +167,8 @@ fn boundaries_bullets(input: &Input) -> Vec<String> {
             .to_string(),
         "`metadata.yaml` files are framework-managed; update them through `specify slice` commands."
             .to_string(),
+        "`plan.yaml` is framework-managed; write entries through `specify plan add` / `amend`, lifecycle through `specify plan transition`, and close-out through `specify plan archive` — never hand-edit it."
+            .to_string(),
         "`.specify/archive/` is framework-managed history.".to_string(),
         "`project.yaml` is the source of truth for Specify project metadata.".to_string(),
     ];

@@ -19,4 +19,4 @@ When `[slice-name]` is omitted, run `specify plan status` and use the slice it n
 ## Relay
 
 - Surface the CLI output verbatim, including any synthesis-tag counts (`[unknown]` / `[conflict]` / `[divergence]` are review signals, never a park) and the closing hint.
-- On non-zero exit, surface the structured error verbatim and stop. Never hand-edit slice artifacts to force progress — the synthesis kernel owns `model.yaml` and the rendered `ID:` / `Sources:` / `Status:` lines; see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+- On non-zero exit, surface the structured error verbatim and stop. Never hand-edit slice artifacts to force progress — the synthesis kernel owns `model.yaml` and the rendered `ID:` / `Sources:` / `Status:` lines.

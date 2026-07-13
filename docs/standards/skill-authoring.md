@@ -52,7 +52,7 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 
 ## Cross-cutting guardrails
 
-Cross-cutting guardrails — the `metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md) (runtime canonical). SKILL.md files **link** to them; they do **not** restate them inline. The mdBook page [`skill-guardrails.md`](./skill-guardrails.md) is a stub pointer. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Convention enforced at review time — no framework rule checks it today.
+Cross-cutting guardrails — the `metadata.yaml` / slice-dir / plan-write rules that recur across skills — are delivered by the surfaces that enforce them: the CLI's single-writer verbs and the `## Boundaries` section of the `AGENTS.md` that `specify init` generates in every consumer project. There is no shared runtime reference file; each thin skill keeps its own one-line guardrail inline under a single `## Guardrails` (or `## Mode-specific guardrails`) H2. See [skill-guardrails.md](./skill-guardrails.md) for where each rule lives. Scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Convention enforced at review time — no framework rule checks it today.
 
 The canonical "skills MUST NOT" list:
 

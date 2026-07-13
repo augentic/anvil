@@ -20,4 +20,4 @@ specify slice drop <slice-name> --reason "<rationale>"
 ## Relay
 
 - Surface the CLI output verbatim, including the `archive-path` destination.
-- On non-zero exit, surface the structured error verbatim and stop. Never merge or rewrite anything under `.specify/specs/`, and never move the slice directory by hand — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+- On non-zero exit, surface the structured error verbatim and stop. Never merge or rewrite anything under `.specify/specs/`, and never move the slice directory by hand — the CLI is the single writer for lifecycle state.

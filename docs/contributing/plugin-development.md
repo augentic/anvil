@@ -87,7 +87,7 @@ Adapter edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 
-The Cursor plugin cache ships only `plugins/`, so any prose a skill links at runtime must live under the plugin (`references/…` siblings, or `../../references/…` from a skill directory) — never in `docs/` via `../` escapes. The spec plugin keeps a single runtime reference: [`plugins/spec/references/guardrails.md`](../../plugins/spec/references/guardrails.md), the cross-cutting "do not / never / always" rules the seven wrappers link to.
+The Cursor plugin cache ships only `plugins/`, so any prose a skill links at runtime must live under the plugin (`references/…` siblings, or `../../references/…` from a skill directory) — never in `docs/` via `../` escapes. The spec plugin currently ships no runtime references: the thin wrappers keep their one-line guardrails inline, and the cross-cutting "do not / never / always" rules are delivered by the CLI's single-writer enforcement and the `AGENTS.md` that `specify init` generates (see [docs/standards/skill-guardrails.md](../standards/skill-guardrails.md)).
 
 Everything else lives with its owner:
 
