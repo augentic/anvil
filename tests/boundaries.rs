@@ -120,16 +120,30 @@ fn dependency_tables(root: &Table) -> Vec<(String, &Table)> {
 }
 
 fn offence(name: &str, spec: &Value) -> Option<String> {
-    let package = spec
-        .as_table()
-        .and_then(|table| table.get("package"))
-        .and_then(Value::as_str)
-        .unwrap_or(name);
+    let table = spec.as_table();
+    let package =
+        table.and_then(|table| table.get("package")).and_then(Value::as_str).unwrap_or(name);
     let effective = package.replace('_', "-");
+    // The engine's own harness adapter (`harness/adapter`) is the
+    // intentional test double. Its package name collides with the
+    // `adapter` shared crate in specify-adapters; allow the in-tree path
+    // (and member `workspace = true` re-exports — the workspace root is
+    // scanned separately) while still catching every other `adapter`
+    // dependency via the name / repository-source rules below.
+    let harness_adapter = table
+        .and_then(|table| table.get("path"))
+        .and_then(Value::as_str)
+        .is_some_and(|path| path.replace('\\', "/").contains("harness/adapter"))
+        || (effective == "adapter"
+            && table.and_then(|table| table.get("workspace")).and_then(Value::as_bool)
+                == Some(true));
+    if harness_adapter {
+        return None;
+    }
     if ADAPTER_CRATES.contains(&effective.as_str()) {
         return Some(format!("depends on the concrete adapter crate `{effective}`"));
     }
-    let table = spec.as_table()?;
+    let table = table?;
     for key in ["path", "git"] {
         if let Some(source) = table.get(key).and_then(Value::as_str)
             && source.contains(ADAPTER_REPOSITORY)
@@ -195,7 +209,7 @@ fn bad_fixtures() {
     assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "harness/wasm/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
+    write(dir.path(), "harness/wasm-smoke/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
     assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
@@ -217,6 +231,30 @@ fn bad_fixtures() {
         "[workspace.dependencies]\nomnia = \"0.35.0\"\nslice = { path = \"crates/slice\" }\n",
     );
     assert!(findings(dir.path()).is_empty());
+
+    // The engine's own harness adapter is allowed by path even though its
+    // package name collides with specify-adapters' shared `adapter` crate.
+    // Member manifests that only re-export it via `workspace = true` are
+    // allowed too — the workspace root is scanned for the path itself.
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "Cargo.toml",
+        "[workspace.dependencies]\nadapter = { path = \"harness/adapter\" }\n",
+    );
+    assert!(findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "crates/change/Cargo.toml", "[dev-dependencies]\nadapter.workspace = true\n");
+    assert!(findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "crates/slice/Cargo.toml",
+        "[dependencies]\nadapter = { path = \"../../specify-adapters/crates/adapter\" }\n",
+    );
+    assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
     write(dir.path(), "crates/slice/src/lib.rs", "use captures::operations;\n");

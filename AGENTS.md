@@ -48,7 +48,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 
 | Layer                     | Role                                          | Examples                                                                                            |
 | ------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Workflow**              | Phase orchestration and lifecycle transitions | `/spec:plan`, `specify plan execute`, `specify plan transition`                                    |
+| **Workflow**              | Phase orchestration and lifecycle transitions | `/spec:plan`, `specify plan execute`, `specify plan transition`                                     |
 | **Artifacts**             | Slice-local and baseline product intent       | `spec.md`, `plan.yaml`, `.specify/specs/`                                                           |
 | **Engineering standards** | Durable policy that outlives any slice        | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays, embedded in each target adapter |
 
@@ -133,7 +133,7 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
 - **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced in `augentic/specify-adapters` by the WIT contract plus each adapter crate's `tests/` suite and that repo's composed-deployment tests.
 
-The test surface is three rungs: native integration tests over the fixture adapter and scripted models (`cargo make test`, per push), one WASM boundary smoke over the real component seam (`cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one ignored native live-model workflow test (`cargo make test-live`, explicit). `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify owns workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
+The test surface is three rungs: native integration tests over the harness adapter and scripted models (`cargo make test`, per push), one WASM boundary smoke over the real component seam (`cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one ignored native live-model workflow test (`cargo make test-live`, explicit). `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify owns workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
 
 ## Commands
 
@@ -142,7 +142,7 @@ All commands are run from the repository root:
 - `cargo test -p checks` — adapter boundary + docs/plugin link integrity (the lightweight `checks` package at `tests/`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package.
 
-Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/fixtures`, and `tests` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/adapter`, and `tests` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Frontmatter shape is enforced by the typed check in [`tests/authoring.rs`](tests/authoring.rs) (the `checks` package); body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
@@ -177,7 +177,7 @@ slice                    # the slice loop — depends on project: refine/build/m
 change                   # the change loop — depends on {project,slice}: plan author/execute orchestration (change::orchestrate incl. the survey half of the source axis and workspace routing), the propose judgment leg, change::plan::handlers (the specify plan operations) + change::source (source survey), and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
-harness/fixtures         # the fixture adapter (deterministic native core supplying both specify:adapter axes for engine tests + the combined fixture_adapter guest for hosted WASM deployments)
+harness/adapter          # the harness adapter (native/ core + wasm/ guest supplying both specify:adapter axes for engine tests)
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
 
@@ -215,9 +215,9 @@ crates/transport/         shared command/HTTP routing, clap grammar, conversions
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
-harness/wasm/            the WASM boundary smoke — hosts specify.wasm with the combined fixture-adapter component
-harness/fixtures/        the fixture adapter (native core for both specify:adapter axes + the combined fixture_adapter guest)
-harness/live/            the ignored native live-model workflow test (cargo make test-live)
+harness/wasm-smoke/      the WASM boundary smoke — hosts specify.wasm with the combined adapter component
+harness/adapter/         the harness adapter (native/ core + wasm/ guest for both specify:adapter axes)
+harness/live-model/      the ignored native live-model workflow test (cargo make test-live)
 tests/                    lightweight checks package (boundaries, links), fixtures/, fs_git.rs
 tests/fixtures/          shared cross-crate fixture trees (crate-local fixtures live under crates/<name>/tests/fixtures/)
 ```
@@ -235,7 +235,7 @@ tests/fixtures/          shared cross-crate fixture trees (crate-local fixtures 
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cross-cutting code-quality rules (naming, error variants, traits-for-testability, archaeology)                                                                                        | [`docs/standards/style.md`](./docs/standards/style.md)                                                                                      |
 | Lints, comments, brevity, DTOs, YAML/atomic writes, module layout (`<module>.rs` + `<module>/`, no `mod.rs` outside `tests/`)                                                         | [`docs/standards/coding-standards.md`](./docs/standards/coding-standards.md)                                                                |
-| `Operation`, `Ctx`, `Render`, projectors, exit-code mapping, typed router contract                                                                                                   | [`docs/standards/handler-shape.md`](./docs/standards/handler-shape.md)                                                                      |
+| `Operation`, `Ctx`, `Render`, projectors, exit-code mapping, typed router contract                                                                                                    | [`docs/standards/handler-shape.md`](./docs/standards/handler-shape.md)                                                                      |
 | Workspace layout, WASI carve-outs, `Layout<'a>`, time injection, atomic-write rationale, workflow domain modules, supply chain                                                        | [`docs/standards/architecture.md`](./docs/standards/architecture.md)                                                                        |
 | `cargo nextest`, integration-first policy, golden files, `REGENERATE_GOLDENS`                                                                                                         | [`docs/standards/testing.md`](./docs/standards/testing.md)                                                                                  |
 | Standing architectural decisions (error layering, exit codes, atomic writes, YAML library, wire compatibility, workflow type renames, plan lifecycle, adapter loader, journal events) | [`docs/standards/`](./docs/standards/) (per-area docs) and git history                                                                      |
@@ -262,7 +262,7 @@ Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standar
 | `#[allow]` / `#[expect]` before trying a split or extract | Extract helper or submodule; suppress only if contract-locked    | [coding-standards § Lint suppression](./docs/standards/coding-standards.md#lint-suppression-posture)          |
 | `trait Foo` + sole `RealFoo` for tests                    | `CmdRunner`, `AtomicYaml`, or filesystem/tempdir                 | [style.md § No traits for testability](./docs/standards/style.md#no-traits-for-testability-alone)             |
 | `*RenderInput` wrapper for `Render`                       | `Render` on domain type or `ctx.emit_with` closure               | [style.md § One body per command](./docs/standards/style.md#one-body-per-command-no-wrapper-newtype)          |
-| Transport formatting inside operations                    | Return a typed `Serialize + Render` body; project at the router   | [handler-shape.md](./docs/standards/handler-shape.md)                                                         |
+| Transport formatting inside operations                    | Return a typed `Serialize + Render` body; project at the router  | [handler-shape.md](./docs/standards/handler-shape.md)                                                         |
 | RFC/Phase/migration history in comments                   | ≤ 3 lines “what today”; history stays in git                     | [style.md § No archaeology](./docs/standards/style.md#no-archaeology-in-code)                                 |
 | Sentence-length test fn names                             | Short name + `mod` grouping                                      | [testing.md § Test naming](./docs/standards/testing.md#test-naming)                                           |
 | Add a `src` `#[cfg(test)]` for CLI-reachable behavior     | Exercise it through the public surface in `crates/<name>/tests/` | [testing.md § minimize the unit layer](./docs/standards/testing.md#the-three-layers--minimize-the-unit-layer) |
@@ -281,8 +281,8 @@ External references:
 All driven by `cargo make` (see [`Makefile.toml`](./Makefile.toml)). Run the full local CI suite before committing; do not rely on narrower substitutes such as `cargo test` or `cargo clippy`.
 
 ```bash
-cargo make ci             # fmt-check + lint + wasm + test + test-docs + doc + vet + deny
-cargo make check          # fmt-check + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
+cargo make ci             # fmt + lint + wasm + test + test-docs + doc + vet + deny
+cargo make check          # fmt + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
 cargo make test           # cargo nextest run --locked --all-features --no-tests=pass over the default members, under -Dwarnings
 cargo make test-wasm    # builds the WASM guests then runs the opt-in WASM boundary smoke
 cargo make test-live    # the explicit live-model workflow test (operator-invoked; needs cursor-agent credentials)

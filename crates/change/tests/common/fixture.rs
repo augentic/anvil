@@ -1,7 +1,7 @@
 //! The native fixture provider: every capability the workflow
 //! operations bind (`Anchor + Model + Resolver + SourceSeam +
 //! TargetSeam`), with adapter behaviour delegated to the shared
-//! [`fixtures`] core and judgment delegated to a scripted
+//! [`adapter`] core and judgment delegated to a scripted
 //! `omnia-testkit` model.
 //!
 //! The mapping layer between the fixture core's WIT-mirroring types
@@ -16,6 +16,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use adapter;
 use artifacts::evidence::AuthorityClass;
 use error::Error;
 use omnia_guest::Model;
@@ -126,7 +127,7 @@ impl<M: Send + Sync> Resolver for FixtureProvider<M> {
         &self, adapter_ref: &AdapterRef, _project_dir: &Path,
     ) -> Result<ResolvedTarget, Error> {
         let metadata = Metadata {
-            platforms: fixtures::target_platforms(&adapter_ref.name).map(map_platforms),
+            platforms: adapter::target_platforms(&adapter_ref.name).map(map_platforms),
             ..Metadata::default()
         };
         project::adapter::resolver::target(adapter_ref, metadata, origin(adapter_ref))
@@ -151,18 +152,18 @@ impl<M: Model> Model for FixtureProvider<M> {
 impl<M: Model> SourceSeam for FixtureProvider<M> {
     async fn survey(&self, id: String) -> Result<Vec<Lead>, seam::Error> {
         self.record("survey", &id);
-        let leads = fixtures::survey(&id).map_err(map_error)?;
+        let leads = adapter::survey(&id).map_err(map_error)?;
         Ok(leads.into_iter().map(map_lead).collect())
     }
 
     async fn extract(&self, id: String, lead: Lead) -> Result<Evidence, seam::Error> {
         self.record("extract", &id);
-        let fixture_lead = fixtures::Lead {
+        let fixture_lead = adapter::Lead {
             lead: lead.lead,
             synopsis: lead.synopsis,
             topics: lead.topics,
         };
-        let evidence = fixtures::extract(&id, &fixture_lead).map_err(map_error)?;
+        let evidence = adapter::extract(&id, &fixture_lead).map_err(map_error)?;
         Ok(Evidence {
             authority: map_authority(evidence.authority),
             claims: evidence.claims.iter().map(map_claim).collect(),
@@ -173,15 +174,15 @@ impl<M: Model> SourceSeam for FixtureProvider<M> {
 impl<M: Model> TargetSeam for FixtureProvider<M> {
     async fn guidance(&self, id: String) -> Result<String, seam::Error> {
         self.record("guidance", &id);
-        fixtures::guidance(&id).map_err(map_error)
+        adapter::guidance(&id).map_err(map_error)
     }
 
     async fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, _tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
         self.record("build", &id);
-        let inputs: Vec<fixtures::Input> = inputs.into_iter().map(map_input).collect();
-        let report = fixtures::build(&self.project_dir, &id, &slice, &inputs).map_err(map_error)?;
+        let inputs: Vec<adapter::Input> = inputs.into_iter().map(map_input).collect();
+        let report = adapter::build(&self.project_dir, &id, &slice, &inputs).map_err(map_error)?;
         Ok(widen_report(&id, slice, report))
     }
 
@@ -190,11 +191,11 @@ impl<M: Model> TargetSeam for FixtureProvider<M> {
     ) -> Result<BuildReport, seam::Error> {
         self.record(&format!("merge-{phase}"), &id);
         let fixture_phase = match phase {
-            MergePhase::Preflight => fixtures::MergePhase::Preflight,
-            MergePhase::Postflight => fixtures::MergePhase::Postflight,
+            MergePhase::Preflight => adapter::MergePhase::Preflight,
+            MergePhase::Postflight => adapter::MergePhase::Postflight,
         };
         let report =
-            fixtures::merge(&self.project_dir, &id, &slice, fixture_phase).map_err(map_error)?;
+            adapter::merge(&self.project_dir, &id, &slice, fixture_phase).map_err(map_error)?;
         Ok(widen_report(&id, slice, report))
     }
 }
@@ -207,9 +208,9 @@ fn origin(adapter_ref: &AdapterRef) -> Origin {
     }
 }
 
-/// Fixture [`fixtures::PlatformsCapability`] → the resolver metadata
+/// Harness adapter [`adapter::PlatformsCapability`] → the resolver metadata
 /// capability — the same widening the guest shim applies.
-fn map_platforms(capability: fixtures::PlatformsCapability) -> PlatformsCapability {
+fn map_platforms(capability: adapter::PlatformsCapability) -> PlatformsCapability {
     PlatformsCapability {
         required: capability.required,
         allowed: capability.allowed.into_iter().map(map_platform).collect(),
@@ -217,27 +218,27 @@ fn map_platforms(capability: fixtures::PlatformsCapability) -> PlatformsCapabili
     }
 }
 
-/// Fixture [`fixtures::Platform`] → the workflow [`Platform`] enum.
-const fn map_platform(platform: fixtures::Platform) -> Platform {
+/// Harness adapter [`adapter::Platform`] → the workflow [`Platform`] enum.
+const fn map_platform(platform: adapter::Platform) -> Platform {
     match platform {
-        fixtures::Platform::Core => Platform::Core,
-        fixtures::Platform::Ios => Platform::Ios,
-        fixtures::Platform::Android => Platform::Android,
+        adapter::Platform::Core => Platform::Core,
+        adapter::Platform::Ios => Platform::Ios,
+        adapter::Platform::Android => Platform::Android,
     }
 }
 
-/// Fixture error → the workflow seam's typed failure
+/// Harness adapter error → the workflow seam's typed failure
 /// (variant-for-variant; both mirror the WIT `types.error`).
-fn map_error(error: fixtures::Error) -> seam::Error {
+fn map_error(error: adapter::Error) -> seam::Error {
     match error {
-        fixtures::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
-        fixtures::Error::Io(detail) => seam::Error::Io(detail),
-        fixtures::Error::Internal(detail) => seam::Error::Internal(detail),
+        adapter::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
+        adapter::Error::Io(detail) => seam::Error::Io(detail),
+        adapter::Error::Internal(detail) => seam::Error::Internal(detail),
     }
 }
 
-/// Fixture [`fixtures::Lead`] → the workflow seam's [`Lead`].
-fn map_lead(lead: fixtures::Lead) -> Lead {
+/// Harness adapter [`adapter::Lead`] → the workflow seam's [`Lead`].
+fn map_lead(lead: adapter::Lead) -> Lead {
     Lead {
         lead: lead.lead,
         synopsis: lead.synopsis,
@@ -245,63 +246,63 @@ fn map_lead(lead: fixtures::Lead) -> Lead {
     }
 }
 
-/// Fixture [`fixtures::Authority`] → the document-level
+/// Harness adapter [`adapter::Authority`] → the document-level
 /// [`AuthorityClass`].
-const fn map_authority(authority: fixtures::Authority) -> AuthorityClass {
+const fn map_authority(authority: adapter::Authority) -> AuthorityClass {
     match authority {
-        fixtures::Authority::Intent => AuthorityClass::Intent,
-        fixtures::Authority::Documentation => AuthorityClass::Documentation,
-        fixtures::Authority::Behaviour => AuthorityClass::Behaviour,
+        adapter::Authority::Intent => AuthorityClass::Intent,
+        adapter::Authority::Documentation => AuthorityClass::Documentation,
+        adapter::Authority::Behaviour => AuthorityClass::Behaviour,
     }
 }
 
-/// Fixture [`fixtures::Claim`] → the typed claim the composed
+/// Harness adapter [`adapter::Claim`] → the typed claim the composed
 /// Evidence document carries — the same mapping the guest shim
 /// applies to the WIT claim record (`payload` for an inline payload,
 /// `backing-path` for a filesystem pointer).
-fn map_claim(claim: &fixtures::Claim) -> artifacts::evidence::Claim {
+fn map_claim(claim: &adapter::Claim) -> artifacts::evidence::Claim {
     let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
     typed.id.clone_from(&claim.id);
     typed.path.clone_from(&claim.path);
     typed.synopsis.clone_from(&claim.synopsis);
     typed.set_backing(claim.backing.clone().map(|backing| match backing {
-        fixtures::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
-        fixtures::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
+        adapter::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
+        adapter::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
     }));
     typed
 }
 
 /// The closed claim-kind subset the fixture emits.
-const fn map_claim_kind(kind: fixtures::ClaimKind) -> artifacts::evidence::ClaimKind {
+const fn map_claim_kind(kind: adapter::ClaimKind) -> artifacts::evidence::ClaimKind {
     match kind {
-        fixtures::ClaimKind::Requirement => artifacts::evidence::ClaimKind::Requirement,
-        fixtures::ClaimKind::Criterion => artifacts::evidence::ClaimKind::Criterion,
-        fixtures::ClaimKind::Section => artifacts::evidence::ClaimKind::Section,
+        adapter::ClaimKind::Requirement => artifacts::evidence::ClaimKind::Requirement,
+        adapter::ClaimKind::Criterion => artifacts::evidence::ClaimKind::Criterion,
+        adapter::ClaimKind::Section => artifacts::evidence::ClaimKind::Section,
     }
 }
 
-/// Workflow seam [`Input`] → fixture [`fixtures::Input`].
-fn map_input(input: Input) -> fixtures::Input {
+/// Workflow seam [`Input`] → harness adapter [`adapter::Input`].
+fn map_input(input: Input) -> adapter::Input {
     match input {
-        Input::Proposal(body) => fixtures::Input::Proposal(body),
-        Input::Design(body) => fixtures::Input::Design(body),
-        Input::Tasks(body) => fixtures::Input::Tasks(body),
-        Input::Spec(body) => fixtures::Input::Spec(body),
-        Input::Other(body) => fixtures::Input::Other(body),
+        Input::Proposal(body) => adapter::Input::Proposal(body),
+        Input::Design(body) => adapter::Input::Design(body),
+        Input::Tasks(body) => adapter::Input::Tasks(body),
+        Input::Spec(body) => adapter::Input::Spec(body),
+        Input::Other(body) => adapter::Input::Other(body),
     }
 }
 
-/// Widen the compact fixture [`fixtures::Report`] into the canonical
+/// Widen the compact harness-adapter [`adapter::Report`] into the canonical
 /// [`BuildReport`] wire shape the orchestrator's finalize tail
 /// schema-gates — the same envelope stamping the guest shim applies.
-fn widen_report(id: &str, slice: String, report: fixtures::Report) -> BuildReport {
+fn widen_report(id: &str, slice: String, report: adapter::Report) -> BuildReport {
     BuildReport {
         version: BUILD_VERSION,
         slice,
         target: id.strip_prefix("target:").unwrap_or(id).to_string(),
         status: match report.status {
-            fixtures::Status::Success => BuildStatus::Success,
-            fixtures::Status::Failure => BuildStatus::Failure,
+            adapter::Status::Success => BuildStatus::Success,
+            adapter::Status::Failure => BuildStatus::Failure,
         },
         findings: Vec::new(),
         outputs: report

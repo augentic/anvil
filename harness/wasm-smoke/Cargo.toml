@@ -1,6 +1,6 @@
 [package]
-name = "wasm"
-description = "WASM boundary smoke over the Specify workflow guest and the fixture adapter"
+name = "wasm-smoke"
+description = "WASM boundary smoke over the Specify workflow guest and the harness adapter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

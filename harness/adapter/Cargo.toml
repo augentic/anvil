@@ -1,0 +1,27 @@
+[package]
+name = "adapter"
+description = "Harness adapter — native core and wasm guest supplying both specify:adapter axes for engine tests"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "native/lib.rs"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+omnia-guest.workspace = true
+omnia-wasi-http.workspace = true
+serde_json.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
+
+[lints]
+workspace = true
+
+[[example]]
+name = "adapter"
+path = "wasm/lib.rs"
+crate-type = ["cdylib"]

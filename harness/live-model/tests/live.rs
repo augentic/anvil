@@ -168,7 +168,7 @@ async fn adversarial_loop_clean() {
 
     // Every slice produced a real, non-empty fixture build output.
     for entry in &plan.entries {
-        let artifact = fixtures::build_artifact_path(&root, &entry.name);
+        let artifact = adapter::build_artifact_path(&root, &entry.name);
         let body = fs::read_to_string(&artifact)
             .unwrap_or_else(|err| panic!("build output for `{}`: {err}", entry.name));
         assert!(!body.trim().is_empty(), "empty build output for `{}`", entry.name);

@@ -8,7 +8,7 @@ The workflow engine and operator plugins live in [`augentic/specify`](https://gi
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |
-| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, repo checks, and native/wasm/live test surfaces | Rust |
+| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, repo checks, and native / wasm-smoke / live-model test surfaces | Rust |
 | `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Ultrathin Cursor skill wrappers, documentation, and the marketplace manifest | Markdown, YAML |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 

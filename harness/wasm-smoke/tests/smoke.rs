@@ -1,5 +1,5 @@
 //! WASM boundary smoke: host the built `specify.wasm` workflow guest
-//! with the combined fixture-adapter component bound at both
+//! with the combined adapter component bound at both
 //! `source:fixture` and `target:fixture`, then drive a short scripted
 //! path through fresh command-mode deployments — the same hosting
 //! shape as the shipped binary, with only the model backend swapped
@@ -41,12 +41,12 @@ async fn hosts_boundary() -> Result<()> {
     fs::create_dir_all(tmp.path().join(".specify-cache")).context("creating the cache mount")?;
     fs::create_dir_all(tmp.path().join(".specify-store")).context("creating the store mount")?;
     let workspace = tmp.path().canonicalize().context("resolving the workspace root")?;
-    fs::copy(fixture_wasm(), workspace.join("fixture.wasm")).context("staging fixture.wasm")?;
+    fs::copy(adapter_wasm(), workspace.join("fixture.wasm")).context("staging fixture.wasm")?;
     // The failing identity resolves through the project component
     // cache (only init's own adapter is mirrored automatically).
     fs::create_dir_all(workspace.join(".specify-cache/components"))
         .context("creating the component cache")?;
-    fs::copy(fixture_wasm(), workspace.join(".specify-cache/components/fixture-fail-survey.wasm"))
+    fs::copy(adapter_wasm(), workspace.join(".specify-cache/components/fixture-fail-survey.wasm"))
         .context("staging the failing identity")?;
     let manifest_path = workspace.join("omnia.toml");
     fs::write(&manifest_path, manifest(&workspace).render())
@@ -132,8 +132,8 @@ fn workflow_wasm() -> PathBuf {
     guest_wasm("specify.wasm")
 }
 
-fn fixture_wasm() -> PathBuf {
-    guest_wasm("examples/fixture_adapter.wasm")
+fn adapter_wasm() -> PathBuf {
+    guest_wasm("examples/adapter.wasm")
 }
 
 fn guest_wasm(relative: &str) -> PathBuf {
@@ -163,11 +163,11 @@ fn manifest(workspace: &Path) -> Manifest {
     Manifest {
         guest: vec![
             Guest::new("workflow", &workflow_wasm(), links.to_vec()),
-            Guest::new("source:fixture", &fixture_wasm(), Vec::new()),
-            Guest::new("target:fixture", &fixture_wasm(), Vec::new()),
+            Guest::new("source:fixture", &adapter_wasm(), Vec::new()),
+            Guest::new("target:fixture", &adapter_wasm(), Vec::new()),
             // The same artifact under a failing identity, for the
             // error-lift step.
-            Guest::new("source:fixture-fail-survey", &fixture_wasm(), Vec::new()),
+            Guest::new("source:fixture-fail-survey", &adapter_wasm(), Vec::new()),
         ],
         mount: vec![
             Mount::new(".", workspace, true),

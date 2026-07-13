@@ -125,7 +125,7 @@ async fn author_approve_execute_drains() {
     assert_eq!(requirement["claims"][0]["source"], "main");
 
     // The fixture target produced a real, non-empty build output.
-    let artifact = fixtures::build_artifact_path(&root, "greeting");
+    let artifact = adapter::build_artifact_path(&root, "greeting");
     let body = fs::read_to_string(&artifact).expect("fixture build output exists");
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
@@ -171,7 +171,7 @@ async fn preflight_parks_built() {
     scaffold_author_approve(&invoker).await;
 
     // Trip the fixture's failed preflight merge gate.
-    fs::write(root.join(fixtures::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
+    fs::write(root.join(adapter::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
 
     let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
         .await
@@ -186,7 +186,7 @@ async fn preflight_parks_built() {
 
     // Clear the gate and resume through the breakout merge, then the
     // loop confirms drained.
-    fs::remove_file(root.join(fixtures::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+    fs::remove_file(root.join(adapter::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
     let merged = run::<slice::handlers::MergeRun, _>(
         &invoker,
         slice::handlers::MergeRunInput {
@@ -216,7 +216,7 @@ async fn postflight_terminal() {
     scaffold_author_approve(&invoker).await;
 
     // Trip the fixture's failed postflight merge gate.
-    fs::write(root.join(fixtures::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
+    fs::write(root.join(adapter::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
 
     let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
         .await
@@ -251,7 +251,7 @@ async fn build_parks_then_resumes() {
     scaffold_author_approve(&invoker).await;
 
     // Trip the fixture's failed-report mode for the first build.
-    fs::write(root.join(fixtures::FAIL_BUILD_MARKER), "").expect("write fail marker");
+    fs::write(root.join(adapter::FAIL_BUILD_MARKER), "").expect("write fail marker");
 
     let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
         .await
@@ -259,7 +259,7 @@ async fn build_parks_then_resumes() {
     assert!(stopped.to_string().contains("build-failed"), "{stopped}");
 
     // Clear the failure and resume through the breakout build.
-    fs::remove_file(root.join(fixtures::FAIL_BUILD_MARKER)).expect("remove fail marker");
+    fs::remove_file(root.join(adapter::FAIL_BUILD_MARKER)).expect("remove fail marker");
     let rebuilt = run::<slice::handlers::Build, _>(
         &invoker,
         slice::handlers::BuildInput {

@@ -4,13 +4,13 @@ Specify proves engine correctness from this repository alone: native integration
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + docs/plugin links), and a compile-only `wasm32-wasip2` check covering the workflow guest and the fixture-adapter shim. The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the fixture adapter and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + docs/plugin links), and a compile-only `wasm32-wasip2` check covering the workflow guest and the harness-adapter shim. The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the harness adapter and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
 ## Gate 2 — WASM boundary (weekly / path-filtered / manual; required for release)
 
-`cargo make test-wasm` (CI: `.github/workflows/wasm.yaml`) hosts `specify.wasm` with the combined `fixture_adapter.wasm` and runs the single WASM smoke. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
+`cargo make test-wasm` (CI: `.github/workflows/wasm.yaml`) hosts `specify.wasm` with the combined `adapter.wasm` and runs the single WASM smoke. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
 
 Cadence: weekly schedule, pull requests that touch `wit/`, `src/`, or the harness guests, and manual dispatch. Required green before a release tag. Ordinary pushes keep only the compile-only `wasm32-wasip2` check.
 
@@ -26,7 +26,7 @@ When adding coverage:
 
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
-3. Put cross-crate workflow behavior in the native workflow suites over the fixture adapter and scripted answers.
+3. Put cross-crate workflow behavior in the native workflow suites over the harness adapter and scripted answers.
 4. Extend the WASM smoke only when the behavior crosses a WebAssembly/WIT/runtime seam.
 5. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
@@ -35,7 +35,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `harness/fixtures` is the only adapter double — one native core behind both the native seams and the combined WIT shim. Do not add another mock adapter or fixture copy.
+- `harness/adapter` is the only adapter double — one `native/` core behind both the native seams and the `wasm/` WIT shim. Do not add another mock adapter or harness-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance

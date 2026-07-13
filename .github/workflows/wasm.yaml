@@ -1,5 +1,5 @@
 # The deterministic WASM boundary: build the workflow core and the
-# combined fixture adapter, then host them in one Omnia command-mode
+# combined harness adapter, then host them in one Omnia command-mode
 # deployment. Proves WIT linking, dispatch on both axes, writable
 # preopens, model-host wiring, and the typed error lift — without a
 # sibling checkout or credentials. Not a second workflow matrix.
@@ -20,8 +20,8 @@ on:
     paths:
       - "wit/**"
       - "src/**"
-      - "harness/fixtures/**"
-      - "harness/wasm/**"
+      - "harness/adapter/**"
+      - "harness/wasm-smoke/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/wasm.yaml"
@@ -53,8 +53,8 @@ jobs:
       - name: Build workflow guest
         run: cargo build --locked -p specify --lib --target wasm32-wasip2
 
-      - name: Build fixture adapter
-        run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
+      - name: Build harness adapter
+        run: cargo build --locked -p adapter --examples --target wasm32-wasip2
 
       - name: WASM boundary smoke
-        run: cargo nextest run --locked -p wasm --no-tests=pass
+        run: cargo nextest run --locked -p wasm-smoke --no-tests=pass

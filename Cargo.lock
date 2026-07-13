@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "adapter"
+version = "0.27.2"
+dependencies = [
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde_json",
+ "wasip3",
+ "wit-bindgen 0.59.0",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -477,10 +488,10 @@ dependencies = [
 name = "change"
 version = "0.27.2"
 dependencies = [
+ "adapter",
  "artifacts",
  "diagnostics",
  "error",
- "fixtures",
  "jiff",
  "omnia-guest",
  "omnia-testkit",
@@ -1176,17 +1187,6 @@ name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
-
-[[package]]
-name = "fixtures"
-version = "0.27.2"
-dependencies = [
- "omnia-guest",
- "omnia-wasi-http",
- "serde_json",
- "wasip3",
- "wit-bindgen 0.59.0",
-]
 
 [[package]]
 name = "fluent-uri"
@@ -2038,15 +2038,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 
 [[package]]
-name = "live"
+name = "live-model"
 version = "0.27.2"
 dependencies = [
+ "adapter",
  "anyhow",
  "artifacts",
  "change",
  "diagnostics",
  "error",
- "fixtures",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -4630,22 +4630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "omnia",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "omnia-wasi-otel",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "wasm-bindgen"
 version = "0.2.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4730,6 +4714,22 @@ dependencies = [
  "indexmap",
  "wasm-encoder 0.253.0",
  "wasmparser 0.253.0",
+]
+
+[[package]]
+name = "wasm-smoke"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "omnia",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "omnia-wasi-otel",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
 ]
 
 [[package]]

@@ -12,7 +12,7 @@ skip_rust_env_info = true
 # Build guests
 #
 # wasm32-wasip2 guest components: the core `specify` guest plus the
-# combined fixture adapter (a cdylib example of the `fixtures` package,
+# combined harness adapter (the `wasm/` cdylib example of the `adapter` package,
 # landing under target/wasm32-wasip2/debug/examples/). Two invocations:
 # `--examples` narrows target selection to example targets only, so the
 # core guest's lib needs its own build.
@@ -22,7 +22,7 @@ script = '''
 set -euo pipefail
 root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 (cd "${root}" && cargo build -p specify --lib --target wasm32-wasip2)
-(cd "${root}" && cargo build -p fixtures --examples --target wasm32-wasip2)
+(cd "${root}" && cargo build -p adapter --examples --target wasm32-wasip2)
 '''
 
 # Model-free WASM boundary smoke. Guest construction is explicit so
@@ -31,7 +31,7 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 [tasks.test-wasm]
 dependencies = ["guests"]
 command = "cargo"
-args = ["nextest", "run", "--locked", "-p", "wasm", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "-p", "wasm-smoke", "--no-tests=pass"]
 
 # Lint — a focused clippy leg over the harness crates (the root
 # workspace-wide `cargo make lint` also compiles them; this scoped run
@@ -41,11 +41,11 @@ command = "cargo"
 args = [
     "clippy",
     "-p",
-    "fixtures",
+    "adapter",
     "-p",
-    "wasm",
+    "wasm-smoke",
     "-p",
-    "live",
+    "live-model",
     "--all-targets",
     "--",
     "-D",
