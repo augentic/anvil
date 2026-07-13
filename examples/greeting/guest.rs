@@ -19,7 +19,7 @@ mod bindings {
         unsafe_code,
         clippy::pedantic,
         clippy::nursery,
-        reason = "wit-bindgen generated bindings are not hand-maintained; the generated code cannot carry this workspace's lint posture"
+        reason = "wit-bindgen generated bindings are not hand-maintained;"
     )]
 
     use super::FixtureAdapter;

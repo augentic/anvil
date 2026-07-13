@@ -1141,6 +1141,7 @@ version = "0.27.2"
 dependencies = [
  "anyhow",
  "artifacts",
+ "cfg-if",
  "change",
  "omnia",
  "omnia-cursor",

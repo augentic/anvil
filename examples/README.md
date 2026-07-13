@@ -6,6 +6,7 @@ Specify's non-shipped example surfaces follow Omnia's [examples](https://github.
 | ------------------------ | -------------------------------------------------------- |
 | `prompt-eval/runtime.rs` | Manual prompt-evaluation harness (`prompt-eval`)         |
 | `greeting/runtime.rs`    | Command-mode `runtime!` host (`greeting`)                 |
+| `greeting/scripted.rs`   | Deterministic model backend and judgment answers          |
 | `greeting/guest.rs`      | Combined source/target component (`greeting-wasm`)        |
 | `greeting/omnia.toml`    | Workflow, adapter bindings, links, and writable preopens |
 

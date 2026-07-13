@@ -13,6 +13,7 @@ autotests = false
 anyhow.workspace = true
 artifacts.workspace = true
 change.workspace = true
+cfg-if.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-guest.workspace = true
