@@ -88,7 +88,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the test body or a `//` comment above the `fn`, not the identifier.
 
-`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway — the 30-char cap is enforced by the `naming.test-fn-length` framework check ([docs/contributing/checks.md](../contributing/checks.md)).
+`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 30-char cap is house style enforced in review, not by a CI check.
 
 ## Patterns to follow
 

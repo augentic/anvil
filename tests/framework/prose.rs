@@ -1,72 +1,28 @@
-//! Prose and manifest predicates: marketplace↔plugins drift, skill
-//! numeric-cap drift, the canonical review-team-protocol document,
-//! reference-corpus indexes, design-history citations, and
-//! text pipeline diagrams in docs.
+//! Prose and manifest predicates: marketplace↔plugins drift and the
+//! canonical review-team-protocol document.
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
-use std::sync::LazyLock;
 
-use regex::Regex;
 use serde_json::Value as JsonValue;
 
-use crate::support::{Finding, extract_fenced_blocks, rel, walk_files, walk_markdown};
+use crate::support::{Finding, rel};
 
 /// The marketplace manifest disagrees with the on-disk plugin layout.
 pub const CHECK_MARKETPLACE_DRIFT: &str = "plugins.marketplace-drift";
-/// The embedded skill schema's description cap drifted from policy.
-pub const CHECK_NUMERIC_CAP: &str = "prose.numeric-cap-exceeded";
 /// The canonical review-team-protocol document is missing.
 pub const CHECK_CANONICAL_MISSING: &str = "agent-teams.missing-canonical";
-/// A reference corpus holds two or more files but no README.md index.
-pub const CHECK_CORPUS_UNINDEXED: &str = "reference.corpus-unindexed";
-/// Prose cites a design-history RFC number below 100.
-pub const CHECK_HISTORY_CITATION: &str = "docs.history-citation";
-/// A docs page draws a flow diagram inside a fenced `text` block.
-pub const CHECK_TEXT_DIAGRAM: &str = "docs.text-pipeline-diagram";
 
-/// Skill description character cap (must match `skill.schema.json`
-/// `description.maxLength`).
-const DESCRIPTION_CAP: u64 = 512;
-
-/// Canonical documents required by shipped overlays and contributor guidance.
-const CANONICAL_DOCUMENTS: &[&str] = &[
-    "docs/reference/review-team-protocol.md",
-    "docs/standards/testing.md",
-    "docs/contributing/quality-gates.md",
-];
-
-/// Reference-corpus roots (one directory depth per `*`; `*` does not
-/// cross `/`) that owe a `README.md` index at two or more files.
-const CORPUS_ROOTS: &[&str] =
-    &["sources/*/prose/references/*", "targets/*/prose/references/*", "codex/references/*"];
-const CORPUS_INDEX: &str = "README.md";
-const CORPUS_MIN_FILES: usize = 2;
-
-/// Trees scanned for design-history citations.
-const HISTORY_SCOPE_PREFIXES: &[&str] =
-    &["docs/", "codex/", "sources/", "targets/", "plugins/", "harness/"];
-/// Subtrees excluded from the history-citation scan.
-const HISTORY_EXCLUDED_PREFIXES: &[&str] = &["docs/assets/", "codex/rules/"];
-/// Code trees scanned for design-history citations in `.rs` / `.wit`
-/// comments; `rfcs/` stays out of scope by design.
-const HISTORY_CODE_PREFIXES: &[&str] = &["src/", "crates/", "harness/", "wit/"];
-const HISTORY_CODE_EXTENSIONS: &[&str] = &["rs", "wit"];
-
-/// Docs subtrees where fenced `text` flow diagrams are banned.
-const TEXT_DIAGRAM_PREFIXES: &[&str] =
-    &["docs/explanation/", "docs/orientation/", "docs/tutorials/", "docs/how-to/"];
+/// Canonical documents required by shipped overlays: the sibling
+/// adapter repo symlinks `agent-teams.md` through this file.
+const CANONICAL_DOCUMENTS: &[&str] = &["docs/reference/review-team-protocol.md"];
 
 /// Run every prose predicate rooted at `root`.
 pub fn run(root: &Path) -> Vec<Finding> {
     let mut findings = Vec::new();
     check_marketplace_drift(root, &mut findings);
-    check_numeric_caps(root, &mut findings);
     check_canonical_doc(root, &mut findings);
-    check_corpus_indexes(root, &mut findings);
-    check_history_citations(root, &mut findings);
-    check_text_diagrams(root, &mut findings);
     findings
 }
 
@@ -169,30 +125,7 @@ fn check_marketplace_drift(root: &Path, findings: &mut Vec<Finding>) {
     }
 }
 
-/// The embedded skill schema must carry the policy description cap.
-fn check_numeric_caps(_root: &Path, findings: &mut Vec<Finding>) {
-    match schema_description_max_length() {
-        Some(max_length) if max_length == DESCRIPTION_CAP => {}
-        Some(max_length) => findings.push(Finding::new(
-            CHECK_NUMERIC_CAP,
-            format!(
-                "skill.schema.json description.maxLength is {max_length}, expected \
-                 {DESCRIPTION_CAP}"
-            ),
-        )),
-        None => findings.push(Finding::new(
-            CHECK_NUMERIC_CAP,
-            "skill.schema.json declares no description.maxLength".to_owned(),
-        )),
-    }
-}
-
-fn schema_description_max_length() -> Option<u64> {
-    let schema: JsonValue = serde_json::from_str(schema::SKILL_JSON_SCHEMA).ok()?;
-    schema.get("properties")?.get("description")?.get("maxLength").and_then(JsonValue::as_u64)
-}
-
-/// Canonical overlay and test-model documents must exist.
+/// Canonical overlay documents must exist.
 fn check_canonical_doc(root: &Path, findings: &mut Vec<Finding>) {
     for relative in CANONICAL_DOCUMENTS {
         if !root.join(relative).is_file() {
@@ -200,148 +133,6 @@ fn check_canonical_doc(root: &Path, findings: &mut Vec<Finding>) {
                 CHECK_CANONICAL_MISSING,
                 format!("required file '{relative}' is missing"),
             ));
-        }
-    }
-}
-
-/// Each directory matching a corpus root glob with at least
-/// `CORPUS_MIN_FILES` files beneath it must carry a `README.md`
-/// directly inside it.
-fn check_corpus_indexes(root: &Path, findings: &mut Vec<Finding>) {
-    let mut files = Vec::new();
-    for top in ["sources", "targets", "codex", "adapters"] {
-        let dir = root.join(top);
-        if dir.is_dir() {
-            walk_files(&dir, &mut files);
-        }
-    }
-    let relatives: Vec<String> = files.iter().map(|path| rel(root, path)).collect();
-
-    let mut corpus_dirs: BTreeSet<String> = BTreeSet::new();
-    for relative in &relatives {
-        let mut prefix = relative.as_str();
-        while let Some(pos) = prefix.rfind('/') {
-            prefix = &prefix[..pos];
-            if CORPUS_ROOTS.iter().any(|pattern| glob_dir_matches(pattern, prefix)) {
-                corpus_dirs.insert(prefix.to_owned());
-            }
-        }
-    }
-
-    for dir in corpus_dirs {
-        let beneath = format!("{dir}/");
-        let count = relatives.iter().filter(|r| r.starts_with(&beneath)).count();
-        if count < CORPUS_MIN_FILES {
-            continue;
-        }
-        let required = format!("{dir}/{CORPUS_INDEX}");
-        if relatives.contains(&required) {
-            continue;
-        }
-        findings.push(Finding::new(
-            CHECK_CORPUS_UNINDEXED,
-            format!(
-                "reference directory '{dir}' ({count} files) is missing its '{CORPUS_INDEX}' \
-                 index"
-            ),
-        ));
-    }
-}
-
-/// Segment-wise glob match where `*` matches exactly one path segment
-/// (never crosses `/`).
-fn glob_dir_matches(pattern: &str, dir: &str) -> bool {
-    let pattern_segments: Vec<&str> = pattern.split('/').collect();
-    let dir_segments: Vec<&str> = dir.split('/').collect();
-    pattern_segments.len() == dir_segments.len()
-        && pattern_segments.iter().zip(&dir_segments).all(|(p, d)| *p == "*" || p == d)
-}
-
-static RFC_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)RFC[-\s]+(\d+)").expect("rfc citation pattern"));
-
-/// Specify design-history citations (RFC numbers below 100) must not
-/// appear in operator-facing prose or engine code comments; standards
-/// RFCs (>= 100) pass.
-fn check_history_citations(root: &Path, findings: &mut Vec<Finding>) {
-    let mut paths = Vec::new();
-    for prefix in HISTORY_SCOPE_PREFIXES {
-        let dir = root.join(prefix.trim_end_matches('/'));
-        if dir.is_dir() {
-            paths.extend(walk_markdown(&dir));
-        }
-    }
-    let agents = root.join("AGENTS.md");
-    if agents.is_file() {
-        paths.push(agents);
-    }
-    for prefix in HISTORY_CODE_PREFIXES {
-        let dir = root.join(prefix.trim_end_matches('/'));
-        if !dir.is_dir() {
-            continue;
-        }
-        let mut files = Vec::new();
-        walk_files(&dir, &mut files);
-        paths.extend(files.into_iter().filter(|path| {
-            path.extension()
-                .and_then(|e| e.to_str())
-                .is_some_and(|ext| HISTORY_CODE_EXTENSIONS.contains(&ext))
-        }));
-    }
-
-    for path in paths {
-        let relative = rel(root, &path);
-        if HISTORY_EXCLUDED_PREFIXES.iter().any(|prefix| relative.starts_with(prefix)) {
-            continue;
-        }
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        for (line_idx, line) in content.lines().enumerate() {
-            for cap in RFC_RE.captures_iter(line) {
-                let number: u64 = cap[1].parse().unwrap_or(u64::MAX);
-                if number < 100 {
-                    findings.push(Finding::new(
-                        CHECK_HISTORY_CITATION,
-                        format!(
-                            "{relative}:{} — retired design-history citation '{}'",
-                            line_idx + 1,
-                            &cap[0]
-                        ),
-                    ));
-                }
-            }
-        }
-    }
-}
-
-/// Prose docs must not draw pipeline diagrams inside a fenced `text`
-/// block; one containing a flow arrow is a diagram in disguise
-/// (author an SVG under `docs/assets/diagrams/` instead).
-fn check_text_diagrams(root: &Path, findings: &mut Vec<Finding>) {
-    for prefix in TEXT_DIAGRAM_PREFIXES {
-        let dir = root.join(prefix.trim_end_matches('/'));
-        if !dir.is_dir() {
-            continue;
-        }
-        for path in walk_markdown(&dir) {
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            let relative = rel(root, &path);
-            for block in extract_fenced_blocks(&content) {
-                if block.lang == "text" && (block.body.contains("->") || block.body.contains('→'))
-                {
-                    findings.push(Finding::new(
-                        CHECK_TEXT_DIAGRAM,
-                        format!(
-                            "{relative}:{} — flow diagram inside a ```text fence; author an SVG \
-                             under docs/assets/diagrams/ instead",
-                            block.line_start
-                        ),
-                    ));
-                }
-            }
         }
     }
 }

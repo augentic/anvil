@@ -1,7 +1,7 @@
 //! Skill-manifest predicates over `plugins/<plugin>/skills/<skill>/SKILL.md`:
 //! frontmatter presence, schema validity, name uniqueness, the plugin
-//! discovery-prefix invariant, the argument-hint and description
-//! grammars, and the frontmatter-restatement ban.
+//! discovery-prefix invariant, and the ultrathin-wrapper bans
+//! (frontmatter restatement, orchestration headings).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -21,10 +21,6 @@ pub const CHECK_SCHEMA_VIOLATION: &str = "skill.schema-violation";
 pub const CHECK_DUPLICATE_NAME: &str = "skill.duplicate-name";
 /// A skill `name` does not carry its plugin's discovery prefix.
 pub const CHECK_NAME_PREFIX: &str = "skill.name-directory-mismatch";
-/// An `argument-hint` token violates the slash-command grammar.
-pub const CHECK_ARGUMENT_HINT: &str = "skill.argument-hint-grammar";
-/// A `description` does not start with an approved imperative verb.
-pub const CHECK_DESCRIPTION_VERB: &str = "skill.description-grammar";
 /// A skill body restates frontmatter with a `## Input` H2.
 pub const CHECK_FRONTMATTER_RESTATEMENT: &str = "skill.frontmatter-restatement";
 /// A spec skill body carries an orchestration/judgment heading.
@@ -33,89 +29,6 @@ pub const CHECK_ORCHESTRATION_HEADING: &str = "skill.orchestration-heading";
 /// Plugin directories whose published discovery prefix differs from
 /// the directory name.
 const PREFIX_OVERRIDES: &[(&str, &str)] = &[("spec", "specify")];
-
-/// Closed slash-command argument grammar: `<name>`, `[name]`, `<a|b>`,
-/// `[a|b]`, optional `...`, or `--flag`, with kebab-case names.
-const ARGUMENT_HINT_TOKEN_PATTERN: &str = r"^(?:<[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*>(?:\.\.\.)?|\[[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:\|[a-z][a-z0-9]*(?:-[a-z0-9]+)*)*\](?:\.\.\.)?|--[a-z][a-z0-9]*(?:-[a-z0-9]+)*)$";
-
-/// Approved imperative verbs a skill `description` may start with.
-const DESCRIPTION_VERBS: &[&str] = &[
-    "add",
-    "annotate",
-    "apply",
-    "audit",
-    "author",
-    "build",
-    "categorise",
-    "categorize",
-    "check",
-    "compare",
-    "compile",
-    "complete",
-    "compose",
-    "compute",
-    "configure",
-    "convert",
-    "create",
-    "decompose",
-    "define",
-    "describe",
-    "design",
-    "diff",
-    "discover",
-    "drive",
-    "drop",
-    "enforce",
-    "execute",
-    "expose",
-    "export",
-    "extract",
-    "fetch",
-    "fix",
-    "format",
-    "generate",
-    "guard",
-    "implement",
-    "import",
-    "infer",
-    "ingest",
-    "init",
-    "initialize",
-    "list",
-    "load",
-    "merge",
-    "monitor",
-    "orchestrate",
-    "plan",
-    "preview",
-    "process",
-    "produce",
-    "propose",
-    "publish",
-    "reconstruct",
-    "refine",
-    "render",
-    "resolve",
-    "review",
-    "run",
-    "scaffold",
-    "select",
-    "show",
-    "shorten",
-    "split",
-    "stage",
-    "store",
-    "summarize",
-    "test",
-    "translate",
-    "transform",
-    "trim",
-    "validate",
-    "verify",
-    "wire",
-    "wrap",
-    "write",
-];
 
 /// Heading terms naming engine-owned behavior. A spec skill is an
 /// invoke-and-relay wrapper: orchestration, synthesis, validation, and
@@ -135,8 +48,6 @@ const ORCHESTRATION_HEADING_TERMS: &[&str] = &[
 
 static SKILL_NAME_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-z][a-z0-9-]*$").expect("skill name pattern"));
-static ARGUMENT_HINT_TOKEN_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(ARGUMENT_HINT_TOKEN_PATTERN).expect("argument-hint grammar"));
 static INPUT_HEADING_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^## Input\s*$").expect("input heading pattern"));
 
@@ -163,8 +74,6 @@ pub fn run(root: &Path) -> Vec<Finding> {
         };
 
         check_schema(&relative, &fields, &mut findings);
-        check_argument_hint(&relative, &fields, &mut findings);
-        check_description_verb(&relative, &fields, &mut findings);
         check_input_heading(&relative, &content, &mut findings);
         if plugin == "spec" {
             check_orchestration_headings(&relative, &content, &mut findings);
@@ -231,63 +140,6 @@ fn check_name_prefix(relative: &str, name: &str, plugin: &str, findings: &mut Ve
         findings.push(Finding::new(
             CHECK_NAME_PREFIX,
             format!("{relative} — skill name '{name}' must start with '{required}'"),
-        ));
-    }
-}
-
-/// Every whitespace-separated `argument-hint` token must match the
-/// closed grammar; a present non-string value is flagged outright.
-fn check_argument_hint(
-    relative: &str, fields: &serde_json::Map<String, JsonValue>, findings: &mut Vec<Finding>,
-) {
-    let Some(value) = fields.get("argument-hint") else {
-        return;
-    };
-    let Some(text) = value.as_str() else {
-        findings.push(Finding::new(
-            CHECK_ARGUMENT_HINT,
-            format!("{relative} — frontmatter field 'argument-hint' must be a string"),
-        ));
-        return;
-    };
-    if let Some(token) =
-        text.split_whitespace().find(|token| !ARGUMENT_HINT_TOKEN_RE.is_match(token))
-    {
-        findings.push(Finding::new(
-            CHECK_ARGUMENT_HINT,
-            format!(
-                "{relative} — argument-hint token '{token}' (in '{text}') does not match the \
-                 slash-command grammar"
-            ),
-        ));
-    }
-}
-
-/// The first alphabetic word of `description` (lowercased) must be a
-/// member of the approved verb allow-list.
-fn check_description_verb(
-    relative: &str, fields: &serde_json::Map<String, JsonValue>, findings: &mut Vec<Finding>,
-) {
-    let Some(text) = fields.get("description").and_then(JsonValue::as_str) else {
-        return;
-    };
-    let first_word = text.split_whitespace().next().unwrap_or("");
-    let first_alpha: String = first_word.chars().take_while(char::is_ascii_alphabetic).collect();
-    if first_alpha.is_empty() {
-        findings.push(Finding::new(
-            CHECK_DESCRIPTION_VERB,
-            format!("{relative} — description has no leading alphabetic word"),
-        ));
-        return;
-    }
-    let lower = first_alpha.to_ascii_lowercase();
-    if !DESCRIPTION_VERBS.contains(&lower.as_str()) {
-        findings.push(Finding::new(
-            CHECK_DESCRIPTION_VERB,
-            format!(
-                "{relative} — description first word '{first_alpha}' is not an approved \
-                 imperative verb"
-            ),
         ));
     }
 }

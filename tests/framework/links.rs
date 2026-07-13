@@ -1,6 +1,6 @@
 //! Link-integrity predicates: relative markdown links, SVG diagram
-//! embeds, tool-owned schema URLs, skill directives, plugin symlinks,
-//! and the docs/-in-deployable-surface ban.
+//! embeds, skill directives, plugin symlinks, and the
+//! docs/-in-deployable-surface ban.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,8 +16,6 @@ use crate::support::{
 pub const CHECK_LINK_UNRESOLVED: &str = "links.unresolved";
 /// A `![alt](….svg)` diagram embed under `docs/` does not resolve.
 pub const CHECK_DIAGRAM_ASSET_MISSING: &str = "links.missing-diagram-asset";
-/// A `schemas.specify.dev` URL names an unregistered tool schema.
-pub const CHECK_SCHEMA_URL_UNKNOWN: &str = "links.prompt-schema-link-resolve";
 /// A `<!-- skill: plugin:skill -->` directive does not resolve.
 pub const CHECK_DIRECTIVE_UNRESOLVED: &str = "links.unresolved-directive";
 /// A symlink under `plugins/` points at a missing target.
@@ -33,26 +31,12 @@ pub const CHECK_RFCS_LINK: &str = "links.rfcs-in-permanent-surface";
 /// *Outbound* links into `rfcs/` from permanent surfaces are banned
 /// separately ([`CHECK_RFCS_LINK`]). The embedded judgment-prose
 /// corpora under `crates/slice/prompts/` and `crates/change/prompts/`
-/// are in scope: their links are also build-checked at embed time, but
-/// the framework gate catches drift without a crate rebuild.
-const LINK_SCOPE_PREFIXES: &[&str] = &[
-    "codex/",
-    "sources/",
-    "targets/",
-    "plugins/",
-    "docs/",
-    ".cursor/",
-    "crates/slice/prompts/",
-    "crates/change/prompts/",
-];
+/// are out of scope: `crates/prose` link-checks them at embed time and
+/// fails the build on a dangling reference.
+const LINK_SCOPE_PREFIXES: &[&str] = &["plugins/", "docs/", ".cursor/"];
 
 /// Trees walked for skill directives (the framework include set).
-const DIRECTIVE_SCOPE_PREFIXES: &[&str] =
-    &["codex/", "sources/", "targets/", "plugins/", "docs/", ".cursor/", "rfcs/", "schemas/"];
-
-/// Tool → schema-name registry for `schemas.specify.dev` URLs cited in
-/// adapter prompts and references.
-const KNOWN_SCHEMAS: &[(&str, &[&str])] = &[("vectis", &["tokens", "assets", "composition"])];
+const DIRECTIVE_SCOPE_PREFIXES: &[&str] = &["plugins/", "docs/", ".cursor/", "rfcs/", "schemas/"];
 
 /// Docs pages excluded from the SVG-embed check: rendered output and
 /// pages that intentionally cite illustrative asset paths.
@@ -63,7 +47,6 @@ const DIAGRAM_EXCLUDED: &[&str] =
 pub fn run(root: &Path) -> Vec<Finding> {
     let mut findings = Vec::new();
     check_markdown_links(root, &mut findings);
-    check_schema_urls(root, &mut findings);
     check_directives(root, &mut findings);
     check_plugin_symlinks(root, &mut findings);
     check_docs_links_in_deployable(root, &mut findings);
@@ -114,51 +97,8 @@ fn check_markdown_links(root: &Path, findings: &mut Vec<Finding>) {
     }
 }
 
-static SCHEMA_URL_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"https://schemas\.specify\.dev/([a-z][a-z0-9-]*)/([a-z][a-z0-9-]*)\.schema\.json")
-        .expect("schema URL pattern")
-});
 static INLINE_CODE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"`[^`]+`").expect("inline code pattern"));
-
-/// Every `schemas.specify.dev/<tool>/<name>.schema.json` URL in the
-/// adapter trees must name a registered tool-owned schema.
-fn check_schema_urls(root: &Path, findings: &mut Vec<Finding>) {
-    for path in scoped_markdown(root, &["codex/", "sources/", "targets/", "adapters/"]) {
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        let relative = rel(root, &path);
-        let mut in_fence = false;
-        for (line_idx, line) in content.lines().enumerate() {
-            if line.trim_start().starts_with("```") {
-                in_fence = !in_fence;
-                continue;
-            }
-            if in_fence {
-                continue;
-            }
-            let cleaned = INLINE_CODE_RE.replace_all(line, "");
-            for cap in SCHEMA_URL_RE.captures_iter(&cleaned) {
-                let tool = cap.get(1).map_or("", |m| m.as_str());
-                let name = cap.get(2).map_or("", |m| m.as_str());
-                let known =
-                    KNOWN_SCHEMAS.iter().any(|(t, schemas)| *t == tool && schemas.contains(&name));
-                if !known {
-                    let url = cap.get(0).map_or("", |m| m.as_str());
-                    findings.push(Finding::new(
-                        CHECK_SCHEMA_URL_UNKNOWN,
-                        format!(
-                            "{relative}:{} — schema URL '{url}' does not resolve to a known \
-                             tool-owned schema",
-                            line_idx + 1
-                        ),
-                    ));
-                }
-            }
-        }
-    }
-}
 
 static DIRECTIVE_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"<!-- skill: ([a-z][a-z0-9-]*):([a-z][a-z0-9-]*) -->").expect("directive pattern")
@@ -234,14 +174,11 @@ fn collect_symlinks(dir: &Path, out: &mut Vec<PathBuf>) {
 static DOCS_LINK_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\]\((docs/|[^)]*\.\./docs/)[^)]*\)").expect("docs link pattern"));
 
-/// Deployable surfaces (plugins, adapter prompts and references) must
-/// not link into the contributor `docs/` tree.
+/// Deployable surfaces (plugins) must not link into the contributor
+/// `docs/` tree.
 fn check_docs_links_in_deployable(root: &Path, findings: &mut Vec<Finding>) {
-    for path in scoped_markdown(root, &["plugins/", "sources/", "targets/"]) {
+    for path in scoped_markdown(root, &["plugins/"]) {
         let relative = rel(root, &path);
-        if !relative.starts_with("plugins/") && !is_adapter_prose(&relative) {
-            continue;
-        }
         let Ok(content) = fs::read_to_string(&path) else {
             continue;
         };
@@ -257,16 +194,11 @@ fn check_docs_links_in_deployable(root: &Path, findings: &mut Vec<Finding>) {
 }
 
 /// Permanent markdown trees banned from linking into the disposable
-/// `rfcs/` design parking lot.
-const RFCS_BAN_PREFIXES: &[&str] = &[
-    "docs/",
-    "plugins/",
-    "codex/",
-    "sources/",
-    "targets/",
-    "crates/slice/prompts/",
-    "crates/change/prompts/",
-];
+/// `rfcs/` design parking lot. The embedded prompt corpora stay in
+/// scope: the compile-time link check only proves targets resolve,
+/// and an rfcs/ path resolves fine while still being banned.
+const RFCS_BAN_PREFIXES: &[&str] =
+    &["docs/", "plugins/", "crates/slice/prompts/", "crates/change/prompts/"];
 
 /// Permanent surfaces must not link into `rfcs/` — its contents are
 /// disposable working design, deleted once implemented.
@@ -294,15 +226,6 @@ fn check_rfcs_links(root: &Path, findings: &mut Vec<Finding>) {
             }
         }
     }
-}
-
-/// `{sources,targets}/<name>/prose/{prompts,references}/<file>.md`.
-fn is_adapter_prose(relative: &str) -> bool {
-    let parts: Vec<&str> = relative.split('/').collect();
-    parts.len() == 5
-        && (parts[0] == "sources" || parts[0] == "targets")
-        && parts[2] == "prose"
-        && (parts[3] == "prompts" || parts[3] == "references")
 }
 
 /// Markdown files under any of the given root-relative prefixes.

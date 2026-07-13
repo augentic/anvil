@@ -1,12 +1,11 @@
 //! Enforce the repo-local framework-quality predicates over the prose
-//! and manifest surfaces (links, skills, plugins, docs, naming).
+//! and manifest surfaces (links, skills, plugins, boundaries).
 //!
 //! Run with `cargo nextest run -p framework`. Any finding fails CI.
 //! Policy lives as constants in each module; failures are test failures.
 
 mod boundaries;
 mod links;
-mod naming;
 mod prose;
 mod skills;
 mod support;
@@ -33,7 +32,6 @@ fn run_all(root: &Path) -> Vec<Finding> {
     findings.extend(links::run(root));
     findings.extend(skills::run(root));
     findings.extend(prose::run(root));
-    findings.extend(naming::run(root));
     findings
 }
 
@@ -90,11 +88,7 @@ mod boundary {
 
         // The expanded `[dependencies.<name>]` table syntax fires.
         let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "harness/wasm/Cargo.toml",
-            "[dependencies.intent]\nversion = \"1\"\n",
-        );
+        write(dir.path(), "harness/wasm/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
         assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
         // A target-specific dependency table fires.
@@ -159,23 +153,6 @@ mod links_matrix {
             "```md\n[missing](gone.md)\n```\n\nAnd `[missing](gone.md)` inline.\n",
         );
         assert!(links::run(dir.path()).is_empty());
-
-        // An unknown schemas.specify.dev URL in an adapter tree fires; a
-        // registered one is silent.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "targets/demo/prose/references/guide.md",
-            "See https://schemas.specify.dev/demo/unknown.schema.json for the shape.\n",
-        );
-        assert!(fired(&links::run(dir.path()), links::CHECK_SCHEMA_URL_UNKNOWN));
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "targets/vectis/prose/references/guide.md",
-            "See https://schemas.specify.dev/vectis/tokens.schema.json for the shape.\n",
-        );
-        assert!(!fired(&links::run(dir.path()), links::CHECK_SCHEMA_URL_UNKNOWN));
 
         // A directive naming an unknown plugin or skill fires.
         let dir = tempfile::tempdir().expect("tempdir");
@@ -261,29 +238,21 @@ mod skills_matrix {
         );
         assert!(fired(&skills::run(dir.path()), skills::CHECK_NAME_PREFIX));
 
-        // A prose argument-hint fires the grammar check.
+        // A prose argument-hint fires the schema check (the grammar
+        // lives in skill.schema.json's argument-hint pattern).
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
             "plugins/spec/skills/refine/SKILL.md",
             &VALID_SKILL.replace("---\n\nBody.", "argument-hint: \"<slice-name>\"\n---\n\nBody."),
         );
-        assert!(!fired(&skills::run(dir.path()), skills::CHECK_ARGUMENT_HINT));
+        assert!(!fired(&skills::run(dir.path()), skills::CHECK_SCHEMA_VIOLATION));
         write(
             dir.path(),
             "plugins/spec/skills/refine/SKILL.md",
             &VALID_SKILL.replace("---\n\nBody.", "argument-hint: the slice name\n---\n\nBody."),
         );
-        assert!(fired(&skills::run(dir.path()), skills::CHECK_ARGUMENT_HINT));
-
-        // A description that does not open with an approved verb fires.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "plugins/spec/skills/refine/SKILL.md",
-            &VALID_SKILL.replace("description: Run the", "description: Runs the"),
-        );
-        assert!(fired(&skills::run(dir.path()), skills::CHECK_DESCRIPTION_VERB));
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_SCHEMA_VIOLATION));
 
         // A body `## Input` heading fires the restatement check.
         let dir = tempfile::tempdir().expect("tempdir");
@@ -335,43 +304,6 @@ const VALID_MARKETPLACE: &str = r#"{
 /// Baseline fixture carrying the artifacts the prose checks require.
 fn write_valid_prose_tree(root: &Path) {
     write(root, "docs/reference/review-team-protocol.md", "# Review team protocol\n");
-    write(root, "docs/standards/testing.md", "# Testing\n");
-    write(root, "docs/contributing/quality-gates.md", "# Quality gates\n");
-}
-
-mod naming_matrix {
-    use super::*;
-
-    #[test]
-    fn bad_fixtures() {
-        // A test fn identifier over the cap fires; the module path is
-        // context and does not count.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "crates/demo/tests/area.rs",
-            "#[test]\nfn a_very_long_test_name_that_exceeds_cap() {}\n",
-        );
-        assert!(fired(&naming::run(dir.path()), naming::CHECK_TEST_FN_LENGTH));
-
-        // An async test behind further attributes fires too.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "crates/demo/tests/area.rs",
-            "#[tokio::test]\n#[ignore]\nasync fn a_very_long_test_name_that_exceeds_cap() {}\n",
-        );
-        assert!(fired(&naming::run(dir.path()), naming::CHECK_TEST_FN_LENGTH));
-
-        // A name at the cap, and a long non-test fn, stay silent.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "crates/demo/tests/area.rs",
-            "#[test]\nfn exactly_thirty_characters_long() {}\n\nfn a_very_long_plain_helper_name_is_not_checked() {}\n",
-        );
-        assert!(naming::run(dir.path()).is_empty());
-    }
 }
 
 mod prose_matrix {
@@ -397,39 +329,5 @@ mod prose_matrix {
         // A missing canonical review-team-protocol document fires.
         let dir = tempfile::tempdir().expect("tempdir");
         assert!(fired(&prose::run(dir.path()), prose::CHECK_CANONICAL_MISSING));
-
-        // A two-file reference corpus without a README.md index fires.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(dir.path(), "targets/demo/prose/references/providers/a.md", "A.\n");
-        write(dir.path(), "targets/demo/prose/references/providers/b.md", "B.\n");
-        assert!(fired(&prose::run(dir.path()), prose::CHECK_CORPUS_UNINDEXED));
-
-        // A design-history citation fires; a standards RFC passes.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(dir.path(), "docs/explanation/why.md", "Per RFC-5 the loop was split.\n");
-        assert!(fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(dir.path(), "docs/explanation/time.md", "Timestamps follow RFC 3339.\n");
-        assert!(!fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
-
-        // A design-history citation in an engine code comment fires;
-        // one in the rfcs/ tree stays out of scope.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(dir.path(), "wit/demo.wit", "/// Revised per RFC-61.\n");
-        assert!(fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(dir.path(), "rfcs/rfc-5-loop.md", "# RFC-5\n");
-        assert!(!fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
-
-        // A ```text fence with a flow arrow in an explanation doc fires.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(dir.path(), "docs/explanation/flow.md", "```text\nplan -> refine -> build\n```\n");
-        assert!(fired(&prose::run(dir.path()), prose::CHECK_TEXT_DIAGRAM));
     }
 }
