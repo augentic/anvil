@@ -1,31 +1,24 @@
 [package]
 name = "specify"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-description = "Specify — a generic Omnia command-mode runtime over the cursor-bound backends"
+description = "A tool for specifying and running code generation workflows"
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
-publish = false
-# The root package carries no tests: repo checks live in the lightweight
-# `tests` package (boundaries + links), crate behavior lives in each
-# crate's tests/, and tests/fs_git.rs is a `#[path]`-shared helper that
-# must not become a (Wasmtime-heavy) empty test binary.
 autotests = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+version.workspace = true
 
 [lib]
 name = "specify"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
-test = false
-doctest = false
 
 [[bin]]
 name = "specify"
 path = "src/runtime.rs"
-test = false
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -72,7 +65,6 @@ rust-version = "1.95"
 version = "0.27.2"
 
 [workspace.lints.rust]
-# https://dirname.github.io/rust-std-doc/rustc/lints/listing/allowed-by-default.html
 elided_lifetimes_in_paths = "warn"
 explicit_outlives_requirements = "warn"
 let_underscore_drop = "warn"
@@ -92,8 +84,7 @@ unused_lifetimes = "warn"
 unused_qualifications = "warn"
 
 [workspace.lints.clippy]
-# https://doc.rust-lang.org/stable/clippy/index.html
-# Groups carry priority = -1 so individual lints below can override them.
+# set priority = -1 so individual lints below can override them.
 all = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
@@ -193,8 +184,8 @@ omnia = "0.35.0"
 omnia-cursor = "0.28.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
-omnia-testkit = { version = "0.35.0", default-features = false, features = ["model"] }
 omnia-host-macros = "0.35.0"
+omnia-testkit = { version = "0.35.0", default-features = false, features = ["model"] }
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
@@ -268,4 +259,3 @@ opt-level = 2
 
 [profile.dev.package.wasmtime-environ]
 opt-level = 2
-
