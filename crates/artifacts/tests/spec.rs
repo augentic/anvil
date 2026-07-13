@@ -17,8 +17,8 @@ mod baseline {
     use super::*;
 
     #[test]
-    fn case_01_single_req() {
-        let text = fixture!("spec-01-single-req/baseline.md");
+    fn single_req() {
+        let text = fixture!("spec-single-req/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 1);
@@ -41,8 +41,8 @@ mod baseline {
     }
 
     #[test]
-    fn case_02_multi_req() {
-        let text = fixture!("spec-02-multi-req/baseline.md");
+    fn multi_req() {
+        let text = fixture!("spec-multi-req/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 3);
@@ -60,8 +60,8 @@ mod baseline {
     }
 
     #[test]
-    fn case_07_all_sections() {
-        let text = fixture!("spec-07-all-sections/baseline.md");
+    fn all_sections() {
+        let text = fixture!("spec-all-sections/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 3);
@@ -70,8 +70,8 @@ mod baseline {
     }
 
     #[test]
-    fn case_09_preserves_oddities() {
-        let text = fixture!("spec-09-validation-fails/baseline.md");
+    fn preserves_oddities() {
+        let text = fixture!("spec-validation-fails/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 4);
@@ -159,8 +159,8 @@ mod delta {
     use super::*;
 
     #[test]
-    fn case_07_all_sections() {
-        let text = fixture!("spec-07-all-sections/delta.md");
+    fn all_sections() {
+        let text = fixture!("spec-all-sections/delta.md");
         let delta = parse_delta(text);
 
         assert_eq!(delta.renamed.len(), 1);
@@ -179,8 +179,8 @@ mod delta {
     }
 
     #[test]
-    fn case_03_new_baseline() {
-        let text = fixture!("spec-03-new-baseline/delta.md");
+    fn new_baseline() {
+        let text = fixture!("spec-new-baseline/delta.md");
         assert!(has_delta_headers(text));
 
         let delta = parse_delta(text);

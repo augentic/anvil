@@ -14,4 +14,4 @@ Each directory contains a subset of:
 - `expected-merge-errors.txt` — canonical stderr for merge failures. Empty file = success.
 - `expected-validation.txt` — canonical stderr from `validate_baseline`. Empty file = all coherence checks passed.
 
-`crates/slice/tests/merge_goldens.rs` drives the public `slice merge preview` operation over all nine cases. Specs 01–07 compare the in-memory merged output byte-for-byte; 08–09 compare post-merge validation output. Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p slice --test merge_goldens`, then review the golden diff. Parser coverage over the same inputs lives in `crates/artifacts/tests/spec.rs`.
+`crates/slice/tests/merge_goldens.rs` drives the public `slice merge preview` operation over all nine cases. The seven merge cases (`spec-single-req` through `spec-all-sections`) compare the in-memory merged output byte-for-byte; `spec-validation-ok` and `spec-validation-fails` compare post-merge validation output. Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p slice --test merge_goldens`, then review the golden diff. Parser coverage over the same inputs lives in `crates/artifacts/tests/spec.rs`.
