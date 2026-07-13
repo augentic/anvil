@@ -1,7 +1,7 @@
-//! The explicit live-model workflow test: one ignored,
-//! operator-invoked native trial that drives the same fixture
-//! workflow as the scripted suites — adversarial lead set, real
-//! judgment — and grades it with the deterministic validators only.
+//! The explicit live-model workflow example: one operator-invoked
+//! native trial that drives the same fixture workflow as the scripted
+//! suites — adversarial lead set, real judgment — and grades it with
+//! the deterministic validators only.
 //!
 //! The lead set earns the word non-trivial: a cross-source overlap a
 //! correct reconciliation merges into one slice, an authority
@@ -40,7 +40,7 @@ use omnia_wasi_model as wire;
 use omnia_wasi_model::WasiModelCtx as _;
 use serde_json::Value;
 
-#[path = "../../../../crates/change/tests/common/mod.rs"]
+#[path = "../../crates/change/tests/common/mod.rs"]
 mod common;
 
 use common::answers;
@@ -61,9 +61,8 @@ where
     invoker.invoke::<R>(Invocation::new(input)).await
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore = "dispatches the configured live model; run via `cargo make test-live`"]
-async fn adversarial_loop_clean() {
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
+async fn main() {
     // Kept up front and removed only after every assertion passes, so
     // a failing trial leaves its project tree behind for inspection.
     let root = tempfile::TempDir::new().expect("tempdir").keep();

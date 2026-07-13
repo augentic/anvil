@@ -4,7 +4,7 @@ Integration-first test posture: `cargo nextest` over public crate and binary bou
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*`, `harness/native/adapter`, and the `tests` (`checks`) package; the WASM boundary smoke and the live test are opt-in rungs (below) so ordinary test runs never compile Wasmtime or call a model.
+Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*`, `examples` (the adapter lib), and the `tests` (`checks`) package; the WASM boundary smoke and the live trial are opt-in rungs (below) so ordinary test runs never compile Wasmtime or call a model.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
@@ -15,14 +15,14 @@ Specify is tested as a self-contained engine against its own WIT contract. No ru
 | Rung | Command | Proves | Cadence |
 | ---- | ------- | ------ | ------- |
 | **Native integration** | `cargo make test` | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the `workflow` crate's public operations, the harness adapter's native seams, and `omnia-testkit` scripted models | Every push (part of `cargo make ci`) |
-| **WASM boundary** | `cargo make test-wasm` | The WASM seam only: the combined `adapter.wasm` loads, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the typed error lift works across the component boundary | Weekly / path-filtered / manual (`.github/workflows/wasm.yaml`); required before release tags; per-push CI keeps the `wasm32-wasip2` compile check |
-| **Live model** | `cargo make test-live` | One ignored native test: the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/slice/prompts/`, `crates/change/prompts/`) or answer-schema changes — never ordinary CI |
+| **WASM boundary** | `cd examples && cargo make test-wasm` | The WASM seam only: the combined `adapter_wasm.wasm` loads, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the typed error lift works across the component boundary | Weekly / path-filtered / manual (`.github/workflows/wasm.yaml`); required before release tags; per-push CI keeps the `wasm32-wasip2` compile check |
+| **Live model** | `cd examples && cargo make test-live` | One native example: the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/slice/prompts/`, `crates/change/prompts/`) or answer-schema changes — never ordinary CI |
 
 Each fact has one owning rung. The native suites own workflow behavior; the WASM smoke owns only facts unique to the component boundary; the live test owns only "a real model can do this" — it adds no new workflow assertions. Do not copy an assertion onto another rung for reassurance.
 
-### The harness adapter
+### The examples adapter
 
-The harness adapter has one shared core (`harness/native/adapter`) implementing both adapter axes: controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/change/tests/common/`; `harness/wasm/adapter` wraps the same core with the WIT shim used by the boundary smoke. Do not add another mock adapter, mock model, or harness-adapter copy — extend the core and let both rungs inherit the behavior.
+The `examples` package implements both adapter axes from one shared lib (`examples/native/adapter.rs`): controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/change/tests/common/`; `examples/wasm/adapter.rs` wraps the same core as the `adapter-wasm` component example used by the boundary smoke. Do not add another mock adapter, mock model, or examples-adapter copy — extend the core and let both rungs inherit the behavior.
 
 Model doubles come from upstream: `omnia-testkit` owns the scripted/recording harness and runtime hosting. Specify owns only workflow scenario content — the leads, evidence, scripted answers, and assertions.
 

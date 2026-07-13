@@ -46,7 +46,7 @@ install_crate = "cargo-udeps"
 command = "rustup"
 args = ["run", "nightly", "cargo", "fmt", "--all"]
 
-# Lint — --workspace so the opt-in harness packages stay linted, matching CI
+# Lint — --workspace so the examples package stays linted, matching CI
 [tasks.lint]
 command = "cargo"
 args = [
@@ -68,60 +68,23 @@ args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
 # Check wasm core — the per-push WASM boundary gate: the shipped guest
-# crates plus the adapter shim, so a WIT revision and its seam
-# land (and break) in the same push without Wasmtime execution.
+# crates plus the examples adapter shim. The adapter check lives in
+# examples/Makefile.toml; this task keeps `cargo make ci` one-shot.
 [tasks.wasm]
 script_runner = "@shell"
 script = '''
 cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
-cargo check --locked -p adapter-wasm --target wasm32-wasip2
+(cd examples && cargo make wasm)
 '''
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# Build guests — the workflow core plus the harness adapter
-[tasks.guests]
-script_runner = "@shell"
-script = '''
-cargo build --locked --lib -p specify --target wasm32-wasip2
-cargo build --locked -p adapter-wasm --target wasm32-wasip2
-'''
-
 # Test — the ordinary suite over the default workspace members
-# (crates/*, harness/native/adapter, tests); the WASM boundary
-# smoke is opt-in via test-wasm.
+# (crates/*, examples adapter lib, tests); the WASM boundary
+# smoke is opt-in via `cd examples && cargo make test-wasm`.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
-
-# WASM boundary smoke — hosts the freshly built guests in one Omnia
-# deployment. Matches the weekly/path-filtered wasm workflow; not part
-# of check/ci.
-[tasks.test-wasm]
-command = "cargo"
-args = ["nextest", "run", "--locked", "-p", "wasm-smoke", "--no-tests=pass"]
-dependencies = ["guests"]
-
-# Live-model workflow test — the single ignored native trial over the
-# adversarial fixture lead set. Operator-invoked (release tagging,
-# judgment-prompt or answer-schema changes); requires cursor-agent
-# credentials; never CI. `--no-capture` keeps the repair-count report
-# and the retained-project path visible; `--no-tests=fail` makes an
-# empty run fail loudly — the operator invocation is this rung's only
-# cadence, so a silently-skipped trial must not read as green.
-[tasks.test-live]
-command = "cargo"
-args = [
-    "nextest",
-    "run",
-    "--locked",
-    "-p",
-    "live-model",
-    "--run-ignored",
-    "all",
-    "--no-capture",
-    "--no-tests=fail",
-]
 
 # Test Doc
 [tasks.test-docs]

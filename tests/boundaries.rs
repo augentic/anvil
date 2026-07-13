@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 use toml::{Table, Value};
 
 /// Engine manifest scopes: the workspace root plus every crate and
-/// harness manifest.
-const SCOPES: &[&str] = &["Cargo.toml", "crates", "harness"];
+/// examples manifest.
+const SCOPES: &[&str] = &["Cargo.toml", "crates", "examples"];
 
 /// Crates owned by the `specify-adapters` repository. `omnia` is absent
 /// on purpose: the name collides with the Omnia runtime crate, so the
@@ -124,17 +124,18 @@ fn offence(name: &str, spec: &Value) -> Option<String> {
     let package =
         table.and_then(|table| table.get("package")).and_then(Value::as_str).unwrap_or(name);
     let effective = package.replace('_', "-");
-    // The engine's own harness adapter (`harness/native/adapter`) is the
-    // intentional test double. Its package name collides with the
-    // `adapter` shared crate in specify-adapters; allow the in-tree path
-    // (and member `workspace = true` re-exports — the workspace root is
-    // scanned separately) while still catching every other `adapter`
+    // The engine's own examples adapter lib (`examples/`) is the
+    // intentional test double. Its package name is `examples` with
+    // lib name `adapter`, which collides with the `adapter` shared
+    // crate in specify-adapters; allow the in-tree path (and member
+    // `workspace = true` re-exports — the workspace root is scanned
+    // separately) while still catching every other `adapter`
     // dependency via the name / repository-source rules below.
-    let harness_adapter = table
-        .and_then(|table| table.get("path"))
-        .and_then(Value::as_str)
-        .is_some_and(|path| path.replace('\\', "/").contains("harness/native/adapter"))
-        || (effective == "adapter"
+    let harness_adapter =
+        table.and_then(|table| table.get("path")).and_then(Value::as_str).is_some_and(|path| {
+            let path = path.replace('\\', "/");
+            path == "examples" || path.ends_with("/examples") || path.contains("examples/")
+        }) || (effective == "adapter"
             && table.and_then(|table| table.get("workspace")).and_then(Value::as_bool)
                 == Some(true));
     if harness_adapter {
@@ -209,11 +210,7 @@ fn bad_fixtures() {
     assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "harness/wasm/wasm-smoke/Cargo.toml",
-        "[dependencies.intent]\nversion = \"1\"\n",
-    );
+    write(dir.path(), "examples/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
     assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
@@ -236,15 +233,15 @@ fn bad_fixtures() {
     );
     assert!(findings(dir.path()).is_empty());
 
-    // The engine's own harness adapter is allowed by path even though its
-    // package name collides with specify-adapters' shared `adapter` crate.
+    // The engine's own examples adapter is allowed by path even though its
+    // lib name collides with specify-adapters' shared `adapter` crate.
     // Member manifests that only re-export it via `workspace = true` are
     // allowed too — the workspace root is scanned for the path itself.
     let dir = tempfile::tempdir().expect("tempdir");
     write(
         dir.path(),
         "Cargo.toml",
-        "[workspace.dependencies]\nadapter = { path = \"harness/native/adapter\" }\n",
+        "[workspace.dependencies]\nadapter = { path = \"examples\", package = \"examples\" }\n",
     );
     assert!(findings(dir.path()).is_empty());
 

@@ -48,12 +48,13 @@ wit-bindgen.workspace = true
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/*/*", "tests"]
+members = ["crates/*", "examples", "tests"]
 # The ordinary test group: crate suites plus the lightweight repo-checks
-# package. The root runtime package and the harness packages are
-# explicit opt-ins (`-p specify`, `-p wasm-smoke`), keeping
-# Wasmtime execution out of the per-commit build.
-default-members = ["crates/*", "harness/native/adapter", "tests"]
+# package and the examples adapter lib. Host runners (wasm-smoke,
+# live-model) sit behind the examples `host` feature and are opt-in
+# (`cd examples && cargo make test-wasm` / `test-live`), keeping Wasmtime out of the
+# per-commit build.
+default-members = ["crates/*", "examples", "tests"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -170,7 +171,7 @@ tower = "0.5.3"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
-adapter = { path = "harness/native/adapter" }
+adapter = { path = "examples", package = "examples" }
 artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
@@ -219,43 +220,17 @@ lto = true
 opt-level = 2
 strip = true
 
-# Cranelift JIT-compiles WASI components at run time; built at debug
-# opt-level the vectis component costs 40-70s per compile, so the
-# compiler-path crates are optimized even in dev/test profiles. Only
-# these crates: a blanket `package."*"` override forces an optimized
-# rebuild of every dependency, which dominates cold CI builds.
-[profile.dev.package.cranelift-codegen]
-opt-level = 2
-
-[profile.dev.package.cranelift-frontend]
-opt-level = 2
-
-[profile.dev.package.cranelift-entity]
-opt-level = 2
-
-[profile.dev.package.cranelift-bforest]
-opt-level = 2
-
-[profile.dev.package.cranelift-bitset]
-opt-level = 2
-
-[profile.dev.package.cranelift-control]
-opt-level = 2
-
-[profile.dev.package.cranelift-native]
-opt-level = 2
-
-[profile.dev.package.cranelift-assembler-x64]
-opt-level = 2
-
-[profile.dev.package.regalloc2]
-opt-level = 2
-
-[profile.dev.package.wasmparser]
-opt-level = 2
-
-[profile.dev.package.wasmtime-internal-cranelift]
-opt-level = 2
-
-[profile.dev.package.wasmtime-environ]
-opt-level = 2
+# Optimise WASI debug builds because Cranelift JIT-compiles at run time.
+[profile.dev.package]
+cranelift-codegen = { opt-level = 2 }
+cranelift-frontend = { opt-level = 2 }
+cranelift-entity = { opt-level = 2 }
+cranelift-bforest = { opt-level = 2 }
+cranelift-bitset = { opt-level = 2 }
+cranelift-control = { opt-level = 2 }
+cranelift-native = { opt-level = 2 }
+cranelift-assembler-x64 = { opt-level = 2 }
+regalloc2 = { opt-level = 2 }
+wasmparser = { opt-level = 2 }
+wasmtime-internal-cranelift = { opt-level = 2 }
+wasmtime-environ = { opt-level = 2 }

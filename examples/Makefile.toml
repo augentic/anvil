@@ -1,0 +1,65 @@
+# Manual entry points for the examples surfaces. Run from inside
+# examples/ (`cargo make <task>`); nothing here is wired into the root
+# workspace's CI tasks except the root `wasm` compile check, which
+# invokes this file's `wasm` task for the adapter guest.
+
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+skip_crate_env_info = true
+skip_git_env_info = true
+skip_rust_env_info = true
+
+# Check the adapter guest for wasm32-wasip2 (WIT + shim compile).
+[tasks.wasm]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example adapter-wasm --target wasm32-wasip2)
+'''
+
+# Build guests — the workflow core plus the examples adapter component.
+# Two invocations: the core guest's lib needs its own build; the
+# adapter lands under target/wasm32-wasip2/debug/examples/.
+[tasks.guests]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo build --locked --lib -p specify --target wasm32-wasip2)
+(cd "${root}" && cargo build --locked -p examples --example adapter-wasm --target wasm32-wasip2)
+'''
+
+# Model-free WASM boundary smoke. Guest construction is explicit so
+# the host example never shells out to Cargo or hides a missing build
+# prerequisite.
+[tasks.test-wasm]
+dependencies = ["guests"]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo run --locked -p examples --example wasm-smoke --features host)
+'''
+
+# Live-model workflow example — operator-invoked native trial over the
+# adversarial fixture lead set. Needs cursor-agent credentials; never CI.
+[tasks.test-live]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo run --locked -p examples --example live-model --features host)
+'''
+
+# Lint — a focused clippy leg over the examples package (the root
+# workspace-wide `cargo make lint` also compiles it; this scoped run
+# gives faster feedback when iterating here).
+[tasks.lint]
+script_runner = "bash"
+script = '''
+set -euo pipefail
+root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+(cd "${root}" && cargo clippy -p examples --all-targets --all-features -- -D warnings)
+'''

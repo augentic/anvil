@@ -35,8 +35,8 @@ use omnia_wasi_otel::{HasOtel, OtelDefault, WasiOtel, WasiOtelCtx};
 use serde::Serialize;
 use serde_json::{Value, json};
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn hosts_boundary() -> Result<()> {
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
+async fn main() -> Result<()> {
     let tmp = tempfile::tempdir().context("creating the trial workspace")?;
     fs::create_dir_all(tmp.path().join(".specify-cache")).context("creating the cache mount")?;
     fs::create_dir_all(tmp.path().join(".specify-store")).context("creating the store mount")?;
@@ -125,7 +125,7 @@ async fn specify(manifest: &Path, argv: &[&str]) -> Result<i32> {
 }
 
 fn repo_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("..")
 }
 
 fn workflow_wasm() -> PathBuf {
@@ -133,7 +133,7 @@ fn workflow_wasm() -> PathBuf {
 }
 
 fn adapter_wasm() -> PathBuf {
-    guest_wasm("adapter.wasm")
+    guest_wasm("examples/adapter_wasm.wasm")
 }
 
 fn guest_wasm(relative: &str) -> PathBuf {
@@ -144,7 +144,7 @@ fn guest_wasm(relative: &str) -> PathBuf {
     let path = target_dir.join("wasm32-wasip2/debug").join(relative);
     assert!(
         path.is_file(),
-        "guest `{relative}` not found at {}; run `cargo make guests` in harness/",
+        "guest `{relative}` not found at {}; run `cargo make guests`",
         path.display()
     );
     path

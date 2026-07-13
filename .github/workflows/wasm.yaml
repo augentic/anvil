@@ -20,8 +20,7 @@ on:
     paths:
       - "wit/**"
       - "src/**"
-      - "harness/native/adapter/**"
-      - "harness/wasm/**"
+      - "examples/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/wasm.yaml"
@@ -53,8 +52,8 @@ jobs:
       - name: Build workflow guest
         run: cargo build --locked -p specify --lib --target wasm32-wasip2
 
-      - name: Build harness adapter
-        run: cargo build --locked -p adapter-wasm --target wasm32-wasip2
+      - name: Build examples adapter
+        run: cargo build --locked -p examples --example adapter-wasm --target wasm32-wasip2
 
       - name: WASM boundary smoke
-        run: cargo nextest run --locked -p wasm-smoke --no-tests=pass
+        run: cargo run --locked -p examples --example wasm-smoke --features host

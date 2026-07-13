@@ -23,7 +23,7 @@ The `checks` package stays a separate workspace member (not root-package tests) 
 
 ### `boundaries.rs`
 
-No engine Cargo manifest (workspace root, `crates/`, `harness/`) may depend on a concrete adapter crate or reach into `specify-adapters` via a `path`/`git` source. The engine talks to adapters only through the WASM component seam.
+No engine Cargo manifest (workspace root, `crates/`, `examples/`) may depend on a concrete adapter crate or reach into `specify-adapters` via a `path`/`git` source. The engine talks to adapters only through the WASM component seam.
 
 ### `links.rs`
 

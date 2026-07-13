@@ -10,13 +10,13 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## Gate 2 — WASM boundary (weekly / path-filtered / manual; required for release)
 
-`cargo make test-wasm` (CI: `.github/workflows/wasm.yaml`) hosts `specify.wasm` with the combined `adapter.wasm` and runs the single WASM smoke. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
+`cargo make test-wasm` from `examples/` (CI: `.github/workflows/wasm.yaml`) hosts `specify.wasm` with the combined `adapter_wasm.wasm` and runs the WASM smoke. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
 
 Cadence: weekly schedule, pull requests that touch `wit/`, `src/`, or the harness guests, and manual dispatch. Required green before a release tag. Ordinary pushes keep only the compile-only `wasm32-wasip2` check.
 
 ## Gate 3 — live model (operator-invoked)
 
-`cargo make test-live` runs the one ignored native live-model test: adversarial fixture leads (cross-source overlap, authority disagreement, evidence gap) through the real configured model, accepted only when the deterministic validators are clean — coverage catches an unmerged overlap, provenance catches an invented requirement, tag checks catch a suppressed disagreement. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
+`cargo make test-live` from `examples/` runs the live-model example: adversarial fixture leads (cross-source overlap, authority disagreement, evidence gap) through the real configured model, accepted only when the deterministic validators are clean — coverage catches an unmerged overlap, provenance catches an invented requirement, tag checks catch a suppressed disagreement. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
 
 Cadence is documented convention, not automation: before a release tag, and after judgment-prompt or answer-schema changes. Ordinary CI never calls a live model.
 
@@ -35,11 +35,11 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `harness/native/adapter` is the only adapter double; `harness/wasm/adapter` is its WIT shim. Do not add another mock adapter or harness-adapter copy.
+- `examples/native/adapter.rs` is the only adapter double; `examples/wasm/adapter.rs` is its WIT component example. Do not add another mock adapter or examples-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance
 
-- **First-time contributor choosing a command:** stay on `cargo make test`; use `cargo make test-wasm` only for component-boundary changes and `cargo make test-live` only when model judgment quality matters.
+- **First-time contributor choosing a command:** stay on `cargo make test`; use `cd examples && cargo make test-wasm` only for component-boundary changes and `cd examples && cargo make test-live` only when model judgment quality matters.
 - **Framework developer placing coverage:** use the placement decision above and name the one seam the assertion owns.
 - **Release owner:** require gates 1 and 2 green, run gate 3 before tagging, and read rising repair counts as prompt drift even when the run passes.

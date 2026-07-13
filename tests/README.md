@@ -38,6 +38,6 @@ Each crate keeps its cross-binary helpers under `tests/<helper>/mod.rs` (the sol
 - `workflow`: `crates/change/tests/common/mod.rs` — `MockCmd`, scaffold, and stamped-outcome helpers.
 - `diagnostics`: `crates/diagnostics/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
 
-Cross-package model test support comes from Omnia's dev-only `omnia-testkit`: its recorded scripted harness is consumed by the workflow suites (`crates/change/tests/`) and the live-model test (`harness/native/live-model`).
+Cross-package model test support comes from Omnia's dev-only `omnia-testkit`: its recorded scripted harness is consumed by the workflow suites (`crates/change/tests/`) and the live-model example (`examples/native/live.rs`).
 
 The `GIT_ENV` / `run_git` / `copy_dir` trio is single-sourced at `tests/fs_git.rs` and pulled into each crate's `tests/common` via a `#[path]` module declaration (each crate's `tests/` is its own compilation unit, so the file is included rather than imported). Reach for the shared helper rather than reintroducing a per-binary `copy_dir_recursive`.

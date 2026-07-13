@@ -16,7 +16,7 @@ Unless you are fixing a known bug, we recommend discussing your change with the 
 
 The framework lives in one repository with two surfaces:
 
-- **Rust workspace** (`src/`, `crates/`, `tests/`, `harness/`) — the `specify` binary, guest orchestrations, and JSON schemas it distributes
+- **Rust workspace** (`src/`, `crates/`, `tests/`, `examples/`) — the `specify` binary, guest orchestrations, and JSON schemas it distributes
 - **Prose and Cursor wrappers** (`plugins/`, `docs/`, `.cursor-plugin/`) — ultrathin `/spec:*` skill wrappers, documentation, and the marketplace manifest
 
 Adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) repository.
