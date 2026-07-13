@@ -33,8 +33,9 @@ dependencies = ["guests"]
 command = "cargo"
 args = ["nextest", "run", "--locked", "-p", "composed", "--no-tests=pass"]
 
-# Lint — the harness crates are not covered by the root workspace's
-# clippy gate; run this before extending them.
+# Lint — a focused clippy leg over the harness crates (the root
+# workspace-wide `cargo make lint` also compiles them; this scoped run
+# gives faster feedback when iterating here).
 [tasks.lint]
 command = "cargo"
 args = [

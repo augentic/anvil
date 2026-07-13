@@ -10,7 +10,9 @@ publish = false
 
 # Tests-only and outside the default members: the cursor backend's
 # dependency graph (omnia-cursor → omnia-wasi-model → omnia →
-# wasmtime) must never enter the per-commit compile path.
+# wasmtime) must never enter the per-commit *test* compile path —
+# `cargo make test` selects default members only. Workspace-wide
+# clippy (`cargo make lint`) still compiles this package.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 anyhow.workspace = true
 artifacts.workspace = true

@@ -187,7 +187,7 @@ async fn run_gate<T: TargetSeam>(
         return Err(Error::Diag {
             code: match phase {
                 MergePhase::Preflight => "target-merge-preflight-failed",
-                MergePhase::Postflight => "target-merge-postflight-gate",
+                MergePhase::Postflight => "target-merge-postflight-failed",
             },
             detail: format!(
                 "target `{}` reported a failed {phase} merge gate for slice `{slice}` ({} \

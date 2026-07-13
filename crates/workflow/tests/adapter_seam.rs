@@ -103,6 +103,29 @@ async fn build_seam_failure_parks_build() {
 }
 
 #[tokio::test]
+async fn merge_seam_failure_parks_slice_built() {
+    let (_tmp, root, _cache) = scripted_project("fixture-fail-merge");
+    let invoker =
+        scripted_invoker(&root, vec![answers::greeting_grouping(), answers::greeting_synthesis()]);
+
+    author(&invoker, "fixture").await.expect("author succeeds");
+    approve(&invoker).await;
+
+    // Refine and build succeed; the merge preflight dispatch itself
+    // errors (a typed seam failure, not a failed gate report), so the
+    // loop parks with the deterministic commit never attempted.
+    let detail = execute_err(&invoker).await;
+    assert!(detail.contains("seam-dispatch-failed"), "{detail}");
+    assert!(detail.contains("fixture merge failure"), "typed detail preserved: {detail}");
+
+    let metadata = std::fs::read_to_string(root.join(".specify/slices/greeting/metadata.yaml"))
+        .expect("slice still present");
+    assert!(metadata.contains("status: built"), "no commit happened:\n{metadata}");
+    assert!(!root.join(".specify/specs/greeting/spec.md").exists(), "no baseline write");
+    invoker.provider().model().assert_exhausted();
+}
+
+#[tokio::test]
 async fn declared_output_missing_aborts_build() {
     let (_tmp, root, _cache) = scripted_project("fixture-missing-output");
     let invoker =
