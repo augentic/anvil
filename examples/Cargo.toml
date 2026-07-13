@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-description = "Specify examples — live-model trial, WASM adapter guest, and boundary smoke"
+description = "Specify examples — prompt evaluation and hosted WASM boundary"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -20,14 +20,11 @@ omnia-testkit.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
-project.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 serde-saphyr.workspace = true
 tempfile.workspace = true
 testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-toml.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 omnia-guest.workspace = true
@@ -41,14 +38,14 @@ wit-bindgen.workspace = true
 workspace = true
 
 [[example]]
-name = "adapter-wasm"
-path = "wasm/adapter.rs"
+name = "greeting-wasm"
+path = "greeting/guest.rs"
 crate-type = ["cdylib"]
 
 [[example]]
-name = "wasm-smoke"
-path = "wasm/smoke.rs"
+name = "greeting"
+path = "greeting/runtime.rs"
 
 [[example]]
-name = "live-model"
-path = "native/live.rs"
+name = "prompt-eval"
+path = "prompt-eval/runtime.rs"

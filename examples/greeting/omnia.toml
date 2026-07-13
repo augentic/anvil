@@ -1,0 +1,40 @@
+# Specify's hosted greeting example.
+#
+# The smoke task stages this manifest unchanged beside the two built components
+# and creates its writable workspace/cache/store directories. Paths resolve
+# relative to this file, matching Omnia's other manifest-driven examples.
+
+[[guest]]
+id = "workflow"
+source.path = "specify.wasm"
+link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]
+
+[[guest]]
+id = "source:fixture"
+source.path = "adapter.wasm"
+
+[[guest]]
+id = "source:fixture-fail-survey"
+source.path = "adapter.wasm"
+
+[[guest]]
+id = "target:fixture"
+source.path = "adapter.wasm"
+
+[[mount]]
+name = "."
+path = "workspace"
+writable = true
+
+[[mount]]
+name = "/specify-cache"
+path = "cache"
+writable = true
+
+[[mount]]
+name = "/specify-store"
+path = "store"
+writable = true
+
+[transport]
+default = "in-process"

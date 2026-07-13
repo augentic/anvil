@@ -16,41 +16,67 @@ script_runner = "bash"
 script = '''
 set -euo pipefail
 root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
-(cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example adapter-wasm --target wasm32-wasip2)
+(cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example greeting-wasm --target wasm32-wasip2)
 '''
 
-# Build guests — the workflow core plus the examples adapter component.
-# Two invocations: the core guest's lib needs its own build; the
-# adapter lands under target/wasm32-wasip2/debug/examples/.
+# Build guests — the workflow core plus the example's adapter component.
 [tasks.guests]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
 (cd "${root}" && cargo build --locked --lib -p specify --target wasm32-wasip2)
-(cd "${root}" && cargo build --locked -p examples --example adapter-wasm --target wasm32-wasip2)
+(cd "${root}" && cargo build --locked -p examples --example greeting-wasm --target wasm32-wasip2)
 '''
 
-# Model-free WASM boundary smoke. Guest construction is explicit so
-# the host example never shells out to Cargo or hides a missing build
-# prerequisite.
+# Hosted WASM boundary smoke. Stage the checked-in deployment manifest
+# unchanged in a temporary deployment, then drive its runtime! host.
 [tasks.test-wasm]
 dependencies = ["guests"]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
-(cd "${root}" && cargo run --locked -p examples --example wasm-smoke)
+deployment="$(mktemp -d "${TMPDIR:-/tmp}/specify-wasm.XXXXXX")"
+trap 'rm -rf "${deployment}"' EXIT
+
+mkdir -p "${deployment}/workspace" "${deployment}/cache/components" "${deployment}/store"
+cp "${root}/examples/greeting/omnia.toml" "${deployment}/omnia.toml"
+cp "${root}/target/wasm32-wasip2/debug/specify.wasm" "${deployment}/specify.wasm"
+cp "${root}/target/wasm32-wasip2/debug/examples/greeting_wasm.wasm" "${deployment}/adapter.wasm"
+cp "${deployment}/adapter.wasm" "${deployment}/workspace/fixture.wasm"
+cp "${deployment}/adapter.wasm" "${deployment}/cache/components/fixture-fail-survey.wasm"
+
+run() {
+  (cd "${root}" && cargo run --quiet --locked -p examples --example greeting -- \
+    run --config "${deployment}/omnia.toml" -- "$@")
+}
+
+run init ./fixture.wasm --name greeting
+test -f "${deployment}/cache/components/fixture.wasm"
+test -f "${deployment}/cache/components/component-meta.yaml"
+
+if run plan author greeting --source main=fixture-fail-survey:value:hello; then
+  echo "fixture survey failure unexpectedly succeeded" >&2
+  exit 1
+fi
+rm "${deployment}/workspace/plan.yaml"
+
+run plan author greeting --source main=fixture:value:hello
+run plan transition greeting approved
+run plan execute
+
+test -s "${deployment}/workspace/fixture-build/greeting.md"
 '''
 
-# Live-model workflow example — operator-invoked native trial over the
+# Prompt evaluation harness — operator-invoked native trial over the
 # adversarial fixture lead set. Needs cursor-agent credentials; never CI.
-[tasks.test-live]
+[tasks.prompt-eval]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
-(cd "${root}" && cargo run --locked -p examples --example live-model)
+(cd "${root}" && cargo run --locked -p examples --example prompt-eval)
 '''
 
 # Lint — a focused clippy leg over the examples package (the root

@@ -1,5 +1,5 @@
-//! The explicit live-model workflow example: one operator-invoked
-//! native trial that drives the same fixture workflow as the scripted
+//! The prompt-evaluation harness: one operator-invoked native trial
+//! that drives the same fixture workflow as the scripted
 //! suites — adversarial lead set, real judgment — and grades it with
 //! the deterministic validators only.
 //!
@@ -14,7 +14,7 @@
 //! early warning that a prompt or answer-schema change degraded the
 //! model's first answer.
 //!
-//! Run it through `cargo make test-live` (single trial, never CI) —
+//! Run `cargo make prompt-eval` (single trial, never CI) —
 //! before a release tag and after judgment-prompt or answer-schema
 //! changes. Requires cursor-agent on `PATH` with credentials
 //! (`cursor-agent login` or `CURSOR_API_KEY`). The temporary project
@@ -38,9 +38,8 @@ use omnia_wasi_model::WasiModelCtx as _;
 use serde_json::Value;
 use testkit::{Provider, answers, run};
 
-/// The live provider: the same fixture seams as the scripted suites,
-/// with the recording harness wrapped around the cursor backend.
-type LiveProvider = Provider<Harness<CursorModel>>;
+/// The evaluation provider: fixture seams plus a recorded live model.
+type EvalProvider = Provider<Harness<CursorModel>>;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() {
@@ -48,17 +47,17 @@ async fn main() {
     // a failing trial leaves its project tree behind for inspection.
     let root = tempfile::TempDir::new().expect("tempdir").keep();
     let root = root.canonicalize().expect("canonical project root");
-    eprintln!("live trial project (retained on failure): {}", root.display());
+    eprintln!("prompt evaluation project (retained on failure): {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
     fs::create_dir_all(root.join(".specify")).expect("mkdir .specify");
-    fs::write(root.join(".specify/project.yaml"), "name: live\nadapter: fixture\nrules: {}\n")
+    fs::write(root.join(".specify/project.yaml"), "name: eval\nadapter: fixture\nrules: {}\n")
         .expect("write project.yaml");
 
     let model = CursorModel::connect(&root).await.expect(
         "cursor-agent backend unavailable: install cursor-agent, then `cursor-agent login` or \
          export CURSOR_API_KEY",
     );
-    let provider: LiveProvider = Provider::new(&root, Harness::new(model));
+    let provider: EvalProvider = Provider::new(&root, Harness::new(model));
 
     // Live reconcile over the adversarial lead catalog. The author
     // orchestration's own kernel enforces coverage (every surveyed
@@ -257,10 +256,7 @@ impl Model for CursorModel {
     }
 }
 
-/// Guest [`Request`] → the `omnia:model/completion` wire request — the
-/// mapping the wasm default body performs at the WIT boundary. The
-/// lent workspace never crosses (`grants.workspace` is host plumbing;
-/// cursor resolves the tree through the tool host instead).
+/// Guest [`Request`] → the wire request used by the model host.
 fn wire_request(request: Request) -> wire::Request {
     wire::Request {
         model: request.model,
@@ -327,9 +323,7 @@ fn wire_format(format: &Format) -> wire::Format {
     }
 }
 
-/// A backend [`wire::Answer`] → the guest [`Reply`]: `text` answers
-/// are plain text, JSON formats carry the serialized document — the
-/// host gate's own projection.
+/// A backend [`wire::Answer`] → the guest [`Reply`].
 fn reply(answer: wire::Answer) -> Result<Reply, Error> {
     let text = match answer.value {
         Value::String(text) => text,
@@ -346,9 +340,7 @@ fn reply(answer: wire::Answer) -> Result<Reply, Error> {
     })
 }
 
-/// The minimal per-completion tool host the cursor backend reads: only
-/// `local_path` matters (cursor-agent does its own filesystem work);
-/// the bounded-capability methods are never called on this backend.
+/// The minimal tool host used by the native cursor backend.
 struct LocalToolHost {
     workspace: Option<PathBuf>,
 }

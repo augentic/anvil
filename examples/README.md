@@ -1,22 +1,23 @@
 # Examples
 
-Specify's non-shipped example surfaces follow Omnia's [examples](https://github.com/augentic/omnia/tree/main/examples) shape: one package with single-file targets under `native/` and `wasm/`, driven through `[[example]]` entries in [Cargo.toml](Cargo.toml).
+Specify's non-shipped example surfaces follow Omnia's [examples](https://github.com/augentic/omnia/tree/main/examples) shape: colocated runtime, guest, and deployment files driven through `[[example]]` entries in [Cargo.toml](Cargo.toml).
 
-| Path                | Role                                                   |
-| ------------------- | ------------------------------------------------------ |
-| `native/live.rs`    | Explicit live-model trial                              |
-| `wasm/adapter.rs`   | Combined adapter WASI component (`adapter-wasm`)       |
-| `wasm/smoke.rs`     | Hosted WASM boundary smoke                             |
+| Path                     | Role                                                     |
+| ------------------------ | -------------------------------------------------------- |
+| `prompt-eval/runtime.rs` | Manual prompt-evaluation harness (`prompt-eval`)         |
+| `greeting/runtime.rs`    | Command-mode `runtime!` host (`greeting`)                 |
+| `greeting/guest.rs`      | Combined source/target component (`greeting-wasm`)        |
+| `greeting/omnia.toml`    | Workflow, adapter bindings, links, and writable preopens |
 
-The deterministic fixture adapter core shared by `wasm/adapter.rs` and the native suites lives in `crates/testkit` as `testkit::adapter`.
+The greeting example mirrors Omnia's manifest-driven examples: the smoke task stages `omnia.toml` unchanged beside the built workflow and adapter components, then invokes the example runtime through Omnia's `run --config` grammar. The deterministic fixture adapter core shared by `greeting/guest.rs` and the native suites lives in `crates/testkit` as `testkit::adapter`.
 
 ## Commands
 
 Run these from the repository root:
 
 ```shell
-cargo make test-wasm # build guests, then run the wasm-smoke example
-cargo make test-live # run the live-model example (needs cursor-agent credentials)
+cargo make test-wasm # build guests, then run the manifest-hosted WASM example
+cargo make prompt-eval # run the prompt evaluation (needs cursor-agent credentials)
 ```
 
 Ordinary native suites stay at the repository root: `cargo make test`.

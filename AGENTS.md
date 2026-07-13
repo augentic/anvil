@@ -133,7 +133,7 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
 - **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced in `augentic/specify-adapters` by the WIT contract plus each adapter crate's `tests/` suite and that repo's composed-deployment tests.
 
-The test surface is three rungs: native integration tests over `crates/testkit`'s fixture adapter and scripted/replay models (`cargo make test`, per push; replay fixtures are committed and re-recorded with `REGENERATE_FIXTURES=1`), one WASM boundary smoke over the real component seam (`cd examples && cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one native live-model example (`cd examples && cargo make test-live`, explicit). `omnia-testkit` owns generic model/scripted/replay/runtime test mechanics; Specify's `testkit` crate owns the fixture adapter, provider, and answer corpus; the suites own workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
+The test surface is three rungs: native integration tests over `crates/testkit`'s fixture adapter and scripted/replay models (`cargo make test`, per push; replay fixtures are committed and re-recorded with `REGENERATE_FIXTURES=1`), one WASM boundary smoke over the real component seam (`cd examples && cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one native prompt-evaluation harness over a live model (`cd examples && cargo make prompt-eval`, explicit). `omnia-testkit` owns generic model/scripted/replay/runtime test mechanics; Specify's `testkit` crate owns the fixture adapter, provider, and answer corpus; the suites own workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
 
 ## Commands
 
@@ -178,7 +178,7 @@ change                   # the change loop — depends on {project,slice}: plan 
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
 testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes), the unified capability Provider (Scripted/Replay), scripted answers, replay/record model doubles, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples package
-examples                 # Omnia-shaped examples package: live-model / adapter-wasm / wasm-smoke examples over testkit's fixture adapter core
+examples                 # Omnia-shaped examples package: prompt-eval plus a manifest-hosted WASM example over testkit's fixture adapter core
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
 
@@ -217,7 +217,7 @@ crates/project/          foundation — init, adapter resolution, config, journa
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
 crates/testkit/ dev-only test-support crate — fixture adapter core, unified Provider, scripted answers, replay/record flow
-examples/                Omnia-shaped examples package (live-model / adapter-wasm / wasm-smoke over testkit's adapter core)
+examples/                Omnia-shaped examples package (prompt-eval plus manifest-hosted WASM over testkit's adapter core)
 tests/                    lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
 ```
 
@@ -284,7 +284,7 @@ cargo make ci             # fmt + lint + wasm + test + test-docs + doc + vet + d
 cargo make check          # fmt + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
 cargo make test           # cargo nextest run --locked --all-features --no-tests=pass over the default members, under -Dwarnings
 cd examples && cargo make test-wasm  # builds the WASM guests then runs the boundary smoke
-cd examples && cargo make test-live  # the explicit live-model example (operator-invoked; needs cursor-agent credentials)
+cd examples && cargo make prompt-eval # operator-invoked; needs cursor-agent credentials
 cargo make lint           # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt            # nightly cargo fmt --all
 cargo make audit          # cargo-audit; cargo make deny / outdated / deps / vet for the rest

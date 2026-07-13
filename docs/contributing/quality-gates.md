@@ -1,6 +1,6 @@
 # Quality gates
 
-Specify proves engine correctness from this repository alone: native integration tests are the primary surface, one WASM boundary smoke covers the component seam, and one explicit live-model test covers real model behavior. The placement rules live in [testing standards](../standards/testing.md); the [developer loop](dev-loop.md) maps ordinary changes onto commands. This page is the gate model — what runs when, and what each gate is allowed to prove.
+Specify proves engine correctness from this repository alone: native integration tests are the primary surface, one WASM boundary smoke covers the component seam, and the `prompt-eval` harness covers real model behavior. The placement rules live in [testing standards](../standards/testing.md); the [developer loop](dev-loop.md) maps ordinary changes onto commands. This page is the gate model — what runs when, and what each gate is allowed to prove.
 
 ## Gate 1 — repository correctness (every push)
 
@@ -10,13 +10,13 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## Gate 2 — WASM boundary (weekly / path-filtered / manual; required for release)
 
-`cargo make test-wasm` from `examples/` (CI: `.github/workflows/wasm.yaml`) hosts `specify.wasm` with the combined `adapter_wasm.wasm` and runs the WASM smoke. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
+`cargo make test-wasm` from `examples/` (CI: `.github/workflows/wasm.yaml`) stages the greeting example's checked-in `omnia.toml` with `specify.wasm` and `greeting_wasm.wasm`, then runs the deployment through its `runtime!` host. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
 
 Cadence: weekly schedule, pull requests that touch `wit/`, `src/`, or the harness guests, and manual dispatch. Required green before a release tag. Ordinary pushes keep only the compile-only `wasm32-wasip2` check.
 
-## Gate 3 — live model (operator-invoked)
+## Gate 3 — prompt evaluation (operator-invoked)
 
-`cargo make test-live` from `examples/` runs the live-model example: adversarial fixture leads (cross-source overlap, authority disagreement, evidence gap) through the real configured model, accepted only when the deterministic validators are clean — coverage catches an unmerged overlap, provenance catches an invented requirement, tag checks catch a suppressed disagreement. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
+`cargo make prompt-eval` from `examples/` runs the prompt-evaluation harness: adversarial fixture leads (cross-source overlap, authority disagreement, evidence gap) through the real configured model, accepted only when the deterministic validators are clean — coverage catches an unmerged overlap, provenance catches an invented requirement, tag checks catch a suppressed disagreement. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
 
 Cadence is documented convention, not automation: before a release tag, and after judgment-prompt or answer-schema changes. Ordinary CI never calls a live model.
 
@@ -35,11 +35,11 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `testkit::adapter` (in `crates/testkit`) is the only adapter double; `examples/wasm/adapter.rs` is its WIT component example. Do not add another mock adapter or fixture-adapter copy.
+- `testkit::adapter` (in `crates/testkit`) is the only adapter double; `examples/greeting/guest.rs` is its WIT component example. Do not add another mock adapter or fixture-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance
 
-- **First-time contributor choosing a command:** stay on `cargo make test`; use `cd examples && cargo make test-wasm` only for component-boundary changes and `cd examples && cargo make test-live` only when model judgment quality matters.
+- **First-time contributor choosing a command:** stay on `cargo make test`; use `cd examples && cargo make test-wasm` only for component-boundary changes and `cd examples && cargo make prompt-eval` only when model judgment quality matters.
 - **Framework developer placing coverage:** use the placement decision above and name the one seam the assertion owns.
 - **Release owner:** require gates 1 and 2 green, run gate 3 before tagging, and read rising repair counts as prompt drift even when the run passes.

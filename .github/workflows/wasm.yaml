@@ -42,18 +42,12 @@ jobs:
         with:
           targets: wasm32-wasip2
 
-      - uses: taiki-e/install-action@nextest
+      - uses: taiki-e/install-action@cargo-make
 
       - uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: true
 
-      - name: Build workflow guest
-        run: cargo build --locked -p specify --lib --target wasm32-wasip2
-
-      - name: Build examples adapter
-        run: cargo build --locked -p examples --example adapter-wasm --target wasm32-wasip2
-
       - name: WASM boundary smoke
-        run: cargo run --locked -p examples --example wasm-smoke
+        run: cd examples && cargo make test-wasm

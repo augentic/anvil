@@ -1,4 +1,4 @@
-//! The combined harness adapter WASM component.
+//! The greeting example's combined source/target WASM component.
 //!
 //! Exports the `specify:adapter` `adapter` world — both the `source`
 //! and `target` interfaces from one component — plus

@@ -87,9 +87,9 @@ script = '''
 (cd examples && cargo make test-wasm)
 '''
 
-[tasks.test-live]
+[tasks.prompt-eval]
 script = '''
-(cd examples && cargo make test-live)
+(cd examples && cargo make prompt-eval)
 '''
 
 # Test — the ordinary suite over the default workspace members
