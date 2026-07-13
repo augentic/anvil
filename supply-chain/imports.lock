@@ -191,6 +191,13 @@ version = "0.133.1"
 when = "2026-06-24"
 trusted-publisher = "github:bytecodealliance/wasmtime"
 
+[[publisher.dyn-clone]]
+version = "1.0.20"
+when = "2025-07-27"
+user-id = 3618
+user-login = "dtolnay"
+user-name = "David Tolnay"
+
 [[publisher.encoding_rs]]
 version = "0.8.35"
 when = "2024-10-24"
