@@ -24,6 +24,4 @@ This directory holds non-shipped workspace surfaces. They are workspace members 
 | `fixtures/` | The Specify-owned fixture adapter: a deterministic native core supplying both `specify:adapter` axes for the engine's integration tests, plus the combined `fixture_adapter` guest — one wasm32-wasip2 component exporting both axes for composed deployments. |
 | `live/`     | The explicit live-model workflow test (`cargo make test-live`): one ignored native trial over the adversarial fixture lead set against the configured cursor model, graded by the deterministic validators, reporting per-leg repair counts.                   |
 
-The larger composed-deployment rig that previously lived at `harness/runtime/` remains retired: the focused `harness/composed/` package owns only the workflow core's WASM boundary, while the native suites under `crates/workflow/tests/` own deterministic workflow behavior.
-
 **Coverage boundary.** The composed smoke exercises WIT bindings, Omnia's dispatch-by-id, mount/preopen wiring, and one scripted full loop without a live model or sibling checkout. The native suite remains the cheaper surface for the broader workflow matrix. See [`composed/README.md`](composed/README.md).

@@ -27,50 +27,14 @@ pub struct MergeOutcome {
     pub archive_path: PathBuf,
 }
 
-/// Merge one built slice into the baseline and stamp its plan entry
-/// `done`, bracketed by the bound target's phased merge gates.
+/// Merge one built slice (`specify slice merge run`): target preflight
+/// gate → deterministic [`slice_merge::commit`] → plan entry `done` →
+/// target postflight gate, with each gate's report schema-gated and
+/// persisted.
 ///
-/// The guest collapse of `specify slice merge run`. The transaction
-/// order is: completion preflight → `slice.merge.started` → the
-/// target's **preflight** gate (`seam.merge`, phase `preflight`) → the
-/// deterministic [`slice_merge::commit`] (validators, 3-way spec fold,
-/// Decision Record promotion, lifecycle, archive) → the plan entry's
-/// `done` stamp → the target's **postflight** gate (phase
-/// `postflight`). Each gate's report is schema-gated and persisted:
-/// preflight to `<slice>/merge/preflight.yaml` (archived with the
-/// slice), postflight to `<archive>/merge/postflight.yaml`.
-///
-/// Failure semantics are phase-specific:
-///
-/// - a preflight failure aborts before any baseline write — the slice
-///   stays `built` and the entry stays claimable
-///   (`target-merge-preflight-failed`, journalled as
-///   `slice.merge.failed`);
-/// - a core commit failure retains the deterministic merge's existing
-///   behaviour (journalled as `slice.merge.failed`);
-/// - a postflight failure is a **non-rollback terminal diagnostic** —
-///   the slice is already merged, archived, and `done`, so the error
-///   (`target-merge-postflight-failed`) reports the irreversible state
-///   and the journal carries `slice.merge.postflight-failed` instead
-///   of `slice.merge.failed`.
-///
-/// The workspace-clone git commit leg is skipped with an explicit
-/// `slice.merge.commit-skipped` event (the guest owns no git surface),
-/// and the durable `slice.archive.created` ledger entry lands with no
-/// `merge-sha`. No plan-lock gate: the guest collapses every breakout
-/// in-process — non-concurrent stack use is the documented coexistence
-/// rule.
-///
-/// # Errors
-///
-/// - `plan-entry-not-found` / `slice-merge-entry-not-in-progress` from
-///   the completion preflight, raised **before** any baseline write.
-/// - `target-merge-preflight-failed` / seam dispatch failures from the
-///   preflight gate, with the slice still `built`.
-/// - propagates the `lifecycle` gate, validator, and apply failures
-///   from [`slice_merge::commit`].
-/// - `target-merge-postflight-failed` after a committed merge — the
-///   outcome is irreversible; the error is diagnostic, not a rollback.
+/// A preflight failure aborts with the slice still `built`; a
+/// postflight failure (`target-merge-postflight-failed`) is terminal
+/// but non-rollback — the merge stands.
 pub async fn merge<T: TargetSeam>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {

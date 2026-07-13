@@ -32,21 +32,10 @@ pub struct SurveyedSource {
 /// Survey every `plan.yaml` source binding through the seam and merge
 /// each lead set into `discovery.md`.
 ///
-/// The guest collapse of per-source `specify source survey`: for each
-/// binding it journals `source.execution.agent`, dispatches
-/// `seam.survey`, stamps the source key onto every returned lead (the
-/// CLI-owned attribution rule), schema-gates the set *before* it
-/// becomes visible, merges via `Discovery::merge_survey`, and journals
-/// `source.survey.completed`. Bindings run in plan order; the first
-/// failure aborts the fan-out with earlier sources already merged —
-/// the same partial-progress posture as running the native verb
-/// per-source.
-///
-/// # Errors
-///
-/// - propagates `plan.yaml` load failures.
-/// - `seam-dispatch-failed` when a seam dispatch fails.
-/// - propagates lead schema-validation and discovery-merge failures.
+/// Bindings run in plan order; each is dispatched, source-attributed,
+/// schema-gated before it becomes visible, merged, and journalled.
+/// The first failure aborts the fan-out with earlier sources already
+/// merged.
 pub async fn survey_all(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
@@ -58,23 +47,10 @@ pub async fn survey_all(
     Ok(surveyed)
 }
 
-/// Survey one `plan.yaml` source binding through the seam and merge
-/// its lead set into `discovery.md`.
-///
-/// The guest collapse of one `specify source survey <source>`
-/// invocation (the per-source counterpart of [`survey_all`]): resolves
-/// `source` against `plan.yaml.sources.<key>`, optionally guards the
-/// plan name, and runs the same dispatch → attribute → validate →
-/// merge → journal leg.
-///
-/// # Errors
-///
-/// - propagates `plan.yaml` load failures.
-/// - `Error::Argument` (`--plan`) when `plan_guard` names a different
-///   plan — the native verb's guard verbatim.
-/// - `source-unknown` when `source` is not a `plan.yaml.sources` key.
-/// - `seam-dispatch-failed` when the seam dispatch fails.
-/// - propagates lead schema-validation and discovery-merge failures.
+/// Survey one `plan.yaml` source binding (`specify source survey
+/// <source>`) and merge its lead set into `discovery.md`: resolve
+/// `source` against `plan.yaml.sources.<key>`, optionally guard the
+/// plan name, then dispatch → attribute → validate → merge → journal.
 pub async fn survey(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str,
     plan_guard: Option<&str>,
@@ -165,24 +141,12 @@ pub struct ExtractOutcome {
     pub evidence: PathBuf,
 }
 
-/// Extract Evidence for one `(source, lead)` pair through the seam and
-/// persist it into the slice's `evidence/` directory.
+/// Extract Evidence for one `(source, lead)` pair (`specify source
+/// extract`) and persist it into the slice's `evidence/` directory.
 ///
-/// The guest collapse of `specify source extract`: resolves the
-/// binding and the discovery lead, journals `source.execution.agent`,
-/// dispatches `seam.extract`, composes the full Evidence document (the
-/// envelope `lead` key rejoins the seam's lead-less answer), schema
-/// gates it *before* it becomes visible to synthesis, persists it
-/// atomically, and journals `slice.extract.completed`. A validation
-/// failure returns early — no Evidence lands on the persisted path.
-///
-/// # Errors
-///
-/// - `source-unknown` when `source` is not a `plan.yaml.sources` key.
-/// - `discovery-lead-unknown` when `(source, lead)` is not in
-///   `discovery.md`.
-/// - `seam-dispatch-failed` when the seam dispatch fails.
-/// - propagates Evidence schema-validation and persist failures.
+/// The Evidence document is schema-gated *before* it becomes visible
+/// to synthesis; a validation failure returns early with nothing on
+/// the persisted path.
 pub async fn extract(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str, lead: &str,
     slice: &str,

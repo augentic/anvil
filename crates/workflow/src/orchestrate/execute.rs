@@ -1,23 +1,11 @@
-//! The drained execute loop behind the guest-routed `specify plan
-//! execute`.
+//! The drained execute loop behind `specify plan execute`: claim the
+//! next entry, dispatch its phase (refine / build / merge), repeat
+//! until the plan projects `drained` or a stop. Every stop returns as
+//! a typed [`ExecuteOutcome::Stopped`] with a [`StopReason`] and hint.
 //!
-//! [`execute`] takes the [`GuestMarker`], then loops
-//! [`plan_status_body`] → claim via the core `plan next` projection →
-//! dispatch the projected phase ([`super::refine`], [`super::build`],
-//! [`super::merge`]) until the plan projects `drained` or a stop. Every
-//! stop — Gate 1 unstamped, a failed phase, a stuck queue — returns as
-//! a typed [`ExecuteOutcome::Stopped`] carrying the closed
-//! [`StopReason`] plus its operator hint.
-//!
-//! Concurrency: entries are claimed lock-free in-process through
-//! [`crate::change::claim_next`]; guest-vs-guest dual-driving is refused by the
-//! create-exclusive `<plan-root>/.specify/guest.lock` marker held for
-//! the run. No cross-stack interlock exists — non-concurrent stack use
-//! is the documented coexistence rule.
-//!
-//! No `plan.execute.*` journal events exist — the loop composes the
-//! per-phase cadence its verbs already emit, so a journal reader cannot
-//! tell one drained run from the same phases driven breakout-by-breakout.
+//! Dual-driving is refused by the create-exclusive [`GuestMarker`]
+//! (`<plan-root>/.specify/guest.lock`) held for the run. The loop adds
+//! no journal events of its own — it composes the per-phase cadence.
 
 use std::io::Write as _;
 use std::path::PathBuf;

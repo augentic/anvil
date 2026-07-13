@@ -1,40 +1,21 @@
 //! Diagnostic fingerprint and canonical JSON helpers.
 //!
-//! The fingerprint algorithm pins the wire format at `v1`. The
-//! algorithm, exclusion table, and inner / outer SHA-256 framing are
-//! normative — any drift in canonicalization breaks dedup across CI
-//! history. Touch this module only with a deliberate `v2` bump.
-//!
-//! # Algorithm
+//! The algorithm is the normative `v1` wire format — any drift in
+//! canonicalization breaks dedup across CI history; touch it only with
+//! a deliberate `v2` bump:
 //!
 //! ```text
 //! fingerprint = "sha256:" + hex(sha256(
 //!     "v1\n"
 //!   + rule-id-or-empty + "\n"
-//!   + canonical(location) + "\n"
+//!   + canonical(location) + "\n"        // "{path}:{line}:{column}"
 //!   + hex(sha256(evidence-payload))
 //! ))
 //! ```
 //!
-//! Where:
-//!
-//! - `rule-id-or-empty` is the literal `rule-id` string when set,
-//!   the empty string otherwise.
-//! - `canonical(location)` is `"{path}:{line}:{column}"` using the
-//!   raw [`FindingLocation::path`] verbatim with `line.unwrap_or(0)`
-//!   and `column.unwrap_or(0)`. `end-line` and `end-column` are
-//!   excluded. When `location` is `None` this term is empty.
-//! - `evidence-payload` is the UTF-8 bytes of `evidence.value` for
-//!   `kind: snippet`, the UTF-8 bytes of `evidence.summary` for
-//!   `kind: digest`, and `evidence.summary + "\n" +
-//!   canonical_json(evidence.data)` for `kind: structured`.
-//!
-//! Producer-side fields — `id`, `title`, `severity`, `kind`,
-//! `confidence`, `change`, `slice`, `target-adapter`,
-//! `source-adapter`, `related-rule-ids` — are excluded so that
-//! regrading severity, flipping the kind axis, attaching slice/change
-//! context, or rephrasing a title cannot duplicate diagnostics for the
-//! same underlying issue.
+//! Producer-side fields (severity, kind, title, slice/change context,
+//! …) are excluded so regrading or rephrasing cannot duplicate
+//! diagnostics for the same underlying issue.
 
 use serde_json::Value;
 

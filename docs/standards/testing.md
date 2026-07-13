@@ -10,7 +10,7 @@ Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --loc
 
 ## The three rungs
 
-Specify is tested as a self-contained engine against its own WIT contract (see [the engine-testing RFC](../../rfcs/rfc-engine-testing.md)). No rung resolves, builds, or inspects `specify-adapters`; external adapters prove their own behavior against the published WIT package.
+Specify is tested as a self-contained engine against its own WIT contract. No rung resolves, builds, or inspects `specify-adapters`; external adapters prove their own behavior against the published WIT package.
 
 | Rung | Command | Proves | Cadence |
 | ---- | ------- | ------ | ------- |

@@ -1,6 +1,5 @@
 //! Archival move of `plan.yaml` (plus optional working directory and
 //! operator brief) into the archive tree.
-//! §"`specify plan archive`" for the preflight + execute flow.
 
 use std::path::{Path, PathBuf};
 
@@ -11,49 +10,14 @@ use super::model::{Plan, Status};
 use crate::slice::actions::move_atomic;
 
 impl Plan {
-    /// Move `plan.yaml` — and, when present, the Layer-2 authoring
-    /// working directory `.specify/plans/<plan.name>/` and the
-    /// operator brief (`change.md`) — into the archive directory.
+    /// Move `plan.yaml` — plus, when present, the authoring working
+    /// directory and the `change.md` brief — into
+    /// `<archive_dir>/<plan.name>-<YYYYMMDD>{.yaml,/}`.
     ///
-    /// Archive semantics (`change plan archive`):
-    ///
-    /// 1. Load the plan at `path`.
-    /// 2. Collect every entry whose status is non-terminal for archival
-    ///    purposes — anything not equal to `Done`. If the list is
-    ///    non-empty and `force == false`, return [`Error::Diag`] with
-    ///    `code = "plan-has-outstanding-work"` carrying those names in
-    ///    plan list order. When `force == true`, proceed; the archived
-    ///    file preserves the statuses verbatim.
-    /// 3. Preflight the on-disk destinations (before any mutation):
-    ///    - `<archive_dir>/<plan.name>-<YYYYMMDD>.yaml` must not exist.
-    ///    - If a co-movable working directory or change brief
-    ///      exists, `<archive_dir>/<plan.name>-<YYYYMMDD>/` must not
-    ///      exist either. Any collision errors out before any file
-    ///      or directory is moved, so a failure here leaves the
-    ///      working tree untouched.
-    /// 4. Create `archive_dir` if missing.
-    /// 5. Execute: move `plan.yaml` via `move_atomic`,
-    ///    then (when present) move the working directory via the same
-    ///    helper. It dispatches on `src.is_dir()` and does an atomic
-    ///    `fs::rename` with a `copy + remove` fallback on `EXDEV`
-    ///    (cross-device).
-    /// 6. Return `(archived_plan_path, archived_plans_dir)` — the
-    ///    second element is `Some` iff a working directory or brief
-    ///    was co-moved.
-    ///
-    /// `change_brief_path` is the absolute location of the operator
-    /// brief at `<project_dir>/change.md`. The archive co-moves the
-    /// file when present so operators do not orphan it alongside the
-    /// closed plan.
-    ///
-    /// `now` supplies the `YYYYMMDD` segment in the destination name;
-    /// dispatchers pass `Timestamp::now` and tests pin a fixed value.
-    ///
-    /// # Errors
-    ///
-    /// Errors when archive targets already exist, when load/move
-    /// underlying calls fail, or when entries are non-terminal without
-    /// `force`.
+    /// Non-`Done` entries refuse the move (`plan-has-outstanding-work`)
+    /// unless `force`. Destination collisions error before any file
+    /// moves. Returns the archived plan path plus `Some(dir)` iff a
+    /// working directory or brief was co-moved.
     pub(crate) fn archive(
         path: &Path, change_brief_path: &Path, archive_dir: &Path, force: bool, now: Timestamp,
     ) -> Result<(PathBuf, Option<PathBuf>), Error> {

@@ -50,6 +50,7 @@ Each module under [`tests/framework/`](../../tests/framework/) owns one family. 
 - **Diagram asset embeds** — `.svg` image embeds under `docs/` must resolve.
 - **Symlink integrity** — every symlink under `plugins/` must resolve to a valid target.
 - **Deployable surfaces must not link into `docs/`** — markdown links under `plugins/` and adapter `prose/prompts/` + `prose/references/` trees must not escape into `docs/`.
+- **Permanent surfaces must not link into `rfcs/`** — `rfcs/` is disposable working design; docs, plugins, adapter trees, and the embedded prompt corpus must not cite it.
 - **Skill directive validation** — `<!-- skill: plugin:skill -->` directives must reference a real skill discovered under `plugins/`.
 - **Tool-owned schema URLs** — every `schemas.specify.dev/<tool>/<name>.schema.json` URL in adapter trees must match the constant tool → schema-name registry in the module (currently `vectis` → `tokens`, `assets`, `composition`).
 
@@ -70,12 +71,12 @@ Every `SKILL.md` under `plugins/` is validated against the embedded `schemas/aut
 - **Documented numeric caps** — the skill description/body caps cited in `docs/standards/skill-authoring.md` must match the embedded skill schema.
 - **Canonical document presence** — `docs/reference/review-team-protocol.md` must exist (adapter `agent-teams.md` symlinks in specify-adapters resolve through it).
 - **Reference-corpus indexes** — multi-file reference corpora must carry a `README.md` index.
-- **No design-history citations** — prose must not cite retired RFC/design-record ids as authority.
+- **No design-history citations** — prose and engine code comments (`.rs` / `.wit` under `src/`, `crates/`, `harness/`, `wit/`) must not cite retired RFC/design-record ids as authority.
 - **No flow arrows in `text` fences** — explanation docs use real diagrams, not ASCII flow arrows in ```text fences.
 
 ## Extending the checks
 
-Add the predicate to the owning module under `tests/framework/` (or a new module wired into `main.rs::run_all`), with its policy as module constants. Then add a known-bad fixture case to the matching `*_checks_fire_on_bad_fixtures` test in `main.rs`, proving the check fires. There is no rule file, no `config:` plumbing, and no registration step — a check that compiles and runs is enforced.
+Add the predicate to the owning module under `tests/framework/` (or a new module wired into `main.rs::run_all`), with its policy as module constants. Then add a known-bad fixture case to the matching `bad_fixtures` test in `main.rs`, proving the check fires. There is no rule file, no `config:` plumbing, and no registration step — a check that compiles and runs is enforced.
 
 ## CLI checks
 

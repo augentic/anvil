@@ -1,30 +1,13 @@
 //! Synthesis response wire DTO + input-envelope assembly.
 //!
-//! Synthesis is always agent-dispatched: there is no tool consumer, so
-//! there is no closed *request* wire shape. The single schema-validated
-//! wire is the **response**
-//! ([`SynthesisResponse`], `kind: response`), validated against
-//! `schemas/slice/synthesis.schema.json` by
-//! `crate::schema_gate::validate_synthesis_json` before the refine
-//! orchestration deserialises it here. The response carries the
-//! agent's [`crate::slice::model::SliceModel`]
-//! (kernel-owned and header fields omitted) plus the prose-only Markdown
-//! [`SynthesisArtifacts`].
-//!
-//! The synthesis **inputs** the CLI hands the agent step are not
-//! schema-validated (no closed request shape).
-//! [`inputs`] assembles them — each bound
-//! source's inline `lead` and `claims` plus the resolved target shape
-//! brief body — into the plain serialisable [`SynthesisInputs`] the
-//! guest refine orchestration hands the synthesis judgment. Authority
-//! is **not** included: the kernel resolves it from the on-disk Evidence
-//! after the response returns.
-//!
-//! The assembly is pure over already-read inputs so it unit-tests
-//! without a temp project; [`SourceInput::from_file`]
-//! is the only filesystem hook, kept off the core path and free of
-//! adapter resolution (the refine orchestration resolves the
-//! [`crate::adapter::TargetAdapter`] and reads the shape brief).
+//! The single schema-validated wire is the **response**
+//! ([`SynthesisResponse`], gated against
+//! `schemas/slice/synthesis.schema.json` before deserialisation);
+//! the inputs [`inputs`] assembles into [`SynthesisInputs`] have no
+//! closed request shape. Authority is not included — the kernel
+//! resolves it from the on-disk Evidence after the response returns.
+//! Assembly is pure over already-read inputs;
+//! [`SourceInput::from_file`] is the only filesystem hook.
 
 use std::path::Path;
 

@@ -359,7 +359,7 @@ fn is_url_scheme(target: &str) -> bool {
 
 /// Collapse `./` segments and resolve `..` against earlier segments
 /// without touching the filesystem.
-fn normalise_relative(path: &Path) -> PathBuf {
+pub fn normalise_relative(path: &Path) -> PathBuf {
     let mut out: Vec<std::ffi::OsString> = Vec::new();
     for component in path.components() {
         use std::path::Component;

@@ -44,7 +44,7 @@ pub enum FenceError {
     MultipleClosingFences,
     /// The opening fence was found but its metadata terminator was missing.
     #[error("context-malformed-fences: opening context fence is missing its `-->` line")]
-    MissingOpeningFenceTerminator,
+    UnterminatedOpeningFence,
     /// The opening fence terminated before any key-value metadata lines.
     #[error("context-malformed-fences: opening context fence must include metadata")]
     MissingOpeningFenceMetadata,
@@ -73,14 +73,14 @@ pub fn parse_document(bytes: &[u8]) -> Result<Option<FencedDocument<'_>>, FenceE
         if find_valid_closing_fences(bytes, 0)?.is_empty() {
             return Ok(None);
         }
-        return Err(FenceError::MissingOpeningFenceTerminator);
+        return Err(FenceError::UnterminatedOpeningFence);
     };
 
     if find_subslice(bytes, OPEN_MARKER, block_start + OPEN_MARKER.len()).is_some() {
         return Err(FenceError::MultipleOpeningFences);
     }
     if !bytes[block_start..].starts_with(OPEN_LINE) {
-        return Err(FenceError::MissingOpeningFenceTerminator);
+        return Err(FenceError::UnterminatedOpeningFence);
     }
 
     let metadata_start = block_start + OPEN_LINE.len();
@@ -101,11 +101,10 @@ pub fn parse_document(bytes: &[u8]) -> Result<Option<FencedDocument<'_>>, FenceE
 fn parse_opening_metadata(
     bytes: &[u8], mut pos: usize,
 ) -> Result<(BTreeMap<String, String>, usize), FenceError> {
-    ensure_opening_terminator_exists(bytes, pos)?;
+    require_open_end(bytes, pos)?;
     let mut metadata = BTreeMap::new();
     loop {
-        let (line, next_pos) =
-            read_line(bytes, pos).ok_or(FenceError::MissingOpeningFenceTerminator)?;
+        let (line, next_pos) = read_line(bytes, pos).ok_or(FenceError::UnterminatedOpeningFence)?;
         if line == OPEN_END_LINE {
             if metadata.is_empty() {
                 return Err(FenceError::MissingOpeningFenceMetadata);
@@ -120,15 +119,14 @@ fn parse_opening_metadata(
     }
 }
 
-fn ensure_opening_terminator_exists(bytes: &[u8], mut pos: usize) -> Result<(), FenceError> {
+fn require_open_end(bytes: &[u8], mut pos: usize) -> Result<(), FenceError> {
     loop {
-        let (line, next_pos) =
-            read_line(bytes, pos).ok_or(FenceError::MissingOpeningFenceTerminator)?;
+        let (line, next_pos) = read_line(bytes, pos).ok_or(FenceError::UnterminatedOpeningFence)?;
         if line == OPEN_END_LINE {
             return Ok(());
         }
         if next_pos == bytes.len() {
-            return Err(FenceError::MissingOpeningFenceTerminator);
+            return Err(FenceError::UnterminatedOpeningFence);
         }
         pos = next_pos;
     }
@@ -140,8 +138,7 @@ fn parse_metadata_line(line: &[u8]) -> Result<(String, String), FenceError> {
     };
     let key = &line[..separator];
     let value = &line[separator + 2..];
-    if key.is_empty() || value.is_empty() || !key.iter().all(u8::is_ascii_lowercase_or_digit_hyphen)
-    {
+    if key.is_empty() || value.is_empty() || !key.iter().copied().all(is_key_byte) {
         return Err(invalid_metadata_line(line));
     }
     let key = String::from_utf8(key.to_vec()).map_err(|_err| invalid_metadata_line(line))?;
@@ -194,14 +191,9 @@ const fn is_line_end(bytes: &[u8], pos: usize) -> bool {
     pos == bytes.len() || bytes[pos] == b'\n'
 }
 
-trait MetadataKeyByte {
-    fn is_ascii_lowercase_or_digit_hyphen(&self) -> bool;
-}
-
-impl MetadataKeyByte for u8 {
-    fn is_ascii_lowercase_or_digit_hyphen(&self) -> bool {
-        self.is_ascii_lowercase() || self.is_ascii_digit() || *self == b'-'
-    }
+/// Legal metadata-key byte: lowercase ASCII, digit, or hyphen.
+const fn is_key_byte(byte: u8) -> bool {
+    byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-'
 }
 
 #[cfg(test)]
@@ -227,7 +219,7 @@ mod tests {
             // Unterminated opening fence.
             (
                 "<!-- specify:context begin\nfingerprint: sha256:test\nbody",
-                FenceError::MissingOpeningFenceTerminator,
+                FenceError::UnterminatedOpeningFence,
             ),
             // Metadata line without the `: ` separator.
             (
@@ -265,10 +257,7 @@ mod tests {
                 FenceError::MissingClosingFence,
             ),
             // A lone closing fence (no opening) — terminator is what's missing.
-            (
-                "hand notes\n<!-- specify:context end -->\n",
-                FenceError::MissingOpeningFenceTerminator,
-            ),
+            ("hand notes\n<!-- specify:context end -->\n", FenceError::UnterminatedOpeningFence),
         ];
         for (input, expected) in error_cases {
             assert_eq!(

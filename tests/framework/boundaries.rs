@@ -25,13 +25,14 @@ const SCOPES: &[&str] = &["Cargo.toml", "crates", "harness"];
 /// Crates owned by the `specify-adapters` repository. `omnia` is absent
 /// on purpose: the name collides with the Omnia runtime crate, so the
 /// omnia target adapter is caught by the repository-source rule instead.
+/// `prose` is absent too: the engine owns its own `crates/prose`
+/// build-time codegen crate of the same name.
 const ADAPTER_CRATES: &[&str] = &[
     "adapter",
     "captures",
     "contracts",
     "documentation",
     "intent",
-    "prose",
     "screenshots",
     "typescript",
     "vectis",

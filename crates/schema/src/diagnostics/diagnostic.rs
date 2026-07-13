@@ -1,33 +1,12 @@
 //! The neutral [`Diagnostic`] currency and its closed attribute enums.
 //!
-//! A [`Diagnostic`] is the single structured finding shape shared by
-//! both Specify surfaces: the advisory review surface (target-adapter
-//! review briefs, model-assisted scorers, CI annotations) and the
-//! workflow-gating `validate`
-//! surface (slice/plan structural invariants). The two surfaces stay
-//! conceptually distinct — they differ in gate policy, not in
-//! currency — so the substrate is named neutrally rather than after
-//! either surface.
-//!
-//! Two orthogonal axes classify a diagnostic:
-//!
-//! - [`DiagnosticSource`] — *who produced it* (`deterministic`,
-//!   `model-assisted`, `hybrid`, `human`, `tool`).
-//! - [`DiagnosticKind`] — *what it asks of the reader*: a
-//!   [`DiagnosticKind::Violation`] is a defect to fix; a
-//!   [`DiagnosticKind::Review`] is a deterministically-raised request
-//!   for agent or human judgment (e.g. a deferred semantic check).
-//!   Only `violation` diagnostics are default-blocking — see
-//!   [`is_blocking`].
-//!
-//! Field names are kebab-case at every nesting level. Producer-local
-//! `id` (e.g. `FIND-0001`) is distinct from the codex `rule_id` (e.g.
-//! `UNI-014`): `id` is a stable per-run handle and `rule_id` is the
-//! durable codex citation.
-//!
-//! Severity comparator order is `Critical < Important < Suggestion <
-//! Optional`; the closed enum is declared in that order so the derived
-//! [`Ord`] picks up the contract-defined sort sequence.
+//! One structured finding shape shared by the advisory review surface
+//! and the workflow-gating `validate` surface — they differ in gate
+//! policy, not in currency. Two orthogonal axes classify a diagnostic:
+//! [`DiagnosticSource`] (*who produced it*) and [`DiagnosticKind`]
+//! (*what it asks of the reader*); only `violation` diagnostics are
+//! default-blocking (see [`is_blocking`]). Field names are kebab-case
+//! at every nesting level.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

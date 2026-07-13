@@ -1,37 +1,14 @@
-//! The Specify-owned fixture adapter: one native core implementing
-//! both `specify:adapter` axes for engine tests.
+//! The Specify-owned fixture adapter: one deterministic, model-free
+//! native core implementing both `specify:adapter` axes for engine
+//! tests. Its types mirror the WIT `specify:adapter/types` records so
+//! both consumers (the native test provider and the wasm32
+//! `fixture_adapter` example) stay thin mapping layers.
 //!
-//! The core is deterministic, model-free, and dependency-free. Its
-//! types mirror the WIT `specify:adapter/types` records so the two
-//! consumers stay thin mapping layers: the native test provider in
-//! `crates/workflow/tests` maps them onto `workflow::seam`, and the
-//! wasm32 `fixture_adapter` example maps them onto the generated WIT
-//! bindings.
-//!
-//! Behaviour keys off the routed adapter id (`source:<name>` /
-//! `target:<name>`), so one component artifact bound under several
-//! identities supplies every profile:
-//!
-//! - a name containing `docs` or `code` selects the adversarial
-//!   two-source pair: an overlapping `login-flow` lead in both, an
-//!   authority disagreement on `session.timeout` (documentation says
-//!   30 minutes, behaviour says 15), and a deliberate evidence gap
-//!   behind the docs-only `password-reset` lead;
-//! - a name containing `fail-survey`, `fail-extract`, `fail-guidance`,
-//!   `fail-build`, or `fail-merge` returns the matching typed failure;
-//! - a name containing `missing-output` reports a successful build
-//!   whose declared output was never written (the
-//!   `target-build-output-missing` negative case);
-//! - any other name selects the minimal single-lead `greeting`
-//!   profile used by the deterministic full-loop tests.
-//!
-//! A build additionally honours a per-project marker file
-//! ([`FAIL_BUILD_MARKER`]): when it exists at the project root the
-//! build returns a *failed report* (as opposed to a seam error), so
-//! interruption tests can park and resume a run without rebinding
-//! adapters. The phased merge gates honour the analogous
+//! Behaviour keys off the routed adapter id — the profile catalog
+//! lives in the package `README.md`. Builds and merge gates also
+//! honour the per-project [`FAIL_BUILD_MARKER`] /
 //! [`FAIL_MERGE_PREFLIGHT_MARKER`] / [`FAIL_MERGE_POSTFLIGHT_MARKER`]
-//! pair.
+//! files so interruption tests can park and resume without rebinding.
 
 use std::path::{Path, PathBuf};
 

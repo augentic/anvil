@@ -1,30 +1,15 @@
-/// The `specify:adapter` adapter contract, revised per RFC-61.
-///
-/// External adapter guests export exactly one axis interface (`source` xor
-/// `target`; the additive `adapter` world below exists only for components
-/// that deliberately serve both axes, such as the Specify-owned fixture)
-/// plus `wasi:http/incoming-handler`, which serves the adapter's compiled-in
-/// references over MCP; there is no typed `references` interface — the
-/// spawned agent fetches documents lazily through the HTTP export. Judgment
-/// is an Omnia host effect, not part of this package: each judgment operation
-/// issues `omnia:model/completion.create` from inside the adapter guest, with
-/// `format: schema(...)` so the host gate validates the answer before the
-/// guest deserializes it into the records below.
-///
-/// The answer schemas are not hand-written: they derive from the embedded
-/// canonical schemas (`schemas/discovery/lead.schema.json`,
-/// `schemas/evidence.schema.json`, `schemas/target/build-report.schema.json`)
-/// as the generated documents under `schemas/answers/`, and the records below
-/// mirror what those schemas carry minus call-scoped envelope fields (the
-/// surveyed source, the extracted lead, the built slice and target) that the
-/// caller already knows.
-///
-/// No resource types cross the guest-to-guest seam: Omnia's host-mediated
-/// dispatch carries plain values only, routed by each call's `adapter-id`
-/// first argument. Every guest in a deployment shares the same `[[mount]]`
-/// preopens, so operations name trees by `revision` (plus an optional
-/// subpath) and open their own `"."` preopen rather than receiving a
-/// directory handle.
+/// The `specify:adapter` contract. Adapter guests export exactly one axis
+/// interface (`source` xor `target`; the additive `adapter` world serves
+/// both, e.g. the Specify-owned fixture) plus `wasi:http/incoming-handler`,
+/// which serves the adapter's compiled-in references over MCP. Judgment is
+/// an Omnia host effect: each judgment operation issues
+/// `omnia:model/completion.create` with `format: schema(...)` so the host
+/// gate validates the answer. Answer schemas derive from the embedded
+/// canonical schemas into `schemas/answers/`; the records below mirror them
+/// minus call-scoped envelope fields the caller already knows. No resource
+/// types cross the seam: host-mediated dispatch carries plain values only,
+/// routed by each call's `adapter-id` first argument, and every guest opens
+/// its own `"."` preopen rather than receiving a directory handle.
 package specify:adapter@0.1.0;
 
 interface types {
@@ -44,7 +29,7 @@ interface types {
   /// backend). Portable: it names a build's starting point independently of
   /// which node the working tree lives on. With today's shared mounts it
   /// names the state of the one live project tree; it is the forward hook
-  /// for distributed working trees (RFC-55, deferred).
+  /// for distributed working trees (deferred).
   type revision = string;
 }
 
@@ -141,7 +126,7 @@ interface source {
     claims: list<claim>,
   }
 
-  /// The adapter's deterministic metadata (RFC-64) — the facts
+  /// The adapter's deterministic metadata — the facts
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world,
   /// so only the compatibility floor remains on the record.
@@ -312,7 +297,7 @@ interface target {
     default: list<platform>,
   }
 
-  /// The adapter's deterministic metadata (RFC-64) — the facts
+  /// The adapter's deterministic metadata — the facts
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world;
   /// the record carries the compatibility floor plus the target's

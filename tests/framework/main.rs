@@ -63,126 +63,148 @@ fn fired(findings: &[Finding], check: &str) -> bool {
     findings.iter().any(|finding| finding.check == check)
 }
 
-#[test]
-fn boundary_checks_fire_on_bad_fixtures() {
-    // A plain adapter dependency (name and path both offend) fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "crates/workflow/Cargo.toml",
-        "[dependencies]\nvectis = { path = \"../../specify-adapters/targets/vectis\" }\n",
-    );
-    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+mod boundary {
+    use super::*;
 
-    // A renamed dependency is caught by its effective `package` name.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "crates/workflow/Cargo.toml",
-        "[dev-dependencies]\nharmless = { package = \"captures\", version = \"1\" }\n",
-    );
-    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+    #[test]
+    fn bad_fixtures() {
+        // A plain adapter dependency (name and path both offend) fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "crates/workflow/Cargo.toml",
+            "[dependencies]\nvectis = { path = \"../../specify-adapters/targets/vectis\" }\n",
+        );
+        assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
-    // The expanded `[dependencies.<name>]` table syntax fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "harness/composed/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
-    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+        // A renamed dependency is caught by its effective `package` name.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "crates/workflow/Cargo.toml",
+            "[dev-dependencies]\nharmless = { package = \"captures\", version = \"1\" }\n",
+        );
+        assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
-    // A target-specific dependency table fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "Cargo.toml", "[target.'cfg(unix)'.dependencies]\ntypescript = \"1\"\n");
-    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+        // The expanded `[dependencies.<name>]` table syntax fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "harness/composed/Cargo.toml",
+            "[dependencies.intent]\nversion = \"1\"\n",
+        );
+        assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
-    // A source reaching into specify-adapters fires even when the name
-    // collides with a legitimate crate (the omnia runtime vs target).
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "Cargo.toml",
-        "[workspace.dependencies]\nomnia = { package = \"omnia\", path = \"../specify-adapters/targets/omnia\" }\n",
-    );
-    assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
+        // A target-specific dependency table fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "Cargo.toml", "[target.'cfg(unix)'.dependencies]\ntypescript = \"1\"\n");
+        assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
-    // The legitimate omnia runtime dependency stays silent.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "Cargo.toml",
-        "[workspace.dependencies]\nomnia = \"0.35.0\"\nworkflow = { path = \"crates/workflow\" }\n",
-    );
-    assert!(boundaries::run(dir.path()).is_empty());
+        // A source reaching into specify-adapters fires even when the name
+        // collides with a legitimate crate (the omnia runtime vs target).
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "Cargo.toml",
+            "[workspace.dependencies]\nomnia = { package = \"omnia\", path = \"../specify-adapters/targets/omnia\" }\n",
+        );
+        assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
 
-    // Rust imports alone no longer fire: an undeclared crate cannot be
-    // imported, so the manifest is the only enforcement point.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "crates/workflow/src/lib.rs", "use captures::operations;\n");
-    assert!(boundaries::run(dir.path()).is_empty());
+        // The legitimate omnia runtime dependency stays silent.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "Cargo.toml",
+            "[workspace.dependencies]\nomnia = \"0.35.0\"\nworkflow = { path = \"crates/workflow\" }\n",
+        );
+        assert!(boundaries::run(dir.path()).is_empty());
+
+        // Rust imports alone no longer fire: an undeclared crate cannot be
+        // imported, so the manifest is the only enforcement point.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "crates/workflow/src/lib.rs", "use captures::operations;\n");
+        assert!(boundaries::run(dir.path()).is_empty());
+    }
 }
 
 // Each ported check must fire on a known-bad fixture; the matrices
 // below cover one offending input per check.
 
-#[test]
-fn link_checks_fire_on_bad_fixtures() {
-    // An unresolved relative link in docs/ fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "docs/guide.md", "See [missing](missing.md).\n");
-    let findings = links::run(dir.path());
-    assert!(fired(&findings, links::CHECK_LINK_UNRESOLVED));
+mod links_matrix {
+    use super::*;
 
-    // A missing .svg image embed in docs/ fires the diagram check, not
-    // the plain-link check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "docs/page.md", "![diagram](../assets/gone.svg)\n");
-    let findings = links::run(dir.path());
-    assert!(fired(&findings, links::CHECK_DIAGRAM_ASSET_MISSING));
-    assert!(!fired(&findings, links::CHECK_LINK_UNRESOLVED));
+    #[test]
+    fn bad_fixtures() {
+        // An unresolved relative link in docs/ fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "docs/guide.md", "See [missing](missing.md).\n");
+        let findings = links::run(dir.path());
+        assert!(fired(&findings, links::CHECK_LINK_UNRESOLVED));
 
-    // A fenced or inline-code link never fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "docs/code.md",
-        "```md\n[missing](gone.md)\n```\n\nAnd `[missing](gone.md)` inline.\n",
-    );
-    assert!(links::run(dir.path()).is_empty());
+        // A missing .svg image embed in docs/ fires the diagram check, not
+        // the plain-link check.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "docs/page.md", "![diagram](../assets/gone.svg)\n");
+        let findings = links::run(dir.path());
+        assert!(fired(&findings, links::CHECK_DIAGRAM_ASSET_MISSING));
+        assert!(!fired(&findings, links::CHECK_LINK_UNRESOLVED));
 
-    // An unknown schemas.specify.dev URL in an adapter tree fires; a
-    // registered one is silent.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "targets/demo/prose/references/guide.md",
-        "See https://schemas.specify.dev/demo/unknown.schema.json for the shape.\n",
-    );
-    assert!(fired(&links::run(dir.path()), links::CHECK_SCHEMA_URL_UNKNOWN));
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "targets/vectis/prose/references/guide.md",
-        "See https://schemas.specify.dev/vectis/tokens.schema.json for the shape.\n",
-    );
-    assert!(!fired(&links::run(dir.path()), links::CHECK_SCHEMA_URL_UNKNOWN));
+        // A fenced or inline-code link never fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "docs/code.md",
+            "```md\n[missing](gone.md)\n```\n\nAnd `[missing](gone.md)` inline.\n",
+        );
+        assert!(links::run(dir.path()).is_empty());
 
-    // A directive naming an unknown plugin or skill fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "plugins/spec/skills/refine/SKILL.md", "---\nname: specify-refine\n---\n");
-    write(dir.path(), "docs/guide.md", "<!-- skill: spec:ghost -->\n");
-    assert!(fired(&links::run(dir.path()), links::CHECK_DIRECTIVE_UNRESOLVED));
+        // An unknown schemas.specify.dev URL in an adapter tree fires; a
+        // registered one is silent.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "targets/demo/prose/references/guide.md",
+            "See https://schemas.specify.dev/demo/unknown.schema.json for the shape.\n",
+        );
+        assert!(fired(&links::run(dir.path()), links::CHECK_SCHEMA_URL_UNKNOWN));
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "targets/vectis/prose/references/guide.md",
+            "See https://schemas.specify.dev/vectis/tokens.schema.json for the shape.\n",
+        );
+        assert!(!fired(&links::run(dir.path()), links::CHECK_SCHEMA_URL_UNKNOWN));
 
-    // A broken symlink under plugins/ fires.
-    #[cfg(unix)]
-    check_broken_symlink_fixture();
+        // A directive naming an unknown plugin or skill fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            "---\nname: specify-refine\n---\n",
+        );
+        write(dir.path(), "docs/guide.md", "<!-- skill: spec:ghost -->\n");
+        assert!(fired(&links::run(dir.path()), links::CHECK_DIRECTIVE_UNRESOLVED));
 
-    // A deployable surface linking into docs/ fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "docs/explanation/why.md", "Why.\n");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        "---\nname: specify-refine\n---\n\nSee [why](../../../../docs/explanation/why.md).\n",
-    );
-    assert!(fired(&links::run(dir.path()), links::CHECK_DOCS_IN_DEPLOYABLE));
+        // A broken symlink under plugins/ fires.
+        #[cfg(unix)]
+        check_broken_symlink_fixture();
+
+        // A deployable surface linking into docs/ fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "docs/explanation/why.md", "Why.\n");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            "---\nname: specify-refine\n---\n\nSee [why](../../../../docs/explanation/why.md).\n",
+        );
+        assert!(fired(&links::run(dir.path()), links::CHECK_DOCS_IN_DEPLOYABLE));
+
+        // A permanent surface linking into rfcs/ fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "rfcs/roadmap.md", "# Roadmap\n");
+        write(dir.path(), "docs/guide.md", "See [the roadmap](../rfcs/roadmap.md).\n");
+        assert!(fired(&links::run(dir.path()), links::CHECK_RFCS_LINK));
+    }
 }
 
 #[cfg(unix)]
@@ -197,100 +219,104 @@ fn check_broken_symlink_fixture() {
 /// A schema-valid SKILL.md frontmatter block for fixture trees.
 const VALID_SKILL: &str = "---\nname: specify-refine\ndescription: Run the refine phase for one slice. Use when a slice needs refinement.\n---\n\nBody.\n";
 
-#[test]
-fn skill_checks_fire_on_bad_fixtures() {
-    // A schema-valid, prefix-aligned skill is silent.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "plugins/spec/skills/refine/SKILL.md", VALID_SKILL);
-    assert!(skills::run(dir.path()).is_empty());
+mod skills_matrix {
+    use super::*;
 
-    // Missing frontmatter fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "plugins/spec/skills/refine/SKILL.md", "No frontmatter here.\n");
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_MISSING_FRONTMATTER));
+    #[test]
+    fn bad_fixtures() {
+        // A schema-valid, prefix-aligned skill is silent.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "plugins/spec/skills/refine/SKILL.md", VALID_SKILL);
+        assert!(skills::run(dir.path()).is_empty());
 
-    // An unknown frontmatter property fires the schema check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("---\n\nBody.", "bogus: true\n---\n\nBody."),
-    );
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_SCHEMA_VIOLATION));
+        // Missing frontmatter fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "plugins/spec/skills/refine/SKILL.md", "No frontmatter here.\n");
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_MISSING_FRONTMATTER));
 
-    // Two skills sharing one name fire the duplicate check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "plugins/spec/skills/refine/SKILL.md", VALID_SKILL);
-    write(dir.path(), "plugins/spec/skills/other/SKILL.md", VALID_SKILL);
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_DUPLICATE_NAME));
+        // An unknown frontmatter property fires the schema check.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("---\n\nBody.", "bogus: true\n---\n\nBody."),
+        );
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_SCHEMA_VIOLATION));
 
-    // A name without its plugin's discovery prefix fires (spec maps to
-    // specify- via the override).
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("name: specify-refine", "name: spec-refine"),
-    );
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_NAME_PREFIX));
+        // Two skills sharing one name fire the duplicate check.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "plugins/spec/skills/refine/SKILL.md", VALID_SKILL);
+        write(dir.path(), "plugins/spec/skills/other/SKILL.md", VALID_SKILL);
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_DUPLICATE_NAME));
 
-    // A prose argument-hint fires the grammar check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("---\n\nBody.", "argument-hint: \"<slice-name>\"\n---\n\nBody."),
-    );
-    assert!(!fired(&skills::run(dir.path()), skills::CHECK_ARGUMENT_HINT));
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("---\n\nBody.", "argument-hint: the slice name\n---\n\nBody."),
-    );
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_ARGUMENT_HINT));
+        // A name without its plugin's discovery prefix fires (spec maps to
+        // specify- via the override).
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("name: specify-refine", "name: spec-refine"),
+        );
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_NAME_PREFIX));
 
-    // A description that does not open with an approved verb fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("description: Run the", "description: Runs the"),
-    );
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_DESCRIPTION_VERB));
+        // A prose argument-hint fires the grammar check.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("---\n\nBody.", "argument-hint: \"<slice-name>\"\n---\n\nBody."),
+        );
+        assert!(!fired(&skills::run(dir.path()), skills::CHECK_ARGUMENT_HINT));
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("---\n\nBody.", "argument-hint: the slice name\n---\n\nBody."),
+        );
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_ARGUMENT_HINT));
 
-    // A body `## Input` heading fires the restatement check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("Body.", "## Input\n\nBody."),
-    );
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_FRONTMATTER_RESTATEMENT));
+        // A description that does not open with an approved verb fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("description: Run the", "description: Runs the"),
+        );
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_DESCRIPTION_VERB));
 
-    // An orchestration/judgment heading in a spec skill body fires; the
-    // same heading quoted inside a code fence, or in another plugin's
-    // skill, stays silent.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("Body.", "## Synthesis playbook\n\nBody."),
-    );
-    assert!(fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/spec/skills/refine/SKILL.md",
-        &VALID_SKILL.replace("Body.", "```md\n## Synthesis playbook\n```\n\nBody."),
-    );
-    assert!(!fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "plugins/capture/skills/wiretap/SKILL.md",
-        "---\nname: capture-wiretap\ndescription: Run the wiretap capture. Use when capturing runtime traffic.\n---\n\n## Validation notes\n\nBody.\n",
-    );
-    assert!(!fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
+        // A body `## Input` heading fires the restatement check.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("Body.", "## Input\n\nBody."),
+        );
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_FRONTMATTER_RESTATEMENT));
+
+        // An orchestration/judgment heading in a spec skill body fires; the
+        // same heading quoted inside a code fence, or in another plugin's
+        // skill, stays silent.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("Body.", "## Synthesis playbook\n\nBody."),
+        );
+        assert!(fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/spec/skills/refine/SKILL.md",
+            &VALID_SKILL.replace("Body.", "```md\n## Synthesis playbook\n```\n\nBody."),
+        );
+        assert!(!fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "plugins/capture/skills/wiretap/SKILL.md",
+            "---\nname: capture-wiretap\ndescription: Run the wiretap capture. Use when capturing runtime traffic.\n---\n\n## Validation notes\n\nBody.\n",
+        );
+        assert!(!fired(&skills::run(dir.path()), skills::CHECK_ORCHESTRATION_HEADING));
+    }
 }
 
 /// A marketplace manifest declaring exactly one `spec` plugin.
@@ -316,58 +342,77 @@ fn write_valid_prose_tree(root: &Path) {
     );
 }
 
-#[test]
-fn prose_checks_fire_on_bad_fixtures() {
-    // A complete baseline is silent.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    assert!(prose::run(dir.path()).is_empty());
+mod prose_matrix {
+    use super::*;
 
-    // An on-disk plugin missing from the manifest fires the drift check.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    write(dir.path(), ".cursor-plugin/marketplace.json", VALID_MARKETPLACE);
-    write(dir.path(), "plugins/spec/skills/refine/SKILL.md", VALID_SKILL);
-    write(dir.path(), "plugins/spec/.cursor-plugin/plugin.json", "{\"name\":\"spec\"}");
-    write(dir.path(), "plugins/orphan/skills/x/SKILL.md", VALID_SKILL);
-    write(dir.path(), "plugins/orphan/.cursor-plugin/plugin.json", "{\"name\":\"orphan\"}");
-    assert!(fired(&prose::run(dir.path()), prose::CHECK_MARKETPLACE_DRIFT));
+    #[test]
+    fn bad_fixtures() {
+        // A complete baseline is silent.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        assert!(prose::run(dir.path()).is_empty());
 
-    // A body cap missing from the standards prose fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    write(dir.path(), "docs/standards/skill-authoring.md", "Description cap: 512 characters.\n");
-    assert!(fired(&prose::run(dir.path()), prose::CHECK_NUMERIC_CAP));
+        // An on-disk plugin missing from the manifest fires the drift check.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), ".cursor-plugin/marketplace.json", VALID_MARKETPLACE);
+        write(dir.path(), "plugins/spec/skills/refine/SKILL.md", VALID_SKILL);
+        write(dir.path(), "plugins/spec/.cursor-plugin/plugin.json", "{\"name\":\"spec\"}");
+        write(dir.path(), "plugins/orphan/skills/x/SKILL.md", VALID_SKILL);
+        write(dir.path(), "plugins/orphan/.cursor-plugin/plugin.json", "{\"name\":\"orphan\"}");
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_MARKETPLACE_DRIFT));
 
-    // A missing canonical review-team-protocol document fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(
-        dir.path(),
-        "docs/standards/skill-authoring.md",
-        "Description cap: 512 characters. Body cap: 200 lines.\n",
-    );
-    assert!(fired(&prose::run(dir.path()), prose::CHECK_CANONICAL_MISSING));
+        // A body cap missing from the standards prose fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(
+            dir.path(),
+            "docs/standards/skill-authoring.md",
+            "Description cap: 512 characters.\n",
+        );
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_NUMERIC_CAP));
 
-    // A two-file reference corpus without a README.md index fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    write(dir.path(), "targets/demo/prose/references/providers/a.md", "A.\n");
-    write(dir.path(), "targets/demo/prose/references/providers/b.md", "B.\n");
-    assert!(fired(&prose::run(dir.path()), prose::CHECK_CORPUS_UNINDEXED));
+        // A missing canonical review-team-protocol document fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "docs/standards/skill-authoring.md",
+            "Description cap: 512 characters. Body cap: 200 lines.\n",
+        );
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_CANONICAL_MISSING));
 
-    // A design-history citation fires; a standards RFC passes.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    write(dir.path(), "docs/explanation/why.md", "Per RFC-5 the loop was split.\n");
-    assert!(fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    write(dir.path(), "docs/explanation/time.md", "Timestamps follow RFC 3339.\n");
-    assert!(!fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
+        // A two-file reference corpus without a README.md index fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), "targets/demo/prose/references/providers/a.md", "A.\n");
+        write(dir.path(), "targets/demo/prose/references/providers/b.md", "B.\n");
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_CORPUS_UNINDEXED));
 
-    // A ```text fence with a flow arrow in an explanation doc fires.
-    let dir = tempfile::tempdir().expect("tempdir");
-    write_valid_prose_tree(dir.path());
-    write(dir.path(), "docs/explanation/flow.md", "```text\nplan -> refine -> build\n```\n");
-    assert!(fired(&prose::run(dir.path()), prose::CHECK_TEXT_DIAGRAM));
+        // A design-history citation fires; a standards RFC passes.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), "docs/explanation/why.md", "Per RFC-5 the loop was split.\n");
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), "docs/explanation/time.md", "Timestamps follow RFC 3339.\n");
+        assert!(!fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
+
+        // A design-history citation in an engine code comment fires;
+        // one in the rfcs/ tree stays out of scope.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), "wit/demo.wit", "/// Revised per RFC-61.\n");
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), "rfcs/rfc-5-loop.md", "# RFC-5\n");
+        assert!(!fired(&prose::run(dir.path()), prose::CHECK_HISTORY_CITATION));
+
+        // A ```text fence with a flow arrow in an explanation doc fires.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write_valid_prose_tree(dir.path());
+        write(dir.path(), "docs/explanation/flow.md", "```text\nplan -> refine -> build\n```\n");
+        assert!(fired(&prose::run(dir.path()), prose::CHECK_TEXT_DIAGRAM));
+    }
 }

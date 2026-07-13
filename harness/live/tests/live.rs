@@ -1,4 +1,4 @@
-//! The explicit live-model workflow test (RFC-62): one ignored,
+//! The explicit live-model workflow test: one ignored,
 //! operator-invoked native trial that drives the same fixture
 //! workflow as the scripted suites — adversarial lead set, real
 //! judgment — and grades it with the deterministic validators only.
@@ -233,8 +233,8 @@ const fn schema_name(request: &Request) -> Option<&str> {
 //
 // This deliberately duplicates the `CursorModel` shim in
 // `specify-adapters/harness/native/src/model.rs` (minus its `DevModel`
-// selection and eval-model override): RFC-62's boundary forbids engine
-// tests depending on the sibling checkout, and nothing mechanical
+// selection and eval-model override): engine tests must not depend on
+// the sibling checkout, and nothing mechanical
 // catches drift between the copies — when the guest→wire mapping
 // changes upstream, update both.
 

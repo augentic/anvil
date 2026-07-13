@@ -1,23 +1,8 @@
-//! The refine-phase orchestrator: the guest collapse of the
-//! `/spec:refine` critical path.
-//!
-//! One call composes what the skill drives as five CLI invocations:
-//! `slice create --if-exists continue` (re-entry safe — a slice parked
-//! at `refining` resumes), the per-binding `source extract` fan-out
-//! (via [`super::extract`]), the synthesis judgment leg with seam
-//! guidance (via [`super::synthesize`]), the persist tail
-//! ([`persist_synthesized`]), `slice validate`'s gate sweep + adapter
-//! rules, and the `refined` transition.
-//!
-//! Journal cadence composes the native verbs': extract events from
-//! [`super::extract`], then `slice.synthesize.agent` (the handoff is a
-//! model dispatch), `slice.synthesize.started` /
-//! `slice.synthesize.completed` / `slice.synthesize.failed` around the
-//! judgment-plus-persist leg, the validate sweep's synthesis-tag
-//! events, and `slice.transition.refined` from the transition. A
-//! validate failure carries no `slice.synthesize.failed` — matching
-//! native, where validate is a separate verb; the slice stays
-//! `refining` either way.
+//! The refine-phase orchestrator behind `/spec:refine`: slice create
+//! (re-entry safe), per-binding extract fan-out, the synthesis
+//! judgment leg, the persist tail, the validate gate sweep, and the
+//! `refined` transition. A validate failure leaves the slice
+//! `refining` and fires no `slice.synthesize.failed`.
 
 use std::path::{Path, PathBuf};
 
@@ -51,6 +36,35 @@ pub struct RefineOutcome {
     pub artifacts: Vec<String>,
     /// `(source, lead)` pairs extracted, in binding order.
     pub extracted: Vec<(String, String)>,
+    /// Synthesis-tag counts from the validate sweep's spec scan —
+    /// review signals, never a park.
+    pub tags: TagCounts,
+}
+
+/// Per-tag requirement counts gathered by the validate sweep.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TagCounts {
+    /// `[unknown]` requirements.
+    pub unknown: usize,
+    /// `[conflict]` requirements.
+    pub conflict: usize,
+    /// `[divergence]` requirements.
+    pub divergence: usize,
+}
+
+impl TagCounts {
+    /// Tally `(requirement-id, tag)` pairs from the spec scan.
+    fn tally(tags: &[(String, RequirementTag)]) -> Self {
+        let mut counts = Self::default();
+        for (_, tag) in tags {
+            match tag {
+                RequirementTag::Unknown => counts.unknown += 1,
+                RequirementTag::Conflict => counts.conflict += 1,
+                RequirementTag::Divergence => counts.divergence += 1,
+            }
+        }
+        counts
+    }
 }
 
 /// Refine one plan entry's slice to `refined`.
@@ -160,7 +174,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
     )
     .await?;
 
-    validate(layout, now, slice)?;
+    let tags = validate(layout, now, slice)?;
 
     slice_actions::transition(&slice_dir, LifecycleStatus::Refined, now)?;
 
@@ -168,6 +182,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
         slice: slice.to_string(),
         artifacts,
         extracted,
+        tags,
     })
 }
 
@@ -235,8 +250,9 @@ async fn synthesize_and_persist<P: Model, T: TargetSeam>(
 /// The `slice validate` sweep: pre-adapter gates, adapter rules, and
 /// the synthesis-tag journal emission — minus the report rendering
 /// (the orchestrator has no stdout report surface; the blocking
-/// decision and error codes match the native verb).
-fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<(), Error> {
+/// decision and error codes match the native verb). Returns the tag
+/// counts the refine body surfaces.
+fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<TagCounts, Error> {
     match crate::slice::validate::run(layout, slice)? {
         Validation::Gate { code, findings } => Err(Error::validation_failed(
             code,
@@ -259,7 +275,9 @@ fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<(), Error
                     format!("slice `{slice}` failed validation: {}", rules.join(", ")),
                 ));
             }
-            append_synthesis_journal(layout, now, slice, synthesis_tags)
+            let counts = TagCounts::tally(&synthesis_tags);
+            append_synthesis_journal(layout, now, slice, synthesis_tags)?;
+            Ok(counts)
         }
     }
 }

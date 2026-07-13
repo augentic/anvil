@@ -49,9 +49,14 @@ const CORPUS_INDEX: &str = "README.md";
 const CORPUS_MIN_FILES: usize = 2;
 
 /// Trees scanned for design-history citations.
-const HISTORY_SCOPE_PREFIXES: &[&str] = &["docs/", "codex/", "sources/", "targets/", "plugins/"];
+const HISTORY_SCOPE_PREFIXES: &[&str] =
+    &["docs/", "codex/", "sources/", "targets/", "plugins/", "harness/"];
 /// Subtrees excluded from the history-citation scan.
 const HISTORY_EXCLUDED_PREFIXES: &[&str] = &["docs/assets/", "codex/rules/"];
+/// Code trees scanned for design-history citations in `.rs` / `.wit`
+/// comments; `rfcs/` stays out of scope by design.
+const HISTORY_CODE_PREFIXES: &[&str] = &["src/", "crates/", "harness/", "wit/"];
+const HISTORY_CODE_EXTENSIONS: &[&str] = &["rs", "wit"];
 
 /// Docs subtrees where fenced `text` flow diagrams are banned.
 const TEXT_DIAGRAM_PREFIXES: &[&str] =
@@ -289,8 +294,9 @@ fn glob_dir_matches(pattern: &str, dir: &str) -> bool {
 static RFC_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)RFC[-\s]+(\d+)").expect("rfc citation pattern"));
 
-/// Specify design-history citations (RFC numbers below 100) must
-/// not appear in operator-facing prose; standards RFCs (>= 100) pass.
+/// Specify design-history citations (RFC numbers below 100) must not
+/// appear in operator-facing prose or engine code comments; standards
+/// RFCs (>= 100) pass.
 fn check_history_citations(root: &Path, findings: &mut Vec<Finding>) {
     let mut paths = Vec::new();
     for prefix in HISTORY_SCOPE_PREFIXES {
@@ -302,6 +308,19 @@ fn check_history_citations(root: &Path, findings: &mut Vec<Finding>) {
     let agents = root.join("AGENTS.md");
     if agents.is_file() {
         paths.push(agents);
+    }
+    for prefix in HISTORY_CODE_PREFIXES {
+        let dir = root.join(prefix.trim_end_matches('/'));
+        if !dir.is_dir() {
+            continue;
+        }
+        let mut files = Vec::new();
+        walk_files(&dir, &mut files);
+        paths.extend(files.into_iter().filter(|path| {
+            path.extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|ext| HISTORY_CODE_EXTENSIONS.contains(&ext))
+        }));
     }
 
     for path in paths {

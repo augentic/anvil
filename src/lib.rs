@@ -1,7 +1,7 @@
 //! The specify guest: the deployment's only `wasi:cli/run` exporter.
 //!
-//! One routing mechanism under two transports, each owned by a
-//! symmetric transport module (see `rfcs/handler-routing.md`):
+//! One routing mechanism under two transports, each owned by its
+//! `transport` module (`transport::command` / `transport::http`).
 //!
 //! The project root is the `"."` mount preopen: WASI resolves relative
 //! paths against it, so `workflow::handler::Ctx::load` finds

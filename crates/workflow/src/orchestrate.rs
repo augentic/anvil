@@ -11,8 +11,8 @@
 //! `specify slice merge run` route here through the guest.
 //!
 //! Time is injected: every orchestrator takes the caller's `now`
-//! (architecture.md §"Time injection"); library code never reads the
-//! clock.
+//! (`docs/standards/architecture.md` §"Time injection"); library code
+//! never reads the clock.
 
 mod author;
 mod execute;

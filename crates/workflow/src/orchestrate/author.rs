@@ -1,24 +1,10 @@
-//! The plan-authoring orchestrator: the guest collapse of the
-//! `/spec:plan` critical path.
+//! The plan-authoring orchestrator behind `/spec:plan`: scaffold →
+//! survey fan-out → reconciliation judgment → persist → Gate 1 prose →
+//! `plan validate` doctor sweep.
 //!
-//! One call composes what the skill drives as a CLI sequence: `plan
-//! create` scaffolding (same name gate, same overwrite refusal), the
-//! per-source survey fan-out (via [`super::survey_all`]), the
-//! reconciliation judgment leg ([`crate::judgment::propose::reconcile`]
-//! with the kernel-projection check inside the repair loop), the
-//! reconcile persist tail (`Plan::propose_from` under the
-//! atomic write loop plus the `plan.reconcile.completed` event), the
-//! Gate 1 prose persistence into `change.md` / `discovery.md`, and the
-//! `plan validate` doctor sweep. The run exits with the plan at
-//! `pending`; the outcome carries the literal Gate 1 transition hint —
-//! the orchestrator never writes `approved` (Gate 1 stays
-//! operator-only).
-//!
-//! Journal cadence composes the native verbs': the per-source
-//! `source.execution.agent` / `source.survey.completed` pairs from the
-//! fan-out, then the single `plan.reconcile.completed` after the
-//! projection commits. The propose dry-run fires no journal event
-//! natively, so the judgment dispatch adds none here either.
+//! The run exits with the plan at `pending` and the outcome carrying
+//! the literal Gate 1 transition hint — the orchestrator never writes
+//! `approved` (Gate 1 stays operator-only).
 
 use std::collections::BTreeMap;
 

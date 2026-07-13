@@ -8,7 +8,9 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 
-use crate::support::{Finding, extract_links, rel, resolve_link, skill_registry, walk_markdown};
+use crate::support::{
+    Finding, extract_links, normalise_relative, rel, resolve_link, skill_registry, walk_markdown,
+};
 
 /// A relative `[label](target)` markdown link does not resolve on disk.
 pub const CHECK_LINK_UNRESOLVED: &str = "links.unresolved";
@@ -22,13 +24,17 @@ pub const CHECK_DIRECTIVE_UNRESOLVED: &str = "links.unresolved-directive";
 pub const CHECK_BROKEN_SYMLINK: &str = "plugins.broken-symlink";
 /// A deployable surface links into the repo's `docs/` tree.
 pub const CHECK_DOCS_IN_DEPLOYABLE: &str = "links.docs-in-deployable-surface";
+/// A permanent surface links into the disposable `rfcs/` tree.
+pub const CHECK_RFCS_LINK: &str = "links.rfcs-in-permanent-surface";
 
 /// Markdown trees whose relative links must resolve on disk. Archival
-/// trees (`rfcs/`) are excluded by design: they cite future or
-/// deferred work whose targets may not exist yet. The embedded
-/// judgment-prose corpus under `crates/workflow/prompts/` is in scope:
-/// its links are also build-checked at embed time, but the framework
-/// gate catches drift without a workflow rebuild.
+/// trees (`rfcs/`) are excluded from *inbound* resolution by design:
+/// they cite future or deferred work whose targets may not exist yet.
+/// *Outbound* links into `rfcs/` from permanent surfaces are banned
+/// separately ([`CHECK_RFCS_LINK`]). The embedded judgment-prose
+/// corpus under `crates/workflow/prompts/` is in scope: its links are
+/// also build-checked at embed time, but the framework gate catches
+/// drift without a workflow rebuild.
 const LINK_SCOPE_PREFIXES: &[&str] = &[
     "codex/",
     "sources/",
@@ -60,6 +66,7 @@ pub fn run(root: &Path) -> Vec<Finding> {
     check_directives(root, &mut findings);
     check_plugin_symlinks(root, &mut findings);
     check_docs_links_in_deployable(root, &mut findings);
+    check_rfcs_links(root, &mut findings);
     findings
 }
 
@@ -242,6 +249,39 @@ fn check_docs_links_in_deployable(root: &Path, findings: &mut Vec<Finding>) {
                 findings.push(Finding::new(
                     CHECK_DOCS_IN_DEPLOYABLE,
                     format!("{relative}:{} — deployable surface links into docs/", line_idx + 1),
+                ));
+            }
+        }
+    }
+}
+
+/// Permanent markdown trees banned from linking into the disposable
+/// `rfcs/` design parking lot.
+const RFCS_BAN_PREFIXES: &[&str] =
+    &["docs/", "plugins/", "codex/", "sources/", "targets/", "crates/workflow/prompts/"];
+
+/// Permanent surfaces must not link into `rfcs/` — its contents are
+/// disposable working design, deleted once implemented.
+fn check_rfcs_links(root: &Path, findings: &mut Vec<Finding>) {
+    for path in scoped_markdown(root, RFCS_BAN_PREFIXES) {
+        let relative = rel(root, &path);
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        for link in extract_links(&content) {
+            let path_part = link.target.split(['#', '?']).next().unwrap_or(&link.target);
+            if path_part.is_empty() || link.target.contains("://") {
+                continue;
+            }
+            let base = Path::new(&relative).parent().unwrap_or_else(|| Path::new(""));
+            let joined = normalise_relative(&base.join(path_part));
+            if joined.starts_with("rfcs") {
+                findings.push(Finding::new(
+                    CHECK_RFCS_LINK,
+                    format!(
+                        "{relative}:{} — permanent surface links into rfcs/ ('{}')",
+                        link.line, link.target
+                    ),
                 ));
             }
         }

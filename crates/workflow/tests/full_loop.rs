@@ -27,9 +27,9 @@ fn scripted_answers() -> Vec<String> {
 /// Scaffold a project bound to the fixture target and author + approve
 /// the single-slice plan — the shared preamble of every loop test.
 async fn scaffold_author_approve(invoker: &Invoker<ScriptedProvider>) {
-    let scaffolded = run::<workflow::init::handlers::Scaffold, _>(
+    let scaffolded = run::<workflow::init::handlers::Init, _>(
         invoker,
-        workflow::init::handlers::ScaffoldInput {
+        workflow::init::handlers::InitInput {
             adapter: Some("fixture".to_string()),
             name: Some("demo".to_string()),
             ..Default::default()
@@ -160,8 +160,9 @@ async fn author_approve_execute_drains() {
     invoker.provider().model().assert_exhausted();
 }
 
+// A failed merge preflight gate parks the slice at `built`.
 #[tokio::test]
-async fn merge_preflight_failure_parks_slice_built() {
+async fn preflight_parks_built() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path().canonicalize().expect("canonical tempdir");
     let _cache = common::scoped_cache(&root);
@@ -203,8 +204,10 @@ async fn merge_preflight_failure_parks_slice_built() {
     invoker.provider().model().assert_exhausted();
 }
 
+// A failed merge postflight gate is terminal but non-rollback: the
+// committed merge stands.
 #[tokio::test]
-async fn merge_postflight_failure_is_terminal_after_commit() {
+async fn postflight_terminal() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path().canonicalize().expect("canonical tempdir");
     let _cache = common::scoped_cache(&root);

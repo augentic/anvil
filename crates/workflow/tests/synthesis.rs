@@ -104,8 +104,10 @@ async fn author_and_approve(invoker: &Invoker<ScriptedProvider>) {
     .expect("the operator stamps Gate 1");
 }
 
+// A documentation-vs-behaviour disagreement resolves as a divergence
+// with the docs claim winning.
 #[tokio::test]
-async fn divergence_resolves_documentation_over_behaviour() {
+async fn divergence_docs_wins() {
     let (_tmp, root, _cache) = scripted_project("fixture");
     let invoker =
         scripted_invoker(&root, vec![answers::adversarial_grouping(), session_synthesis_answer()]);
@@ -182,8 +184,10 @@ fn session_synthesis_with_decision() -> String {
     serde_json::to_string(&answer).expect("answer serialises")
 }
 
+// Decisions persist with baseline context surfaced to synthesis, and
+// re-synthesis replaces the slice's decision set exactly.
 #[tokio::test]
-async fn decisions_persist_with_baseline_context_and_exact_set_replacement() {
+async fn decisions_exact_set() {
     let (_tmp, root, _cache) = scripted_project("fixture");
 
     // A baseline Decision Record the slice can legally supersede — and
