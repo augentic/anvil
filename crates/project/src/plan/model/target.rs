@@ -1,0 +1,103 @@
+//! Target concerns: the resolved `<name>@<semver>` target reference.
+
+use std::fmt;
+
+use serde::{Deserialize, Serialize};
+
+/// Parsed `<name>@<semver>` target-adapter identifier (workflow §Adapter
+/// vocabulary).
+///
+/// This is the *resolved* target form, produced by
+/// [`crate::plan::resolve_target`] from a slice's bound
+/// project topology and surfaced by `specify plan next`, the slice
+/// `metadata.yaml`, and the build request. It is not a stored
+/// `plan.yaml` field — a slice binds only a `project`, and the target
+/// adapter is resolved on demand.
+///
+/// Wire form is the single kebab string `name@<semver>` (e.g.
+/// `omnia@1.0.0`), with `name` matching `^[a-z][a-z0-9-]*$` and the
+/// version an exact semver. Deserialisation goes
+/// through [`TargetRef::parse`] so any payload that survives serde
+/// already has the `@<semver>` suffix in valid form. Components are
+/// private so every `TargetRef` value satisfies the wire regex by
+/// construction.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TargetRef {
+    name: String,
+    version: semver::Version,
+}
+
+impl TargetRef {
+    /// Parse a wire-form `<name>@<semver>` string.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TargetRefParseError`] when the string does not match
+    /// the wire regex `^[a-z][a-z0-9-]*@<semver>$` — wrong shape, empty
+    /// segment, mixed case, missing `@`, non-semver version, etc.
+    pub(crate) fn parse(input: &str) -> Result<Self, TargetRefParseError> {
+        let (name, version_part) =
+            input.split_once('@').ok_or_else(|| TargetRefParseError::new(input))?;
+        if !crate::name::is_kebab_leading_alpha(name) {
+            return Err(TargetRefParseError::new(input));
+        }
+        let version =
+            semver::Version::parse(version_part).map_err(|_err| TargetRefParseError::new(input))?;
+        Ok(Self {
+            name: name.to_string(),
+            version,
+        })
+    }
+}
+
+impl fmt::Display for TargetRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}@{}", self.name, self.version)
+    }
+}
+
+impl Serialize for TargetRef {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for TargetRef {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        Self::parse(&raw).map_err(serde::de::Error::custom)
+    }
+}
+
+/// Error returned by [`TargetRef::parse`] when the input does not
+/// match the `name@<semver>` wire form.
+///
+/// Carries the offending input verbatim so callers can surface it in
+/// diagnostics without re-formatting; the [`fmt::Display`] body is
+/// already the kebab discriminant prose used by
+/// `plan-target-malformed`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TargetRefParseError {
+    /// The original (rejected) input.
+    pub input: String,
+}
+
+impl TargetRefParseError {
+    fn new(input: &str) -> Self {
+        Self {
+            input: input.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for TargetRefParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "target `{}` is not of the form `<name>@<semver>` (kebab name, exact semver version)",
+            self.input,
+        )
+    }
+}
+
+impl std::error::Error for TargetRefParseError {}

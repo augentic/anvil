@@ -1,0 +1,34 @@
+[package]
+name = "project"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Specify project foundation: init, adapter resolution, config, journal, registry, the plan and slice data models, seam capability traits, and the judgment kernel"
+categories = ["development-tools"]
+keywords = ["specify", "workflow", "foundation"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+jiff.workspace = true
+petgraph.workspace = true
+semver.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+error.workspace = true
+artifacts.workspace = true
+omnia-guest.workspace = true
+schema.workspace = true
+strum.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
