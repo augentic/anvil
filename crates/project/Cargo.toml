@@ -16,6 +16,7 @@ workspace = true
 [dependencies]
 jiff.workspace = true
 petgraph.workspace = true
+schemars.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true

@@ -72,13 +72,6 @@ pub const TOPOLOGY_LOCK_JSON_SCHEMA: &str =
 pub const COMPONENTS_JSON_SCHEMA: &str =
     include_str!("../../../schemas/design-system/components.schema.json");
 
-/// Schema for `parts.yaml`, the operator-authored component parts input.
-///
-/// Operator parts: each part declares an authoritative composition `group`
-/// fragment that seeds inference with naming and promotion authority.
-pub const PARTS_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/design-system/parts.schema.json");
-
 /// Schema for the neutral `Diagnostic` wire shape produced by every
 /// check surface (validate and review alike) and validated at the
 /// diagnostic boundary. See the structured diagnostic schema.
@@ -94,13 +87,6 @@ pub const DIAGNOSTIC_JSON_SCHEMA: &str =
 /// `diagnostic.schema.json` `$ref`.
 pub const DIAGNOSTIC_REPORT_JSON_SCHEMA: &str =
     include_str!("../../../schemas/diagnostics/diagnostic-report.schema.json");
-
-/// Schema for `SKILL.md` YAML frontmatter (editor contract).
-pub const SKILL_JSON_SCHEMA: &str = include_str!("../../../schemas/authoring/skill.schema.json");
-
-/// Schema for `.cursor-plugin/marketplace.json` (editor contract).
-pub const MARKETPLACE_JSON_SCHEMA: &str =
-    include_str!("../../../schemas/authoring/marketplace.schema.json");
 
 /// Schema for the per-slice target build request.
 ///
@@ -142,7 +128,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         "schemas/design-system/components.schema.json",
         COMPONENTS_JSON_SCHEMA,
     ),
-    ("PARTS_JSON_SCHEMA", "schemas/design-system/parts.schema.json", PARTS_JSON_SCHEMA),
     (
         "DIAGNOSTIC_JSON_SCHEMA",
         "schemas/diagnostics/diagnostic.schema.json",
@@ -152,12 +137,6 @@ pub const EMBEDDED_SCHEMAS: &[(&str, &str, &str)] = &[
         "DIAGNOSTIC_REPORT_JSON_SCHEMA",
         "schemas/diagnostics/diagnostic-report.schema.json",
         DIAGNOSTIC_REPORT_JSON_SCHEMA,
-    ),
-    ("SKILL_JSON_SCHEMA", "schemas/authoring/skill.schema.json", SKILL_JSON_SCHEMA),
-    (
-        "MARKETPLACE_JSON_SCHEMA",
-        "schemas/authoring/marketplace.schema.json",
-        MARKETPLACE_JSON_SCHEMA,
     ),
     (
         "BUILD_REQUEST_JSON_SCHEMA",

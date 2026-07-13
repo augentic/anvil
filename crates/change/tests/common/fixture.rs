@@ -165,7 +165,7 @@ impl<M: Model> SourceSeam for FixtureProvider<M> {
         let evidence = fixtures::extract(&id, &fixture_lead).map_err(map_error)?;
         Ok(Evidence {
             authority: map_authority(evidence.authority),
-            claims: evidence.claims.iter().map(claim_json).collect(),
+            claims: evidence.claims.iter().map(map_claim).collect(),
         })
     }
 }
@@ -255,40 +255,28 @@ const fn map_authority(authority: fixtures::Authority) -> AuthorityClass {
     }
 }
 
-/// Fixture [`fixtures::Claim`] → the open claim JSON object the
-/// composed Evidence document carries — the same projection the guest
-/// shim applies to the WIT claim record (`payload` for an inline
-/// payload, `backing-path` for a filesystem pointer).
-fn claim_json(claim: &fixtures::Claim) -> serde_json::Value {
-    let mut object = serde_json::Map::new();
-    object.insert("kind".into(), claim_kind_str(claim.kind).into());
-    if let Some(id) = &claim.id {
-        object.insert("id".into(), id.clone().into());
-    }
-    if let Some(path) = &claim.path {
-        object.insert("path".into(), path.clone().into());
-    }
-    if let Some(synopsis) = &claim.synopsis {
-        object.insert("synopsis".into(), synopsis.clone().into());
-    }
-    match &claim.backing {
-        Some(fixtures::Backing::Payload(payload)) => {
-            object.insert("payload".into(), payload.clone().into());
-        }
-        Some(fixtures::Backing::Path(path)) => {
-            object.insert("backing-path".into(), path.clone().into());
-        }
-        None => {}
-    }
-    serde_json::Value::Object(object)
+/// Fixture [`fixtures::Claim`] → the typed claim the composed
+/// Evidence document carries — the same mapping the guest shim
+/// applies to the WIT claim record (`payload` for an inline payload,
+/// `backing-path` for a filesystem pointer).
+fn map_claim(claim: &fixtures::Claim) -> artifacts::evidence::Claim {
+    let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
+    typed.id = claim.id.clone();
+    typed.path = claim.path.clone();
+    typed.synopsis = claim.synopsis.clone();
+    typed.set_backing(claim.backing.clone().map(|backing| match backing {
+        fixtures::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
+        fixtures::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
+    }));
+    typed
 }
 
-/// The closed claim-kind enum's schema token.
-const fn claim_kind_str(kind: fixtures::ClaimKind) -> &'static str {
+/// The closed claim-kind subset the fixture emits.
+const fn map_claim_kind(kind: fixtures::ClaimKind) -> artifacts::evidence::ClaimKind {
     match kind {
-        fixtures::ClaimKind::Requirement => "requirement",
-        fixtures::ClaimKind::Criterion => "criterion",
-        fixtures::ClaimKind::Section => "section",
+        fixtures::ClaimKind::Requirement => artifacts::evidence::ClaimKind::Requirement,
+        fixtures::ClaimKind::Criterion => artifacts::evidence::ClaimKind::Criterion,
+        fixtures::ClaimKind::Section => artifacts::evidence::ClaimKind::Section,
     }
 }
 

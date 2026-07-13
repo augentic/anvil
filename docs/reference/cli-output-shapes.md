@@ -300,35 +300,17 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
 - `kind: "violation"` — a structural defect. Open `critical`/`important` violations block the lifecycle gate (exit 2).
 - `kind: "review"` — a deterministically-raised request for agent/human judgment. Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
 
-`summary` carries per-severity counts. A clean run emits no `violation` findings; semantic checks still appear as `review` findings:
+`summary` carries per-severity counts. A clean run emits an empty `findings[]` and zero counts:
 
 ```json
 {
-  "findings": [
-    {
-      "artifact": "proposal",
-      "confidence": "medium",
-      "evidence": {
-        "kind": "snippet",
-        "value": "Semantic check — requires agent judgment"
-      },
-      "fingerprint": "sha256:…",
-      "id": "DIAG-0001",
-      "impact": "Semantic check — requires agent judgment",
-      "kind": "review",
-      "location": { "path": "proposal.md" },
-      "remediation": "Uses imperative language for motivation",
-      "rule-id": "proposal.uses-imperative-language",
-      "severity": "suggestion",
-      "source": "model-assisted",
-      "title": "Uses imperative language for motivation"
-    }
-  ],
-  "synopsis": { "critical": 0, "important": 0, "optional": 0, "suggestion": 1 },
+  "findings": [],
+  "synopsis": { "critical": 0, "important": 0, "optional": 0, "suggestion": 0 },
   "version": 1
 }
 ```
 
+Non-blocking `review` findings can still appear from pre-adapter advisories (e.g. `discovery-lead-synopsis-thin`) when a thin lead synopsis is present — those ride the same report shape but never block the gate.
 A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report.
 
 ### `specify init --upgrade`

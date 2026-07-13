@@ -4,17 +4,13 @@ use std::path::PathBuf;
 
 use artifacts::atomic::bytes_write;
 use artifacts::discovery::Discovery;
-use artifacts::evidence::AuthorityClass;
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::SourceOperation;
 use project::config::Layout;
 use project::journal::{self, Event, EventKind};
 use project::plan::Plan;
-use project::schema_gate;
 use project::seam::{SourceSeam, seam_failure, source_id};
-use serde::Serialize;
-use serde_json::Value as JsonValue;
 
 /// The result of a completed [`extract`]: the persisted Evidence path.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,15 +26,16 @@ pub struct ExtractOutcome {
 /// Extract Evidence for one `(source, lead)` pair (`specify source
 /// extract`) and persist it into the slice's `evidence/` directory.
 ///
-/// The Evidence document is schema-gated *before* it becomes visible
-/// to synthesis; a validation failure returns early with nothing on
-/// the persisted path.
+/// The typed Evidence document is deterministically validated
+/// ([`artifacts::evidence::Document::validate`]) *before* it becomes
+/// visible to synthesis; a validation failure returns early with
+/// nothing on the persisted path.
 ///
 /// # Errors
 ///
-/// `source-unknown` for an unbound source key, seam and schema-gate
-/// failures from the adapter's extract leg, plus plan-load and
-/// persistence I/O failures.
+/// `source-unknown` for an unbound source key, seam and
+/// `evidence-schema` validation failures from the adapter's extract
+/// leg, plus plan-load and persistence I/O failures.
 pub async fn extract(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str, lead: &str,
     slice: &str,
@@ -69,9 +66,14 @@ pub async fn extract(
         .await
         .map_err(|err| seam_failure("extract", &id, &err))?;
 
-    let yaml = evidence_yaml(lead, evidence.authority, &evidence.claims)?;
+    let document = artifacts::evidence::Document {
+        lead: lead.to_string(),
+        authority: evidence.authority,
+        claims: evidence.claims,
+    };
+    document.validate()?;
+    let yaml = project::fs::yaml(&document)?;
     let path = layout.slice_dir(slice).join("evidence").join(format!("{source}.yaml"));
-    schema_gate::validate_evidence(&yaml, &path)?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(Error::Io)?;
     }
@@ -113,26 +115,6 @@ fn resolve_seam_lead(
         lead: resolved.lead.clone(),
         synopsis: resolved.synopsis.clone(),
         topics: resolved.topics.clone(),
-    })
-}
-
-/// The full persisted Evidence document: the envelope `lead` key plus
-/// the seam answer's `authority` and open-shaped `claims`.
-#[derive(Serialize)]
-struct EvidenceDocument<'a> {
-    lead: &'a str,
-    authority: AuthorityClass,
-    claims: &'a [JsonValue],
-}
-
-/// Compose the persisted Evidence YAML with a trailing newline.
-fn evidence_yaml(
-    lead: &str, authority: AuthorityClass, claims: &[JsonValue],
-) -> Result<String, Error> {
-    project::fs::yaml(&EvidenceDocument {
-        lead,
-        authority,
-        claims,
     })
 }
 

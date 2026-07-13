@@ -1,6 +1,5 @@
 //! Hardcoded rule registry — the table of representative rules keyed
-//! by brief id, plus the cross-brief rules. Semantic rules declare
-//! `check: None` and are materialised as `Deferred` by construction.
+//! by brief id, plus the cross-brief rules.
 
 use crate::validate::Rule;
 

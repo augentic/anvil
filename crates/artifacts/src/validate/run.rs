@@ -15,9 +15,7 @@ use error::Error;
 use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 use crate::validate::registry::{cross_rules, rules_for};
-use crate::validate::{BriefContext, Classification, CrossContext, RuleOutcome};
-
-const DEFERRED_REASON: &str = "Semantic check — requires agent judgment";
+use crate::validate::{BriefContext, CrossContext, RuleOutcome};
 
 /// Canonical refine-time artifact set, in registry-namespace order.
 ///
@@ -66,10 +64,9 @@ fn rel_location(slice_dir: &Path, artifact_path: &Path) -> Option<FindingLocatio
 /// absent `specs/login/spec.md` is not, by itself, a failure.
 ///
 /// Returns the [`Diagnostic`] findings only — structural `Fail`
-/// outcomes as deterministic `violation`s and semantic rules as
-/// non-blocking `review`s. Passing structural rules emit nothing, so an
-/// empty vector means a clean slice. The caller assembles these into a
-/// `DiagnosticReport`, renders it, and decides the exit policy.
+/// outcomes as deterministic `violation`s. Passing rules emit nothing,
+/// so an empty vector means a clean slice. The caller assembles these
+/// into a `DiagnosticReport`, renders it, and decides the exit policy.
 ///
 /// # Errors
 ///
@@ -189,27 +186,14 @@ fn run_brief_rules(
     let artifact = artifact_for(brief_id);
     let location = rel_location(slice_dir, artifact_path);
     for rule in rules_for(brief_id) {
-        match rule.check {
-            // Semantic rule (`check: None`) — a non-blocking review
-            // request the agent must judge.
-            None => out.push(Diagnostic::review(
+        if let RuleOutcome::Fail { detail } = (rule.check)(&ctx) {
+            out.push(Diagnostic::violation(
                 rule.id,
                 rule.description,
-                DEFERRED_REASON,
+                detail,
                 artifact,
                 location.clone(),
-            )),
-            Some(check) => {
-                if let RuleOutcome::Fail { detail } = check(&ctx) {
-                    out.push(Diagnostic::violation(
-                        rule.id,
-                        rule.description,
-                        detail,
-                        artifact,
-                        location.clone(),
-                    ));
-                }
-            }
+            ));
         }
     }
 }
@@ -217,25 +201,14 @@ fn run_brief_rules(
 fn run_cross_rules(slice_dir: &Path, specs_dir: &Path, out: &mut Vec<Diagnostic>) {
     let ctx = CrossContext { slice_dir, specs_dir };
     for rule in cross_rules() {
-        match rule.classification {
-            Classification::Semantic => out.push(Diagnostic::review(
+        if let RuleOutcome::Fail { detail } = (rule.check)(&ctx) {
+            out.push(Diagnostic::violation(
                 rule.id,
                 rule.description,
-                DEFERRED_REASON,
+                detail,
                 Artifact::Specs,
                 None,
-            )),
-            Classification::Structural => {
-                if let RuleOutcome::Fail { detail } = (rule.check)(&ctx) {
-                    out.push(Diagnostic::violation(
-                        rule.id,
-                        rule.description,
-                        detail,
-                        Artifact::Specs,
-                        None,
-                    ));
-                }
-            }
+            ));
         }
     }
 }

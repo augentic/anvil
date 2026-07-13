@@ -68,7 +68,7 @@ pub struct BuildArtifacts {
 /// Partial success is [`BuildStatus::Success`] carrying non-blocking
 /// findings only — the CLI rejects a `success` report with any blocking
 /// finding via the report's internal blocking-findings gate.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum BuildStatus {
     /// Build succeeded; only non-blocking findings (or none) allowed.
@@ -83,7 +83,7 @@ pub enum BuildStatus {
 /// where the target adapter produced an artifact. The CLI finalize gate
 /// verifies every declared path exists and is non-empty
 /// (`target-build-output-missing`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildOutput {
     /// Target platform.
@@ -100,7 +100,7 @@ pub struct BuildOutput {
 /// surface". The UI-surface coherence check that consumed this signal
 /// lives in-guest (the vectis core's report gate); the engine only
 /// round-trips the field on the wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct UiSurface {
     /// Count of screen-bearing requirements this slice introduces or

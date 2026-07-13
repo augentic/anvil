@@ -316,23 +316,6 @@ pub enum EventKind {
         /// Target name (`omnia`, `vectis`, …) the build dispatched to.
         target: String,
     },
-    /// runtime capture claim — target's `build` finished replay.
-    /// Payload mirrors the `replay:` block written into the
-    /// slice's `metadata.yaml`. Optional in v1 (targets that have
-    /// not implemented the hook do not emit this event).
-    #[serde(rename = "slice.replay.completed", rename_all = "kebab-case")]
-    SliceReplayCompleted {
-        /// Affected slice.
-        slice_name: SliceName,
-        /// Replay-runner identity (e.g. `omnia-target@1.4 (cargo nextest)`).
-        runner: String,
-        /// Number of replay scenarios that passed.
-        passed: usize,
-        /// Number of replay scenarios that failed.
-        failed: usize,
-        /// Number of replay scenarios the runner skipped.
-        skipped: usize,
-    },
     /// per-slice authority override — operator set or cleared a per-slice
     /// `authority-override` map at Gate 1. CLI-driven via
     /// `specify plan add --authority-override`,

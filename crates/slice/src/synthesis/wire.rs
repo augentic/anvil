@@ -1,10 +1,11 @@
 //! Synthesis response wire DTO + input-envelope assembly.
 //!
-//! The single schema-validated wire is the **response**
-//! ([`SynthesisResponse`], gated against
-//! `schemas/slice/synthesis.schema.json` before deserialisation);
-//! the inputs [`inputs`] assembles into [`SynthesisInputs`] have no
-//! closed request shape. Authority is not included — the kernel
+//! The single schema-gated wire is the **response**:
+//! [`SynthesisResponse`] is the source of truth — the judgment-answer
+//! schema the model host gates against is generated from it
+//! ([`crate::answers::synthesis`]) and the deterministic tail re-parses
+//! the raw answer through it. The inputs [`inputs`] assembles into
+//! [`SynthesisInputs`] have no closed request shape. Authority is not included — the kernel
 //! resolves it from the on-disk Evidence after the response returns.
 //! Assembly is pure over already-read inputs;
 //! [`SourceInput::from_file`] is the only filesystem hook.
@@ -19,17 +20,16 @@ use serde_json::Value as JsonValue;
 use crate::model::SliceModel;
 use crate::synthesis::baseline::BaselineIndex;
 
-/// Wire version pinned by `schemas/slice/synthesis.schema.json`
-/// (`version` `const: 1`) and echoed onto the input envelope.
+/// Wire version stamped on both the input and response envelopes.
 const SYNTHESIS_VERSION: u32 = 1;
 
 /// Synthesis response envelope kind.
 ///
-/// Serialises to the literal `"response"` the schema's `const`
-/// constraint requires. Mirrors `change::plan::core::propose`'s
+/// Serialises to the literal `"response"`. Mirrors
+/// `project::plan::propose`'s
 /// `ProposalKind`, but synthesis has only the response kind — there is
 /// no request wire.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum SynthesisKind {
     /// The agent's synthesis result.
@@ -38,11 +38,10 @@ pub enum SynthesisKind {
 
 /// `kind: response` envelope — the agent's synthesis result.
 ///
-/// Round-trips `schemas/slice/synthesis.schema.json`. The DTO is
-/// shape-only; the refine orchestration schema-gates the raw bytes via
-/// `project::schema_gate::validate_synthesis_json` before deserialising here,
-/// and the projection kernel re-derives every kernel-owned field.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// The DTO is shape-only and the source of the generated
+/// judgment-answer schema; the projection kernel re-derives every
+/// kernel-owned field after the parse.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisResponse {
     /// Schema version.
@@ -64,7 +63,7 @@ pub struct SynthesisResponse {
 ///
 /// Each is authored by the agent; the render step later injects
 /// provenance lines into the spec bodies.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisArtifacts {
     /// `proposal.md` body.
@@ -85,10 +84,10 @@ pub struct SynthesisArtifacts {
 /// One slice-authored Decision Record under
 /// [`SynthesisArtifacts::decisions`].
 ///
-/// Carries only the agent-authored fields of the slice-authored form in
-/// `decision.schema.json` plus the Nygard prose; the engine stamps
-/// `id` / `slice` / `date` (and any `superseded-by`) at merge.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Carries only the agent-authored fields plus the Nygard prose; the
+/// engine stamps `id` / `slice` / `date` (and any `superseded-by`) at
+/// merge.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisDecision {
     /// Stable kebab-case slug — the baseline filename derives from it.
@@ -117,7 +116,7 @@ pub struct SynthesisDecision {
 }
 
 /// One per-domain spec body under [`SynthesisArtifacts::specs`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisSpec {
     /// Owning domain (kebab-case spec group).
@@ -131,7 +130,7 @@ pub struct SynthesisSpec {
 /// The inputs are not schema-validated (there is no closed request
 /// shape), but the envelope still carries a
 /// closed discriminator for symmetry with the response.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum InputKind {
     /// Agent synthesis inputs.
@@ -145,7 +144,7 @@ pub enum InputKind {
 /// synthesis is always agent-dispatched, so there is no tool consumer
 /// and no closed request schema. Authority is deliberately absent: the
 /// kernel resolves it post-response from on-disk Evidence.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SynthesisInputs {
     /// Schema version.
@@ -183,7 +182,7 @@ pub struct SynthesisInputs {
 }
 
 /// Advisory per-domain baseline id facts for the synthesis inputs envelope.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct DomainDetail {
     /// Domain directory slug under `.specify/specs/`.
@@ -219,7 +218,7 @@ impl From<&BaselineIndex> for Vec<DomainDetail> {
 /// verbatim from the parsed `evidence/<source>.yaml` so no body field
 /// is lost — the agent reconciles over the full claim bodies. The
 /// document-level `authority` is intentionally not carried.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceInput {
     /// Plan source binding key matching `plan.yaml.sources.<key>`.

@@ -1,6 +1,6 @@
 //! Contracts-brief rules.
 
-use crate::validate::{BriefContext, Classification, Rule, RuleOutcome, primitives};
+use crate::validate::{BriefContext, Rule, RuleOutcome, primitives};
 
 fn schemas_dir_has_files(ctx: &BriefContext<'_>) -> RuleOutcome {
     let schemas_dir = ctx.slice_dir.join("contracts").join("schemas");
@@ -117,19 +117,16 @@ pub(super) const CONTRACTS_RULES: &[Rule] = &[
     Rule {
         id: "contracts.schemas-dir-has-files",
         description: "contracts/schemas/ directory exists and contains at least one .yaml file",
-        classification: Classification::Structural,
-        check: Some(schemas_dir_has_files),
+        check: schemas_dir_has_files,
     },
     Rule {
         id: "contracts.refs-resolve",
         description: "$ref pointers in OpenAPI/AsyncAPI files resolve to existing schema files",
-        classification: Classification::Structural,
-        check: Some(refs_resolve),
+        check: refs_resolve,
     },
     Rule {
         id: "contracts.schema-metadata",
         description: "JSON Schema files have $id, title, and description fields",
-        classification: Classification::Structural,
-        check: Some(schema_metadata),
+        check: schema_metadata,
     },
 ];

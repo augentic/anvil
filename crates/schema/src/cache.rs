@@ -31,42 +31,6 @@ use crate::digest::{Hasher, sha256_hex};
 /// beneath it (the `specify/projects` suffix is *not* appended).
 const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";
 
-/// Environment override for the persistent Git mirror parent. When set
-/// to an absolute path, per-URL bare-ish mirror directories are created
-/// directly beneath it (the `specify/mirrors` suffix is *not* appended).
-const MIRROR_ENV: &str = "SPECIFY_MIRROR_CACHE";
-
-/// Absolute path to the persistent Git mirror for `url` —
-/// `<mirrors-root>/<url-id>.git`.
-///
-/// `<url-id>` is the lowercase SHA-256 hex of the registry URL, so a
-/// peer's object store is shared across changes and checkouts: the slot
-/// at `workspace/<peer>/` becomes a `git worktree` of this mirror rather
-/// than a fresh full clone each time. Infallible for the same reasons
-/// as [`project_cache_dir`].
-#[must_use]
-pub fn mirror_dir(url: &str) -> PathBuf {
-    mirrors_root().join(format!("{}.git", sha256_hex(url.as_bytes())))
-}
-
-/// Resolve the parent directory that holds every URL's Git mirror.
-///
-/// Precedence: `$SPECIFY_MIRROR_CACHE`, then
-/// `$XDG_CACHE_HOME/specify/mirrors`, then
-/// `$HOME/.cache/specify/mirrors`, then `<temp>/specify/mirrors`.
-fn mirrors_root() -> PathBuf {
-    if let Some(root) = env::var_os(MIRROR_ENV).and_then(absolute) {
-        return root;
-    }
-    if let Some(root) = env::var_os("XDG_CACHE_HOME").and_then(absolute) {
-        return root.join("specify").join("mirrors");
-    }
-    if let Some(home) = env::var_os("HOME").and_then(absolute) {
-        return home.join(".cache").join("specify").join("mirrors");
-    }
-    env::temp_dir().join("specify").join("mirrors")
-}
-
 /// Guest-visible preopen name of the per-project derived cache inside
 /// the workflow guest's WASI sandbox.
 ///

@@ -1,11 +1,12 @@
 //! Lead-reconciliation envelope DTOs.
 //!
 //! The wire contract is a single envelope discriminated by a closed
-//! `kind: request | response`, validated against
-//! `schemas/discovery/proposal.schema.json`
-//! ([`crate::schema_gate::validate_proposal_json`]). This module owns the
-//! serde DTOs for both kinds; the deterministic assembly that fills them
-//! lives in [`super::catalog`] and [`super::topology`].
+//! `kind: request | response`. These serde DTOs are the source of
+//! truth: the judgment-answer schema the model host gates against is
+//! generated from [`ProposalResponse`] by [`crate::answers::proposal`],
+//! and the deterministic tail re-parses the raw answer through the same
+//! type. The assembly that fills the request lives in
+//! [`super::catalog`] and [`super::topology`].
 
 use serde::{Deserialize, Serialize};
 
@@ -14,11 +15,11 @@ use crate::registry::topology::{Decision, Surface};
 
 /// Reconciliation envelope kind.
 ///
-/// Serialises to the literal `"request"` / `"response"` the schema's
-/// `const` constraints require. [`ProposalRequest`] always carries
+/// Serialises to the literal `"request"` / `"response"`.
+/// [`ProposalRequest`] always carries
 /// [`ProposalKind::Request`]; [`ProposalResponse`] always carries
 /// [`ProposalKind::Response`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum ProposalKind {
     /// Lead catalog and project topology for the agent to group.
@@ -127,7 +128,7 @@ pub struct LeadCatalogEntry {
 /// The DTO is shape-only; the partition, fan-out, project-binding, and
 /// name-derivation invariants are enforced by the projection kernel
 /// (`Plan::propose_from`), not by serde.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProposalResponse {
     /// Schema version.
@@ -138,7 +139,7 @@ pub struct ProposalResponse {
     /// `plan.yaml.slices[]` in this order.
     pub slices: Vec<ResponseSlice>,
     /// Gate 1 review prose authored alongside the grouping.
-    /// Canonically optional; the derived judgment-answer schema
+    /// Canonically optional; the generated judgment-answer schema
     /// requires it, and the collapsed `plan author` orchestration
     /// persists it into `change.md` / `discovery.md`. The projection
     /// kernel ignores it.
@@ -149,7 +150,7 @@ pub struct ProposalResponse {
 /// Gate 1 review prose riding a [`ProposalResponse`]: section bodies
 /// only — the orchestrator owns every deterministic frame (`# Change —
 /// <name>`, `# Discovery — <name>`, the `##` headings).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct GateProse {
     /// The `change.md` operator brief body rendered below the
@@ -175,7 +176,7 @@ pub struct GateProse {
 /// is expressed as multiple ordinary slices (which may legally reference
 /// the same lead) joined by `depends-on`; the agent's explicit `name`
 /// disambiguates cross-source matches that carry differing slugs.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ResponseSlice {
     /// Explicit plan slice name (kebab-case). Required — with `scope`
@@ -216,7 +217,7 @@ pub struct ResponseSlice {
 }
 
 /// One matched catalog row referenced by a [`ResponseSlice`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ResponseMember {
     /// Plan source binding key; must match a request catalog row.

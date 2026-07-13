@@ -1,6 +1,6 @@
 //! Design-brief rules.
 
-use crate::validate::{BriefContext, Classification, Rule, RuleOutcome, primitives};
+use crate::validate::{BriefContext, Rule, RuleOutcome, primitives};
 
 fn references_valid_ids(ctx: &BriefContext<'_>) -> RuleOutcome {
     if primitives::design_references_exist(ctx.content, ctx.specs_dir) {
@@ -16,6 +16,5 @@ fn references_valid_ids(ctx: &BriefContext<'_>) -> RuleOutcome {
 pub(super) const DESIGN_RULES: &[Rule] = &[Rule {
     id: "design.references-valid-ids",
     description: "References only requirement ids present in specs",
-    classification: Classification::Structural,
-    check: Some(references_valid_ids),
+    check: references_valid_ids,
 }];

@@ -87,7 +87,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 - `registry-amendment-required` — execute-loop phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.
+- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` — `specify plan validate` health diagnostics.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 
 ## Journal events
@@ -106,7 +106,6 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg and its `refined` transition, `specify source extract` |
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed` | the guest-routed `specify slice build` orchestration |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created` | `specify slice merge` (fired on its validator outcome) |
-| Slice replay | `slice.replay.completed` | the replay target hook |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent` | `specify source survey` / `extract`, the `slice build` request-assembly leg |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills append only through `specify journal emit`, never by writing the file. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `specify journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`specify plan status`'s stop classification); nothing re-parses the JSONL by hand.

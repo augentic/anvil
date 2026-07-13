@@ -1,6 +1,6 @@
 //! Cross-brief rules that span multiple artifacts.
 
-use crate::validate::{Classification, CrossContext, CrossRule, RuleOutcome, primitives};
+use crate::validate::{CrossContext, CrossRule, RuleOutcome, primitives};
 
 fn proposal_domains_have_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
     let proposal_path = ctx.slice_dir.join("proposal.md");
@@ -115,19 +115,16 @@ const CROSS_RULES: &[CrossRule] = &[
     CrossRule {
         id: "cross.proposal-domains-have-specs",
         description: "Every domain listed in the proposal has a matching spec file",
-        classification: Classification::Structural,
         check: proposal_domains_have_specs,
     },
     CrossRule {
         id: "cross.design-references-valid",
         description: "Every requirement id referenced in design.md exists in specs",
-        classification: Classification::Structural,
         check: design_references_valid,
     },
     CrossRule {
         id: "cross.composition-maps-to-consistent",
         description: "composition.yaml maps_to values are well-formed",
-        classification: Classification::Structural,
         check: composition_consistent,
     },
 ];

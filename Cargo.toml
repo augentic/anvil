@@ -166,6 +166,7 @@ petgraph = "0.8.3"
 proptest = "1.11.0"
 regex = "1.13.0"
 schema = { path = "crates/schema" }
+schemars = "1.2.1"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde-saphyr = "0.0.29"

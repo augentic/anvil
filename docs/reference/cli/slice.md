@@ -87,7 +87,7 @@ specify slice drop <name> [--reason "<rationale>"]
 
 ### specify slice validate
 
-Run structural and semantic artifact validation against a slice.
+Run structural artifact validation against a slice.
 
 ```bash
 specify slice validate <name> [--format json]
@@ -101,7 +101,7 @@ Checks include:
 - **Adapter checks** -- artifacts conform to the active adapter's rules.
 - **Composition checks** (Vectis only) -- structural validation of `composition.yaml` plus cross-artifact checks (field coverage, event coverage, ViewModel mapping, overlay trigger consistency, navigation graph consistency). See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
 
-Renders a `DiagnosticReport` on stdout — the neutral finding currency every check surface shares. Each finding carries a `kind`: `violation` (a structural defect; open `critical`/`important` violations block the gate and exit 2) or `review` (a deterministically-raised request for agent judgment — the semantic checks the CLI cannot score, surfaced but never blocking). This keeps the CLI handling structural invariants while the agent evaluates semantic ones, without flattening "needs judgment" into a silent skip. See [CLI output shapes](../cli-output-shapes.md#specify-slice-validate) for the wire shape.
+Renders a `DiagnosticReport` on stdout — the neutral finding currency every check surface shares. Each finding carries a `kind`: `violation` (a structural defect; open `critical`/`important` violations block the gate and exit 2) or `review` (a deterministically-raised request for agent judgment — e.g. thin discovery-lead synopses — surfaced but never blocking). See [CLI output shapes](../cli-output-shapes.md#specify-slice-validate) for the wire shape.
 
 ### specify slice merge
 

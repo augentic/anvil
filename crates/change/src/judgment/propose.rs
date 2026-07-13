@@ -1,8 +1,8 @@
 //! The propose reconciliation judgment leg.
 //!
 //! One schema-gated `create` over the proposal request envelope, with a
-//! deterministic tail (raw-bytes schema gate, typed parse) plus
-//! a caller-supplied kernel check, inside the shared repair loop. The
+//! deterministic tail (typed serde parse) plus a caller-supplied kernel
+//! check, inside the shared repair loop. The
 //! caller owns the surrounding IO: assembling the request, running
 //! `Plan::propose_from` for real under the atomic write loop, and the
 //! journal bracket.
@@ -13,7 +13,6 @@ use std::fmt::Write as _;
 use error::Error;
 use omnia_guest::Model;
 use project::plan::{ProposalRequest, ProposalResponse, SourceBinding};
-use project::schema_gate::validate_proposal_json;
 
 use super::{prose, schema_gated};
 
@@ -71,7 +70,7 @@ where
     P: Model,
     F: FnMut(&ProposalResponse) -> Result<(), Error>,
 {
-    let schema = schema::answers::render(&schema::answers::proposal());
+    let schema = project::answers::render(&project::answers::proposal());
     let mut user = format!(
         "## Reconciliation request\n\n```json\n{}\n```",
         super::render_json(request, "reconciliation request")?
@@ -81,7 +80,6 @@ where
         user.push_str(&context.render());
     }
     schema_gated(model, prose::propose(), user, "proposal", &schema, |answer| {
-        validate_proposal_json(answer)?;
         let response: ProposalResponse = serde_json::from_str(answer).map_err(|err| {
             Error::validation_failed(
                 "plan-propose-response-parse",

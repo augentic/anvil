@@ -1,7 +1,7 @@
 //! The slice synthesis judgment leg.
 //!
 //! One schema-gated `create` over the synthesis inputs envelope, with a
-//! deterministic tail — raw-bytes schema gate, typed parse, and the
+//! deterministic tail — typed serde parse and the
 //! projection kernel ([`crate::project`]) — inside the shared
 //! repair loop, so an answer the kernel would reject (unanchored claim,
 //! cross-ref orphan, id-grammar violation) is repaired in-loop. The
@@ -13,7 +13,6 @@ use std::collections::BTreeMap;
 use artifacts::evidence::{AuthorityClass, ClaimKind};
 use error::Error;
 use omnia_guest::Model;
-use project::schema_gate::validate_synthesis_json;
 
 use super::{prose, schema_gated};
 use crate::{
@@ -58,14 +57,13 @@ pub struct Synthesized {
 pub async fn synthesize<P: Model>(
     model: &P, inputs: &SynthesisInputs, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
-    let schema = schema::answers::render(&schema::answers::synthesis());
+    let schema = project::answers::render(&crate::answers::synthesis());
     let system = prose::synthesize_system();
     let user = format!(
         "## Synthesis inputs\n\n```json\n{}\n```",
         super::render_json(inputs, "synthesis inputs")?
     );
     schema_gated(model, &system, user, "synthesis", &schema, |answer| {
-        validate_synthesis_json(answer)?;
         let response: SynthesisResponse = serde_saphyr::from_str(answer).map_err(|err| {
             Error::validation_failed(
                 "slice-synthesize-response-parse",

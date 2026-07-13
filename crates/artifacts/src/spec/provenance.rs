@@ -65,6 +65,7 @@ pub struct Requirement {
     strum::Display,
     strum::EnumString,
     strum::IntoStaticStr,
+    schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

@@ -12,8 +12,8 @@ pub mod wire;
 
 use std::future::Future;
 
-use artifacts::evidence::AuthorityClass;
-use serde_json::Value as JsonValue;
+use artifacts::evidence::{AuthorityClass, Claim};
+use serde::{Deserialize, Serialize};
 pub use wire::BuildReport;
 
 /// Typed seam failure, mirroring the WIT `types.error` variant.
@@ -32,9 +32,11 @@ pub enum Error {
 
 /// One lead surfaced by a survey.
 ///
-/// The shape is `schemas/discovery/lead.schema.json` minus the envelope
-/// `source` key, which the orchestrator stamps.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The shape is the discovery lead minus the envelope `source` key,
+/// which the orchestrator stamps. Doubles as the item shape of the
+/// generated `survey` judgment-answer schema.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "kebab-case")]
 pub struct Lead {
     /// Stable kebab-case lead identifier, unique only within its
     /// source; identity is the `(source, lead)` pair.
@@ -43,19 +45,22 @@ pub struct Lead {
     pub synopsis: String,
     /// Agent-authored per-lead topic slugs (kebab-case). Empty means
     /// unclassified.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<String>,
 }
 
 /// Evidence returned by an extract, without the caller-owned `lead` key.
 ///
-/// Claims remain raw JSON because per-kind fields are open; a closed
-/// mirror could drop data that synthesis reads verbatim.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// Claims are the typed [`Claim`] mirror of the WIT record; open
+/// per-kind fields ride its flattened `extras` map. Doubles as the
+/// generated `extract` judgment-answer schema.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "kebab-case")]
 pub struct Evidence {
     /// Document-level authority class of this evidence.
     pub authority: AuthorityClass,
     /// The claims extracted from the source, in answer order.
-    pub claims: Vec<JsonValue>,
+    pub claims: Vec<Claim>,
 }
 
 /// One slice-artifact input to a build.

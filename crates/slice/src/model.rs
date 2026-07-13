@@ -37,7 +37,7 @@ use crate::synthesis::authority::{Agreement, ClaimRef, resolve};
 /// (`additionalProperties: false`), enforced by the embedded schema
 /// during [`SliceModel::load`]. `target` is not persisted — it is
 /// resolved on demand from the bound `project`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SliceModel {
     /// Stored schema version. Kernel-stamped on the persisted file;
@@ -66,7 +66,7 @@ pub struct SliceModel {
 /// `sources`, claim `winner`) are optional because the agent omits them
 /// and the kernel re-derives them on projection. The `resolution` label
 /// is not stored here — the provenance projection recomputes it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct ModelRequirement {
     /// Kernel-projected `REQ-NNN` id.
@@ -115,7 +115,7 @@ pub struct ModelRequirement {
 /// Evidence (the claim contract). The single-line `value` and
 /// `path` anchor are read from `evidence/<source>.yaml` by the
 /// provenance projection rather than copied here.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct ModelClaim {
     /// Source key the claim came from.
@@ -132,7 +132,7 @@ pub struct ModelClaim {
 /// One `tasks[]` entry. Ids follow the
 /// `TASK-NNN` / `REQ-NNN` grammars; grammar validation lives in the
 /// drift validators, so these are plain strings here.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct ModelTask {
     /// Agent-authored `TASK-NNN` id.

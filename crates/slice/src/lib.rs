@@ -7,6 +7,7 @@
 //! rationale.
 
 pub(crate) mod actions;
+pub mod answers;
 pub(crate) mod build;
 pub(crate) mod design_system;
 pub mod handlers;

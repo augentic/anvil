@@ -1,7 +1,8 @@
 //! WIT-backed capabilities used by workflow orchestrators.
 //!
-//! Mappings live here so workflow code remains wasm-free. Claims stay
-//! raw JSON to preserve open per-kind fields. Compact build reports are
+//! Mappings live here so workflow code remains wasm-free. Claims map
+//! onto the typed [`artifacts::evidence::Claim`], whose flattened
+//! extras preserve open per-kind fields. Compact build reports are
 //! widened with caller-owned envelope fields before validation.
 
 use std::future::Future;
@@ -102,7 +103,7 @@ impl SourceSeam for Provider {
             let evidence = source::extract(id, wire).await.map_err(map_error)?;
             Ok(Evidence {
                 authority: map_authority(evidence.authority),
-                claims: evidence.claims.into_iter().map(claim_json).collect(),
+                claims: evidence.claims.into_iter().map(map_claim).collect(),
             })
         }
     }
@@ -214,50 +215,39 @@ const fn map_authority(authority: source::Authority) -> AuthorityClass {
     }
 }
 
-/// Preserve open claim fields in their evidence-schema representation.
+/// Map a WIT claim record onto the typed [`artifacts::evidence::Claim`].
 ///
-/// A backing path uses `backing-path` to remain distinct from the claim
-/// anchor's `path`.
-fn claim_json(claim: source::Claim) -> serde_json::Value {
-    let mut object = serde_json::Map::new();
-    object.insert("kind".into(), claim_kind_str(claim.kind).into());
-    if let Some(id) = claim.id {
-        object.insert("id".into(), id.into());
-    }
-    if let Some(path) = claim.path {
-        object.insert("path".into(), path.into());
-    }
-    if let Some(synopsis) = claim.synopsis {
-        object.insert("synopsis".into(), synopsis.into());
-    }
-    match claim.backing {
-        Some(source::Backing::Payload(payload)) => {
-            object.insert("payload".into(), payload.into());
-        }
-        Some(source::Backing::Path(path)) => {
-            object.insert("backing-path".into(), path.into());
-        }
-        None => {}
-    }
-    serde_json::Value::Object(object)
+/// The backing variant flattens onto the wire shape's `payload` /
+/// `backing-path` keys via [`artifacts::evidence::Claim::set_backing`].
+fn map_claim(claim: source::Claim) -> artifacts::evidence::Claim {
+    let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
+    typed.id = claim.id;
+    typed.path = claim.path;
+    typed.synopsis = claim.synopsis;
+    typed.set_backing(claim.backing.map(|backing| match backing {
+        source::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
+        source::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
+    }));
+    typed
 }
 
-const fn claim_kind_str(kind: source::ClaimKind) -> &'static str {
+const fn map_claim_kind(kind: source::ClaimKind) -> artifacts::evidence::ClaimKind {
+    use artifacts::evidence::ClaimKind;
     match kind {
-        source::ClaimKind::Intent => "intent",
-        source::ClaimKind::Requirement => "requirement",
-        source::ClaimKind::Criterion => "criterion",
-        source::ClaimKind::Decision => "decision",
-        source::ClaimKind::Section => "section",
-        source::ClaimKind::Diagram => "diagram",
-        source::ClaimKind::Contract => "contract",
-        source::ClaimKind::Example => "example",
-        source::ClaimKind::Excerpt => "excerpt",
-        source::ClaimKind::Type => "type",
-        source::ClaimKind::Call => "call",
-        source::ClaimKind::Region => "region",
-        source::ClaimKind::Container => "container",
-        source::ClaimKind::Leaf => "leaf",
+        source::ClaimKind::Intent => ClaimKind::Intent,
+        source::ClaimKind::Requirement => ClaimKind::Requirement,
+        source::ClaimKind::Criterion => ClaimKind::Criterion,
+        source::ClaimKind::Decision => ClaimKind::Decision,
+        source::ClaimKind::Section => ClaimKind::Section,
+        source::ClaimKind::Diagram => ClaimKind::Diagram,
+        source::ClaimKind::Contract => ClaimKind::Contract,
+        source::ClaimKind::Example => ClaimKind::Example,
+        source::ClaimKind::Excerpt => ClaimKind::Excerpt,
+        source::ClaimKind::Type => ClaimKind::Type,
+        source::ClaimKind::Call => ClaimKind::Call,
+        source::ClaimKind::Region => ClaimKind::Region,
+        source::ClaimKind::Container => ClaimKind::Container,
+        source::ClaimKind::Leaf => ClaimKind::Leaf,
     }
 }
 

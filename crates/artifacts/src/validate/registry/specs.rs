@@ -1,6 +1,6 @@
 //! Specs-brief rules.
 
-use crate::validate::{BriefContext, Classification, Rule, RuleOutcome, primitives};
+use crate::validate::{BriefContext, Rule, RuleOutcome, primitives};
 
 fn requirements_have_scenarios(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(spec) = ctx.parsed_spec else {
@@ -54,25 +54,16 @@ pub(super) const SPECS_RULES: &[Rule] = &[
     Rule {
         id: "specs.requirements-have-scenarios",
         description: "Every requirement has at least one scenario",
-        classification: Classification::Structural,
-        check: Some(requirements_have_scenarios),
+        check: requirements_have_scenarios,
     },
     Rule {
         id: "specs.requirements-have-ids",
         description: "Every requirement has an `ID:` line",
-        classification: Classification::Structural,
-        check: Some(requirements_have_ids),
+        check: requirements_have_ids,
     },
     Rule {
         id: "specs.ids-match-pattern",
         description: "IDs use the `REQ-[0-9]{3}` format",
-        classification: Classification::Structural,
-        check: Some(ids_match_pattern),
-    },
-    Rule {
-        id: "specs.uses-normative-language",
-        description: "Uses SHALL/MUST language for normative requirements",
-        classification: Classification::Semantic,
-        check: None,
+        check: ids_match_pattern,
     },
 ];

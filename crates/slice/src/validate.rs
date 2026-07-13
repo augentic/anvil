@@ -89,8 +89,7 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
     }
 
     // Adapter validation findings — `validate_slice` returns one
-    // `violation` diagnostic per structural Fail and one `review`
-    // diagnostic per deferred semantic rule. The non-blocking
+    // `violation` diagnostic per structural Fail. The non-blocking
     // `discovery-lead-synopsis-thin` advisories ride this surface too;
     // only a blocking diagnostic gates the caller's exit.
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;

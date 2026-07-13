@@ -11,7 +11,18 @@ use serde::{Deserialize, Serialize};
 /// Closed `none | likely | accepted | rejected` taxonomy on
 /// `plan.yaml.slices[].divergence`, written only by `specify plan
 /// amend`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, strum::Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Deserialize,
+    Serialize,
+    strum::Display,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Divergence {
@@ -48,7 +59,7 @@ impl Divergence {
 /// flag. The CLI never decides materiality — it only checks structural
 /// consistency: a flagged slice records at least one disagreement, and
 /// each disagreement names at least two distinct source values.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Disagreement {
     /// The aspect the sources disagree on (a free-form label, e.g.
@@ -60,7 +71,7 @@ pub struct Disagreement {
 }
 
 /// One source's value for a [`Disagreement`] field.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct DisagreementValue {
     /// Source key contributing this value (a `plan.yaml.sources.<key>`).

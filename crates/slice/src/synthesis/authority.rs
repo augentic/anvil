@@ -30,7 +30,9 @@ use crate::provenance::ProvenanceResolution;
 /// `Option<Agreement>` at the call boundary: the verdict is omitted for
 /// a requirement with zero or one contributing claim, where there is no
 /// agreement to record.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Agreement {

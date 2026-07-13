@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
     Deserialize,
     strum::Display,
     strum::EnumString,
+    schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
