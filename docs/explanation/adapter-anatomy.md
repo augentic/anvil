@@ -166,9 +166,9 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
 
 ## Adapter manifests vs Cursor plugin manifests
 
-Cursor and `specify` are different runtimes. The authoring repo's adapter directories happen to double as Cursor plugin roots, but the two systems are independent — they share no fields, no loader, and no discovery path.
+Cursor and `specify` are different runtimes. They share no fields, no loader, and no discovery path.
 
-- **`.cursor-plugin/plugin.json`** is read by Cursor itself to register IDE surface area: skills, rules, and slash commands. It is invisible to the `specify` CLI.
-- **The adapter component** is resolved by the `specify` CLI through the provider's `adapter::Resolver` capability; the shipped WASI provider delegates to `resolver::Component`, and metadata is the component's own `metadata` answer. Cursor never consults it.
+- **`.cursor-plugin/plugin.json`** (under `plugins/<name>/` in this repo) is read by Cursor itself to register IDE surface area: `/spec:*` skills, rules, and slash commands. It is invisible to the `specify` CLI.
+- **The adapter component** lives in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) and is resolved by the `specify` CLI through the provider's `adapter::Resolver` capability; the shipped WASI provider delegates to `resolver::Component`, and metadata is the component's own `metadata` answer. Cursor never consults it.
 
 Neither system references the other, neither loader probes for the other, and neither cache is shared. If you are answering "is there a JSON config for adapters?": no — adapters have no manifest file at all; `plugin.json` is Cursor's, not Specify's.

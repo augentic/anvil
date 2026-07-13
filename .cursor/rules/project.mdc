@@ -1,11 +1,11 @@
 ---
-description: Augentic plugins project overview, Specify workflow, and conventions
+description: Specify project overview, workflow, and conventions
 alwaysApply: true
 ---
 
-# Augentic Plugins - Specify Specialist Skills
+# Specify - Agent Instructions
 
-This repository provides specialist skills and references for Specify-driven development on Augentic's Omnia runtime and Crux cross-platform framework.
+This repository is the Specify **Rust runtime** plus ultrathin Cursor `/spec:*` skill wrappers. Domain generation lives in target adapters in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters).
 
 ## Vocabulary
 
@@ -13,9 +13,9 @@ See [AGENTS.md](../../AGENTS.md#vocabulary).
 
 ## Operating Model
 
-See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; this repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
+See [AGENTS.md](../../AGENTS.md#workflow-overview). Specify owns the workflow contract; adapters contribute specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
-Workflow skills orchestrate phases; **engineering standards** live in rules (`codex/rules/` and per-adapter `prose/rules/` overlays); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
+Operators drive phases with `/spec:*` skills (ultrathin invoke-and-relay wrappers over CLI verbs). **Engineering standards** live in rules (`codex/rules/` and per-adapter `prose/rules/` overlays); **authoring standards** live in [`docs/standards/`](../../docs/standards/). See [standards layer](../../docs/explanation/standards-layer.md).
 
 ## Main Inputs
 
@@ -26,23 +26,24 @@ Workflow skills orchestrate phases; **engineering standards** live in rules (`co
 
 When conflicts arise, follow this strict precedence order:
 
-1. **SKILL.md** - generation rules and hard constraints
-2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
+1. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md` (Vectis also: `tokens.yaml`, `assets.yaml`; `composition.yaml` is a target build output, not a Specify artifact)
+2. **Guest orchestrations and embedded prompts** - `crates/slice/prompts/`, `crates/change/prompts/`, and the CLI single-writer contract
 3. **docs/reference/**, **docs/standards/** (authoring house style — not engineering standards), and **sources/`<name>`/prose/prompts/** / **targets/`<name>`/prose/prompts/** in specify-adapters (+ each adapter's local `references/`) - authoritative patterns and examples
-4. **Evidence** - source-extracted material; reference for ambiguity only
-5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
+4. **`SKILL.md` wrappers** - argument elicitation and CLI invoke/relay only; never generation or orchestration rules
+5. **Evidence** - source-extracted material; reference for ambiguity only
+6. **LLM inference** - only after explicit evidence; prefer `[unknown]`
 
-For `spec.md` requirement disagreements (the closed `authority` enum and its resolution order), see [AGENTS.md](../../AGENTS.md#authority-and-reconciliation-mechanics) and [synthesis/authority.md](../../crates/workflow/prompts/synthesis/authority.md); for the adapter contract, see [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md).
+For `spec.md` requirement disagreements (the closed `authority` enum and its resolution order), see [AGENTS.md](../../AGENTS.md#authority-and-reconciliation-mechanics) and [synthesis/authority.md](../../crates/slice/prompts/synthesis/authority.md); for the adapter contract, see [docs/explanation/adapter-anatomy.md](../../docs/explanation/adapter-anatomy.md).
 
 **Key principle**: If artifacts conflict with source, trust the artifacts. If artifacts are incomplete, mark unknowns rather than guessing.
 
 ## Artifact Boundaries
 
-See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the per-artifact responsibility breakdown and [docs/explanation/augentic-specify-usage.md](../../docs/explanation/augentic-specify-usage.md) for the specialist-vs-artifact dividing line (behavioral specs stay platform-neutral; target-specific detail lives in specialist skills and references, not `spec.md`).
+See [docs/explanation/artifacts.md](../../docs/explanation/artifacts.md) for the per-artifact responsibility breakdown and [docs/explanation/augentic-specify-usage.md](../../docs/explanation/augentic-specify-usage.md) for the specialist-vs-artifact dividing line (behavioral specs stay platform-neutral; target-specific detail lives in adapter prompts and references, not `spec.md`).
 
-## Specialist Skills
+## Operator skills
 
-See [AGENTS.md](../../AGENTS.md#skill--cli-responsibility-split) for the skill / CLI responsibility split. Per-skill detail (description, argument hints, body) lives in each plugin's `SKILL.md` frontmatter under `plugins/<plugin>/skills/<skill>/SKILL.md`.
+See [AGENTS.md](../../AGENTS.md#skill--cli-responsibility-split) for the skill / CLI responsibility split. Per-skill detail (description, argument hints, body) lives under `plugins/<plugin>/skills/<skill>/SKILL.md`. Operators invoke these as `/spec:*` (and `/capture:*`) slash commands.
 
 ## Repository Layout
 
@@ -53,9 +54,10 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
 /.cursor-plugin/          # Multi-plugin marketplace manifest
 /docs/                    # Extended documentation (explanation, contributing)
 /plugins/
-  ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop) + shared references/
+  ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop)
   └── capture/            # Runtime capture plugin (wiretap / migration capture)
-/tests/framework/ # Prose/manifest framework checks as cargo tests
+/src/, /crates/           # specify runtime binary and workspace crates
+/tests/framework/         # Prose/manifest framework checks as cargo tests
 /harness/                 # Fixture adapter, composed WASM smoke, and the explicit live-model test
 ```
 
@@ -125,24 +127,24 @@ In this repository:
 
 ### Generation Issues
 
-- Check the relevant `SKILL.md` first
-- Review Omnia references for target and provider patterns
+- Check the bound target adapter's `build` / `guidance` prompts first
+- Review Omnia or Vectis references in specify-adapters for target and provider patterns
 - Compare against worked examples before inventing a new pattern
 
-## Skill authoring conventions
+## Skill wrappers
 
-Every `SKILL.md` follows the house style in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md). Framework checks are plain cargo tests at [`tests/framework/`](../../tests/framework/), with policy as constants in each test module. The authoritative JSON Schemas are embedded in the `specify` binary and consumed by the same tests. See [docs/contributing/checks.md](../../docs/contributing/checks.md) for the extension model.
+Skill shape is codified in Rust: every `SKILL.md` is validated by the framework checks at [`tests/framework/skills.rs`](../../tests/framework/skills.rs) against the embedded skill schema. Wrappers stay ultrathin invoke-and-relay — no orchestration or generation prose. See [docs/contributing/checks.md](../../docs/contributing/checks.md) and [docs/contributing/operator-plugins.md](../../docs/contributing/operator-plugins.md).
 
 ## For Contributors
 
-- All skills follow the shared `SKILL.md` structure — see [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md) for the full rationale.
-- Changes to generation behavior belong in the relevant skill or reference
-- Keep the repo aligned with the Specify-first operating model
+- Keep `/spec:*` skill bodies as invoke-and-relay wrappers; shape is enforced by [`tests/framework/skills.rs`](../../tests/framework/skills.rs).
+- Changes to generation behavior belong in guest orchestrations or adapter prompts in `specify-adapters`, not in skill bodies.
+- Keep the repo aligned with the Rust-first operating model in [AGENTS.md](../../AGENTS.md).
 
 ## Getting Help
 
 - Review `docs/explanation/augentic-specify-usage.md`
-- Review the relevant `SKILL.md`
+- Review the relevant `/spec:*` skill body only for invoke/relay steps
 - Review `targets/omnia/prose/references/` in specify-adapters
 - Review `targets/vectis/prose/references/` in specify-adapters
 - Open an issue for bugs or enhancement requests

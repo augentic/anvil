@@ -1,6 +1,6 @@
 # What is Specify?
 
-Specify is a plugin system that orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Specify at existing documentation, intent, or legacy code), Specify generates a plan and durable artifacts, then specialist AI skills implement each slice from those artifacts.
+Specify orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Specify at existing documentation, intent, or legacy code), Specify generates a plan and durable artifacts, then the `specify` runtime and target adapters implement each slice from those artifacts. Operators drive the loop with `/spec:*` skills — ultrathin wrappers over CLI verbs.
 
 ## A graduated path
 
@@ -51,11 +51,11 @@ Artifacts are regular files — you commit and review them like source code. `/s
 
 ## What you interact with
 
-**Skills** — slash-commands in Cursor (`/spec:init`, `/spec:plan`, `/spec:finalize`, and the per-slice breakouts). The full skill list lives in the [Quick reference card](../reference/quick-reference.md).
+**`/spec:*` skills** — slash-commands in Cursor (`/spec:init`, `/spec:plan`, `/spec:finalize`, and the per-slice breakouts). Each skill elicits arguments, invokes one `specify` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
 
 You can also run one phase by hand (a **breakout**) — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
-Behind the skills, the `specify` CLI handles deterministic work: validation, lifecycle transitions, spec merging. The agent keeps judgment; the CLI keeps correctness.
+Behind the skills, the `specify` CLI and its guest orchestrations own lifecycle, validation, synthesis, and target build. Target adapters own domain-specific generation.
 
 ## Going deeper
 

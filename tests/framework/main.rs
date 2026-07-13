@@ -337,11 +337,6 @@ fn write_valid_prose_tree(root: &Path) {
     write(root, "docs/reference/review-team-protocol.md", "# Review team protocol\n");
     write(root, "docs/standards/testing.md", "# Testing\n");
     write(root, "docs/contributing/quality-gates.md", "# Quality gates\n");
-    write(
-        root,
-        "docs/standards/skill-authoring.md",
-        "Description cap: 512 characters. Body cap: 200 lines.\n",
-    );
 }
 
 mod naming_matrix {
@@ -399,23 +394,8 @@ mod prose_matrix {
         write(dir.path(), "plugins/orphan/.cursor-plugin/plugin.json", "{\"name\":\"orphan\"}");
         assert!(fired(&prose::run(dir.path()), prose::CHECK_MARKETPLACE_DRIFT));
 
-        // A body cap missing from the standards prose fires.
-        let dir = tempfile::tempdir().expect("tempdir");
-        write_valid_prose_tree(dir.path());
-        write(
-            dir.path(),
-            "docs/standards/skill-authoring.md",
-            "Description cap: 512 characters.\n",
-        );
-        assert!(fired(&prose::run(dir.path()), prose::CHECK_NUMERIC_CAP));
-
         // A missing canonical review-team-protocol document fires.
         let dir = tempfile::tempdir().expect("tempdir");
-        write(
-            dir.path(),
-            "docs/standards/skill-authoring.md",
-            "Description cap: 512 characters. Body cap: 200 lines.\n",
-        );
         assert!(fired(&prose::run(dir.path()), prose::CHECK_CANONICAL_MISSING));
 
         // A two-file reference corpus without a README.md index fires.

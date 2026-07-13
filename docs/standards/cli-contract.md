@@ -6,9 +6,9 @@ The CLI itself is built in the in-tree Cargo workspace at the repo root. This do
 
 ## Rule: all deterministic operations live in the CLI
 
-The phase skills are agent-driven orchestrators. The skill markdown drives the agent-side work — eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries. Everything else runs through `specify`.
+Phase skills are ultrathin invoke-and-relay wrappers: they elicit missing arguments, invoke one `specify` verb, and relay its output. Guest orchestrations own judgment legs (survey, extract, synthesis, target build); target-adapter prompts own domain generation. Skill markdown must not grow orchestration, synthesis, or validation prose.
 
-When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb in the CLI repo and have the skill call it. The wrong fix is to make the skill smarter. The same rule is mirrored in the CLI repo's `AGENTS.md` under "Skill / CLI responsibility split".
+When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. See [AGENTS.md § Skill / CLI responsibility split](../../AGENTS.md#skill--cli-responsibility-split).
 
 Never hand-edit `metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
@@ -126,7 +126,6 @@ Skills should branch on the exit code first (success vs failure class) and on th
 
 ## Cross-references
 
-- [docs/standards/skill-authoring.md](skill-authoring.md) — the skill-side rules that surround this contract (description / argument-hint grammar, body caps, references discipline, guardrails).
+- [`tests/framework/skills.rs`](../../tests/framework/skills.rs) — the skill-side rules that surround this contract (frontmatter schema, description / argument-hint grammar), codified as framework checks.
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
-- [docs/standards/skill-guardrails.md](./skill-guardrails.md) — cross-cutting "skills MUST NOT" rules tied to this CLI surface.
 - [`AGENTS.md`](../../AGENTS.md#the-rust-workspace-specify-cli) — authoritative source for exit codes, error variants, and CLI architecture.

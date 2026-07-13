@@ -62,6 +62,9 @@ The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0
 **Crux**
 An Augentic product: a cross-platform application framework (Rust core, native iOS and Android shells). The [Vectis](#v) target adapter generates Crux applications. Not part of the core Specify contract.
 
+**Cursor plugin**
+A marketplace package under `plugins/<name>/` that registers slash-command skill wrappers with Cursor. Invisible to the `specify` CLI. See [Cursor operator plugins](../contributing/operator-plugins.md).
+
 ## D
 
 **Diagnostic**
@@ -147,8 +150,8 @@ An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. T
 **Plan**
 The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `specify plan {create, add, amend, transition, next, archive}` only.
 
-**Plugin**
-The shared shape for either adapter role. Schemas `source.schema.json` / `target.schema.json` (axis-specific, distributed with the CLI); loader `crates/project/src/adapter/`. Source and target adapters share the same loader; the axis decides which operations a manifest declares. The vocabulary noun "plugin" survives where source + target authors share an audience tag.
+**Plugin** (adapter vocabulary)
+The shared shape for either adapter role. Loader `crates/project/src/adapter/`; metadata comes from the component's `metadata` export (no adapter manifest file). Source and target adapters share the same resolver; the axis decides which WIT operations the component exports. The vocabulary noun "plugin" survives where source + target authors share an audience tag. Distinct from [Cursor plugins](#c) under `plugins/` (the IDE distribution surface for `/spec:*` skill wrappers).
 
 **Project (plan routing)**
 The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
@@ -176,7 +179,7 @@ A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requ
 The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.
 
 **Skill**
-An agent-driven orchestrator invoked with a slash-command prefix (e.g. `/spec:plan`, `/spec:build`). Skills delegate deterministic work to the CLI and use judgment for everything else.
+An ultrathin Cursor slash-command wrapper (e.g. `/spec:plan`, `/spec:build`) that elicits arguments, invokes one `specify` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in guest orchestrations and target-adapter prompts.
 
 **Slice**
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.specify/slices/<name>/`.

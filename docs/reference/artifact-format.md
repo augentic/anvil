@@ -199,7 +199,7 @@ Use explicit unknown markers instead of guessing:
 
 ### Design ownership
 
-The design document is where project-specific technical detail belongs: domain models, type shapes, API contracts, message shapes, business logic, external integrations, configuration, risks, and migration notes. Generator-owned binding decisions (e.g. Omnia trait composition, Crux effect types) remain in specialist skills and references.
+The design document is where project-specific technical detail belongs: domain models, type shapes, API contracts, message shapes, business logic, external integrations, configuration, risks, and migration notes. Generator-owned binding decisions (e.g. Omnia trait composition, Crux effect types) remain in target-adapter prompts and references.
 
 When design sections reference behavior from specs, cite the stable requirement IDs (e.g. `REQ-003`) rather than relying on requirement titles.
 
@@ -254,7 +254,7 @@ Keep proposals concise (one to two pages). Focus on the "why" not the "how" — 
 - Reference specs for what needs to be built, design for how to build it.
 - Each task should be verifiable -- you know when it is done.
 
-Tasks are implemented by the active target adapter's `build` operation (`adapters/targets/<target>/prose/prompts/build.md`), which carries the specialist orchestration (crate / test / guest / review for omnia, core / shells / composition for vectis, format-dispatched author-import-verify for contracts) inline. Tasks do not route to standalone specialist skills.
+Tasks are implemented by the active target adapter's `build` operation (`adapters/targets/<target>/prose/prompts/build.md`), which carries the specialist orchestration (crate / test / guest / review for omnia, core / shells / composition for vectis, format-dispatched author-import-verify for contracts) inline. Tasks do not route to standalone Cursor skills.
 
 ## Decision Records (design "why")
 

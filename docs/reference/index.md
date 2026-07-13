@@ -20,7 +20,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 - [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
 ### Plugins
 
-- [Plugins](plugins/index.md) — specialist skills organized by plugin (Specify, Capture, Client).
+- [Plugins](plugins/index.md) — Cursor operator plugins (Specify, Capture) and their `/spec:*` / `/capture:*` skill wrappers.
 
 ### Adapters
 
@@ -42,7 +42,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 | Check artifact format                    | [Artifact Format](artifact-format.md)                |
 | Understand lifecycle states              | [Lifecycle](lifecycle.md)                            |
 | Configure my project                     | [Configuration Files](configuration.md)              |
-| See what a plugin provides               | [Plugins](plugins/index.md)                          |
+| See what Cursor plugins provide          | [Plugins](plugins/index.md)                          |
 | Understand the source/target split       | [Anatomy of an adapter](../explanation/adapter-anatomy.md) |
 | Look up a term                            | [Glossary](../appendices/glossary.md)                |
 

@@ -1,6 +1,6 @@
-# Augentic Plugins - Agent Instructions
+# Specify - Agent Instructions
 
-This repository is **Rust plus embedded prose**: the workspace at the repository root produces the `specify` runtime binary, and the surviving markdown (skill wrappers, reference docs, adapter prose) ships alongside or embedded in it. Generated Rust crates and Swift shells appear in downstream projects, not in this repository itself.
+This repository is **Rust plus embedded prose**: the workspace at the repository root produces the `specify` runtime binary, and the surviving markdown (ultrathin `/spec:*` skill wrappers, reference docs) ships alongside it. Source and target adapter prose lives in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). Generated Rust crates and Swift shells appear in downstream projects, not in this repository itself.
 
 ## Vocabulary
 
@@ -10,7 +10,9 @@ Specify names two adapter roles and three workflow nouns. Use the terms verbatim
 
 - **source adapter** — input role with two operations: `survey` (plan time) and `extract` (slice time). Ships as a single WebAssembly component exporting the WIT `source` interface (one component, no manifest); the guest crate lives at `sources/<name>/` in `augentic/specify-adapters`. Examples: `intent`, `documentation`, `typescript`, `screenshots`, `captures`.
 - **target adapter** — output role with three operations: `guidance` (read by core synthesis), `build`, and `merge`. Ships as a single WebAssembly component exporting the WIT `target` interface; the guest crate lives at `targets/<name>/` in `augentic/specify-adapters`. Examples: `omnia`, `vectis`, `contracts`. See [`docs/explanation/adapter-anatomy.md`](docs/explanation/adapter-anatomy.md) for the full source / target contract, including the [adapter-vs-Cursor-plugin manifest boundary](docs/explanation/adapter-anatomy.md#adapter-manifests-vs-cursor-plugin-manifests).
-- **plugin** — operator-facing shorthand for the shared adapter shape, used where source + target authors share the same audience tag. Workflow code resolves adapters through the provider-carried `adapter::Resolver` capability. The shipped WASI provider delegates to `adapter::resolver::Component`, which locates the identity's single `.wasm` component and reads its metadata from the component's own `metadata` export (no manifest file, no schema validation).
+- **plugin** (adapter vocabulary) — operator-facing shorthand for the shared adapter shape, used where source + target authors share the same audience tag. Workflow code resolves adapters through the provider-carried `adapter::Resolver` capability. The shipped WASI provider delegates to `adapter::resolver::Component`, which locates the identity's single `.wasm` component and reads its metadata from the component's own `metadata` export (no manifest file, no schema validation).
+
+Do not confuse that noun with **Cursor plugins** under `plugins/` (e.g. `plugins/spec/`). Those are the IDE distribution surface for `/spec:*` skill wrappers and marketplace manifests; they are invisible to the `specify` CLI.
 
 ### Synthesis terms
 
@@ -50,7 +52,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | **Artifacts**             | Slice-local and baseline product intent       | `spec.md`, `plan.yaml`, `.specify/specs/`                                                           |
 | **Engineering standards** | Durable policy that outlives any slice        | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays, embedded in each target adapter |
 
-**Authoring standards** (`docs/standards/`, enforced by the framework-quality cargo tests at `tests/framework/` on this repo) govern skill and doc house style. **Engineering standards** (rules in `augentic/specify-adapters` — `codex/rules/universal/` and per-adapter `prose/rules/` overlays, embedded in each target adapter's component and served by its references server) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`, enforced by the framework-quality cargo tests at `tests/framework/` on this repo) govern docs house style and the thin skill-wrapper shape. **Engineering standards** (rules in `augentic/specify-adapters` — `codex/rules/universal/` and per-adapter `prose/rules/` overlays, embedded in each target adapter's component and served by its references server) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 Engineering standards reach consumer projects through the target adapters' embedded prose, applied by their build review prompts — there is no engine-side lint or rules-export surface. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
@@ -126,12 +128,10 @@ All commands are run from the repository root:
 
 - `cargo test --test framework` — the documentation and workflow consistency checks over the prose and manifest surfaces (the lightweight `framework` package at `tests/framework/`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the framework-quality test suite.
-- `cursor-agent --plugin-dir plugins/<name>` — load a working-tree plugin directly.
 
 Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/fixtures`, and `tests/framework` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. Composed WASM runtime execution runs on the scheduled/manual `.github/workflows/composed.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
-## Skill authoring
 
-Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). Framework checks are plain cargo tests at [`tests/framework/`](tests/framework/) — policy as module constants, failures as test failures, with no per-file grandfathering. Enforced by `cargo make ci`. Extension model: [docs/contributing/checks.md](docs/contributing/checks.md).
+The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Their frontmatter shape is enforced by `schemas/authoring/skill.schema.json` plus [`tests/framework/skills.rs`](tests/framework/skills.rs); marketplace ↔ `plugins/` consistency by [`tests/framework/prose.rs`](tests/framework/prose.rs). There is no prose authoring standard for skill bodies beyond staying ultrathin. Extension model: [docs/contributing/checks.md](docs/contributing/checks.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
 ## Gotchas
 
@@ -257,7 +257,7 @@ Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standar
 
 External references:
 
-- [Vocabulary](#vocabulary) at the top of this file — workflow vocabulary (slice / change), skill family, plan-driven loop, contract skills.
+- [Vocabulary](#vocabulary) at the top of this file — workflow vocabulary (slice / change), adapter `plugin` vs Cursor `plugins/`, plan-driven loop.
 - [`docs/standards/workflow.md`](./docs/standards/workflow.md) — the in-force workflow contract this binary implements. Defines the `source` / `target` / `plugin` / `axis` vocabulary, the kebab-case wire format, the `Source` / `Lead` / `Evidence` / `Slice` implementation types, writer ownership, and the CLI surface. Stable `§`-anchors that source comments and adapter prompts cite by name.
 - [`docs/release.md`](./docs/release.md) — tagging and the platform-binary release pipeline.
 - [`schemas/`](./schemas/) — JSON Schema files distributed with the binary (`evidence.schema.json`, `discovery/lead.schema.json`, `plan/plan.schema.json`, `target/build-request.schema.json`, and `target/build-report.schema.json`); the workflow contract pins each shape. There are no adapter-manifest schemas — adapter metadata is the WIT `metadata` record returned by `metadata`.

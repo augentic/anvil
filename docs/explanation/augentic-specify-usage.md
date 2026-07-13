@@ -1,8 +1,8 @@
 # Augentic specialist usage
 
-Augentic-specific supplement: how specialist skills (Omnia, Vectis, and friends) *consume* the standard artifacts. For artifact structure see [Artifact format](../reference/artifact-format.md) and [Artifacts in depth](./artifacts.md).
+Augentic-specific supplement: how **target adapters** (Omnia, Vectis, and friends) *consume* the standard artifacts. For artifact structure see [Artifact format](../reference/artifact-format.md) and [Artifacts in depth](./artifacts.md).
 
-Augentic uses stock Specify as its executable workflow contract. Specialist skills read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:plan → specify plan execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice), but they must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
+Augentic uses stock Specify as its executable workflow contract. Operators drive `/spec:plan → specify plan execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice). Target adapters read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during build, but must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
 
 ## Where specialists read and write
 
@@ -40,13 +40,13 @@ When a source adapter's `extract` reconstructs behaviour from legacy code, the s
 
 ## Writing agent-completable tasks
 
-`tasks.md` is the specialist's implementation checklist (see the [tasks format](../reference/artifact-format.md#tasks-document)). The Augentic constraint on top of the base format: **every task must be agent-completable** — a coding agent can perform it and verify completion through code, local tooling, mocks, fixtures, contract validators, build commands, or reviewer skills.
+`tasks.md` is the specialist's implementation checklist (see the [tasks format](../reference/artifact-format.md#tasks-document)). The Augentic constraint on top of the base format: **every task must be agent-completable** — a coding agent can perform it and verify completion through code, local tooling, mocks, fixtures, contract validators, build commands, or review prompts.
 
 Never generate tasks that require human-only action: manual app testing, visual inspection, real-world API credentials, production services, physical-device checks, app-store review, or "ask the user to verify". When behaviour appears to need manual validation, write the agent-verifiable equivalent instead (a mocked API test, a replay, a simulator or build check, a contract test, or a scripted smoke test).
 
 `specify slice validate` checks only the checkbox and grouping *shape* of `tasks.md`; it does not inspect task intent. Agent-completability is therefore judged at write time and re-checked by `/spec:build` as a preflight.
 
-Tasks are implemented by the active target adapter's `build` brief, which carries the specialist orchestration inline; they do not route to standalone specialist skills.
+Tasks are implemented by the active target adapter's `build` brief, which carries the specialist orchestration inline; they do not route to standalone Cursor skills.
 
 ## Decision Records
 

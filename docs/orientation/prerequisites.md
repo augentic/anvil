@@ -2,7 +2,7 @@
 
 ## Cursor IDE
 
-Specify skills run inside [Cursor](https://cursor.com). Install Cursor and ensure you are on a recent version that supports the plugin marketplace.
+Operators run `/spec:*` skills inside [Cursor](https://cursor.com). Install Cursor and ensure you are on a recent version that supports the plugin marketplace.
 
 ## Augentic plugin marketplace
 
@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs the bundled plugins (Specify, Capture, Client) and their skills. Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](https://github.com/augentic/specify-adapters/tree/main/targets/), not in plugins.
+This installs the Specify and Capture plugins (the `/spec:*` and `/capture:*` skill wrappers). Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](https://github.com/augentic/specify-adapters/tree/main/targets/), not in Cursor skills.
 
 ## The `specify` CLI
 

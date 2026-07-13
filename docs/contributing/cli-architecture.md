@@ -40,7 +40,7 @@ The `--format text|json` flag controls output shape; `SPECIFY_FORMAT=json` is th
 
 ## Exit codes
 
-The exit-code contract is part of the public interface for skill authors; `Exit::from(&Error)` in `crates/transport/src/command/output.rs` is the single source of truth:
+The exit-code contract is part of the public interface for operators and skill wrappers; `Exit::from(&Error)` in `crates/transport/src/command/output.rs` is the single source of truth:
 
 | Code | Constant | Meaning |
 |------|----------|---------|

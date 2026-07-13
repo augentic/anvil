@@ -15,7 +15,7 @@ use crate::support::{Finding, extract_fenced_blocks, rel, walk_files, walk_markd
 
 /// The marketplace manifest disagrees with the on-disk plugin layout.
 pub const CHECK_MARKETPLACE_DRIFT: &str = "plugins.marketplace-drift";
-/// A documented skill numeric cap drifted from its canonical source.
+/// The embedded skill schema's description cap drifted from policy.
 pub const CHECK_NUMERIC_CAP: &str = "prose.numeric-cap-exceeded";
 /// The canonical review-team-protocol document is missing.
 pub const CHECK_CANONICAL_MISSING: &str = "agent-teams.missing-canonical";
@@ -27,12 +27,8 @@ pub const CHECK_HISTORY_CITATION: &str = "docs.history-citation";
 pub const CHECK_TEXT_DIAGRAM: &str = "docs.text-pipeline-diagram";
 
 /// Skill description character cap (must match `skill.schema.json`
-/// `description.maxLength` and the authoring standard prose).
+/// `description.maxLength`).
 const DESCRIPTION_CAP: u64 = 512;
-/// Skill body line cap (must appear in the authoring standard prose).
-const BODY_CAP: u64 = 200;
-/// Standards document that must carry both numeric caps in prose.
-const STANDARDS_REL: &str = "docs/standards/skill-authoring.md";
 
 /// Canonical documents required by shipped overlays and contributor guidance.
 const CANONICAL_DOCUMENTS: &[&str] = &[
@@ -173,18 +169,8 @@ fn check_marketplace_drift(root: &Path, findings: &mut Vec<Finding>) {
     }
 }
 
-/// The skill description / body caps must stay in sync across the
-/// embedded skill schema and the authoring standard prose.
-fn check_numeric_caps(root: &Path, findings: &mut Vec<Finding>) {
-    let standards_path = root.join(STANDARDS_REL);
-    if !standards_path.exists() {
-        findings.push(Finding::new(
-            CHECK_NUMERIC_CAP,
-            format!("skill numeric cap source missing: {STANDARDS_REL}"),
-        ));
-        return;
-    }
-
+/// The embedded skill schema must carry the policy description cap.
+fn check_numeric_caps(_root: &Path, findings: &mut Vec<Finding>) {
     match schema_description_max_length() {
         Some(max_length) if max_length == DESCRIPTION_CAP => {}
         Some(max_length) => findings.push(Finding::new(
@@ -198,26 +184,6 @@ fn check_numeric_caps(root: &Path, findings: &mut Vec<Finding>) {
             CHECK_NUMERIC_CAP,
             "skill.schema.json declares no description.maxLength".to_owned(),
         )),
-    }
-
-    let Ok(content) = fs::read_to_string(&standards_path) else {
-        findings.push(Finding::new(
-            CHECK_NUMERIC_CAP,
-            format!("skill numeric cap source unreadable: {STANDARDS_REL}"),
-        ));
-        return;
-    };
-    if !content.contains(&DESCRIPTION_CAP.to_string()) {
-        findings.push(Finding::new(
-            CHECK_NUMERIC_CAP,
-            format!("description cap {DESCRIPTION_CAP} missing from {STANDARDS_REL}"),
-        ));
-    }
-    if !content.contains(&BODY_CAP.to_string()) {
-        findings.push(Finding::new(
-            CHECK_NUMERIC_CAP,
-            format!("body cap {BODY_CAP} missing from {STANDARDS_REL}"),
-        ));
     }
 }
 

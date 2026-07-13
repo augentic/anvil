@@ -1,6 +1,6 @@
 # Contribution Guide
 
-Augentic welcomes contributions to the Specify framework. This document covers the essentials for getting a pull request accepted. For detailed guidance on the framework's internals -- skills, schemas, plugins, and CLI architecture -- see the [Contributing section](docs/contributing/index.md) of the Developer Guide.
+Augentic welcomes contributions to the Specify framework. This document covers the essentials for getting a pull request accepted. For detailed guidance on the runtime, adapters, schemas, and Cursor skill wrappers, see the [Contributing section](docs/contributing/index.md) of the Developer Guide.
 
 ## Table of Contents
 
@@ -14,10 +14,12 @@ Augentic welcomes contributions to the Specify framework. This document covers t
 
 Unless you are fixing a known bug, we recommend discussing your change with the core team via a GitHub issue before getting started to ensure alignment with the project roadmap.
 
-The framework lives in one repository with two trees:
+The framework lives in one repository with two surfaces:
 
-- **prose root** (`plugins/`, `docs/`, `.cursor-plugin/`) -- skills, briefs, shared references, and documentation (Markdown, YAML, and shell)
-- **[`cli/`](cli)** -- the `specify` binary, its Rust workspace crates, and the JSON schemas it distributes
+- **Rust workspace** (`src/`, `crates/`, `tests/`, `harness/`) — the `specify` binary, guest orchestrations, and JSON schemas it distributes
+- **Prose and Cursor wrappers** (`plugins/`, `docs/`, `.cursor-plugin/`) — ultrathin `/spec:*` skill wrappers, documentation, and the marketplace manifest
+
+Adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) repository.
 
 See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides.
 
@@ -29,11 +31,12 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 - Lint with `cargo clippy -- -D warnings`
 - Run the full suite with `cargo make ci`
 
-### Skills and documentation (specify)
+### Docs and skill wrappers
 
-- Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Skill Authoring Standards](docs/standards/skill-authoring.md)
+- Keep `/spec:*` skill bodies ultrathin invoke-and-relay — shape is enforced by the framework checks at [`tests/framework/skills.rs`](tests/framework/skills.rs)
 - `cargo test --test framework` must pass before submitting a pull request. It needs only a Rust toolchain: the framework checks are plain cargo tests. See [Consistency Checks](docs/contributing/checks.md).
 - Use kebab-case for file names, change names, and adapter identifiers
+- Generation behavior belongs in guest orchestrations or adapter prompts, not in skill bodies
 
 ## Developer's Certificate of Origin
 
@@ -97,7 +100,7 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that cover your change. For skill changes, this means `cargo test --test framework` passes and you have manually verified the skill in a target project. For CLI changes, add or update integration tests in the `tests/` directory.
+Normally, all pull requests must include tests that cover your change. For skill-wrapper or docs changes, this means `cargo test --test framework` passes (and, for wrapper changes, you have manually verified the skill in a target project). For CLI changes, add or update integration tests under `crates/*/tests/` or the root `tests/` directory.
 
 ## Conduct
 

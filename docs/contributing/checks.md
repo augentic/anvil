@@ -68,7 +68,7 @@ Every `SKILL.md` under `plugins/` is validated against the embedded `schemas/aut
 ### `prose.rs`
 
 - **Marketplace manifest consistency** — `.cursor-plugin/marketplace.json` lists exactly the on-disk plugins, and validates against the embedded marketplace schema.
-- **Documented numeric caps** — the skill description/body caps cited in `docs/standards/skill-authoring.md` must match the embedded skill schema.
+- **Skill description cap** — the embedded skill schema's `description.maxLength` must match the policy constant in `prose.rs`.
 - **Canonical document presence** — `docs/reference/review-team-protocol.md` must exist (adapter `agent-teams.md` symlinks in specify-adapters resolve through it).
 - **Reference-corpus indexes** — multi-file reference corpora must carry a `README.md` index.
 - **No design-history citations** — prose and engine code comments (`.rs` / `.wit` under `src/`, `crates/`, `harness/`, `wit/`) must not cite retired RFC/design-record ids as authority.

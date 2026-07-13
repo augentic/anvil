@@ -1,6 +1,6 @@
 # Workflow, standards, and artifacts
 
-Specify separates three concerns that often collapse in agentic delivery stacks. Keep them distinct when authoring skills, adapters, CI jobs, and operator docs.
+Specify separates three concerns that often collapse in agentic delivery stacks. Keep them distinct when authoring adapters, CI jobs, operator docs, and the thin `/spec:*` skill wrappers.
 
 ## The triad
 
@@ -19,10 +19,10 @@ Two different uses of "standards" appear in this repository:
 
 | Term                      | Meaning                                                        | Location                                                                                                                                                                                                                                                                                       |
 | ------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Authoring standards**   | House style for skills, docs, and framework contributions      | [`docs/standards/`](../standards/) — enforced on `augentic/specify` by the framework-quality cargo tests ([`tests/framework/`](../../tests/framework/)), with policy as constants in each test module                                                                                          |
+| **Authoring standards**   | House style for docs, skill wrappers, and framework contributions | [`docs/standards/`](../standards/) — enforced on `augentic/specify` by the framework-quality cargo tests ([`tests/framework/`](../../tests/framework/)), with policy as constants in each test module                                                                                          |
 | **Engineering standards** | Durable engineering policy for generated and hand-written code | Cross-target `UNI-*` rules under `codex/rules/universal/` ([`augentic/specify-adapters`](https://github.com/augentic/specify-adapters)); per-adapter overlays under `targets/<name>/prose/rules/` and `sources/<name>/prose/rules/` — embedded in each adapter component and served by its references server |
 
-Do not conflate them. `docs/standards/skill-authoring.md` governs how to write a `SKILL.md`; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
+Do not conflate them. The framework checks at `tests/framework/skills.rs` govern `SKILL.md` shape; `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
 
 ## How standards are enforced
 
