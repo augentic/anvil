@@ -116,7 +116,7 @@ Kebab-case discriminants on the JSON envelope; `snake_case` Rust variants bridge
 
 ## Sandboxing
 
-Source-operation sandboxing is guest-owned: the composed runtime's adapter guests see only the preopens the host wiring grants them. No host environment leaks. There is no project-scope declared-tool surface.
+Source-operation sandboxing is guest-owned: the hosted WASM runtime's adapter guests see only the preopens the host wiring grants them. No host environment leaks. There is no project-scope declared-tool surface.
 
 ## CLI surface
 

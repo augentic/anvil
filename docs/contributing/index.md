@@ -8,7 +8,7 @@ The workflow engine and operator plugins live in [`augentic/specify`](https://gi
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |
-| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/composed/live test surfaces | Rust |
+| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/wasm/live test surfaces | Rust |
 | `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Ultrathin Cursor skill wrappers, documentation, and the marketplace manifest | Markdown, YAML |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 
@@ -50,7 +50,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 ## What to read next
 
 - [Quality gates](quality-gates.md) — test rungs, assertion ownership, and release cadence
-- [The developer loop](dev-loop.md) — the three local rungs: `cargo make test` (native), `cargo make test-wasm` (composed smoke), `cargo make test-live` (explicit live trial)
+- [The developer loop](dev-loop.md) — the three local rungs: `cargo make test` (native), `cargo make test-wasm` (WASM boundary), `cargo make test-live` (explicit live trial)
 - [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/slice/prompts/synthesis/) — workflow state, evidence reconciliation, authority, and cache behavior
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — how adapters declare brief pipelines
 - [CLI Architecture](cli-architecture.md) — crate graph, dispatch pattern, and JSON contract

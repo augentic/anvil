@@ -58,7 +58,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   └── capture/            # Runtime capture plugin (wiretap / migration capture)
 /src/, /crates/           # specify runtime binary and workspace crates
 /tests/framework/         # Prose/manifest framework checks as cargo tests
-/harness/                 # Fixture adapter, composed WASM smoke, and the explicit live-model test
+/harness/                 # Fixture adapter, WASM boundary smoke, and the explicit live-model test
 ```
 
 Shared codex rule packs (`codex/rules/universal/`, the `UNI-*` engineering rules) live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) alongside the adapter trees.
@@ -74,7 +74,7 @@ make ci                               # the full Rust workspace gate (cargo make
 
 The framework checks are plain cargo tests at `tests/framework/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
 
-Test placement, the three rungs (native / composed WASM smoke / explicit live trial), and assertion ownership are defined in [`docs/standards/testing.md`](../../docs/standards/testing.md). The contributor-facing gate model is [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). Generic model/runtime mechanics belong to `omnia-testkit`; Specify owns only workflow scenario content — fixture leads, evidence, scripted answers, and assertions.
+Test placement, the three rungs (native / WASM boundary / explicit live trial), and assertion ownership are defined in [`docs/standards/testing.md`](../../docs/standards/testing.md). The contributor-facing gate model is [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). Generic model/runtime mechanics belong to `omnia-testkit`; Specify owns only workflow scenario content — fixture leads, evidence, scripted answers, and assertions.
 
 For generated crates in downstream consumer projects, the normal verification commands apply:
 

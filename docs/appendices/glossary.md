@@ -101,7 +101,7 @@ The closure skill (`/spec:finalize`) that verifies the plan is drained, confirms
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 **Gate (quality)**
-One of the three engine test rungs and its cadence: repository correctness (`cargo make ci`, every push), composed WebAssembly smoke (`cargo make test-wasm`, scheduled/manual), or the explicit live-model trial (`cargo make test-live`, operator-invoked). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
+One of the three engine test rungs and its cadence: repository correctness (`cargo make ci`, every push), WASM boundary smoke (`cargo make test-wasm`, weekly/path-filtered/manual; required for release), or the explicit live-model trial (`cargo make test-live`, operator-invoked). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
 
 ## H
 
@@ -130,7 +130,7 @@ The slice phase that applies spec deltas to the baseline, archives the slice, an
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
 
 **Model backend**
-The implementation serving judgment requests in a test: `omnia-testkit` scripted responses on the native and composed rungs, or the configured live model on the explicit live rung.
+The implementation serving judgment requests in a test: `omnia-testkit` scripted responses on the native and WASM rungs, or the configured live model on the explicit live rung.
 
 ## O
 

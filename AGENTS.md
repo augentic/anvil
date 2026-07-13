@@ -120,7 +120,7 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
 - **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced in `augentic/specify-adapters` by the WIT contract plus each adapter crate's `tests/` suite and that repo's composed-deployment tests.
 
-The test surface is three rungs: native integration tests over the fixture adapter and scripted models (`cargo make test`, per push), one composed WASM smoke over the real component boundary (`cargo make test-wasm`, scheduled/manual), and one ignored native live-model workflow test (`cargo make test-live`, explicit). `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify owns workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
+The test surface is three rungs: native integration tests over the fixture adapter and scripted models (`cargo make test`, per push), one WASM boundary smoke over the real component seam (`cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one ignored native live-model workflow test (`cargo make test-live`, explicit). `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify owns workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
 
 ## Commands
 
@@ -129,7 +129,7 @@ All commands are run from the repository root:
 - `cargo test --test framework` — the documentation and workflow consistency checks over the prose and manifest surfaces (the lightweight `framework` package at `tests/framework/`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the framework-quality test suite.
 
-Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/fixtures`, and `tests/framework` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. Composed WASM runtime execution runs on the scheduled/manual `.github/workflows/composed.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/fixtures`, and `tests/framework` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Their frontmatter shape is enforced by `schemas/authoring/skill.schema.json` plus [`tests/framework/skills.rs`](tests/framework/skills.rs); marketplace ↔ `plugins/` consistency by [`tests/framework/prose.rs`](tests/framework/prose.rs). There is no prose authoring standard for skill bodies beyond staying ultrathin. Extension model: [docs/contributing/checks.md](docs/contributing/checks.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
@@ -163,7 +163,7 @@ slice                    # the slice loop — depends on project: refine/build/m
 change                   # the change loop — depends on {project,slice}: plan author/execute orchestration (change::orchestrate incl. the survey half of the source axis and workspace routing), the propose judgment leg, change::plan::handlers (the specify plan operations) + change::source (source survey), and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
-harness/fixtures         # the fixture adapter (deterministic native core supplying both specify:adapter axes for engine tests + the combined fixture_adapter guest for composed deployments)
+harness/fixtures         # the fixture adapter (deterministic native core supplying both specify:adapter axes for engine tests + the combined fixture_adapter guest for hosted WASM deployments)
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
 
@@ -201,7 +201,7 @@ crates/transport/         shared command/HTTP routing, clap grammar, conversions
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
-harness/composed/        the composed WASM smoke — hosts specify.wasm with the combined fixture-adapter component
+harness/wasm/            the WASM boundary smoke — hosts specify.wasm with the combined fixture-adapter component
 harness/fixtures/        the fixture adapter (native core for both specify:adapter axes + the combined fixture_adapter guest)
 harness/live/            the ignored native live-model workflow test (cargo make test-live)
 tests/framework/         prose/manifest framework checks as cargo tests
@@ -270,7 +270,7 @@ All driven by `cargo make` (see [`Makefile.toml`](./Makefile.toml)). Run the ful
 cargo make ci             # fmt-check + lint + wasm + test + test-docs + doc + vet + deny
 cargo make check          # fmt-check + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
 cargo make test           # cargo nextest run --locked --all-features --no-tests=pass over the default members, under -Dwarnings
-cargo make test-wasm    # builds the WASM guests then runs the opt-in composed smoke
+cargo make test-wasm    # builds the WASM guests then runs the opt-in WASM boundary smoke
 cargo make test-live    # the explicit live-model workflow test (operator-invoked; needs cursor-agent credentials)
 cargo make lint           # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt            # nightly cargo fmt --all

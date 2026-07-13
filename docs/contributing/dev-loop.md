@@ -4,7 +4,7 @@ Specify's developer loop is self-contained: every rung runs from this checkout a
 
 ```bash
 cargo make test       # fast native integration tests; model-free and no Wasmtime
-cargo make test-wasm  # build two guests and run the composed smoke test
+cargo make test-wasm  # build two guests and run the WASM boundary smoke
 cargo make test-live  # run the explicit live-model workflow test
 ```
 
@@ -18,9 +18,9 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make test-wasm` — the WASM boundary
 
-Builds `specify.wasm` and the combined `fixture_adapter.wasm`, hosts them in one temporary deployment, and runs the single composed smoke (`harness/composed`). It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest reaches the model host, preopens and the component cache are wired — and that the loop lands in the same terminal state as the native test.
+Builds `specify.wasm` and the combined `fixture_adapter.wasm`, hosts them in one temporary deployment, and runs the single WASM smoke (`harness/wasm`). It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest calls the model host, preopens and the component cache are wired, and the typed error lift works across the seam. A short scripted loop is the vehicle that reaches those seams; drained-loop and artifact-completeness outcomes stay on the native rung.
 
-Escalate here only when the change crosses a WIT, dispatch, hosting, or preopen seam. Cadence: the scheduled/manual composed workflow (`.github/workflows/composed.yaml`), not per push. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+Escalate here only when the change crosses a WIT, dispatch, hosting, or preopen seam. Cadence: weekly / path-filtered / manual (`.github/workflows/wasm.yaml`), required before release tags — not every push. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## 3. `cargo make test-live` — the explicit live trial
 
@@ -31,7 +31,7 @@ Live runs are always explicit, never a side effect. The documented cadence: befo
 ## What CI runs
 
 - Per push: `cargo make ci` — the self-contained workspace gate (nextest over default members, clippy/doc/doctest/vet/deny, the `wasm32-wasip2` compile check). No sibling checkout, no component hosting, no model.
-- Scheduled/manual: the composed workflow, running rung 2.
+- Weekly / path-filtered / manual: the WASM workflow, running rung 2.
 - Never: rung 3. CI never requires model credentials.
 
 `specify-adapters` gates its own crates and components against the published WIT contract and its declared engine pin; neither repository gates on the other's HEAD.

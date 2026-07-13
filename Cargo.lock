@@ -592,22 +592,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "composed"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "omnia",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "omnia-wasi-otel",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "const-hex"
 version = "1.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4600,6 +4584,22 @@ dependencies = [
  "http-body",
  "thiserror 2.0.18",
  "wit-bindgen 0.57.1",
+]
+
+[[package]]
+name = "wasm"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "omnia",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "omnia-wasi-otel",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
 ]
 
 [[package]]

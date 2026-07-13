@@ -17,7 +17,7 @@ A build additionally honours a per-project marker file (`FAIL_BUILD_MARKER`): wh
 
 ## fixture_adapter
 
-The combined fixture-adapter guest ([`adapter.rs`](adapter.rs)) exports the additive `adapter` world — both the `source` and `target` interfaces from one component — plus a compiled-in single-document MCP references over `wasi:http`. The shim is nothing but generated WIT conversions delegating to the native core, so composed deployments (`harness/composed/`) and the native suites exercise identical adapter behaviour; `metadata` keys its platforms capability off the routed `adapter-id` so one binary stands in for several capability shapes.
+The combined fixture-adapter guest ([`adapter.rs`](adapter.rs)) exports the additive `adapter` world — both the `source` and `target` interfaces from one component — plus a compiled-in single-document MCP references over `wasi:http`. The shim is nothing but generated WIT conversions delegating to the native core, so hosted WASM deployments (`harness/wasm/`) and the native suites exercise identical adapter behaviour; `metadata` keys its platforms capability off the routed `adapter-id` so one binary stands in for several capability shapes.
 
 It compiles against this repo's own [`wit/`](../../wit/) — the fixture that lets a contract revision and its seam tests land in one engine PR — and is deliberately model-free: it exercises the runtime seams, not Specify logic. Build it from inside `harness/` with:
 

@@ -1,19 +1,20 @@
-//! The composed WASM smoke: host the built `specify.wasm` workflow
-//! guest with the combined fixture-adapter component bound at both
-//! `source:fixture` and `target:fixture`, and drive the full
-//! `init → author → approve → execute` loop through fresh command-mode
-//! deployments — exactly how the shipped binary hosts a deployment,
-//! with only the model backend swapped for a colocated script.
+//! WASM boundary smoke: host the built `specify.wasm` workflow guest
+//! with the combined fixture-adapter component bound at both
+//! `source:fixture` and `target:fixture`, then drive a short scripted
+//! path through fresh command-mode deployments — the same hosting
+//! shape as the shipped binary, with only the model backend swapped
+//! for a colocated script.
 //!
-//! One test owns the whole boundary: combined-component loading and
-//! WIT linking, metadata dispatch on both axes (init resolves
+//! Ownership is the component boundary only: combined-component loading
+//! and WIT linking, metadata dispatch on both axes (init resolves
 //! `target:fixture`, author resolves `source:fixture`), source and
 //! target operation dispatch, the WIT error lift (a `fail-survey`
-//! identity failing typed across the seam), model-host invocation for
-//! both judgment legs, writes through the project and `/specify-cache`
-//! preopens, and externally visible drained completion. Workflow *behaviour* beyond
-//! the boundary lives in the cheaper native suites under
-//! `crates/change/tests/`.
+//! identity failing typed across the seam), model-host invocation, and
+//! writes through the project and `/specify-cache` preopens. The
+//! scripted `author → approve → execute` path is the vehicle that
+//! reaches those seams — not a second workflow matrix. Workflow
+//! behaviour beyond the boundary lives in the cheaper native suites
+//! under `crates/change/tests/`.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -35,7 +36,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn component_drives_full_loop() -> Result<()> {
+async fn hosts_boundary() -> Result<()> {
     let tmp = tempfile::tempdir().context("creating the trial workspace")?;
     fs::create_dir_all(tmp.path().join(".specify-cache")).context("creating the cache mount")?;
     fs::create_dir_all(tmp.path().join(".specify-store")).context("creating the store mount")?;
@@ -53,43 +54,8 @@ async fn component_drives_full_loop() -> Result<()> {
 
     script(vec![grouping_answer(), synthesis_answer()]);
 
-    let init: &[&str] = &["init", "./fixture.wasm", "--name", "composed"];
-    let code = specify(&manifest_path, init).await?;
-    assert_eq!(code, 0, "composed init failed");
-
-    // Re-entry: a second plain `init` changes nothing and exits 0
-    // routing to `--upgrade`; the upgrade path itself succeeds.
-    let code = specify(&manifest_path, init).await?;
-    assert_eq!(code, 0, "init re-entry must exit 0");
-    let code = specify(&manifest_path, &["init", "--upgrade"]).await?;
-    assert_eq!(code, 0, "init --upgrade failed");
-
-    // The WIT error lift across the component seam: the same artifact
-    // bound under a `fail-survey` identity dispatches, fails typed in
-    // the guest, and surfaces as a non-zero exit — before any scripted
-    // answer is consumed.
-    let failing: &[&str] =
-        &["plan", "author", "composed", "--source", "main=fixture-fail-survey:value:hello"];
-    let code = specify(&manifest_path, failing).await?;
-    assert_ne!(code, 0, "a fixture survey failure must fail plan author");
-    assert_eq!(
-        ANSWERS.lock().expect("the answer script is never poisoned").len(),
-        2,
-        "the failing survey must abort before the reconcile leg"
-    );
-    // Authoring creates the plan skeleton before surveying; clear the
-    // aborted run's leftover so the real author starts fresh.
-    fs::remove_file(workspace.join("plan.yaml")).context("clearing the aborted plan")?;
-
-    let steps: [&[&str]; 3] = [
-        &["plan", "author", "composed", "--source", "main=fixture:value:hello"],
-        &["plan", "transition", "composed", "approved"],
-        &["plan", "execute"],
-    ];
-    for argv in steps {
-        let code = specify(&manifest_path, argv).await?;
-        assert_eq!(code, 0, "composed step `specify {}` failed", argv.join(" "));
-    }
+    let code = specify(&manifest_path, &["init", "./fixture.wasm", "--name", "wasm"]).await?;
+    assert_eq!(code, 0, "wasm init failed");
 
     // Writable `/specify-cache` preopen: init mirrored the operator's
     // local component and recorded its provenance through it.
@@ -102,15 +68,35 @@ async fn component_drives_full_loop() -> Result<()> {
         "init records component provenance through the writable cache preopen"
     );
 
-    // Writable project preopen plus drained completion, externally
-    // visible: the approved plan's single entry is done and the merge
-    // published the baseline spec.
-    let plan = fs::read_to_string(workspace.join("plan.yaml")).context("reading plan.yaml")?;
-    assert!(plan.contains("lifecycle: approved"), "{plan}");
-    assert!(plan.contains("status: done"), "{plan}");
-    let spec = fs::read_to_string(workspace.join(".specify/specs/greeting/spec.md"))
-        .context("reading the merged baseline spec")?;
-    assert!(spec.contains("greeting"), "{spec}");
+    // The WIT error lift across the component seam: the same artifact
+    // bound under a `fail-survey` identity dispatches, fails typed in
+    // the guest, and surfaces as a non-zero exit — before any scripted
+    // answer is consumed.
+    let failing: &[&str] =
+        &["plan", "author", "wasm", "--source", "main=fixture-fail-survey:value:hello"];
+    let code = specify(&manifest_path, failing).await?;
+    assert_ne!(code, 0, "a fixture survey failure must fail plan author");
+    assert_eq!(
+        ANSWERS.lock().expect("the answer script is never poisoned").len(),
+        2,
+        "the failing survey must abort before the reconcile leg"
+    );
+    // Authoring creates the plan skeleton before surveying; clear the
+    // aborted run's leftover so the real author starts fresh.
+    fs::remove_file(workspace.join("plan.yaml")).context("clearing the aborted plan")?;
+
+    // Vehicle path: reach source dispatch, model-host judgment, and
+    // target build through the hosted guest. Assert boundary effects
+    // only — not drained-loop / baseline-merge workflow outcomes.
+    let steps: [&[&str]; 3] = [
+        &["plan", "author", "wasm", "--source", "main=fixture:value:hello"],
+        &["plan", "transition", "wasm", "approved"],
+        &["plan", "execute"],
+    ];
+    for argv in steps {
+        let code = specify(&manifest_path, argv).await?;
+        assert_eq!(code, 0, "wasm step `specify {}` failed", argv.join(" "));
+    }
 
     // Target build dispatch: the fixture's observable artifact was
     // written through the guest's own project preopen.
@@ -134,7 +120,7 @@ async fn specify(manifest: &Path, argv: &[&str]) -> Result<i32> {
         DeploymentBuilder::new().config(manifest.to_path_buf()).args(argv).mode(Mode::Command),
     )
     .await
-    .context("hosting the composed deployment")?;
+    .context("hosting the wasm deployment")?;
     Ok(status.code())
 }
 

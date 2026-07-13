@@ -1,27 +1,37 @@
-# The deterministic shipped-guest boundary: build the workflow core and
-# the combined fixture adapter, then host them in one Omnia command-mode
-# deployment. This proves WIT linking, dispatch on both axes, writable
-# preopens, and the scripted full loop without a sibling checkout or
-# credentials.
+# The deterministic WASM boundary: build the workflow core and the
+# combined fixture adapter, then host them in one Omnia command-mode
+# deployment. Proves WIT linking, dispatch on both axes, writable
+# preopens, model-host wiring, and the typed error lift — without a
+# sibling checkout or credentials. Not a second workflow matrix.
 #
-# Scheduled/manual rather than per-push: the Wasmtime execution path is
-# too slow for the ordinary commit gate, and per-push CI already checks
-# the guest crates compile for wasm32-wasip2. Clippy over the harness is
-# owned by the shared CI workflow's --workspace lint. Not a required
-# status; run it manually before releases or after WIT/runtime changes.
-name: Composed
+# Weekly / path-filtered / manual rather than per-push: the Wasmtime
+# execution path is too slow for the ordinary commit gate, and per-push
+# CI already checks the guest crates compile for wasm32-wasip2. Required
+# before release tags; run it manually after WIT/runtime/preopen changes.
+# Clippy over the harness is owned by the shared CI workflow's
+# --workspace lint.
+name: WASM
 
 on:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "0 2 * * 1"
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "wit/**"
+      - "src/**"
+      - "harness/fixtures/**"
+      - "harness/wasm/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/wasm.yaml"
 
 permissions:
   contents: read
 
 jobs:
-  composed:
-    name: Composed workflow core
+  wasm:
+    name: WASM boundary smoke
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -46,5 +56,5 @@ jobs:
       - name: Build fixture adapter
         run: cargo build --locked -p fixtures --examples --target wasm32-wasip2
 
-      - name: Composed workflow smoke
-        run: cargo nextest run --locked -p composed --no-tests=pass
+      - name: WASM boundary smoke
+        run: cargo nextest run --locked -p wasm --no-tests=pass

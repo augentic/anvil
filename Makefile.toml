@@ -92,19 +92,19 @@ cargo build --locked -p fixtures --examples --target wasm32-wasip2
 '''
 
 # Test — the ordinary suite over the default workspace members
-# (crates/*, harness/fixtures, tests/framework); the composed WASM
+# (crates/*, harness/fixtures, tests/framework); the WASM boundary
 # smoke is opt-in via test-wasm.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# Composed WASM smoke — hosts the freshly built guests in one Omnia
-# deployment. Matches the scheduled composed workflow; not part of
-# check/ci.
+# WASM boundary smoke — hosts the freshly built guests in one Omnia
+# deployment. Matches the weekly/path-filtered wasm workflow; not part
+# of check/ci.
 [tasks.test-wasm]
 command = "cargo"
-args = ["nextest", "run", "--locked", "-p", "composed", "--no-tests=pass"]
+args = ["nextest", "run", "--locked", "-p", "wasm", "--no-tests=pass"]
 dependencies = ["guests"]
 
 # Live-model workflow test — the single ignored native trial over the

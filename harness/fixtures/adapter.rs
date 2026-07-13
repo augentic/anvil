@@ -5,7 +5,7 @@
 //! `wasi:http/incoming-handler`, serving a compiled-in single-document
 //! MCP references. The shim is nothing but generated WIT conversions
 //! delegating to the native fixture core (this package's library), so
-//! composed and native tests exercise identical adapter behaviour.
+//! hosted WASM and native tests exercise identical adapter behaviour.
 #![cfg(target_arch = "wasm32")]
 
 mod bindings {

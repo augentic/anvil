@@ -92,7 +92,7 @@ mod boundary {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "harness/composed/Cargo.toml",
+            "harness/wasm/Cargo.toml",
             "[dependencies.intent]\nversion = \"1\"\n",
         );
         assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));

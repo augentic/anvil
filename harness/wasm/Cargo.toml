@@ -1,6 +1,6 @@
 [package]
-name = "composed"
-description = "Composed WASM smoke over the Specify workflow guest and the fixture adapter"
+name = "wasm"
+description = "WASM boundary smoke over the Specify workflow guest and the fixture adapter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

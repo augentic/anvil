@@ -1,8 +1,8 @@
-# composed harness
+# wasm harness
 
-This non-shipped package holds the single composed WASM smoke: it hosts the built `specify.wasm` workflow guest with the combined fixture-adapter component bound at both `source:fixture` and `target:fixture`, then drives `init → author → approve → execute` through fresh in-process command-mode deployments — the same hosting shape as the shipped binary, with the model backend swapped for colocated deterministic answers.
+Hosted-component boundary smoke: hosts the built `specify.wasm` workflow guest with the combined fixture-adapter component bound at both `source:fixture` and `target:fixture`. The same hosting shape as the shipped binary, with the model backend swapped for colocated deterministic answers.
 
-The one test proves the WASM-only boundary: combined-component loading and WIT linking, metadata and operation dispatch on both axes, model-host invocation, writes through the project and `/specify-cache` preopens, and externally visible drained completion. Workflow behaviour beyond the boundary lives in the native suites under `crates/change/tests/`.
+This package owns only facts unique to the WASM/WIT seam — combined-component loading and WIT linking, metadata and operation dispatch on both axes, the WIT error lift, model-host invocation, and writes through the project and `/specify-cache` preopens. A short scripted `author → approve → execute` path is the vehicle that reaches those seams; drained-loop and artifact-completeness behaviour belong to the native suites under `crates/change/tests/`.
 
 Build the guests before running the host test:
 

@@ -4,7 +4,7 @@ Integration-first test posture: `cargo nextest` over public crate and binary bou
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*`, `harness/fixtures`, and the `tests/framework` package; the composed smoke and the live test are opt-in rungs (below) so ordinary test runs never compile Wasmtime or call a model.
+Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*`, `harness/fixtures`, and the `tests/framework` package; the WASM boundary smoke and the live test are opt-in rungs (below) so ordinary test runs never compile Wasmtime or call a model.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
@@ -15,14 +15,14 @@ Specify is tested as a self-contained engine against its own WIT contract. No ru
 | Rung | Command | Proves | Cadence |
 | ---- | ------- | ------ | ------- |
 | **Native integration** | `cargo make test` | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the `workflow` crate's public operations, the fixture adapter's native seams, and `omnia-testkit` scripted models | Every push (part of `cargo make ci`) |
-| **Composed smoke** | `cargo make test-wasm` | The WASM boundary only: the combined `fixture_adapter.wasm` loads, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the loop reaches the same terminal state as the native test | Scheduled/manual (`.github/workflows/composed.yaml`); per-push CI keeps the `wasm32-wasip2` compile check |
+| **WASM boundary** | `cargo make test-wasm` | The WASM seam only: the combined `fixture_adapter.wasm` loads, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the typed error lift works across the component boundary | Weekly / path-filtered / manual (`.github/workflows/wasm.yaml`); required before release tags; per-push CI keeps the `wasm32-wasip2` compile check |
 | **Live model** | `cargo make test-live` | One ignored native test: the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/slice/prompts/`, `crates/change/prompts/`) or answer-schema changes — never ordinary CI |
 
-Each fact has one owning rung. The native suites own workflow behavior; the composed smoke owns only facts unique to the component boundary; the live test owns only "a real model can do this" — it adds no new workflow assertions. Do not copy an assertion onto another rung for reassurance.
+Each fact has one owning rung. The native suites own workflow behavior; the WASM smoke owns only facts unique to the component boundary; the live test owns only "a real model can do this" — it adds no new workflow assertions. Do not copy an assertion onto another rung for reassurance.
 
 ### The fixture adapter
 
-One test-support package (`harness/fixtures`) implements both adapter axes as ordinary native Rust: controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/change/tests/common/`; the composed smoke reaches the identical core through the combined-world WIT shim (`fixture_adapter.wasm`). Do not add another mock adapter, mock model, or fixture copy — extend the fixture core and let both rungs inherit the behavior.
+One test-support package (`harness/fixtures`) implements both adapter axes as ordinary native Rust: controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/change/tests/common/`; the WASM smoke reaches the identical core through the combined-world WIT shim (`fixture_adapter.wasm`). Do not add another mock adapter, mock model, or fixture copy — extend the fixture core and let both rungs inherit the behavior.
 
 Model doubles come from upstream: `omnia-testkit` owns the scripted/recording harness and runtime hosting. Specify owns only workflow scenario content — the leads, evidence, scripted answers, and assertions.
 
@@ -77,7 +77,7 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 
 - A behavior reducible to a crate API, CLI result, filesystem predicate, validator, compiler, or journal query is a **hard assertion**. It executes automatically on the rung that owns its seam.
 - The live test carries **no semantic grading**: its pass condition is the same deterministic validators the native suites use (coverage, schema gates, provenance completeness, tag checks, lifecycle). A judgment about meaning or usefulness that no deterministic predicate can decide has no automated home in this repository.
-- Runtime wiring belongs to the composed smoke; workflow behavior belongs to the native suites. Name the seam an assertion owns before writing it.
+- Runtime wiring belongs to the WASM smoke; workflow behavior belongs to the native suites. Name the seam an assertion owns before writing it.
 
 ## Test naming
 

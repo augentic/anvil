@@ -9,7 +9,7 @@
 //! like the guest shim's WIT mapping (`src/provider.rs` at the repo
 //! root): the same claim-JSON projection (`payload` / `backing-path`
 //! keys) and the same `BuildReport` widening. Nothing mechanical pins
-//! the two projections together — the composed WASM smoke exercises
+//! the two projections together — the WASM boundary smoke exercises
 //! the real shim path over the same fixture component, so drift
 //! between them surfaces there rather than here.
 

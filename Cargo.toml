@@ -58,7 +58,7 @@ workspace = true
 members = ["crates/*", "harness/*", "tests/framework"]
 # The ordinary test group: crate suites plus the framework-quality
 # package. The root runtime package and the harness packages are
-# explicit opt-ins (`-p specify`, `-p composed`), keeping
+# explicit opt-ins (`-p specify`, `-p wasm`), keeping
 # Wasmtime execution out of the per-commit build.
 default-members = ["crates/*", "harness/fixtures", "tests/framework"]
 
