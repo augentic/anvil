@@ -1,4 +1,4 @@
-//! [`Plan::next_eligible`] (single-step scheduler), the
+//! `Plan::next_eligible` (single-step scheduler), the
 //! [`plan_next_body`] one-shot projection, and the [`claim_next`]
 //! claim kernel behind `specify plan next` and the execute loop.
 
@@ -26,7 +26,7 @@ impl Plan {
     ///
     /// An unknown `depends_on` target is treated as "not done", so the
     /// entry is not eligible. Orphan-reference diagnostics belong to
-    /// [`Plan::validate`].
+    /// `Plan::validate`.
     #[must_use]
     pub(crate) fn next_eligible(&self) -> Option<&Entry> {
         if self.entries.iter().any(|c| c.status == Status::InProgress) {
@@ -130,7 +130,7 @@ pub struct NextBody {
 ///
 /// - [`Error::Validation`] `plan-structural-errors` when the plan has
 ///   blocking validate findings or a dependency cycle.
-/// - Whatever [`Plan::advance_next`] surfaces (in practice unreachable —
+/// - Whatever `Plan::advance_next` surfaces (in practice unreachable —
 ///   `next_eligible` only selects `Pending` entries).
 pub fn plan_next_body(
     resolver: &impl Resolver, plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig,

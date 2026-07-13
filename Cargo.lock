@@ -2050,6 +2050,7 @@ dependencies = [
  "schema",
  "serde-saphyr",
  "serde_json",
+ "slice",
  "tempfile",
  "tokio",
 ]

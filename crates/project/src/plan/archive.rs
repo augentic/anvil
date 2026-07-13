@@ -18,6 +18,12 @@ impl Plan {
     /// unless `force`. Destination collisions error before any file
     /// moves. Returns the archived plan path plus `Some(dir)` iff a
     /// working directory or brief was co-moved.
+    ///
+    /// # Errors
+    ///
+    /// `plan-has-outstanding-work` on non-`Done` entries without
+    /// `force`, `already-exists` on a destination collision, plus load
+    /// and move I/O failures.
     pub fn archive(
         path: &Path, change_brief_path: &Path, archive_dir: &Path, force: bool, now: Timestamp,
     ) -> Result<(PathBuf, Option<PathBuf>), Error> {

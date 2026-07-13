@@ -1,6 +1,8 @@
 //! `Plan::transition` and `Plan::transition_lifecycle` — the only
 //! writers of `Entry::status` for `done` and `Plan::lifecycle` for
-//! `approved`. The legal edges are `Pending → InProgress` (written by
+//! `approved`.
+//!
+//! The legal edges are `Pending → InProgress` (written by
 //! `plan next`, never here) and `InProgress → Done` per entry, plus
 //! `Pending → Approved` plan-level (operator stamp at Gate 1, workflow
 //! §The Plan / §Writer ownership; `/spec:plan` MUST NOT call it).

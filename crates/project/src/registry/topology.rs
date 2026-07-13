@@ -112,7 +112,7 @@ pub struct Surface {
     pub domain: String,
     /// Requirement-block headings (`Requirement.name`, inline tag
     /// stripped) in `REQ-NNN` id order, capped at
-    /// [`super::identity::SURFACE_TITLE_CAP`].
+    /// `super::identity::SURFACE_TITLE_CAP`.
     pub requirements: Vec<String>,
     /// Count of requirement titles elided past the cap. Absent when
     /// the domain fits within the cap.

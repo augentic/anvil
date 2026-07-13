@@ -14,7 +14,7 @@ use crate::config::Layout;
 /// `pending` entry (what `plan next` would claim), else `drained` /
 /// `stop stuck`. The per-entry decision — slot-aware slice lifecycle
 /// plus (for the active entry) the folded claim-window journal facts —
-/// is the shared [`resolve_entry`] execution kernel; pre-claim
+/// is the shared `resolve_entry` execution kernel; pre-claim
 /// candidates skip the journal overlay (nothing has run under the
 /// current claim; stale same-name events from earlier plans must not
 /// classify).

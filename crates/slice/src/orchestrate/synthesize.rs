@@ -32,8 +32,8 @@ pub struct SynthesizeRequest<'a> {
 /// Run the synthesis judgment leg with the guidance brief read
 /// through `seam.guidance(target)`.
 ///
-/// Assembles the inputs envelope ([`inputs`]) and runs
-/// the [`judgment::synthesize::synthesize`] leg; per the judgment-leg
+/// Assembles the inputs envelope (`inputs`) and runs
+/// the `judgment::synthesize::synthesize` leg; per the judgment-leg
 /// contract, the caller still owns staging and persisting the
 /// synthesized artifacts and the `slice.synthesize.*` journal bracket
 /// (the refine loop's concern).

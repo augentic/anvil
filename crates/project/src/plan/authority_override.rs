@@ -1,5 +1,6 @@
-//! `plan.yaml.slices[].authority-override` mutation engine (workflow
-//! `kind: schema` evaluator contract). The CLI handlers ([`crate::plan::Plan::amend`] siblings in
+//! `plan.yaml.slices[].authority-override` mutation engine.
+//!
+//! The CLI handlers ([`crate::plan::Plan::amend`] siblings in
 //! the `specify` runtime binary) parse `--authority-override` /
 //! `--clear-authority-override` / `--clear-authority-overrides`
 //! flags into the typed `(slice, kind, source)` tuples this

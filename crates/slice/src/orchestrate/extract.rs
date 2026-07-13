@@ -33,6 +33,12 @@ pub struct ExtractOutcome {
 /// The Evidence document is schema-gated *before* it becomes visible
 /// to synthesis; a validation failure returns early with nothing on
 /// the persisted path.
+///
+/// # Errors
+///
+/// `source-unknown` for an unbound source key, seam and schema-gate
+/// failures from the adapter's extract leg, plus plan-load and
+/// persistence I/O failures.
 pub async fn extract(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str, lead: &str,
     slice: &str,

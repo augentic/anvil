@@ -74,9 +74,11 @@ fn is_ascii_digits(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// List every `*.md` file directly under `dir`, sorted by path for
-/// deterministic iteration. The caller is responsible for confirming the
-/// directory exists (an absent `decisions/` is an opt-out, not an error).
+/// List every `*.md` file directly under `dir`, sorted by path.
+///
+/// Sorting keeps iteration deterministic. The caller is responsible for
+/// confirming the directory exists (an absent `decisions/` is an
+/// opt-out, not an error).
 ///
 /// # Errors
 ///

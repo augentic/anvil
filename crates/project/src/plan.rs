@@ -1,3 +1,5 @@
+//! The `plan.yaml` data model and its state machine.
+//!
 //! On-disk representation of `plan.yaml` and the in-memory [`Plan`]
 //! state machine that wraps it, plus the four `plan validate` health
 //! diagnostics (`doctor`). [`Plan::transition`] is the only path that

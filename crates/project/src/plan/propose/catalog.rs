@@ -67,7 +67,7 @@ pub fn build_catalog(discovery: &Discovery) -> LeadCatalog {
 /// Assemble the `kind: request` envelope from a surveyed `discovery.md`
 /// and an already-resolved project topology.
 ///
-/// `leads[]` is one [`LeadCatalogEntry`] per `discovery.leads()` row,
+/// `leads[]` is one `LeadCatalogEntry` per `discovery.leads()` row,
 /// carrying `source`, `lead`, and `synopsis`.
 /// `projects` (produced by [`super::topology::resolve_topology`]) is
 /// embedded verbatim.

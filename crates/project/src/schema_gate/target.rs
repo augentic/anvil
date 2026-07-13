@@ -19,8 +19,12 @@ use super::support::{validate_parsed_json, validate_with_registry};
 /// shape before handoff. The request carries no `$ref`, so the simple
 /// cached-validator path (as in [`super::validate_plan_yaml`])
 /// suffices. Parsing through [`serde_saphyr::from_str`] accepts both
-/// the YAML the CLI persists and a JSON instance. Failures use
-/// `target-build-request-schema` on the validation exit path.
+/// the YAML the CLI persists and a JSON instance.
+///
+/// # Errors
+///
+/// [`error::Error::Validation`] with `target-build-request-schema` on
+/// the validation exit path.
 pub fn validate_request(content: &str) -> Result<()> {
     validate_parsed_json(
         content,
@@ -44,8 +48,12 @@ const DIAGNOSTIC_SCHEMA_URL: &str =
 /// `diagnostic.schema.json` by a relative URI, so the validator is built
 /// through a registry that pins [`DIAGNOSTIC_JSON_SCHEMA`] under its
 /// `$id` (`DIAGNOSTIC_SCHEMA_URL`) — the same registry pattern the
-/// synthesis validator uses for the relative `model` `$ref`. Failures
-/// use `target-build-report-schema` on the validation exit path.
+/// synthesis validator uses for the relative `model` `$ref`.
+///
+/// # Errors
+///
+/// [`error::Error::Validation`] with `target-build-report-schema` on
+/// the validation exit path.
 pub fn validate_report(content: &str) -> Result<()> {
     validate_with_registry(
         content,

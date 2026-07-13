@@ -91,11 +91,13 @@ pub fn doctor(
 }
 
 /// Claim-time gate subset: the structural `Plan::validate` findings
-/// plus dependency cycles — what `plan next` (and the execute loop's
-/// per-phase claim) must be clean of before advancing an entry.
-/// Deliberately registry-free: claiming works in registry-less projects
-/// and must stay read-only. Cycle findings always block, so callers
-/// gate on `has_blocking` over the returned set.
+/// plus dependency cycles.
+///
+/// This is what `plan next` (and the execute loop's per-phase claim)
+/// must be clean of before advancing an entry. Deliberately
+/// registry-free: claiming works in registry-less projects and must
+/// stay read-only. Cycle findings always block, so callers gate on
+/// `has_blocking` over the returned set.
 #[must_use]
 pub fn claim_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
     let mut out = plan.validate(Some(slices_dir), None);
@@ -104,10 +106,12 @@ pub fn claim_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
 }
 
 /// Author-time gate: the full [`doctor`] sweep against the freshly
-/// written plan — the post-write check the guest `plan author`
-/// orchestration runs before exiting at `pending`. Identical to the
-/// `plan validate` findings minus the verb-only registry-shape and
-/// topology-cache staleness surfaces (which need the verb's provider).
+/// written plan.
+///
+/// The post-write check the guest `plan author` orchestration runs
+/// before exiting at `pending`. Identical to the `plan validate`
+/// findings minus the verb-only registry-shape and topology-cache
+/// staleness surfaces (which need the verb's provider).
 ///
 /// # Errors
 ///
@@ -122,10 +126,12 @@ pub fn author_gate(
 }
 
 /// The complete `plan validate` report: the [`doctor`] sweep plus the
-/// verb-only surfaces — the `registry-shape` finding when the registry
-/// fails to load, and the workspace topology-cache staleness findings
-/// when it loads. Finding order is stable: doctor findings first, then
-/// `registry-shape`, then staleness.
+/// verb-only surfaces.
+///
+/// The verb-only surfaces are the `registry-shape` finding when the
+/// registry fails to load, and the workspace topology-cache staleness
+/// findings when it loads. Finding order is stable: doctor findings
+/// first, then `registry-shape`, then staleness.
 pub fn full_report(
     resolver: &impl crate::adapter::Resolver, plan: &Plan, layout: crate::config::Layout<'_>,
 ) -> Vec<Diagnostic> {

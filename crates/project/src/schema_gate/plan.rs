@@ -30,8 +30,11 @@ pub fn validate_plan(plan: &Plan) -> Result<()> {
     )
 }
 
-/// Validate raw `plan.yaml` content before typed deserialisation,
-/// returning [`error::Error::Validation`] on malformed input.
+/// Validate raw `plan.yaml` content before typed deserialisation.
+///
+/// # Errors
+///
+/// [`error::Error::Validation`] on malformed input.
 pub fn validate_plan_yaml(content: &str) -> Result<()> {
     validate_parsed_json(
         content,

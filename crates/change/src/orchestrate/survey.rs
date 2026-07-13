@@ -30,6 +30,11 @@ pub struct SurveyedSource {
 /// schema-gated before it becomes visible, merged, and journalled.
 /// The first failure aborts the fan-out with earlier sources already
 /// merged.
+///
+/// # Errors
+///
+/// Plan-load failures plus whatever [`survey`] surfaces for the first
+/// failing binding.
 pub async fn survey_all(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
@@ -42,9 +47,17 @@ pub async fn survey_all(
 }
 
 /// Survey one `plan.yaml` source binding (`specify source survey
-/// <source>`) and merge its lead set into `discovery.md`: resolve
-/// `source` against `plan.yaml.sources.<key>`, optionally guard the
-/// plan name, then dispatch → attribute → validate → merge → journal.
+/// <source>`) and merge its lead set into `discovery.md`.
+///
+/// Resolves `source` against `plan.yaml.sources.<key>`, optionally
+/// guards the plan name, then dispatch → attribute → validate → merge
+/// → journal.
+///
+/// # Errors
+///
+/// `source-unknown` for an unbound source key, an `--plan` argument
+/// error when the guard fails, seam and schema-gate failures from the
+/// adapter's survey leg, plus plan-load and merge I/O failures.
 pub async fn survey(
     seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str,
     plan_guard: Option<&str>,

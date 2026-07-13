@@ -27,14 +27,22 @@ pub struct MergeOutcome {
     pub archive_path: PathBuf,
 }
 
-/// Merge one built slice (`specify slice merge run`): target preflight
-/// gate → deterministic [`slice_merge::commit`] → plan entry `done` →
-/// target postflight gate, with each gate's report schema-gated and
-/// persisted.
+/// Merge one built slice (`specify slice merge run`).
+///
+/// Runs target preflight gate → deterministic `slice_merge::commit`
+/// → plan entry `done` → target postflight gate, with each gate's
+/// report schema-gated and persisted.
 ///
 /// A preflight failure aborts with the slice still `built`; a
 /// postflight failure (`target-merge-postflight-failed`) is terminal
 /// but non-rollback — the merge stands.
+///
+/// # Errors
+///
+/// Completion-gate and preflight failures (slice not `built`,
+/// `target-merge-preflight-failed`), the terminal
+/// `target-merge-postflight-failed`, plus commit, plan-stamp, and
+/// archive I/O failures.
 pub async fn merge<T: TargetSeam>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {

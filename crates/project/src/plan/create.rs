@@ -1,4 +1,4 @@
-//! Plan scaffolding: [`Plan::init`] for an empty plan and
+//! Plan scaffolding: `Plan::init` for an empty plan and
 //! [`Plan::create`] for a single-entry append.
 
 use std::collections::BTreeMap;

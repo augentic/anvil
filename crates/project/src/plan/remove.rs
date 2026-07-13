@@ -15,7 +15,7 @@ impl Plan {
     }
 
     /// Remove the entry named `name`. Allowed only while
-    /// [`Plan::is_replaceable`] holds.
+    /// `Plan::is_replaceable` holds.
     ///
     /// # Errors
     ///

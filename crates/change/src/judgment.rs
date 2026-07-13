@@ -6,4 +6,4 @@
 pub mod propose;
 pub mod prose;
 
-pub(crate) use project::judgment::{render_json, schema_gated};
+pub use project::judgment::{render_json, schema_gated};

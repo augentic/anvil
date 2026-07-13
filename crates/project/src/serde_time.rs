@@ -35,7 +35,6 @@ pub mod rfc3339_opt {
     /// # Errors
     ///
     /// Propagates the serializer's failure.
-    #[expect(clippy::ref_option, reason = "serde `with` adapters receive a reference to the field")]
     pub fn serialize<S: Serializer>(
         value: &Option<Timestamp>, serializer: S,
     ) -> Result<S::Ok, S::Error> {

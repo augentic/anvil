@@ -9,7 +9,7 @@
 //!
 //! This module owns the wire types; the per-entry decision kernel
 //! lives in the shared `core::execution` projection and the body
-//! assembly in [`project`].
+//! assembly in `project`.
 
 use serde::Serialize;
 

@@ -1,4 +1,4 @@
-//! [`Plan::validate`] and the per-check helpers it composes. Findings
+//! `Plan::validate` and the per-check helpers it composes. Findings
 //! accumulate (no check short-circuits another); order is structural
 //! checks first, then consistency checks against the registry.
 //!
@@ -133,6 +133,7 @@ fn duplicate_names(changes: &[Entry]) -> Vec<Diagnostic> {
 /// Every entry becomes a node (in declaration order). For each
 /// `entry.depends_on` target that names another entry, an edge runs
 /// from the dependency node to `entry`.
+#[must_use]
 pub fn dependency_graph(entries: &[Entry]) -> DiGraph<&str, ()> {
     let mut graph: DiGraph<&str, ()> = DiGraph::new();
     let mut idx = HashMap::new();

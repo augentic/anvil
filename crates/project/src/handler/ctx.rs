@@ -67,7 +67,6 @@ impl Ctx {
     // injected test clock has one named home and handler call sites
     // stay uniform (`ctx.now()`).
     #[must_use]
-    #[expect(clippy::unused_self, reason = "method form reserves a home for an injected clock")]
     pub fn now(&self) -> Timestamp {
         Timestamp::now()
     }

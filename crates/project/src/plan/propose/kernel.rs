@@ -47,10 +47,10 @@ impl Plan {
     /// validation (`validate_proposal_json`) at the CLI boundary, so this
     /// method enforces only the *semantic* invariants the schema cannot
     /// express. The checks fire in this order, returning the first
-    /// violation: replaceable gate (`plan-reconcile-plan-not-replaceable`); lead-orphan (`plan-reconcile-lead-orphan`); per-slice same-source fusion (`plan-reconcile-slice-source-collision`); total lead coverage (`lead-coverage-orphan`); project auto-bind / orphan (`plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`); slice-name kebab-case + collision (`plan-reconcile-slice-name-invalid`, `plan-reconcile-slice-name-collision`); `depends-on` cycle (`plan-reconcile-depends-on-cycle`); and finally a backstop [`Plan::validate`] over the projected entries that rolls the plan back on any blocking finding.
+    /// violation: replaceable gate (`plan-reconcile-plan-not-replaceable`); lead-orphan (`plan-reconcile-lead-orphan`); per-slice same-source fusion (`plan-reconcile-slice-source-collision`); total lead coverage (`lead-coverage-orphan`); project auto-bind / orphan (`plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`); slice-name kebab-case + collision (`plan-reconcile-slice-name-invalid`, `plan-reconcile-slice-name-collision`); `depends-on` cycle (`plan-reconcile-depends-on-cycle`); and finally a backstop `Plan::validate` over the projected entries that rolls the plan back on any blocking finding.
     ///
     /// On success `self.entries` is the projected slice set in response
-    /// order and the returned [`ProposeOutcome`] carries the slice names
+    /// order and the returned `ProposeOutcome` carries the slice names
     /// for the caller's `plan.reconcile.completed` journal event.
     ///
     /// # Errors

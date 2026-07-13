@@ -67,7 +67,7 @@ pub enum ExecuteOutcome {
 ///
 /// The bound target adapter resolves once, inside the loop's own
 /// setup (after the workspace refusal, before the marker) — its
-/// declared inputs and its name feed every [`super::build`] dispatch,
+/// declared inputs and its name feed every [`slice::orchestrate::build`] dispatch,
 /// so the declared inputs and the seam routing come from one identity.
 /// `tree` names the snapshot builds apply against (today's deployments
 /// share one live tree).

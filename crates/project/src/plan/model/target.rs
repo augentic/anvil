@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 /// Wire form is the single kebab string `name@<semver>` (e.g.
 /// `omnia@1.0.0`), with `name` matching `^[a-z][a-z0-9-]*$` and the
 /// version an exact semver. Deserialisation goes
-/// through [`TargetRef::parse`] so any payload that survives serde
+/// through `TargetRef::parse` so any payload that survives serde
 /// already has the `@<semver>` suffix in valid form. Components are
 /// private so every `TargetRef` value satisfies the wire regex by
 /// construction.
@@ -69,7 +69,7 @@ impl<'de> Deserialize<'de> for TargetRef {
     }
 }
 
-/// Error returned by [`TargetRef::parse`] when the input does not
+/// Error returned by `TargetRef::parse` when the input does not
 /// match the `name@<semver>` wire form.
 ///
 /// Carries the offending input verbatim so callers can surface it in

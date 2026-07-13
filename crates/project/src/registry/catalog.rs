@@ -1,6 +1,6 @@
 //! Parser and types for `registry.yaml` — the platform-level catalogue
 //! of peer projects and their adapters. Shape is enforced by
-//! [`Registry::validate_shape`] (in [`crate::registry::validate`]).
+//! `Registry::validate_shape` (in [`crate::registry::validate`]).
 
 use std::path::{Path, PathBuf};
 
@@ -120,7 +120,7 @@ impl Registry {
     ///   cannot be read.
     /// - [`Error::Diag`] `registry-malformed` if the YAML is invalid or
     ///   carries unknown keys.
-    /// - The first shape violation from [`Registry::validate_shape`]
+    /// - The first shape violation from `Registry::validate_shape`
     ///   (wrong `version`, kebab-case / required-field / duplicate-name).
     pub fn load(project_dir: &Path) -> Result<Option<Self>, Error> {
         let path = Self::path(project_dir);
@@ -146,7 +146,7 @@ impl RegistryProject {
     /// resolved filesystem path (`.` or a repo-relative path), as opposed
     /// to a `git clone` remote.
     ///
-    /// Callers may assume [`Registry::validate_shape`] has already
+    /// Callers may assume `Registry::validate_shape` has already
     /// accepted the URL — this predicate mirrors its classification
     /// rules.
     #[must_use]

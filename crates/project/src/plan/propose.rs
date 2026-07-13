@@ -9,13 +9,13 @@
 //! focused submodules, re-exported here so the public path stays
 //! `…::core::propose::<item>`:
 //!
-//! - [`wire`] — the serde DTOs for both envelope kinds.
-//! - [`catalog`] — the `(source, lead)` identity oracle ([`LeadCatalog`])
-//!   plus the pure [`build_request`] / [`build_catalog`] assembly.
-//! - [`topology`] — [`resolve_topology`], the only filesystem access:
+//! - `wire` — the serde DTOs for both envelope kinds.
+//! - `catalog` — the `(source, lead)` identity oracle (`LeadCatalog`)
+//!   plus the pure [`build_request`] / `build_catalog` assembly.
+//! - `topology` — [`resolve_topology`], the only filesystem access:
 //!   it reads the workspace topology cache or resolves the regular
 //!   project's target adapter to its canonical `name@vN` ref.
-//! - [`kernel`] — the `Plan::propose_from` projection kernel and its
+//! - `kernel` — the `Plan::propose_from` projection kernel and its
 //!   semantic invariants.
 
 mod catalog;
