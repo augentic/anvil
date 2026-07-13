@@ -124,23 +124,6 @@ fn offence(name: &str, spec: &Value) -> Option<String> {
     let package =
         table.and_then(|table| table.get("package")).and_then(Value::as_str).unwrap_or(name);
     let effective = package.replace('_', "-");
-    // The engine's own examples adapter lib (`examples/`) is the
-    // intentional test double. Its package name is `examples` with
-    // lib name `adapter`, which collides with the `adapter` shared
-    // crate in specify-adapters; allow the in-tree path (and member
-    // `workspace = true` re-exports — the workspace root is scanned
-    // separately) while still catching every other `adapter`
-    // dependency via the name / repository-source rules below.
-    let harness_adapter =
-        table.and_then(|table| table.get("path")).and_then(Value::as_str).is_some_and(|path| {
-            let path = path.replace('\\', "/");
-            path == "examples" || path.ends_with("/examples") || path.contains("examples/")
-        }) || (effective == "adapter"
-            && table.and_then(|table| table.get("workspace")).and_then(Value::as_bool)
-                == Some(true));
-    if harness_adapter {
-        return None;
-    }
     if ADAPTER_CRATES.contains(&effective.as_str()) {
         return Some(format!("depends on the concrete adapter crate `{effective}`"));
     }
@@ -233,20 +216,15 @@ fn bad_fixtures() {
     );
     assert!(findings(dir.path()).is_empty());
 
-    // The engine's own examples adapter is allowed by path even though its
-    // lib name collides with specify-adapters' shared `adapter` crate.
-    // Member manifests that only re-export it via `workspace = true` are
-    // allowed too — the workspace root is scanned for the path itself.
+    // The in-tree testkit crate (the fixture adapter core's home) is an
+    // ordinary workspace member; its name collides with nothing in
+    // specify-adapters and needs no allowance.
     let dir = tempfile::tempdir().expect("tempdir");
     write(
         dir.path(),
         "Cargo.toml",
-        "[workspace.dependencies]\nadapter = { path = \"examples\", package = \"examples\" }\n",
+        "[workspace.dependencies]\ntestkit = { path = \"crates/testkit\" }\n",
     );
-    assert!(findings(dir.path()).is_empty());
-
-    let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "crates/change/Cargo.toml", "[dev-dependencies]\nadapter.workspace = true\n");
     assert!(findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");

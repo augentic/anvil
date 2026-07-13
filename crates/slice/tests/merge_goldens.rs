@@ -2,11 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "../../project/tests/common/mod.rs"]
-mod common;
-
-use common::{Project, run};
 use slice::handlers::{Preview, PreviewInput};
+use testkit::{ScriptedProvider, run};
 
 const MERGE_CASES: &[&str] = &[
     "spec-single-req",
@@ -21,10 +18,10 @@ const MERGE_CASES: &[&str] = &[
 const VALIDATION_CASES: &[&str] = &["spec-validation-ok", "spec-validation-fails"];
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
 
-fn stage(project: &Project, case: &Path, delta: &str) {
+fn stage(project: &ScriptedProvider, case: &Path, delta: &str) {
     let baseline = case.join("baseline.md");
     if baseline.is_file() {
         let destination = project.root.join(".specify/specs").join(delta);
@@ -53,11 +50,11 @@ fn assert_golden(path: &Path, actual: &str) {
 #[tokio::test]
 async fn merged_outputs() {
     for name in MERGE_CASES {
-        let project = Project::initialised();
+        let project = ScriptedProvider::initialised();
         let case = fixtures().join(name);
         stage(&project, &case, "golden");
 
-        let result = run::<Preview, _>(
+        let result = run::<Preview, _, _>(
             &project,
             PreviewInput {
                 name: "golden".to_string(),
@@ -84,11 +81,11 @@ async fn merged_outputs() {
 #[tokio::test]
 async fn validation_outputs() {
     for name in VALIDATION_CASES {
-        let project = Project::initialised();
+        let project = ScriptedProvider::initialised();
         let case = fixtures().join(name);
         stage(&project, &case, "FAIL");
 
-        let result = run::<Preview, _>(
+        let result = run::<Preview, _, _>(
             &project,
             PreviewInput {
                 name: "golden".to_string(),

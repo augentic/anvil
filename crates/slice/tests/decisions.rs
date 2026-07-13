@@ -3,10 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-#[path = "../../project/tests/common/mod.rs"]
-mod common;
-
-use common::{Project, report_rule_ids, run};
+use testkit::{ScriptedProvider, report_rule_ids, run};
 
 const BODY: &str = "# Choice\n\n## Context\n\nContext.\n\n## Decision\n\nDecision.\n\n## Consequences\n\nConsequences.\n";
 
@@ -16,7 +13,7 @@ fn write_decision(path: &Path, frontmatter: &str) {
 
 #[tokio::test]
 async fn orphan_supersede_reported() {
-    let project = Project::initialised();
+    let project = ScriptedProvider::initialised();
     let decisions = project.root.join(".specify/slices/demo/decisions");
     fs::create_dir_all(&decisions).expect("create slice decisions");
     write_decision(
@@ -24,7 +21,7 @@ async fn orphan_supersede_reported() {
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-9999]\n",
     );
 
-    let err = run::<slice::handlers::Validate, _>(
+    let err = run::<slice::handlers::Validate, _, _>(
         &project,
         slice::handlers::ValidateInput {
             name: "demo".to_string(),
@@ -39,7 +36,7 @@ async fn orphan_supersede_reported() {
 
 #[tokio::test]
 async fn merge_promotes_and_supersedes() {
-    let project = Project::initialised();
+    let project = ScriptedProvider::initialised();
     let slice = project.root.join(".specify/slices/demo");
     let staged = slice.join("decisions");
     let baseline = project.root.join(".specify/decisions");
@@ -56,7 +53,7 @@ async fn merge_promotes_and_supersedes() {
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-0001]\n",
     );
 
-    let body = run::<slice::handlers::MergeRun, _>(
+    let body = run::<slice::handlers::MergeRun, _, _>(
         &project,
         slice::handlers::MergeRunInput {
             name: "demo".to_string(),

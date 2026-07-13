@@ -35,7 +35,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `examples/native/adapter.rs` is the only adapter double; `examples/wasm/adapter.rs` is its WIT component example. Do not add another mock adapter or examples-adapter copy.
+- `testkit::adapter` (in `crates/testkit`) is the only adapter double; `examples/wasm/adapter.rs` is its WIT component example. Do not add another mock adapter or fixture-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance

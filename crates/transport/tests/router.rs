@@ -5,82 +5,21 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use omnia_guest::Model;
 use omnia_guest::api::invoke::Invoker;
-use omnia_guest::model::{Reply, Request};
-use project::seam::{self, SourceSeam, TargetSeam, WorkingTree};
 use tempfile::TempDir;
+use testkit::ScriptedProvider;
 
-#[derive(Clone, Debug)]
-struct TestProvider {
-    root: PathBuf,
-}
-
-impl project::handler::Anchor for TestProvider {
-    fn project_root(&self) -> &Path {
-        &self.root
-    }
-}
-
-impl project::adapter::Resolver for TestProvider {
-    fn resolve_source(
-        &self, _: &project::adapter::AdapterRef, _: &Path,
-    ) -> Result<project::adapter::ResolvedSource, error::Error> {
-        unreachable!("router grammar tests do not resolve adapters")
-    }
-
-    fn resolve_target(
-        &self, _: &project::adapter::AdapterRef, _: &Path,
-    ) -> Result<project::adapter::ResolvedTarget, error::Error> {
-        unreachable!("router grammar tests do not resolve adapters")
-    }
-}
-
-impl project::adapter::Hydrator for TestProvider {
-    async fn fetch(&self, _: &str) -> Result<Vec<u8>, error::Error> {
-        unreachable!("router grammar tests do not hydrate adapters")
-    }
-}
-
-impl Model for TestProvider {
-    async fn create(&self, _request: Request) -> Result<Reply, omnia_guest::model::Error> {
-        unreachable!("router grammar tests do not invoke judgment")
-    }
-}
-
-impl SourceSeam for TestProvider {
-    async fn survey(&self, _id: String) -> Result<Vec<seam::Lead>, seam::Error> {
-        unreachable!("router grammar tests do not invoke adapters")
-    }
-
-    async fn extract(&self, _id: String, _lead: seam::Lead) -> Result<seam::Evidence, seam::Error> {
-        unreachable!("router grammar tests do not invoke adapters")
-    }
-}
-
-impl TargetSeam for TestProvider {
-    async fn guidance(&self, _id: String) -> Result<String, seam::Error> {
-        unreachable!("router grammar tests do not invoke adapters")
-    }
-
-    async fn build(
-        &self, _id: String, _slice: String, _inputs: Vec<seam::Input>, _tree: WorkingTree,
-    ) -> Result<slice::BuildReport, seam::Error> {
-        unreachable!("router grammar tests do not invoke adapters")
-    }
-
-    async fn merge(
-        &self, _id: String, _slice: String, _phase: seam::MergePhase, _tree: WorkingTree,
-    ) -> Result<slice::BuildReport, seam::Error> {
-        unreachable!("router grammar tests do not invoke adapters")
-    }
-}
-
+// Grammar and parity coverage only: no test dispatches judgment or an
+// adapter seam, so the scripted provider's empty script never runs.
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<TestProvider, transport::command::Globals> {
-    transport::command::router(Invoker::new("specify", TestProvider { root: root.into() }))
-        .expect("router")
+) -> omnia_guest::api::command::Router<ScriptedProvider, transport::command::Globals> {
+    let root = root.into();
+    transport::command::router(Invoker::new(
+        "specify",
+        ScriptedProvider::scripted_at(&root, Vec::new()),
+    ))
+    .expect("router")
 }
 
 #[test]
@@ -93,9 +32,7 @@ fn http_parity() {
         .collect();
     let http_types: BTreeSet<TypeId> = transport::http::router(Invoker::new(
         "specify",
-        TestProvider {
-            root: PathBuf::from("."),
-        },
+        ScriptedProvider::scripted_at(Path::new("."), Vec::new()),
     ))
     .inventory()
     .iter()

@@ -1,6 +1,6 @@
 [package]
 name = "examples"
-description = "Specify examples — native adapter lib, live-model trial, WASM adapter guest, and boundary smoke"
+description = "Specify examples — live-model trial, WASM adapter guest, and boundary smoke"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -9,20 +9,14 @@ repository.workspace = true
 rust-version.workspace = true
 autotests = false
 
-# [lib]
-# name = "adapter"
-# path = "native/adapter.rs"
-
 # Host runners (wasm-smoke, live-model) need Omnia/Wasmtime. Keep them
-# behind the `host` feature so ordinary consumers of the adapter lib —
-# notably `change` integration tests — never pull that graph.
+# behind the `host` feature so the default wasm32 build carries only
+# the guest graph.
 [features]
 host = [
     "dep:anyhow",
     "dep:artifacts",
     "dep:change",
-    "dep:diagnostics",
-    "dep:error",
     "dep:omnia",
     "dep:omnia-cursor",
     "dep:omnia-guest",
@@ -34,8 +28,8 @@ host = [
     "dep:serde",
     "dep:serde_json",
     "dep:serde-saphyr",
-    "dep:slice",
     "dep:tempfile",
+    "dep:testkit",
     "dep:tokio",
     "dep:toml",
 ]
@@ -44,8 +38,6 @@ host = [
 anyhow = { workspace = true, optional = true }
 artifacts = { workspace = true, optional = true }
 change = { workspace = true, optional = true }
-diagnostics = { workspace = true, optional = true }
-error = { workspace = true, optional = true }
 omnia = { workspace = true, optional = true }
 omnia-cursor = { workspace = true, optional = true }
 omnia-guest = { workspace = true, optional = true }
@@ -57,15 +49,18 @@ project = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 serde-saphyr = { workspace = true, optional = true }
-slice = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
+testkit = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = ["macros", "rt-multi-thread"] }
 toml = { workspace = true, optional = true }
 
+# The wasm32 guest maps `testkit::adapter` — the dependency-free
+# fixture adapter core is all testkit compiles to on wasm32.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 omnia-guest.workspace = true
 omnia-wasi-http.workspace = true
 serde_json.workspace = true
+testkit.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
 
@@ -86,7 +81,3 @@ required-features = ["host"]
 name = "live-model"
 path = "native/live.rs"
 required-features = ["host"]
-
-[[example]]
-name = "adapter-native"
-path = "native/adapter.rs"

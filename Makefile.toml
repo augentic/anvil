@@ -1,6 +1,8 @@
 # Install: `cargo install cargo-make`
 # Help: https://sagiegurari.github.io/cargo-make/
 
+# extend = [{ path = "examples/Makefile.toml" }]
+
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
 
@@ -79,7 +81,7 @@ cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
 env = { RUSTFLAGS = "-Dwarnings" }
 
 # Test — the ordinary suite over the default workspace members
-# (crates/*, examples adapter lib, tests); the WASM boundary
+# (crates/*, examples, tests); the WASM boundary
 # smoke is opt-in via `cd examples && cargo make test-wasm`.
 [tasks.test]
 command = "cargo"

@@ -1,8 +1,7 @@
 //! Target platform gates through the public scaffold operation.
 
-mod common;
-
-use common::{Project, run, stage_dev_component};
+use testkit::env::stage_dev_component;
+use testkit::{ScriptedProvider, run};
 
 #[tokio::test]
 async fn vectis_platform_requirements() {
@@ -13,9 +12,9 @@ async fn vectis_platform_requirements() {
     ];
 
     for (platforms, expected) in cases {
-        let project = Project::bare();
+        let project = ScriptedProvider::bare();
         stage_dev_component(&project.root, "vectis");
-        let err = run::<project::init::handlers::Init, _>(
+        let err = run::<project::init::handlers::Init, _, _>(
             &project,
             project::init::handlers::InitInput {
                 adapter: Some("vectis".to_string()),

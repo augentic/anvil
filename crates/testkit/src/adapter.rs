@@ -1,8 +1,9 @@
-//! The Specify-owned harness adapter's native core: one deterministic,
-//! model-free library implementing both `specify:adapter` axes for
-//! engine tests. Its types mirror the WIT `specify:adapter/types`
-//! records so both consumers (the native test provider and the
-//! WASM adapter component) stay thin mapping layers.
+//! The Specify-owned harness adapter's native core.
+//!
+//! One deterministic, model-free library implementing both
+//! `specify:adapter` axes for engine tests. Its types mirror the WIT
+//! `specify:adapter/types` records so both consumers (the native test
+//! provider and the WASM adapter component) stay thin mapping layers.
 //!
 //! Behaviour keys off the routed adapter id — the profile catalog
 //! lives in `examples/README.md`. Builds and merge gates also
@@ -10,6 +11,8 @@
 //! [`FAIL_MERGE_PREFLIGHT_MARKER`] / [`FAIL_MERGE_POSTFLIGHT_MARKER`]
 //! files so interruption tests can park and resume without rebinding.
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use metadata::metadata_json;
 pub use source::{Authority, Backing, Claim, ClaimKind, Evidence, Lead, extract, survey};
 pub use targets::{
     BUILD_DIR, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER, Input,
@@ -513,5 +516,72 @@ mod targets {
     #[must_use]
     pub fn build_artifact_path(root: &Path, slice: &str) -> PathBuf {
         root.join(BUILD_DIR).join(format!("{slice}.md"))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod metadata {
+    use serde_json::json;
+
+    use super::targets::{Platform, target_platforms};
+
+    /// The deterministic resolve-time metadata JSON a routed adapter id
+    /// answers.
+    ///
+    /// This is the one id-keyed convention behind both the direct
+    /// fixture resolution and the stub metadata runner fed to the
+    /// shipped `resolver::Component`. The special identities:
+    ///
+    /// - `target:demo-target` — a `specify` floor newer than any real
+    ///   binary (the `adapter-cli-too-old` gate);
+    /// - `target:bad-floor` — an unparseable floor
+    ///   (`adapter-floor-malformed`);
+    /// - `target:vectis` — declared build inputs plus the full
+    ///   three-platform capability;
+    /// - ids matching a [`target_platforms`] profile (`limited`,
+    ///   `platforms`) — that profile's capability;
+    /// - anything else — `{}` (no floor, no inputs, no capability).
+    #[must_use]
+    pub fn metadata_json(adapter_id: &str) -> String {
+        match adapter_id {
+            "target:demo-target" => r#"{"specify-floor":"999.0.0"}"#.to_string(),
+            "target:bad-floor" => r#"{"specify-floor":"v1"}"#.to_string(),
+            "target:vectis" => json!({
+                "inputs": [
+                    { "path": "tokens.yaml", "required": true },
+                    { "path": "assets.yaml", "required": false },
+                ],
+                "platforms": {
+                    "required": true,
+                    "allowed": ["core", "ios", "android"],
+                    "default": ["core", "ios", "android"],
+                },
+            })
+            .to_string(),
+            id => target_platforms(id).map_or_else(
+                || "{}".to_string(),
+                |capability| {
+                    json!({
+                        "platforms": {
+                            "required": capability.required,
+                            "allowed": platform_names(&capability.allowed),
+                            "default": platform_names(&capability.default),
+                        },
+                    })
+                    .to_string()
+                },
+            ),
+        }
+    }
+
+    fn platform_names(platforms: &[Platform]) -> Vec<&'static str> {
+        platforms
+            .iter()
+            .map(|platform| match platform {
+                Platform::Core => "core",
+                Platform::Ios => "ios",
+                Platform::Android => "android",
+            })
+            .collect()
     }
 }

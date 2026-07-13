@@ -3,32 +3,34 @@
 //! same transport-neutral operations the shipped guest dispatches,
 //! against the fixture provider — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
-//! model scripted and adapter behaviour supplied by the fixture core.
+//! model replayed and adapter behaviour supplied by the fixture core.
 //! No wasm builds, no sibling checkout, no network.
 
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use change::{LoopStep, Status, plan};
-use omnia_guest::api::invoke::Invoker;
+use testkit::{ReplayProvider, adapter, answers, run};
 
-mod common;
+/// The committed replay fixtures for one test — regenerate with
+/// `REGENERATE_FIXTURES=1 cargo nextest run -p change full_loop`.
+fn fixtures(test: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/full_loop").join(test)
+}
 
-use common::answers;
-use common::fixture::{ScriptedProvider, run, scripted_invoker};
-
-/// The scripted judgment answers for the whole loop, in dispatch
-/// order: the reconciliation grouping (author) and the synthesis
-/// response (execute's refine phase). Survey, extract, guidance, and
-/// build are deterministic fixture operations — no model dispatch.
-fn scripted_answers() -> Vec<String> {
+/// The regeneration answers for the whole loop, in dispatch order: the
+/// reconciliation grouping (author) and the synthesis response
+/// (execute's refine phase). Survey, extract, guidance, and build are
+/// deterministic fixture operations — no model dispatch.
+fn suite_answers() -> Vec<String> {
     vec![answers::greeting_grouping(), answers::greeting_synthesis()]
 }
 
 /// Scaffold a project bound to the fixture target and author + approve
 /// the single-slice plan — the shared preamble of every loop test.
-async fn scaffold_author_approve(invoker: &Invoker<ScriptedProvider>) {
-    let scaffolded = run::<project::init::handlers::Init, _>(
-        invoker,
+async fn scaffold_author_approve(provider: &ReplayProvider) {
+    let scaffolded = run::<project::init::handlers::Init, _, _>(
+        provider,
         project::init::handlers::InitInput {
             adapter: Some("fixture".to_string()),
             name: Some("demo".to_string()),
@@ -39,8 +41,8 @@ async fn scaffold_author_approve(invoker: &Invoker<ScriptedProvider>) {
     .expect("scaffold initialises the fixture-bound project");
     assert_eq!(scaffolded.adapter_name, "fixture");
 
-    let authored = run::<plan::handlers::Author, _>(
-        invoker,
+    let authored = run::<plan::handlers::Author, _, _>(
+        provider,
         plan::handlers::AuthorInput {
             name: "demo".to_string(),
             sources: answers::greeting_binding(),
@@ -55,8 +57,8 @@ async fn scaffold_author_approve(invoker: &Invoker<ScriptedProvider>) {
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
     assert!(authored.hint.contains("specify plan transition demo approved"), "{}", authored.hint);
 
-    run::<plan::handlers::Transition, _>(
-        invoker,
+    run::<plan::handlers::Transition, _, _>(
+        provider,
         plan::handlers::TransitionInput {
             name: "demo".to_string(),
             target: Some("approved".to_string()),
@@ -70,14 +72,12 @@ async fn scaffold_author_approve(invoker: &Invoker<ScriptedProvider>) {
 
 #[tokio::test]
 async fn author_approve_execute_drains() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    let root = tmp.path().canonicalize().expect("canonical tempdir");
-    let _cache = common::scoped_cache(&root);
-    let invoker = scripted_invoker(&root, scripted_answers());
+    let provider = ReplayProvider::replay_bare(&fixtures("drains"), suite_answers());
+    let root = provider.root.clone();
 
-    scaffold_author_approve(&invoker).await;
+    scaffold_author_approve(&provider).await;
 
-    let executed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let executed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
@@ -134,7 +134,7 @@ async fn author_approve_execute_drains() {
     // build, then the phased merge gates around the deterministic
     // commit.
     assert_eq!(
-        invoker.provider().calls(),
+        provider.calls(),
         [
             "survey source:fixture",
             "extract source:fixture",
@@ -155,25 +155,22 @@ async fn author_approve_execute_drains() {
     assert!(postflight.contains("status: success"), "{postflight}");
 
     // Model cadence: one reconciliation leg, one synthesis leg.
-    let requests = invoker.provider().model().requests();
+    let requests = provider.model().requests();
     assert_eq!(requests.len(), 2, "reconcile + synthesis only; adapters are deterministic");
-    invoker.provider().model().assert_exhausted();
 }
 
 // A failed merge preflight gate parks the slice at `built`.
 #[tokio::test]
 async fn preflight_parks_built() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    let root = tmp.path().canonicalize().expect("canonical tempdir");
-    let _cache = common::scoped_cache(&root);
-    let invoker = scripted_invoker(&root, scripted_answers());
+    let provider = ReplayProvider::replay_bare(&fixtures("preflight_parks"), suite_answers());
+    let root = provider.root.clone();
 
-    scaffold_author_approve(&invoker).await;
+    scaffold_author_approve(&provider).await;
 
     // Trip the fixture's failed preflight merge gate.
     fs::write(root.join(adapter::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
 
-    let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let stopped = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect_err("execute parks on the failed preflight gate");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
@@ -187,8 +184,8 @@ async fn preflight_parks_built() {
     // Clear the gate and resume through the breakout merge, then the
     // loop confirms drained.
     fs::remove_file(root.join(adapter::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
-    let merged = run::<slice::handlers::MergeRun, _>(
-        &invoker,
+    let merged = run::<slice::handlers::MergeRun, _, _>(
+        &provider,
         slice::handlers::MergeRunInput {
             name: "greeting".to_string(),
             allow_composition_replace: false,
@@ -197,28 +194,25 @@ async fn preflight_parks_built() {
     .await
     .expect("breakout merge resumes");
     assert_eq!(merged.slice, "greeting");
-    let resumed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let resumed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect("second execute drains");
     assert_eq!(resumed.status, "drained");
-    invoker.provider().model().assert_exhausted();
 }
 
 // A failed merge postflight gate is terminal but non-rollback: the
 // committed merge stands.
 #[tokio::test]
 async fn postflight_terminal() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    let root = tmp.path().canonicalize().expect("canonical tempdir");
-    let _cache = common::scoped_cache(&root);
-    let invoker = scripted_invoker(&root, scripted_answers());
+    let provider = ReplayProvider::replay_bare(&fixtures("postflight_terminal"), suite_answers());
+    let root = provider.root.clone();
 
-    scaffold_author_approve(&invoker).await;
+    scaffold_author_approve(&provider).await;
 
     // Trip the fixture's failed postflight merge gate.
     fs::write(root.join(adapter::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
 
-    let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let stopped = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect_err("execute reports the failed postflight gate");
     assert!(stopped.to_string().contains("target-merge-postflight-failed"), "{stopped}");
@@ -237,31 +231,27 @@ async fn postflight_terminal() {
     let journal = fs::read_to_string(root.join(".specify/journal.jsonl")).expect("journal");
     assert!(journal.contains("slice.merge.postflight-failed"), "{journal}");
     assert!(!journal.contains("slice.merge.succeeded"), "{journal}");
-
-    invoker.provider().model().assert_exhausted();
 }
 
 #[tokio::test]
 async fn build_parks_then_resumes() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    let root = tmp.path().canonicalize().expect("canonical tempdir");
-    let _cache = common::scoped_cache(&root);
-    let invoker = scripted_invoker(&root, scripted_answers());
+    let provider = ReplayProvider::replay_bare(&fixtures("build_parks"), suite_answers());
+    let root = provider.root.clone();
 
-    scaffold_author_approve(&invoker).await;
+    scaffold_author_approve(&provider).await;
 
     // Trip the fixture's failed-report mode for the first build.
     fs::write(root.join(adapter::FAIL_BUILD_MARKER), "").expect("write fail marker");
 
-    let stopped = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let stopped = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect_err("first execute parks on the failed build");
     assert!(stopped.to_string().contains("build-failed"), "{stopped}");
 
     // Clear the failure and resume through the breakout build.
     fs::remove_file(root.join(adapter::FAIL_BUILD_MARKER)).expect("remove fail marker");
-    let rebuilt = run::<slice::handlers::Build, _>(
-        &invoker,
+    let rebuilt = run::<slice::handlers::Build, _, _>(
+        &provider,
         slice::handlers::BuildInput {
             name: "greeting".to_string(),
         },
@@ -270,7 +260,7 @@ async fn build_parks_then_resumes() {
     .expect("breakout build resumes");
     assert_eq!(rebuilt.slice, "greeting");
 
-    let resumed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let resumed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect("second execute drains");
     assert_eq!(resumed.status, "drained");
@@ -278,5 +268,4 @@ async fn build_parks_then_resumes() {
         resumed.phases.iter().map(|phase| phase.step).collect::<Vec<_>>(),
         [LoopStep::Merge]
     );
-    invoker.provider().model().assert_exhausted();
 }

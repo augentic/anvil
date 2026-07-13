@@ -2,10 +2,7 @@
 
 use std::fs;
 
-#[path = "../../project/tests/common/mod.rs"]
-mod common;
-
-use common::{Project, run};
+use testkit::{ScriptedProvider, run};
 
 mod list {
     use super::*;
@@ -14,7 +11,7 @@ mod list {
     /// sorted by name, and skips directories without one.
     #[tokio::test]
     async fn sorted_with_status() {
-        let project = Project::initialised();
+        let project = ScriptedProvider::initialised();
         for (name, status) in [("beta", "refined"), ("alpha", "refining")] {
             let slice = project.root.join(".specify/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
@@ -27,9 +24,10 @@ mod list {
         fs::create_dir_all(project.root.join(".specify/slices/not-a-slice"))
             .expect("stage stray dir");
 
-        let body = run::<slice::handlers::List, _>(&project, slice::handlers::ListInput::default())
-            .await
-            .expect("list succeeds");
+        let body =
+            run::<slice::handlers::List, _, _>(&project, slice::handlers::ListInput::default())
+                .await
+                .expect("list succeeds");
 
         let listed: Vec<(&str, &str)> =
             body.slices.iter().map(|e| (e.name.as_str(), e.status.as_str())).collect();
@@ -45,7 +43,7 @@ mod timestamps {
     /// metadata-mutating verb).
     #[tokio::test]
     async fn round_trip_rfc3339() {
-        let project = Project::initialised();
+        let project = ScriptedProvider::initialised();
         let slice = project.root.join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
@@ -56,7 +54,7 @@ mod timestamps {
         )
         .expect("stage metadata");
 
-        run::<slice::handlers::Drop, _>(
+        run::<slice::handlers::Drop, _, _>(
             &project,
             slice::handlers::DropInput {
                 name: "demo".to_string(),
@@ -80,7 +78,7 @@ mod timestamps {
 
     #[tokio::test]
     async fn malformed_rejected() {
-        let project = Project::initialised();
+        let project = ScriptedProvider::initialised();
         let slice = project.root.join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
@@ -89,7 +87,7 @@ mod timestamps {
         )
         .expect("stage metadata");
 
-        let err = run::<slice::handlers::Drop, _>(
+        let err = run::<slice::handlers::Drop, _, _>(
             &project,
             slice::handlers::DropInput {
                 name: "demo".to_string(),

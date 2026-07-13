@@ -29,9 +29,8 @@ diagnostics.workspace = true
 slice.workspace = true
 
 [dev-dependencies]
-adapter.workspace = true
-omnia-testkit.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 tower.workspace = true

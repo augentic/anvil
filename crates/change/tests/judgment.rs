@@ -2,14 +2,14 @@
 //! malformed reconciliation answer is repaired in-loop with the
 //! findings inlined, and an unrepairable answer exhausts the budget
 //! and surfaces the last failure.
+//!
+//! Stays scripted rather than replayed: the loop only engages when the
+//! model emits schema-violating answers, which the format-gated replay
+//! engine refuses to serve by design (it behaves like a
+//! schema-enforcing backend).
 
 use change::plan;
-use omnia_guest::api::invoke::Invoker;
-
-mod common;
-
-use common::answers;
-use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project};
+use testkit::{ScriptedProvider, answers, run};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -24,10 +24,10 @@ fn malformed_answer() -> String {
 }
 
 async fn author(
-    invoker: &Invoker<ScriptedProvider>,
+    provider: &ScriptedProvider,
 ) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
-    run::<plan::handlers::Author, _>(
-        invoker,
+    run::<plan::handlers::Author, _, _>(
+        provider,
         plan::handlers::AuthorInput {
             name: "demo".to_string(),
             sources: answers::greeting_binding(),
@@ -39,28 +39,29 @@ async fn author(
 
 #[tokio::test]
 async fn malformed_repaired_in_loop() {
-    let (_tmp, root, _cache) = scripted_project("fixture");
-    let invoker = scripted_invoker(&root, vec![malformed_answer(), answers::greeting_grouping()]);
+    let provider = ScriptedProvider::scripted(
+        "fixture",
+        vec![malformed_answer(), answers::greeting_grouping()],
+    );
 
-    let authored = author(&invoker).await.expect("the repaired answer lands");
+    let authored = author(&provider).await.expect("the repaired answer lands");
     assert_eq!(authored.slices, ["greeting"]);
 
     // Two dispatches: the failed answer and its repair. The repair
     // prompt re-presents the failed answer with the findings inlined.
-    let requests = invoker.provider().model().requests();
+    let requests = provider.model().requests();
     assert_eq!(requests.len(), 2);
     let repair = &requests[1].messages[0].content;
     assert!(repair.contains("Previous answer (failed validation)"), "{repair}");
     assert!(repair.contains(r#"{"version":1,"kind":"response"}"#), "{repair}");
-    invoker.provider().model().assert_exhausted();
+    provider.model().assert_exhausted();
 }
 
 #[tokio::test]
 async fn unrepairable_exhausts_budget() {
-    let (_tmp, root, _cache) = scripted_project("fixture");
-    let invoker = scripted_invoker(&root, vec![malformed_answer(); JUDGMENT_BUDGET]);
+    let provider = ScriptedProvider::scripted("fixture", vec![malformed_answer(); JUDGMENT_BUDGET]);
 
-    let err = author(&invoker).await.expect_err("the budget exhausts");
+    let err = author(&provider).await.expect_err("the budget exhausts");
     let detail = err.to_string();
     assert!(
         detail.contains("plan-propose-response-parse"),
@@ -69,6 +70,6 @@ async fn unrepairable_exhausts_budget() {
 
     // One initial dispatch plus MAX_REPAIRS re-prompts, then the leg
     // gives up — no further call.
-    assert_eq!(invoker.provider().model().requests().len(), JUDGMENT_BUDGET);
-    invoker.provider().model().assert_exhausted();
+    assert_eq!(provider.model().requests().len(), JUDGMENT_BUDGET);
+    provider.model().assert_exhausted();
 }

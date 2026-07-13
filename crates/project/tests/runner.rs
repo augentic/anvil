@@ -8,8 +8,6 @@ use artifacts::validate::validate_slice;
 use diagnostics::DiagnosticKind;
 use tempfile::TempDir;
 
-mod common;
-
 fn crate_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
@@ -81,7 +79,7 @@ mod validate {
         let fixture = crate_root().join("tests/fixtures/change-good");
         let (_guard, project_dir) = stage_project();
         let slice_dir = project_dir.join(".specify/slices/change-good");
-        common::copy_dir(&fixture, &slice_dir);
+        testkit::fs::copy_dir(&fixture, &slice_dir);
 
         let findings = validate_slice(&slice_dir).expect("validate_slice ok");
 

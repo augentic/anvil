@@ -1,14 +1,5 @@
-//! Filesystem and git helpers shared across the workspace's test trees.
-//!
-//! Single source for the `GIT_ENV` / `run_git` / `copy_dir` trio that
-//! the binary integration tests (`tests/common/mod.rs`) and the
-//! `workflow` crate test tree all need.
-//! Crate test trees pull it in with a `#[path]` module declaration.
-
-#![allow(
-    dead_code,
-    reason = "shared test helpers; not every including test binary uses every helper"
-)]
+//! Filesystem and git helpers shared across the workspace's test trees:
+//! the `GIT_ENV` / `run_git` / `copy_dir` trio.
 
 use std::fs;
 use std::path::Path;

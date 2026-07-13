@@ -1,14 +1,22 @@
 //! Scripted judgment answers and source bindings shared by the
-//! fixture-provider suites. Two fixture data sets exist: the minimal
-//! single-lead `greeting` profile (full loop, seam failures, repair
-//! loop) and the adversarial `docs` / `code` pair (reconciliation,
-//! synthesis). Keeping one copy of each answer here stops the suites
-//! drifting apart on envelope shape.
+//! fixture-provider suites — and the regeneration source of truth for
+//! the committed replay fixtures.
+//!
+//! Two fixture data sets exist: the minimal single-lead `greeting`
+//! profile (full loop, seam failures, repair loop) and the adversarial
+//! `docs` / `code` pair (reconciliation, synthesis). Keeping one copy
+//! of each answer here stops the suites drifting apart on envelope
+//! shape.
 
 use change::plan::wire::SourceAssign;
 use serde_json::json;
 
 /// The single `main` binding onto the minimal fixture source.
+///
+/// # Panics
+///
+/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
+#[must_use]
 pub fn greeting_binding() -> Vec<SourceAssign> {
     let main: SourceAssign = serde_json::from_value(
         json!({ "key": "main", "adapter": "fixture", "value": "The greeting service." }),
@@ -19,6 +27,11 @@ pub fn greeting_binding() -> Vec<SourceAssign> {
 
 /// The single `main` binding onto the named fixture source adapter
 /// (for the typed-failure profiles).
+///
+/// # Panics
+///
+/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
+#[must_use]
 pub fn greeting_binding_for(adapter: &str) -> Vec<SourceAssign> {
     let main: SourceAssign = serde_json::from_value(
         json!({ "key": "main", "adapter": adapter, "value": "The greeting service." }),
@@ -29,6 +42,11 @@ pub fn greeting_binding_for(adapter: &str) -> Vec<SourceAssign> {
 
 /// The adversarial two-source pair: a docs source and a code source,
 /// both served by the fixture core under different adapter names.
+///
+/// # Panics
+///
+/// Panics when a binding JSON stops parsing as a [`SourceAssign`].
+#[must_use]
 pub fn adversarial_bindings() -> Vec<SourceAssign> {
     ["docs", "code"]
         .map(|key| {
@@ -44,6 +62,11 @@ pub fn adversarial_bindings() -> Vec<SourceAssign> {
 
 /// The reconciliation grouping for the minimal profile: one lead, one
 /// slice.
+///
+/// # Panics
+///
+/// Panics when the grouping value stops serialising.
+#[must_use]
 pub fn greeting_grouping() -> String {
     serde_json::to_string(&json!({
         "version": 1,
@@ -63,6 +86,11 @@ pub fn greeting_grouping() -> String {
 }
 
 /// The synthesis answer for the minimal profile's `greeting` slice.
+///
+/// # Panics
+///
+/// Panics when the synthesis value stops serialising.
+#[must_use]
 pub fn greeting_synthesis() -> String {
     serde_json::to_string(&json!({
         "version": 1,
@@ -90,10 +118,16 @@ pub fn greeting_synthesis() -> String {
     .expect("synthesis serialises")
 }
 
-/// The correct grouping over the adversarial lead catalog: the
-/// overlapping `login-flow` leads merge into one slice, the
+/// The correct grouping over the adversarial lead catalog.
+///
+/// The overlapping `login-flow` leads merge into one slice, the
 /// `session-timeout` disagreement is flagged as a likely divergence,
 /// and the docs-only `password-reset` lead lands alone.
+///
+/// # Panics
+///
+/// Panics when the grouping value stops serialising.
+#[must_use]
 pub fn adversarial_grouping() -> String {
     serde_json::to_string(&json!({
         "version": 1,

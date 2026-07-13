@@ -1,9 +1,8 @@
 //! Adapter resolution and metadata gates through public surfaces.
 
-mod common;
-
-use common::{Project, run, stage_dev_component};
 use project::adapter::Resolver;
+use testkit::env::stage_dev_component;
+use testkit::{ScriptedProvider, run};
 
 mod resolve {
     use super::*;
@@ -13,9 +12,9 @@ mod resolve {
         for (name, expected) in
             [("demo-target", "adapter-cli-too-old"), ("bad-floor", "adapter-floor-malformed")]
         {
-            let project = Project::bare();
+            let project = ScriptedProvider::bare();
             stage_dev_component(&project.root, name);
-            let err = run::<project::adapter::handlers::TargetResolve, _>(
+            let err = run::<project::adapter::handlers::TargetResolve, _, _>(
                 &project,
                 project::adapter::handlers::ResolveInput {
                     value: name.to_string(),
@@ -30,10 +29,10 @@ mod resolve {
 
     #[tokio::test]
     async fn bare_development_identity() {
-        let project = Project::bare();
+        let project = ScriptedProvider::bare();
         stage_dev_component(&project.root, "demo");
 
-        let body = run::<project::adapter::handlers::TargetResolve, _>(
+        let body = run::<project::adapter::handlers::TargetResolve, _, _>(
             &project,
             project::adapter::handlers::ResolveInput {
                 value: "demo".to_string(),
@@ -53,12 +52,12 @@ mod resolve {
         // The other bare-name probe: a component mirrored into the
         // project component cache (init's local-file path) resolves
         // without any in-repo release build.
-        let project = Project::bare();
-        let components = common::expected_cache_dir(&project.root).join("components");
+        let project = ScriptedProvider::bare();
+        let components = testkit::env::expected_cache_dir(&project.root).join("components");
         std::fs::create_dir_all(&components).expect("mkdir component cache");
         std::fs::write(components.join("demo.wasm"), "{}").expect("stage cached component");
 
-        let body = run::<project::adapter::handlers::TargetResolve, _>(
+        let body = run::<project::adapter::handlers::TargetResolve, _, _>(
             &project,
             project::adapter::handlers::ResolveInput {
                 value: "demo".to_string(),
@@ -77,14 +76,14 @@ mod resolve {
         // must not resolve a bare name.
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let outer = tmp.path().canonicalize().expect("canonical tempdir");
-        let _cache = common::scoped_cache(&outer);
+        let _cache = testkit::env::scoped_cache(&outer);
         let project_dir = outer.join("project");
         std::fs::create_dir_all(&project_dir).expect("mkdir project");
         let sibling = outer.join("specify-adapters/target/wasm32-wasip2/release");
         std::fs::create_dir_all(&sibling).expect("mkdir sibling layout");
         std::fs::write(sibling.join("demo.wasm"), "{}").expect("stage sibling component");
 
-        let err = common::resolver()
+        let err = testkit::resolver()
             .resolve_target(&project::adapter::AdapterRef::bare("demo"), &project_dir)
             .expect_err("sibling artifact must not resolve");
         assert!(err.to_string().contains("adapter-not-found"), "{err}");
@@ -93,10 +92,10 @@ mod resolve {
 
 #[test]
 fn platforms_metadata_preserved() {
-    let project = Project::bare();
+    let project = ScriptedProvider::bare();
     stage_dev_component(&project.root, "vectis");
 
-    let resolved = common::resolver()
+    let resolved = testkit::resolver()
         .resolve_target(&project::adapter::AdapterRef::bare("vectis"), &project.root)
         .expect("vectis resolves");
     let platforms = resolved.manifest.platforms.expect("platform capability");

@@ -5,15 +5,19 @@
 //! kernel inside the repair loop.
 
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use change::{Divergence, plan};
-use omnia_guest::api::invoke::Invoker;
 use serde_json::json;
+use testkit::{ReplayProvider, answers, run};
 
-mod common;
-
-use common::answers;
-use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project};
+/// The committed replay fixtures for one test — regenerate with
+/// `REGENERATE_FIXTURES=1 cargo nextest run -p change reconciliation`.
+/// One directory per test: both tests answer the same author prompt
+/// differently.
+fn fixtures(test: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/reconciliation").join(test)
+}
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -53,10 +57,10 @@ fn uncovered_grouping_answer() -> String {
 }
 
 async fn author(
-    invoker: &Invoker<ScriptedProvider>,
+    provider: &ReplayProvider,
 ) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
-    run::<plan::handlers::Author, _>(
-        invoker,
+    run::<plan::handlers::Author, _, _>(
+        provider,
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
             sources: answers::adversarial_bindings(),
@@ -70,10 +74,13 @@ async fn author(
 // divergence survives the projection.
 #[tokio::test]
 async fn overlap_merges() {
-    let (_tmp, root, _cache) = scripted_project("fixture");
-    let invoker = scripted_invoker(&root, vec![answers::adversarial_grouping()]);
+    let provider = ReplayProvider::replay(
+        "fixture",
+        &fixtures("overlap_merges"),
+        vec![answers::adversarial_grouping()],
+    );
 
-    let authored = author(&invoker).await.expect("author walks to pending");
+    let authored = author(&provider).await.expect("author walks to pending");
     assert_eq!(authored.slices, ["login-flow", "session-policy", "password-reset"]);
     // Both fixture sources surveyed (key order), docs with its three
     // leads including the docs-only password-reset.
@@ -84,7 +91,7 @@ async fn overlap_merges() {
     assert_eq!(authored.surveyed[1].leads, ["login-flow", "session-timeout", "password-reset"]);
 
     let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
+        &fs::read_to_string(provider.root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
 
@@ -109,8 +116,6 @@ async fn overlap_merges() {
     assert_eq!(session.divergence, Some(Divergence::Likely));
     assert_eq!(session.disagreements.len(), 1);
     assert_eq!(session.disagreements[0].field, "session-timeout-minutes");
-
-    invoker.provider().model().assert_exhausted();
 }
 
 #[tokio::test]
@@ -118,14 +123,16 @@ async fn uncovered_lead_exhausts() {
     // The same defective grouping for the whole budget: the first
     // dispatch plus every repair attempt, so the leg surfaces the
     // kernel's refusal.
-    let (_tmp, root, _cache) = scripted_project("fixture");
-    let invoker = scripted_invoker(&root, vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
+    let provider = ReplayProvider::replay(
+        "fixture",
+        &fixtures("uncovered_exhausts"),
+        vec![uncovered_grouping_answer(); JUDGMENT_BUDGET],
+    );
 
-    let err = author(&invoker).await.expect_err("coverage gap refused");
+    let err = author(&provider).await.expect_err("coverage gap refused");
     let detail = err.to_string();
     assert!(detail.contains("password-reset"), "{detail}");
 
     // One initial dispatch plus MAX_REPAIRS re-prompts.
-    assert_eq!(invoker.provider().model().requests().len(), JUDGMENT_BUDGET);
-    invoker.provider().model().assert_exhausted();
+    assert_eq!(provider.model().requests().len(), JUDGMENT_BUDGET);
 }

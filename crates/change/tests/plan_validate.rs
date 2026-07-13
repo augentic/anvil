@@ -2,9 +2,7 @@
 
 use std::fs;
 
-mod common;
-
-use common::{Project, report_rule_ids, run};
+use testkit::{ScriptedProvider, report_rule_ids, run};
 
 #[tokio::test]
 async fn structural_findings() {
@@ -36,14 +34,14 @@ async fn structural_findings() {
     ];
 
     for (expected, body) in cases {
-        let project = Project::initialised();
+        let project = ScriptedProvider::initialised();
         fs::write(
             project.root.join("plan.yaml"),
             format!("name: validation\nlifecycle: pending\n{body}"),
         )
         .expect("stage plan");
 
-        let err = run::<change::plan::handlers::Validate, _>(
+        let err = run::<change::plan::handlers::Validate, _, _>(
             &project,
             change::plan::handlers::ValidateInput {},
         )

@@ -7,10 +7,7 @@ use std::fs;
 use std::os::unix::fs::MetadataExt;
 
 use change::plan::handlers::{Transition, TransitionInput};
-
-mod common;
-
-use common::{Project, run};
+use testkit::{ScriptedProvider, run};
 
 const PENDING_PLAN: &str = "\
 name: demo
@@ -28,7 +25,7 @@ fn approve_input() -> TransitionInput {
     .expect("input deserialises")
 }
 
-fn journal_lines(project: &Project) -> Vec<String> {
+fn journal_lines(project: &ScriptedProvider) -> Vec<String> {
     let path = project.root.join(".specify/journal.jsonl");
     if !path.exists() {
         return Vec::new();
@@ -43,11 +40,11 @@ fn journal_lines(project: &Project) -> Vec<String> {
 
 #[tokio::test]
 async fn repeated_approve_noop() {
-    let project = Project::initialised();
+    let project = ScriptedProvider::initialised();
     let plan_path = project.root.join("plan.yaml");
     fs::write(&plan_path, PENDING_PLAN).expect("stage plan.yaml");
 
-    let body = run::<Transition, _>(&project, approve_input()).await.expect("Gate 1 stamps");
+    let body = run::<Transition, _, _>(&project, approve_input()).await.expect("Gate 1 stamps");
     assert_eq!(body.previous, "pending");
     assert_eq!(body.current, "approved");
     let events = journal_lines(&project);
@@ -60,7 +57,8 @@ async fn repeated_approve_noop() {
     let stamped_bytes = fs::read(&plan_path).expect("plan bytes");
 
     // Idempotent approval preserves both the inode and journal.
-    let body = run::<Transition, _>(&project, approve_input()).await.expect("re-stamp is a no-op");
+    let body =
+        run::<Transition, _, _>(&project, approve_input()).await.expect("re-stamp is a no-op");
     assert_eq!(body.previous, "approved");
     assert_eq!(body.current, "approved");
 

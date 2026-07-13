@@ -5,10 +5,11 @@ Specify's non-shipped example surfaces, shaped like Omnia's `[examples/](https:/
 
 | Path                | Role                                                   |
 | ------------------- | ------------------------------------------------------ |
-| `native/adapter.rs` | Library core (`adapter`) used by native workflow tests |
 | `native/live.rs`    | Explicit live-model trial                              |
 | `wasm/adapter.rs`   | Combined adapter WASI component (`adapter-wasm`)       |
 | `wasm/smoke.rs`     | Hosted WASM boundary smoke                             |
+
+The deterministic fixture adapter core both `wasm/adapter.rs` and the native suites map lives in `crates/testkit` (`testkit::adapter`).
 
 
 ## Commands
@@ -25,4 +26,4 @@ cargo make --makefile wasm      # wasm32-wasip2 compile check for adapter-wasm
 
 Ordinary native suites stay at the repository root: `cargo make test`.
 
-The host runners sit behind the package `host` feature so ordinary consumers of the adapter lib never compile Wasmtime or the cursor backend.
+The host runners sit behind the package `host` feature so the default wasm32 guest build never compiles Wasmtime or the cursor backend.

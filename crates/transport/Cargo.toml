@@ -22,6 +22,7 @@ omnia-guest.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 tower.workspace = true
 

@@ -5,15 +5,18 @@
 //! through the public refine / model / provenance operations.
 
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use change::plan;
-use omnia_guest::api::invoke::Invoker;
 use serde_json::json;
+use testkit::provider::Provider;
+use testkit::{ReplayProvider, ScriptedProvider, answers, run};
 
-mod common;
-
-use common::answers;
-use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project};
+/// The committed replay fixtures for one test — regenerate with
+/// `REGENERATE_FIXTURES=1 cargo nextest run -p change synthesis`.
+fn fixtures(test: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/synthesis").join(test)
+}
 
 /// Synthesis for `session-policy`: the two `session.timeout` claims
 /// disagree, so the answer carries the `disagreed` verdict and the
@@ -80,9 +83,12 @@ fn reset_synthesis_answer() -> String {
     .expect("synthesis serialises")
 }
 
-async fn author_and_approve(invoker: &Invoker<ScriptedProvider>) {
-    run::<plan::handlers::Author, _>(
-        invoker,
+async fn author_and_approve<M>(provider: &Provider<M>)
+where
+    M: omnia_guest::Model + Clone + Send + Sync + 'static,
+{
+    run::<plan::handlers::Author, _, _>(
+        provider,
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
             sources: answers::adversarial_bindings(),
@@ -91,8 +97,8 @@ async fn author_and_approve(invoker: &Invoker<ScriptedProvider>) {
     )
     .await
     .expect("author walks to pending");
-    run::<plan::handlers::Transition, _>(
-        invoker,
+    run::<plan::handlers::Transition, _, _>(
+        provider,
         plan::handlers::TransitionInput {
             name: "auth".to_string(),
             target: Some("approved".to_string()),
@@ -108,13 +114,15 @@ async fn author_and_approve(invoker: &Invoker<ScriptedProvider>) {
 // with the docs claim winning.
 #[tokio::test]
 async fn divergence_docs_wins() {
-    let (_tmp, root, _cache) = scripted_project("fixture");
-    let invoker =
-        scripted_invoker(&root, vec![answers::adversarial_grouping(), session_synthesis_answer()]);
-    author_and_approve(&invoker).await;
+    let provider = ReplayProvider::replay(
+        "fixture",
+        &fixtures("divergence_docs_wins"),
+        vec![answers::adversarial_grouping(), session_synthesis_answer()],
+    );
+    author_and_approve(&provider).await;
 
-    let refined = run::<slice::handlers::Refine, _>(
-        &invoker,
+    let refined = run::<slice::handlers::Refine, _, _>(
+        &provider,
         slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
@@ -124,8 +132,8 @@ async fn divergence_docs_wins() {
     assert_eq!(refined.slice, "session-policy");
 
     // The kernel resolved the disagreement: divergence, docs winning.
-    let model = run::<slice::handlers::ModelShow, _>(
-        &invoker,
+    let model = run::<slice::handlers::ModelShow, _, _>(
+        &provider,
         slice::handlers::ModelShowInput {
             name: "session-policy".to_string(),
         },
@@ -142,15 +150,16 @@ async fn divergence_docs_wins() {
     assert_eq!(winners, [("docs".to_string(), Some(true)), ("code".to_string(), Some(false))]);
 
     // The written spec carries the inline `[divergence]` tag.
-    let spec =
-        fs::read_to_string(root.join(".specify/slices/session-policy/specs/session/spec.md"))
-            .expect("slice spec written");
+    let spec = fs::read_to_string(
+        provider.root.join(".specify/slices/session-policy/specs/session/spec.md"),
+    )
+    .expect("slice spec written");
     assert!(spec.contains("[divergence]"), "{spec}");
 
     // The provenance projection recomputes the authority-resolved
     // label with the docs source as winner.
-    let provenance = run::<slice::handlers::Provenance, _>(
-        &invoker,
+    let provenance = run::<slice::handlers::Provenance, _, _>(
+        &provider,
         slice::handlers::ProvenanceInput {
             name: "session-policy".to_string(),
         },
@@ -161,8 +170,6 @@ async fn divergence_docs_wins() {
     assert_eq!(req.resolution.to_string(), "authority-resolved");
     let trace = req.resolution_trace.as_ref().expect("authority-resolved carries a trace");
     assert_eq!(trace.winner.as_deref(), Some("docs"));
-
-    invoker.provider().model().assert_exhausted();
 }
 
 /// [`session_synthesis_answer`] plus one accepted Decision Record
@@ -186,9 +193,21 @@ fn session_synthesis_with_decision() -> String {
 
 // Decisions persist with baseline context surfaced to synthesis, and
 // re-synthesis replaces the slice's decision set exactly.
+//
+// Stays scripted rather than replayed: the re-refine re-issues the
+// same synthesis prompt and must receive a *different* answer, a
+// sequence dependence a request-keyed replay store cannot express.
 #[tokio::test]
 async fn decisions_exact_set() {
-    let (_tmp, root, _cache) = scripted_project("fixture");
+    let provider = ScriptedProvider::scripted(
+        "fixture",
+        vec![
+            answers::adversarial_grouping(),
+            session_synthesis_with_decision(),
+            session_synthesis_answer(),
+        ],
+    );
+    let root = provider.root.clone();
 
     // A baseline Decision Record the slice can legally supersede — and
     // the projection the synthesis inputs must surface.
@@ -202,18 +221,10 @@ async fn decisions_exact_set() {
     )
     .expect("write baseline decision");
 
-    let invoker = scripted_invoker(
-        &root,
-        vec![
-            answers::adversarial_grouping(),
-            session_synthesis_with_decision(),
-            session_synthesis_answer(),
-        ],
-    );
-    author_and_approve(&invoker).await;
+    author_and_approve(&provider).await;
 
-    run::<slice::handlers::Refine, _>(
-        &invoker,
+    run::<slice::handlers::Refine, _, _>(
+        &provider,
         slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
@@ -233,7 +244,7 @@ async fn decisions_exact_set() {
     assert!(!record.contains("date:"), "{record}");
 
     // The synthesis inputs surfaced the baseline decision projection.
-    let requests = invoker.provider().model().requests();
+    let requests = provider.model().requests();
     let synthesis_inputs = &requests[1].messages[0].content;
     assert!(synthesis_inputs.contains("baseline-decisions"), "{synthesis_inputs}");
     assert!(synthesis_inputs.contains("DEC-0001"), "{synthesis_inputs}");
@@ -247,8 +258,8 @@ async fn decisions_exact_set() {
     fs::write(&metadata_path, metadata.replace("status: refined", "status: refining"))
         .expect("rewind lifecycle for the re-refine");
 
-    run::<slice::handlers::Refine, _>(
-        &invoker,
+    run::<slice::handlers::Refine, _, _>(
+        &provider,
         slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
@@ -262,18 +273,20 @@ async fn decisions_exact_set() {
         .collect();
     assert!(survivors.is_empty(), "{survivors:?}");
 
-    invoker.provider().model().assert_exhausted();
+    provider.model().assert_exhausted();
 }
 
 #[tokio::test]
 async fn evidence_gap_projects_unknown() {
-    let (_tmp, root, _cache) = scripted_project("fixture");
-    let invoker =
-        scripted_invoker(&root, vec![answers::adversarial_grouping(), reset_synthesis_answer()]);
-    author_and_approve(&invoker).await;
+    let provider = ReplayProvider::replay(
+        "fixture",
+        &fixtures("evidence_gap"),
+        vec![answers::adversarial_grouping(), reset_synthesis_answer()],
+    );
+    author_and_approve(&provider).await;
 
-    run::<slice::handlers::Refine, _>(
-        &invoker,
+    run::<slice::handlers::Refine, _, _>(
+        &provider,
         slice::handlers::RefineInput {
             name: "password-reset".to_string(),
         },
@@ -281,8 +294,8 @@ async fn evidence_gap_projects_unknown() {
     .await
     .expect("refine synthesises the gapped slice");
 
-    let model = run::<slice::handlers::ModelShow, _>(
-        &invoker,
+    let model = run::<slice::handlers::ModelShow, _, _>(
+        &provider,
         slice::handlers::ModelShowInput {
             name: "password-reset".to_string(),
         },
@@ -294,10 +307,8 @@ async fn evidence_gap_projects_unknown() {
     assert!(requirement.claims.is_empty(), "{requirement:?}");
 
     let spec = fs::read_to_string(
-        root.join(".specify/slices/password-reset/specs/password-reset/spec.md"),
+        provider.root.join(".specify/slices/password-reset/specs/password-reset/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[unknown]"), "{spec}");
-
-    invoker.provider().model().assert_exhausted();
 }

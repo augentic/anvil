@@ -31,35 +31,16 @@ use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md}
 use change::plan;
 use omnia::Backend as _;
 use omnia_guest::Model;
-use omnia_guest::api::invocation::Invocation;
-use omnia_guest::api::invoke::Invoker;
-use omnia_guest::api::operation::Operation;
 use omnia_guest::model::{Effort, Error, Format, Reply, Request, Role, Tool, Usage};
 use omnia_testkit::model::Harness;
 use omnia_wasi_model as wire;
 use omnia_wasi_model::WasiModelCtx as _;
 use serde_json::Value;
-
-#[path = "../../crates/change/tests/common/mod.rs"]
-mod common;
-
-use common::answers;
-use common::fixture::FixtureProvider;
+use testkit::{Provider, answers, run};
 
 /// The live provider: the same fixture seams as the scripted suites,
 /// with the recording harness wrapped around the cursor backend.
-type LiveProvider = FixtureProvider<Harness<CursorModel>>;
-
-/// Invoke one operation against the live fixture provider.
-async fn run<R, B>(
-    invoker: &Invoker<LiveProvider>, input: R::Input,
-) -> Result<B, project::handler::Error>
-where
-    R: Operation<LiveProvider, Output = B, Error = project::handler::Error>,
-    B: Send,
-{
-    invoker.invoke::<R>(Invocation::new(input)).await
-}
+type LiveProvider = Provider<Harness<CursorModel>>;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() {
@@ -68,7 +49,7 @@ async fn main() {
     let root = tempfile::TempDir::new().expect("tempdir").keep();
     let root = root.canonicalize().expect("canonical project root");
     eprintln!("live trial project (retained on failure): {}", root.display());
-    let _cache = common::scoped_cache(&root);
+    let _cache = testkit::env::scoped_cache(&root);
     fs::create_dir_all(root.join(".specify")).expect("mkdir .specify");
     fs::write(root.join(".specify/project.yaml"), "name: live\nadapter: fixture\nrules: {}\n")
         .expect("write project.yaml");
@@ -77,13 +58,13 @@ async fn main() {
         "cursor-agent backend unavailable: install cursor-agent, then `cursor-agent login` or \
          export CURSOR_API_KEY",
     );
-    let invoker = Invoker::new("specify", FixtureProvider::new(&root, Harness::new(model)));
+    let provider: LiveProvider = Provider::new(&root, Harness::new(model));
 
     // Live reconcile over the adversarial lead catalog. The author
     // orchestration's own kernel enforces coverage (every surveyed
     // lead assigned, none duplicated) inside the repair loop.
-    run::<plan::handlers::Author, _>(
-        &invoker,
+    run::<plan::handlers::Author, _, _>(
+        &provider,
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
             sources: answers::adversarial_bindings(),
@@ -106,8 +87,8 @@ async fn main() {
     });
     assert!(merged, "the login-flow overlap must merge into one slice: {:?}", plan.entries);
 
-    run::<plan::handlers::Transition, _>(
-        &invoker,
+    run::<plan::handlers::Transition, _, _>(
+        &provider,
         plan::handlers::TransitionInput {
             name: "auth".to_string(),
             target: Some("approved".to_string()),
@@ -121,7 +102,7 @@ async fn main() {
     // Live synthesis per slice, then build and merge. Draining means
     // every synthesis answer survived the deterministic schema,
     // model-vs-spec, and orphan-claim validators.
-    let executed = run::<plan::handlers::Execute, _>(&invoker, plan::handlers::ExecuteInput {})
+    let executed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
         .await
         .expect("live synthesis drains validator-clean");
     assert_eq!(executed.status, "drained");
@@ -167,7 +148,7 @@ async fn main() {
 
     // Every slice produced a real, non-empty fixture build output.
     for entry in &plan.entries {
-        let artifact = adapter::build_artifact_path(&root, &entry.name);
+        let artifact = testkit::adapter::build_artifact_path(&root, &entry.name);
         let body = fs::read_to_string(&artifact)
             .unwrap_or_else(|err| panic!("build output for `{}`: {err}", entry.name));
         assert!(!body.trim().is_empty(), "empty build output for `{}`", entry.name);
@@ -176,7 +157,7 @@ async fn main() {
     // The early-warning report: per-leg request counts, not asserted.
     // A leg drifting from zero repairs toward the budget means a
     // prompt or schema change degraded the model's first answer.
-    let requests = invoker.provider().model().requests();
+    let requests = provider.model().requests();
     let proposal = requests.iter().filter(|r| schema_name(r) == Some("proposal")).count();
     let synthesis = requests.iter().filter(|r| schema_name(r) == Some("synthesis")).count();
     let slices = plan.entries.len();

@@ -3,8 +3,9 @@
 //! Exports the `specify:adapter` `adapter` world — both the `source`
 //! and `target` interfaces from one component — plus
 //! `wasi:http/incoming-handler`, serving a compiled-in single-document
-//! MCP reference. The shim delegates to the native adapter crate, so hosted
-//! WASM and native tests exercise identical adapter behaviour.
+//! MCP reference. The shim delegates to the shared `testkit::adapter`
+//! core, so hosted WASM and native tests exercise identical adapter
+//! behaviour.
 #![cfg(target_arch = "wasm32")]
 
 mod bindings {
@@ -102,6 +103,8 @@ impl McpServer for References {
 }
 
 mod source {
+    use testkit::adapter;
+
     use crate::FixtureAdapter;
     use crate::bindings::exports::specify::adapter::source;
 
@@ -179,6 +182,8 @@ mod source {
 
 mod targets {
     use std::path::Path;
+
+    use testkit::adapter;
 
     use crate::FixtureAdapter;
     use crate::bindings::exports::specify::adapter::target;

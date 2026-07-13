@@ -2,7 +2,7 @@
 
 Workspace-wide index of the integration test binaries that compare against checked-in goldens, the fixture directories they read, and the one canonical way to regenerate those goldens. See [`docs/standards/testing.md`](../docs/standards/testing.md) for the integration-first policy, golden discipline, and test-naming rules.
 
-The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds the lightweight `checks` package (`boundaries` + `links`), shared cross-crate `fixtures/` (today: `spec-*/`), and `fs_git.rs`.
+The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds only the lightweight `checks` package (`boundaries` + `links` + `authoring`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
 
 ## Repo checks (`-p checks`)
 
@@ -12,32 +12,32 @@ Architecture boundary and docs/plugin link integrity. Separate package so the Wa
 cargo test -p checks
 ```
 
-## Canonical golden regeneration
+## Canonical regeneration
 
-There is exactly one supported regeneration switch — `REGENERATE_GOLDENS=1` — and one canonical invocation shape. Always use `cargo nextest run`, never bare `cargo test`:
+There are exactly two supported regeneration switches, each with one canonical invocation shape. Always use `cargo nextest run`, never bare `cargo test`:
 
 ```text
 REGENERATE_GOLDENS=1 cargo nextest run -p <crate> --test <binary>
+REGENERATE_FIXTURES=1 cargo nextest run -p change
 ```
 
-After regenerating, `git diff` the goldens and review every change: a diff that flips a kebab-case error `code` is a public-contract change, not a refresh.
+`REGENERATE_GOLDENS=1` refreshes checked-in golden outputs; `REGENERATE_FIXTURES=1` re-records the committed replay fixture rows under `crates/change/tests/fixtures/replay/` from the scripted corpus in `testkit::answers` (run it whenever a judgment prompt changes).
+
+After regenerating, `git diff` the outputs and review every change: a diff that flips a kebab-case error `code` is a public-contract change, not a refresh.
 
 ## Golden-bearing binaries → fixture dirs
 
 | Crate | Test binary | Fixture / golden dir(s) |
 | --- | --- | --- |
-| `slice` | `merge_goldens` | `tests/fixtures/spec-*` |
-| `schema` | `answers` | `schemas/answers/*.schema.json` |
+| `slice` | `merge_goldens` | `crates/slice/tests/fixtures/spec-*` |
+| `project` / `slice` | `answers` | `crates/project/answers/`, `crates/slice/answers/` |
 
 Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Shared test helpers
 
-Each crate keeps its cross-binary helpers under `tests/<helper>/mod.rs` (the sole `mod.rs` exception blessed in [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)), declared per test binary with `mod <helper>;`:
+Cross-crate test support is single-sourced in the `crates/testkit` crate — the fixture adapter core, the unified capability provider, scripted answers, replay/record model doubles, command mocking, filesystem/git helpers (`GIT_ENV` / `run_git` / `copy_dir`), env guards, and plan builders. Suites depend on it as an ordinary dev-dependency (`use testkit::…`); do not reintroduce `#[path]` splices or per-suite provider copies.
 
-- `workflow`: `crates/change/tests/common/mod.rs` — `MockCmd`, scaffold, and stamped-outcome helpers.
-- `diagnostics`: `crates/diagnostics/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
+Crate-private helpers stay under that crate's `tests/<helper>/mod.rs` (the sole `mod.rs` exception blessed in [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)), e.g. `crates/diagnostics/tests/diagnostics_support/mod.rs`.
 
-Cross-package model test support comes from Omnia's dev-only `omnia-testkit`: its recorded scripted harness is consumed by the workflow suites (`crates/change/tests/`) and the live-model example (`examples/native/live.rs`).
-
-The `GIT_ENV` / `run_git` / `copy_dir` trio is single-sourced at `tests/fs_git.rs` and pulled into each crate's `tests/common` via a `#[path]` module declaration (each crate's `tests/` is its own compilation unit, so the file is included rather than imported). Reach for the shared helper rather than reintroducing a per-binary `copy_dir_recursive`.
+Generic model test mechanics (`Harness`, `Scripted`, `Replay`, `Recorder`) come from Omnia's dev-only `omnia-testkit`, re-exported through `testkit::model`.

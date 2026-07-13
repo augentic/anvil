@@ -1,15 +1,16 @@
-//! `spec.md` parser tests over the shared `tests/fixtures/spec-*` corpus (`artifacts::spec`).
+//! `spec.md` parser tests over the crate-local `spec-*` corpus (`artifacts::spec`).
 
 use artifacts::spec::*;
 
 // ---------------------------------------------------------------------------
-// Fixture-backed parser tests. Fixtures live at the repo root under
-// `tests/fixtures/spec-*/` and are shared with the merge-engine goldens.
+// Fixture-backed parser tests. The parser-consumed subset of the
+// `spec-*` corpus lives at `tests/fixtures/spec-*/`; the full corpus
+// (including merge goldens) is `crates/slice/tests/fixtures/`.
 // ---------------------------------------------------------------------------
 
 macro_rules! fixture {
     ($rel:literal) => {
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/", $rel))
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/", $rel))
     };
 }
 
