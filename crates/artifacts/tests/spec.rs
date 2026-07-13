@@ -1,15 +1,15 @@
-//! `spec.md` parser tests over the shared merge fixtures (`artifacts::spec`).
+//! `spec.md` parser tests over the shared `tests/fixtures/spec-*` corpus (`artifacts::spec`).
 
 use artifacts::spec::*;
 
 // ---------------------------------------------------------------------------
 // Fixture-backed parser tests. Fixtures live at the repo root under
-// `tests/fixtures/merge/` and are shared with the merge-engine goldens.
+// `tests/fixtures/spec-*/` and are shared with the merge-engine goldens.
 // ---------------------------------------------------------------------------
 
 macro_rules! fixture {
     ($rel:literal) => {
-        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/merge/", $rel))
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/", $rel))
     };
 }
 
@@ -18,7 +18,7 @@ mod baseline {
 
     #[test]
     fn case_01_single_req() {
-        let text = fixture!("case-01-single-req/baseline.md");
+        let text = fixture!("spec-01-single-req/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 1);
@@ -42,7 +42,7 @@ mod baseline {
 
     #[test]
     fn case_02_multi_req() {
-        let text = fixture!("case-02-multi-req/baseline.md");
+        let text = fixture!("spec-02-multi-req/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 3);
@@ -61,7 +61,7 @@ mod baseline {
 
     #[test]
     fn case_07_all_sections() {
-        let text = fixture!("case-07-all-sections/baseline.md");
+        let text = fixture!("spec-07-all-sections/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 3);
@@ -71,7 +71,7 @@ mod baseline {
 
     #[test]
     fn case_09_preserves_oddities() {
-        let text = fixture!("case-09-validation-fails/baseline.md");
+        let text = fixture!("spec-09-validation-fails/baseline.md");
         let parsed = parse_baseline(text);
 
         assert_eq!(parsed.requirements.len(), 4);
@@ -160,7 +160,7 @@ mod delta {
 
     #[test]
     fn case_07_all_sections() {
-        let text = fixture!("case-07-all-sections/delta.md");
+        let text = fixture!("spec-07-all-sections/delta.md");
         let delta = parse_delta(text);
 
         assert_eq!(delta.renamed.len(), 1);
@@ -180,7 +180,7 @@ mod delta {
 
     #[test]
     fn case_03_new_baseline() {
-        let text = fixture!("case-03-new-baseline/delta.md");
+        let text = fixture!("spec-03-new-baseline/delta.md");
         assert!(has_delta_headers(text));
 
         let delta = parse_delta(text);

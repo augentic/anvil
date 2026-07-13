@@ -2,7 +2,7 @@
 
 Workspace-wide index of the integration test binaries that compare against checked-in goldens, the fixture directories they read, and the one canonical way to regenerate those goldens. See [`docs/standards/testing.md`](../docs/standards/testing.md) for the integration-first policy, golden discipline, and test-naming rules.
 
-The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds the lightweight `checks` package (`boundaries` + `links`), shared `fixtures/`, and `fs_git.rs`.
+The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds the lightweight `checks` package (`boundaries` + `links`), shared cross-crate `fixtures/` (today: `spec-*/`), and `fs_git.rs`.
 
 ## Repo checks (`-p checks`)
 
@@ -26,7 +26,7 @@ After regenerating, `git diff` the goldens and review every change: a diff that 
 
 | Crate | Test binary | Fixture / golden dir(s) |
 | --- | --- | --- |
-| `workflow` | `merge_goldens` | `tests/fixtures/merge/case-*` |
+| `slice` | `merge_goldens` | `tests/fixtures/spec-*` |
 | `schema` | `answers` | `schemas/answers/*.schema.json` |
 
 Binaries not listed here assert structurally and carry no regenerable goldens.

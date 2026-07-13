@@ -28,7 +28,7 @@ Model doubles come from upstream: `omnia-testkit` owns the scripted/recording ha
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/change/tests/handlers.rs`, `crates/change/tests/full_loop.rs`, and so on. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`. The repo-root `tests/` carries the lightweight `checks` package (`boundaries`, `links`), shared fixture trees under `tests/fixtures/`, and `fs_git.rs`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/change/tests/handlers.rs`, `crates/change/tests/full_loop.rs`, and so on. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`. The repo-root `tests/` carries the lightweight `checks` package (`boundaries`, `links`), shared cross-crate fixture trees under `tests/fixtures/` (crate-local fixtures live under `crates/<name>/tests/fixtures/`), and `fs_git.rs`.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -40,7 +40,7 @@ Every behavior gets a home in exactly one of three layers. Decide the layer **be
 | ----- | -------- | ------------- | -------------- |
 | **Kernel unit** | `#[cfg(test)] mod tests` (or a sibling `tests.rs`) next to the code | The branch is genuinely unreachable through the CLI (an error variant no flag can trigger, a defensive guard), **or** the behavior is a dense parse/projection edge matrix whose case-per-cell integration port would inflate the 4-wide subprocess pool | The behavior is reachable through the binary and an integration test already covers it — or could, without a matrix explosion |
 | **Crate integration** | `crates/<name>/tests/` | The behavior spans modules within one crate and is unreachable (or impractical to reach) through the binary — internal invariants, filesystem-shape corner cases, registry-pinned schema compilation | The same observable behavior is already asserted through the binary; if a CLI test exists, the crate test must cover a *different* edge, not re-derive the happy path in-process |
-| **Wire-contract integration** | `crates/transport/tests/` (the routing crate; the root package carries no test binaries — repo-root `tests/` holds the `checks` package and `fixtures/`) | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, route dispatch | The assertion re-tests kernel logic already covered elsewhere — wire tests buy routing/projection confidence, not rule-by-rule behavior matrices |
+| **Wire-contract integration** | `crates/transport/tests/` (the routing crate; the root package carries no test binaries — repo-root `tests/` holds the `checks` package and shared `fixtures/`) | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, route dispatch | The assertion re-tests kernel logic already covered elsewhere — wire tests buy routing/projection confidence, not rule-by-rule behavior matrices |
 
 Rules of thumb:
 
@@ -93,7 +93,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 ## Patterns to follow
 
 - Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/change/tests/common/mod.rs` — the `Project` anchor, the fixture provider, and the scripted-answer builders.
-- Compare structured output against checked-in goldens (the merge-engine goldens under `tests/fixtures/merge/`, the wire-schema fixtures under `tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
+- Compare structured output against checked-in goldens (the shared `spec-*` cases under `tests/fixtures/`, the wire-schema fixtures under `crates/schema/tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 - Scripted model answers are concise checked-in test inputs colocated with their consuming tests — not a replay catalogue, fixture corpus, or scenario format.

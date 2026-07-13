@@ -8,7 +8,7 @@ use schema::{
 
 const DIAGNOSTIC_SCHEMA_URL: &str =
     "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json";
-const REPORT: &str = include_str!("../../../tests/fixtures/build/report.json");
+const REPORT: &str = include_str!("fixtures/build/report.json");
 
 #[test]
 fn schema_and_dto_agree() {

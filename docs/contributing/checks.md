@@ -17,7 +17,7 @@ Skill frontmatter, marketplace drift, and docs house style are **not** CI predic
 | Embedded prompt-corpus links | `crates/prose` via `crates/slice/build.rs` + `crates/change/build.rs` — a dangling reference **fails the build** | Every compile |
 | Published docs book links | mdbook-linkcheck2 in [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml) | Push to `main` for `docs/**` only — **not** a PR gate |
 
-The `checks` package stays a separate workspace member (not root-package tests) so the Wasmtime-heavy runtime graph stays out of the ordinary test build. `tests/fs_git.rs` and `tests/fixtures/` sit alongside and are pulled in by other crates via `#[path]` / relative paths.
+The `checks` package stays a separate workspace member (not root-package tests) so the Wasmtime-heavy runtime graph stays out of the ordinary test build. `tests/fs_git.rs` and shared `tests/fixtures/` trees sit alongside and are pulled in by other crates via `#[path]` / relative paths; crate-local fixtures live under `crates/<name>/tests/fixtures/`.
 
 ## What the checks enforce
 

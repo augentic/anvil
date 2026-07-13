@@ -205,7 +205,7 @@ harness/wasm/            the WASM boundary smoke — hosts specify.wasm with the
 harness/fixtures/        the fixture adapter (native core for both specify:adapter axes + the combined fixture_adapter guest)
 harness/live/            the ignored native live-model workflow test (cargo make test-live)
 tests/                    lightweight checks package (boundaries, links), fixtures/, fs_git.rs
-tests/fixtures/          shared fixture trees referenced by crate-level suites
+tests/fixtures/          shared cross-crate fixture trees (crate-local fixtures live under crates/<name>/tests/fixtures/)
 ```
 
 | Code | Name                     | When                                                                  |

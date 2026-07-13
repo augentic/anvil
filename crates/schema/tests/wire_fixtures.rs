@@ -181,9 +181,7 @@ mod lead {
 // --- plan/plan.schema.json -------------------------------------------
 
 fn plan_v2_fixture_path(name: &str) -> PathBuf {
-    // `crates/schema/` -> `crates/` -> repo root -> `tests/fixtures/plan/v2/`.
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
         .join("tests/fixtures/plan/v2")
         .join(name)
 }

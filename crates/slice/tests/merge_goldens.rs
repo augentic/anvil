@@ -9,19 +9,19 @@ use common::{Project, run};
 use slice::handlers::{Preview, PreviewInput};
 
 const MERGE_CASES: &[&str] = &[
-    "case-01-single-req",
-    "case-02-multi-req",
-    "case-03-new-baseline",
-    "case-04-modified",
-    "case-05-removed",
-    "case-06-renamed",
-    "case-07-all-sections",
+    "spec-01-single-req",
+    "spec-02-multi-req",
+    "spec-03-new-baseline",
+    "spec-04-modified",
+    "spec-05-removed",
+    "spec-06-renamed",
+    "spec-07-all-sections",
 ];
 
-const VALIDATION_CASES: &[&str] = &["case-08-validation-ok", "case-09-validation-fails"];
+const VALIDATION_CASES: &[&str] = &["spec-08-validation-ok", "spec-09-validation-fails"];
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/merge")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures")
 }
 
 fn stage(project: &Project, case: &Path, delta: &str) {
