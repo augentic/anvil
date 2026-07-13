@@ -12,9 +12,9 @@ Plugins are installed from the Cursor marketplace (Settings > Plugins > search f
 - **Rules** — `.mdc` files that provide context to the agent.
 - **References** — markdown documents that skills may link for operator-facing depth (plugin-local only; never into `docs/`).
 
-## Workspace rules
+## Project guidance
 
-Installing plugins from the marketplace gives you each plugin's rules and skills. For cross-plugin coordination, copy the workspace rule from the Specify repository (`.cursor/rules/project.mdc`) into your project's `.cursor/rules/` directory.
+Installing plugins from the marketplace gives you each plugin's rules and skills. Keep project-wide and cross-plugin guidance in the repository's root `AGENTS.md`; `specify init` generates the Specify context there when the file is absent. Use plugin rules only for plugin-specific behavior.
 
 ## Plugin overview
 

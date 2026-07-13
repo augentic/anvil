@@ -56,6 +56,19 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 
 Engineering standards reach consumer projects through the target adapters' embedded prose, applied by their build review prompts — there is no engine-side lint or rules-export surface. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
+### Artifact authority and boundaries
+
+When inputs disagree, use this precedence order:
+
+1. Specify artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`; Vectis also owns `tokens.yaml` and `assets.yaml`, while `composition.yaml` is a target build output)
+2. Guest orchestrations and embedded prompts (`crates/slice/prompts/`, `crates/change/prompts/`, and the CLI single-writer contract)
+3. `docs/reference/`, `docs/standards/`, adapter prompts, and adapter-local references
+4. `SKILL.md` wrappers, which may only elicit arguments, invoke one CLI verb, and relay its output
+5. Source Evidence
+6. Model inference
+
+Artifacts override source behavior. When the authoritative inputs are incomplete, preserve the gap as `[unknown]` rather than guessing. Keep behavioral requirements platform-neutral in `spec.md`; target-specific implementation detail belongs in `design.md`, adapter prompts, and adapter references. See [artifact responsibilities](docs/explanation/artifacts.md) and the [specialist-versus-artifact boundary](docs/explanation/augentic-specify-usage.md).
+
 ### Authority and reconciliation mechanics
 
 The headline rules:
@@ -145,6 +158,7 @@ The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill /
 ## Related coding standards
 
 - CLI binary and crate conventions (errors, DTOs, hint colocation, brevity) live in [the Rust workspace section below](#the-rust-workspace-specify-cli) and [docs/standards/](docs/standards/). Skills that shell out to `specify` rely on the kebab-case `error` discriminants documented there.
+- Markdown changes follow [documentation authoring standards](docs/standards/doc-authoring.md). Do not hard-wrap prose solely for column width; preserve semantically meaningful breaks in frontmatter, tables, lists, blockquotes, and fenced code.
 
 ## The Rust workspace (`specify` CLI) {#the-rust-workspace-specify-cli}
 

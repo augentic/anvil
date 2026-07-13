@@ -96,8 +96,7 @@ Generation behavior belongs in guest orchestrations and target-adapter prompts, 
   - [Reference](docs/reference/index.md) — skills, CLI, adapters, configuration
   - [Quick reference](docs/reference/quick-reference.md) — single-page cheat sheet
 - [Specify artifact guidance supplement](docs/explanation/augentic-specify-usage.md)
-- [Project Rule](.cursor/rules/project.mdc)
-- [Agent Instructions](AGENTS.md)
+- [Repository agent instructions](AGENTS.md)
 - [Contribution Guide](CONTRIBUTING.md)
 - [Governance](GOVERNANCE.md)
 - [Code of Conduct](CODE-OF-CONDUCT.md)

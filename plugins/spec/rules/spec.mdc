@@ -79,7 +79,7 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 
 ## Related Documentation
 
-- See project rule (`.cursor/rules/project.mdc`) for overall project context
+- See the project root `AGENTS.md` for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) — Initialize Specify
 - [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
 - [Refine SKILL.md](skills/refine/SKILL.md) — Synthesize artifacts for one slice

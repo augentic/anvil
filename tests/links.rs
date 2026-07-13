@@ -1,4 +1,4 @@
-//! Relative markdown link integrity under `plugins/`, `docs/`, and `.cursor/`.
+//! Relative markdown link integrity under `plugins/` and `docs/`.
 //!
 //! Embedded judgment prose under `crates/*/prompts/` is out of scope:
 //! `crates/prose` link-checks it at embed time and fails the build.
@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 const DIAGRAM_EXCLUDED: &[&str] =
     &["docs/assets/diagrams/_STYLE.md", "docs/standards/doc-authoring.md"];
 
-const LINK_SCOPE_PREFIXES: &[&str] = &["plugins/", "docs/", ".cursor/"];
+const LINK_SCOPE_PREFIXES: &[&str] = &["plugins/", "docs/"];
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
