@@ -23,6 +23,7 @@ omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
 serde_json.workspace = true
 serde-saphyr.workspace = true
+slice.workspace = true
 tempfile.workspace = true
 testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
@@ -49,4 +50,4 @@ path = "greeting/runtime.rs"
 
 [[example]]
 name = "prompt-eval"
-path = "prompt-eval/runtime.rs"
+path = "prompt-eval/engine.rs"

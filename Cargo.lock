@@ -1152,6 +1152,7 @@ dependencies = [
  "omnia-wasi-otel",
  "serde-saphyr",
  "serde_json",
+ "slice",
  "tempfile",
  "testkit",
  "tokio",

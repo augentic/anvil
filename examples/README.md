@@ -4,7 +4,8 @@ Specify's non-shipped example surfaces follow Omnia's [examples](https://github.
 
 | Path                     | Role                                                     |
 | ------------------------ | -------------------------------------------------------- |
-| `prompt-eval/runtime.rs` | Manual prompt-evaluation harness (`prompt-eval`)         |
+| `prompt-eval/engine.rs`  | Live-model workflow demo: plan → execute → finalize      |
+| `prompt-eval/cursor.rs`  | Live cursor-agent model backend for prompt-eval          |
 | `greeting/runtime.rs`    | Command-mode `runtime!` host (`greeting`)                 |
 | `greeting/scripted.rs`   | Deterministic model backend and judgment answers          |
 | `greeting/guest.rs`      | Combined source/target component (`greeting-wasm`)        |

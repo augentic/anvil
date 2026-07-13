@@ -1,6 +1,20 @@
 # Prompt evaluation
 
-A manual native harness for evaluating reconciliation and synthesis prompt changes against a live model. It uses the same fixture adapter core as the deterministic suites, avoiding WASM build and hosting costs during prompt iteration.
+A live-model example of the Specify engine workflow over the fixture adversarial lead set. Graded by deterministic validators only — never a second model judging the first.
+
+Layout: `engine.rs` is the workflow driver; `cursor.rs` is the live-model backend (same role as `greeting/scripted.rs`).
+
+## Workflow
+
+The driver mirrors the operator rhythm:
+
+```text
+plan        specify plan author → Gate 1 approved
+execute     per slice: plan next → refine → build → merge  (until drained)
+finalize    specify plan archive
+```
+
+`execute` is hand-driven with the breakout verbs so each phase is visible. Production `specify plan execute` drains the same refine → build → merge loop automatically.
 
 ## Run
 
@@ -10,6 +24,19 @@ Install and authenticate `cursor-agent`, then run from the repository root:
 cargo make prompt-eval
 ```
 
-The harness drives an adversarial lead set through plan authoring and execution. Hard assertions grade cross-source reconciliation, authority divergence, evidence gaps, provenance, lifecycle completion, and build output. It also reports request and repair counts as an early prompt-drift signal.
+## Grading contract
+
+Hard assertions only:
+
+| Stage | Check | Pass condition |
+| ----- | ----- | -------------- |
+| plan | Cross-source overlap | `login-flow` from `docs` and `code` merge into one slice |
+| execute | Lifecycle | Every plan entry is `done` |
+| execute | Provenance | Every evidenced requirement carries sources; ids are present |
+| execute | Authority disagreement | Session-timeout surfaces as `[divergence]` or `[conflict]` |
+| execute | Evidence gap | Password-reset is marked `[unknown]`, not invented |
+| execute | Build output | Every slice leaves a non-empty fixture build artifact |
+
+Per-leg request / repair counts are **reported, not asserted**. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
 
 The temporary project path is printed at startup. Successful runs remove it; failed runs retain it for inspection.

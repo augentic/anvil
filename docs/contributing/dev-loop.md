@@ -24,7 +24,7 @@ Escalate here only when the change crosses a WIT, dispatch, hosting, or preopen 
 
 ## 3. `cargo make prompt-eval` (from `examples/`) — prompt evaluation
 
-Runs the `prompt-eval` harness (`examples/prompt-eval/runtime.rs`): the same fixture workflow over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
+Runs the `prompt-eval` example (`examples/prompt-eval/engine.rs`): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
 
 Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See [`examples/README.md`](../../examples/README.md).
 
