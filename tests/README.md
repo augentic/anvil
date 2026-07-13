@@ -2,7 +2,15 @@
 
 Workspace-wide index of the integration test binaries that compare against checked-in goldens, the fixture directories they read, and the one canonical way to regenerate those goldens. See [`docs/standards/testing.md`](../docs/standards/testing.md) for the integration-first policy, golden discipline, and test-naming rules.
 
-The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds the framework checks (`framework/`) and the shared `fixtures/` referenced by crate-level suites.
+The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds the lightweight `checks` package (`boundaries` + `links`), shared `fixtures/`, and `fs_git.rs`.
+
+## Repo checks (`-p checks`)
+
+Architecture boundary and docs/plugin link integrity. Separate package so the Wasmtime-heavy root runtime stays out of the ordinary test graph. See [Consistency Checks](../docs/contributing/checks.md).
+
+```bash
+cargo test -p checks
+```
 
 ## Canonical golden regeneration
 

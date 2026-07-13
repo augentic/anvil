@@ -73,10 +73,10 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-cargo test --test framework
+cargo test -p checks
 ```
 
-The framework checks are plain cargo tests over the prose and manifest surfaces (including skill frontmatter and marketplace consistency). Only a Rust toolchain is required; the same tests run inside the full `cargo make ci` gate. See [Consistency Checks](docs/contributing/checks.md) for the full check model.
+Adapter boundary + docs/plugin link integrity. Only a Rust toolchain is required; the same tests run inside `cargo make ci`. See [Consistency Checks](docs/contributing/checks.md).
 
 ### Local iteration
 

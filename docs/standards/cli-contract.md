@@ -126,6 +126,6 @@ Skills should branch on the exit code first (success vs failure class) and on th
 
 ## Cross-references
 
-- [`tests/framework/skills.rs`](../../tests/framework/skills.rs) — the skill-side rules that surround this contract (frontmatter schema validation, name uniqueness and prefix, the ultrathin-wrapper bans), codified as framework checks. The description and argument-hint grammars live in [`schemas/authoring/skill.schema.json`](../../schemas/authoring/skill.schema.json).
+- [`schemas/authoring/skill.schema.json`](../../schemas/authoring/skill.schema.json) — description and argument-hint grammars for skill frontmatter (editor contract). Ultrathin-wrapper body style is guidance here, not a CI predicate.
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
 - [`AGENTS.md`](../../AGENTS.md#the-rust-workspace-specify-cli) — authoritative source for exit codes, error variants, and CLI architecture.

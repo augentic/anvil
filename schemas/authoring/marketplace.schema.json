@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/authoring/marketplace.schema.json",
   "title": "Cursor plugin marketplace manifest",
-  "description": "Validates `.cursor-plugin/marketplace.json`. Cross-file consistency with `plugins/` (symlink integrity, declared plugin surfaces) is enforced by the framework-quality cargo tests (`tests/framework/prose.rs` and `main.rs`).",
+  "description": "Validates `.cursor-plugin/marketplace.json` (editor contract).",
   "type": "object",
   "required": [
     "name",

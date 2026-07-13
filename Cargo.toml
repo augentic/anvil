@@ -9,10 +9,10 @@ categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
-# The root package carries no tests: the framework-quality suite lives
-# in the lightweight tests/framework package, crate behavior lives in
-# each crate's tests/, and tests/fs_git.rs is a `#[path]`-shared helper
-# that must not become a (Wasmtime-heavy) empty test binary.
+# The root package carries no tests: repo checks live in the lightweight
+# `tests` package (boundaries + links), crate behavior lives in each
+# crate's tests/, and tests/fs_git.rs is a `#[path]`-shared helper that
+# must not become a (Wasmtime-heavy) empty test binary.
 autotests = false
 
 [lib]
@@ -55,12 +55,12 @@ wit-bindgen.workspace = true
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/*", "tests/framework"]
-# The ordinary test group: crate suites plus the framework-quality
+members = ["crates/*", "harness/*", "tests"]
+# The ordinary test group: crate suites plus the lightweight repo-checks
 # package. The root runtime package and the harness packages are
 # explicit opt-ins (`-p specify`, `-p wasm`), keeping
 # Wasmtime execution out of the per-commit build.
-default-members = ["crates/*", "harness/fixtures", "tests/framework"]
+default-members = ["crates/*", "harness/fixtures", "tests"]
 
 [workspace.package]
 authors = ["Augentic"]

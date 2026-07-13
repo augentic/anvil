@@ -23,7 +23,7 @@ plugins/<name>/
 └── rules/                      # optional .mdc context
 ```
 
-The marketplace manifest at `.cursor-plugin/marketplace.json` lists exactly these plugins. Framework checks at `tests/framework/` validate the manifest against `schemas/authoring/marketplace.schema.json` and each `SKILL.md` against `schemas/authoring/skill.schema.json` (see [Consistency Checks](checks.md)).
+The marketplace manifest at `.cursor-plugin/marketplace.json` lists exactly these plugins. Shape is documented by `schemas/authoring/marketplace.schema.json` and `schemas/authoring/skill.schema.json` (editor contracts; see [Consistency Checks](checks.md) for what CI actually enforces).
 
 ## Preview a working-tree plugin
 

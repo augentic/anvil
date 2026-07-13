@@ -4,7 +4,7 @@ Specify proves engine correctness from this repository alone: native integration
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, authoring checks, crate and binary integration, the framework-quality prose/manifest checks, and a compile-only `wasm32-wasip2` check covering the workflow guest and the fixture-adapter shim. The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the fixture adapter and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + docs/plugin links), and a compile-only `wasm32-wasip2` check covering the workflow guest and the fixture-adapter shim. The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the fixture adapter and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 

@@ -1,22 +1,15 @@
-//! Dependency-direction predicates that keep concrete adapter crates out of
-//! the workflow engine while allowing adapter vocabulary in wire examples.
+//! Keep concrete adapter crates out of the workflow engine.
 //!
-//! The check parses every engine Cargo manifest and inspects each
-//! dependency table: an entry is a violation when its effective package
-//! name (the `package` rename target when present) is a concrete adapter
-//! crate, or when its `path`/`git` source points into the
-//! `specify-adapters` repository. Rust sources need no scan — a crate
-//! that no manifest declares cannot be imported.
+//! Parses every engine Cargo manifest and inspects each dependency
+//! table: an entry is a violation when its effective package name is a
+//! concrete adapter crate, or when its `path`/`git` source points into
+//! `specify-adapters`. Rust sources need no scan — a crate that no
+//! manifest declares cannot be imported.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use toml::{Table, Value};
-
-use crate::support::{Finding, rel, walk_files};
-
-/// An engine manifest declares a concrete adapter implementation.
-pub const CHECK_ADAPTER_DEPENDENCY: &str = "architecture.adapter-dependency";
 
 /// Engine manifest scopes: the workspace root plus every crate and
 /// harness manifest.
@@ -38,33 +31,32 @@ const ADAPTER_CRATES: &[&str] = &[
     "vectis",
 ];
 
-/// Any `path`/`git` dependency source containing this segment reaches
-/// into the adapters repository.
 const ADAPTER_REPOSITORY: &str = "specify-adapters";
 
-/// Find concrete adapter dependencies in the engine's Cargo manifests.
-pub fn run(root: &Path) -> Vec<Finding> {
-    let mut findings = Vec::new();
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("tests/ sits under the repo root")
+        .to_path_buf()
+}
+
+fn findings(root: &Path) -> Vec<String> {
+    let mut out = Vec::new();
     for manifest in manifests(root) {
         let Ok(body) = fs::read_to_string(&manifest) else {
             continue;
         };
-        // Cargo gates parseability itself; an unreadable manifest cannot
-        // hide a dependency from the build either.
         let Ok(document) = body.parse::<Table>() else {
             continue;
         };
+        let relative = rel(root, &manifest);
         for (table, name, detail) in violations(&document) {
-            findings.push(Finding::new(
-                CHECK_ADAPTER_DEPENDENCY,
-                format!("{}: [{table}] {name}: {detail}", rel(root, &manifest)),
-            ));
+            out.push(format!("{relative}: [{table}] {name}: {detail}"));
         }
     }
-    findings
+    out
 }
 
-/// Every Cargo manifest under the engine scopes.
 fn manifests(root: &Path) -> Vec<PathBuf> {
     let mut manifests = Vec::new();
     for scope in SCOPES {
@@ -84,7 +76,6 @@ fn manifests(root: &Path) -> Vec<PathBuf> {
     manifests
 }
 
-/// Each offending `(table, dependency name, detail)` in one manifest.
 fn violations(document: &Table) -> Vec<(String, String, String)> {
     let mut violations = Vec::new();
     for (table, entries) in dependency_tables(document) {
@@ -97,8 +88,6 @@ fn violations(document: &Table) -> Vec<(String, String, String)> {
     violations
 }
 
-/// Every dependency table in one manifest: the three package tables,
-/// `workspace.dependencies`, and each target-specific variant.
 fn dependency_tables(root: &Table) -> Vec<(String, &Table)> {
     const KINDS: [&str; 3] = ["dependencies", "dev-dependencies", "build-dependencies"];
     let mut tables = Vec::new();
@@ -130,7 +119,6 @@ fn dependency_tables(root: &Table) -> Vec<(String, &Table)> {
     tables
 }
 
-/// Why one dependency entry violates the boundary, if it does.
 fn offence(name: &str, spec: &Value) -> Option<String> {
     let package = spec
         .as_table()
@@ -150,4 +138,87 @@ fn offence(name: &str, spec: &Value) -> Option<String> {
         }
     }
     None
+}
+
+fn walk_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        if file_type.is_dir() {
+            walk_files(&path, out);
+        } else if file_type.is_file() {
+            out.push(path);
+        }
+    }
+}
+
+fn rel(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")
+}
+
+fn write(root: &Path, relative: &str, body: &str) {
+    let path = root.join(relative);
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(path, body).expect("write");
+}
+
+#[test]
+fn repo_has_no_adapter_dependencies() {
+    let findings = findings(&repo_root());
+    assert!(findings.is_empty(), "adapter boundary violated:\n{findings:#?}");
+}
+
+#[test]
+fn bad_fixtures() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "crates/slice/Cargo.toml",
+        "[dependencies]\nvectis = { path = \"../../specify-adapters/targets/vectis\" }\n",
+    );
+    assert!(!findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "crates/slice/Cargo.toml",
+        "[dev-dependencies]\nharmless = { package = \"captures\", version = \"1\" }\n",
+    );
+    assert!(!findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "harness/wasm/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
+    assert!(!findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "Cargo.toml", "[target.'cfg(unix)'.dependencies]\ntypescript = \"1\"\n");
+    assert!(!findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "Cargo.toml",
+        "[workspace.dependencies]\nomnia = { package = \"omnia\", path = \"../specify-adapters/targets/omnia\" }\n",
+    );
+    assert!(!findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "Cargo.toml",
+        "[workspace.dependencies]\nomnia = \"0.35.0\"\nslice = { path = \"crates/slice\" }\n",
+    );
+    assert!(findings(dir.path()).is_empty());
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "crates/slice/src/lib.rs", "use captures::operations;\n");
+    assert!(findings(dir.path()).is_empty());
 }

@@ -19,7 +19,7 @@ harness/fixtures         # dev-only fixture adapter — one native core supplyin
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 
-The framework authoring checks run as plain cargo tests at [`tests/framework/`](../../tests/framework/); there is no lint engine or `Check` substrate.
+The repo checks run as plain cargo tests in the lightweight [`tests/`](../../tests/) package (`checks`); there is no lint engine or `Check` substrate.
 
 The artifact validation rule registry (`artifacts::validate`) sits on `artifacts`, which depends on none of the workflow crates nor anything named lint, so an artifact rule cannot reach workflow lifecycle types. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry the workflow layer reads, alongside `schema` and `error` at the bottom. The neutral `Diagnostic` substrate lives at `schema::diagnostics`, so every check producer mints findings without depending on anything named `lint`.
 
@@ -54,7 +54,7 @@ Four module trees carry the workflow contract — three in `project`, plus `spec
 
 The two adapter validators — `contract` and `vectis` — are in-guest adapter library code compiled into each adapter's published component in `augentic/specify-adapters`. The carve-out discipline (leaner lint posture and minimal `[workspace.dependencies]`) lives in that repo's workspace. Crux shell presence and launcher-icon heuristics live in the vectis adapter's in-guest core: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
 
-The framework checks over this repo's prose are not WASI components either — they are plain cargo tests at `tests/framework/`, dev-only and outside every shipped crate.
+The repo checks are not WASI components either — they are plain cargo tests in `tests/`, dev-only and outside every shipped crate.
 
 **Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. There is no declared-tool surface. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
 

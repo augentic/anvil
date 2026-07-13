@@ -8,7 +8,7 @@ The workflow engine and operator plugins live in [`augentic/specify`](https://gi
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |
-| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/wasm/live test surfaces | Rust |
+| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, repo checks, and native/wasm/live test surfaces | Rust |
 | `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Ultrathin Cursor skill wrappers, documentation, and the marketplace manifest | Markdown, YAML |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 
@@ -22,7 +22,7 @@ The Rust workspace owns deterministic operations and guest orchestrations (lifec
 | **Adapter authors** | Adapter crates and `prose/prompts/` in `specify-adapters` | In that sibling repo |
 | **Docs and skill-wrapper authors** | `docs/`, `plugins/*/skills/*/SKILL.md`, marketplace manifest | No — markdown and YAML only |
 
-Every contributor runs `cargo test --test framework` locally with only a Rust toolchain: the framework checks are plain cargo tests over the prose and manifest surfaces (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree skill wrappers, pass `--plugin-dir plugins/<name>` to Cursor Agent.
+Every contributor runs `cargo test -p checks` locally with only a Rust toolchain: adapter boundary and docs/plugin link integrity (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree skill wrappers, pass `--plugin-dir plugins/<name>` to Cursor Agent.
 
 ## Development environment
 
@@ -43,7 +43,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `cargo test --test framework` over the prose (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `cargo test -p checks` (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
@@ -54,7 +54,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 - [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/slice/prompts/synthesis/) — workflow state, evidence reconciliation, authority, and cache behavior
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — how adapters declare brief pipelines
 - [CLI Architecture](cli-architecture.md) — crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) — what the framework-quality cargo tests enforce and how to extend them
+- [Consistency Checks](checks.md) — what the `checks` package enforces and how to extend it
 - [Cursor operator plugins](operator-plugins.md) — marketplace layout and local `--plugin-dir` preview
 
 ## Example Patterns

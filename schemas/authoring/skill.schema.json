@@ -14,7 +14,7 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
       "maxLength": 64,
-      "description": "Skill identifier; lowercase letters, numbers, and hyphens; max 64 chars (Anthropic syntax). Must be plugin-qualified (e.g. `spec-init`, `omnia-crate-writer`); the per-plugin prefix invariant and global uniqueness are enforced by the framework-quality cargo tests (`tests/framework/skills.rs`) because JSON Schema cannot see the surrounding directory. Avoid reserved words `anthropic` and `claude` (Anthropic platform policy)."
+      "description": "Skill identifier; lowercase letters, numbers, and hyphens; max 64 chars (Anthropic syntax). Must be plugin-qualified (e.g. `specify-refine`, `capture-wiretapper`). Avoid reserved words `anthropic` and `claude` (Anthropic platform policy)."
     },
     "description": {
       "type": "string",

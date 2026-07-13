@@ -10,7 +10,7 @@ cargo make test-live  # run the explicit live-model workflow test
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest` over the default workspace members: the workspace crates, the fixture adapter's native core, and the framework-quality checks at `tests/framework/`. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the fixture adapter's native seams and `omnia-testkit` scripted models, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest` over the default workspace members: the workspace crates, the fixture adapter's native core, and the `checks` package at `tests/`. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the fixture adapter's native seams and `omnia-testkit` scripted models, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 

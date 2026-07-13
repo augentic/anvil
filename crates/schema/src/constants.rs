@@ -95,10 +95,10 @@ pub const DIAGNOSTIC_JSON_SCHEMA: &str =
 pub const DIAGNOSTIC_REPORT_JSON_SCHEMA: &str =
     include_str!("../../../schemas/diagnostics/diagnostic-report.schema.json");
 
-/// Schema for `SKILL.md` YAML frontmatter (framework authoring).
+/// Schema for `SKILL.md` YAML frontmatter (editor contract).
 pub const SKILL_JSON_SCHEMA: &str = include_str!("../../../schemas/authoring/skill.schema.json");
 
-/// Schema for `.cursor-plugin/marketplace.json` (framework authoring).
+/// Schema for `.cursor-plugin/marketplace.json` (editor contract).
 pub const MARKETPLACE_JSON_SCHEMA: &str =
     include_str!("../../../schemas/authoring/marketplace.schema.json");
 

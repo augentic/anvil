@@ -92,7 +92,7 @@ cargo build --locked -p fixtures --examples --target wasm32-wasip2
 '''
 
 # Test — the ordinary suite over the default workspace members
-# (crates/*, harness/fixtures, tests/framework); the WASM boundary
+# (crates/*, harness/fixtures, tests); the WASM boundary
 # smoke is opt-in via test-wasm.
 [tasks.test]
 command = "cargo"

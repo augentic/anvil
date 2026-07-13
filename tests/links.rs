@@ -1,33 +1,86 @@
-//! Shared plumbing for the framework-quality predicates: repo walk,
-//! frontmatter split, and the fence-aware markdown link scanner.
+//! Relative markdown link integrity under `plugins/`, `docs/`, and `.cursor/`.
+//!
+//! Embedded judgment prose under `crates/*/prompts/` is out of scope:
+//! `crates/prose` link-checks it at embed time and fails the build.
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use serde_json::{Map as JsonMap, Value as JsonValue};
+/// Docs pages that intentionally cite illustrative asset paths.
+const DIAGRAM_EXCLUDED: &[&str] =
+    &["docs/assets/diagrams/_STYLE.md", "docs/standards/doc-authoring.md"];
 
-/// One predicate hit: the check id plus a human-readable message that
-/// names the offending path (and line where known).
-pub struct Finding {
-    pub check: &'static str,
-    pub message: String,
+const LINK_SCOPE_PREFIXES: &[&str] = &["plugins/", "docs/", ".cursor/"];
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("tests/ sits under the repo root")
+        .to_path_buf()
 }
 
-impl Finding {
-    pub const fn new(check: &'static str, message: String) -> Self {
-        Self { check, message }
+fn findings(root: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    for path in scoped_markdown(root, LINK_SCOPE_PREFIXES) {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let relative = rel(root, &path);
+        for link in extract_links(&content) {
+            if resolve_link(root, &relative, &link.target) != Some(false) {
+                continue;
+            }
+            if link.image {
+                let path_part = link.target.split(['#', '?']).next().unwrap_or(&link.target);
+                let is_svg =
+                    Path::new(path_part).extension().is_some_and(|e| e.eq_ignore_ascii_case("svg"));
+                if is_svg
+                    && relative.starts_with("docs/")
+                    && !relative.starts_with("docs/book/")
+                    && !DIAGRAM_EXCLUDED.contains(&relative.as_str())
+                {
+                    out.push(format!(
+                        "{relative}:{} — diagram embed '{}' does not resolve",
+                        link.line, link.target
+                    ));
+                }
+                continue;
+            }
+            out.push(format!(
+                "{relative}:{} — link target '{}' does not resolve",
+                link.line, link.target
+            ));
+        }
     }
+    out
 }
 
-/// Display `path` relative to `root` with forward slashes.
-pub fn rel(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")
+fn scoped_markdown(root: &Path, prefixes: &[&str]) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for prefix in prefixes {
+        let dir = root.join(prefix.trim_end_matches('/'));
+        if dir.is_dir() {
+            out.extend(walk_markdown(&dir));
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
 }
 
-/// Recursive file collector that never follows or records symlinks.
-pub fn walk_files(dir: &Path, out: &mut Vec<PathBuf>) {
+fn walk_markdown(dir: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    walk_files(dir, &mut files);
+    let mut out: Vec<PathBuf> = files
+        .into_iter()
+        .filter(|path| path.extension().and_then(|e| e.to_str()) == Some("md"))
+        .collect();
+    out.sort();
+    out
+}
+
+fn walk_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -47,63 +100,17 @@ pub fn walk_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Sorted `.md` files under `dir` (symlinks skipped).
-pub fn walk_markdown(dir: &Path) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-    walk_files(dir, &mut files);
-    let mut out: Vec<PathBuf> = files
-        .into_iter()
-        .filter(|path| path.extension().and_then(|e| e.to_str()) == Some("md"))
-        .collect();
-    out.sort();
-    out
+fn rel(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/")
 }
 
-/// Split `content` at its leading `---` frontmatter block, returning
-/// `(yaml_block, body)`. `None` when there is no well-formed block.
-pub fn frontmatter_split(content: &str) -> Option<(&str, &str)> {
-    let rest = content.strip_prefix("---\n").or_else(|| content.strip_prefix("---\r\n"))?;
-    let mut search_from = 0;
-    while let Some(pos_rel) = rest[search_from..].find("\n---") {
-        let pos = search_from + pos_rel;
-        let after = pos + "\n---".len();
-        let tail = &rest[after..];
-        if tail.is_empty() {
-            return Some((&rest[..pos], ""));
-        }
-        if let Some(body) = tail.strip_prefix('\n').or_else(|| tail.strip_prefix("\r\n")) {
-            return Some((&rest[..pos], body));
-        }
-        search_from = after;
-    }
-    None
+struct MarkdownLink {
+    target: String,
+    line: usize,
+    image: bool,
 }
 
-/// Parse the frontmatter block into a JSON object map. A missing
-/// block returns `None`; a block whose YAML fails to parse (or parses
-/// to a non-object) returns an empty map so schema checks still flag
-/// the opted-in file.
-pub fn parse_frontmatter(content: &str) -> Option<JsonMap<String, JsonValue>> {
-    let (block, _) = frontmatter_split(content)?;
-    match serde_saphyr::from_str::<JsonValue>(block) {
-        Ok(JsonValue::Object(map)) => Some(map),
-        Ok(_) | Err(_) => Some(JsonMap::new()),
-    }
-}
-
-/// One `[label](target)` link extracted from a markdown file.
-pub struct MarkdownLink {
-    /// Raw link target as written.
-    pub target: String,
-    /// 1-indexed source line.
-    pub line: usize,
-    /// `true` for `![alt](src)` image embeds.
-    pub image: bool,
-}
-
-/// Extract `[label](target)` links from markdown text, skipping fenced
-/// code blocks, HTML comments, and inline code spans.
-pub fn extract_links(text: &str) -> Vec<MarkdownLink> {
+fn extract_links(text: &str) -> Vec<MarkdownLink> {
     let mut state = ScanState::default();
     let mut links = Vec::new();
     for (idx, line) in text.split('\n').enumerate() {
@@ -261,11 +268,7 @@ fn find_unescaped(bytes: &[u8], start: usize, needle: u8) -> Option<usize> {
     None
 }
 
-/// Resolve a markdown link `target` written in the file at
-/// project-relative `from_rel`. `None` means the resolver did not
-/// attempt the target (URL scheme, anchor-only, or empty); otherwise
-/// whether the joined path exists on disk under `root`.
-pub fn resolve_link(root: &Path, from_rel: &str, target: &str) -> Option<bool> {
+fn resolve_link(root: &Path, from_rel: &str, target: &str) -> Option<bool> {
     if is_url_scheme(target) {
         return None;
     }
@@ -276,8 +279,7 @@ pub fn resolve_link(root: &Path, from_rel: &str, target: &str) -> Option<bool> {
     let from = Path::new(from_rel);
     let base = from.parent().unwrap_or_else(|| Path::new(""));
     let joined = base.join(path_part);
-    let normalised = normalise_relative(&joined);
-    Some(root.join(normalised).exists())
+    Some(root.join(normalise_relative(&joined)).exists())
 }
 
 fn is_url_scheme(target: &str) -> bool {
@@ -291,9 +293,7 @@ fn is_url_scheme(target: &str) -> bool {
         })
 }
 
-/// Collapse `./` segments and resolve `..` against earlier segments
-/// without touching the filesystem.
-pub fn normalise_relative(path: &Path) -> PathBuf {
+fn normalise_relative(path: &Path) -> PathBuf {
     let mut out: Vec<std::ffi::OsString> = Vec::new();
     for component in path.components() {
         use std::path::Component;
@@ -312,36 +312,35 @@ pub fn normalise_relative(path: &Path) -> PathBuf {
     buf
 }
 
-/// Discover `plugins/<plugin>/skills/<skill>/SKILL.md` files, keyed as
-/// `(plugin, skill, project-relative path)` in stable path order.
-pub fn discover_skills(root: &Path) -> Vec<(String, String, String)> {
-    let plugins_dir = root.join("plugins");
-    let mut files = Vec::new();
-    walk_files(&plugins_dir, &mut files);
-    let mut out = Vec::new();
-    for path in files {
-        if path.file_name().and_then(|n| n.to_str()) != Some("SKILL.md") {
-            continue;
-        }
-        let relative = rel(root, &path);
-        let Some(rest) = relative.strip_prefix("plugins/") else {
-            continue;
-        };
-        let parts: Vec<&str> = rest.split('/').collect();
-        if parts.len() == 4 && parts[1] == "skills" && parts[3] == "SKILL.md" {
-            out.push((parts[0].to_owned(), parts[2].to_owned(), relative));
-        }
-    }
-    out.sort_by(|a, b| a.2.cmp(&b.2));
-    out
+fn write(root: &Path, relative: &str, body: &str) {
+    let path = root.join(relative);
+    fs::create_dir_all(path.parent().expect("parent")).expect("mkdir");
+    fs::write(path, body).expect("write");
 }
 
-/// Build the `plugin -> {skill}` registry from the on-disk plugin
-/// tree, used by the skill-directive check.
-pub fn skill_registry(root: &Path) -> BTreeMap<String, std::collections::BTreeSet<String>> {
-    let mut registry: BTreeMap<String, std::collections::BTreeSet<String>> = BTreeMap::new();
-    for (plugin, skill, _) in discover_skills(root) {
-        registry.entry(plugin).or_default().insert(skill);
-    }
-    registry
+#[test]
+fn repo_links_resolve() {
+    let findings = findings(&repo_root());
+    assert!(findings.is_empty(), "unresolved links:\n{findings:#?}");
+}
+
+#[test]
+fn bad_fixtures() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "docs/guide.md", "See [missing](missing.md).\n");
+    assert!(findings(dir.path()).iter().any(|f| f.contains("does not resolve")));
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(dir.path(), "docs/page.md", "![diagram](../assets/gone.svg)\n");
+    let hits = findings(dir.path());
+    assert!(hits.iter().any(|f| f.contains("diagram embed")));
+    assert!(!hits.iter().any(|f| f.contains("link target")));
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    write(
+        dir.path(),
+        "docs/code.md",
+        "```md\n[missing](gone.md)\n```\n\nAnd `[missing](gone.md)` inline.\n",
+    );
+    assert!(findings(dir.path()).is_empty());
 }

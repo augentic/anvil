@@ -57,7 +57,7 @@ See [docs/reference/directory-layout.md](../../docs/reference/directory-layout.m
   ├── spec/               # Specify workflow plugin (init, plan, refine, build, merge, finalize, drop)
   └── capture/            # Runtime capture plugin (wiretap / migration capture)
 /src/, /crates/           # specify runtime binary and workspace crates
-/tests/framework/         # Prose/manifest framework checks as cargo tests
+/tests/                   # Lightweight checks package (boundaries, links), fixtures/, fs_git.rs
 /harness/                 # Fixture adapter, WASM boundary smoke, and the explicit live-model test
 ```
 
@@ -68,11 +68,11 @@ Source and target adapter trees (guest crates + `prose/prompts/`, per-adapter `p
 ## Validation
 
 ```bash
-cargo test --test framework   # the prose/manifest framework checks
-make ci                               # the full Rust workspace gate (cargo make ci)
+cargo test -p checks   # adapter boundary + docs/plugin link integrity
+make ci                # the full Rust workspace gate (cargo make ci)
 ```
 
-The framework checks are plain cargo tests at `tests/framework/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
+The `checks` package is plain cargo tests at `tests/` — only a Rust toolchain is required. They run inside `cargo make ci` with the rest of the workspace suite.
 
 Test placement, the three rungs (native / WASM boundary / explicit live trial), and assertion ownership are defined in [`docs/standards/testing.md`](../../docs/standards/testing.md). The contributor-facing gate model is [`docs/contributing/quality-gates.md`](../../docs/contributing/quality-gates.md). Generic model/runtime mechanics belong to `omnia-testkit`; Specify owns only workflow scenario content — fixture leads, evidence, scripted answers, and assertions.
 
@@ -133,11 +133,11 @@ In this repository:
 
 ## Skill wrappers
 
-Skill shape is codified in Rust: every `SKILL.md` is validated by the framework checks at [`tests/framework/skills.rs`](../../tests/framework/skills.rs) against the embedded skill schema. Wrappers stay ultrathin invoke-and-relay — no orchestration or generation prose. See [docs/contributing/checks.md](../../docs/contributing/checks.md) and [docs/contributing/operator-plugins.md](../../docs/contributing/operator-plugins.md).
+Wrappers stay ultrathin invoke-and-relay — no orchestration or generation prose. Frontmatter shape is an editor contract in `schemas/authoring/skill.schema.json`. See [docs/contributing/checks.md](../../docs/contributing/checks.md) and [docs/contributing/operator-plugins.md](../../docs/contributing/operator-plugins.md).
 
 ## For Contributors
 
-- Keep `/spec:*` skill bodies as invoke-and-relay wrappers; shape is enforced by [`tests/framework/skills.rs`](../../tests/framework/skills.rs).
+- Keep `/spec:*` skill bodies as invoke-and-relay wrappers; body style is guidance in [`docs/standards/cli-contract.md`](../../docs/standards/cli-contract.md).
 - Changes to generation behavior belong in guest orchestrations or adapter prompts in `specify-adapters`, not in skill bodies.
 - Keep the repo aligned with the Rust-first operating model in [AGENTS.md](../../AGENTS.md).
 

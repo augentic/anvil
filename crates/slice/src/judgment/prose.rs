@@ -62,7 +62,7 @@ fn section(label: &str, body: &str) -> String {
 // `pub(crate)`), so it is checked here against the private kernel
 // rather than widened for an integration suite. Link resolution is
 // enforced twice elsewhere: at embed time by the `prose` build crate
-// and by the framework link gate over `crates/slice/prompts/`.
+// and by the embed-time link check in `crates/prose`.
 #[cfg(test)]
 mod tests {
     use super::*;
