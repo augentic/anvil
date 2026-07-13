@@ -15,6 +15,9 @@ mod validate;
 use std::path::{Path, PathBuf};
 
 use error::{Error, Result};
+use project::handler::Ctx;
+use project::plan::Plan;
+use project::registry::Registry;
 use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
@@ -28,9 +31,6 @@ pub use self::remove::{Remove, RemoveInput};
 pub use self::status::{Status, StatusInput};
 pub use self::transition::{Transition, TransitionBody, TransitionInput, TransitionKind, UndoPair};
 pub use self::validate::{Validate, ValidateInput};
-use crate::change::Plan;
-use crate::handler::Ctx;
-use crate::registry::Registry;
 
 // ---- Shared helpers used across submodules ----
 

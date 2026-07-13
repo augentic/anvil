@@ -12,9 +12,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use artifacts::evidence::{AuthorityClass, ClaimKind};
 use error::{Error, Result};
 
-use crate::slice::model::{ModelClaim, ModelRequirement, SliceModel};
-use crate::slice::synthesis::authority::{ClaimRef, resolve};
-use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
+use crate::model::{ModelClaim, ModelRequirement, SliceModel};
+use crate::synthesis::authority::{ClaimRef, resolve};
+use crate::synthesis::baseline::{BaselineIndex, DomainKind};
 
 /// Domain used when a requirement has no explicit owner.
 const DEFAULT_DOMAIN: &str = "default";

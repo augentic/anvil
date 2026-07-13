@@ -5,10 +5,10 @@ use std::io::Write;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Render};
-use crate::slice::SliceMetadata;
+use crate::SliceMetadata;
 
 /// Wire input for `slice list` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ pub struct ListInput {}
 pub struct List;
 
 impl<P: Anchor> Operation<P> for List {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ListInput;
     type Output = ListBody;
 

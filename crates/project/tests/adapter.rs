@@ -3,7 +3,7 @@
 mod common;
 
 use common::{Project, run, stage_dev_component};
-use workflow::adapter::Resolver;
+use project::adapter::Resolver;
 
 mod resolve {
     use super::*;
@@ -15,9 +15,9 @@ mod resolve {
         {
             let project = Project::bare();
             stage_dev_component(&project.root, name);
-            let err = run::<workflow::adapter::handlers::TargetResolve, _>(
+            let err = run::<project::adapter::handlers::TargetResolve, _>(
                 &project,
-                workflow::adapter::handlers::ResolveInput {
+                project::adapter::handlers::ResolveInput {
                     value: name.to_string(),
                     project_dir: None,
                 },
@@ -33,9 +33,9 @@ mod resolve {
         let project = Project::bare();
         stage_dev_component(&project.root, "demo");
 
-        let body = run::<workflow::adapter::handlers::TargetResolve, _>(
+        let body = run::<project::adapter::handlers::TargetResolve, _>(
             &project,
-            workflow::adapter::handlers::ResolveInput {
+            project::adapter::handlers::ResolveInput {
                 value: "demo".to_string(),
                 project_dir: None,
             },
@@ -58,9 +58,9 @@ mod resolve {
         std::fs::create_dir_all(&components).expect("mkdir component cache");
         std::fs::write(components.join("demo.wasm"), "{}").expect("stage cached component");
 
-        let body = run::<workflow::adapter::handlers::TargetResolve, _>(
+        let body = run::<project::adapter::handlers::TargetResolve, _>(
             &project,
-            workflow::adapter::handlers::ResolveInput {
+            project::adapter::handlers::ResolveInput {
                 value: "demo".to_string(),
                 project_dir: None,
             },
@@ -85,7 +85,7 @@ mod resolve {
         std::fs::write(sibling.join("demo.wasm"), "{}").expect("stage sibling component");
 
         let err = common::resolver()
-            .resolve_target(&workflow::adapter::AdapterRef::bare("demo"), &project_dir)
+            .resolve_target(&project::adapter::AdapterRef::bare("demo"), &project_dir)
             .expect_err("sibling artifact must not resolve");
         assert!(err.to_string().contains("adapter-not-found"), "{err}");
     }
@@ -97,13 +97,13 @@ fn platforms_metadata_preserved() {
     stage_dev_component(&project.root, "vectis");
 
     let resolved = common::resolver()
-        .resolve_target(&workflow::adapter::AdapterRef::bare("vectis"), &project.root)
+        .resolve_target(&project::adapter::AdapterRef::bare("vectis"), &project.root)
         .expect("vectis resolves");
     let platforms = resolved.manifest.platforms.expect("platform capability");
 
     assert!(platforms.required);
     assert_eq!(
         platforms.allowed,
-        [workflow::Platform::Core, workflow::Platform::Ios, workflow::Platform::Android]
+        [project::Platform::Core, project::Platform::Ios, project::Platform::Android]
     );
 }

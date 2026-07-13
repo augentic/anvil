@@ -4,7 +4,7 @@ The Specify-owned fixture adapter package: a deterministic, model-free **native 
 
 ## Native core
 
-The library target supplies controlled survey/extract data (including a cross-source overlap, an authority disagreement, and an evidence gap), stable guidance, observable build output, and typed failures. The `workflow` crate's integration tests consume it through the test-only provider bridge at `crates/workflow/tests/common/fixture.rs`.
+The library target supplies controlled survey/extract data (including a cross-source overlap, an authority disagreement, and an evidence gap), stable guidance, observable build output, and typed failures. The workflow crates' integration tests consume it through the test-only provider bridge at `crates/change/tests/common/fixture.rs`.
 
 Behaviour keys off the routed adapter id (`source:<name>` / `target:<name>`), so one component artifact bound under several identities supplies every profile:
 

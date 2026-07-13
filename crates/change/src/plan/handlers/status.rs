@@ -2,11 +2,11 @@
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx};
+use project::plan::{Plan, StatusBody, plan_status_body};
 use serde::{Deserialize, Serialize};
 
 use super::require_file;
-use crate::change::{Plan, StatusBody, plan_status_body};
-use crate::handler::{Anchor, Ctx};
 
 /// Wire input for `plan status` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -26,7 +26,7 @@ pub struct StatusInput {}
 pub struct Status;
 
 impl<P: Anchor> Operation<P> for Status {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = StatusInput;
     type Output = StatusBody;
 

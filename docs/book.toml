@@ -35,5 +35,5 @@ exclude = [
   # Out-of-tree refs covered by docs/standards/doc-authoring.md as
   # intentional repo-root links that resolve at deploy time only.
   '\.\./\.\./adapters/targets/vectis/references/layout-inferer-contract\.md',
-  'crates/workflow/prompts/synthesis',
+  'crates/slice/prompts/synthesis',
 ]

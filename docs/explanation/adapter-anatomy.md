@@ -105,13 +105,13 @@ Target-specific structured outputs are produced by `build` alongside the code th
 <p class="pipeline-caption">Sources survey/extract into evidence; core synthesis reads target guidance; target build/merge lands code.</p>
 </div>
 
-The adapter resolver (`crates/workflow/src/adapter/`) routes by binding axis. There is no `if name == "intent"` branch in core — the first-party adapters are published components (`specify:intent`, `specify:documentation`, `specify:typescript`, `specify:screenshots`, `specify:captures`, `specify:omnia`, `specify:vectis`, `specify:contracts`) that resolve through the same code path as a third-party adapter: a pinned identity resolves the global single-file store entry (`<store-root>/<name>@<version>.wasm`, verify-on-read), a bare name resolves the project component cache then the project's own development release build (`target/wasm32-wasip2/release/<name>.wasm`); there is no sibling-checkout probe.
+The adapter resolver (`crates/project/src/adapter/`) routes by binding axis. There is no `if name == "intent"` branch in core — the first-party adapters are published components (`specify:intent`, `specify:documentation`, `specify:typescript`, `specify:screenshots`, `specify:captures`, `specify:omnia`, `specify:vectis`, `specify:contracts`) that resolve through the same code path as a third-party adapter: a pinned identity resolves the global single-file store entry (`<store-root>/<name>@<version>.wasm`, verify-on-read), a bare name resolves the project component cache then the project's own development release build (`target/wasm32-wasip2/release/<name>.wasm`); there is no sibling-checkout probe.
 
 CLI entry points: `specify source resolve <name>` and `specify target resolve <value>` locate the component and report its resolved path, location, and version. `specify plan add`, `specify plan amend <entry> --add-source / --remove-source`, and the reconcile leg inside `specify plan author` write slice bindings into `plan.yaml`.
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks three steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. (A per-Evidence per-kind `authority-overrides:` surface on each `evidence/*.yaml` file is deferred to a future RFC.) Normative detail lives in [`crates/workflow/prompts/synthesis/authority.md`](../../crates/workflow/prompts/synthesis/authority.md).
+When two claims of the same kind disagree, core synthesis walks three steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. (A per-Evidence per-kind `authority-overrides:` surface on each `evidence/*.yaml` file is deferred to a future RFC.) Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>

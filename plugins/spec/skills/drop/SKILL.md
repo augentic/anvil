@@ -14,7 +14,7 @@ argument-hint: "[slice-name] [reason]"
 specify slice drop <slice-name> --reason "<rationale>"
 ```
 
-- When `[slice-name]` is omitted, enumerate `.specify/slices/*/` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
+- When `[slice-name]` is omitted, run `specify slice list` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
 - When invoked interactively (no `reason` argument), elicit the rationale and confirm the drop with the AskQuestion tool before running; warn first when the slice is `built`, since `/spec:merge` may be the intended action. When `reason` is supplied, skip the confirmations and run directly.
 
 ## Relay

@@ -6,11 +6,11 @@
 
 use std::io::Write;
 
+use project::handler::Render;
+use project::plan::Entry;
 use serde::Serialize;
 
 use super::Ref;
-use crate::change::Entry;
-use crate::handler::Render;
 
 /// Which mutating verb produced an [`EntryBody`].
 #[derive(Clone, Copy, Debug, Serialize)]

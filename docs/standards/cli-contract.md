@@ -23,16 +23,17 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Slice (per-slice lifecycle)
 
-- `specify slice {create, validate, transition, touched-specs, overlap, drop}` — slice CRUD and lifecycle.
-- `specify slice refine` — guest-routed refinement: extraction per bound source plus the synthesis leg that projects the agent response into `model.yaml` and the Markdown artifacts (the only writer).
+- `specify slice list` — read-only listing of every slice with its lifecycle status and target.
+- `specify slice validate` — artifact and coherence validation for one slice.
+- `specify slice drop` — abandon a slice without merging (archives it and stamps the plan entry `dropped`). Slice directories are minted by the refine orchestration; lifecycle transitions are owned by the orchestrations (`refined`, `built`) and the merge/drop verbs — there is no standalone create or transition verb.
+- `specify slice refine` — guest-routed refinement: slice create (re-entry safe), extraction per bound source, plus the synthesis leg that projects the agent response into `model.yaml` and the Markdown artifacts (the only writer).
 - `specify slice build` — guest-routed target build: one orchestration assembles the build request, drives the adapter guest's build brief, validates the report, and gates the `built` transition.
 - `specify slice {model show, provenance}` — read-only views: `model show` renders `model.yaml`; `provenance` projects the audit-only inline-provenance view on demand.
 - `specify slice merge {preview, conflict-check, run}` — three-phase merge into the baseline.
-- `specify slice task {progress, mark}` — per-task progress writes.
 
 ### Change plan
 
-- `specify plan {create, author, validate, next, status, add, amend, remove, transition, archive, execute}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `author` is the guest-routed authoring orchestration and the default slice writer (surveys bound sources, reconciles leads, validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `execute` is the guest-routed driver loop over an approved plan; `add` appends an entry and `remove` drops a pending entry; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` health diagnostics; `next` is the sole writer of per-entry `in-progress` and `transition` the sole writer of plan-level `approved` and per-entry `done`; `status` is the read-only next-action projection (`refine|build|merge <slice>` / `stop <reason>` / `drained`) over plan entries, slice metadata, and the journal tail; its body also carries the re-entry fields `current-step` / `last-completed` / `resume` (the literal command that makes progress, `null` when no single command does). Driver mutual exclusion is guest-owned: the guest-routed verbs hold the `.specify/guest.lock` marker for the run's lifetime; there is no native lock wrapper.
+- `specify plan {author, validate, next, status, add, amend, remove, transition, archive, execute}` — plan CRUD and lifecycle. `author` scaffolds `plan.yaml` and is the guest-routed authoring orchestration and the default slice writer (surveys bound sources, reconciles leads, validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `execute` is the guest-routed driver loop over an approved plan; `add` appends an entry and `remove` drops a pending entry; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` health diagnostics; `next` is the sole writer of per-entry `in-progress` and `transition` the sole writer of plan-level `approved` and per-entry `done`; `status` is the read-only next-action projection (`refine|build|merge <slice>` / `stop <reason>` / `drained`) over plan entries, slice metadata, and the journal tail; its body also carries the re-entry fields `current-step` / `last-completed` / `resume` (the literal command that makes progress, `null` when no single command does). Driver mutual exclusion is guest-owned: the guest-routed verbs hold the `.specify/guest.lock` marker for the run's lifetime; there is no native lock wrapper.
 
 ### Change umbrella
 
@@ -45,7 +46,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Source / target adapters
 
-- `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. There is no declared-tool surface; adapter helpers are in-guest library code.
+- `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter debug/breakout surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. The plan and refine orchestrations run these legs themselves; the standalone verbs exist for debugging and hand-driven breakouts. There is no declared-tool surface; adapter helpers are in-guest library code.
 
 ### Journal
 
@@ -62,7 +63,7 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 3. **Execute.** `specify plan execute` refuses unless the plan is `approved` (rendered as `specify plan status`'s `stop plan-not-approved`); under the guest lock it loops claim → refine → build → merge per entry, routing project-bound entries into the corresponding materialized slot. Per-entry `done` is stamped by `specify slice merge`. Exits on the first `stop <reason>` or on `drained`.
 4. **Publish and finalize.** After execution drains, the operator commits, publishes, and completes the required repository workflow. `/spec:finalize <change-name>` confirms publication is complete, then runs `specify plan archive`, which sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/spec:plan`, `specify plan execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), complete publication through normal repository tooling, then run `specify plan archive` by hand.
+Hand-driven fallback: skip `specify plan execute` and `/spec:finalize`, author the plan with `/spec:plan` and adjust entries with `specify plan {add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), complete publication through normal repository tooling, then run `specify plan archive` by hand.
 
 The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specify plan author` (default), `specify plan add`, `specify plan amend`, and `specify plan remove`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
@@ -97,12 +98,12 @@ Durable run telemetry is the newline-delimited JSON journal at `.specify/journal
 {"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}
 ```
 
-The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal/event.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum when the taxonomy changes:
+The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/project/src/journal/event.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum when the taxonomy changes:
 
 | Family | Event ids | Emitted by |
 |---|---|---|
 | Plan | `plan.transition.approved`, `plan.transition.undone`, `plan.entry.advanced`, `plan.reconcile.completed`, `plan.amend.authority-override`, `plan.amend.divergence` | `specify plan transition` (with the `actor` field on `approved`), `specify plan next`, the `plan author` reconcile kernel, `specify plan amend` |
-| Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg, `specify source extract`, `specify slice transition` |
+| Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg and its `refined` transition, `specify source extract` |
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed` | the guest-routed `specify slice build` orchestration |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created` | `specify slice merge` (fired on its validator outcome) |
 | Slice replay | `slice.replay.completed` | the replay target hook |

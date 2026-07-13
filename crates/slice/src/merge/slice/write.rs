@@ -70,7 +70,7 @@ fn copy_opaque(src: &Path, dest: &Path) -> Result<Vec<String>, Error> {
 fn copy_opaque_recursive(
     base: &Path, dest_base: &Path, current: &Path, copied: &mut Vec<String>,
 ) -> Result<(), Error> {
-    for entry in crate::fs::dir_entries(current)? {
+    for entry in project::fs::dir_entries(current)? {
         let path = entry.path();
         let relative = path.strip_prefix(base).map_err(|_err| Error::Filesystem {
             op: "path-prefix",

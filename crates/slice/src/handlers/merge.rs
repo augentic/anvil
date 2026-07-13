@@ -7,15 +7,15 @@ use std::path::PathBuf;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
+use project::seam::TargetSeam;
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Render};
 use crate::merge::{
     BaselineConflict, MergeOperation, OpaqueAction, PreviewEntry, artifact_classes, conflict_check,
     slice, summarise_operations,
 };
 use crate::orchestrate;
-use crate::seam::TargetSeam;
 
 /// Wire input for `slice merge run`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,7 +34,7 @@ pub struct MergeRunInput {
 pub struct MergeRun;
 
 impl<P: Anchor + TargetSeam> Operation<P> for MergeRun {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = MergeRunInput;
     type Output = MergeBody;
 
@@ -104,7 +104,7 @@ pub struct PreviewInput {
 pub struct Preview;
 
 impl<P: Anchor> Operation<P> for Preview {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = PreviewInput;
     type Output = PreviewBody;
 
@@ -202,7 +202,7 @@ pub struct ConflictCheckInput {
 pub struct ConflictCheck;
 
 impl<P: Anchor> Operation<P> for ConflictCheck {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ConflictCheckInput;
     type Output = ConflictCheckBody;
 

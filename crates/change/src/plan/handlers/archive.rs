@@ -6,10 +6,9 @@ use std::path::PathBuf;
 use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
+use project::plan::Plan;
 use serde::{Deserialize, Serialize};
-
-use crate::change::Plan;
-use crate::handler::{Anchor, Ctx, Render};
 
 /// Wire input for `plan archive`.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -26,7 +25,7 @@ pub struct ArchiveInput {
 pub struct Archive;
 
 impl<P: Anchor> Operation<P> for Archive {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ArchiveInput;
     type Output = ArchiveBody;
 

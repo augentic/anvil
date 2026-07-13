@@ -12,9 +12,8 @@
 //! (`status::project::resolve_work_root`) and never refuses.
 
 use error::Error;
-
-use crate::change::Plan;
-use crate::config::{Layout, ProjectConfig};
+use project::config::{Layout, ProjectConfig};
+use project::plan::Plan;
 
 /// How a plan root routes under the guest orchestrations.
 pub(super) enum Routing {

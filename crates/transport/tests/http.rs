@@ -8,10 +8,10 @@ use omnia_guest::axum::Router;
 use omnia_guest::axum::body::{Body, to_bytes};
 use omnia_guest::http::{Method, Request, StatusCode};
 use omnia_guest::model;
+use project::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
+use slice::BuildReport;
 use tempfile::TempDir;
 use tower::ServiceExt as _;
-use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
-use workflow::slice::BuildReport;
 
 struct Project {
     _tmp: TempDir,
@@ -43,16 +43,16 @@ struct Provider {
     root: PathBuf,
 }
 
-impl workflow::handler::Anchor for Provider {
+impl project::handler::Anchor for Provider {
     fn project_root(&self) -> &Path {
         &self.root
     }
 }
 
-impl workflow::adapter::Resolver for Provider {
+impl project::adapter::Resolver for Provider {
     fn resolve_source(
-        &self, _: &workflow::adapter::AdapterRef, _: &Path,
-    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        &self, _: &project::adapter::AdapterRef, _: &Path,
+    ) -> Result<project::adapter::ResolvedSource, error::Error> {
         Err(error::Error::Diag {
             code: "test-resolver-unused",
             detail: "HTTP router test has no adapter resolver".to_string(),
@@ -60,11 +60,20 @@ impl workflow::adapter::Resolver for Provider {
     }
 
     fn resolve_target(
-        &self, _: &workflow::adapter::AdapterRef, _: &Path,
-    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        &self, _: &project::adapter::AdapterRef, _: &Path,
+    ) -> Result<project::adapter::ResolvedTarget, error::Error> {
         Err(error::Error::Diag {
             code: "test-resolver-unused",
             detail: "HTTP router test has no adapter resolver".to_string(),
+        })
+    }
+}
+
+impl project::adapter::Hydrator for Provider {
+    async fn fetch(&self, _: &str) -> Result<Vec<u8>, error::Error> {
+        Err(error::Error::Diag {
+            code: "test-hydrator-unused",
+            detail: "HTTP router test has no registry".to_string(),
         })
     }
 }
@@ -184,7 +193,7 @@ mod errors {
     }
 
     #[tokio::test]
-    async fn missing_required_field_unprocessable() {
+    async fn missing_field_unprocessable() {
         let project = Project::initialised();
         let request = Request::builder()
             .method(Method::POST)

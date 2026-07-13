@@ -56,7 +56,7 @@ Status: agreed
 
 ## How disagreements are resolved
 
-Two sources can disagree about the same requirement. Specify resolves this with **authority** — a closed ranking declared per source (`intent` > `documentation` > `behaviour`), sharpened by an optional per-slice override the operator records at Gate 1. The winner's value becomes the operative requirement and the loser survives as inline commentary (`[divergence]`); a tie at the top authority class has no winner (`[conflict]`). The canonical hierarchy, override surface, and step-by-step resolution order live in the workflow's embedded authority prompt (`crates/workflow/prompts/synthesis/authority.md`).
+Two sources can disagree about the same requirement. Specify resolves this with **authority** — a closed ranking declared per source (`intent` > `documentation` > `behaviour`), sharpened by an optional per-slice override the operator records at Gate 1. The winner's value becomes the operative requirement and the loser survives as inline commentary (`[divergence]`); a tie at the top authority class has no winner (`[conflict]`). The canonical hierarchy, override surface, and step-by-step resolution order live in the workflow's embedded authority prompt (`crates/slice/prompts/synthesis/authority.md`).
 
 Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources, then re-running `/spec:refine` — never by hand-editing the kernel-rendered `spec.md` provenance lines.
 
@@ -68,5 +68,5 @@ There is no separate `provenance.yaml` on disk. The full audit view is *projecte
 
 ## See also
 
-- Authority precedence — the workflow's embedded authority prompt (`crates/workflow/prompts/synthesis/authority.md`)
+- Authority precedence — the workflow's embedded authority prompt (`crates/slice/prompts/synthesis/authority.md`)
 - [Anatomy of an adapter](./adapter-anatomy.md) — how sources emit leads and evidence

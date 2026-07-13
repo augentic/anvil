@@ -6,8 +6,8 @@ mod common;
 
 use common::{Project, run, scoped_store, stage_dev_component};
 
-fn input(adapter: &str) -> workflow::init::handlers::InitInput {
-    workflow::init::handlers::InitInput {
+fn input(adapter: &str) -> project::init::handlers::InitInput {
+    project::init::handlers::InitInput {
         adapter: Some(adapter.to_string()),
         name: Some("demo-project".to_string()),
         description: None,
@@ -20,7 +20,7 @@ fn input(adapter: &str) -> workflow::init::handlers::InitInput {
 #[tokio::test]
 async fn github_uri_refused() {
     let project = Project::bare();
-    let err = run::<workflow::init::handlers::Init, _>(
+    let err = run::<project::init::handlers::Init, _>(
         &project,
         input("https://github.com/augentic/specify/adapters/targets/demo"),
     )
@@ -42,7 +42,7 @@ mod package {
         let _guard = scoped_store(store.path());
 
         let err =
-            run::<workflow::init::handlers::Init, _>(&project, input("specify:demo-target@1.2.0"))
+            run::<project::init::handlers::Init, _>(&project, input("specify:demo-target@1.2.0"))
                 .await
                 .expect_err("an unhydratable package must be refused");
 
@@ -61,7 +61,7 @@ mod package {
         fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir hydrator");
         fs::write(&staged, b"\0asm-component").expect("stage registry response");
 
-        let body = run::<workflow::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
+        let body = run::<project::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
             .await
             .expect("hydrated package scaffolds");
         assert_eq!(body.hydrated, vec!["demo@1.2.0".to_string()]);
@@ -80,7 +80,7 @@ mod package {
         // A second init over a fresh project reuses the installed
         // entry without fetching.
         let project = Project::bare();
-        let body = run::<workflow::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
+        let body = run::<project::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
             .await
             .expect("installed package scaffolds without fetching");
         assert!(body.hydrated.is_empty(), "an installed pin fetches nothing");
@@ -94,7 +94,7 @@ mod package {
         let entry = schema::cache::adapter_store_entry("demo", "1.2.0");
         fs::write(&entry, b"\0asm-component").expect("stage installed component");
 
-        run::<workflow::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
+        run::<project::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
             .await
             .expect("installed package scaffolds");
 
@@ -105,9 +105,9 @@ mod package {
             "package reference is canonical:\n{project_yaml}"
         );
 
-        let body = run::<workflow::adapter::handlers::TargetResolve, _>(
+        let body = run::<project::adapter::handlers::TargetResolve, _>(
             &project,
-            workflow::adapter::handlers::ResolveInput {
+            project::adapter::handlers::ResolveInput {
                 value: "specify:demo@1.2.0".to_string(),
                 project_dir: None,
             },
@@ -128,7 +128,7 @@ mod shorthand {
         let project = Project::bare();
         stage_dev_component(&project.root, "demo");
 
-        run::<workflow::init::handlers::Init, _>(&project, input("demo"))
+        run::<project::init::handlers::Init, _>(&project, input("demo"))
             .await
             .expect("bare development shorthand scaffolds");
         let project_yaml =
@@ -141,7 +141,7 @@ mod shorthand {
         fs::write(schema::cache::adapter_store_entry("demo", "1.2.0"), b"\0asm-component")
             .expect("stage installed component");
 
-        run::<workflow::init::handlers::Init, _>(&project, input("demo@1.2.0"))
+        run::<project::init::handlers::Init, _>(&project, input("demo@1.2.0"))
             .await
             .expect("versioned shorthand scaffolds");
         let project_yaml =
@@ -153,7 +153,7 @@ mod shorthand {
     async fn invalid_not_registry_sugar() {
         for value in ["Demo-target", "demo-target@latest", "demo-target@1"] {
             let project = Project::bare();
-            let err = run::<workflow::init::handlers::Init, _>(&project, input(value))
+            let err = run::<project::init::handlers::Init, _>(&project, input(value))
                 .await
                 .expect_err("invalid shorthand must not resolve as registry sugar");
             assert_eq!(err.core().variant_str(), "adapter-component-missing", "{value}");

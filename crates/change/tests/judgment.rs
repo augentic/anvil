@@ -3,8 +3,8 @@
 //! findings inlined, and an unrepairable answer exhausts the budget
 //! and surfaces the last failure.
 
+use change::plan;
 use omnia_guest::api::invoke::Invoker;
-use workflow::change::plan;
 
 mod common;
 
@@ -12,7 +12,7 @@ use common::answers;
 use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
-/// private `workflow::judgment::MAX_REPAIRS` (2) — kept local rather
+/// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
 /// than widening the module for tests; a budget change shows up here
 /// as an off-by-one request count.
 const JUDGMENT_BUDGET: usize = 3;
@@ -25,7 +25,7 @@ fn malformed_answer() -> String {
 
 async fn author(
     invoker: &Invoker<ScriptedProvider>,
-) -> Result<plan::handlers::AuthorBody, workflow::handler::Error> {
+) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _>(
         invoker,
         plan::handlers::AuthorInput {

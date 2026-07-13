@@ -1,0 +1,37 @@
+[package]
+name = "change"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Specify change loop: plan author / execute orchestration and the specify plan operations"
+categories = ["development-tools"]
+keywords = ["specify", "workflow", "plan"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+prose.workspace = true
+
+[dependencies]
+jiff.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+error.workspace = true
+artifacts.workspace = true
+omnia-guest.workspace = true
+project.workspace = true
+schema.workspace = true
+slice.workspace = true
+
+[dev-dependencies]
+fixtures.workspace = true
+omnia-testkit.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt"] }
+tower.workspace = true

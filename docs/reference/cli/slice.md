@@ -1,43 +1,33 @@
 # specify slice
 
-Create, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation; the `change` noun belongs to the umbrella surface.
+Refine, build, validate, merge, and archive individual slices. The `slice` noun group covers every per-slice operation; the `change` noun belongs to the umbrella surface.
 
-Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg).
+Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg). Slice directories are minted by the refine orchestration; lifecycle transitions are owned by the orchestrations (`refined`, `built`) and the merge/drop verbs — there is no standalone create or transition verb.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-slice-create) | Create a new slice directory with an initial `metadata.yaml`. |
+| [`list`](#specify-slice-list) | Read-only listing of every slice under `.specify/slices/` with its lifecycle status and target. |
 | [synthesis](#synthesis-inside-specify-slice-refine) | The synthesis leg inside `specify slice refine`: turns the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml` via the projection kernel. |
 | [`model`](#specify-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#specify-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
 | [`build`](#specify-slice-build) | Build the slice through its bound target adapter: the guest orchestration assembles the build request, drives the target's build operation, validates the report, and gates the `built` transition. |
-| [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`refining` -> `refined` -> `built` -> `merged`/`dropped`). |
 | [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
-| [`task`](#specify-slice-task) | `task {progress, mark}` -- inspect or update the task checkbox state in `tasks.md`. |
-| [`touched-specs`](#specify-slice-touched-specs) | Scan or set the spec files this slice affects. |
-| [`overlap`](#specify-slice-overlap) | Find slices whose touched specs overlap. |
-| [`drop`](#specify-slice-drop) | Discard a slice without merging. Archive moves are owned by `slice merge run`, `slice drop`, and `change finalize`. |
+| [`drop`](#specify-slice-drop) | Discard a slice without merging. Archive moves are owned by `slice merge run`, `slice drop`, and `specify plan archive`. |
 
 ## Subcommands
 
-### specify slice create
+### specify slice list
 
-Create a new slice directory.
+List every slice under `.specify/slices/` with its lifecycle status and recorded target.
 
 ```bash
-specify slice create <name> [--if-exists fail|continue|restart] [--format json]
+specify slice list [--format json]
 ```
 
-| Argument | Description |
-|----------|-------------|
-| `name` | Kebab-case slice name (validated) |
-| `--if-exists` | Behavior when name exists: `fail` (default, refuse), `continue` (reuse existing -- requires valid `metadata.yaml`), or `restart` (delete and recreate -- destructive) |
-| `--format` | Output format: `json` for structured output |
-
-Creates `.specify/slices/<name>/` with an initial `metadata.yaml`.
+Read-only: one line per slice (`<name>  <status>  <target>`), sorted by name; directories without a `metadata.yaml` are skipped. JSON returns `slices[]` with `name`, `status`, and `target` per entry.
 
 ### Synthesis (inside `specify slice refine`)
 
@@ -86,42 +76,6 @@ specify slice build <name> [--format json]
 The orchestration resolves the target from the slice's bound project, assembles and schema-validates the build request (`schemas/target/build-request.schema.json`), writes `.specify/slices/<name>/build/request.yaml`, emits `target.execution.agent`, drives the adapter guest's `build` brief (including any in-guest build prelude, e.g. vectis asset materialization and host-prereq gates), then in its finalize tail emits `slice.build.started`, validates the report against `schemas/target/build-report.schema.json`, rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts with `target-build-input-missing`.
 
 This is the verb invoked by [`/spec:build`](../slice-skills/index.md#specbuild) — the finalize tail owns the `built` transition gate. See [CLI output shapes](../cli-output-shapes.md#specify-slice-build) for the envelope shapes.
-
-### specify slice transition
-
-Move a slice through the lifecycle state machine.
-
-```bash
-specify slice transition <name> <target>
-```
-
-| Argument | Description |
-|----------|-------------|
-| `name` | Slice name |
-| `target` | Target state: `refining`, `refined`, `built`, `dropped`. Skills stamp `refined` and `built` after `/spec:refine` and `/spec:build`. The `merged` status is intentionally absent — `slice merge run` is the sole legal writer of `merged`, since landing a slice requires the spec merge, status transition, and archive move to happen atomically. |
-
-Enforces legal transitions. Records timestamps in `metadata.yaml`.
-
-### specify slice touched-specs
-
-Scan or set the specs affected by a slice.
-
-```bash
-specify slice touched-specs <name> --scan
-specify slice touched-specs <name> --set <spec-path>...
-```
-
-The synthesis persist tail auto-scans and persists `metadata.touched_specs` after a successful write; use `--scan` only when reclassifying without re-synthesising.
-
-### specify slice overlap
-
-Check for spec overlap between active slices.
-
-```bash
-specify slice overlap <name>
-```
-
-Reports which specs are touched by multiple active slices.
 
 ### specify slice drop
 
@@ -197,36 +151,10 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 **Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass. When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it preflights the completion gate **before** touching the baseline: a missing entry refuses with `plan-entry-not-found`, and an entry that is not `in-progress` refuses with `slice-merge-entry-not-in-progress` (claim it with `specify plan next` first). Standalone breakouts do not take the guest marker — the lifecycle gates are the correctness fence.
 
-### specify slice task
-
-Two subcommands cover the task surface.
-
-#### specify slice task progress
-
-Report task completion progress for a slice.
-
-```bash
-specify slice task progress <name> [--format json]
-```
-
-Returns the count of completed and total tasks, parsed from `tasks.md` checkbox syntax.
-
-#### specify slice task mark
-
-Mark a task as complete.
-
-```bash
-specify slice task mark <name> <task-id> [--format json]
-```
-
-Flips the checkbox from `- [ ]` to `- [x]` for the specified task. The task ID is the numbered identifier (e.g. `1.2`, `2.1`).
-
-Used by `/spec:build` as it completes each task.
-
 ## See also
 
 - [/spec:refine](../slice-skills/index.md) -- per-slice refine breakout
-- [/spec:build](../slice-skills/index.md#specbuild) -- skill that drives build, calls `slice task progress`/`mark`
+- [/spec:build](../slice-skills/index.md#specbuild) -- skill that drives the guest-routed `slice build`
 - [/spec:merge](../slice-skills/index.md#specmerge) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
 - [/spec:drop](../slice-skills/index.md#specdrop) -- skill that drops slices
 - [specify plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.

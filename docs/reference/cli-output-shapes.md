@@ -17,9 +17,9 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 The examples below are hand-curated illustrations of the happy path for each command. For the wire-schema accept/reject variant set, browse the canonical fixtures in [`tests/fixtures/plan/v2/`](../../tests/fixtures/plan/v2/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
-### `specify plan create`
+### `specify plan add`
 
-Scaffolds an empty plan and emits its first entry.
+Appends one entry to an existing plan.
 
 ```json
 {
@@ -229,39 +229,6 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
       ]
     }
   ]
-}
-```
-
-### `specify slice task mark`
-
-Marks one task complete. `idempotent: true` indicates the task was already complete and the call was a no-op; the `new-content-path` always points at the updated `tasks.md` regardless.
-
-```json
-{
-  "idempotent": true,
-  "marked": "1.1",
-  "new-content-path": "<TEMPDIR>/.specify/slices/my-slice/tasks.md"
-}
-```
-
-### `specify slice task progress`
-
-Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pending` are the headline counts; `tasks[]` carries each parsed task with its parent `group`, `number` (`X.Y`), free-form `description`, and optional `skill-directive` (the embedded `<!-- skill: plugin:skill-name -->` reference, if any).
-
-```json
-{
-  "complete": 2,
-  "pending": 3,
-  "tasks": [
-    {
-      "complete": true,
-      "description": "Wire the crate into the workspace",
-      "group": "1. Scaffold",
-      "number": "1.2",
-      "skill-directive": null
-    }
-  ],
-  "total": 5
 }
 ```
 

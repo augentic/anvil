@@ -9,10 +9,10 @@ use std::path::{Path, PathBuf};
 
 use artifacts::evidence::{AuthorityClass, ClaimKind};
 use error::Result;
+use project::plan::Entry;
 use serde_json::Value as JsonValue;
 
-use crate::change::Entry;
-use crate::slice::synthesis::wire::SourceInput;
+use crate::synthesis::wire::SourceInput;
 
 /// The two kernel projection inputs distilled from on-disk Evidence:
 /// the per-source document-level `authority` map and the
@@ -50,7 +50,7 @@ pub fn read_evidence_index(slice_dir: &Path, entry: &Entry) -> Result<KernelEvid
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let path = evidence_path(slice_dir, &source);
-        let raw = crate::fs::read_text(&path)?;
+        let raw = project::fs::read_text(&path)?;
         let doc: JsonValue = serde_saphyr::from_str(&raw)?;
         if let Some(class) = doc.get("authority").and_then(JsonValue::as_str).and_then(parse_enum) {
             authority.insert(source.clone(), class);

@@ -1,10 +1,10 @@
 //! Build-report schema and DTO drift coverage through public crate boundaries.
 
+use project::Platform;
+use project::seam::wire::{BuildReport, UiSurface};
 use schema::{
     BUILD_REPORT_JSON_SCHEMA, DIAGNOSTIC_JSON_SCHEMA, compile_ref_validator, validation_errors,
 };
-use workflow::Platform;
-use workflow::slice::{BuildReport, UiSurface};
 
 const DIAGNOSTIC_SCHEMA_URL: &str =
     "https://github.com/augentic/specify/schemas/diagnostics/diagnostic.schema.json";

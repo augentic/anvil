@@ -1,6 +1,6 @@
 //! Provider-contract coverage for the closed [`Platform`] enum.
 
-use workflow::Platform;
+use project::Platform;
 
 #[test]
 fn wire_names() {

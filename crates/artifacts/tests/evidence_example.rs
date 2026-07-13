@@ -34,7 +34,7 @@ fn round_trips_full_body() {
 }
 
 #[test]
-fn elides_optional_fields_when_absent() {
+fn elides_absent_optionals() {
     let claim = ExampleClaim {
         kind: ExampleKind::Example,
         id: "users.register.minimal".to_string(),

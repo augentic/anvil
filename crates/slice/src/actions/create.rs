@@ -4,10 +4,10 @@ use std::path::{Path, PathBuf};
 
 use error::Error;
 use jiff::Timestamp;
+use project::name::validate_name;
 use serde::Serialize;
 
-use crate::name::validate_name;
-use crate::slice::{LifecycleStatus, SliceMetadata};
+use crate::{LifecycleStatus, SliceMetadata};
 
 /// What to do when slice creation finds an existing directory at the
 /// target path. Rides the wire typed on both transports (kebab-case

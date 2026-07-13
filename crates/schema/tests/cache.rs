@@ -38,7 +38,7 @@ fn pin_store(path: &Path) -> EnvGuard {
 }
 
 #[test]
-fn project_paths_are_stable_and_distinct() {
+fn project_paths_stable_distinct() {
     let a = project_cache_dir(Path::new("/some/project/a"));
     let b = project_cache_dir(Path::new("/some/project/b"));
     assert_ne!(a, b);
@@ -47,7 +47,7 @@ fn project_paths_are_stable_and_distinct() {
 }
 
 #[test]
-fn store_sidecar_verifies_content() {
+fn sidecar_verifies_content() {
     let store = tempfile::tempdir().expect("store root");
     let _guard = pin_store(store.path());
     assert_eq!(adapter_store_root(), store.path());

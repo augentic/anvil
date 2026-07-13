@@ -16,19 +16,19 @@ Specify is tested as a self-contained engine against its own WIT contract. No ru
 | ---- | ------- | ------ | ------- |
 | **Native integration** | `cargo make test` | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the `workflow` crate's public operations, the fixture adapter's native seams, and `omnia-testkit` scripted models | Every push (part of `cargo make ci`) |
 | **Composed smoke** | `cargo make test-wasm` | The WASM boundary only: the combined `fixture_adapter.wasm` loads, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the loop reaches the same terminal state as the native test | Scheduled/manual (`.github/workflows/composed.yaml`); per-push CI keeps the `wasm32-wasip2` compile check |
-| **Live model** | `cargo make test-live` | One ignored native test: the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/workflow/prompts/`) or answer-schema changes — never ordinary CI |
+| **Live model** | `cargo make test-live` | One ignored native test: the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted | Operator-invoked: before a release tag and after judgment-prompt (`crates/slice/prompts/`, `crates/change/prompts/`) or answer-schema changes — never ordinary CI |
 
 Each fact has one owning rung. The native suites own workflow behavior; the composed smoke owns only facts unique to the component boundary; the live test owns only "a real model can do this" — it adds no new workflow assertions. Do not copy an assertion onto another rung for reassurance.
 
 ### The fixture adapter
 
-One test-support package (`harness/fixtures`) implements both adapter axes as ordinary native Rust: controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/workflow/tests/common/`; the composed smoke reaches the identical core through the combined-world WIT shim (`fixture_adapter.wasm`). Do not add another mock adapter, mock model, or fixture copy — extend the fixture core and let both rungs inherit the behavior.
+One test-support package (`harness/fixtures`) implements both adapter axes as ordinary native Rust: controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the shared provider in `crates/change/tests/common/`; the composed smoke reaches the identical core through the combined-world WIT shim (`fixture_adapter.wasm`). Do not add another mock adapter, mock model, or fixture copy — extend the fixture core and let both rungs inherit the behavior.
 
 Model doubles come from upstream: `omnia-testkit` owns the scripted/recording harness and runtime hosting. Specify owns only workflow scenario content — the leads, evidence, scripted answers, and assertions.
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/workflow/tests/handlers.rs`, `crates/workflow/tests/full_loop.rs`, and so on. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`. The repo-root `tests/` carries the framework-quality gate (the lightweight `framework` package at `tests/framework/`) and the shared fixture trees under `tests/fixtures/`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/change/tests/handlers.rs`, `crates/change/tests/full_loop.rs`, and so on. Shared helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery) and are declared per binary with `mod <helper>;`. The repo-root `tests/` carries the framework-quality gate (the lightweight `framework` package at `tests/framework/`) and the shared fixture trees under `tests/fixtures/`.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -81,18 +81,18 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 
 ## Test naming
 
-Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 40-char cap below counts the bare `fn` identifier, not the module path.
+Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 30-char cap below counts the bare `fn` identifier, not the module path.
 
 - Drop tokens the binary name or enclosing module already supplies: in `layout.rs`, write `different_skeletons_error`, not `layout_different_skeletons_is_an_error`.
 - Group a cluster that shares a subject under a nested `mod <subject>` rather than repeating the subject as a prefix: six `mark_complete_*` tests become `mod mark_complete { fn idempotent() … }`.
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the test body or a `//` comment above the `fn`, not the identifier.
 
-`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway — the 40-char guidance above is a house-style cap, not a separate CI gate.
+`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway — the 30-char cap is enforced by the `naming.test-fn-length` framework check ([docs/contributing/checks.md](../contributing/checks.md)).
 
 ## Patterns to follow
 
-- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/workflow/tests/common/mod.rs` — the `Project` anchor, the fixture provider, and the scripted-answer builders.
+- Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/change/tests/common/mod.rs` — the `Project` anchor, the fixture provider, and the scripted-answer builders.
 - Compare structured output against checked-in goldens (the merge-engine goldens under `tests/fixtures/merge/`, the wire-schema fixtures under `tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
@@ -104,5 +104,5 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Test-side gotchas
 
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through `specify slice transition`, `specify plan transition`, or the stamped-outcome helpers in `crates/workflow/tests/common/mod.rs` when a test needs a stamped phase outcome.
+- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration verbs (`specify slice refine` / `build` / `merge` / `drop`), `specify plan transition`, or the stamped-outcome helpers in `crates/change/tests/common/mod.rs` when a test needs a stamped phase outcome.
 - The live test retains its temporary project tree on failure and prints the path at start — inspect it rather than re-running blind.

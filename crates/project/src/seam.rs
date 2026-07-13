@@ -14,7 +14,6 @@ use std::future::Future;
 
 use artifacts::evidence::AuthorityClass;
 use serde_json::Value as JsonValue;
-
 pub use wire::BuildReport;
 
 /// Typed seam failure, mirroring the WIT `types.error` variant.
@@ -216,9 +215,7 @@ impl<P, S, T, R> Copy for Capabilities<'_, P, S, T, R> {}
 /// `build`, `merge`); `id` is the routed adapter id (e.g.
 /// `source:typescript`).
 #[must_use]
-pub fn seam_failure(
-    operation: &'static str, id: &str, err: &Error,
-) -> error::Error {
+pub fn seam_failure(operation: &'static str, id: &str, err: &Error) -> error::Error {
     error::Error::Diag {
         code: "seam-dispatch-failed",
         detail: format!("seam `{operation}` dispatch to `{id}` failed: {err}"),

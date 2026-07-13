@@ -30,7 +30,7 @@ See also: [Prerequisites](../../orientation/prerequisites.md) — what to instal
 
 ## /spec:refine
 
-Refine a plan entry's slice — invoke `specify slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../crates/workflow/prompts/synthesis/).
+Refine a plan entry's slice — invoke `specify slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../crates/slice/prompts/synthesis/).
 
 See also: [Resolve spec conflicts](../../how-to/resolve-spec-conflicts.md) — `[conflict]` and `[divergence]` tags · [Artifact format](../artifact-format.md) — requirement block shape · [Lifecycle](../lifecycle.md) — slice state machine.
 

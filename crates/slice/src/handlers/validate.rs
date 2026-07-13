@@ -4,21 +4,21 @@
 //! `spec.md` provenance metadata.
 //!
 //! The pre-adapter gate kernel lives in
-//! [`crate::slice::validate`]; this verb orchestrates it against
+//! [`crate::validate`]; this verb orchestrates it against
 //! the adapter rules (`artifacts::validate::validate_slice`), returns
 //! the report body, and carries the blocking decision on
-//! [`crate::handler::Error::Report`] so the transports render findings and the
+//! [`project::handler::Error::Report`] so the transports render findings and the
 //! failure envelope on their own channels.
 
 use std::io::Write;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, ReportBody};
 use schema::diagnostics::{Diagnostic, has_blocking};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, ReportBody};
-use crate::slice::validate::{Validation, append_synthesis_journal};
+use crate::validate::{Validation, append_synthesis_journal};
 
 /// Wire input for `slice validate`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ pub struct ValidateInput {
 pub struct Validate;
 
 impl<P: Anchor> Operation<P> for Validate {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ValidateInput;
     type Output = ReportBody;
 
@@ -42,7 +42,7 @@ impl<P: Anchor> Operation<P> for Validate {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let name = &input.name;
-        match crate::slice::validate::run(cx.layout(), name)? {
+        match crate::validate::run(cx.layout(), name)? {
             Validation::Gate { code, findings } => Err(fail_with(code, findings)),
             Validation::Adapter {
                 findings,
@@ -52,7 +52,7 @@ impl<P: Anchor> Operation<P> for Validate {
                 let body = ReportBody::new(findings, None, write_finding_row);
 
                 if blocking {
-                    Err(crate::handler::Error::report(
+                    Err(project::handler::Error::report(
                         body,
                         "slice-validation-failed",
                         "slice must satisfy adapter validation",
@@ -72,9 +72,9 @@ impl<P: Anchor> Operation<P> for Validate {
 /// Bundle `findings` with the payload-free [`Error::Validation`] keyed
 /// on `code`. Used by every pre-adapter gate so the operator sees the
 /// full diagnostic surface before the gate fails the command.
-fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> crate::handler::Error {
+fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> project::handler::Error {
     let count = findings.len();
-    crate::handler::Error::report(
+    project::handler::Error::report(
         ReportBody::new(findings, None, write_finding_row),
         code,
         "slice must satisfy structural invariants",

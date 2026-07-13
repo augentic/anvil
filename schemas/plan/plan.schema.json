@@ -37,7 +37,7 @@
         "pending",
         "approved"
       ],
-      "description": "workflow plan-level lifecycle gate. `pending` is the default after `plan create`; `approved` is operator-stamped at Gate 1 via `specify plan transition <plan-name> approved`. Two stored states only \u2014 `currently executing` and `drained` are computed at read time from per-entry `status`."
+      "description": "workflow plan-level lifecycle gate. `pending` is the default after `plan author` scaffolds the plan; `approved` is operator-stamped at Gate 1 via `specify plan transition <plan-name> approved`. Two stored states only \u2014 `currently executing` and `drained` are computed at read time from per-entry `status`."
     }
   },
   "$defs": {
@@ -191,7 +191,7 @@
             "accepted",
             "rejected"
           ],
-          "description": "workflow \u00a7Plan-time reconciliation \u2014 closed enum for slice-level divergence state. Absent \u2261 `none` (the default). `likely` is set during `/spec:plan`'s lead reconciliation on materially-disagreeing lead synopses; `accepted` / `rejected` are set by the operator at Gate 1 via `specify plan amend --divergence`. Advisory metadata in v1. workflow \u00a7D5: every value (including `likely`) is CLI-written \u2014 the `/spec:plan` agent stages `likely` via `specify plan amend <plan> <slice> --divergence likely` (after `plan author` reconciles), and `plan create` scaffolds an empty plan that never carries divergence."
+          "description": "workflow \u00a7Plan-time reconciliation \u2014 closed enum for slice-level divergence state. Absent \u2261 `none` (the default). `likely` is set during `/spec:plan`'s lead reconciliation on materially-disagreeing lead synopses; `accepted` / `rejected` are set by the operator at Gate 1 via `specify plan amend --divergence`. Advisory metadata in v1. workflow \u00a7D5: every value (including `likely`) is CLI-written \u2014 the `/spec:plan` agent stages `likely` via `specify plan amend <plan> <slice> --divergence likely` (after `plan author` reconciles); the `plan author` scaffold never carries divergence."
         },
         "disagreements": {
           "type": "array",
@@ -200,7 +200,7 @@
         },
         "authority-override": {
           "type": "object",
-          "description": "workflow \u00a7D3 \u2014 optional per-slice authority override map keyed by claim kind, valued by source key. Keys are the closed claim-kind enum (mirrored from `evidence.schema.json#/$defs/claimKind`); values MUST be source keys present in this slice's own `sources[]` list. Synthesis consults this map first when a contributing-claim disagreement remains, then falls back to the document-level Evidence `authority:` field, then to the workflow default ordering. (A per-Evidence `authority-overrides` map is deferred to a future RFC.) Empty maps and missing fields are equivalent. Orphan source keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source`. CLI-written via `specify plan create --authority-override <slice> <kind>=<key>` and `specify plan amend --authority-override <slice> <kind>=<key>` / `--clear-authority-override` / `--clear-authority-overrides`.",
+          "description": "workflow \u00a7D3 \u2014 optional per-slice authority override map keyed by claim kind, valued by source key. Keys are the closed claim-kind enum (mirrored from `evidence.schema.json#/$defs/claimKind`); values MUST be source keys present in this slice's own `sources[]` list. Synthesis consults this map first when a contributing-claim disagreement remains, then falls back to the document-level Evidence `authority:` field, then to the workflow default ordering. (A per-Evidence `authority-overrides` map is deferred to a future RFC.) Empty maps and missing fields are equivalent. Orphan source keys are rejected by `specify slice validate` with `slice-authority-override-orphan-source`. CLI-written via `specify plan add --authority-override <slice> <kind>=<key>` and `specify plan amend --authority-override <slice> <kind>=<key>` / `--clear-authority-override` / `--clear-authority-overrides`.",
           "propertyNames": { "$ref": "#/$defs/claimKind" },
           "additionalProperties": { "$ref": "#/$defs/kebabName" }
         },

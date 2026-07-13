@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use error::Error;
 use jiff::Timestamp;
-
 use project::fs::move_atomic;
 
 /// Move `slice_dir` to `<archive_dir>/YYYY-MM-DD-<slice-name>/`.

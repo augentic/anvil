@@ -9,7 +9,7 @@
 //! script or refuse — so only the fetch crosses this seam. URL
 //! derivation, the store write, the digest sidecar, and
 //! verify-after-write are deterministic and live in
-//! `workflow::init::hydrate`.
+//! `project::init::hydrate`.
 
 use std::future::Future;
 

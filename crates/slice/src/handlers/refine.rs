@@ -6,12 +6,12 @@ use std::io::Write;
 use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
+use project::handler::{Anchor, Ctx, Render};
+use project::seam::{SourceSeam, TargetSeam};
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::Resolver;
-use crate::handler::{Anchor, Ctx, Render};
 use crate::orchestrate;
-use crate::seam::{SourceSeam, TargetSeam};
 
 /// Wire input for `slice refine`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ pub struct RefineInput {
 pub struct Refine;
 
 impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Refine {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = RefineInput;
     type Output = RefineBody;
 

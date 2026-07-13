@@ -3,12 +3,12 @@
 //! component catalog (`.specify/design-system/components.yaml`).
 
 use error::Result;
+use project::config::Layout;
+use project::schema_gate::EvidenceDoc;
 use schema::diagnostics::{Artifact, Diagnostic};
 use serde_json::Value as JsonValue;
 
-use crate::config::Layout;
 use crate::design_system::{ComponentStatus, ComponentsCatalog};
-use crate::schema_gate::EvidenceDoc;
 
 /// Cross-reference Evidence `component:` directives against the
 /// project-level component catalog when present:

@@ -2,7 +2,7 @@
 //! and `plan amend` on both transports.
 //!
 //! Each helper turns the wire-shaped payload into the domain type the
-//! handler hands to [`crate::change::Plan`]; the handlers themselves
+//! handler hands to [`project::plan::Plan`]; the handlers themselves
 //! stay free of parsing chatter. The clap-only argv grammars (the
 //! `--source` / `--sources` string forms) live in the transport crate;
 //! this module owns only the serde shapes and the parsing every
@@ -14,10 +14,9 @@ use std::str::FromStr;
 use artifacts::discovery::{Discovery, DiscoveryResolveError};
 use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
+use project::config::Layout;
+use project::plan::{Divergence, SliceSourceBinding, SourceBinding};
 use serde::{Deserialize, Serialize};
-
-use crate::change::{Divergence, SliceSourceBinding, SourceBinding};
-use crate::config::Layout;
 
 /// One top-level plan source binding as it crosses the wire.
 ///
@@ -64,7 +63,7 @@ impl SourceAssign {
 }
 
 /// Desugar the `plan author` raw source surface into the structured
-/// binding map [`crate::change::Plan::init`] expects.
+/// binding map [`project::plan::Plan::init`] expects.
 ///
 /// Runs at the operation boundary so every transport shares the
 /// duplicate-key gate and the `--intent` sugar.
@@ -297,7 +296,7 @@ where
 
 /// Parse `--authority-override <slice> <kind>=<source>` repeats
 /// into the typed `(slice, kind, source)` tuple
-/// `crate::change::authority_override::mutate` expects.
+/// `project::plan::authority_override::mutate` expects.
 ///
 /// # Errors
 ///

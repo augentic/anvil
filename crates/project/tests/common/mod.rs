@@ -13,9 +13,6 @@
     reason = "mock dispatch closures share a Result<Output> signature for parity with real_cmd"
 )]
 
-pub mod answers;
-pub mod fixture;
-
 use std::cell::RefCell;
 use std::io;
 use std::path::PathBuf;
@@ -183,9 +180,9 @@ pub fn scoped_store(dir: &std::path::Path) -> StoreGuard {
 
 /// Component resolver with deterministic metadata answers for adapter
 /// integration fixtures.
-pub fn resolver() -> workflow::adapter::resolver::Component {
+pub fn resolver() -> project::adapter::resolver::Component {
     use error::Error;
-    use workflow::adapter::metadata::{Metadata, Request};
+    use project::adapter::metadata::{Metadata, Request};
 
     fn stub(request: &Request<'_>) -> Result<Metadata, Error> {
         let raw = match request.adapter_id {
@@ -212,7 +209,7 @@ pub fn resolver() -> workflow::adapter::resolver::Component {
         })
     }
 
-    workflow::adapter::resolver::Component::new(stub)
+    project::adapter::resolver::Component::new(stub)
 }
 
 /// Stage a stub adapter component for `name` at the resolver's in-repo
@@ -243,30 +240,30 @@ pub struct Project {
     pub root: PathBuf,
 }
 
-impl workflow::handler::Anchor for Project {
+impl project::handler::Anchor for Project {
     fn project_root(&self) -> &std::path::Path {
         &self.root
     }
 }
 
-impl workflow::adapter::Resolver for Project {
+impl project::adapter::Resolver for Project {
     fn resolve_source(
-        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
-    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
-        workflow::adapter::Resolver::resolve_source(&resolver(), adapter_ref, project_dir)
+        &self, adapter_ref: &project::adapter::AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<project::adapter::ResolvedSource, error::Error> {
+        project::adapter::Resolver::resolve_source(&resolver(), adapter_ref, project_dir)
     }
 
     fn resolve_target(
-        &self, adapter_ref: &workflow::adapter::AdapterRef, project_dir: &std::path::Path,
-    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
-        workflow::adapter::Resolver::resolve_target(&resolver(), adapter_ref, project_dir)
+        &self, adapter_ref: &project::adapter::AdapterRef, project_dir: &std::path::Path,
+    ) -> Result<project::adapter::ResolvedTarget, error::Error> {
+        project::adapter::Resolver::resolve_target(&resolver(), adapter_ref, project_dir)
     }
 }
 
 // A file-backed registry: a test stages the expected component bytes
 // at `<root>/hydrator/<name>@<version>.wasm` and the fetch serves
 // them; an unstaged URL refuses, standing in for a fetch failure.
-impl workflow::adapter::Hydrator for Project {
+impl project::adapter::Hydrator for Project {
     async fn fetch(&self, url: &str) -> Result<Vec<u8>, error::Error> {
         let entry = url.rsplit('/').next().unwrap_or_default();
         let staged = self.root.join("hydrator").join(entry);
@@ -280,27 +277,27 @@ impl workflow::adapter::Hydrator for Project {
 // An always-passing target seam: guidance is a stub brief, and both
 // merge gates acknowledge with a success report, so suites exercising
 // the deterministic merge core through `MergeRun` run unchanged.
-impl workflow::seam::TargetSeam for Project {
-    async fn guidance(&self, _id: String) -> Result<String, workflow::seam::Error> {
+impl project::seam::TargetSeam for Project {
+    async fn guidance(&self, _id: String) -> Result<String, project::seam::Error> {
         Ok("stub guidance".to_string())
     }
 
     async fn build(
-        &self, _id: String, _slice: String, _inputs: Vec<workflow::seam::Input>,
-        _tree: workflow::seam::WorkingTree,
-    ) -> Result<workflow::slice::BuildReport, workflow::seam::Error> {
-        Err(workflow::seam::Error::Internal("the Project helper stubs no build".to_string()))
+        &self, _id: String, _slice: String, _inputs: Vec<project::seam::Input>,
+        _tree: project::seam::WorkingTree,
+    ) -> Result<project::seam::wire::BuildReport, project::seam::Error> {
+        Err(project::seam::Error::Internal("the Project helper stubs no build".to_string()))
     }
 
     async fn merge(
-        &self, id: String, slice: String, _phase: workflow::seam::MergePhase,
-        _tree: workflow::seam::WorkingTree,
-    ) -> Result<workflow::slice::BuildReport, workflow::seam::Error> {
-        Ok(workflow::slice::BuildReport {
-            version: workflow::slice::BUILD_VERSION,
+        &self, id: String, slice: String, _phase: project::seam::MergePhase,
+        _tree: project::seam::WorkingTree,
+    ) -> Result<project::seam::wire::BuildReport, project::seam::Error> {
+        Ok(project::seam::wire::BuildReport {
+            version: project::seam::wire::BUILD_VERSION,
             slice,
             target: id.strip_prefix("target:").unwrap_or(&id).to_string(),
-            status: workflow::slice::BuildStatus::Success,
+            status: project::seam::wire::BuildStatus::Success,
             findings: Vec::new(),
             outputs: Vec::new(),
             ui_surface: None,
@@ -338,13 +335,9 @@ impl Project {
 }
 
 /// Invoke one operation against the project anchor.
-pub async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, workflow::handler::Error>
+pub async fn run<R, B>(project: &Project, input: R::Input) -> Result<B, project::handler::Error>
 where
-    R: omnia_guest::api::operation::Operation<
-            Project,
-            Output = B,
-            Error = workflow::handler::Error,
-        >,
+    R: omnia_guest::api::operation::Operation<Project, Output = B, Error = project::handler::Error>,
     B: Send,
 {
     omnia_guest::api::invoke::Invoker::new("specify", project.clone())
@@ -353,8 +346,8 @@ where
 }
 
 /// Rule ids carried by a failing validate operation's report.
-pub fn report_rule_ids(err: &workflow::handler::Error) -> Vec<String> {
-    let workflow::handler::Error::Report { body, .. } = err else {
+pub fn report_rule_ids(err: &project::handler::Error) -> Vec<String> {
+    let project::handler::Error::Report { body, .. } = err else {
         panic!("expected report error, got {err:?}");
     };
     body.report().findings.iter().filter_map(|finding| finding.rule_id.clone()).collect()
@@ -433,18 +426,18 @@ slices:
 ";
 
 /// A minimal in-memory plan named `test` wrapping `changes`.
-pub fn plan_with_changes(changes: Vec<workflow::change::Entry>) -> workflow::change::Plan {
-    workflow::change::Plan {
+pub fn plan_with_changes(changes: Vec<project::plan::Entry>) -> project::plan::Plan {
+    project::plan::Plan {
         name: "test".into(),
-        lifecycle: workflow::change::Lifecycle::Pending,
+        lifecycle: project::plan::Lifecycle::Pending,
         sources: std::collections::BTreeMap::new(),
         entries: changes,
     }
 }
 
 /// A minimal plan entry bound to project `default`.
-pub fn change(name: &str, status: workflow::change::Status) -> workflow::change::Entry {
-    workflow::change::Entry {
+pub fn change(name: &str, status: project::plan::Status) -> project::plan::Entry {
+    project::plan::Entry {
         name: name.into(),
         project: Some("default".into()),
         status,
@@ -454,14 +447,14 @@ pub fn change(name: &str, status: workflow::change::Status) -> workflow::change:
         description: None,
         divergence: None,
         disagreements: Vec::new(),
-        authority_override: workflow::change::AuthorityOverride::default(),
+        authority_override: project::plan::AuthorityOverride::default(),
     }
 }
 
 /// [`change`] plus a `depends-on` list.
 pub fn change_with_deps(
-    name: &str, status: workflow::change::Status, deps: &[&str],
-) -> workflow::change::Entry {
+    name: &str, status: project::plan::Status, deps: &[&str],
+) -> project::plan::Entry {
     let mut e = change(name, status);
     e.depends_on = deps.iter().map(|s| (*s).into()).collect();
     e

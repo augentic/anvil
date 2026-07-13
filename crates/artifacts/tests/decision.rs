@@ -96,7 +96,7 @@ mod findings {
     }
 
     #[test]
-    fn heading_allows_trailing_not_deeper() {
+    fn trailing_ok_not_deeper() {
         let text = "---\nslug: ok\nstatus: accepted\n---\n# T\n\n## Context (forces)\nx\n\n## Decision\ny\n\n### Consequences\nz\n";
         let parsed = parse_decision(text);
         // `## Context (forces)` satisfies Context; `### Consequences` is a

@@ -63,7 +63,7 @@ A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.
 ## plan.yaml
 
 **Location:** `plan.yaml` at the project root (single-project) or `<workspace>/plan.yaml` (workspace mode)
-**Created by:** `/spec:plan` (via `specify plan create`)
+**Created by:** `/spec:plan` (via `specify plan author`'s scaffold leg)
 **Modified by:** `specify plan author`, `specify plan add`, `specify plan amend`, `specify plan remove`, `specify plan transition`, `specify plan next`, `specify plan archive`
 
 The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
@@ -175,8 +175,8 @@ into Omnia. Priority: user registration, password reset.
 ## metadata.yaml
 
 **Location:** `.specify/slices/<name>/metadata.yaml`
-**Created by:** `specify slice create`
-**Modified by:** `specify slice transition`, `specify slice merge`
+**Created by:** the `specify slice refine` orchestration (slice create is re-entry safe)
+**Modified by:** the `specify slice refine` / `build` orchestrations, `specify slice merge`, `specify slice drop`
 
 Per-slice lifecycle metadata. **Never hand-edit this file.**
 

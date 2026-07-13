@@ -6,13 +6,13 @@ use std::io::Write;
 use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
+use project::handler::{Anchor, Ctx, Render};
+use project::seam::SourceSeam;
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::Resolver;
-use crate::change::plan::wire::{SourceAssign, source_map};
-use crate::handler::{Anchor, Ctx, Render};
 use crate::orchestrate;
-use crate::seam::SourceSeam;
+use crate::plan::wire::{SourceAssign, source_map};
 
 /// Wire input for `plan author`.
 ///
@@ -40,7 +40,7 @@ pub struct AuthorInput {
 pub struct Author;
 
 impl<P: Anchor + Model + Resolver + SourceSeam> Operation<P> for Author {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = AuthorInput;
     type Output = AuthorBody;
 

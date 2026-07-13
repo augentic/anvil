@@ -6,9 +6,9 @@
 
 use std::fs;
 
+use change::{Divergence, plan};
 use omnia_guest::api::invoke::Invoker;
 use serde_json::json;
-use workflow::change::{Divergence, plan};
 
 mod common;
 
@@ -16,7 +16,7 @@ use common::answers;
 use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
-/// private `workflow::judgment::MAX_REPAIRS` (2) — kept local rather
+/// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
 /// than widening the module for tests; a budget change shows up here
 /// as an off-by-one request count.
 const JUDGMENT_BUDGET: usize = 3;
@@ -54,7 +54,7 @@ fn uncovered_grouping_answer() -> String {
 
 async fn author(
     invoker: &Invoker<ScriptedProvider>,
-) -> Result<plan::handlers::AuthorBody, workflow::handler::Error> {
+) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _>(
         invoker,
         plan::handlers::AuthorInput {
@@ -83,7 +83,7 @@ async fn overlap_merges() {
     assert_eq!(authored.surveyed[1].source, "docs");
     assert_eq!(authored.surveyed[1].leads, ["login-flow", "session-timeout", "password-reset"]);
 
-    let plan: workflow::change::Plan = serde_saphyr::from_str(
+    let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");

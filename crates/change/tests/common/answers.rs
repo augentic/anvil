@@ -5,8 +5,8 @@
 //! synthesis). Keeping one copy of each answer here stops the suites
 //! drifting apart on envelope shape.
 
+use change::plan::wire::SourceAssign;
 use serde_json::json;
-use workflow::change::plan::wire::SourceAssign;
 
 /// The single `main` binding onto the minimal fixture source.
 pub fn greeting_binding() -> Vec<SourceAssign> {

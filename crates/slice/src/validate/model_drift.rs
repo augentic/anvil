@@ -7,13 +7,13 @@ use artifacts::evidence::ClaimKind;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementStatus};
 use artifacts::spec::{is_req_id, is_task_id};
 use error::{Error, Result};
+use project::plan::Plan;
+use project::schema_gate::EvidenceDoc;
 use schema::diagnostics::{Artifact, Diagnostic};
 use serde_json::Value as JsonValue;
 
-use crate::change::Plan;
-use crate::schema_gate::EvidenceDoc;
-use crate::slice::model::{SliceModel, validate_model_doc};
-use crate::slice::provenance_lines;
+use crate::model::{SliceModel, validate_model_doc};
+use crate::provenance_lines;
 
 /// Emit the drift-validation findings over the slice's
 /// `model.yaml`.
@@ -52,7 +52,7 @@ pub(super) fn findings(
     if !model_path.exists() {
         return Ok(Vec::new());
     }
-    let raw = crate::fs::read_text(&model_path)?;
+    let raw = project::fs::read_text(&model_path)?;
     let value: JsonValue = serde_saphyr::from_str(&raw)?;
 
     let mut findings = Vec::new();

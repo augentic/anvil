@@ -7,13 +7,13 @@ use error::Error;
 use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
+use project::handler::{Anchor, Ctx, Render};
+use project::plan::LoopStep;
+use project::seam::{SourceSeam, TargetSeam, WorkingTree};
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::Resolver;
-use crate::change::LoopStep;
-use crate::handler::{Anchor, Ctx, Render};
 use crate::orchestrate::{self, ExecuteOutcome};
-use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
 
 /// Wire input for `plan execute` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub struct ExecuteInput {}
 pub struct Execute;
 
 impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Execute {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ExecuteInput;
     type Output = ExecuteBody;
 

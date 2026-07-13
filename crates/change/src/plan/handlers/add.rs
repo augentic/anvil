@@ -7,16 +7,16 @@ use std::collections::BTreeMap;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::config::with_state;
+use project::handler::{Anchor, Ctx};
+use project::journal;
+use project::plan::{AuthorityOverride, Entry, Plan, Status, authority_override, entry_mut};
+use project::schema_gate::validate_plan;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
-use crate::change::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
-use crate::change::{AuthorityOverride, Entry, Plan, Status, authority_override, entry_mut};
-use crate::config::with_state;
-use crate::handler::{Anchor, Ctx};
-use crate::journal;
-use crate::schema_gate::validate_plan;
+use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
 
 /// Wire input for `plan add`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,7 +51,7 @@ pub struct AddInput {
 pub struct Add;
 
 impl<P: Anchor> Operation<P> for Add {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = AddInput;
     type Output = EntryBody;
 
@@ -109,7 +109,7 @@ impl<P: Anchor> Operation<P> for Add {
                 // identically-shaped, identically-sorted Set events.
                 let created_entry = entry_mut(plan, &plan_name, name)?.clone();
                 let events = authority_override::emit_seed_events(&plan_name, &created_entry, now);
-                Ok(crate::config::Mutation::changed((
+                Ok(project::config::Mutation::changed((
                     EntryBody {
                         plan: plan_ref(plan, &plan_path),
                         action: Action::Create,

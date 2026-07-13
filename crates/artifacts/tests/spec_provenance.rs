@@ -176,7 +176,7 @@ fn validation_failure_modes() {
 }
 
 #[test]
-fn empty_sources_legal_for_unknown() {
+fn empty_sources_for_unknown() {
     // Contract: `Sources: []` appears exactly when `Status: unknown` —
     // an evidence-less requirement (e.g. on a reconciliation-inserted
     // bootstrap slice) has no contributing source to cite.
@@ -210,7 +210,7 @@ fn empty_input_empty_spec() {
 }
 
 #[test]
-fn liberal_brackets_in_sources_line() {
+fn liberal_sources_brackets() {
     let bare = parse_spec_md(
         "### Requirement: Bare sources\n\nID: REQ-001\nSources: a, b, c\nStatus: agreed\n",
     );
@@ -222,7 +222,7 @@ fn liberal_brackets_in_sources_line() {
 }
 
 #[test]
-fn body_preserves_interior_blank_lines() {
+fn body_keeps_blank_lines() {
     let parsed = parse_spec_md(
         "### Requirement: Multi-paragraph body\n\nID: REQ-001\nSources: [a]\nStatus: agreed\n\nFirst paragraph.\n\nSecond paragraph.\n",
     );
@@ -233,7 +233,7 @@ fn body_preserves_interior_blank_lines() {
 }
 
 #[test]
-fn into_diagnostic_prefixes_path_hint() {
+fn diagnostic_prefixes_path() {
     let parsed = parse_spec_md("### Requirement: No id\n\nSources: [a]\nStatus: agreed\n");
     let mut findings = validate(&parsed, &keys(["a"]));
     let diagnostic =
@@ -243,7 +243,7 @@ fn into_diagnostic_prefixes_path_hint() {
 }
 
 #[test]
-fn requirement_status_round_trips() {
+fn status_round_trips() {
     for (variant, wire) in [
         (RequirementStatus::Agreed, "agreed"),
         (RequirementStatus::Unknown, "unknown"),

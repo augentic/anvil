@@ -7,10 +7,10 @@ use std::io::Write;
 use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Render};
-use crate::slice::actions::{Retention, prune};
+use crate::actions::{Retention, prune};
 
 /// Wire input for `archive prune`.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -40,7 +40,7 @@ pub struct PruneInput {
 pub struct Prune;
 
 impl<P: Anchor> Operation<P> for Prune {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = PruneInput;
     type Output = PruneBody;
 

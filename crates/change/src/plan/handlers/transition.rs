@@ -6,13 +6,13 @@ use std::io::Write;
 use error::{Error, Result};
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::config::{Mutation, with_state};
+use project::handler::{Anchor, Ctx, Render};
+use project::journal::{self, Event, EventKind};
+use project::plan::{Lifecycle, Plan, Status as EntryStatus};
 use serde::{Deserialize, Serialize};
 
 use super::{Ref, plan_ref};
-use crate::change::{Lifecycle, Plan, Status as EntryStatus};
-use crate::config::{Mutation, with_state};
-use crate::handler::{Anchor, Ctx, Render};
-use crate::journal::{self, Event, EventKind};
 
 /// Wire input for `plan transition`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -58,7 +58,7 @@ fn default_actor() -> String {
 pub struct Transition;
 
 impl<P: Anchor> Operation<P> for Transition {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = TransitionInput;
     type Output = TransitionBody;
 

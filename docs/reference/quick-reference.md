@@ -62,7 +62,7 @@ Slice lifecycle:
 ```text
 refining --> refined --> built --> merged
                             \
-                             `--> dropped (via slice transition --reason "...")
+                             `--> dropped (via slice drop --reason "...")
 ```
 
 ## Key CLI commands
@@ -75,8 +75,7 @@ specify source resolve <name>                            # validate a source ada
 specify target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specify plan create <plan-name> --source <key>=<adapter>:<path>     # or <adapter>:value:<literal>
-specify plan author                                            # survey + reconcile + validate; exits at pending
+specify plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits at pending
 specify plan add <entry> --sources <key>=<lead> --project <name>
 specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
@@ -86,10 +85,11 @@ specify plan next                                        # active in-progress, o
 specify plan archive
 
 # Slice management
-specify slice create <name> --target <target>
-specify slice transition <name> <refining|refined|built|dropped> [--reason "..."]
+specify slice list                                       # read-only: every slice with status + target
+specify slice refine <name>                              # guest-routed: create + extract + synthesis + refined
 specify slice validate <name>
-specify slice merge <name> [--dry-run|--check-only]
+specify slice merge run <name>                           # also: merge preview / merge conflict-check
+specify slice drop <name> [--reason "..."]
 
 # Maintenance & bootstrap
 specify init --upgrade                                   # bump specify pin + re-scaffold preservation-safe files only

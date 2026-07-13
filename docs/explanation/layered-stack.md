@@ -23,7 +23,7 @@ The configuration surfaces:
 The CLI verbs that read or change Layer 0 state:
 
 - **`specify init <target>`** / **`specify init --workspace`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/workflow/src/adapter/`) routes by axis.
+- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/project/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 
@@ -49,7 +49,7 @@ The full set of Layer 1 skills:
 | `/spec:merge`  | Wrap `specify slice merge run`: baseline delta merge, archive; only writer of per-entry `done` |
 | `/spec:drop`   | Wrap `specify slice drop`: discard a slice without merging                                 |
 
-The matching CLI surface is the **`specify slice ...`** family: `slice refine`, `slice build`, `slice merge run`, plus the finer-grained `slice create`, `slice transition`, `slice validate`. The skills are one-to-one wrappers over it.
+The matching CLI surface is the **`specify slice ...`** family: `slice refine`, `slice build`, `slice merge run`, `slice drop`, plus the read-only `slice list` and `slice validate`. The skills are one-to-one wrappers over it.
 
 ## Layer 2: Planning and driving a change
 

@@ -16,4 +16,4 @@ Every skill is an ultrathin invoke-and-relay wrapper: it elicits any missing arg
 | [drop](skills/drop/SKILL.md) | `/spec:drop` | Discard a slice without merging (`specify slice drop`) |
 | [finalize](skills/finalize/SKILL.md) | `/spec:finalize` | Push branches, then archive the plan (PRs operator-owned, outside Specify) |
 
-The judgment prose the workflow's model legs consume (lead reconciliation, the synthesis playbook, spec formatting) is embedded in the `specify` binary from `crates/workflow/prompts/`; it is not plugin material.
+The judgment prose the workflow's model legs consume (lead reconciliation, the synthesis playbook, spec formatting) is embedded in the `specify` binary from `crates/slice/prompts/` and `crates/change/prompts/`; it is not plugin material.

@@ -6,7 +6,7 @@ use error::Error;
 use jiff::Timestamp;
 
 use super::archive::archive;
-use crate::slice::{LifecycleStatus, SliceMetadata};
+use crate::{LifecycleStatus, SliceMetadata};
 
 /// Transition a slice to `Dropped`, record the optional reason, then
 /// archive. Returns the final archive path.

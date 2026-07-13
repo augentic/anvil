@@ -7,8 +7,8 @@ use error::Error;
 use schema::diagnostics::is_blocking;
 
 use super::model::{Entry, Lifecycle, Plan, SourceBinding, Status};
-use crate::plan::detect;
 use crate::name::validate_name;
+use crate::plan::detect;
 
 impl Plan {
     /// Create an empty plan with the given name and optional named sources.

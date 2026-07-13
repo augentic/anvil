@@ -19,9 +19,8 @@ pub mod status;
 pub mod transitions;
 pub mod validate;
 
-pub use doctor::{author_gate, claim_gate, detect, full_report};
-
 pub use authority_override::{entry_mut, unknown_slice_err};
+pub use doctor::{author_gate, claim_gate, detect, full_report};
 pub use model::{
     AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Lifecycle,
     Patch, Plan, SliceSourceBinding, SourceBinding, Status,

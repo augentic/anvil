@@ -8,8 +8,8 @@
 
 use std::fs;
 
+use change::{LoopStep, Status, plan};
 use omnia_guest::api::invoke::Invoker;
-use workflow::change::{LoopStep, Status, plan};
 
 mod common;
 
@@ -27,9 +27,9 @@ fn scripted_answers() -> Vec<String> {
 /// Scaffold a project bound to the fixture target and author + approve
 /// the single-slice plan — the shared preamble of every loop test.
 async fn scaffold_author_approve(invoker: &Invoker<ScriptedProvider>) {
-    let scaffolded = run::<workflow::init::handlers::Init, _>(
+    let scaffolded = run::<project::init::handlers::Init, _>(
         invoker,
-        workflow::init::handlers::InitInput {
+        project::init::handlers::InitInput {
             adapter: Some("fixture".to_string()),
             name: Some("demo".to_string()),
             ..Default::default()
@@ -93,7 +93,7 @@ async fn author_approve_execute_drains() {
     );
 
     // Plan lifecycle: every entry is `done`.
-    let plan: workflow::change::Plan = serde_saphyr::from_str(
+    let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
@@ -187,9 +187,9 @@ async fn preflight_parks_built() {
     // Clear the gate and resume through the breakout merge, then the
     // loop confirms drained.
     fs::remove_file(root.join(fixtures::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
-    let merged = run::<workflow::slice::handlers::MergeRun, _>(
+    let merged = run::<slice::handlers::MergeRun, _>(
         &invoker,
-        workflow::slice::handlers::MergeRunInput {
+        slice::handlers::MergeRunInput {
             name: "greeting".to_string(),
             allow_composition_replace: false,
         },
@@ -227,7 +227,7 @@ async fn postflight_terminal() {
     // written, slice archived, plan entry `done`.
     assert!(root.join(".specify/specs/greeting/spec.md").is_file());
     assert!(!root.join(".specify/slices/greeting").exists());
-    let plan: workflow::change::Plan = serde_saphyr::from_str(
+    let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
@@ -260,9 +260,9 @@ async fn build_parks_then_resumes() {
 
     // Clear the failure and resume through the breakout build.
     fs::remove_file(root.join(fixtures::FAIL_BUILD_MARKER)).expect("remove fail marker");
-    let rebuilt = run::<workflow::slice::handlers::Build, _>(
+    let rebuilt = run::<slice::handlers::Build, _>(
         &invoker,
-        workflow::slice::handlers::BuildInput {
+        slice::handlers::BuildInput {
             name: "greeting".to_string(),
         },
     )

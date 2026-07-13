@@ -6,15 +6,15 @@ use std::path::{Path, PathBuf};
 use artifacts::discovery::Discovery;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
 use error::Result;
+use project::config::Layout;
+use project::plan::{Plan, orphan_authority_override_keys};
+use project::schema_gate::EvidenceDoc;
 use schema::diagnostics::{Artifact, Diagnostic};
 
 use super::catalog::catalog_drift;
 use super::decisions::decision_gates;
 use super::spec_location::file_location;
 use super::{collect_spec_files, model_drift, path_hint};
-use crate::change::{Plan, orphan_authority_override_keys};
-use crate::config::Layout;
-use crate::schema_gate::EvidenceDoc;
 
 struct ScannedSpec {
     path: PathBuf,
@@ -41,7 +41,7 @@ pub(super) fn scan_specs(slice_dir: &Path, source_keys: &BTreeSet<String>) -> Re
     let mut provenance_findings = Vec::new();
 
     for path in spec_files {
-        let text = crate::fs::read_text(&path)?;
+        let text = project::fs::read_text(&path)?;
         let scanned = ScannedSpec {
             path,
             parsed: provenance::parse_spec_md(&text),

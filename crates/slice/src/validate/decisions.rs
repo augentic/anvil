@@ -7,11 +7,11 @@ use std::path::Path;
 
 use artifacts::decision::{DecisionRecord, parse_decision};
 use error::Result;
+use project::config::Layout;
+use project::decisions::{is_dec_ref, list_md_files, read_baseline};
 use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 use super::path_hint;
-use crate::config::Layout;
-use crate::decisions::{is_dec_ref, list_md_files, read_baseline};
 
 /// Validate `<slice>/decisions/*.md`, raising the per-file findings
 /// owned by the `artifacts` parser — `decision-record-schema`,
@@ -41,7 +41,7 @@ pub(super) fn decision_gates(layout: Layout<'_>, slice_dir: &Path) -> Result<Vec
     let mut records: Vec<(String, DecisionRecord)> = Vec::new();
 
     for path in &files {
-        let text = crate::fs::read_text(path)?;
+        let text = project::fs::read_text(path)?;
         let hint = path_hint(path, slice_dir);
         let parsed = parse_decision(&text);
         for finding in parsed.findings {

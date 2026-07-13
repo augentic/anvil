@@ -1,6 +1,6 @@
 # Consistency Checks
 
-Framework invariants over this repo's prose and manifest surfaces are plain cargo tests at `tests/framework/` (links, skills, plugins, docs prose). They run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
+Framework invariants over this repo's prose and manifest surfaces are plain cargo tests at `tests/framework/` (links, skills, plugins, docs prose, test naming). They run inside the single CI gate, `cargo make ci` — there is no separate lint engine, verb, or `make lint` step.
 
 ```bash
 cargo test --test framework   # prose/manifest invariants only
@@ -54,7 +54,7 @@ Each module under [`tests/framework/`](../../tests/framework/) owns one family. 
 - **Skill directive validation** — `<!-- skill: plugin:skill -->` directives must reference a real skill discovered under `plugins/`.
 - **Tool-owned schema URLs** — every `schemas.specify.dev/<tool>/<name>.schema.json` URL in adapter trees must match the constant tool → schema-name registry in the module (currently `vectis` → `tokens`, `assets`, `composition`).
 
-The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/workflow/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the test.
+The judgment-prose corpus embedded by the workflow crate gets a second, stronger gate at compile time: `crates/slice/build.rs` inlines each prompt body and synthesis reference into `OUT_DIR` and link-checks it, so a dangling relative reference in that corpus **fails the build**, not just the test.
 
 ### `skills.rs`
 
@@ -73,6 +73,10 @@ Every `SKILL.md` under `plugins/` is validated against the embedded `schemas/aut
 - **Reference-corpus indexes** — multi-file reference corpora must carry a `README.md` index.
 - **No design-history citations** — prose and engine code comments (`.rs` / `.wit` under `src/`, `crates/`, `harness/`, `wit/`) must not cite retired RFC/design-record ids as authority.
 - **No flow arrows in `text` fences** — explanation docs use real diagrams, not ASCII flow arrows in ```text fences.
+
+### `naming.rs`
+
+- **Test fn length** — every `#[test]` / `#[tokio::test]` fn identifier under `src/`, `crates/`, `harness/`, and `tests/` fits the 30-char cap from [testing.md §"Test naming"](../standards/testing.md#test-naming); the module path is context and does not count.
 
 ## Extending the checks
 

@@ -7,7 +7,7 @@
 use fixtures::{Error, Lead, extract};
 
 #[test]
-fn unknown_lead_is_invalid_request() {
+fn unknown_lead_invalid() {
     let lead = Lead {
         lead: "never-surveyed".to_string(),
         synopsis: "A lead this source does not know.".to_string(),

@@ -13,20 +13,20 @@ use artifacts::discovery::Discovery;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use schema::diagnostics::has_blocking;
-
-use super::SurveyedSource;
-use crate::adapter::Resolver;
-use crate::change::{
+use project::adapter::Resolver;
+use project::config::{Layout, Mutation, ProjectConfig, with_state};
+use project::journal::{self, Event, EventKind};
+use project::name::SliceName;
+use project::plan::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
     author_gate, build_request, resolve_topology,
 };
-use crate::config::{Layout, Mutation, ProjectConfig, with_state};
-use crate::journal::{self, Event, EventKind};
+use project::registry::Registry;
+use project::seam::SourceSeam;
+use schema::diagnostics::has_blocking;
+
+use super::SurveyedSource;
 use crate::judgment::propose::{self, GateContext};
-use crate::name::SliceName;
-use crate::registry::Registry;
-use crate::seam::SourceSeam;
 
 /// The result of a completed [`author`]: the plan at `pending` with
 /// its proposed slices, plus the literal Gate 1 hint for the operator.
@@ -161,7 +161,7 @@ fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
     ))
 }
 
-/// The plan scaffold via the shared [`crate::change::scaffold`]
+/// The plan scaffold via the shared [`project::plan::scaffold`]
 /// kernel, plus the immediate atomic save. No auto-approval and no
 /// `--authority-override` surface — Gate 1 stamping stays
 /// operator-only and override pre-seeding needs slice rows that do
@@ -170,7 +170,7 @@ fn scaffold(
     layout: Layout<'_>, name: &str, bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<(), Error> {
     let plan_path = layout.plan_path();
-    crate::change::scaffold(&plan_path, name, bindings)?.save(&plan_path)
+    project::plan::scaffold(&plan_path, name, bindings)?.save(&plan_path)
 }
 
 /// Resolve the project topology the request embeds, minus the

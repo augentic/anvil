@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::Path;
 
+#[path = "../../project/tests/common/mod.rs"]
 mod common;
 
 use common::{Project, report_rule_ids, run};
@@ -23,9 +24,9 @@ async fn orphan_supersede_reported() {
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-9999]\n",
     );
 
-    let err = run::<workflow::slice::handlers::Validate, _>(
+    let err = run::<slice::handlers::Validate, _>(
         &project,
-        workflow::slice::handlers::ValidateInput {
+        slice::handlers::ValidateInput {
             name: "demo".to_string(),
         },
     )
@@ -55,9 +56,9 @@ async fn merge_promotes_and_supersedes() {
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-0001]\n",
     );
 
-    let body = run::<workflow::slice::handlers::MergeRun, _>(
+    let body = run::<slice::handlers::MergeRun, _>(
         &project,
-        workflow::slice::handlers::MergeRunInput {
+        slice::handlers::MergeRunInput {
             name: "demo".to_string(),
             allow_composition_replace: false,
         },

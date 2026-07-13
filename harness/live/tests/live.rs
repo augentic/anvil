@@ -28,6 +28,7 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
+use change::plan;
 use omnia::Backend as _;
 use omnia_guest::Model;
 use omnia_guest::api::invocation::Invocation;
@@ -38,9 +39,8 @@ use omnia_testkit::model::Harness;
 use omnia_wasi_model as wire;
 use omnia_wasi_model::WasiModelCtx as _;
 use serde_json::Value;
-use workflow::change::plan;
 
-#[path = "../../../crates/workflow/tests/common/mod.rs"]
+#[path = "../../../crates/change/tests/common/mod.rs"]
 mod common;
 
 use common::answers;
@@ -53,9 +53,9 @@ type LiveProvider = FixtureProvider<Harness<CursorModel>>;
 /// Invoke one operation against the live fixture provider.
 async fn run<R, B>(
     invoker: &Invoker<LiveProvider>, input: R::Input,
-) -> Result<B, workflow::handler::Error>
+) -> Result<B, project::handler::Error>
 where
-    R: Operation<LiveProvider, Output = B, Error = workflow::handler::Error>,
+    R: Operation<LiveProvider, Output = B, Error = project::handler::Error>,
     B: Send,
 {
     invoker.invoke::<R>(Invocation::new(input)).await
@@ -63,7 +63,7 @@ where
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "dispatches the configured live model; run via `cargo make test-live`"]
-async fn adversarial_loop_is_validator_clean() {
+async fn adversarial_loop_clean() {
     // Kept up front and removed only after every assertion passes, so
     // a failing trial leaves its project tree behind for inspection.
     let root = tempfile::TempDir::new().expect("tempdir").keep();
@@ -129,7 +129,7 @@ async fn adversarial_loop_is_validator_clean() {
 
     let plan = read_plan(&root);
     assert!(
-        plan.entries.iter().all(|entry| entry.status == workflow::change::Status::Done),
+        plan.entries.iter().all(|entry| entry.status == change::Status::Done),
         "{:?}",
         plan.entries
     );
@@ -192,7 +192,7 @@ async fn adversarial_loop_is_validator_clean() {
 }
 
 /// The parsed `plan.yaml` at the trial root.
-fn read_plan(root: &Path) -> workflow::change::Plan {
+fn read_plan(root: &Path) -> change::Plan {
     serde_saphyr::from_str(&fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"))
         .expect("parse plan.yaml")
 }

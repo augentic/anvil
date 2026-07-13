@@ -7,10 +7,10 @@ use std::path::PathBuf;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Render};
-use crate::slice::{LifecycleStatus, actions as slice_actions};
+use crate::{LifecycleStatus, actions as slice_actions};
 
 /// Wire input for `slice drop`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -30,7 +30,7 @@ pub struct DropInput {
 pub struct Drop;
 
 impl<P: Anchor> Operation<P> for Drop {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = DropInput;
     type Output = DropBody;
 

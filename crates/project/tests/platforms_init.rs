@@ -15,9 +15,9 @@ async fn vectis_platform_requirements() {
     for (platforms, expected) in cases {
         let project = Project::bare();
         stage_dev_component(&project.root, "vectis");
-        let err = run::<workflow::init::handlers::Init, _>(
+        let err = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput {
+            project::init::handlers::InitInput {
                 adapter: Some("vectis".to_string()),
                 name: Some("demo".to_string()),
                 description: None,

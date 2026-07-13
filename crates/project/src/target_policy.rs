@@ -16,8 +16,8 @@ use std::path::Path;
 use error::Error;
 
 use crate::adapter::{AdapterRef, ResolvedTarget, Resolver};
-use crate::plan::{Entry, resolve_target, resolve_topology};
 use crate::config::{Layout, ProjectConfig};
+use crate::plan::{Entry, resolve_target, resolve_topology};
 use crate::slice::SliceMetadata;
 
 /// Resolve the project's declared target adapter.

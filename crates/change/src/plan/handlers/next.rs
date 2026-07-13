@@ -2,11 +2,10 @@
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
+use project::handler::{Anchor, Ctx};
+use project::plan::{NextBody, claim_next};
 use serde::{Deserialize, Serialize};
-
-use crate::adapter::Resolver;
-use crate::change::{NextBody, claim_next};
-use crate::handler::{Anchor, Ctx};
 
 /// Wire input for `plan next` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -27,7 +26,7 @@ pub struct NextInput {}
 pub struct Next;
 
 impl<P: Anchor + Resolver> Operation<P> for Next {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = NextInput;
     type Output = NextBody;
 

@@ -10,8 +10,8 @@ use std::fmt::Write as _;
 use artifacts::spec::SCENARIO_HEADING;
 use artifacts::spec::provenance::RequirementStatus;
 
-use crate::slice::model::{ModelRequirement, SliceModel};
-use crate::slice::synthesis::baseline::{BaselineIndex, DomainKind};
+use crate::model::{ModelRequirement, SliceModel};
+use crate::synthesis::baseline::{BaselineIndex, DomainKind};
 
 /// Domain used when a requirement has no explicit owner.
 const DEFAULT_DOMAIN: &str = "default";

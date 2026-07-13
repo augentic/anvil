@@ -10,19 +10,19 @@ use artifacts::spec::provenance::RequirementTag;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
+use project::adapter::Resolver;
+use project::config::{Layout, ProjectConfig};
+use project::journal::{self, EventKind};
+use project::plan::{Entry, Plan, Status, resolve_topology};
+use project::registry::topology::{Decision, Surface};
+use project::seam::{SourceSeam, TargetSeam};
 use schema::diagnostics::has_blocking;
 
 use super::synthesize::SynthesizeRequest;
-use crate::adapter::Resolver;
-use crate::change::{Entry, Plan, Status, resolve_topology};
-use crate::config::{Layout, ProjectConfig};
-use crate::journal::{self, EventKind};
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
-use crate::registry::topology::{Decision, Surface};
-use crate::seam::{SourceSeam, TargetSeam};
-use crate::slice::validate::{Validation, append_synthesis_journal};
-use crate::slice::{
+use crate::validate::{Validation, append_synthesis_journal};
+use crate::{
     BaselineIndex, CreateIfExists, DomainDetail, LifecycleStatus, ProjectionHeader,
     actions as slice_actions, persist_synthesized, read_evidence_index, read_source_inputs,
     synthesize_failure_reason,
@@ -229,8 +229,8 @@ pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver
 fn breakout_target(
     resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry, slice: &str,
 ) -> Result<String, Error> {
-    crate::target_policy::resumed(layout, slice)
-        .or_else(|_| crate::target_policy::fresh(resolver, layout, entry, slice, "refining"))
+    project::target_policy::resumed(layout, slice)
+        .or_else(|_| project::target_policy::fresh(resolver, layout, entry, slice, "refining"))
 }
 
 /// The judgment leg plus the native persist tail — one fallible unit
@@ -254,7 +254,7 @@ async fn synthesize_and_persist<P: Model, T: TargetSeam>(
 /// decision and error codes match the native verb). Returns the tag
 /// counts the refine body surfaces.
 fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<TagCounts, Error> {
-    match crate::slice::validate::run(layout, slice)? {
+    match crate::validate::run(layout, slice)? {
         Validation::Gate { code, findings } => Err(Error::validation_failed(
             code,
             "slice must satisfy structural invariants",
@@ -340,7 +340,7 @@ fn baseline_identity(
 /// Bare adapter name from a recorded target value (`omnia@1.0.0` →
 /// `omnia`) — the seam routes by the plan-bound name.
 fn target_name(target_value: &str) -> String {
-    crate::adapter::AdapterRef::from_value(target_value).name
+    project::adapter::AdapterRef::from_value(target_value).name
 }
 
 /// Warning scope for the best-effort `slice.synthesize.*` brackets.

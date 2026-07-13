@@ -43,9 +43,9 @@ async fn structural_findings() {
         )
         .expect("stage plan");
 
-        let err = run::<workflow::change::plan::handlers::Validate, _>(
+        let err = run::<change::plan::handlers::Validate, _>(
             &project,
-            workflow::change::plan::handlers::ValidateInput {},
+            change::plan::handlers::ValidateInput {},
         )
         .await
         .expect_err("invalid plan must fail");

@@ -12,9 +12,9 @@ use serde::Serialize;
 
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
 use crate::adapter::Resolver;
-use crate::plan::claim_gate;
 use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::journal::{self, Event, EventKind};
+use crate::plan::claim_gate;
 
 impl Plan {
     /// First entry in list order whose dependencies are all `done` and

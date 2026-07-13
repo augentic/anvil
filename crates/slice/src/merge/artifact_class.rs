@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::config::Layout;
+use project::config::Layout;
 
 /// One mutable artefact class that participates in a slice's merge.
 ///

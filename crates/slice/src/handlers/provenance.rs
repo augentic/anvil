@@ -13,12 +13,12 @@ use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
+use project::plan::Plan;
 use serde::{Deserialize, Serialize};
 
-use crate::change::Plan;
-use crate::handler::{Anchor, Ctx, Render};
-use crate::slice::SliceModel;
-use crate::slice::provenance::ProvenanceIndex;
+use crate::SliceModel;
+use crate::provenance::ProvenanceIndex;
 
 /// Generator label stamped on the projection header.
 fn generator() -> String {
@@ -58,7 +58,7 @@ pub struct ProvenanceInput {
 pub struct Provenance;
 
 impl<P: Anchor> Operation<P> for Provenance {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ProvenanceInput;
     type Output = ProvenanceIndex;
 

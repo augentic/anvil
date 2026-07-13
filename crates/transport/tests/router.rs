@@ -8,31 +8,37 @@ use std::path::{Path, PathBuf};
 use omnia_guest::Model;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Reply, Request};
+use project::seam::{self, SourceSeam, TargetSeam, WorkingTree};
 use tempfile::TempDir;
-use workflow::seam::{self, SourceSeam, TargetSeam, WorkingTree};
 
 #[derive(Clone, Debug)]
 struct TestProvider {
     root: PathBuf,
 }
 
-impl workflow::handler::Anchor for TestProvider {
+impl project::handler::Anchor for TestProvider {
     fn project_root(&self) -> &Path {
         &self.root
     }
 }
 
-impl workflow::adapter::Resolver for TestProvider {
+impl project::adapter::Resolver for TestProvider {
     fn resolve_source(
-        &self, _: &workflow::adapter::AdapterRef, _: &Path,
-    ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
+        &self, _: &project::adapter::AdapterRef, _: &Path,
+    ) -> Result<project::adapter::ResolvedSource, error::Error> {
         unreachable!("router grammar tests do not resolve adapters")
     }
 
     fn resolve_target(
-        &self, _: &workflow::adapter::AdapterRef, _: &Path,
-    ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
+        &self, _: &project::adapter::AdapterRef, _: &Path,
+    ) -> Result<project::adapter::ResolvedTarget, error::Error> {
         unreachable!("router grammar tests do not resolve adapters")
+    }
+}
+
+impl project::adapter::Hydrator for TestProvider {
+    async fn fetch(&self, _: &str) -> Result<Vec<u8>, error::Error> {
+        unreachable!("router grammar tests do not hydrate adapters")
     }
 }
 
@@ -59,13 +65,13 @@ impl TargetSeam for TestProvider {
 
     async fn build(
         &self, _id: String, _slice: String, _inputs: Vec<seam::Input>, _tree: WorkingTree,
-    ) -> Result<workflow::slice::BuildReport, seam::Error> {
+    ) -> Result<slice::BuildReport, seam::Error> {
         unreachable!("router grammar tests do not invoke adapters")
     }
 
     async fn merge(
         &self, _id: String, _slice: String, _phase: seam::MergePhase, _tree: WorkingTree,
-    ) -> Result<workflow::slice::BuildReport, seam::Error> {
+    ) -> Result<slice::BuildReport, seam::Error> {
         unreachable!("router grammar tests do not invoke adapters")
     }
 }
@@ -110,7 +116,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 37);
+    assert_eq!(http_types.len(), 31);
 }
 
 #[tokio::test]

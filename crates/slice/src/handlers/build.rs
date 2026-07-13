@@ -4,13 +4,12 @@ use std::io::Write;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
+use project::handler::{Anchor, Ctx, Render};
+use project::seam::{TargetSeam, WorkingTree};
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::Resolver;
-use crate::handler::{Anchor, Ctx, Render};
-use crate::orchestrate;
-use crate::seam::{TargetSeam, WorkingTree};
-use crate::slice::BuildStatus;
+use crate::{BuildStatus, orchestrate};
 
 /// Wire input for `slice build`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -25,7 +24,7 @@ pub struct BuildInput {
 pub struct Build;
 
 impl<P: Anchor + Resolver + TargetSeam> Operation<P> for Build {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = BuildInput;
     type Output = BuildBody;
 

@@ -13,11 +13,11 @@
 //! torn merge-incomplete state, re-entry resume points, and workspace
 //! slot routing.
 
+use change::plan::handlers::{Status as StatusOp, StatusInput};
+use change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
 use jiff::Timestamp;
-use workflow::change::plan::handlers::{Status as StatusOp, StatusInput};
-use workflow::change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
-use workflow::journal::{Event as JournalEvent, EventKind};
-use workflow::slice::LifecycleStatus;
+use project::journal::{Event as JournalEvent, EventKind};
+use slice::LifecycleStatus;
 
 mod common;
 
@@ -123,7 +123,7 @@ mod next_action {
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
         let mut out = Vec::new();
-        workflow::handler::Render::render(&body, &mut out).expect("render");
+        project::handler::Render::render(&body, &mut out).expect("render");
         let text = String::from_utf8(out).expect("utf8");
         assert!(
             text.contains("drained \u{2014} run /spec:finalize test"),

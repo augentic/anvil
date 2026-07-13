@@ -54,7 +54,7 @@ Every contributor runs `cargo test --test framework` locally with only a Rust to
 
 - [Quality gates](quality-gates.md) -- test rungs, assertion ownership, and release cadence
 - [The developer loop](dev-loop.md) -- the three local rungs: `cargo make test` (native), `cargo make test-wasm` (composed smoke), `cargo make test-live` (explicit live trial)
-- [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/workflow/prompts/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
+- [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/slice/prompts/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
 - [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing

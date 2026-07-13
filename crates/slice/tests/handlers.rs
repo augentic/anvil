@@ -12,6 +12,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[path = "../../project/tests/common/mod.rs"]
 mod common;
 
 use common::{Project, run};
@@ -31,9 +32,9 @@ mod registry {
     #[tokio::test]
     async fn add_mints_file() {
         let project = Project::initialised();
-        let body = run::<workflow::registry::handlers::Add, _>(
+        let body = run::<project::registry::handlers::Add, _>(
             &project,
-            workflow::registry::handlers::AddInput {
+            project::registry::handlers::AddInput {
                 name: "alpha".into(),
                 url: "git@example.com:org/alpha.git".into(),
                 adapter: None,
@@ -52,9 +53,9 @@ mod registry {
     async fn duplicate_add_errors() {
         let project = Project::initialised();
         stage_registry(&project.root);
-        let err = run::<workflow::registry::handlers::Add, _>(
+        let err = run::<project::registry::handlers::Add, _>(
             &project,
-            workflow::registry::handlers::AddInput {
+            project::registry::handlers::AddInput {
                 name: "alpha".into(),
                 url: "git@example.com:org/alpha.git".into(),
                 adapter: None,
@@ -73,9 +74,9 @@ mod registry {
     async fn staged_catalogue_validates() {
         let project = Project::initialised();
         stage_registry(&project.root);
-        run::<workflow::registry::handlers::Validate, _>(
+        run::<project::registry::handlers::Validate, _>(
             &project,
-            workflow::registry::handlers::ValidateInput {},
+            project::registry::handlers::ValidateInput {},
         )
         .await
         .expect("staged catalogue validates");
@@ -88,9 +89,9 @@ mod registry {
     async fn validate_pre_init() {
         let project = Project::bare();
         stage_registry(&project.root);
-        run::<workflow::registry::handlers::Validate, _>(
+        run::<project::registry::handlers::Validate, _>(
             &project,
-            workflow::registry::handlers::ValidateInput {},
+            project::registry::handlers::ValidateInput {},
         )
         .await
         .expect("pre-init registry validate succeeds");
@@ -100,9 +101,9 @@ mod registry {
     async fn remove_drops_entry() {
         let project = Project::initialised();
         stage_registry(&project.root);
-        run::<workflow::registry::handlers::Remove, _>(
+        run::<project::registry::handlers::Remove, _>(
             &project,
-            workflow::registry::handlers::RemoveInput { name: "alpha".into() },
+            project::registry::handlers::RemoveInput { name: "alpha".into() },
         )
         .await
         .expect("remove succeeds");
@@ -129,9 +130,9 @@ mod archive {
     async fn prune_keeps_newest() {
         let project = Project::initialised();
         let archive = stage(&project.root);
-        let body = run::<workflow::slice::handlers::Prune, _>(
+        let body = run::<slice::handlers::Prune, _>(
             &project,
-            workflow::slice::handlers::PruneInput {
+            slice::handlers::PruneInput {
                 keep: Some(1),
                 older_than: None,
                 dry_run: false,
@@ -148,9 +149,9 @@ mod archive {
     async fn prune_requires_bound() {
         let project = Project::initialised();
         stage(&project.root);
-        let err = run::<workflow::slice::handlers::Prune, _>(
+        let err = run::<slice::handlers::Prune, _>(
             &project,
-            workflow::slice::handlers::PruneInput {
+            slice::handlers::PruneInput {
                 keep: None,
                 older_than: None,
                 dry_run: false,
@@ -171,9 +172,9 @@ mod init {
     #[tokio::test]
     async fn adapter_required() {
         let project = Project::bare();
-        let err = run::<workflow::init::handlers::Init, _>(
+        let err = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput::default(),
+            project::init::handlers::InitInput::default(),
         )
         .await
         .expect_err("a flag-less init fails typed");
@@ -189,42 +190,42 @@ mod init {
     #[tokio::test]
     async fn reentry_and_upgrade() {
         let project = Project::bare();
-        let input = || workflow::init::handlers::InitInput {
+        let input = || project::init::handlers::InitInput {
             name: Some("demo-workspace".into()),
             workspace: true,
             ..Default::default()
         };
-        run::<workflow::init::handlers::Init, _>(&project, input())
+        run::<project::init::handlers::Init, _>(&project, input())
             .await
             .expect("workspace scaffold succeeds");
 
         // Plain re-run: a no-op that routes to `--upgrade`.
-        let body = run::<workflow::init::handlers::Init, _>(&project, input())
+        let body = run::<project::init::handlers::Init, _>(&project, input())
             .await
             .expect("init re-entry exits 0");
-        assert_eq!(body.mode, workflow::init::handlers::InitMode::AlreadyInitialized);
+        assert_eq!(body.mode, project::init::handlers::InitMode::AlreadyInitialized);
         assert_eq!(body.adapter_name, "workspace");
 
         // The documented re-entry command succeeds over the project.
-        let body = run::<workflow::init::handlers::Init, _>(
+        let body = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput {
+            project::init::handlers::InitInput {
                 upgrade: true,
                 ..Default::default()
             },
         )
         .await
         .expect("init --upgrade succeeds");
-        assert_eq!(body.mode, workflow::init::handlers::InitMode::Upgraded);
+        assert_eq!(body.mode, project::init::handlers::InitMode::Upgraded);
         assert_eq!(body.specify_version, env!("CARGO_PKG_VERSION"));
     }
 
     #[tokio::test]
     async fn workspace_mode() {
         let project = Project::bare();
-        let body = run::<workflow::init::handlers::Init, _>(
+        let body = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput {
+            project::init::handlers::InitInput {
                 adapter: None,
                 name: Some("demo-workspace".into()),
                 description: None,
@@ -273,9 +274,9 @@ mod init {
         )
         .expect("stage metadata sidecar");
 
-        let body = run::<workflow::init::handlers::Init, _>(
+        let body = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput {
+            project::init::handlers::InitInput {
                 adapter: Some("demo".into()),
                 name: Some("demo-project".into()),
                 description: None,
@@ -314,42 +315,42 @@ mod init {
     #[derive(Clone)]
     struct Linked(Project);
 
-    impl workflow::handler::Anchor for Linked {
+    impl project::handler::Anchor for Linked {
         fn project_root(&self) -> &Path {
             &self.0.root
         }
     }
 
-    impl workflow::adapter::Resolver for Linked {
+    impl project::adapter::Resolver for Linked {
         fn resolve_source(
-            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &Path,
-        ) -> Result<workflow::adapter::ResolvedSource, error::Error> {
-            workflow::adapter::resolver::source(
+            &self, adapter_ref: &project::adapter::AdapterRef, _project_dir: &Path,
+        ) -> Result<project::adapter::ResolvedSource, error::Error> {
+            project::adapter::resolver::source(
                 adapter_ref,
-                workflow::adapter::metadata::Metadata::default(),
+                project::adapter::metadata::Metadata::default(),
                 linked_origin(),
             )
         }
 
         fn resolve_target(
-            &self, adapter_ref: &workflow::adapter::AdapterRef, _project_dir: &Path,
-        ) -> Result<workflow::adapter::ResolvedTarget, error::Error> {
-            workflow::adapter::resolver::target(
+            &self, adapter_ref: &project::adapter::AdapterRef, _project_dir: &Path,
+        ) -> Result<project::adapter::ResolvedTarget, error::Error> {
+            project::adapter::resolver::target(
                 adapter_ref,
-                workflow::adapter::metadata::Metadata::default(),
+                project::adapter::metadata::Metadata::default(),
                 linked_origin(),
             )
         }
     }
 
-    impl workflow::adapter::Hydrator for Linked {
+    impl project::adapter::Hydrator for Linked {
         async fn fetch(&self, url: &str) -> Result<Vec<u8>, error::Error> {
-            workflow::adapter::Hydrator::fetch(&self.0, url).await
+            project::adapter::Hydrator::fetch(&self.0, url).await
         }
     }
 
-    fn linked_origin() -> workflow::adapter::Origin {
-        workflow::adapter::Origin {
+    fn linked_origin() -> project::adapter::Origin {
+        project::adapter::Origin {
             label: "native".to_string(),
             reference: "rust:target:demo".to_string(),
         }
@@ -362,18 +363,16 @@ mod init {
         // artifact is staged anywhere for this test.
         let project = Project::bare();
         let body = omnia_guest::api::invoke::Invoker::new("specify", Linked(project.clone()))
-            .invoke::<workflow::init::handlers::Init>(
-                omnia_guest::api::invocation::Invocation::new(
-                    workflow::init::handlers::InitInput {
-                        adapter: Some("demo".into()),
-                        name: Some("demo-project".into()),
-                        description: None,
-                        workspace: false,
-                        platforms: None,
-                        upgrade: false,
-                    },
-                ),
-            )
+            .invoke::<project::init::handlers::Init>(omnia_guest::api::invocation::Invocation::new(
+                project::init::handlers::InitInput {
+                    adapter: Some("demo".into()),
+                    name: Some("demo-project".into()),
+                    description: None,
+                    workspace: false,
+                    platforms: None,
+                    upgrade: false,
+                },
+            ))
             .await
             .expect("component-free scaffold succeeds");
         assert_eq!(body.adapter_name, "demo");
@@ -397,9 +396,9 @@ mod init {
         fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir downloads");
         fs::write(&staged, b"\0asm-component").expect("stage local component");
 
-        let body = run::<workflow::init::handlers::Init, _>(
+        let body = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput {
+            project::init::handlers::InitInput {
                 adapter: Some(staged.display().to_string()),
                 name: Some("demo-project".into()),
                 description: None,
@@ -429,9 +428,9 @@ mod init {
             "the recorded adapter value is the file URI:\n{config}"
         );
 
-        let resolved = workflow::adapter::Resolver::resolve_target(
+        let resolved = project::adapter::Resolver::resolve_target(
             &common::resolver(),
-            &workflow::adapter::AdapterRef::bare("demo"),
+            &project::adapter::AdapterRef::bare("demo"),
             &project.root,
         )
         .expect("the mirrored component resolves the bare name");
@@ -444,9 +443,9 @@ mod init {
         let agents_path = project.root.join("AGENTS.md");
         fs::write(&agents_path, "# operator prose\n").expect("stage operator AGENTS.md");
 
-        let body = run::<workflow::init::handlers::Init, _>(
+        let body = run::<project::init::handlers::Init, _>(
             &project,
-            workflow::init::handlers::InitInput {
+            project::init::handlers::InitInput {
                 adapter: None,
                 name: Some("demo-workspace".into()),
                 description: None,
@@ -479,9 +478,9 @@ mod journal {
     #[tokio::test]
     async fn emit_appends_line() {
         let project = Project::initialised();
-        let body = run::<workflow::journal::handlers::Emit, _>(
+        let body = run::<project::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::handlers::EmitInput {
+            project::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some(r#"{"slice-name":"billing"}"#.into()),
             },
@@ -500,9 +499,9 @@ mod journal {
     #[tokio::test]
     async fn emit_unknown_event_refused() {
         let project = Project::initialised();
-        let err = run::<workflow::journal::handlers::Emit, _>(
+        let err = run::<project::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::handlers::EmitInput {
+            project::journal::handlers::EmitInput {
                 event: "no.such.event".into(),
                 payload: None,
             },
@@ -518,9 +517,9 @@ mod journal {
     #[tokio::test]
     async fn emit_bad_payload_refused() {
         let project = Project::initialised();
-        let err = run::<workflow::journal::handlers::Emit, _>(
+        let err = run::<project::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::handlers::EmitInput {
+            project::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some("{}".into()),
             },
@@ -540,18 +539,18 @@ mod journal {
     #[tokio::test]
     async fn show_reads_filtered() {
         let project = Project::initialised();
-        run::<workflow::journal::handlers::Emit, _>(
+        run::<project::journal::handlers::Emit, _>(
             &project,
-            workflow::journal::handlers::EmitInput {
+            project::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some(r#"{"slice-name":"billing"}"#.into()),
             },
         )
         .await
         .expect("emit succeeds");
-        let matched = run::<workflow::journal::handlers::Show, _>(
+        let matched = run::<project::journal::handlers::Show, _>(
             &project,
-            workflow::journal::handlers::ShowInput {
+            project::journal::handlers::ShowInput {
                 filter: Some("slice.build".into()),
                 limit: None,
             },
@@ -559,9 +558,9 @@ mod journal {
         .await
         .expect("show succeeds");
         assert_eq!(matched.count, 1, "the emitted event matches its prefix");
-        let unmatched = run::<workflow::journal::handlers::Show, _>(
+        let unmatched = run::<project::journal::handlers::Show, _>(
             &project,
-            workflow::journal::handlers::ShowInput {
+            project::journal::handlers::ShowInput {
                 filter: Some("plan.".into()),
                 limit: None,
             },

@@ -124,7 +124,7 @@ mod parse {
     }
 
     #[test]
-    fn nested_headings_preserve_group() {
+    fn nested_headings_keep_group() {
         let input = "\
 ## 1. Implementation
 
@@ -141,7 +141,7 @@ mod parse {
     }
 
     #[test]
-    fn task_before_heading_has_empty_group() {
+    fn pre_heading_empty_group() {
         let input = "\
 - [ ] 0.1 Lonely task
 

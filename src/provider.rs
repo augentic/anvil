@@ -8,16 +8,15 @@ use std::future::Future;
 
 use artifacts::evidence::AuthorityClass;
 use error::Error;
-use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use workflow::adapter::metadata::{Metadata, Request};
-use workflow::adapter::{
+use project::adapter::metadata::{Metadata, Request};
+use project::adapter::{
     AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource, ResolvedTarget,
     Resolver,
 };
-use workflow::seam::{
-    self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree,
-};
-use workflow::slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
+use project::seam::{self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree};
+use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
+use wasip3::http_compat::IncomingMessage as _;
 
 use crate::bindings::specify::adapter::{source, target, types};
 
@@ -26,7 +25,7 @@ pub struct Provider;
 
 impl omnia_guest::Model for Provider {}
 
-impl workflow::handler::Anchor for Provider {
+impl project::handler::Anchor for Provider {
     fn project_root(&self) -> &std::path::Path {
         std::path::Path::new(".")
     }
@@ -36,15 +35,50 @@ impl Resolver for Provider {
     fn resolve_source(
         &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
     ) -> Result<ResolvedSource, Error> {
-        workflow::adapter::resolver::Component::new(metadata)
+        project::adapter::resolver::Component::new(metadata)
             .resolve_source(adapter_ref, project_dir)
     }
 
     fn resolve_target(
         &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
     ) -> Result<ResolvedTarget, Error> {
-        workflow::adapter::resolver::Component::new(metadata)
+        project::adapter::resolver::Component::new(metadata)
             .resolve_target(adapter_ref, project_dir)
+    }
+}
+
+impl project::adapter::Hydrator for Provider {
+    // Straight `wasi:http/client` send — deliberately not
+    // `omnia_wasi_http::handle`, whose keyvalue-backed cache would add
+    // a `wasi:keyvalue` import no specify deployment links.
+    fn fetch(&self, url: &str) -> impl Future<Output = Result<Vec<u8>, Error>> + Send {
+        let url = url.to_string();
+        async move {
+            let diag = |detail: String| Error::Diag {
+                code: "http-fetch",
+                detail,
+            };
+            let request = omnia_guest::http::Request::get(&url)
+                .body(omnia_guest::axum::body::Body::empty())
+                .map_err(|err| diag(format!("building the request for {url}: {err}")))?;
+            let request = wasip3::http_compat::http_into_wasi_request(request)
+                .map_err(|err| diag(format!("converting the request for {url}: {err}")))?;
+            let response = wasip3::http::client::send(request)
+                .await
+                .map_err(|err| diag(format!("fetching {url}: {err}")))?;
+            let response = wasip3::http_compat::http_from_wasi_response(response)
+                .map_err(|err| diag(format!("reading the response from {url}: {err}")))?;
+            if !response.status().is_success() {
+                return Err(diag(format!("fetching {url}: HTTP {}", response.status())));
+            }
+            let (_, mut body) = response.into_parts();
+            let Some(wasi_response) = body.take_unstarted() else {
+                return Ok(Vec::new());
+            };
+            let (_, body_rx) = wasip3::wit_future::new(|| Ok(()));
+            let (stream, _trailers) = wasi_response.consume_body(body_rx);
+            Ok(stream.collect().await)
+        }
     }
 }
 
@@ -288,8 +322,8 @@ const fn map_severity(severity: target::Severity) -> Severity {
     }
 }
 
-const fn map_platform(platform: target::Platform) -> workflow::platform::Platform {
-    use workflow::platform::Platform;
+const fn map_platform(platform: target::Platform) -> project::platform::Platform {
+    use project::platform::Platform;
     match platform {
         target::Platform::Core => Platform::Core,
         target::Platform::Ios => Platform::Ios,

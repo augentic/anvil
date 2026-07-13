@@ -12,10 +12,10 @@ use std::fmt::Write as _;
 
 use error::Error;
 use omnia_guest::Model;
+use project::plan::{ProposalRequest, ProposalResponse, SourceBinding};
+use project::schema_gate::validate_proposal_json;
 
 use super::{prose, schema_gated};
-use crate::change::{ProposalRequest, ProposalResponse, SourceBinding};
-use crate::schema_gate::validate_proposal_json;
 
 /// Plan-authoring context for the Gate 1 prose the answer schema
 /// requires.

@@ -2,7 +2,7 @@
 
 Workspace-wide index of the integration test binaries that compare against checked-in goldens, the fixture directories they read, and the one canonical way to regenerate those goldens. See [`docs/standards/testing.md`](../docs/standards/testing.md) for the integration-first policy, golden discipline, and test-naming rules.
 
-The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/workflow/tests/`). The root `tests/` tree holds the framework checks (`framework/`) and the shared `fixtures/` referenced by crate-level suites.
+The `specify` binary is a single `omnia::runtime!` invocation; the operational surface is covered by each crate's own `tests/` (the typed command/HTTP routing and argument conversions in `crates/transport/tests/` and the workflow orchestrations in `crates/change/tests/`). The root `tests/` tree holds the framework checks (`framework/`) and the shared `fixtures/` referenced by crate-level suites.
 
 ## Canonical golden regeneration
 
@@ -27,9 +27,9 @@ Binaries not listed here assert structurally and carry no regenerable goldens.
 
 Each crate keeps its cross-binary helpers under `tests/<helper>/mod.rs` (the sole `mod.rs` exception blessed in [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)), declared per test binary with `mod <helper>;`:
 
-- `workflow`: `crates/workflow/tests/common/mod.rs` — `MockCmd`, scaffold, and stamped-outcome helpers.
+- `workflow`: `crates/change/tests/common/mod.rs` — `MockCmd`, scaffold, and stamped-outcome helpers.
 - `schema`: `crates/schema/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
 
-Cross-package model test support comes from Omnia's dev-only `omnia-testkit`: its recorded scripted harness is consumed by the workflow suites (`crates/workflow/tests/`) and the live-model test (`harness/live`).
+Cross-package model test support comes from Omnia's dev-only `omnia-testkit`: its recorded scripted harness is consumed by the workflow suites (`crates/change/tests/`) and the live-model test (`harness/live`).
 
 The `GIT_ENV` / `run_git` / `copy_dir` trio is single-sourced at `tests/fs_git.rs` and pulled into each crate's `tests/common` via a `#[path]` module declaration (each crate's `tests/` is its own compilation unit, so the file is included rather than imported). Reach for the shared helper rather than reintroducing a per-binary `copy_dir_recursive`.

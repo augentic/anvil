@@ -6,15 +6,15 @@ use std::path::{Path, PathBuf};
 use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
+use project::config::{Layout, Mutation, with_state};
+use project::journal::{self, EventKind};
+use project::plan::{Plan, Status};
+use project::schema_gate::validate_report;
+use project::seam::{MergePhase, TargetSeam, WorkingTree};
 
 use super::{seam_failure, target_id};
-use crate::change::{Plan, Status};
-use crate::config::{Layout, Mutation, with_state};
-use crate::journal::{self, EventKind};
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
-use crate::schema_gate::validate_report;
-use crate::seam::{MergePhase, TargetSeam, WorkingTree};
-use crate::slice::{BuildReport, BuildStatus};
+use crate::{BuildReport, BuildStatus};
 
 /// The result of a completed guest [`merge`].
 #[derive(Debug, Clone)]
@@ -40,8 +40,8 @@ pub async fn merge<T: TargetSeam>(
 ) -> Result<MergeOutcome, Error> {
     preflight_completion(layout, slice)?;
     let slice_dir = layout.slice_dir(slice);
-    let target = crate::target_policy::resumed(layout, slice)?;
-    let id = target_id(&crate::adapter::AdapterRef::from_value(&target).name);
+    let target = project::target_policy::resumed(layout, slice)?;
+    let id = target_id(&project::adapter::AdapterRef::from_value(&target).name);
 
     journal::emit_best_effort(
         layout,
@@ -137,7 +137,7 @@ async fn run_gate<T: TargetSeam>(
         .await
         .map_err(|err| seam_failure("merge", id, &err))?;
 
-    let yaml = crate::fs::yaml(&report)?;
+    let yaml = project::fs::yaml(&report)?;
     validate_report(&yaml)?;
     if report.slice != slice {
         return Err(Error::validation_failed(
@@ -168,7 +168,7 @@ async fn run_gate<T: TargetSeam>(
 /// archived slice carries both gate outcomes.
 fn persist_gate_report(dir: &Path, phase: MergePhase, report: &BuildReport) -> Result<(), Error> {
     std::fs::create_dir_all(dir).map_err(Error::Io)?;
-    let yaml = crate::fs::yaml(report)?;
+    let yaml = project::fs::yaml(report)?;
     bytes_write(&dir.join(format!("{phase}.yaml")), yaml.as_bytes())
 }
 

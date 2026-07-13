@@ -28,7 +28,8 @@ serde_json.workspace = true
 serde-saphyr.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-workflow.workspace = true
+change.workspace = true
+project.workspace = true
 
 [lints]
 workspace = true

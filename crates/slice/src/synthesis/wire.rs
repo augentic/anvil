@@ -12,12 +12,12 @@
 use std::path::Path;
 
 use error::Result;
+use project::registry::topology::{Decision, Surface};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::registry::topology::{Decision, Surface};
-use crate::slice::model::SliceModel;
-use crate::slice::synthesis::baseline::BaselineIndex;
+use crate::model::SliceModel;
+use crate::synthesis::baseline::BaselineIndex;
 
 /// Wire version pinned by `schemas/slice/synthesis.schema.json`
 /// (`version` `const: 1`) and echoed onto the input envelope.
@@ -40,7 +40,7 @@ pub enum SynthesisKind {
 ///
 /// Round-trips `schemas/slice/synthesis.schema.json`. The DTO is
 /// shape-only; the refine orchestration schema-gates the raw bytes via
-/// `crate::schema_gate::validate_synthesis_json` before deserialising here,
+/// `project::schema_gate::validate_synthesis_json` before deserialising here,
 /// and the projection kernel re-derives every kernel-owned field.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -259,7 +259,7 @@ impl SourceInput {
     /// - [`error::Error::Filesystem`] when `path` cannot be read.
     /// - [`error::Error::YamlDe`] when the file is not valid YAML.
     pub fn from_file(source: &str, path: &Path) -> Result<Self> {
-        Self::from_yaml(source, &crate::fs::read_text(path)?)
+        Self::from_yaml(source, &project::fs::read_text(path)?)
     }
 }
 
@@ -271,7 +271,7 @@ impl SourceInput {
 /// (e.g. via [`SourceInput::from_file`]).
 /// `guidance_brief` is the bound target's resolved guidance body,
 /// provided by the refine orchestration (which resolves the
-/// [`crate::adapter::TargetAdapter`] and reads the brief) so this
+/// [`project::adapter::TargetAdapter`] and reads the brief) so this
 /// function stays pure and adapter-free.
 #[must_use]
 pub fn inputs(

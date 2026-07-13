@@ -91,7 +91,7 @@ The Cursor plugin cache ships only `plugins/`, so any prose a skill links at run
 
 Everything else lives with its owner:
 
-- **Core judgment prose** (lead reconciliation, the synthesis playbook, spec formatting, Decision Record authoring) is embedded in the `specify` binary from `crates/workflow/prompts/` — it is not plugin material.
+- **Core judgment prose** (lead reconciliation, the synthesis playbook, spec formatting, Decision Record authoring) is embedded in the `specify` binary from `crates/slice/prompts/` and `crates/change/prompts/` — it is not plugin material.
 - **Adapter prompts and references** live in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters): each adapter's `references/spec-runtime` is a directory symlink to that repo's `codex/references/runtime/` shared bundle, embedded into the published adapter components at build time. That bundle is self-contained; there is no mirror to maintain against this repository.
 - **Contributor book and encyclopedic material** stays in [`docs/`](../../docs/) (published at `https://specify.augentic.io/`). Use site URLs in optional "Reference documentation" tables; do not make guardrails or brief contracts depend on `docs/` paths at runtime.
 

@@ -91,7 +91,7 @@ fn list_delta_specs(class: &ArtifactClass) -> Result<Vec<DeltaSpecRef>, Error> {
     if !class.staged_dir.is_dir() {
         return Ok(delta_specs);
     }
-    for entry in crate::fs::dir_entries(&class.staged_dir)? {
+    for entry in project::fs::dir_entries(&class.staged_dir)? {
         let file_type = entry.file_type().map_err(|err| Error::Filesystem {
             op: "file-type",
             path: entry.path(),
@@ -126,7 +126,7 @@ fn list_delta_specs(class: &ArtifactClass) -> Result<Vec<DeltaSpecRef>, Error> {
 fn merge_delta_spec(
     class: &ArtifactClass, spec: &DeltaSpecRef,
 ) -> Result<Result<PreviewEntry, Vec<String>>, Error> {
-    let delta_text = crate::fs::read_text(&spec.delta_path)?;
+    let delta_text = project::fs::read_text(&spec.delta_path)?;
     let baseline_text = read_optional_file(&spec.baseline_path)?;
 
     let result = match merge(baseline_text.as_deref(), &delta_text) {
@@ -176,7 +176,7 @@ fn merge_composition_delta(
     if !composition_delta_path.is_file() {
         return Ok(None);
     }
-    let delta_text = crate::fs::read_text(&composition_delta_path)?;
+    let delta_text = project::fs::read_text(&composition_delta_path)?;
     let baseline_path = class.baseline_dir.join(COMPOSITION_FILENAME);
     let baseline_text = read_optional_file(&baseline_path)?;
 
@@ -257,7 +257,7 @@ pub(super) fn overwrite_gate(
 }
 
 fn read_optional_file(path: &Path) -> Result<Option<String>, Error> {
-    if path.is_file() { crate::fs::read_text(path).map(Some) } else { Ok(None) }
+    if path.is_file() { project::fs::read_text(path).map(Some) } else { Ok(None) }
 }
 
 fn count_requirement_headings(text: &str) -> usize {
@@ -293,7 +293,7 @@ fn collect_opaque_entries(
     base: &Path, current: &Path, baseline_dir: &Path, class_name: &str,
     entries: &mut Vec<OpaqueEntry>,
 ) -> Result<(), Error> {
-    for entry in crate::fs::dir_entries(current)? {
+    for entry in project::fs::dir_entries(current)? {
         let path = entry.path();
         if path.is_dir() {
             collect_opaque_entries(base, &path, baseline_dir, class_name, entries)?;
@@ -332,7 +332,7 @@ pub(super) fn check_opaque_drift(
     if !current.is_dir() {
         return Ok(());
     }
-    for entry in crate::fs::dir_entries(current)? {
+    for entry in project::fs::dir_entries(current)? {
         let path = entry.path();
         if path.is_dir() {
             check_opaque_drift(

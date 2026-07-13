@@ -6,7 +6,7 @@
 use std::fs;
 use std::os::unix::fs::MetadataExt;
 
-use workflow::change::plan::handlers::{Transition, TransitionInput};
+use change::plan::handlers::{Transition, TransitionInput};
 
 mod common;
 

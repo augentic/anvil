@@ -11,8 +11,8 @@ use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
-use crate::plan::Divergence;
 use crate::name::{PlanName, SliceName};
+use crate::plan::Divergence;
 
 /// One row of the journal. Serialises as `{ timestamp, event,
 /// payload }` — workflow §Wire format pins `timestamp` first so a

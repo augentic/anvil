@@ -1,11 +1,12 @@
 //! Enforce the repo-local framework-quality predicates over the prose
-//! and manifest surfaces (links, skills, plugins, docs).
+//! and manifest surfaces (links, skills, plugins, docs, naming).
 //!
 //! Run with `cargo nextest run -p framework`. Any finding fails CI.
 //! Policy lives as constants in each module; failures are test failures.
 
 mod boundaries;
 mod links;
+mod naming;
 mod prose;
 mod skills;
 mod support;
@@ -32,6 +33,7 @@ fn run_all(root: &Path) -> Vec<Finding> {
     findings.extend(links::run(root));
     findings.extend(skills::run(root));
     findings.extend(prose::run(root));
+    findings.extend(naming::run(root));
     findings
 }
 
@@ -72,7 +74,7 @@ mod boundary {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "crates/workflow/Cargo.toml",
+            "crates/slice/Cargo.toml",
             "[dependencies]\nvectis = { path = \"../../specify-adapters/targets/vectis\" }\n",
         );
         assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
@@ -81,7 +83,7 @@ mod boundary {
         let dir = tempfile::tempdir().expect("tempdir");
         write(
             dir.path(),
-            "crates/workflow/Cargo.toml",
+            "crates/slice/Cargo.toml",
             "[dev-dependencies]\nharmless = { package = \"captures\", version = \"1\" }\n",
         );
         assert!(fired(&boundaries::run(dir.path()), boundaries::CHECK_ADAPTER_DEPENDENCY));
@@ -115,14 +117,14 @@ mod boundary {
         write(
             dir.path(),
             "Cargo.toml",
-            "[workspace.dependencies]\nomnia = \"0.35.0\"\nworkflow = { path = \"crates/workflow\" }\n",
+            "[workspace.dependencies]\nomnia = \"0.35.0\"\nslice = { path = \"crates/slice\" }\n",
         );
         assert!(boundaries::run(dir.path()).is_empty());
 
         // Rust imports alone no longer fire: an undeclared crate cannot be
         // imported, so the manifest is the only enforcement point.
         let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "crates/workflow/src/lib.rs", "use captures::operations;\n");
+        write(dir.path(), "crates/slice/src/lib.rs", "use captures::operations;\n");
         assert!(boundaries::run(dir.path()).is_empty());
     }
 }
@@ -340,6 +342,41 @@ fn write_valid_prose_tree(root: &Path) {
         "docs/standards/skill-authoring.md",
         "Description cap: 512 characters. Body cap: 200 lines.\n",
     );
+}
+
+mod naming_matrix {
+    use super::*;
+
+    #[test]
+    fn bad_fixtures() {
+        // A test fn identifier over the cap fires; the module path is
+        // context and does not count.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "crates/demo/tests/area.rs",
+            "#[test]\nfn a_very_long_test_name_that_exceeds_cap() {}\n",
+        );
+        assert!(fired(&naming::run(dir.path()), naming::CHECK_TEST_FN_LENGTH));
+
+        // An async test behind further attributes fires too.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "crates/demo/tests/area.rs",
+            "#[tokio::test]\n#[ignore]\nasync fn a_very_long_test_name_that_exceeds_cap() {}\n",
+        );
+        assert!(fired(&naming::run(dir.path()), naming::CHECK_TEST_FN_LENGTH));
+
+        // A name at the cap, and a long non-test fn, stay silent.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "crates/demo/tests/area.rs",
+            "#[test]\nfn exactly_thirty_characters_long() {}\n\nfn a_very_long_plain_helper_name_is_not_checked() {}\n",
+        );
+        assert!(naming::run(dir.path()).is_empty());
+    }
 }
 
 mod prose_matrix {

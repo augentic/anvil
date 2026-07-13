@@ -17,11 +17,11 @@ use std::path::{Path, PathBuf};
 use artifacts::decision::{DecisionRecord, DecisionStatus};
 use error::{Error, Result};
 
-use crate::slice::model::SliceModel;
-use crate::slice::synthesis::baseline::BaselineIndex;
-use crate::slice::synthesis::render::render_spec_files;
-use crate::slice::synthesis::wire::{SynthesisArtifacts, SynthesisDecision};
-use crate::slice::{SliceMetadata, actions as slice_actions};
+use crate::model::SliceModel;
+use crate::synthesis::baseline::BaselineIndex;
+use crate::synthesis::render::render_spec_files;
+use crate::synthesis::wire::{SynthesisArtifacts, SynthesisDecision};
+use crate::{SliceMetadata, actions as slice_actions};
 
 /// Render, stage, and atomically persist one synthesized slice.
 ///
@@ -102,7 +102,7 @@ fn replace_decisions_dir(slice_dir: &Path, decisions: &[SynthesisDecision]) -> R
     }
     let keep: std::collections::BTreeSet<String> =
         decisions.iter().map(|d| format!("{}.md", d.slug)).collect();
-    for path in crate::decisions::list_md_files(&dir)? {
+    for path in project::decisions::list_md_files(&dir)? {
         let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
         if !keep.contains(name) {
             std::fs::remove_file(&path).map_err(|source| Error::Filesystem {

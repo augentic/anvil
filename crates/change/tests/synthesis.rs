@@ -6,9 +6,9 @@
 
 use std::fs;
 
+use change::plan;
 use omnia_guest::api::invoke::Invoker;
 use serde_json::json;
-use workflow::change::plan;
 
 mod common;
 
@@ -113,9 +113,9 @@ async fn divergence_docs_wins() {
         scripted_invoker(&root, vec![answers::adversarial_grouping(), session_synthesis_answer()]);
     author_and_approve(&invoker).await;
 
-    let refined = run::<workflow::slice::handlers::Refine, _>(
+    let refined = run::<slice::handlers::Refine, _>(
         &invoker,
-        workflow::slice::handlers::RefineInput {
+        slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
     )
@@ -124,9 +124,9 @@ async fn divergence_docs_wins() {
     assert_eq!(refined.slice, "session-policy");
 
     // The kernel resolved the disagreement: divergence, docs winning.
-    let model = run::<workflow::slice::handlers::ModelShow, _>(
+    let model = run::<slice::handlers::ModelShow, _>(
         &invoker,
-        workflow::slice::handlers::ModelShowInput {
+        slice::handlers::ModelShowInput {
             name: "session-policy".to_string(),
         },
     )
@@ -149,9 +149,9 @@ async fn divergence_docs_wins() {
 
     // The provenance projection recomputes the authority-resolved
     // label with the docs source as winner.
-    let provenance = run::<workflow::slice::handlers::Provenance, _>(
+    let provenance = run::<slice::handlers::Provenance, _>(
         &invoker,
-        workflow::slice::handlers::ProvenanceInput {
+        slice::handlers::ProvenanceInput {
             name: "session-policy".to_string(),
         },
     )
@@ -212,9 +212,9 @@ async fn decisions_exact_set() {
     );
     author_and_approve(&invoker).await;
 
-    run::<workflow::slice::handlers::Refine, _>(
+    run::<slice::handlers::Refine, _>(
         &invoker,
-        workflow::slice::handlers::RefineInput {
+        slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
     )
@@ -247,9 +247,9 @@ async fn decisions_exact_set() {
     fs::write(&metadata_path, metadata.replace("status: refined", "status: refining"))
         .expect("rewind lifecycle for the re-refine");
 
-    run::<workflow::slice::handlers::Refine, _>(
+    run::<slice::handlers::Refine, _>(
         &invoker,
-        workflow::slice::handlers::RefineInput {
+        slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
     )
@@ -272,18 +272,18 @@ async fn evidence_gap_projects_unknown() {
         scripted_invoker(&root, vec![answers::adversarial_grouping(), reset_synthesis_answer()]);
     author_and_approve(&invoker).await;
 
-    run::<workflow::slice::handlers::Refine, _>(
+    run::<slice::handlers::Refine, _>(
         &invoker,
-        workflow::slice::handlers::RefineInput {
+        slice::handlers::RefineInput {
             name: "password-reset".to_string(),
         },
     )
     .await
     .expect("refine synthesises the gapped slice");
 
-    let model = run::<workflow::slice::handlers::ModelShow, _>(
+    let model = run::<slice::handlers::ModelShow, _>(
         &invoker,
-        workflow::slice::handlers::ModelShowInput {
+        slice::handlers::ModelShowInput {
             name: "password-reset".to_string(),
         },
     )

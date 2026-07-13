@@ -11,10 +11,10 @@ use std::io::Write;
 use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::handler::{Anchor, Ctx, Render};
 use serde::{Deserialize, Serialize};
 
-use crate::handler::{Anchor, Ctx, Render};
-use crate::slice::SliceModel;
+use crate::SliceModel;
 
 /// Wire input for `slice model show`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub struct ModelShowInput {
 pub struct ModelShow;
 
 impl<P: Anchor> Operation<P> for ModelShow {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ModelShowInput;
     type Output = SliceModel;
 

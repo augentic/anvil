@@ -47,7 +47,7 @@ fn every_schema_compiles() {
 /// [`EMBEDDED_SCHEMAS`] entry re-reads the canonical workspace file at
 /// runtime and asserts equality.
 #[test]
-fn embedded_schemas_match_on_disk_sources() {
+fn embedded_match_on_disk() {
     let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(std::path::Path::parent)
@@ -278,7 +278,7 @@ fn diagnostic_report_validator() -> jsonschema::Validator {
 }
 
 #[test]
-fn lint_result_accepts_one_finding() {
+fn report_accepts_one_finding() {
     let validator = diagnostic_report_validator();
     let instance = json!({
         "version": 1,
@@ -510,7 +510,7 @@ mod build_report {
 /// deterministic 64-hex-char digest so the fingerprint pattern check
 /// passes.
 #[test]
-fn review_finding_accepts_example() {
+fn finding_accepts_example() {
     let instance = json!({
         "id": "FIND-0001",
         "rule-id": "UNI-014",

@@ -4,13 +4,13 @@ use std::io::Write;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
+use project::handler::{Anchor, Ctx, ReportBody};
+use project::plan::{Plan, full_report as plan_full_report};
 use schema::diagnostics::{Diagnostic, has_blocking, is_blocking};
 use serde::{Deserialize, Serialize};
 
 use super::require_file;
-use crate::adapter::Resolver;
-use crate::change::{Plan, plan_full_report};
-use crate::handler::{Anchor, Ctx, ReportBody};
 
 /// Wire input for `plan validate` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ pub struct ValidateInput {}
 pub struct Validate;
 
 impl<P: Anchor + Resolver> Operation<P> for Validate {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = ValidateInput;
     type Output = ReportBody;
 
@@ -42,7 +42,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let has_errors = has_blocking(&results);
         let body = ReportBody::new(results, Some("Plan OK"), write_row);
         if has_errors {
-            Err(crate::handler::Error::report(
+            Err(project::handler::Error::report(
                 body,
                 "plan-structural-errors",
                 "plan must be free of structural errors",

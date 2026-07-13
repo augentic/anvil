@@ -13,7 +13,7 @@
 //! both judgment legs, writes through the project and `/specify-cache`
 //! preopens, and externally visible drained completion. Workflow *behaviour* beyond
 //! the boundary lives in the cheaper native suites under
-//! `crates/workflow/tests/`.
+//! `crates/change/tests/`.
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -35,9 +35,10 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn fixture_component_drives_full_loop() -> Result<()> {
+async fn component_drives_full_loop() -> Result<()> {
     let tmp = tempfile::tempdir().context("creating the trial workspace")?;
     fs::create_dir_all(tmp.path().join(".specify-cache")).context("creating the cache mount")?;
+    fs::create_dir_all(tmp.path().join(".specify-store")).context("creating the store mount")?;
     let workspace = tmp.path().canonicalize().context("resolving the workspace root")?;
     fs::copy(fixture_wasm(), workspace.join("fixture.wasm")).context("staging fixture.wasm")?;
     // The failing identity resolves through the project component
@@ -52,9 +53,16 @@ async fn fixture_component_drives_full_loop() -> Result<()> {
 
     script(vec![grouping_answer(), synthesis_answer()]);
 
-    let init: &[&str] = &["init", "./fixture.wasm", "--name", "composed", "--scaffold-only"];
+    let init: &[&str] = &["init", "./fixture.wasm", "--name", "composed"];
     let code = specify(&manifest_path, init).await?;
     assert_eq!(code, 0, "composed init failed");
+
+    // Re-entry: a second plain `init` changes nothing and exits 0
+    // routing to `--upgrade`; the upgrade path itself succeeds.
+    let code = specify(&manifest_path, init).await?;
+    assert_eq!(code, 0, "init re-entry must exit 0");
+    let code = specify(&manifest_path, &["init", "--upgrade"]).await?;
+    assert_eq!(code, 0, "init --upgrade failed");
 
     // The WIT error lift across the component seam: the same artifact
     // bound under a `fail-survey` identity dispatches, fails typed in
@@ -143,7 +151,11 @@ fn fixture_wasm() -> PathBuf {
 }
 
 fn guest_wasm(relative: &str) -> PathBuf {
-    let path = repo_root().join("target/wasm32-wasip2/debug").join(relative);
+    // Honor a redirected target dir (`CARGO_TARGET_DIR`) so the smoke
+    // hosts the guests the current cargo invocation actually built.
+    let target_dir = std::env::var_os("CARGO_TARGET_DIR")
+        .map_or_else(|| repo_root().join("target"), PathBuf::from);
+    let path = target_dir.join("wasm32-wasip2/debug").join(relative);
     assert!(
         path.is_file(),
         "guest `{relative}` not found at {}; run `cargo make guests` in harness/",
@@ -157,7 +169,8 @@ fn guest_wasm(relative: &str) -> PathBuf {
 // The minimal typed rendering of the TOML shape the shipped binary
 // consumes through `specify run --config`: the workflow guest linked
 // against both adapter dispatch interfaces, the combined fixture
-// component bound once per axis, and the two writable preopens.
+// component bound once per axis, and the three writable preopens
+// (project root, per-project cache, global adapter store).
 
 fn manifest(workspace: &Path) -> Manifest {
     let links = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"].map(str::to_owned);
@@ -173,6 +186,7 @@ fn manifest(workspace: &Path) -> Manifest {
         mount: vec![
             Mount::new(".", workspace, true),
             Mount::new("/specify-cache", &workspace.join(".specify-cache"), true),
+            Mount::new("/specify-store", &workspace.join(".specify-store"), true),
         ],
         transport: Transport {
             default: "in-process".to_owned(),

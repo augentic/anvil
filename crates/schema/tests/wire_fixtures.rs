@@ -99,7 +99,7 @@ mod evidence {
     use super::*;
 
     #[test]
-    fn accepts_requirement_spatial_and_empty() {
+    fn accepts_valid_shapes() {
         let v = load(EVIDENCE_JSON_SCHEMA);
         assert_valid(&v, &yaml(EVIDENCE_VALID_REQUIREMENT), "evidence/requirement");
         assert_valid(&v, &yaml(EVIDENCE_VALID_SPATIAL), "evidence/spatial-region-container-leaf");
@@ -107,7 +107,7 @@ mod evidence {
     }
 
     #[test]
-    fn rejects_invalid_authority_and_kinds() {
+    fn rejects_bad_authority_kind() {
         let v = load(EVIDENCE_JSON_SCHEMA);
         assert_invalid(&v, &yaml(EVIDENCE_INVALID_MISSING_AUTHORITY), "evidence/missing-authority");
         assert_invalid(&v, &yaml(EVIDENCE_INVALID_BAD_AUTHORITY), "evidence/bad-authority");

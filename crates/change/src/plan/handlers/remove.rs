@@ -3,14 +3,14 @@
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::config::{Mutation, with_state};
+use project::handler::{Anchor, Ctx};
+use project::plan::Plan;
+use project::schema_gate::validate_plan;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::{plan_ref, require_file};
-use crate::change::Plan;
-use crate::config::{Mutation, with_state};
-use crate::handler::{Anchor, Ctx};
-use crate::schema_gate::validate_plan;
 
 /// Wire input for `plan remove`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -25,7 +25,7 @@ pub struct RemoveInput {
 pub struct Remove;
 
 impl<P: Anchor> Operation<P> for Remove {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = RemoveInput;
     type Output = EntryBody;
 

@@ -10,9 +10,8 @@ use tempfile::TempDir;
 
 mod common;
 
-fn repo_root() -> PathBuf {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest.parent().and_then(|p| p.parent()).expect("repo root exists").to_path_buf()
+fn crate_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
 /// Stage an empty project dir.
@@ -82,8 +81,7 @@ mod validate {
         // Reuses the good fixture to exercise the Semantic-rules-never-called
         // invariant in situ: if any Semantic rule's `check` were invoked the
         // runner would panic (by construction) and this test would fail.
-        let repo = repo_root();
-        let fixture = repo.join("crates/workflow/tests/fixtures/change-good");
+        let fixture = crate_root().join("tests/fixtures/change-good");
         let (_guard, project_dir) = stage_project();
         let slice_dir = project_dir.join(".specify/slices/change-good");
         common::copy_dir(&fixture, &slice_dir);

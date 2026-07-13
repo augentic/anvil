@@ -2,13 +2,12 @@
 
 use error::Error;
 use omnia_guest::Model;
+use project::registry::topology::{Decision, Surface};
+use project::seam::TargetSeam;
 
 use super::{seam_failure, target_id};
-use crate::judgment;
 use crate::judgment::synthesize::{Kernel, Synthesized};
-use crate::registry::topology::{Decision, Surface};
-use crate::seam::TargetSeam;
-use crate::slice::{DomainDetail, SourceInput, inputs};
+use crate::{DomainDetail, SourceInput, inputs, judgment};
 
 /// The caller-assembled inputs to [`synthesize`], minus the guidance
 /// brief the orchestrator fetches through the seam: the per-source

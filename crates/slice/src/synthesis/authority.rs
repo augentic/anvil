@@ -23,7 +23,7 @@ use artifacts::evidence::{AuthorityClass, ClaimKind};
 use artifacts::spec::provenance::RequirementStatus;
 use serde::{Deserialize, Serialize};
 
-use crate::slice::provenance::ProvenanceResolution;
+use crate::provenance::ProvenanceResolution;
 
 /// The agent's agreement verdict for one requirement.
 ///

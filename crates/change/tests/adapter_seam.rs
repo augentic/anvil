@@ -3,8 +3,8 @@
 //! abort, a parked refine or build in the execute loop, or the
 //! outputs-exist gate — with the adapter's typed detail preserved.
 
+use change::plan;
 use omnia_guest::api::invoke::Invoker;
-use workflow::change::plan;
 
 mod common;
 
@@ -13,7 +13,7 @@ use common::fixture::{ScriptedProvider, run, scripted_invoker, scripted_project}
 
 async fn author(
     invoker: &Invoker<ScriptedProvider>, source_adapter: &str,
-) -> Result<plan::handlers::AuthorBody, workflow::handler::Error> {
+) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _>(
         invoker,
         plan::handlers::AuthorInput {

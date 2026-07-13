@@ -24,15 +24,13 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use omnia_guest::model::{Reply, Request};
 use omnia_testkit::model::{Harness, Scripted};
-use workflow::adapter::metadata::Metadata;
-use workflow::adapter::{
+use project::adapter::metadata::Metadata;
+use project::adapter::{
     AdapterRef, Origin, PlatformsCapability, ResolvedSource, ResolvedTarget, Resolver,
 };
-use workflow::platform::Platform;
-use workflow::seam::{
-    self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree,
-};
-use workflow::slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus};
+use project::platform::Platform;
+use project::seam::{self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree};
+use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus};
 
 /// The provider shape every scripted suite runs against.
 pub type ScriptedProvider = FixtureProvider<Harness<Scripted>>;
@@ -45,9 +43,9 @@ pub fn scripted_invoker(root: &Path, answers: Vec<String>) -> Invoker<ScriptedPr
 /// Invoke one operation against the scripted fixture provider.
 pub async fn run<R, B>(
     invoker: &Invoker<ScriptedProvider>, input: R::Input,
-) -> Result<B, workflow::handler::Error>
+) -> Result<B, project::handler::Error>
 where
-    R: Operation<ScriptedProvider, Output = B, Error = workflow::handler::Error>,
+    R: Operation<ScriptedProvider, Output = B, Error = project::handler::Error>,
     B: Send,
 {
     invoker.invoke::<R>(Invocation::new(input)).await
@@ -111,7 +109,7 @@ impl<M> FixtureProvider<M> {
     }
 }
 
-impl<M: Send + Sync + 'static> workflow::handler::Anchor for FixtureProvider<M> {
+impl<M: Send + Sync + 'static> project::handler::Anchor for FixtureProvider<M> {
     fn project_root(&self) -> &Path {
         &self.project_dir
     }
@@ -121,7 +119,7 @@ impl<M: Send + Sync> Resolver for FixtureProvider<M> {
     fn resolve_source(
         &self, adapter_ref: &AdapterRef, _project_dir: &Path,
     ) -> Result<ResolvedSource, Error> {
-        workflow::adapter::resolver::source(adapter_ref, Metadata::default(), origin(adapter_ref))
+        project::adapter::resolver::source(adapter_ref, Metadata::default(), origin(adapter_ref))
     }
 
     fn resolve_target(
@@ -131,11 +129,11 @@ impl<M: Send + Sync> Resolver for FixtureProvider<M> {
             platforms: fixtures::target_platforms(&adapter_ref.name).map(map_platforms),
             ..Metadata::default()
         };
-        workflow::adapter::resolver::target(adapter_ref, metadata, origin(adapter_ref))
+        project::adapter::resolver::target(adapter_ref, metadata, origin(adapter_ref))
     }
 }
 
-impl<M: Send + Sync> workflow::adapter::Hydrator for FixtureProvider<M> {
+impl<M: Send + Sync> project::adapter::Hydrator for FixtureProvider<M> {
     async fn fetch(&self, url: &str) -> Result<Vec<u8>, Error> {
         Err(Error::Diag {
             code: "adapter-hydrate-unavailable",

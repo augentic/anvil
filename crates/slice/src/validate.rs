@@ -10,11 +10,10 @@ use std::path::{Path, PathBuf};
 use artifacts::spec::provenance::RequirementTag;
 use error::Result;
 use jiff::Timestamp;
+use project::config::Layout;
+use project::journal::{Event, EventKind, append_batch};
+use project::schema_gate::validate_evidence_dir;
 use schema::diagnostics::Diagnostic;
-
-use crate::config::Layout;
-use crate::journal::{Event, EventKind, append_batch};
-use crate::schema_gate::validate_evidence_dir;
 
 mod catalog;
 mod decisions;
@@ -159,7 +158,7 @@ fn collect_spec_files(root: &Path) -> Result<Vec<PathBuf>> {
     let mut out: Vec<PathBuf> = Vec::new();
     let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
-        for entry in crate::fs::dir_entries(&dir)? {
+        for entry in project::fs::dir_entries(&dir)? {
             let path = entry.path();
             if path.is_dir() {
                 stack.push(path);

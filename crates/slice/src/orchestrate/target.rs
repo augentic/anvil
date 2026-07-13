@@ -5,14 +5,14 @@ use std::path::Path;
 use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
+use project::adapter::{AdapterRef, TargetAdapter};
+use project::config::Layout;
+use project::journal::{self, EventKind};
+use project::schema_gate::{validate_report, validate_request};
+use project::seam::{Input, TargetSeam, WorkingTree};
 
 use super::{seam_failure, target_id};
-use crate::adapter::{AdapterRef, TargetAdapter};
-use crate::config::Layout;
-use crate::journal::{self, EventKind};
-use crate::schema_gate::{validate_report, validate_request};
-use crate::seam::{Input, TargetSeam, WorkingTree};
-use crate::slice::{
+use crate::{
     BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
     build_request,
 };
@@ -34,8 +34,8 @@ pub struct BuildOutcome {
 /// journals `target.execution.agent`, then brackets the dispatch +
 /// finalize tail with `slice.build.started` / `slice.build.succeeded`
 /// / `slice.build.failed`. The tail is the report schema gate,
-/// slice-name match, [`crate::slice::BuildReport::enforce_no_blocking`],
-/// [`crate::slice::BuildReport::enforce_outputs_exist`], failure-status rejection, and the
+/// slice-name match, [`crate::BuildReport::enforce_no_blocking`],
+/// [`crate::BuildReport::enforce_outputs_exist`], failure-status rejection, and the
 /// `Refined → Built` transition. The UI-surface coherence judgement
 /// lives in the target adapter's own guest.
 ///
@@ -123,7 +123,7 @@ async fn finalize(
     // Persist + schema-gate the report before anything acts on it, so
     // the on-disk `build/report.yaml` matches what the tail validated
     // (parity with the native finalize reading the agent's file).
-    let yaml = crate::fs::yaml(&report)?;
+    let yaml = project::fs::yaml(&report)?;
     validate_report(&yaml)?;
     bytes_write(&slice_dir.join("build").join("report.yaml"), yaml.as_bytes())?;
 
@@ -164,10 +164,10 @@ async fn finalize(
 /// leg verbatim, minus the shell hooks.
 fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
-    manifest_inputs: &[crate::adapter::BuildInputDeclaration],
+    manifest_inputs: &[project::adapter::BuildInputDeclaration],
 ) -> Result<BuildRequest, Error> {
     let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir())?;
-    let yaml = crate::fs::yaml(&request)?;
+    let yaml = project::fs::yaml(&request)?;
     validate_request(&yaml)?;
 
     let build_dir = slice_dir.join("build");
@@ -197,5 +197,5 @@ fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
 }
 
 fn read_artifact(root: &Path, relative: &str) -> Result<String, Error> {
-    crate::fs::read_text(&root.join(relative))
+    project::fs::read_text(&root.join(relative))
 }

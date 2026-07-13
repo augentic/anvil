@@ -12,9 +12,9 @@ use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{Registry, RegistryProject};
-use crate::plan::Plan;
 use crate::config::{Layout, Mutation, ProjectConfig, with_state};
 use crate::handler::{Anchor, Ctx, Render};
+use crate::plan::Plan;
 
 /// Wire input for `registry validate` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]

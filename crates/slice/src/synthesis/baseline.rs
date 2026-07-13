@@ -10,7 +10,7 @@ use std::path::Path;
 use artifacts::spec::provenance::parse_spec_md;
 use error::Error;
 
-use crate::slice::SpecKind;
+use crate::SpecKind;
 
 /// Whether a domain exists in the project baseline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -84,7 +84,7 @@ impl BaselineIndex {
         self.domains.iter().map(|(domain, baseline)| (domain.as_str(), baseline))
     }
 
-    /// Map a [`SpecKind`] from [`crate::slice::actions::scan_touched`] to
+    /// Map a [`SpecKind`] from [`crate::actions::scan_touched`] to
     /// [`DomainKind`].
     #[must_use]
     pub const fn kind_from_spec_kind(kind: SpecKind) -> DomainKind {

@@ -14,9 +14,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use error::{Error, Result};
+use project::schema_gate;
 use serde::{Deserialize, Serialize};
-
-use crate::schema_gate;
 
 /// On-disk path relative to project root.
 const CATALOG_REL: &str = ".specify/design-system/components.yaml";
@@ -35,7 +34,7 @@ fn load_validated<T: serde::de::DeserializeOwned>(
     if !path.is_file() {
         return Ok(None);
     }
-    let content = crate::fs::read_text(&path)?;
+    let content = project::fs::read_text(&path)?;
     gate(&content, &path)?;
     let value: T = serde_saphyr::from_str(&content).map_err(|err| {
         Error::validation_failed(

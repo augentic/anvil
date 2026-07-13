@@ -7,7 +7,7 @@
 //! no drift gate is needed. The
 //! projection round-trips against `schemas/slice/provenance.schema.json`
 //! so the audit shape stays stable. See
-//! [`crate::slice::model::SliceModel::to_provenance_index`].
+//! [`crate::model::SliceModel::to_provenance_index`].
 
 use artifacts::spec::provenance::RequirementStatus;
 use error::{Error, Result};
@@ -30,7 +30,7 @@ pub struct ProvenanceIndex {
     /// UTC second-precision timestamp at which the projection was
     /// produced. Resolution is to the second so byte-stable diffs
     /// survive reasonably-fast clocks.
-    #[serde(with = "crate::serde_time::rfc3339")]
+    #[serde(with = "project::serde_time::rfc3339")]
     pub generated_at: Timestamp,
     /// CLI version that produced the projection (e.g. `specify@2.1.0`).
     pub generator: String,

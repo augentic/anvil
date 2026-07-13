@@ -5,15 +5,15 @@ use std::path::Path;
 
 use error::Error;
 use jiff::Timestamp;
+use project::config::Layout;
+use project::journal::{Event, EventKind, append_one};
 
-use crate::config::Layout;
-use crate::journal::{Event, EventKind, append_one};
-use crate::slice::{LifecycleStatus, SLICES_DIR_NAME, SliceMetadata};
+use crate::{LifecycleStatus, SLICES_DIR_NAME, SliceMetadata};
 
 /// Transition a slice to `target` status and write the matching timestamp.
 ///
 /// The transition is validated by
-/// [`LifecycleStatus::transition`](crate::slice::LifecycleStatus::transition) —
+/// [`LifecycleStatus::transition`](crate::LifecycleStatus::transition) —
 /// illegal edges return `Error::Diag` with `code = "lifecycle"` without
 /// touching disk. On success the metadata's `status` is updated, the
 /// appropriate `*_at` timestamp is filled in (idempotent: an existing

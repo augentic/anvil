@@ -7,22 +7,22 @@ use artifacts::evidence::ClaimKind;
 use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::config::with_state;
+use project::handler::{Anchor, Ctx};
+use project::journal;
+use project::plan::{
+    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, entry_mut,
+    reject_duplicate_source_keys,
+};
+use project::schema_gate::validate_plan;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
-use crate::change::plan::wire::{
+use crate::plan::wire::{
     BindingArg, bindings_from_args, load_discovery, parse_divergence, parse_override_assigns,
     parse_slice_pair_args,
 };
-use crate::change::{
-    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, entry_mut,
-    reject_duplicate_source_keys,
-};
-use crate::config::with_state;
-use crate::handler::{Anchor, Ctx};
-use crate::journal;
-use crate::schema_gate::validate_plan;
 
 /// Wire input for `plan amend`. Option-typed fields distinguish
 /// "leave unchanged" (`None`) from "replace/clear" (`Some`), matching
@@ -77,7 +77,7 @@ pub struct AmendInput {
 pub struct Amend;
 
 impl<P: Anchor> Operation<P> for Amend {
-    type Error = crate::handler::Error;
+    type Error = project::handler::Error;
     type Input = AmendInput;
     type Output = EntryBody;
 
@@ -160,7 +160,7 @@ impl<P: Anchor> Operation<P> for Amend {
                     .entries
                     .iter()
                     .find(|c| c.name == name)
-                    .ok_or_else(|| crate::change::unknown_slice_err(&plan_name, &name))?;
+                    .ok_or_else(|| project::plan::unknown_slice_err(&plan_name, &name))?;
 
                 let mut journal_events: Vec<journal::Event> = Vec::new();
                 if let Some(to) = divergence {
@@ -176,7 +176,7 @@ impl<P: Anchor> Operation<P> for Amend {
                 }
                 journal_events.extend(override_journal);
 
-                Ok(crate::config::Mutation::changed((
+                Ok(project::config::Mutation::changed((
                     EntryBody {
                         plan: plan_ref(plan, &plan_path),
                         action: Action::Amend,

@@ -13,11 +13,10 @@ use std::path::PathBuf;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-
-use crate::adapter::Resolver;
-use crate::change::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
-use crate::config::{Layout, ProjectConfig};
-use crate::seam::{SourceSeam, TargetSeam, WorkingTree};
+use project::adapter::Resolver;
+use project::config::{Layout, ProjectConfig};
+use project::plan::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
+use project::seam::{SourceSeam, TargetSeam, WorkingTree};
 
 /// One phase the loop completed, in run order.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,7 +92,7 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
     refuse_workspace_routing(layout)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter =
-        crate::target_policy::project_adapter(caps.resolver, &config, layout.project_dir())?;
+        project::target_policy::project_adapter(caps.resolver, &config, layout.project_dir())?;
     let _marker = GuestMarker::acquire(layout, now)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
@@ -147,15 +146,20 @@ pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
                          (or fix the bound project's topology) before executing"
                     ),
                 })?;
-                super::refine(caps, layout, now, &slice, &target).await.map(drop)
+                slice::orchestrate::refine(caps, layout, now, &slice, &target).await.map(drop)
             }
-            LoopStep::Build => {
-                super::build(caps.targets, layout, now, &slice, &adapter.manifest, tree.clone())
-                    .await
-                    .map(drop)
-            }
+            LoopStep::Build => slice::orchestrate::build(
+                caps.targets,
+                layout,
+                now,
+                &slice,
+                &adapter.manifest,
+                tree.clone(),
+            )
+            .await
+            .map(drop),
             LoopStep::Merge => {
-                super::merge(caps.targets, layout, now, &slice, false).await.map(drop)
+                slice::orchestrate::merge(caps.targets, layout, now, &slice, false).await.map(drop)
             }
         };
 
@@ -215,7 +219,7 @@ struct Claim {
 }
 
 /// Claim the next entry through the shared
-/// [`crate::change::claim_next`] kernel (see the module docs for why
+/// [`project::plan::claim_next`] kernel (see the module docs for why
 /// `require_held` does not apply in-loop). Returns `None` when
 /// nothing is runnable (drained / stuck — the status projection
 /// decides which).
@@ -223,7 +227,7 @@ fn claim_next(
     resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp,
 ) -> Result<Option<Claim>, Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
-    let body = crate::change::claim_next(resolver, layout, now, &config)?;
+    let body = project::plan::claim_next(resolver, layout, now, &config)?;
     // A fresh advance carries the resolved target; the active-entry
     // return does not, so re-resolve lazily from the slice's own
     // metadata at the phase (refine reads it from the claim, and only
@@ -234,7 +238,7 @@ fn claim_next(
             target: body.target,
         }),
         (None, Some(slice)) => {
-            let target = crate::target_policy::resumed(layout, &slice).ok();
+            let target = project::target_policy::resumed(layout, &slice).ok();
             Some(Claim { slice, target })
         }
         (None, None) => None,

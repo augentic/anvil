@@ -2,10 +2,11 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "../../project/tests/common/mod.rs"]
 mod common;
 
 use common::{Project, run};
-use workflow::slice::handlers::{Preview, PreviewInput};
+use slice::handlers::{Preview, PreviewInput};
 
 const MERGE_CASES: &[&str] = &[
     "case-01-single-req",

@@ -23,8 +23,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::Platform;
 use crate::adapter::{AdapterRef, PlatformsSurface, Resolver};
-use crate::plan::finding;
 use crate::config::ProjectConfig;
+use crate::plan::finding;
 use crate::registry::Registry;
 
 /// Current `topology.lock` schema version.

@@ -144,11 +144,13 @@ const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 /// workflow guest's WASI sandbox.
 ///
 /// The generated deployment manifest mounts the host's
-/// [`adapter_store_root`] under this name **read-only**: forwarded
-/// workflow verbs resolve pinned identities (store probe,
-/// verify-on-read against the `.meta` sidecar) in-guest, while the
-/// no-fetch / no-store-write fence stays intact — hydration remains a
-/// provisioning-surface capability.
+/// [`adapter_store_root`] under this name **writable**: forwarded
+/// workflow verbs resolve pinned identities in-guest (store probe,
+/// verify-on-read against the `.meta` sidecar), and `specify init`
+/// hydration installs a missing pin through the same mount (fetch over
+/// the provider's `Hydrator` seam, write entry + digest sidecar,
+/// verify-after-write). Installed entries themselves remain immutable
+/// — hydration only ever creates absent `(name, version)` files.
 pub const GUEST_STORE_MOUNT: &str = "/specify-store";
 
 /// Absolute path to the global adapter store entry for an immutable
@@ -157,9 +159,9 @@ pub const GUEST_STORE_MOUNT: &str = "/specify-store";
 ///
 /// The store is keyed by the pinned identity, not the project, so two
 /// projects pinning the same `(name, version)` resolve to one shared,
-/// read-only entry (the Cargo `~/.cargo/registry` model). This is the
-/// pure location resolver install and read paths agree on (no install
-/// leg exists today; installation lands in-guest).
+/// immutable entry (the Cargo `~/.cargo/registry` model). This is the
+/// pure location the install leg (`specify init` hydration) and read
+/// paths agree on.
 #[must_use]
 pub fn adapter_store_entry(name: &str, version: &str) -> PathBuf {
     adapter_store_root().join(format!("{name}@{version}.wasm"))
@@ -175,7 +177,7 @@ pub fn adapter_store_entry(name: &str, version: &str) -> PathBuf {
 /// temp directory anchors a last-resort root, keeping the helper
 /// infallible.
 ///
-/// On wasm32 (the workflow guest) the store is the read-only
+/// On wasm32 (the workflow guest) the store is the writable
 /// [`GUEST_STORE_MOUNT`] preopen the deployment manifest grants — the
 /// env override is host-side relocation and never crosses the seam.
 #[must_use]

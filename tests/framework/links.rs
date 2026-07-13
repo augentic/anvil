@@ -32,9 +32,9 @@ pub const CHECK_RFCS_LINK: &str = "links.rfcs-in-permanent-surface";
 /// they cite future or deferred work whose targets may not exist yet.
 /// *Outbound* links into `rfcs/` from permanent surfaces are banned
 /// separately ([`CHECK_RFCS_LINK`]). The embedded judgment-prose
-/// corpus under `crates/workflow/prompts/` is in scope: its links are
-/// also build-checked at embed time, but the framework gate catches
-/// drift without a workflow rebuild.
+/// corpora under `crates/slice/prompts/` and `crates/change/prompts/`
+/// are in scope: their links are also build-checked at embed time, but
+/// the framework gate catches drift without a crate rebuild.
 const LINK_SCOPE_PREFIXES: &[&str] = &[
     "codex/",
     "sources/",
@@ -42,7 +42,8 @@ const LINK_SCOPE_PREFIXES: &[&str] = &[
     "plugins/",
     "docs/",
     ".cursor/",
-    "crates/workflow/prompts/",
+    "crates/slice/prompts/",
+    "crates/change/prompts/",
 ];
 
 /// Trees walked for skill directives (the framework include set).
@@ -257,8 +258,15 @@ fn check_docs_links_in_deployable(root: &Path, findings: &mut Vec<Finding>) {
 
 /// Permanent markdown trees banned from linking into the disposable
 /// `rfcs/` design parking lot.
-const RFCS_BAN_PREFIXES: &[&str] =
-    &["docs/", "plugins/", "codex/", "sources/", "targets/", "crates/workflow/prompts/"];
+const RFCS_BAN_PREFIXES: &[&str] = &[
+    "docs/",
+    "plugins/",
+    "codex/",
+    "sources/",
+    "targets/",
+    "crates/slice/prompts/",
+    "crates/change/prompts/",
+];
 
 /// Permanent surfaces must not link into `rfcs/` — its contents are
 /// disposable working design, deleted once implemented.

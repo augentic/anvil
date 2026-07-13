@@ -473,6 +473,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "change"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "error",
+ "fixtures",
+ "jiff",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "prose",
+ "schema",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "slice",
+ "tempfile",
+ "tokio",
+ "tower",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2016,6 +2038,7 @@ version = "0.27.2"
 dependencies = [
  "anyhow",
  "artifacts",
+ "change",
  "error",
  "fixtures",
  "omnia",
@@ -2023,12 +2046,12 @@ dependencies = [
  "omnia-guest",
  "omnia-testkit",
  "omnia-wasi-model",
+ "project",
  "schema",
  "serde-saphyr",
  "serde_json",
  "tempfile",
  "tokio",
- "workflow",
 ]
 
 [[package]]
@@ -2860,6 +2883,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "project"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "error",
+ "jiff",
+ "omnia-guest",
+ "petgraph",
+ "schema",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "proptest"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2876,6 +2920,13 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "prose"
+version = "0.27.2"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]
@@ -3740,6 +3791,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
+name = "slice"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "error",
+ "jiff",
+ "omnia-guest",
+ "project",
+ "prose",
+ "regex",
+ "schema",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3765,6 +3836,7 @@ dependencies = [
  "anyhow",
  "artifacts",
  "cfg-if",
+ "change",
  "error",
  "omnia",
  "omnia-cursor",
@@ -3772,14 +3844,15 @@ dependencies = [
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
+ "project",
  "schema",
  "serde",
  "serde_json",
+ "slice",
  "tokio",
  "transport",
  "wasip3",
  "wit-bindgen 0.59.0",
- "workflow",
 ]
 
 [[package]]
@@ -4305,16 +4378,18 @@ name = "transport"
 version = "0.27.2"
 dependencies = [
  "artifacts",
+ "change",
  "clap",
  "error",
  "omnia-guest",
+ "project",
  "serde",
  "serde_json",
+ "slice",
  "strum",
  "tempfile",
  "tokio",
  "tower",
- "workflow",
 ]
 
 [[package]]
@@ -5359,33 +5434,6 @@ dependencies = [
  "log",
  "thiserror 1.0.69",
  "wast",
-]
-
-[[package]]
-name = "workflow"
-version = "0.27.2"
-dependencies = [
- "anyhow",
- "artifacts",
- "error",
- "fixtures",
- "glob",
- "jiff",
- "omnia-guest",
- "omnia-testkit",
- "petgraph",
- "regex",
- "schema",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "toml",
- "tower",
 ]
 
 [[package]]

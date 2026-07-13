@@ -9,7 +9,7 @@ use regex::Regex;
 pub mod provenance;
 
 // Hard-coded spec format constants (matches
-// `crates/workflow/prompts/synthesis/spec-format.md`).
+// `crates/slice/prompts/synthesis/spec-format.md`).
 
 /// Markdown heading prefix for requirement blocks.
 pub const REQ_HEADING: &str = "### Requirement:";

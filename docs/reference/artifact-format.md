@@ -227,7 +227,7 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 No provenance lines on `proposal.md` — provenance lives in spec files after synthesis.
 
-For agent-authored synthesis responses, see [`crates/workflow/prompts/synthesis/substeps.md`](../../crates/workflow/prompts/synthesis/substeps.md) section 1 for per-source authoring guidance.
+For agent-authored synthesis responses, see [`crates/slice/prompts/synthesis/substeps.md`](../../crates/slice/prompts/synthesis/substeps.md) section 1 for per-source authoring guidance.
 
 Keep proposals concise (one to two pages). Focus on the "why" not the "how" — implementation details belong in the design.
 

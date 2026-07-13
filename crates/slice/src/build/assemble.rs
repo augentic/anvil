@@ -12,8 +12,7 @@ use std::ffi::OsStr;
 use std::path::Path;
 
 use error::{Error, Result};
-
-use crate::adapter::BuildInputDeclaration;
+use project::adapter::BuildInputDeclaration;
 use project::seam::wire::{BUILD_VERSION, BuildArtifacts, BuildInputs, BuildRequest};
 
 const PROPOSAL_ARTIFACT: &str = "proposal.md";
@@ -75,7 +74,7 @@ fn spec_paths(slice_tree: &Path) -> Result<Vec<String>> {
         return Ok(Vec::new());
     }
     let mut paths: Vec<String> = Vec::new();
-    for entry in crate::fs::dir_entries(&specs_dir)? {
+    for entry in project::fs::dir_entries(&specs_dir)? {
         let domain_dir = entry.path();
         if !domain_dir.is_dir() || !domain_dir.join("spec.md").is_file() {
             continue;

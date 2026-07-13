@@ -45,7 +45,9 @@ transport.workspace = true
 error.workspace = true
 schema.workspace = true
 artifacts.workspace = true
-workflow.workspace = true
+change.workspace = true
+project.workspace = true
+slice.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
 
@@ -179,10 +181,13 @@ wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 artifacts = { path = "crates/artifacts" }
+change = { path = "crates/change" }
 error = { path = "crates/error" }
 fixtures = { path = "harness/fixtures" }
+project = { path = "crates/project" }
+prose = { path = "crates/prose" }
+slice = { path = "crates/slice" }
 transport = { path = "crates/transport" }
-workflow = { path = "crates/workflow" }
 
 omnia = "0.35.0"
 omnia-cursor = "0.28.0"

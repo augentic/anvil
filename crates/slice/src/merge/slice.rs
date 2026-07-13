@@ -6,12 +6,12 @@ use std::path::{Path, PathBuf};
 
 use error::Error;
 use jiff::Timestamp;
+use project::adapter::TargetOperation;
 use serde::Serialize;
 
-use crate::adapter::TargetOperation;
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
-use crate::slice::{LifecycleStatus, Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
+use crate::{LifecycleStatus, Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
 
 mod parse;
 mod read;
@@ -161,7 +161,7 @@ pub struct BaselineConflict {
     /// Slice's `defined_at` stamp, copied verbatim from `metadata.yaml`.
     pub defined_at: String,
     /// Baseline file modification time.
-    #[serde(with = "crate::serde_time::rfc3339")]
+    #[serde(with = "project::serde_time::rfc3339")]
     pub baseline_modified_at: Timestamp,
 }
 
@@ -196,7 +196,7 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 /// `Merged` with `merged_at`/`completed_at` timestamps, stamps an
 /// `Outcome { phase: Merge, outcome: Success }` into
 /// `metadata.yaml`, then archives the slice directory via
-/// `crate::slice::actions::archive`.
+/// `crate::actions::archive`.
 ///
 /// The outcome stamp is written atomically with the status transition,
 /// before the archive move. This ensures the archived `metadata.yaml`
@@ -294,7 +294,7 @@ fn promote_decisions(
         return Ok(Vec::new());
     };
     let slice_name = slice_dir.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-    crate::decisions::promote(slice_dir, project_dir, slice_name, now)
+    project::decisions::promote(slice_dir, project_dir, slice_name, now)
 }
 
 /// Check for baseline drift on the modified `touched_specs` and on
