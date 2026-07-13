@@ -1,9 +1,9 @@
-//! The combined adapter wasm component.
+//! The combined harness adapter WASM component.
 //!
 //! Exports the `specify:adapter` `adapter` world — both the `source`
 //! and `target` interfaces from one component — plus
 //! `wasi:http/incoming-handler`, serving a compiled-in single-document
-//! MCP reference. The shim delegates to the `native/` core, so hosted
+//! MCP reference. The shim delegates to the native adapter crate, so hosted
 //! WASM and native tests exercise identical adapter behaviour.
 #![cfg(target_arch = "wasm32")]
 
@@ -25,7 +25,7 @@ mod bindings {
 
     wit_bindgen::generate!({
         world: "adapter",
-        path: "../../wit",
+        path: "../../../wit",
         // Asyncness follows the WIT declarations: the judgment
         // operations are `async func`s and async-lift; `metadata` is a
         // plain `func` (deterministic, effect-free) and sync-lifts —

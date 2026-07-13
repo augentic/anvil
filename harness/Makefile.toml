@@ -12,17 +12,15 @@ skip_rust_env_info = true
 # Build guests
 #
 # wasm32-wasip2 guest components: the core `specify` guest plus the
-# combined harness adapter (the `wasm/` cdylib example of the `adapter` package,
-# landing under target/wasm32-wasip2/debug/examples/). Two invocations:
-# `--examples` narrows target selection to example targets only, so the
-# core guest's lib needs its own build.
+# combined `adapter-wasm` harness package. The core guest's lib needs
+# its own build.
 [tasks.guests]
 script_runner = "bash"
 script = '''
 set -euo pipefail
 root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 (cd "${root}" && cargo build -p specify --lib --target wasm32-wasip2)
-(cd "${root}" && cargo build -p adapter --examples --target wasm32-wasip2)
+(cd "${root}" && cargo build -p adapter-wasm --target wasm32-wasip2)
 '''
 
 # Model-free WASM boundary smoke. Guest construction is explicit so
@@ -42,6 +40,8 @@ args = [
     "clippy",
     "-p",
     "adapter",
+    "-p",
+    "adapter-wasm",
     "-p",
     "wasm-smoke",
     "-p",

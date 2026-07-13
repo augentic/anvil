@@ -1,15 +1,6 @@
-# Adapter
+# Native adapter
 
-The Specify-owned harness adapter: one deterministic, model-free adapter implementing both `specify:adapter` axes for engine tests, with parallel **native** and **wasm** halves.
-
-```text
-native/   library core used by native workflow tests
-wasm/     WASI component example used by the WASM boundary smoke
-```
-
-## native/
-
-The library target ([`native/`](native/)) supplies controlled survey/extract data (including a cross-source overlap, an authority disagreement, and an evidence gap), stable guidance, observable build output, and typed failures. The workflow crates' integration tests consume it through the test-only provider bridge at `crates/change/tests/common/fixture.rs`.
+The Specify-owned native harness adapter is one deterministic, model-free library implementing both `specify:adapter` axes for engine tests. It supplies controlled survey/extract data (including a cross-source overlap, an authority disagreement, and an evidence gap), stable guidance, observable build output, and typed failures. The workflow crates' integration tests consume it through the test-only provider bridge at `crates/change/tests/common/fixture.rs`; the sibling [`../../wasm/adapter`](../../wasm/adapter/) package wraps the same core behind the WIT component boundary.
 
 Behaviour keys off the routed adapter id (`source:<name>` / `target:<name>`), so one component artifact bound under several identities supplies every profile:
 
@@ -19,15 +10,3 @@ Behaviour keys off the routed adapter id (`source:<name>` / `target:<name>`), so
 - any other name selects the minimal single-lead `greeting` profile used by the deterministic full-loop tests.
 
 A build additionally honours a per-project marker file (`FAIL_BUILD_MARKER`): when it exists at the project root the build returns a *failed report* (as opposed to a seam error), so interruption tests can park and resume a run without rebinding adapters. The phased merge gates honour the analogous `FAIL_MERGE_PREFLIGHT_MARKER` / `FAIL_MERGE_POSTFLIGHT_MARKER` pair.
-
-## wasm/
-
-The combined adapter guest ([`wasm/`](wasm/)) exports the additive `adapter` world — both the `source` and `target` interfaces from one component — plus a compiled-in single-document MCP reference over `wasi:http`. Its source and target shims delegate to the native core, so hosted WASM deployments (`harness/wasm-smoke/`) and the native suites exercise identical adapter behaviour; `metadata` keys its platforms capability off the routed `adapter-id` so one binary stands in for several capability shapes.
-
-It compiles against this repo's own [`wit/`](../../wit/) — the harness adapter that lets a contract revision and its seam tests land in one engine PR — and is deliberately model-free: it exercises the runtime seams, not Specify logic. Build it from inside `harness/` with:
-
-```shell
-cargo make guests
-```
-
-The artifact lands at `target/wasm32-wasip2/debug/examples/adapter.wasm` (example targets always land under the target dir's `examples/` subdirectory).

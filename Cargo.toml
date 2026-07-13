@@ -48,12 +48,12 @@ wit-bindgen.workspace = true
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/*", "tests"]
+members = ["crates/*", "harness/*/*", "tests"]
 # The ordinary test group: crate suites plus the lightweight repo-checks
 # package. The root runtime package and the harness packages are
 # explicit opt-ins (`-p specify`, `-p wasm-smoke`), keeping
 # Wasmtime execution out of the per-commit build.
-default-members = ["crates/*", "harness/adapter", "tests"]
+default-members = ["crates/*", "harness/native/adapter", "tests"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -170,7 +170,7 @@ tower = "0.5.3"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
-adapter = { path = "harness/adapter" }
+adapter = { path = "harness/native/adapter" }
 artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }

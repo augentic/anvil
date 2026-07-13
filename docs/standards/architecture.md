@@ -15,7 +15,8 @@ slice                    # the slice loop — depends on project; refine/build/m
 change                   # the change loop — depends on {project,slice}; plan author/execute orchestration, the specify plan operations, and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency — embed-time prompt-corpus walk + link check, generating each crate's DOCS table
-harness/adapter          # dev-only harness adapter — native/ core + wasm/ WIT guest for both specify:adapter axes
+harness/native/adapter   # dev-only native adapter core for both specify:adapter axes
+harness/wasm/adapter     # WIT component shim over the native adapter core
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 
@@ -33,7 +34,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-`harness/adapter` is the dev-only exception that prevents adapter test behavior from being copied across the native workflow suites and the WASM smoke: one `native/` core serves both, behind the native seams and the `wasm/` WIT shim. It carries no production lifecycle authority and is never linked into the shipped guest. Generic model doubles, temporary manifests, runtime hosting, and HTTP driving remain in upstream `omnia-testkit`.
+`harness/native/adapter` is the dev-only core that prevents adapter test behavior from being copied across the native workflow suites and the WASM smoke; `harness/wasm/adapter` is its thin WIT component shim. The core carries no production lifecycle authority and is never linked into the shipped guest. Generic model doubles, temporary manifests, runtime hosting, and HTTP driving remain in upstream `omnia-testkit`.
 
 The root `specify` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, command entry in `src/command.rs`, and HTTP entry in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `command.rs` (`CliGuest` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`Http` + `Guest::handle` + `omnia_guest::api::http::serve`). `lib.rs` is module wiring only — no `guest!` macro. Commands live in the workflow crates (`project`, `slice`, `change`) as transport-neutral `Operation<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `project::handler`). `crates/transport/src/command.rs` and `crates/transport/src/http.rs` own the explicit typed command and HTTP route inventories over `Invoker<P>`; the WASI and native shims only construct invokers and adapt transport output. The routing design is documented in [handler-shape.md](handler-shape.md).
 

@@ -40,7 +40,7 @@ use omnia_wasi_model as wire;
 use omnia_wasi_model::WasiModelCtx as _;
 use serde_json::Value;
 
-#[path = "../../../crates/change/tests/common/mod.rs"]
+#[path = "../../../../crates/change/tests/common/mod.rs"]
 mod common;
 
 use common::answers;

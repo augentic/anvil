@@ -5,7 +5,12 @@ version = 4
 [[package]]
 name = "adapter"
 version = "0.27.2"
+
+[[package]]
+name = "adapter-wasm"
+version = "0.27.2"
 dependencies = [
+ "adapter",
  "omnia-guest",
  "omnia-wasi-http",
  "serde_json",

@@ -142,7 +142,7 @@ All commands are run from the repository root:
 - `cargo test -p checks` — adapter boundary + docs/plugin link integrity (the lightweight `checks` package at `tests/`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package.
 
-Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/adapter`, and `tests` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `harness/native/adapter`, and `tests` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Frontmatter shape is enforced by the typed check in [`tests/authoring.rs`](tests/authoring.rs) (the `checks` package); body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
@@ -177,7 +177,8 @@ slice                    # the slice loop — depends on project: refine/build/m
 change                   # the change loop — depends on {project,slice}: plan author/execute orchestration (change::orchestrate incl. the survey half of the source axis and workspace routing), the propose judgment leg, change::plan::handlers (the specify plan operations) + change::source (source survey), and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
-harness/adapter          # the harness adapter (native/ core + wasm/ guest supplying both specify:adapter axes for engine tests)
+harness/native/adapter   # the native harness adapter core supplying both specify:adapter axes
+harness/wasm/adapter     # the WIT component shim over the native harness adapter
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
 
@@ -215,9 +216,10 @@ crates/transport/         shared command/HTTP routing, clap grammar, conversions
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
-harness/wasm-smoke/      the WASM boundary smoke — hosts specify.wasm with the combined adapter component
-harness/adapter/         the harness adapter (native/ core + wasm/ guest for both specify:adapter axes)
-harness/live-model/      the ignored native live-model workflow test (cargo make test-live)
+harness/wasm/wasm-smoke/ the WASM boundary smoke — hosts specify.wasm with the combined adapter component
+harness/wasm/adapter/    the WIT component shim over the native harness adapter
+harness/native/adapter/  the native harness adapter core for both specify:adapter axes
+harness/native/live-model/ the ignored native live-model workflow test (cargo make test-live)
 tests/                    lightweight checks package (boundaries, links), fixtures/, fs_git.rs
 tests/fixtures/          shared cross-crate fixture trees (crate-local fixtures live under crates/<name>/tests/fixtures/)
 ```

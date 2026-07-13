@@ -35,7 +35,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `harness/adapter` is the only adapter double — one `native/` core behind both the native seams and the `wasm/` WIT shim. Do not add another mock adapter or harness-adapter copy.
+- `harness/native/adapter` is the only adapter double; `harness/wasm/adapter` is its WIT shim. Do not add another mock adapter or harness-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance

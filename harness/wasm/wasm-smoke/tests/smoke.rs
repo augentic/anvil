@@ -125,7 +125,7 @@ async fn specify(manifest: &Path, argv: &[&str]) -> Result<i32> {
 }
 
 fn repo_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
 }
 
 fn workflow_wasm() -> PathBuf {
@@ -133,7 +133,7 @@ fn workflow_wasm() -> PathBuf {
 }
 
 fn adapter_wasm() -> PathBuf {
-    guest_wasm("examples/adapter.wasm")
+    guest_wasm("adapter.wasm")
 }
 
 fn guest_wasm(relative: &str) -> PathBuf {

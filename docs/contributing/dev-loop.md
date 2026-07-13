@@ -18,15 +18,15 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make test-wasm` — the WASM boundary
 
-Builds `specify.wasm` and the combined `adapter.wasm`, hosts them in one temporary deployment, and runs the single WASM smoke (`harness/wasm-smoke`). It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest calls the model host, preopens and the component cache are wired, and the typed error lift works across the seam. A short scripted loop is the vehicle that reaches those seams; drained-loop and artifact-completeness outcomes stay on the native rung.
+Builds `specify.wasm` and the combined `adapter.wasm`, hosts them in one temporary deployment, and runs the single WASM smoke (`harness/wasm/wasm-smoke`). It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest calls the model host, preopens and the component cache are wired, and the typed error lift works across the seam. A short scripted loop is the vehicle that reaches those seams; drained-loop and artifact-completeness outcomes stay on the native rung.
 
 Escalate here only when the change crosses a WIT, dispatch, hosting, or preopen seam. Cadence: weekly / path-filtered / manual (`.github/workflows/wasm.yaml`), required before release tags — not every push. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## 3. `cargo make test-live` — the explicit live trial
 
-Runs the one ignored native live-model test (`harness/live-model`): the same fixture workflow over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
+Runs the one ignored native live-model test (`harness/native/live-model`): the same fixture workflow over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
 
-Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See `harness/live-model/README.md`.
+Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See `harness/native/live-model/README.md`.
 
 ## What CI runs
 

@@ -2,7 +2,7 @@
 //! model-free library implementing both `specify:adapter` axes for
 //! engine tests. Its types mirror the WIT `specify:adapter/types`
 //! records so both consumers (the native test provider and the
-//! `wasm/` component) stay thin mapping layers.
+//! WASM adapter component) stay thin mapping layers.
 //!
 //! Behaviour keys off the routed adapter id — the profile catalog
 //! lives in the package `README.md`. Builds and merge gates also

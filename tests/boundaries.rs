@@ -124,7 +124,7 @@ fn offence(name: &str, spec: &Value) -> Option<String> {
     let package =
         table.and_then(|table| table.get("package")).and_then(Value::as_str).unwrap_or(name);
     let effective = package.replace('_', "-");
-    // The engine's own harness adapter (`harness/adapter`) is the
+    // The engine's own harness adapter (`harness/native/adapter`) is the
     // intentional test double. Its package name collides with the
     // `adapter` shared crate in specify-adapters; allow the in-tree path
     // (and member `workspace = true` re-exports — the workspace root is
@@ -133,7 +133,7 @@ fn offence(name: &str, spec: &Value) -> Option<String> {
     let harness_adapter = table
         .and_then(|table| table.get("path"))
         .and_then(Value::as_str)
-        .is_some_and(|path| path.replace('\\', "/").contains("harness/adapter"))
+        .is_some_and(|path| path.replace('\\', "/").contains("harness/native/adapter"))
         || (effective == "adapter"
             && table.and_then(|table| table.get("workspace")).and_then(Value::as_bool)
                 == Some(true));
@@ -209,7 +209,11 @@ fn bad_fixtures() {
     assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
-    write(dir.path(), "harness/wasm-smoke/Cargo.toml", "[dependencies.intent]\nversion = \"1\"\n");
+    write(
+        dir.path(),
+        "harness/wasm/wasm-smoke/Cargo.toml",
+        "[dependencies.intent]\nversion = \"1\"\n",
+    );
     assert!(!findings(dir.path()).is_empty());
 
     let dir = tempfile::tempdir().expect("tempdir");
@@ -240,7 +244,7 @@ fn bad_fixtures() {
     write(
         dir.path(),
         "Cargo.toml",
-        "[workspace.dependencies]\nadapter = { path = \"harness/adapter\" }\n",
+        "[workspace.dependencies]\nadapter = { path = \"harness/native/adapter\" }\n",
     );
     assert!(findings(dir.path()).is_empty());
 
