@@ -82,7 +82,7 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 ## E
 
 **Evidence**
-The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`. Validates against `schemas/evidence.schema.json`. Top-level `authority:` is required.
+The per-source result of `extract`. A structured document with `claims:` persisted to `.specify/slices/<slice>/evidence/<source>.yaml`. Parsed and validated through the typed `artifacts::evidence::Document`. Top-level `authority:` is required.
 
 **Execute**
 The guest-routed driver loop (`specify plan execute`) that claims each entry and runs refine → build → merge until the plan drains. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.

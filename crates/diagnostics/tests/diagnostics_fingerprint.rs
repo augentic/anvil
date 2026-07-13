@@ -1,12 +1,12 @@
 //! `v1` fingerprint algorithm: determinism, the excluded/included
 //! field matrix, `verify_fingerprint`, and canonical JSON.
 
-use proptest::prelude::*;
-use schema::diagnostics::{
+use diagnostics::digest::sha256_hex;
+use diagnostics::{
     Confidence, DiagnosticKind, FindingEvidence, FindingLocation, Severity, canonical_json,
     fingerprint, verify_fingerprint,
 };
-use schema::digest::sha256_hex;
+use proptest::prelude::*;
 use serde_json::json;
 
 use crate::diagnostics_support::sample_diagnostic;

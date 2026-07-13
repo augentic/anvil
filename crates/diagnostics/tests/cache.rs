@@ -3,7 +3,7 @@
 use std::ffi::OsString;
 use std::path::Path;
 
-use schema::cache::{
+use diagnostics::cache::{
     adapter_store_entry, adapter_store_root, file_content_digest, project_cache_dir,
     read_store_meta, verify_store_entry, write_store_meta,
 };

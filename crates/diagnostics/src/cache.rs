@@ -9,7 +9,7 @@
 //! collision-free cache that survives `git clean` and never pollutes
 //! the working tree.
 //!
-//! Lives on the `schema` leaf so every consumer resolves the same
+//! Lives on the `diagnostics` leaf so every consumer resolves the same
 //! root without a cross-layer dependency.
 //!
 //! The global adapter store also resolves here, but it is an install

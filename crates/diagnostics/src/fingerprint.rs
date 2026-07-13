@@ -19,7 +19,7 @@
 
 use serde_json::Value;
 
-use crate::diagnostics::diagnostic::{Diagnostic, FindingEvidence, FindingLocation};
+use crate::diagnostic::{Diagnostic, FindingEvidence, FindingLocation};
 use crate::digest::sha256_hex;
 
 /// Wire-format version embedded into every fingerprint preimage.
@@ -72,7 +72,7 @@ pub fn verify_fingerprint(diagnostic: &Diagnostic) -> bool {
 ///
 /// ```
 /// use serde_json::json;
-/// use schema::diagnostics::canonical_json;
+/// use diagnostics::canonical_json;
 ///
 /// let value = json!({"b": 1, "a": [2, 1]});
 /// assert_eq!(canonical_json(&value), r#"{"a":[2,1],"b":1}"#);

@@ -5,16 +5,16 @@ use std::path::{Path, PathBuf};
 
 use artifacts::discovery::Discovery;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
+use diagnostics::{Artifact, Diagnostic};
 use error::Result;
 use project::config::Layout;
 use project::plan::{Plan, orphan_authority_override_keys};
-use project::schema_gate::EvidenceDoc;
-use schema::diagnostics::{Artifact, Diagnostic};
 
 use super::catalog::catalog_drift;
 use super::decisions::decision_gates;
 use super::spec_location::file_location;
 use super::{collect_spec_files, model_drift, path_hint};
+use crate::synthesis::evidence::EvidenceDoc;
 
 struct ScannedSpec {
     path: PathBuf,

@@ -17,8 +17,8 @@ use std::fs;
 use std::io::ErrorKind;
 use std::path::Path;
 
+use diagnostics::{Diagnostic, Severity};
 use error::Error;
-use schema::diagnostics::{Diagnostic, Severity};
 use serde::{Deserialize, Serialize};
 
 use crate::Platform;
@@ -87,7 +87,7 @@ pub struct TopologyProject {
 /// Title only — no body, `Context`, or `Consequences` prose is
 /// projected. Shared by [`TopologyProject`] and the reconciliation
 /// envelope's `ProjectRef`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Decision {
     /// The durable `DEC-NNNN` id.
@@ -105,7 +105,7 @@ pub struct Decision {
 ///
 /// The domain slug and a bounded sample of its requirement titles. Shared
 /// by [`TopologyProject`] and the reconciliation envelope's `ProjectRef`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Surface {
     /// Domain directory slug under `.specify/specs/`.
@@ -167,7 +167,6 @@ impl TopologyLock {
 
         let lock: Self = serde_saphyr::from_str(&contents)
             .map_err(|err| malformed(format!("topology-lock-malformed: {err}")))?;
-        crate::schema_gate::validate_topology_lock(&lock)?;
         Ok(Some(lock))
     }
 }

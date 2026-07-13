@@ -81,7 +81,7 @@ Cross-project consumer-impact classification is deferred until a real consumer w
 
 Every CLI verb that skills consume emits a stable **flat envelope**: a top-level `envelope-version` integer plus the command-specific body fields at the same level. On success the body is exactly that — there is no `ok` discriminant and no `data` wrapper around the payload. On failure the same flat object carries three extra top-level keys: `error` (a kebab-case discriminant string), `message` (a humanised one-liner), and `exit-code` (the integer the binary returns). Skills invoked with `--format json` parse the envelope and branch on the `error` field rather than on stdout text.
 
-The canonical envelope shapes — including the success / error variants and per-command body examples — live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline (house style applied in review). The reference is a hand-curated illustration of the happy path per command; variant coverage lives in the integration suites under `crates/*/tests/` and the wire-schema fixtures under [`crates/schema/tests/fixtures/plan/v2/`](../../crates/schema/tests/fixtures/plan/v2).
+The canonical envelope shapes — including the success / error variants and per-command body examples — live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline (house style applied in review). The reference is a hand-curated illustration of the happy path per command; variant coverage lives in the integration suites under `crates/*/tests/`.
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
@@ -125,6 +125,6 @@ Skills should branch on the exit code first (success vs failure class) and on th
 
 ## Cross-references
 
-- [`schemas/authoring/skill.schema.json`](../../schemas/authoring/skill.schema.json) — description and argument-hint grammars for skill frontmatter (editor contract). Ultrathin-wrapper body style is guidance here, not a CI predicate.
+- [`tests/authoring.rs`](../../tests/authoring.rs) — the typed skill-frontmatter shape plus its description and argument-hint grammars (enforced by the `checks` package). Ultrathin-wrapper body style is guidance here, not a CI predicate.
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
 - [`AGENTS.md`](../../AGENTS.md#the-rust-workspace-specify-cli) — authoritative source for exit codes, error variants, and CLI architecture.

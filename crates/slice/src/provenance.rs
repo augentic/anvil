@@ -4,21 +4,16 @@
 //! demand from a slice's single `model.yaml` (which carries provenance
 //! inline) by `specify slice provenance`. Because the model and its
 //! provenance share one source of truth, the two can never drift and
-//! no drift gate is needed. The
-//! projection round-trips against `schemas/slice/provenance.schema.json`
-//! so the audit shape stays stable. See
+//! no drift gate is needed. These typed DTOs own the audit shape. See
 //! [`crate::model::SliceModel::to_provenance_index`].
 
 use artifacts::spec::provenance::RequirementStatus;
-use error::{Error, Result};
 use jiff::Timestamp;
-use schema::{PROVENANCE_JSON_SCHEMA, validate_serialisable};
 use serde::{Deserialize, Serialize};
 
 /// In-memory provenance view, projected from `model.yaml`.
 ///
-/// Top-level shape is closed; unknown fields are rejected per the
-/// matching schema.
+/// Top-level shape is closed (`deny_unknown_fields`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProvenanceIndex {
@@ -77,9 +72,8 @@ pub struct ContributingClaim {
     /// Claim id within the source's Evidence file (matches
     /// `claims[].id`).
     pub id: String,
-    /// Claim kind copied from the source Evidence claim — closed
-    /// enum (mirrored from
-    /// `schemas/evidence.schema.json#/$defs/claimKind`).
+    /// Claim kind copied from the source Evidence claim — the closed
+    /// [`artifacts::evidence::ClaimKind`] enum.
     pub kind: artifacts::evidence::ClaimKind,
     /// Optional single-line claim payload (statement / criterion /
     /// decision body).
@@ -139,27 +133,4 @@ pub struct ResolutionTrace {
     /// Optional source key the step selected as the winner.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub winner: Option<String>,
-}
-
-impl ProvenanceIndex {
-    /// Validate `self` against the embedded `schemas/slice/provenance.schema.json`.
-    ///
-    /// Returns `Ok(())` on a clean validation; otherwise a payload-free
-    /// [`Error::Validation`] keyed on the code `"provenance-schema"`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Validation`] when the in-memory projection
-    /// fails the schema; falls back to [`Error::Diag`] when the value
-    /// is not JSON-serialisable (unreachable in normal operation).
-    pub fn validate(&self) -> Result<(), Error> {
-        validate_serialisable(
-            self,
-            PROVENANCE_JSON_SCHEMA,
-            "provenance-schema",
-            "provenance projection conforms to schemas/slice/provenance.schema.json",
-            "provenance-schema-serialise",
-            "provenance",
-        )
-    }
 }

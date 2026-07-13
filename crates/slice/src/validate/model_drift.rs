@@ -6,14 +6,13 @@ use std::path::Path;
 use artifacts::evidence::ClaimKind;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementStatus};
 use artifacts::spec::{is_req_id, is_task_id};
+use diagnostics::{Artifact, Diagnostic};
 use error::{Error, Result};
 use project::plan::Plan;
-use project::schema_gate::EvidenceDoc;
-use schema::diagnostics::{Artifact, Diagnostic};
-use serde_json::Value as JsonValue;
 
-use crate::model::{SliceModel, validate_model_doc};
+use crate::model::SliceModel;
 use crate::provenance_lines;
+use crate::synthesis::evidence::EvidenceDoc;
 
 /// Emit the drift-validation findings over the slice's
 /// `model.yaml`.
@@ -24,27 +23,23 @@ use crate::provenance_lines;
 /// here (it is enforced at synthesize time and by
 /// `slice provenance` / `slice model show`).
 ///
-/// The schema gate (`slice-model-schema`) and the typed model-derived
-/// gates are evaluated independently from the same raw document: the
-/// embedded `model.schema.json` overlaps several of the structural
-/// checks (e.g. it pins the `REQ` / `TASK` id patterns), so collecting
-/// both surfaces every disagreement in one pass. The model-derived
-/// checks short-circuit only when the document cannot deserialise into
-/// the typed view at all — then the schema finding already explains
-/// why, and there is nothing typed left to inspect.
+/// The typed parse is the shape gate: a `model.yaml` that fails to
+/// deserialise into [`SliceModel`] yields one `slice-model-schema`
+/// finding carrying the parse error, and there is nothing typed left
+/// to inspect. The model-derived drift gates run over the parsed view.
 ///
 /// `plan_path` resolves the target-drift gate; when it does not exist
 /// that gate no-ops.
 ///
-/// `evidence` is the parsed Evidence document set [`pre_adapter_gates`](super::pre_adapter_gates)
-/// already read and schema-validated; the source-orphan and
+/// `evidence` is the typed Evidence document set [`pre_adapter_gates`](super::pre_adapter_gates)
+/// already read and validated; the source-orphan and
 /// claim-kind-mismatch gates derive their facts from it rather than
 /// re-reading `evidence/*.yaml`.
 ///
 /// # Errors
 ///
 /// Returns [`Error::Filesystem`] when the model or a spec file cannot be
-/// read, or a YAML parse error when `model.yaml` is malformed.
+/// read.
 pub(super) fn findings(
     slice_dir: &Path, plan_path: &Path, slice_name: &str, evidence: &[EvidenceDoc],
 ) -> Result<Vec<Diagnostic>> {
@@ -53,18 +48,18 @@ pub(super) fn findings(
         return Ok(Vec::new());
     }
     let raw = project::fs::read_text(&model_path)?;
-    let value: JsonValue = serde_saphyr::from_str(&raw)?;
 
     let mut findings = Vec::new();
-    if let Err(Error::Validation { detail, .. }) = validate_model_doc(&value) {
-        findings.push(model_drift(
-            "slice-model-schema",
-            "model.yaml conforms to schemas/slice/model.schema.json",
-            detail,
-        ));
-    }
-    let Ok(model) = serde_saphyr::from_str::<SliceModel>(&raw) else {
-        return Ok(findings);
+    let model = match serde_saphyr::from_str::<SliceModel>(&raw) {
+        Ok(model) => model,
+        Err(err) => {
+            findings.push(model_drift(
+                "slice-model-schema",
+                "model.yaml deserialises as a slice model",
+                err.to_string(),
+            ));
+            return Ok(findings);
+        }
     };
 
     let facts = EvidenceFacts::from_docs(evidence);
@@ -341,34 +336,18 @@ struct EvidenceFacts {
 }
 
 impl EvidenceFacts {
-    /// Derive the facts from the Evidence documents [`pre_adapter_gates`](super::pre_adapter_gates)
-    /// already read and schema-validated, so the file is never read or
-    /// parsed a second time. The schema pass runs first and
-    /// short-circuits on any read/parse failure, so every `doc.value`
-    /// here is a successfully parsed document — the equivalent of the
-    /// previous re-read, minus the redundant I/O.
+    /// Derive the facts from the typed Evidence documents
+    /// [`pre_adapter_gates`](super::pre_adapter_gates) already read and
+    /// validated, so the file is never read or parsed a second time.
     fn from_docs(docs: &[EvidenceDoc]) -> Self {
         let mut sources = BTreeSet::new();
         let mut claim_kinds = BTreeMap::new();
         for doc in docs {
-            let source =
-                doc.path.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
-            sources.insert(source.clone());
-            let Some(claims) = doc.value.get("claims").and_then(JsonValue::as_array) else {
-                continue;
-            };
-            for claim in claims {
-                let Some(id) = claim.get("id").and_then(JsonValue::as_str) else {
-                    continue;
-                };
-                let Some(kind) = claim
-                    .get("kind")
-                    .and_then(JsonValue::as_str)
-                    .and_then(|raw| raw.parse::<ClaimKind>().ok())
-                else {
-                    continue;
-                };
-                claim_kinds.insert((source.clone(), id.to_string()), kind);
+            sources.insert(doc.source.clone());
+            for claim in &doc.document.claims {
+                if let Some(id) = &claim.id {
+                    claim_kinds.insert((doc.source.clone(), id.clone()), claim.kind);
+                }
             }
         }
         Self { sources, claim_kinds }

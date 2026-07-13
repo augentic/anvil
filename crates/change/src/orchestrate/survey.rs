@@ -2,14 +2,13 @@
 
 use std::path::Path;
 
-use artifacts::discovery::{Discovery, Lead as DiscoveryLead};
+use artifacts::discovery::{Discovery, Lead as DiscoveryLead, validate_leads};
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::SourceOperation;
 use project::config::Layout;
 use project::journal::{self, Event, EventKind};
 use project::plan::{Plan, SourceBinding};
-use project::schema_gate;
 use project::seam::{SourceSeam, seam_failure, source_id};
 
 /// One source's merged survey result under [`survey_all`].
@@ -27,7 +26,7 @@ pub struct SurveyedSource {
 /// each lead set into `discovery.md`.
 ///
 /// Bindings run in plan order; each is dispatched, source-attributed,
-/// schema-gated before it becomes visible, merged, and journalled.
+/// validated before it becomes visible, merged, and journalled.
 /// The first failure aborts the fan-out with earlier sources already
 /// merged.
 ///
@@ -104,8 +103,7 @@ async fn survey_one(
 
     // Attribution is orchestrator-owned, mirroring the native verb: a
     // `survey` for `source` produces `source`'s leads, so stamp every
-    // lead before the schema check (which requires `source`) and the
-    // merge.
+    // lead before the validity check and the merge.
     let leads: Vec<DiscoveryLead> = raw
         .into_iter()
         .map(|lead| DiscoveryLead {
@@ -115,7 +113,7 @@ async fn survey_one(
             topics: lead.topics,
         })
         .collect();
-    schema_gate::validate_leads(&leads)?;
+    validate_leads(&leads)?;
     let lead_ids: Vec<String> = leads.iter().map(|lead| lead.lead.clone()).collect();
 
     let discovery_path = layout.discovery_path();

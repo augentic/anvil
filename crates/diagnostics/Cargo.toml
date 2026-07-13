@@ -1,13 +1,13 @@
 [package]
-name = "schema"
+name = "diagnostics"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Embedded JSON Schemas and JSON-Schema validation plumbing shared by Specify crates"
+description = "Neutral diagnostic substrate, SHA-256 digest helpers, and digest-keyed cache paths shared by Specify crates"
 categories = ["development-tools"]
-keywords = ["specify", "json-schema"]
+keywords = ["specify", "diagnostics"]
 readme = "../../README.md"
 
 [lints]
@@ -15,13 +15,11 @@ workspace = true
 
 [dependencies]
 base16ct.workspace = true
-jsonschema.workspace = true
+schemars.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
-thiserror.workspace = true
-error.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

@@ -191,14 +191,14 @@ impl<'a> Layout<'a> {
 
     /// Absolute path to this project's out-of-tree memoization root
     /// (manifest mirror, component mirror, …), resolved from the OS cache via
-    /// [`schema::cache::project_cache_dir`]. Lives outside the
+    /// [`diagnostics::cache::project_cache_dir`]. Lives outside the
     /// working tree, keyed by a digest of the project path, so deleting
     /// it costs recomputation only and it never pollutes git. Transient
     /// per-run working state lives in-tree under `.specify/scratch/`
     /// (gitignored at init).
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
-        schema::cache::project_cache_dir(self.project_dir)
+        diagnostics::cache::project_cache_dir(self.project_dir)
     }
 
     /// Absolute path to `<project_dir>/.specify/decisions/` — the

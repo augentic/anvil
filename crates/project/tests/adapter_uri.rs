@@ -66,7 +66,7 @@ mod package {
             .expect("hydrated package scaffolds");
         assert_eq!(body.hydrated, vec!["demo@1.2.0".to_string()]);
 
-        let entry = schema::cache::adapter_store_entry("demo", "1.2.0");
+        let entry = diagnostics::cache::adapter_store_entry("demo", "1.2.0");
         assert_eq!(
             fs::read(&entry).expect("installed store entry"),
             b"\0asm-component",
@@ -91,7 +91,7 @@ mod package {
         let project = Project::bare();
         let store = tempfile::tempdir().expect("store");
         let _guard = scoped_store(store.path());
-        let entry = schema::cache::adapter_store_entry("demo", "1.2.0");
+        let entry = diagnostics::cache::adapter_store_entry("demo", "1.2.0");
         fs::write(&entry, b"\0asm-component").expect("stage installed component");
 
         run::<project::init::handlers::Init, _>(&project, input("specify:demo@1.2.0"))
@@ -138,7 +138,7 @@ mod shorthand {
         let project = Project::bare();
         let store = tempfile::tempdir().expect("store");
         let _guard = scoped_store(store.path());
-        fs::write(schema::cache::adapter_store_entry("demo", "1.2.0"), b"\0asm-component")
+        fs::write(diagnostics::cache::adapter_store_entry("demo", "1.2.0"), b"\0asm-component")
             .expect("stage installed component");
 
         run::<project::init::handlers::Init, _>(&project, input("demo@1.2.0"))

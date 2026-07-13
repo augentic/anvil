@@ -1,5 +1,4 @@
 {
-  "$schema": "../schemas/authoring/marketplace.schema.json",
   "name": "augentic",
   "owner": {
     "name": "augentic",

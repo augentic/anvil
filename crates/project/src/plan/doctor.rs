@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use schema::diagnostics::Diagnostic;
+use diagnostics::Diagnostic;
 use serde::{Deserialize, Serialize};
 
 use super::Plan;
@@ -135,7 +135,7 @@ pub fn author_gate(
 pub fn full_report(
     resolver: &impl crate::adapter::Resolver, plan: &Plan, layout: crate::config::Layout<'_>,
 ) -> Vec<Diagnostic> {
-    use schema::diagnostics::Severity;
+    use diagnostics::Severity;
 
     use crate::plan::validate::finding;
 

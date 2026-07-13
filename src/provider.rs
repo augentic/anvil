@@ -8,6 +8,7 @@
 use std::future::Future;
 
 use artifacts::evidence::AuthorityClass;
+use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Error;
 use project::adapter::metadata::{Metadata, Request};
 use project::adapter::{
@@ -15,7 +16,6 @@ use project::adapter::{
     Resolver,
 };
 use project::seam::{self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree};
-use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 use wasip3::http_compat::IncomingMessage as _;
 
@@ -299,7 +299,7 @@ fn widen_finding(finding: target::Finding) -> Diagnostic {
         None,
     );
     diagnostic.rule_id = finding.rule_id;
-    diagnostic.fingerprint = schema::diagnostics::fingerprint(&diagnostic);
+    diagnostic.fingerprint = diagnostics::fingerprint(&diagnostic);
     diagnostic
 }
 

@@ -15,7 +15,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the wire-schema accept/reject variant set, browse the canonical fixtures in [`crates/schema/tests/fixtures/plan/v2/`](../../crates/schema/tests/fixtures/plan/v2/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command; the accept/reject variant set is exercised by the integration suites under `crates/*/tests/`. When a command grows a new variant, copy the relevant output in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
 ### `specify plan add`
 
@@ -280,7 +280,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 
 ### `specify slice build`
 
-One envelope shape inside the guest-routed orchestration: the request is assembled and schema-validated, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail validates the report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+One envelope shape inside the guest-routed orchestration: the typed request is assembled, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail gates the typed report, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
 ```json
 {

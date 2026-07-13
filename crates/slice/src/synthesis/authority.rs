@@ -55,7 +55,7 @@ pub struct ClaimRef {
     pub source: String,
     /// Claim id within that source's Evidence document.
     pub id: String,
-    /// Claim kind (mirrors `schemas/evidence.schema.json#/$defs/claimKind`).
+    /// Claim kind (the closed [`ClaimKind`] enum).
     pub kind: ClaimKind,
 }
 

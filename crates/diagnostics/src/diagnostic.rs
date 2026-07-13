@@ -15,11 +15,23 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// < Suggestion < Optional`.
 ///
 /// ```
-/// use schema::diagnostics::Severity;
+/// use diagnostics::Severity;
 ///
 /// assert!(Severity::Critical < Severity::Suggestion);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum Severity {
     /// Highest priority; blocks merge in CI.
@@ -33,7 +45,7 @@ pub enum Severity {
 }
 
 /// Producer attribution for a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum DiagnosticSource {
     /// Output of a deterministic scanner.
@@ -54,7 +66,9 @@ pub enum DiagnosticSource {
 /// raised request for judgment. Defaults to [`Self::Violation`] so a
 /// diagnostic that omits the wire field deserialises as a defect, and
 /// so the [`is_blocking`] predicate keeps its pre-axis behaviour.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum DiagnosticKind {
     /// A defect: something is wrong and should be fixed. Default.
@@ -66,7 +80,7 @@ pub enum DiagnosticKind {
 }
 
 /// Artifact category attribution for a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum Artifact {
     /// Generated or hand-written code.
@@ -97,7 +111,7 @@ pub enum Artifact {
 }
 
 /// Producer self-rated confidence for a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum Confidence {
     /// High confidence in the diagnostic.
@@ -110,7 +124,7 @@ pub enum Confidence {
 
 /// File path plus optional line/column range carried by a
 /// [`Diagnostic`] or by a `digest`/`structured` evidence variant.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct FindingLocation {
     /// Project-relative file path.
@@ -132,11 +146,10 @@ pub struct FindingLocation {
 
 /// Closed evidence union for a [`Diagnostic`].
 ///
-/// Internally tagged on `kind`; the wire shape's `oneOf` is encoded
-/// by serde's `tag = "kind"` with `additionalProperties: false` per
-/// branch validated schema-side. The diagnostic contract caps the
-/// serialized evidence payload at 16 `KiB` in [`super::validate_diagnostic`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Internally tagged on `kind` (`deny_unknown_fields` closes each
+/// branch). Producers should keep inline payloads small — reference
+/// large evidence by digest rather than embedding it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum FindingEvidence {
     /// Bounded verbatim excerpt for local code or prose evidence.
@@ -174,7 +187,7 @@ pub enum FindingEvidence {
 /// Producer-local `id` (e.g. `FIND-0001`) is distinct from the codex
 /// `rule_id` (e.g. `UNI-014`): `id` is a stable per-run handle and
 /// `rule_id` is the durable codex citation.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Diagnostic {
     /// Producer-local stable id for this run (e.g. `FIND-0001`).
@@ -279,7 +292,7 @@ impl Diagnostic {
             confidence,
             fingerprint: String::new(),
         };
-        diagnostic.fingerprint = crate::diagnostics::fingerprint::fingerprint(&diagnostic);
+        diagnostic.fingerprint = crate::fingerprint::fingerprint(&diagnostic);
         diagnostic
     }
 
@@ -287,7 +300,7 @@ impl Diagnostic {
     /// the default shape for a structural workflow invariant breach.
     ///
     /// ```
-    /// use schema::diagnostics::{Artifact, Diagnostic, Severity};
+    /// use diagnostics::{Artifact, Diagnostic, Severity};
     ///
     /// let finding = Diagnostic::violation(
     ///     "spec.requirement-id-missing",
@@ -435,7 +448,7 @@ impl DiagnosticSummary {
 /// emitted by every check producer.
 ///
 /// ```
-/// use schema::diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary};
+/// use diagnostics::{Artifact, Diagnostic, DiagnosticReport, DiagnosticSummary};
 ///
 /// let findings = vec![Diagnostic::violation(
 ///     "spec.requirement-id-missing",

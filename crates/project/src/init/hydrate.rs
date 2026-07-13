@@ -17,11 +17,11 @@ use std::fs;
 use std::path::Path;
 
 use artifacts::atomic::bytes_write;
-use error::Error;
-use schema::cache::{
+use diagnostics::cache::{
     adapter_store_entry, adapter_store_root, file_content_digest, verify_store_entry,
     write_store_meta,
 };
+use error::Error;
 use serde::Deserialize;
 
 use super::adapter_uri::{PinnedPackage, pinned_package};

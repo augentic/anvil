@@ -44,10 +44,10 @@ pub fn persist_synthesized(
     slice_dir: &Path, artifacts: SynthesisArtifacts, projected: &SliceModel,
     baseline_index: &BaselineIndex,
 ) -> Result<Vec<String>> {
-    // Re-validate the projected model against the schema (the kernel
-    // already enforced orphans/cross-refs/grammar; the broader drift
-    // suite is `slice validate`'s job). `parse_yaml` validates the
-    // serialised document and re-parses it.
+    // Round-trip the projected model (the kernel already enforced
+    // orphans/cross-refs/grammar; the broader drift suite is `slice
+    // validate`'s job): `parse_yaml` re-parses the serialised document
+    // so a persist-time shape regression fails here, not on next load.
     let model_yaml = artifacts::atomic::serialise_yaml(projected)?;
     SliceModel::parse_yaml(&model_yaml)?;
 

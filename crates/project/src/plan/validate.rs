@@ -2,7 +2,7 @@
 //! accumulate (no check short-circuits another); order is structural
 //! checks first, then consistency checks against the registry.
 //!
-//! Every check emits a neutral [`schema::diagnostics::Diagnostic`] via
+//! Every check emits a neutral [`diagnostics::Diagnostic`] via
 //! [`finding`]: the stable check code becomes the `rule_id`, the
 //! offending plan entry (when present) populates `slice`, an `error`
 //! maps to a blocking `important` violation, and a `warning` maps to a
@@ -11,11 +11,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 
-use error::{Error, Result};
-use petgraph::graph::DiGraph;
-use schema::diagnostics::{
+use diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence, Severity, fingerprint,
 };
+use error::{Error, Result};
+use petgraph::graph::DiGraph;
 
 use super::model::{Divergence, Entry, Plan, Status};
 use crate::registry::Registry;
@@ -228,10 +228,8 @@ fn duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 /// Returns `Error::Validation` (`duplicate-source-key`) when at least
 /// one slice binds the same source key more than once.
 pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
-    let findings: Vec<_> = duplicate_source_keys(&plan.entries)
-        .into_iter()
-        .filter(schema::diagnostics::is_blocking)
-        .collect();
+    let findings: Vec<_> =
+        duplicate_source_keys(&plan.entries).into_iter().filter(diagnostics::is_blocking).collect();
     let Some(first) = findings.first() else {
         return Ok(());
     };

@@ -5,11 +5,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use artifacts::discovery::Discovery;
-use error::{Error, Result};
-use petgraph::algo::tarjan_scc;
-use schema::diagnostics::{
+use diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, fingerprint, is_blocking,
 };
+use error::{Error, Result};
+use petgraph::algo::tarjan_scc;
 
 use super::super::model::{AuthorityOverride, Entry, Plan, SliceSourceBinding, Status, TargetRef};
 use super::super::validate::dependency_graph;

@@ -17,7 +17,7 @@ The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **Adapter components** — each source / target adapter is a single WebAssembly component whose metadata is its own `metadata` export (no manifest file; operations derive from the WIT contract per axis).
-- **JSON Schemas** — the authoritative `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary, with sources in-tree under [`schemas/`](../../schemas).
+- **Typed wire shapes** — the authoritative Evidence, lead, proposal, and `plan.yaml` shapes are the Rust serde types compiled into the `specify` binary (`artifacts::evidence`, `artifacts::discovery`, `project::plan`); the judgment-answer schemas the model host consumes are generated from those types by `project::answers` / `slice::answers`.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:

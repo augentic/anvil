@@ -8,7 +8,6 @@ use jiff::Timestamp;
 use project::adapter::{AdapterRef, TargetAdapter};
 use project::config::Layout;
 use project::journal::{self, EventKind};
-use project::schema_gate::{validate_report, validate_request};
 use project::seam::{Input, TargetSeam, WorkingTree};
 
 use super::{seam_failure, target_id};
@@ -30,10 +29,10 @@ pub struct BuildOutcome {
 
 /// Build one slice through the seam and run the finalize tail.
 ///
-/// Assembles, schema-gates, and persists `build/request.yaml`,
+/// Assembles and persists `build/request.yaml`,
 /// journals `target.execution.agent`, then brackets the dispatch +
 /// finalize tail with `slice.build.started` / `slice.build.succeeded`
-/// / `slice.build.failed`. The tail is the report schema gate,
+/// / `slice.build.failed`. The tail is the
 /// slice-name match, [`crate::BuildReport::enforce_no_blocking`],
 /// [`crate::BuildReport::enforce_outputs_exist`], failure-status rejection, and the
 /// `Refined → Built` transition. The UI-surface coherence judgement
@@ -120,11 +119,10 @@ async fn finalize(
         .await
         .map_err(|err| seam_failure("build", &id, &err))?;
 
-    // Persist + schema-gate the report before anything acts on it, so
-    // the on-disk `build/report.yaml` matches what the tail validated
+    // Persist the typed report before anything acts on it, so the
+    // on-disk `build/report.yaml` matches what the tail validated
     // (parity with the native finalize reading the agent's file).
     let yaml = project::fs::yaml(&report)?;
-    validate_report(&yaml)?;
     bytes_write(&slice_dir.join("build").join("report.yaml"), yaml.as_bytes())?;
 
     if report.slice != slice {
@@ -158,8 +156,8 @@ async fn finalize(
     })
 }
 
-/// Assemble the build request from the declared inputs, schema-validate
-/// the serialised envelope, and persist it atomically to
+/// Assemble the build request from the declared inputs and persist it
+/// atomically to
 /// `.specify/slices/<slice>/build/request.yaml` — the native prepare
 /// leg verbatim, minus the shell hooks.
 fn write_request(
@@ -168,7 +166,6 @@ fn write_request(
 ) -> Result<BuildRequest, Error> {
     let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir())?;
     let yaml = project::fs::yaml(&request)?;
-    validate_request(&yaml)?;
 
     let build_dir = slice_dir.join("build");
     std::fs::create_dir_all(&build_dir).map_err(Error::Io)?;

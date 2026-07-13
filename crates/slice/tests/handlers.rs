@@ -267,7 +267,7 @@ mod init {
         fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
         let component = dev_dir.join("demo.wasm");
         fs::write(&component, b"\0asm-component").expect("stage component");
-        let digest = schema::cache::file_content_digest(&component);
+        let digest = diagnostics::cache::file_content_digest(&component);
         fs::write(
             dev_dir.join("demo.wasm.metadata.json"),
             format!("{{ \"digest\": \"{digest}\", \"metadata\": {{}} }}"),

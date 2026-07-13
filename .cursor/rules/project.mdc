@@ -133,7 +133,7 @@ In this repository:
 
 ## Skill wrappers
 
-Wrappers stay ultrathin invoke-and-relay — no orchestration or generation prose. Frontmatter shape is an editor contract in `schemas/authoring/skill.schema.json`. See [docs/contributing/checks.md](../../docs/contributing/checks.md) and [docs/contributing/operator-plugins.md](../../docs/contributing/operator-plugins.md).
+Wrappers stay ultrathin invoke-and-relay — no orchestration or generation prose. Frontmatter shape is the typed check in `tests/authoring.rs` (the `checks` package). See [docs/contributing/checks.md](../../docs/contributing/checks.md) and [docs/contributing/operator-plugins.md](../../docs/contributing/operator-plugins.md).
 
 ## For Contributors
 

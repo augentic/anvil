@@ -6,10 +6,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use artifacts::decision::{DecisionRecord, parse_decision};
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use error::Result;
 use project::config::Layout;
 use project::decisions::{is_dec_ref, list_md_files, read_baseline};
-use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
 
 use super::path_hint;
 

@@ -6,7 +6,6 @@ use omnia_guest::api::operation::Operation;
 use project::config::{Mutation, with_state};
 use project::handler::{Anchor, Ctx};
 use project::plan::Plan;
-use project::schema_gate::validate_plan;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -44,7 +43,6 @@ impl<P: Anchor> Operation<P> for Remove {
                     }
                 })?;
             plan.remove(&name)?;
-            validate_plan(plan)?;
             Ok(Mutation::changed(EntryBody {
                 plan: plan_ref(plan, &plan_path),
                 action: Action::Remove,

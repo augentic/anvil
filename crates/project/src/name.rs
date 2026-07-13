@@ -30,9 +30,7 @@ pub fn is_kebab_leading_alpha(value: &str) -> bool {
     value.starts_with(|ch: char| ch.is_ascii_lowercase()) && is_kebab(value)
 }
 
-/// Validate a kebab-case slice name.
-///
-/// Mirrors `schemas/plan/plan.schema.json` `$defs.kebabName.pattern`
+/// Validate a kebab-case slice name
 /// (`^[a-z0-9]+(-[a-z0-9]+)*$`).
 ///
 /// # Errors

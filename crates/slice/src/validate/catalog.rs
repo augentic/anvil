@@ -2,13 +2,13 @@
 //! directive on the slice's Evidence claims against the project-level
 //! component catalog (`.specify/design-system/components.yaml`).
 
+use diagnostics::{Artifact, Diagnostic};
 use error::Result;
 use project::config::Layout;
-use project::schema_gate::EvidenceDoc;
-use schema::diagnostics::{Artifact, Diagnostic};
 use serde_json::Value as JsonValue;
 
 use crate::design_system::{ComponentStatus, ComponentsCatalog};
+use crate::synthesis::evidence::EvidenceDoc;
 
 /// Cross-reference Evidence `component:` directives against the
 /// project-level component catalog when present:
@@ -24,9 +24,9 @@ use crate::design_system::{ComponentStatus, ComponentsCatalog};
 /// When no catalog exists the check returns empty — the catalog is
 /// opt-in.
 ///
-/// `evidence_docs` is the parsed Evidence set the pre-adapter sweep
-/// already read and schema-validated, so the `component:` directives
-/// are inspected without re-reading `evidence/*.yaml`.
+/// `evidence_docs` is the typed Evidence set the pre-adapter sweep
+/// already read and validated, so the `component:` directives are
+/// inspected without re-reading `evidence/*.yaml`.
 pub(super) fn catalog_drift(
     layout: Layout<'_>, evidence_docs: &[EvidenceDoc],
 ) -> Result<Vec<Diagnostic>> {
@@ -37,15 +37,10 @@ pub(super) fn catalog_drift(
     let mut findings: Vec<Diagnostic> = Vec::new();
 
     for doc in evidence_docs {
-        let source_key =
-            doc.path.file_stem().and_then(|s| s.to_str()).unwrap_or("<unknown>").to_string();
+        let source_key = &doc.source;
 
-        let Some(claims) = doc.value.get("claims").and_then(JsonValue::as_array) else {
-            continue;
-        };
-
-        for claim in claims {
-            if let Some(slug) = claim.get("component").and_then(JsonValue::as_str) {
+        for claim in &doc.document.claims {
+            if let Some(slug) = claim.extras.get("component").and_then(JsonValue::as_str) {
                 match catalog.status_of(slug) {
                     None => {
                         findings.push(catalog_drift_summary(&format!(

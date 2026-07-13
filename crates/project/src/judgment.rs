@@ -1,7 +1,7 @@
 //! The workflow guests' judgment kernel.
 //!
 //! Each leg is one schema-gated [`Model::create`] bracketed by
-//! deterministic tails (schema gate, parse, projection kernel) inside a
+//! deterministic tails (typed serde parse, projection kernel) inside a
 //! bounded repair loop: a tail failure re-prompts with the findings
 //! inlined, up to [`MAX_REPAIRS`] times. These legs are the sole
 //! judgment path, driven by the guest orchestrators — the propose leg
@@ -23,15 +23,16 @@ pub const MAX_REPAIRS: usize = 2;
 
 /// Issue one schema-gated judgment leg with a bounded repair loop.
 ///
-/// `tail` is the deterministic validation over the raw answer (schema
-/// gate, parse, projection kernel). On a tail failure the leg
+/// `tail` is the deterministic validation over the raw answer (typed
+/// serde parse, projection kernel). On a tail failure the leg
 /// re-prompts with the failed answer and the findings inlined; a model
 /// failure is never repaired (the request did not change).
 ///
-/// The tail's schema gate is redundant with the host `create` gate on
-/// the live backend (a schema-invalid answer surfaces there as
-/// `invalid-answer`, never reaching the tail) — it is belt-and-braces
-/// for the mock and replay backends, whose answers are unvalidated.
+/// The host `create` gate enforces the answer schema on the live
+/// backend (a schema-invalid answer surfaces there as
+/// `invalid-answer`, never reaching the tail); the tail's typed parse
+/// is the belt-and-braces check for the mock and replay backends,
+/// whose answers are unvalidated.
 ///
 /// # Errors
 ///

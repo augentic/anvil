@@ -261,9 +261,9 @@ const fn map_authority(authority: fixtures::Authority) -> AuthorityClass {
 /// `backing-path` for a filesystem pointer).
 fn map_claim(claim: &fixtures::Claim) -> artifacts::evidence::Claim {
     let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
-    typed.id = claim.id.clone();
-    typed.path = claim.path.clone();
-    typed.synopsis = claim.synopsis.clone();
+    typed.id.clone_from(&claim.id);
+    typed.path.clone_from(&claim.path);
+    typed.synopsis.clone_from(&claim.synopsis);
     typed.set_backing(claim.backing.clone().map(|backing| match backing {
         fixtures::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
         fixtures::Backing::Path(path) => artifacts::evidence::Backing::Path(path),

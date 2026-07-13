@@ -5,7 +5,7 @@
 
 use std::io::Write;
 
-use schema::diagnostics::{
+use diagnostics::{
     Diagnostic, DiagnosticReport, DiagnosticReportVersion, DiagnosticSummary, has_blocking,
     renumber,
 };

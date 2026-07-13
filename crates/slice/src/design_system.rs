@@ -14,28 +14,24 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use error::{Error, Result};
-use project::schema_gate;
 use serde::{Deserialize, Serialize};
 
 /// On-disk path relative to project root.
 const CATALOG_REL: &str = ".specify/design-system/components.yaml";
 
-/// Shared load-and-validate kernel for the design-system YAML inputs.
+/// Shared load kernel for the design-system YAML inputs.
 ///
 /// Reads `<project_dir>/<rel>`, returning `Ok(None)` when the file is
-/// absent (both inputs are opt-in), then runs the schema `gate` and
-/// deserialises on success. `code` / `rule` label the deserialise
-/// failure with the same discriminant the schema gate uses.
+/// absent (the inputs are opt-in), then deserialises through the typed
+/// shape. `code` / `rule` label the deserialise failure.
 fn load_validated<T: serde::de::DeserializeOwned>(
-    project_dir: &Path, rel: &str, gate: fn(&str, &Path) -> Result<()>, code: &'static str,
-    rule: &'static str,
+    project_dir: &Path, rel: &str, code: &'static str, rule: &'static str,
 ) -> Result<Option<T>> {
     let path = project_dir.join(rel);
     if !path.is_file() {
         return Ok(None);
     }
     let content = project::fs::read_text(&path)?;
-    gate(&content, &path)?;
     let value: T = serde_saphyr::from_str(&content).map_err(|err| {
         Error::validation_failed(
             code,
@@ -77,10 +73,8 @@ pub struct ComponentEntry {
 
 /// The operator-curated component catalog.
 ///
-/// Validated against `schemas/design-system/components.schema.json` on
-/// load. Absent catalogs are represented as `None` at the call site —
-/// this struct always represents a successfully loaded and validated
-/// catalog.
+/// Absent catalogs are represented as `None` at the call site — this
+/// struct always represents a successfully loaded catalog.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComponentsCatalog {
     /// Schema version (currently pinned to `1`).
@@ -90,23 +84,21 @@ pub struct ComponentsCatalog {
 }
 
 impl ComponentsCatalog {
-    /// Load and validate the catalog from a project root.
+    /// Load the catalog from a project root.
     ///
     /// Returns `Ok(None)` when the catalog file does not exist (opt-in).
-    /// Returns `Err` when the file exists but fails YAML parse or schema
-    /// validation.
+    /// Returns `Err` when the file exists but fails the typed parse.
     ///
     /// # Errors
     ///
     /// - [`Error::Filesystem`] if the file exists but cannot be read.
-    /// - [`Error::Validation`] if the file fails schema validation.
+    /// - [`Error::Validation`] if the file fails the typed parse.
     pub fn load(project_dir: &Path) -> Result<Option<Self>> {
         load_validated(
             project_dir,
             CATALOG_REL,
-            schema_gate::validate_components_yaml,
             "catalog-schema",
-            "components.yaml conforms to schemas/design-system/components.schema.json",
+            "components.yaml deserialises as a component catalog",
         )
     }
 

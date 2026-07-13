@@ -113,7 +113,7 @@ pub fn target(
 /// Project component cache directory.
 #[must_use]
 pub(crate) fn component_cache_dir(project_dir: &Path) -> PathBuf {
-    schema::cache::project_cache_dir(project_dir).join("components")
+    diagnostics::cache::project_cache_dir(project_dir).join("components")
 }
 
 /// Project component cache entry for `name`.
@@ -148,7 +148,7 @@ fn locate(
     let name = adapter_ref.name.as_str();
     if let Some(version) = adapter_ref.version.as_ref() {
         let version = version.to_string();
-        let entry = schema::cache::adapter_store_entry(name, &version);
+        let entry = diagnostics::cache::adapter_store_entry(name, &version);
         if !entry.is_file() {
             return Err(Error::Diag {
                 code: "adapter-not-found",
@@ -160,7 +160,7 @@ fn locate(
                 ),
             });
         }
-        if let Err(mismatch) = schema::cache::verify_store_entry(name, &version) {
+        if let Err(mismatch) = diagnostics::cache::verify_store_entry(name, &version) {
             return Err(Error::Diag {
                 code: "adapter-digest-mismatch",
                 detail: format!(

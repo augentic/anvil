@@ -2,12 +2,12 @@
 
 use std::io::Write;
 
+use diagnostics::{Diagnostic, has_blocking, is_blocking};
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, ReportBody};
 use project::plan::{Plan, full_report as plan_full_report};
-use schema::diagnostics::{Diagnostic, has_blocking, is_blocking};
 use serde::{Deserialize, Serialize};
 
 use super::require_file;

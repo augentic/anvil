@@ -2,10 +2,9 @@
 //!
 //! Mirrors [`crate::synthesis`]: the pure, IO-free domain pieces
 //! the `specify slice build` verb composes. The closed-shape build
-//! request/report DTOs live in [`project::seam::wire`]; [`assemble`]
+//! request/report DTOs live in [`project::seam::wire`] (the typed
+//! serde parse is the envelope gate); [`assemble`]
 //! assembles a request from the bound target adapter's declared inputs
-//! against the slice tree. Schema validation of the raw envelopes lives
-//! in [`project::schema_gate`], beside the other workflow-aware
-//! validators.
+//! against the slice tree.
 
 pub mod assemble;

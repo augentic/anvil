@@ -62,7 +62,10 @@ async fn unrepairable_exhausts_budget() {
 
     let err = author(&invoker).await.expect_err("the budget exhausts");
     let detail = err.to_string();
-    assert!(detail.contains("proposal-schema"), "the last schema failure surfaces: {detail}");
+    assert!(
+        detail.contains("plan-propose-response-parse"),
+        "the last schema failure surfaces: {detail}"
+    );
 
     // One initial dispatch plus MAX_REPAIRS re-prompts, then the leg
     // gives up — no further call.

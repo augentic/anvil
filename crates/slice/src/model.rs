@@ -1,24 +1,21 @@
 //! Slice model — `model.yaml`.
 //!
 //! One structured artifact per slice at
-//! `.specify/slices/<slice>/model.yaml`. The single
-//! `schemas/slice/model.schema.json` validates both the agent's
-//! synthesis-response `model` and the persisted file: kernel-owned and
-//! header fields are optional so the kernel re-derives/stamps them on
-//! projection (normalize, never reject). Provenance is carried inline
-//! on each requirement, so the provenance view is *projected* on
-//! demand by `specify slice provenance` rather than persisted as a
-//! second file.
+//! `.specify/slices/<slice>/model.yaml`. The typed [`SliceModel`]
+//! shape covers both the agent's synthesis-response `model` and the
+//! persisted file: kernel-owned and header fields are optional so the
+//! kernel re-derives/stamps them on projection (normalize, never
+//! reject). Provenance is carried inline on each requirement, so the
+//! provenance view is *projected* on demand by `specify slice
+//! provenance` rather than persisted as a second file.
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use artifacts::evidence::{AuthorityClass, ClaimKind};
+use artifacts::evidence::{AuthorityClass, Claim, ClaimKind};
 use artifacts::spec::provenance::RequirementStatus;
 use error::{Error, Result};
 use jiff::Timestamp;
-use project::schema_gate::evidence_yaml_paths;
-use schema::{SLICE_MODEL_JSON_SCHEMA, ValidationStatus, join_details, validate_value_cached};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -27,16 +24,15 @@ use crate::provenance::{
     ResolutionTrace,
 };
 use crate::synthesis::authority::{Agreement, ClaimRef, resolve};
+use crate::synthesis::evidence::evidence_yaml_paths;
 
 /// In-memory view of `model.yaml`, holding the header, the requirement
 /// set with inline provenance, and the task list.
 ///
 /// The model carries only the earned core today — `requirements[]` and
 /// `tasks[]`; the deferred non-requirements sections (`domain`, `apis`,
-/// …) are not part of the schema yet. The top-level shape is closed
-/// (`additionalProperties: false`), enforced by the embedded schema
-/// during [`SliceModel::load`]. `target` is not persisted — it is
-/// resolved on demand from the bound `project`.
+/// …) are not modeled yet and are ignored on deserialise. `target` is
+/// not persisted — it is resolved on demand from the bound `project`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SliceModel {
@@ -147,62 +143,26 @@ pub struct ModelTask {
     pub satisfies: Vec<String>,
 }
 
-/// Validate a raw `model.yaml` document (parsed to JSON) against the
-/// embedded `schemas/slice/model.schema.json`.
-///
-/// Validates the *whole* document — including the non-requirements
-/// sections [`SliceModel`] does not model — so the closed top-level
-/// shape is enforced even though the typed view captures only the
-/// header and requirements.
-///
-/// # Errors
-///
-/// Returns [`Error::Validation`] keyed on `"slice-model-schema"` when
-/// the document fails the schema.
-pub fn validate_model_doc(value: &JsonValue) -> Result<()> {
-    let rule = "model.yaml conforms to schemas/slice/model.schema.json";
-    let failures: Vec<_> =
-        validate_value_cached(value, SLICE_MODEL_JSON_SCHEMA, "slice-model-schema", rule)
-            .into_iter()
-            .filter(|summary| summary.status == ValidationStatus::Fail)
-            .collect();
-    if failures.is_empty() {
-        Ok(())
-    } else {
-        Err(Error::Validation {
-            code: "slice-model-schema".into(),
-            detail: join_details(&failures),
-        })
-    }
-}
-
 impl SliceModel {
-    /// Parse and schema-validate a `model.yaml` from its raw contents.
-    ///
-    /// The whole document is validated against the schema first, then
-    /// the typed header + requirements view is deserialised from it.
+    /// Parse a `model.yaml` from its raw contents. Unknown sections
+    /// (`domain`, `apis`, …) are ignored on deserialise.
     ///
     /// # Errors
     ///
-    /// - [`Error::YamlDe`] when the contents are not valid YAML.
-    /// - [`Error::Validation`] when the document fails the schema.
+    /// [`Error::YamlDe`] when the contents are not valid YAML or do
+    /// not fit the typed view.
     pub fn parse_yaml(raw: &str) -> Result<Self> {
-        let value: JsonValue = serde_saphyr::from_str(raw)?;
-        validate_model_doc(&value)?;
-        // Re-parse into the typed header + requirements view; unknown
-        // sections (`domain`, `apis`, …) are ignored on deserialise,
-        // having already been schema-checked on the raw document above.
         let model: Self = serde_saphyr::from_str(raw)?;
         Ok(model)
     }
 
-    /// Load and schema-validate a `model.yaml` at `path`.
+    /// Load a `model.yaml` at `path`.
     ///
     /// # Errors
     ///
     /// - [`Error::Filesystem`] when `path` cannot be read.
-    /// - [`Error::YamlDe`] when the file is not valid YAML.
-    /// - [`Error::Validation`] when the file fails the schema.
+    /// - [`Error::YamlDe`] when the file is not valid YAML or does not
+    ///   fit the typed view.
     pub fn load(path: &Path) -> Result<Self> {
         Self::parse_yaml(&project::fs::read_text(path)?)
     }
@@ -224,8 +184,7 @@ impl SliceModel {
     ///   `path` anchor are read from `evidence/<source>.yaml`, keyed by
     ///   the `(source, id)` the claim already carries.
     ///
-    /// `generated_at` and `generator` stamp the projection's header so
-    /// it round-trips against `schemas/slice/provenance.schema.json`.
+    /// `generated_at` and `generator` stamp the projection's header.
     ///
     /// # Errors
     ///
@@ -287,7 +246,6 @@ impl SliceModel {
             generator,
             requirements,
         };
-        index.validate()?;
         Ok(index)
     }
 }
@@ -340,7 +298,8 @@ struct EvidenceIndex {
 impl EvidenceIndex {
     /// Read every `evidence/*.yaml` under `slice_dir` into the index.
     /// Source key is each file stem; the document-level `authority`
-    /// and per-claim `value` / `path` are pulled from the parsed JSON.
+    /// and per-claim `value` / `path` are pulled from the typed
+    /// document.
     ///
     /// # Errors
     ///
@@ -350,23 +309,13 @@ impl EvidenceIndex {
         let mut index = Self::default();
         for path in evidence_yaml_paths(slice_dir)? {
             let raw = project::fs::read_text(&path)?;
-            let doc: JsonValue = serde_saphyr::from_str(&raw)?;
+            let document: artifacts::evidence::Document = serde_saphyr::from_str(&raw)?;
             let source = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
-            if let Some(class) = doc
-                .get("authority")
-                .and_then(JsonValue::as_str)
-                .and_then(|s| serde_json::from_value(JsonValue::String(s.to_string())).ok())
-            {
-                index.authority.insert(source.clone(), class);
-            }
-            let Some(claims) = doc.get("claims").and_then(JsonValue::as_array) else {
-                continue;
-            };
-            for claim in claims {
-                let Some(id) = claim.get("id").and_then(JsonValue::as_str) else {
-                    continue;
-                };
-                index.claims.insert((source.clone(), id.to_string()), claim_body(claim));
+            index.authority.insert(source.clone(), document.authority);
+            for claim in document.claims {
+                if let Some(id) = claim.id.clone() {
+                    index.claims.insert((source.clone(), id), claim_body(&claim));
+                }
             }
         }
         Ok(index)
@@ -384,30 +333,25 @@ impl EvidenceIndex {
 /// carries `decision`, an `example` carries `output`.
 const VALUE_FIELDS: [&str; 4] = ["statement", "criterion", "decision", "output"];
 
-/// Extract one claim's `value` and `path` from its parsed JSON object.
+/// Extract one claim's `value` and `path` from the typed claim.
 ///
-/// `value` prefers the well-known body fields in [`VALUE_FIELDS`] order,
-/// then falls back to the first scalar string body field that is not the
-/// `id` / `kind` / `path` structural keys. `path` is read verbatim.
-fn claim_body(claim: &JsonValue) -> ClaimBody {
+/// `value` prefers the well-known open body fields in [`VALUE_FIELDS`]
+/// order, then the first scalar string among the claim's open extras
+/// (deterministic — the map iterates in key order), then the typed
+/// `synopsis` / inline `payload`. `path` is the claim's source anchor,
+/// read verbatim.
+fn claim_body(claim: &Claim) -> ClaimBody {
     let value = VALUE_FIELDS
         .iter()
-        .find_map(|field| claim.get(*field).and_then(JsonValue::as_str))
-        .or_else(|| first_scalar_body(claim))
+        .find_map(|field| claim.extras.get(*field).and_then(JsonValue::as_str))
+        .or_else(|| claim.extras.values().find_map(JsonValue::as_str))
+        .or(claim.synopsis.as_deref())
+        .or(claim.payload.as_deref())
         .map(str::to_string);
-    let path = claim.get("path").and_then(JsonValue::as_str).map(str::to_string);
-    ClaimBody { value, path }
-}
-
-/// First scalar string body field of a claim object, skipping the
-/// `id` / `kind` / `path` structural keys. Deterministic — the parsed
-/// object iterates in key order.
-fn first_scalar_body(claim: &JsonValue) -> Option<&str> {
-    claim
-        .as_object()?
-        .iter()
-        .filter(|(key, _)| !matches!(key.as_str(), "id" | "kind" | "path"))
-        .find_map(|(_, v)| v.as_str())
+    ClaimBody {
+        value,
+        path: claim.path.clone(),
+    }
 }
 
 fn missing_field(field: &str) -> Error {

@@ -1,0 +1,549 @@
+{
+  "$defs": {
+    "Artifact": {
+      "description": "Artifact category attribution for a [`Diagnostic`].",
+      "oneOf": [
+        {
+          "const": "code",
+          "description": "Generated or hand-written code.",
+          "type": "string"
+        },
+        {
+          "const": "tests",
+          "description": "Test files.",
+          "type": "string"
+        },
+        {
+          "const": "contracts",
+          "description": "Contract artifacts under `contracts/`.",
+          "type": "string"
+        },
+        {
+          "const": "specs",
+          "description": "Behavioral specs (`spec.md`).",
+          "type": "string"
+        },
+        {
+          "const": "design",
+          "description": "Design notes (`design.md`).",
+          "type": "string"
+        },
+        {
+          "const": "decisions",
+          "description": "Decision Records (`.specify/slices/<slice>/decisions/<slug>.md`,\npromoted to `.specify/decisions/DEC-NNNN-<slug>.md`).",
+          "type": "string"
+        },
+        {
+          "const": "tasks",
+          "description": "Task list (`tasks.md`).",
+          "type": "string"
+        },
+        {
+          "const": "assets",
+          "description": "Asset inventory (`assets.yaml`).",
+          "type": "string"
+        },
+        {
+          "const": "tokens",
+          "description": "Design tokens (`tokens.yaml`).",
+          "type": "string"
+        },
+        {
+          "const": "composition",
+          "description": "Per-shell composition manifest.",
+          "type": "string"
+        },
+        {
+          "const": "plan",
+          "description": "Plan or workflow artifact (`plan.yaml`, `discovery.md`).",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "description": "Artifact category not classified.",
+          "type": "string"
+        }
+      ]
+    },
+    "BuildOutput": {
+      "additionalProperties": false,
+      "description": "A single per-platform build output declared in a [`BuildReport`].\n\nEach entry names the platform and a path (relative to `project-dir`)\nwhere the target adapter produced an artifact. The CLI finalize gate\nverifies every declared path exists and is non-empty\n(`target-build-output-missing`).",
+      "properties": {
+        "path": {
+          "description": "Relative path (from `project-dir`) to the produced artifact.",
+          "type": "string"
+        },
+        "platform": {
+          "$ref": "#/$defs/Platform",
+          "description": "Target platform."
+        }
+      },
+      "required": [
+        "platform",
+        "path"
+      ],
+      "type": "object"
+    },
+    "BuildStatus": {
+      "description": "Closed build outcome enum.\n\nPartial success is [`BuildStatus::Success`] carrying non-blocking\nfindings only — the CLI rejects a `success` report with any blocking\nfinding via the report's internal blocking-findings gate.",
+      "oneOf": [
+        {
+          "const": "success",
+          "description": "Build succeeded; only non-blocking findings (or none) allowed.",
+          "type": "string"
+        },
+        {
+          "const": "failure",
+          "description": "Build failed; blocking findings allowed.",
+          "type": "string"
+        }
+      ]
+    },
+    "Confidence": {
+      "description": "Producer self-rated confidence for a [`Diagnostic`].",
+      "oneOf": [
+        {
+          "const": "high",
+          "description": "High confidence in the diagnostic.",
+          "type": "string"
+        },
+        {
+          "const": "medium",
+          "description": "Medium confidence.",
+          "type": "string"
+        },
+        {
+          "const": "low",
+          "description": "Low confidence; reviewer should triage.",
+          "type": "string"
+        }
+      ]
+    },
+    "Diagnostic": {
+      "additionalProperties": false,
+      "description": "Structured diagnostic — the neutral currency shared by the validate\nand review surfaces.\n\nProducer-local `id` (e.g. `FIND-0001`) is distinct from the codex\n`rule_id` (e.g. `UNI-014`): `id` is a stable per-run handle and\n`rule_id` is the durable codex citation.",
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/Artifact",
+          "description": "Artifact category attribution."
+        },
+        "change": {
+          "description": "Change name when known.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Confidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Producer self-rated confidence. Required for\n`source: model-assisted`; the conditional rule is enforced by\nthe validator, not here."
+        },
+        "evidence": {
+          "$ref": "#/$defs/FindingEvidence",
+          "description": "Evidence union."
+        },
+        "fingerprint": {
+          "description": "Stable hash over `(rule-id, location, evidence-payload)`.\nFormat `sha256:<64 hex chars>`.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Producer-local stable id for this run (e.g. `FIND-0001`).",
+          "type": "string"
+        },
+        "impact": {
+          "description": "Operator-facing risk.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/DiagnosticKind",
+          "default": "violation",
+          "description": "Nature axis: defect (`violation`) vs request-for-judgment\n(`review`). Defaults to `violation` when the wire field is\nomitted."
+        },
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FindingLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional anchor location for the diagnostic."
+        },
+        "related-rule-ids": {
+          "description": "Additional codex ids that informed the diagnostic.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "remediation": {
+          "description": "Concrete action to clear the diagnostic.",
+          "type": "string"
+        },
+        "rule-id": {
+          "description": "Rule id (e.g. `UNI-014`); absent for diagnostics that do not\ncite codex policy.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "description": "Closed severity enum."
+        },
+        "slice": {
+          "description": "Slice name when the diagnostic is slice-scoped.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/DiagnosticSource",
+          "description": "Producer attribution."
+        },
+        "source-adapter": {
+          "description": "Source-adapter name when the diagnostic is source-specific.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target-adapter": {
+          "description": "Target-adapter name when the diagnostic is adapter-specific.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "description": "Short diagnostic title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "severity",
+        "source",
+        "artifact",
+        "evidence",
+        "impact",
+        "remediation",
+        "fingerprint"
+      ],
+      "type": "object"
+    },
+    "DiagnosticKind": {
+      "description": "Orthogonal nature axis for a [`Diagnostic`].\n\nDistinguishes a deterministic defect from a deterministically\nraised request for judgment. Defaults to [`Self::Violation`] so a\ndiagnostic that omits the wire field deserialises as a defect, and\nso the [`is_blocking`] predicate keeps its pre-axis behaviour.",
+      "oneOf": [
+        {
+          "const": "violation",
+          "description": "A defect: something is wrong and should be fixed. Default.",
+          "type": "string"
+        },
+        {
+          "const": "review",
+          "description": "A request for agent or human judgment raised deterministically\n(e.g. a deferred semantic check the producer cannot decide).",
+          "type": "string"
+        }
+      ]
+    },
+    "DiagnosticSource": {
+      "description": "Producer attribution for a [`Diagnostic`].",
+      "oneOf": [
+        {
+          "const": "deterministic",
+          "description": "Output of a deterministic scanner.",
+          "type": "string"
+        },
+        {
+          "const": "model-assisted",
+          "description": "Output of an SLM/LLM scorer.",
+          "type": "string"
+        },
+        {
+          "const": "hybrid",
+          "description": "Mix of deterministic + model-assisted signals.",
+          "type": "string"
+        },
+        {
+          "const": "human",
+          "description": "Recorded by a human reviewer.",
+          "type": "string"
+        },
+        {
+          "const": "tool",
+          "description": "Emitted by an external WASI tool (e.g. the contract verifier).",
+          "type": "string"
+        }
+      ]
+    },
+    "FindingEvidence": {
+      "description": "Closed evidence union for a [`Diagnostic`].\n\nInternally tagged on `kind` (`deny_unknown_fields` closes each\nbranch). Producers should keep inline payloads small — reference\nlarge evidence by digest rather than embedding it.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "Bounded verbatim excerpt for local code or prose evidence.",
+          "properties": {
+            "kind": {
+              "const": "snippet",
+              "type": "string"
+            },
+            "value": {
+              "description": "Verbatim payload bytes.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Digest reference for evidence too large or sensitive to inline.",
+          "properties": {
+            "kind": {
+              "const": "digest",
+              "type": "string"
+            },
+            "locations": {
+              "description": "Optional contributing locations referenced by the digest.",
+              "items": {
+                "$ref": "#/$defs/FindingLocation"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "sha256": {
+              "description": "Hex-encoded SHA-256 of the underlying evidence bytes.",
+              "type": "string"
+            },
+            "summary": {
+              "description": "Short human summary of what was hashed.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "sha256",
+            "summary"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Domain-structured evidence (e.g. contract compatibility data).",
+          "properties": {
+            "data": {
+              "description": "Free-form JSON payload. Producers MUST keep `data` bounded\nand secret-free; the validator enforces the 16 `KiB` cap on\nthe full evidence object."
+            },
+            "kind": {
+              "const": "structured",
+              "type": "string"
+            },
+            "locations": {
+              "description": "Optional contributing locations referenced by the payload.",
+              "items": {
+                "$ref": "#/$defs/FindingLocation"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "summary": {
+              "description": "Short human summary of `data`.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "summary",
+            "data"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "FindingLocation": {
+      "additionalProperties": false,
+      "description": "File path plus optional line/column range carried by a\n[`Diagnostic`] or by a `digest`/`structured` evidence variant.",
+      "properties": {
+        "column": {
+          "description": "Anchor column.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "end-column": {
+          "description": "Inclusive end column for a multi-line range.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "end-line": {
+          "description": "Inclusive end line for a multi-line range.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "line": {
+          "description": "Anchor line (0-indexed; producers commonly emit 1-indexed and\nthe schema accepts either with `minimum: 0`).",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "path": {
+          "description": "Project-relative file path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "Platform": {
+      "description": "Target platform for a Specify project.\n\n`Core` is the shared Rust business-logic crate; every project that\ndeclares platforms must include it. The shell variants (`Ios`,\n`Android`, `Web`, `Desktop`) represent native presentation layers.\n\nOnly `Ios` and `Android` have scaffold/build/verify support today;\n`Web` and `Desktop` are type-system placeholders signalling future\nfunctionality.",
+      "oneOf": [
+        {
+          "const": "core",
+          "description": "Shared Rust business-logic crate (mandatory in every platform set).",
+          "type": "string"
+        },
+        {
+          "const": "ios",
+          "description": "iOS native shell (Swift + UIKit/SwiftUI).",
+          "type": "string"
+        },
+        {
+          "const": "android",
+          "description": "Android native shell (Kotlin + Compose/Views).",
+          "type": "string"
+        },
+        {
+          "const": "web",
+          "description": "Web shell (future — accepted but no build/scaffold support yet).",
+          "type": "string"
+        },
+        {
+          "const": "desktop",
+          "description": "Desktop shell (future — accepted but no build/scaffold support yet).",
+          "type": "string"
+        }
+      ]
+    },
+    "Severity": {
+      "description": "Closed severity enum. Variants are declared in the documented sort\norder — the derived [`Ord`] therefore yields `Critical < Important\n< Suggestion < Optional`.\n\n```\nuse diagnostics::Severity;\n\nassert!(Severity::Critical < Severity::Suggestion);\n```",
+      "oneOf": [
+        {
+          "const": "critical",
+          "description": "Highest priority; blocks merge in CI.",
+          "type": "string"
+        },
+        {
+          "const": "important",
+          "description": "Should-fix; default escalation level for adapter overlays.",
+          "type": "string"
+        },
+        {
+          "const": "suggestion",
+          "description": "Nice-to-have; reviewer judgement applies.",
+          "type": "string"
+        },
+        {
+          "const": "optional",
+          "description": "Informational; recorded but not graded.",
+          "type": "string"
+        }
+      ]
+    },
+    "UiSurface": {
+      "additionalProperties": false,
+      "description": "The per-slice \"has UI surface\" signal authored by the build brief.\n\nCarries the count of screen-bearing requirements the slice\nintroduces or modifies, derived from the brief's own `spec.md`\njudgement (never from `## Platforms`). `screens == 0` means \"no UI\nsurface\". The UI-surface coherence check that consumed this signal\nlives in-guest (the vectis core's report gate); the engine only\nround-trips the field on the wire.",
+      "properties": {
+        "screens": {
+          "description": "Count of screen-bearing requirements this slice introduces or\nmodifies. `0` means no UI surface.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "screens"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/answers/report.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a target adapter's build or merge operation: the report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
+  "properties": {
+    "findings": {
+      "default": [],
+      "description": "Full structured diagnostics; default `[]`.",
+      "items": {
+        "$ref": "#/$defs/Diagnostic"
+      },
+      "type": "array"
+    },
+    "outputs": {
+      "default": [],
+      "description": "Per-platform build outputs; default `[]`.",
+      "items": {
+        "$ref": "#/$defs/BuildOutput"
+      },
+      "type": "array"
+    },
+    "status": {
+      "$ref": "#/$defs/BuildStatus",
+      "description": "Operation outcome as judged by the model."
+    },
+    "ui-surface": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/UiSurface"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional UI-surface signal."
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "title": "Specify build/merge answer",
+  "type": "object"
+}

@@ -13,7 +13,7 @@
 
 use std::collections::BTreeSet;
 
-use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------

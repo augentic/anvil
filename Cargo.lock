@@ -138,10 +138,10 @@ checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 name = "artifacts"
 version = "0.27.2"
 dependencies = [
+ "diagnostics",
  "error",
  "glob",
  "regex",
- "schema",
  "schemars",
  "serde",
  "serde-saphyr",
@@ -478,6 +478,7 @@ name = "change"
 version = "0.27.2"
 dependencies = [
  "artifacts",
+ "diagnostics",
  "error",
  "fixtures",
  "jiff",
@@ -485,7 +486,6 @@ dependencies = [
  "omnia-testkit",
  "project",
  "prose",
- "schema",
  "serde",
  "serde-saphyr",
  "serde_json",
@@ -499,6 +499,10 @@ dependencies = [
 name = "checks"
 version = "0.27.2"
 dependencies = [
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
  "tempfile",
  "toml",
 ]
@@ -1004,6 +1008,20 @@ name = "deranged"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
+
+[[package]]
+name = "diagnostics"
+version = "0.27.2"
+dependencies = [
+ "base16ct",
+ "proptest",
+ "schemars",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+]
 
 [[package]]
 name = "digest"
@@ -2026,6 +2044,7 @@ dependencies = [
  "anyhow",
  "artifacts",
  "change",
+ "diagnostics",
  "error",
  "fixtures",
  "omnia",
@@ -2034,7 +2053,6 @@ dependencies = [
  "omnia-testkit",
  "omnia-wasi-model",
  "project",
- "schema",
  "serde-saphyr",
  "serde_json",
  "slice",
@@ -2875,11 +2893,11 @@ name = "project"
 version = "0.27.2"
 dependencies = [
  "artifacts",
+ "diagnostics",
  "error",
  "jiff",
  "omnia-guest",
  "petgraph",
- "schema",
  "schemars",
  "semver",
  "serde",
@@ -3542,22 +3560,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "schema"
-version = "0.27.2"
-dependencies = [
- "base16ct",
- "error",
- "jsonschema",
- "proptest",
- "serde",
- "serde-saphyr",
- "serde_json",
- "sha2 0.11.0",
- "tempfile",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "schemars"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3820,13 +3822,13 @@ name = "slice"
 version = "0.27.2"
 dependencies = [
  "artifacts",
+ "diagnostics",
  "error",
  "jiff",
  "omnia-guest",
  "project",
  "prose",
  "regex",
- "schema",
  "schemars",
  "serde",
  "serde-saphyr",
@@ -3863,6 +3865,7 @@ dependencies = [
  "artifacts",
  "cfg-if",
  "change",
+ "diagnostics",
  "error",
  "omnia",
  "omnia-cursor",
@@ -3871,7 +3874,6 @@ dependencies = [
  "omnia-wasi-model",
  "omnia-wasi-otel",
  "project",
- "schema",
  "serde",
  "serde_json",
  "slice",

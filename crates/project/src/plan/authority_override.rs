@@ -191,7 +191,7 @@ pub fn emit_seed_events(
 pub fn reject_orphans(plan: &Plan) -> Result<()> {
     let findings: Vec<_> = orphan_authority_override_keys(&plan.entries)
         .into_iter()
-        .filter(schema::diagnostics::is_blocking)
+        .filter(diagnostics::is_blocking)
         .collect();
     let Some(first) = findings.first() else {
         return Ok(());

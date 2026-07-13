@@ -244,7 +244,7 @@ pub enum AdapterLocation {
     /// Resolved from the global content-addressed adapter store entry
     /// at `<store-root>/<name>@<version>.wasm` — the immutable,
     /// version-keyed install target resolved by
-    /// `schema::cache::adapter_store_entry` and populated by
+    /// `diagnostics::cache::adapter_store_entry` and populated by
     /// the wasm-pkg transport. Probed whenever the [`AdapterRef`]
     /// carries a pinned version.
     Store(PathBuf),

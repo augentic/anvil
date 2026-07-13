@@ -1,7 +1,7 @@
 //! Validation rule registry and runner.
 //!
 //! [`validate_slice`] returns a `Vec<Diagnostic>` — the neutral currency
-//! from `schema::diagnostics`. Structural `Fail` outcomes become
+//! from `diagnostics`. Structural `Fail` outcomes become
 //! deterministic `violation` diagnostics (`important`, blocking).
 //! Passing rules emit no diagnostic — the report carries only findings,
 //! never the full pass checklist.

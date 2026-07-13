@@ -145,7 +145,7 @@ pub fn scoped_cache(dir: &std::path::Path) -> CacheGuard {
 
 /// Out-of-tree cache directory for `project_dir` under the pinned root.
 pub fn expected_cache_dir(project_dir: &std::path::Path) -> PathBuf {
-    schema::cache::project_cache_dir(project_dir)
+    diagnostics::cache::project_cache_dir(project_dir)
 }
 
 const STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";

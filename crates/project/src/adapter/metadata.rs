@@ -57,7 +57,7 @@ pub(super) fn load(
     runner: Runner, location: &AdapterLocation, axis: Axis, name: &str,
 ) -> Result<Metadata, Error> {
     let component = location.path();
-    let digest = schema::cache::file_content_digest(component);
+    let digest = diagnostics::cache::file_content_digest(component);
     let cache_path = metadata_cache_path(component);
     if let Some(answer) = read_cache(&cache_path, &digest) {
         return Ok(answer);

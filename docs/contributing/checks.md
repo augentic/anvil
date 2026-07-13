@@ -7,7 +7,7 @@ cargo test -p checks          # boundaries + docs/plugin links
 cargo make ci                 # the full gate
 ```
 
-Skill frontmatter, marketplace drift, and docs house style are **not** CI predicates. Schemas under `schemas/authoring/` remain as editor contracts; ultrathin skill body style is guidance in [`docs/standards/cli-contract.md`](../standards/cli-contract.md).
+Skill frontmatter shape and the marketplace manifest are enforced by the typed `authoring` check in the `checks` package ([`tests/authoring.rs`](../../tests/authoring.rs)); docs house style is **not** a CI predicate, and ultrathin skill body style is guidance in [`docs/standards/cli-contract.md`](../standards/cli-contract.md).
 
 ## Who owns which invariant
 

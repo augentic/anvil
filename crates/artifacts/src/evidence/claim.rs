@@ -109,10 +109,11 @@ pub fn is_dotted_kebab(value: &str) -> bool {
     !value.is_empty() && value.split('.').all(super::is_kebab)
 }
 
-/// Deterministically re-check a claim set: ids must match the
-/// dotted-kebab grammar, and `requirement` / `criterion` / `example`
-/// claims must carry one. Returns one findings-style line per
-/// violation; empty means the set is valid.
+/// Deterministically re-check a claim set.
+///
+/// Ids must match the dotted-kebab grammar, and `requirement` /
+/// `criterion` / `example` claims must carry one. Returns one
+/// findings-style line per violation; empty means the set is valid.
 #[must_use]
 pub fn validate_claims(claims: &[Claim]) -> Vec<String> {
     let mut findings = Vec::new();

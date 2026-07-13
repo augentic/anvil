@@ -7,6 +7,7 @@
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::RequirementTag;
+use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
@@ -16,7 +17,6 @@ use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, Status, resolve_topology};
 use project::registry::topology::{Decision, Surface};
 use project::seam::{SourceSeam, TargetSeam};
-use schema::diagnostics::has_blocking;
 
 use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
@@ -267,7 +267,7 @@ fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<TagCounts
             if has_blocking(&findings) {
                 let rules: Vec<&str> = findings
                     .iter()
-                    .filter(|finding| schema::diagnostics::is_blocking(finding))
+                    .filter(|finding| diagnostics::is_blocking(finding))
                     .map(|finding| finding.rule_id.as_deref().unwrap_or("unnamed-rule"))
                     .collect();
                 return Err(Error::validation_failed(

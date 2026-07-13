@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use artifacts::validate::validate_slice;
-use schema::diagnostics::DiagnosticKind;
+use diagnostics::DiagnosticKind;
 use tempfile::TempDir;
 
 mod common;
@@ -85,9 +85,6 @@ mod validate {
 
         let findings = validate_slice(&slice_dir).expect("validate_slice ok");
 
-        assert!(
-            findings.is_empty(),
-            "good fixture must surface no findings: {findings:?}"
-        );
+        assert!(findings.is_empty(), "good fixture must surface no findings: {findings:?}");
     }
 }

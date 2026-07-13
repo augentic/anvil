@@ -2,7 +2,7 @@
 
 #![expect(dead_code, reason = "shared fixtures; each consuming binary uses a subset")]
 
-use schema::diagnostics::{
+use diagnostics::{
     Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSource, FindingEvidence,
     FindingLocation, Severity,
 };

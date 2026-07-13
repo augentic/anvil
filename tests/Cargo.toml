@@ -1,5 +1,6 @@
-# Repo-local checks as a lightweight package: architecture boundary and
-# docs/plugin link integrity. Hosted here (not as root-package tests) so
+# Repo-local checks as a lightweight package: architecture boundary,
+# docs/plugin link integrity, and plugin authoring shape. Hosted here
+# (not as root-package tests) so
 # the Wasmtime-heavy runtime graph stays out of the ordinary test build.
 # `fs_git.rs` and `fixtures/` sit alongside but are not test targets
 # (`autotests = false`; other crates pull them in via `#[path]` / relative paths).
@@ -24,7 +25,15 @@ path = "boundaries.rs"
 name = "links"
 path = "links.rs"
 
+[[test]]
+name = "authoring"
+path = "authoring.rs"
+
 [dev-dependencies]
+semver.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 toml.workspace = true
 

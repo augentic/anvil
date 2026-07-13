@@ -8,12 +8,13 @@
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::RequirementTag;
+use diagnostics::Diagnostic;
 use error::Result;
 use jiff::Timestamp;
 use project::config::Layout;
 use project::journal::{Event, EventKind, append_batch};
-use project::schema_gate::validate_evidence_dir;
-use schema::diagnostics::Diagnostic;
+
+use crate::synthesis::evidence::read_evidence_dir;
 
 mod catalog;
 mod decisions;
@@ -53,7 +54,7 @@ pub enum Validation {
 /// Run the full validation sweep for slice `name`: the pre-adapter
 /// gates, then the adapter rules with the advisory fold.
 ///
-/// First-use schema validation of per-source `Evidence` files runs first
+/// First-use typed validation of per-source `Evidence` files runs first
 /// (per workflow §Source adapter contract); a structural Evidence problem
 /// short-circuits with [`error::Error`] before any gate so the operator sees it
 /// before downstream artefact noise. Then the provenance scan and the
@@ -63,12 +64,12 @@ pub enum Validation {
 ///
 /// # Errors
 ///
-/// Returns [`error::Error`] when Evidence schema validation fails, or when a
+/// Returns [`error::Error`] when Evidence validation fails, or when a
 /// plan, spec, model, discovery, decision, or Evidence file cannot be
 /// read or parsed.
 pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
     let slice_dir = layout.slice_dir(name);
-    let evidence_docs = validate_evidence_dir(&slice_dir)?;
+    let evidence_docs = read_evidence_dir(&slice_dir)?;
 
     let source_keys = pre_adapter::source_keys(layout, name)?;
     let (_spec_req_ids, synthesis_tags, provenance_findings) =

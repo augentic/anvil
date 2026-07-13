@@ -1,23 +1,24 @@
 //! Closed-shape target build request/report wire DTOs and the
 //! success-blocking gate.
 //!
-//! Both envelopes are schema-validated (`validate_request` /
-//! `validate_report`) before the verb deserialises here.
+//! These serde DTOs own both envelope shapes (`deny_unknown_fields`
+//! closes them); the report half also sources the generated `report`
+//! judgment-answer schema via [`crate::answers::report`].
 
 use std::path::{Path, PathBuf};
 
+use diagnostics::{Diagnostic, is_blocking};
 use error::{Error, Result};
-use schema::diagnostics::{Diagnostic, is_blocking};
 use serde::{Deserialize, Serialize};
 
 use crate::platform::Platform;
 
-/// Wire version pinned by both build schemas (`version` `const: 1`).
+/// Wire version stamped on both build envelopes.
 pub const BUILD_VERSION: u32 = 1;
 
 /// The per-slice build request handed to a target adapter.
 ///
-/// Round-trips `schemas/target/build-request.schema.json`. `project_dir`
+/// `project_dir`
 /// (the working tree) and [`BuildInputs::root`] (the slice tree) are
 /// distinct by design; all [`BuildArtifacts`] paths resolve against
 /// `root`.
@@ -110,8 +111,7 @@ pub struct UiSurface {
 
 /// The per-slice build report a target adapter returns.
 ///
-/// Round-trips `schemas/target/build-report.schema.json`. `findings`
-/// elements are [`Diagnostic`]s governed by `diagnostic.schema.json`.
+/// `findings` elements are typed [`Diagnostic`]s.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct BuildReport {

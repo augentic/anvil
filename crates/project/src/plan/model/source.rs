@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 /// source).
 ///
 /// On the wire (workflow §Source) the binding is always the structured
-/// `{ adapter, path?, value? }` object form. The `oneOf` exclusion
-/// between `path` and `value` is enforced by `plan.schema.json` and
-/// re-checked at the loader boundary via `crate::schema_gate::validate_plan`.
+/// `{ adapter, path?, value? }` object form. `path` and `value` are
+/// mutually exclusive; the CLI never writes both and readers treat a
+/// `path` binding as taking precedence.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SourceBinding {

@@ -4,8 +4,9 @@
 /// which serves the adapter's compiled-in references over MCP. Judgment is
 /// an Omnia host effect: each judgment operation issues
 /// `omnia:model/completion.create` with `format: schema(...)` so the host
-/// gate validates the answer. Answer schemas derive from the embedded
-/// canonical schemas into `schemas/answers/`; the records below mirror them
+/// gate validates the answer. The records below are the contract's source
+/// of truth; the answer schemas the model host consumes are generated from
+/// the matching Rust wire types (`project::answers` in `augentic/specify`)
 /// minus call-scoped envelope fields the caller already knows. No resource
 /// types cross the seam: host-mediated dispatch carries plain values only,
 /// routed by each call's `adapter-id` first argument, and every guest opens
@@ -40,14 +41,13 @@ interface types {
 interface source {
   use types.{ adapter-id, error };
 
-  /// The lead returned by the survey operation. Mirrors
-  /// `schemas/discovery/lead.schema.json` minus the envelope `source` key:
-  /// the workflow guest attributes every lead a survey produces to the
-  /// surveyed source itself.
+  /// The lead returned by the survey operation: the discovery lead
+  /// minus the envelope `source` key — the workflow guest attributes
+  /// every lead a survey produces to the surveyed source itself.
   record lead {
     /// Stable kebab-case lead identifier, unique only within its source;
     /// identity is the `(source, lead)` pair. Named `lead` to match the
-    /// schema key, so answers deserialize without a rename.
+    /// wire key, so answers deserialize without a rename.
     lead: string,
     /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
     synopsis: string,
@@ -69,8 +69,9 @@ interface source {
     behaviour
   }
 
-  /// The closed claim-kind taxonomy from `schemas/evidence.schema.json`.
-  /// New kinds require updating the workflow contract and schemas together.
+  /// The closed claim-kind taxonomy shared with the Evidence wire type.
+  /// New kinds require updating the workflow contract and this record
+  /// together.
   enum claim-kind {
     intent,
     requirement,
@@ -110,15 +111,15 @@ interface source {
     path: option<string>,
     /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
     /// Used by the synthesis engine to merge related claims across sources.
-    /// An open per-kind body field in the schema, so answers may omit it.
+    /// An open per-kind body field on the wire, so answers may omit it.
     synopsis: option<string>,
     /// The backing data of the claim's evidence (either a path or a raw payload).
     backing: option<backing>,
   }
 
-  /// The evidence returned by the extract operation. Mirrors
-  /// `schemas/evidence.schema.json` minus the envelope `lead` key: the
-  /// extract call names the lead, so the answer never repeats it.
+  /// The evidence returned by the extract operation: the Evidence
+  /// document minus the envelope `lead` key — the extract call names
+  /// the lead, so the answer never repeats it.
   record evidence {
     /// The document-level authority class of this evidence.
     authority: authority,
@@ -182,9 +183,9 @@ interface target {
     subpath: option<string>,
   }
 
-  /// The severity of a finding. The closed review severity enum from
-  /// `schemas/diagnostics/diagnostic.schema.json`, ordered for sort
-  /// stability (`critical` < `important` < `suggestion` < `optional`).
+  /// The severity of a finding. The closed review severity enum shared
+  /// with the `Diagnostic` wire type, ordered for sort stability
+  /// (`critical` < `important` < `suggestion` < `optional`).
   enum severity {
     critical,
     important,
@@ -194,7 +195,7 @@ interface target {
 
   /// A finding from the operation: the compact projection of one
   /// diagnostic from the schema-gated answer (whose `findings[]` carry
-  /// the full `schemas/diagnostics/diagnostic.schema.json` shape). The
+  /// the full `Diagnostic` wire shape). The
   /// guest maps `rule-id` and `severity` through and folds the
   /// diagnostic's `title` / `impact` / `remediation` prose into
   /// `detail`; the full diagnostic stays in the answer, not on the seam.
@@ -214,8 +215,8 @@ interface target {
     failure,
   }
 
-  /// The closed target platform taxonomy from
-  /// `schemas/target/build-report.schema.json`.
+  /// The closed target platform taxonomy shared with the build-report
+  /// wire type.
   enum platform {
     core,
     ios,
@@ -256,13 +257,13 @@ interface target {
     postflight,
   }
 
-  /// Judgment returned by the `build` and `merge` operations. Mirrors
-  /// `schemas/target/build-report.schema.json` minus the envelope keys
-  /// (`version`, `slice`, `target`) the caller already knows. The
+  /// Judgment returned by the `build` and `merge` operations: the
+  /// build report minus the envelope keys (`version`, `slice`,
+  /// `target`) the caller already knows. The
   /// resulting state — a build's delta, or the merged baseline — lives
   /// in the working tree, not in this report.
   record report {
-    /// The status of the operation. Named `status` to match the schema
+    /// The status of the operation. Named `status` to match the wire
     /// key, so answers deserialize without a rename.
     status: status,
     /// The findings from the operation. On success, only non-blocking

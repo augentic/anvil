@@ -93,7 +93,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 ## Patterns to follow
 
 - Spin up a real scaffold in a `tempfile::TempDir`. Reach for the shared helpers in `crates/change/tests/common/mod.rs` — the `Project` anchor, the fixture provider, and the scripted-answer builders.
-- Compare structured output against checked-in goldens (the shared `spec-*` cases under `tests/fixtures/`, the wire-schema fixtures under `crates/schema/tests/fixtures/plan/v2/`, the generated answer schemas under `schemas/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
+- Compare structured output against checked-in goldens (the shared `spec-*` cases under `tests/fixtures/`, the generated answer schemas under `crates/project/answers/` and `crates/slice/answers/`). Regenerate with `REGENERATE_GOLDENS=1 cargo nextest run -p <crate>` and `git diff` before committing.
 - Prefer structural assertions (status fields, exit codes, JSON shape) over byte-for-byte prose comparisons.
 - Tests that need git operations set deterministic `GIT_*` author/committer env vars so authorship is stable.
 - Scripted model answers are concise checked-in test inputs colocated with their consuming tests — not a replay catalogue, fixture corpus, or scenario format.

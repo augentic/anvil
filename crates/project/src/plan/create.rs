@@ -3,8 +3,8 @@
 
 use std::collections::BTreeMap;
 
+use diagnostics::is_blocking;
 use error::Error;
-use schema::diagnostics::is_blocking;
 
 use super::model::{Entry, Lifecycle, Plan, SourceBinding, Status};
 use crate::name::validate_name;

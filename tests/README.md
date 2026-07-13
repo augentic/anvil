@@ -36,7 +36,7 @@ Binaries not listed here assert structurally and carry no regenerable goldens.
 Each crate keeps its cross-binary helpers under `tests/<helper>/mod.rs` (the sole `mod.rs` exception blessed in [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)), declared per test binary with `mod <helper>;`:
 
 - `workflow`: `crates/change/tests/common/mod.rs` — `MockCmd`, scaffold, and stamped-outcome helpers.
-- `schema`: `crates/schema/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
+- `diagnostics`: `crates/diagnostics/tests/diagnostics_support/mod.rs` — diagnostic fixtures.
 
 Cross-package model test support comes from Omnia's dev-only `omnia-testkit`: its recorded scripted harness is consumed by the workflow suites (`crates/change/tests/`) and the live-model test (`harness/live`).
 

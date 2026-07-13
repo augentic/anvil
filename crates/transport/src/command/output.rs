@@ -107,7 +107,7 @@ impl From<&Error> for Exit {
 /// discriminant (the `code` for `Error::Validation`), `message` the
 /// rendered detail, and `exit-code` the numeric exit. The error body
 /// carries no per-finding rows — handlers render
-/// `schema::diagnostics::DiagnosticReport` on stdout before
+/// `diagnostics::DiagnosticReport` on stdout before
 /// returning the payload-free error.
 ///
 /// Construct via `ErrorBody::from(&err)` — the variant is the only

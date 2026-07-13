@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 
 use artifacts::atomic::bytes_write;
 use artifacts::discovery::Discovery;
+use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
@@ -23,7 +24,6 @@ use project::plan::{
 };
 use project::registry::Registry;
 use project::seam::SourceSeam;
-use schema::diagnostics::has_blocking;
 
 use super::SurveyedSource;
 use crate::judgment::propose::{self, GateContext};

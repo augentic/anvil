@@ -2,7 +2,8 @@
 //!
 //! Each block is a raw, unmerged per-source lead a source adapter emits
 //! at `survey` time, identified by its `(source, lead)` pair and
-//! validated against `schemas/discovery/lead.schema.json`.
+//! re-checked deterministically by [`lead::validate_leads`] before the
+//! merge into `discovery.md`.
 //!
 //! The whole-document model lives in [`document`]; it parses
 //! `discovery.md` and exposes [`Discovery::resolve_lead`] for the
@@ -12,4 +13,4 @@ pub mod document;
 pub mod lead;
 
 pub use document::{Discovery, ResolveError as DiscoveryResolveError};
-pub use lead::Lead;
+pub use lead::{Lead, validate_leads};

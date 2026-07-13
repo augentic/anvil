@@ -8,7 +8,8 @@
 //! tails re-check the constraints a generated schema cannot express (id
 //! grammars, the per-kind claim id requirement).
 //!
-//! The committed copies under `crates/schema/answers/` are parity-gated
+//! The committed copies under `crates/project/answers/` (and
+//! `crates/slice/answers/` for the synthesis leg) are parity-gated
 //! against this generation by `crates/project/tests/answers.rs` and
 //! `crates/slice/tests/answers.rs`; adapters in `augentic/specify-adapters`
 //! vendor the `leads` / `evidence` / `report` documents.
@@ -20,7 +21,7 @@ use crate::seam::wire::{BuildOutput, BuildStatus, UiSurface};
 use crate::seam::{Evidence, Lead};
 
 /// `$id` base for the generated answer documents.
-const ANSWERS_ID_BASE: &str = "https://github.com/augentic/specify/crates/schema/answers";
+const ANSWERS_ID_BASE: &str = "https://github.com/augentic/specify/answers";
 
 /// The `survey` answer envelope: `{ "leads": [ ... ] }`, each item a
 /// [`Lead`] (the discovery lead minus the envelope `source` key — the
@@ -28,6 +29,7 @@ const ANSWERS_ID_BASE: &str = "https://github.com/augentic/specify/crates/schema
 /// source itself).
 #[derive(JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[expect(dead_code, reason = "fields exist only for schemars schema generation")]
 struct LeadsAnswer {
     /// Every lead the survey surfaced, in source order.
     leads: Vec<Lead>,
@@ -38,12 +40,13 @@ struct LeadsAnswer {
 /// when widening onto the canonical report.
 #[derive(JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[expect(dead_code, reason = "fields exist only for schemars schema generation")]
 struct ReportAnswer {
     /// Operation outcome as judged by the model.
     status: BuildStatus,
     /// Full structured diagnostics; default `[]`.
     #[serde(default)]
-    findings: Vec<schema::diagnostics::Diagnostic>,
+    findings: Vec<diagnostics::Diagnostic>,
     /// Per-platform build outputs; default `[]`.
     #[serde(default)]
     outputs: Vec<BuildOutput>,
@@ -154,9 +157,8 @@ pub fn proposal() -> Value {
     schema
 }
 
-/// Render an answer schema the way the generated
-/// `crates/schema/answers/` files are committed: object keys sorted,
-/// pretty-printed, trailing newline.
+/// Render an answer schema the way the committed golden files are
+/// written: object keys sorted, pretty-printed, trailing newline.
 ///
 /// The explicit sort keeps the byte shape independent of `serde_json`'s
 /// `preserve_order` feature, which downstream dependencies may toggle.

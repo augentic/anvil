@@ -6,7 +6,7 @@
 //! (divergence and authority overrides), `target` (the resolved
 //! target reference), and `patch` (the amend builders). Validation
 //! findings are emitted on the neutral
-//! [`schema::diagnostics::Diagnostic`] currency by the sibling
+//! [`diagnostics::Diagnostic`] currency by the sibling
 //! `validate` / `doctor` modules; behaviour lives in the sibling
 //! submodules.
 

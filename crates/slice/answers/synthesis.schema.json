@@ -1,0 +1,502 @@
+{
+  "$defs": {
+    "Agreement": {
+      "description": "The agent's agreement verdict for one requirement.\n\n`Option<Agreement>` at the call boundary: the verdict is omitted for\na requirement with zero or one contributing claim, where there is no\nagreement to record.",
+      "oneOf": [
+        {
+          "const": "agreed",
+          "description": "Contributing claims describe the same value.",
+          "type": "string"
+        },
+        {
+          "const": "disagreed",
+          "description": "Contributing claims disagree; the kernel selects a winner by\nresolved authority.",
+          "type": "string"
+        }
+      ]
+    },
+    "ClaimKind": {
+      "description": "Closed claim-kind enum on Evidence claims.\n\nThe per-slice authority override map in `plan.yaml.slices[]` keys\nagainst this same closed set. `example` (runtime capture claim) is\nthe runtime capture kind emitted by the `captures` source adapter.",
+      "oneOf": [
+        {
+          "const": "intent",
+          "description": "`kind: intent` — operator-stated intent (e.g. `change.md`).",
+          "type": "string"
+        },
+        {
+          "const": "requirement",
+          "description": "`kind: requirement` — behavioural requirement.",
+          "type": "string"
+        },
+        {
+          "const": "criterion",
+          "description": "`kind: criterion` — acceptance criterion.",
+          "type": "string"
+        },
+        {
+          "const": "decision",
+          "description": "`kind: decision` — captured design decision.",
+          "type": "string"
+        },
+        {
+          "const": "section",
+          "description": "`kind: section` — documentation section anchor.",
+          "type": "string"
+        },
+        {
+          "const": "diagram",
+          "description": "`kind: diagram` — diagram or architectural illustration.",
+          "type": "string"
+        },
+        {
+          "const": "contract",
+          "description": "`kind: contract` — interface contract excerpt.",
+          "type": "string"
+        },
+        {
+          "const": "example",
+          "description": "`kind: example` — runtime capture (runtime capture claim, `captures`).",
+          "type": "string"
+        },
+        {
+          "const": "excerpt",
+          "description": "`kind: excerpt` — code excerpt.",
+          "type": "string"
+        },
+        {
+          "const": "type",
+          "description": "`kind: type` — type definition.",
+          "type": "string"
+        },
+        {
+          "const": "call",
+          "description": "`kind: call` — function or method call site.",
+          "type": "string"
+        },
+        {
+          "const": "region",
+          "description": "`kind: region` — spatial region (`screenshots`).",
+          "type": "string"
+        },
+        {
+          "const": "container",
+          "description": "`kind: container` — spatial container (`screenshots`).",
+          "type": "string"
+        },
+        {
+          "const": "leaf",
+          "description": "`kind: leaf` — spatial leaf (`screenshots`).",
+          "type": "string"
+        }
+      ]
+    },
+    "DecisionStatus": {
+      "description": "Lifecycle status of a Decision Record.\n\nThe slice authors [`Accepted`](DecisionStatus::Accepted) or\n[`Rejected`](DecisionStatus::Rejected);\n[`Superseded`](DecisionStatus::Superseded) is engine-only, stamped at\nmerge when a newer record names this one under `supersedes:`.",
+      "oneOf": [
+        {
+          "const": "accepted",
+          "description": "The decision was taken and is in force.",
+          "type": "string"
+        },
+        {
+          "const": "rejected",
+          "description": "The decision was considered and not taken.",
+          "type": "string"
+        },
+        {
+          "const": "superseded",
+          "description": "Engine-only: superseded by a later record (`superseded-by`).",
+          "type": "string"
+        }
+      ]
+    },
+    "ModelClaim": {
+      "description": "One inline claim under [`ModelRequirement::claims`].\n\nThe stable `(source, id, kind)` triple traces the claim to its\nEvidence (the claim contract). The single-line `value` and\n`path` anchor are read from `evidence/<source>.yaml` by the\nprovenance projection rather than copied here.",
+      "properties": {
+        "id": {
+          "description": "Claim id within that source's Evidence file.",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ClaimKind",
+          "description": "Claim kind."
+        },
+        "source": {
+          "description": "Source key the claim came from.",
+          "type": "string"
+        },
+        "winner": {
+          "description": "Kernel-projected winner marker (divergence only).",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "id",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "ModelRequirement": {
+      "description": "One `requirements[]` entry.\n\nThe agent authors the behavioral prose (`title`, `statement`,\n`scenarios`, `notes`, `domain`), the `agreement` verdict, and the\ncontributing `claims`; the kernel-owned fields (`id`, `status`,\n`sources`, claim `winner`) are optional because the agent omits them\nand the kernel re-derives them on projection. The `resolution` label\nis not stored here — the provenance projection recomputes it.",
+      "properties": {
+        "agreement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Agreement"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Agent-authored agreement verdict over the contributing claims.\nPresent only when more than one claim contributes."
+        },
+        "baseline-id": {
+          "description": "Agent-authored baseline `REQ` id when modifying an existing\nrequirement in a domain that already has a merged baseline.\nThe kernel takes the projected id from here; omitted for additive\nrequirements in modified domains.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "claims": {
+          "default": [],
+          "description": "Agent-authored contributing claims with kernel-projected\n`winner` markers. The claim `value` / `path` payload is read\nfrom on-disk Evidence by the provenance projection, not persisted\nhere.",
+          "items": {
+            "$ref": "#/$defs/ModelClaim"
+          },
+          "type": "array"
+        },
+        "domain": {
+          "description": "Agent-authored owning domain (kebab-case spec group).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Kernel-projected `REQ-NNN` id.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "description": "Agent-authored free-form notes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scenarios": {
+          "description": "Agent-authored scenario lines.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sources": {
+          "default": [],
+          "description": "Kernel-projected rendered source list (highest authority first).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "statement": {
+          "description": "Agent-authored behavioral statement.",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RequirementStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Kernel-projected status."
+        },
+        "title": {
+          "description": "Agent-authored requirement title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "statement"
+      ],
+      "type": "object"
+    },
+    "ModelTask": {
+      "description": "One `tasks[]` entry. Ids follow the\n`TASK-NNN` / `REQ-NNN` grammars; grammar validation lives in the\ndrift validators, so these are plain strings here.",
+      "properties": {
+        "depends-on": {
+          "description": "`TASK-NNN` ids that must complete before this task.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "Agent-authored `TASK-NNN` id.",
+          "type": "string"
+        },
+        "satisfies": {
+          "description": "`REQ-NNN` ids this task satisfies.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text": {
+          "description": "Agent-authored task text.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "type": "object"
+    },
+    "RequirementStatus": {
+      "description": "Closed enum for the `Status:` line (workflow §Authority hierarchy).",
+      "oneOf": [
+        {
+          "const": "agreed",
+          "description": "One source, or multiple sources that agree.",
+          "type": "string"
+        },
+        {
+          "const": "unknown",
+          "description": "No contributing evidence.",
+          "type": "string"
+        },
+        {
+          "const": "conflict",
+          "description": "Tied top-authority disagreement; operator must reconcile.",
+          "type": "string"
+        },
+        {
+          "const": "divergence",
+          "description": "Authority-resolved disagreement; loser is commentary.",
+          "type": "string"
+        }
+      ]
+    },
+    "SliceModel": {
+      "description": "In-memory view of `model.yaml`, holding the header, the requirement\nset with inline provenance, and the task list.\n\nThe model carries only the earned core today — `requirements[]` and\n`tasks[]`; the deferred non-requirements sections (`domain`, `apis`,\n…) are not modeled yet and are ignored on deserialise. `target` is\nnot persisted — it is resolved on demand from the bound `project`.",
+      "properties": {
+        "project": {
+          "description": "Bound project, optional.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "requirements": {
+          "default": [],
+          "description": "The requirement set with inline provenance.",
+          "items": {
+            "$ref": "#/$defs/ModelRequirement"
+          },
+          "type": "array"
+        },
+        "slice": {
+          "description": "Slice name. Kernel-stamped on the persisted file.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tasks": {
+          "default": [],
+          "description": "Requirement→task tracing list.",
+          "items": {
+            "$ref": "#/$defs/ModelTask"
+          },
+          "type": "array"
+        },
+        "version": {
+          "description": "Stored schema version. Kernel-stamped on the persisted file;\noptional because the agent response omits it.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "SynthesisArtifacts": {
+      "additionalProperties": false,
+      "description": "The prose-only Markdown artifacts under a [`SynthesisResponse`].\n\nEach is authored by the agent; the render step later injects\nprovenance lines into the spec bodies.",
+      "properties": {
+        "decisions": {
+          "description": "Optional slice-authored Decision Records, rendered by the\npersist tail to `decisions/<slug>.md` with exact-set\nreplacement. Empty means the slice sets no durable decision.",
+          "items": {
+            "$ref": "#/$defs/SynthesisDecision"
+          },
+          "type": "array"
+        },
+        "design": {
+          "description": "`design.md` body.",
+          "type": "string"
+        },
+        "proposal": {
+          "description": "`proposal.md` body.",
+          "type": "string"
+        },
+        "specs": {
+          "description": "Per-domain spec bodies (`specs/<domain>/spec.md`).",
+          "items": {
+            "$ref": "#/$defs/SynthesisSpec"
+          },
+          "type": "array"
+        },
+        "tasks": {
+          "description": "`tasks.md` body.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposal",
+        "design",
+        "tasks",
+        "specs"
+      ],
+      "type": "object"
+    },
+    "SynthesisDecision": {
+      "additionalProperties": false,
+      "description": "One slice-authored Decision Record under\n[`SynthesisArtifacts::decisions`].\n\nCarries only the agent-authored fields plus the Nygard prose; the\nengine stamps `id` / `slice` / `date` (and any `superseded-by`) at\nmerge.",
+      "properties": {
+        "consequences": {
+          "description": "`## Consequences` body.",
+          "type": "string"
+        },
+        "context": {
+          "description": "`## Context` body.",
+          "type": "string"
+        },
+        "decision": {
+          "description": "`## Decision` body.",
+          "type": "string"
+        },
+        "related": {
+          "description": "Optional traceability into this slice's requirements (`REQ-NNN`).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "slug": {
+          "description": "Stable kebab-case slug — the baseline filename derives from it.",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/DecisionStatus",
+          "description": "`accepted` or `rejected` (`superseded` is engine-only and\nrefused by the answer schema)."
+        },
+        "supersedes": {
+          "description": "Records this decision supersedes — baseline `DEC-NNNN` ids or\nsibling slugs from this same slice.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "The record's H1 title.",
+          "type": "string"
+        },
+        "topics": {
+          "description": "Optional kebab-case topic slugs the decision governs.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "slug",
+        "status",
+        "title",
+        "context",
+        "decision",
+        "consequences"
+      ],
+      "type": "object"
+    },
+    "SynthesisKind": {
+      "description": "Synthesis response envelope kind.\n\nSerialises to the literal `\"response\"`. Mirrors\n`project::plan::propose`'s\n`ProposalKind`, but synthesis has only the response kind — there is\nno request wire.",
+      "oneOf": [
+        {
+          "const": "response",
+          "description": "The agent's synthesis result.",
+          "type": "string"
+        }
+      ]
+    },
+    "SynthesisSpec": {
+      "additionalProperties": false,
+      "description": "One per-domain spec body under [`SynthesisArtifacts::specs`].",
+      "properties": {
+        "content": {
+          "description": "The spec body, without `ID:` / `Sources:` / `Status:` lines.",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Owning domain (kebab-case spec group).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "content"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/answers/synthesis.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by slice::answers; do not edit. Validates the schema-gated answer to the slice synthesis judgment: the `kind: response` envelope carrying the structured model and the prose-only Markdown artifacts. The deterministic tail re-parses the answer and runs the projection kernel.",
+  "properties": {
+    "artifacts": {
+      "$ref": "#/$defs/SynthesisArtifacts",
+      "description": "Prose-only Markdown artifacts (no `ID:` / `Sources:` / `Status:`\nlines — the render step injects those)."
+    },
+    "kind": {
+      "$ref": "#/$defs/SynthesisKind",
+      "description": "Envelope kind."
+    },
+    "model": {
+      "$ref": "#/$defs/SliceModel",
+      "description": "The agent's structured model — the kernel-owned and header\nfields are optional in [`SliceModel`], so the agent's\nkernel-omitted model deserialises cleanly."
+    },
+    "slice": {
+      "description": "Slice name (kebab-case).",
+      "type": "string"
+    },
+    "version": {
+      "description": "Schema version.",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "kind",
+    "slice",
+    "model",
+    "artifacts"
+  ],
+  "title": "Specify synthesis answer",
+  "type": "object"
+}

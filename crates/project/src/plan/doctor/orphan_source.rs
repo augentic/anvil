@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use schema::diagnostics::{Diagnostic, Severity};
+use diagnostics::{Diagnostic, Severity};
 
 use super::ORPHAN_SOURCE;
 use crate::plan::Plan;

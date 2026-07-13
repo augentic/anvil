@@ -9,7 +9,6 @@ use jiff::Timestamp;
 use project::config::{Layout, Mutation, with_state};
 use project::journal::{self, EventKind};
 use project::plan::{Plan, Status};
-use project::schema_gate::validate_report;
 use project::seam::{MergePhase, TargetSeam, WorkingTree};
 
 use super::{seam_failure, target_id};
@@ -135,8 +134,8 @@ fn journal_on_failure<V>(
     result
 }
 
-/// Dispatch one target merge gate and gate its report: schema shape,
-/// slice-name match, blocking findings, and status.
+/// Dispatch one target merge gate and gate its report: slice-name
+/// match, blocking findings, and status.
 async fn run_gate<T: TargetSeam>(
     targets: &T, id: &str, slice: &str, phase: MergePhase,
 ) -> Result<BuildReport, Error> {
@@ -145,8 +144,6 @@ async fn run_gate<T: TargetSeam>(
         .await
         .map_err(|err| seam_failure("merge", id, &err))?;
 
-    let yaml = project::fs::yaml(&report)?;
-    validate_report(&yaml)?;
     if report.slice != slice {
         return Err(Error::validation_failed(
             "target-merge-report-slice-mismatch",

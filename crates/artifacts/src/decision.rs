@@ -16,7 +16,7 @@
 //! baseline in hand. Like the spec provenance parser, findings
 //! aggregate so the operator sees every problem in one pass.
 
-use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};
 
 /// Maximum length of a Decision Record `slug` (`decision-slug-grammar`).

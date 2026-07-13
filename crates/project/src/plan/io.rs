@@ -9,7 +9,6 @@ use error::Error;
 
 use super::model::Plan;
 use crate::config::{AtomicYaml, Layout};
-use crate::schema_gate::validate_plan_yaml;
 
 impl AtomicYaml for Plan {
     fn layout_path(layout: Layout<'_>) -> PathBuf {
@@ -35,7 +34,6 @@ impl Plan {
     ///
     /// Errors mirror [`crate::slice::SliceMetadata::load`]:
     ///   - missing file -> `Error::ArtifactNotFound`
-    ///   - schema failure -> `Error::Validation`
     ///   - YAML/type deserialization failure -> `Error::YamlDe`
     ///   - other I/O failure -> `Error::Io`
     ///
@@ -53,7 +51,6 @@ impl Plan {
             });
         }
         let content = std::fs::read_to_string(path)?;
-        validate_plan_yaml(&content)?;
         let plan: Self = serde_saphyr::from_str(&content)?;
         Ok(plan)
     }

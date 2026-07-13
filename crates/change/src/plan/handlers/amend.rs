@@ -14,7 +14,6 @@ use project::plan::{
     Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, entry_mut,
     reject_duplicate_source_keys,
 };
-use project::schema_gate::validate_plan;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -155,7 +154,6 @@ impl<P: Anchor> Operation<P> for Amend {
                 )?;
                 authority_override::reject_orphans(plan)?;
 
-                validate_plan(plan)?;
                 let amended = plan
                     .entries
                     .iter()

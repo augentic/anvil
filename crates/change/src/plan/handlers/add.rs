@@ -11,7 +11,6 @@ use project::config::with_state;
 use project::handler::{Anchor, Ctx};
 use project::journal;
 use project::plan::{AuthorityOverride, Entry, Plan, Status, authority_override, entry_mut};
-use project::schema_gate::validate_plan;
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -102,7 +101,6 @@ impl<P: Anchor> Operation<P> for Add {
         let (body, override_events) =
             with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
                 plan.create(entry)?;
-                validate_plan(plan)?;
                 let plan_name = plan.name.clone();
                 // Route the seeded overrides through the shared writer
                 // (no clears on the add path) so all three handlers emit

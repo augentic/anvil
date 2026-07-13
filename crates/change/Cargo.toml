@@ -25,7 +25,7 @@ error.workspace = true
 artifacts.workspace = true
 omnia-guest.workspace = true
 project.workspace = true
-schema.workspace = true
+diagnostics.workspace = true
 slice.workspace = true
 
 [dev-dependencies]

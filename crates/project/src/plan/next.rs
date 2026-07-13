@@ -5,9 +5,9 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
-use schema::diagnostics::has_blocking;
 use serde::Serialize;
 
 use super::model::{Entry, Plan, SliceSourceBinding, Status};

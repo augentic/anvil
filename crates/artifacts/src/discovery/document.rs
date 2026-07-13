@@ -170,8 +170,8 @@ impl Discovery {
     /// atomically persist the result at `path`.
     ///
     /// `leads` is the lead set the source's `survey` produced (already
-    /// validated against `schemas/discovery/lead.schema.json` by the
-    /// caller). The surveying source owns attribution: every incoming
+    /// checked by the caller via [`super::lead::validate_leads`]).
+    /// The surveying source owns attribution: every incoming
     /// lead's `source` is force-set to `source`. Each incoming lead
     /// replaces the prior block sharing its `(source, lead)` pair **in
     /// place**. Incoming leads with no prior block are appended in survey

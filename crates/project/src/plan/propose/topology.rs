@@ -8,8 +8,8 @@
 
 use std::path::{Path, PathBuf};
 
+use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::{Error, Result};
-use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 
 use super::wire::ProjectRef;
 use crate::adapter::{AdapterRef, Resolver};

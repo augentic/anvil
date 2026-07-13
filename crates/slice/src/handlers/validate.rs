@@ -12,10 +12,10 @@
 
 use std::io::Write;
 
+use diagnostics::{Diagnostic, has_blocking};
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, ReportBody};
-use schema::diagnostics::{Diagnostic, has_blocking};
 use serde::{Deserialize, Serialize};
 
 use crate::validate::{Validation, append_synthesis_journal};
@@ -92,10 +92,10 @@ fn write_finding_row(w: &mut dyn Write, finding: &Diagnostic) -> std::io::Result
 fn format_finding_line(d: &Diagnostic) -> String {
     let rule = d.rule_id.as_deref().unwrap_or("<unknown>");
     match d.kind {
-        schema::diagnostics::DiagnosticKind::Violation => {
+        diagnostics::DiagnosticKind::Violation => {
             format!("[fail] {}: {}", rule, d.impact)
         }
-        schema::diagnostics::DiagnosticKind::Review => {
+        diagnostics::DiagnosticKind::Review => {
             format!("[review] {} ({})", rule, d.impact)
         }
     }
