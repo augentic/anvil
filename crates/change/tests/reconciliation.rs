@@ -9,12 +9,10 @@ use std::path::{Path, PathBuf};
 
 use change::{Divergence, plan};
 use serde_json::json;
-use testkit::{ReplayProvider, answers, run};
+use testkit::{ReplayProvider, ScriptedProvider, answers, run};
 
-/// The committed replay fixtures for one test — regenerate with
+/// The committed replay fixtures — regenerate with
 /// `REGENERATE_FIXTURES=1 cargo nextest run -p change reconciliation`.
-/// One directory per test: both tests answer the same author prompt
-/// differently.
 fn fixtures(test: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/reconciliation").join(test)
 }
@@ -122,14 +120,21 @@ async fn overlap_merges() {
 async fn uncovered_lead_exhausts() {
     // The same defective grouping for the whole budget: the first
     // dispatch plus every repair attempt, so the leg surfaces the
-    // kernel's refusal.
-    let provider = ReplayProvider::replay(
-        "fixture",
-        &fixtures("uncovered_exhausts"),
-        vec![uncovered_grouping_answer(); JUDGMENT_BUDGET],
-    );
+    // kernel's refusal. Repeated repair prompts share one canonical
+    // replay key, so this repair-loop case remains scripted.
+    let provider =
+        ScriptedProvider::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
 
-    let err = author(&provider).await.expect_err("coverage gap refused");
+    let err = run::<plan::handlers::Author, _, _>(
+        &provider,
+        plan::handlers::AuthorInput {
+            name: "auth".to_string(),
+            sources: answers::adversarial_bindings(),
+            intent: None,
+        },
+    )
+    .await
+    .expect_err("coverage gap refused");
     let detail = err.to_string();
     assert!(detail.contains("password-reset"), "{detail}");
 

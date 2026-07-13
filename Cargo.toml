@@ -50,10 +50,9 @@ workspace = true
 [workspace]
 members = ["crates/*", "examples", "tests"]
 # The ordinary test group: crate suites (including testkit) plus the
-# lightweight repo-checks package and the examples package. Host runners
-# (wasm-smoke, live-model) sit behind the examples `host` feature and are
-# opt-in (`cd examples && cargo make test-wasm` / `test-live`), keeping
-# Wasmtime out of the per-commit build.
+# lightweight repo-checks package and the examples package. The host runners
+# (wasm-smoke, live-model) remain opt-in through
+# `cd examples && cargo make test-wasm` / `test-live`.
 default-members = ["crates/*", "examples", "tests"]
 
 [workspace.package]

@@ -56,4 +56,4 @@ jobs:
         run: cargo build --locked -p examples --example adapter-wasm --target wasm32-wasip2
 
       - name: WASM boundary smoke
-        run: cargo run --locked -p examples --example wasm-smoke --features host
+        run: cargo run --locked -p examples --example wasm-smoke

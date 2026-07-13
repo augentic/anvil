@@ -15,7 +15,7 @@ skip_rust_env_info = true
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
 (cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example adapter-wasm --target wasm32-wasip2)
 '''
 
@@ -26,7 +26,7 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
+root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
 (cd "${root}" && cargo build --locked --lib -p specify --target wasm32-wasip2)
 (cd "${root}" && cargo build --locked -p examples --example adapter-wasm --target wasm32-wasip2)
 '''
@@ -39,8 +39,8 @@ dependencies = ["guests"]
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
-(cd "${root}" && cargo run --locked -p examples --example wasm-smoke --features host)
+root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+(cd "${root}" && cargo run --locked -p examples --example wasm-smoke)
 '''
 
 # Live-model workflow example — operator-invoked native trial over the
@@ -49,8 +49,8 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
-(cd "${root}" && cargo run --locked -p examples --example live-model --features host)
+root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+(cd "${root}" && cargo run --locked -p examples --example live-model)
 '''
 
 # Lint — a focused clippy leg over the examples package (the root
@@ -60,6 +60,6 @@ root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="$(cd "$(dirname "${CARGO_MAKE_WORKING_DIRECTORY}")" && pwd)"
-(cd "${root}" && cargo clippy -p examples --all-targets --all-features -- -D warnings)
+root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+(cd "${root}" && cargo clippy -p examples --all-targets -- -D warnings)
 '''

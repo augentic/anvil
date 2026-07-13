@@ -34,7 +34,7 @@ The model-dispatching `change` suites run against committed replay fixtures at `
 REGENERATE_FIXTURES=1 cargo nextest run -p change
 ```
 
-then `git diff` the fixture rows and review the prompt-side changes like any other golden. Suites that intentionally feed schema-invalid answers to exercise the repair loop (e.g. `judgment`) stay on `ScriptedProvider` — the replay engine rejects invalid answers by design.
+then `git diff` the fixture rows and review the prompt-side changes like any other golden. Suites that intentionally feed schema-invalid answers or repeat an identical canonical repair request stay on `ScriptedProvider` — the replay engine rejects invalid answers and duplicate request keys by design.
 
 ## Integration-first policy
 

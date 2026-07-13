@@ -39,13 +39,15 @@ impl Model for SuiteModel {
 ///
 /// # Panics
 ///
-/// Panics when the fixture directory cannot be read or a committed
-/// row is malformed.
+/// Panics when a suite with scripted answers has no fixture directory,
+/// the fixture directory cannot be read, or a committed row is malformed.
 #[must_use]
 pub fn suite_model(fixtures: &Path, answers: Vec<String>) -> SuiteModel {
     if std::env::var_os(REGENERATE_FIXTURES).is_some() {
         clear_rows(fixtures);
         SuiteModel::Record(Recorder::new(Scripted::answers(answers), fixtures))
+    } else if answers.is_empty() && !fixtures.exists() {
+        SuiteModel::Replay(Replay::new([]).expect("empty replay fixtures load"))
     } else {
         SuiteModel::Replay(Replay::from_dir(fixtures).expect("replay fixtures load"))
     }

@@ -80,9 +80,21 @@ cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
 '''
 env = { RUSTFLAGS = "-Dwarnings" }
 
+# Opt-in example runners, exposed from the repository root without
+# merging the examples task definitions into this workspace file.
+[tasks.test-wasm]
+script = '''
+(cd examples && cargo make test-wasm)
+'''
+
+[tasks.test-live]
+script = '''
+(cd examples && cargo make test-live)
+'''
+
 # Test — the ordinary suite over the default workspace members
 # (crates/*, examples, tests); the WASM boundary
-# smoke is opt-in via `cd examples && cargo make test-wasm`.
+# smoke is opt-in via `cargo make test-wasm`.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
