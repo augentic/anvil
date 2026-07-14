@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use testkit::{ScriptedProvider, report_rule_ids, run};
+use testkit::{Scripted, report_rule_ids, run};
 
 const BODY: &str = "# Choice\n\n## Context\n\nContext.\n\n## Decision\n\nDecision.\n\n## Consequences\n\nConsequences.\n";
 
@@ -13,7 +13,7 @@ fn write_decision(path: &Path, frontmatter: &str) {
 
 #[tokio::test]
 async fn orphan_supersede_reported() {
-    let project = ScriptedProvider::initialised();
+    let project = Scripted::initialised();
     let decisions = project.root.join(".specify/slices/demo/decisions");
     fs::create_dir_all(&decisions).expect("create slice decisions");
     write_decision(
@@ -36,7 +36,7 @@ async fn orphan_supersede_reported() {
 
 #[tokio::test]
 async fn merge_promotes_and_supersedes() {
-    let project = ScriptedProvider::initialised();
+    let project = Scripted::initialised();
     let slice = project.root.join(".specify/slices/demo");
     let staged = slice.join("decisions");
     let baseline = project.root.join(".specify/decisions");

@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use testkit::{ScriptedProvider, report_rule_ids, run};
+use testkit::{Scripted, report_rule_ids, run};
 
 #[tokio::test]
 async fn structural_findings() {
@@ -34,7 +34,7 @@ async fn structural_findings() {
     ];
 
     for (expected, body) in cases {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         fs::write(
             project.root.join("plan.yaml"),
             format!("name: validation\nlifecycle: pending\n{body}"),

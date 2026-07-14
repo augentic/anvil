@@ -36,13 +36,9 @@ use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus};
 
 use crate::adapter;
 use crate::env::{CacheGuard, scoped_cache};
-use crate::model::{SuiteModel, suite_model};
 
 /// The provider shape the scripted suites run against.
-pub type ScriptedProvider = Provider<Harness<Scripted>>;
-
-/// The provider shape the replay-fixture suites run against.
-pub type ReplayProvider = Provider<Harness<SuiteModel>>;
+pub type Scripted = Provider<Harness<Scripted>>;
 
 // How the provider answers adapter resolution.
 #[derive(Clone, Copy, Debug)]
@@ -159,43 +155,16 @@ impl Provider<Harness<Scripted>> {
         provider
     }
 
-    /// A scripted fixture provider anchored at a caller-owned `root`.
-    #[must_use]
-    pub fn scripted_at(root: &Path, answers: Vec<String>) -> Self {
-        Self::new(root, Harness::new(Scripted::answers(answers)))
-    }
-}
-
-impl Provider<Harness<SuiteModel>> {
-    /// A minimal initialised project bound to `target_adapter` whose
-    /// judgment legs replay the committed fixture rows under
-    /// `fixtures` — or regenerate them from `answers` when
-    /// `REGENERATE_FIXTURES=1` (see [`suite_model`]). Keep one fixture
-    /// directory per test: replay keys are canonical prompts, and two
-    /// tests answering the same prompt differently would collide.
-    ///
-    /// # Panics
-    ///
-    /// Panics when the tempdir or project scaffold cannot be written,
-    /// or a committed fixture row is malformed.
-    #[must_use]
-    pub fn replay(target_adapter: &str, fixtures: &Path, answers: Vec<String>) -> Self {
-        let provider = Self::replay_bare(fixtures, answers);
-        write_project_yaml(&provider.root, target_adapter);
-        provider
-    }
-
-    /// [`Provider::replay`] over an owned bare tree — nothing
+    /// [`Provider::scripted`] over an owned bare tree — nothing
     /// scaffolded, for suites whose first operation is `Init`.
     ///
     /// # Panics
     ///
-    /// Panics when the tempdir cannot be created or a committed
-    /// fixture row is malformed.
+    /// Panics when the tempdir cannot be created.
     #[must_use]
-    pub fn replay_bare(fixtures: &Path, answers: Vec<String>) -> Self {
+    pub fn scripted_bare(answers: Vec<String>) -> Self {
         let (tmp, root, cache) = owned_tree();
-        let mut provider = Self::replay_at(&root, fixtures, answers);
+        let mut provider = Self::scripted_at(&root, answers);
         provider.owned = Some(Arc::new(Owned {
             _cache: cache,
             _tmp: tmp,
@@ -203,17 +172,10 @@ impl Provider<Harness<SuiteModel>> {
         provider
     }
 
-    /// A fixture provider anchored at a caller-owned `root` whose
-    /// judgment legs replay the committed fixture rows under
-    /// `fixtures` — or regenerate them from `answers` when
-    /// `REGENERATE_FIXTURES=1` (see [`suite_model`]).
-    ///
-    /// # Panics
-    ///
-    /// Panics when a committed fixture row is malformed.
+    /// A scripted fixture provider anchored at a caller-owned `root`.
     #[must_use]
-    pub fn replay_at(root: &Path, fixtures: &Path, answers: Vec<String>) -> Self {
-        Self::new(root, Harness::new(suite_model(fixtures, answers)))
+    pub fn scripted_at(root: &Path, answers: Vec<String>) -> Self {
+        Self::new(root, Harness::new(Scripted::answers(answers)))
     }
 }
 

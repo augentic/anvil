@@ -2,7 +2,7 @@
 
 use project::adapter::Resolver;
 use testkit::env::stage_dev_component;
-use testkit::{ScriptedProvider, run};
+use testkit::{Scripted, run};
 
 mod resolve {
     use super::*;
@@ -12,7 +12,7 @@ mod resolve {
         for (name, expected) in
             [("demo-target", "adapter-cli-too-old"), ("bad-floor", "adapter-floor-malformed")]
         {
-            let project = ScriptedProvider::bare();
+            let project = Scripted::bare();
             stage_dev_component(&project.root, name);
             let err = run::<project::adapter::handlers::TargetResolve, _, _>(
                 &project,
@@ -29,7 +29,7 @@ mod resolve {
 
     #[tokio::test]
     async fn bare_development_identity() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         stage_dev_component(&project.root, "demo");
 
         let body = run::<project::adapter::handlers::TargetResolve, _, _>(
@@ -52,7 +52,7 @@ mod resolve {
         // The other bare-name probe: a component mirrored into the
         // project component cache (init's local-file path) resolves
         // without any in-repo release build.
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let components = testkit::env::expected_cache_dir(&project.root).join("components");
         std::fs::create_dir_all(&components).expect("mkdir component cache");
         std::fs::write(components.join("demo.wasm"), "{}").expect("stage cached component");
@@ -92,7 +92,7 @@ mod resolve {
 
 #[test]
 fn platforms_metadata_preserved() {
-    let project = ScriptedProvider::bare();
+    let project = Scripted::bare();
     stage_dev_component(&project.root, "vectis");
 
     let resolved = testkit::resolver()

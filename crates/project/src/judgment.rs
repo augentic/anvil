@@ -31,8 +31,8 @@ pub const MAX_REPAIRS: usize = 2;
 /// The host `create` gate enforces the answer schema on the live
 /// backend (a schema-invalid answer surfaces there as
 /// `invalid-answer`, never reaching the tail); the tail's typed parse
-/// is the belt-and-braces check for the mock and replay backends,
-/// whose answers are unvalidated.
+/// is the belt-and-braces check for the scripted backends, whose
+/// answers are unvalidated.
 ///
 /// # Errors
 ///

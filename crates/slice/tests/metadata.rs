@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use testkit::{ScriptedProvider, run};
+use testkit::{Scripted, run};
 
 mod list {
     use super::*;
@@ -11,7 +11,7 @@ mod list {
     /// sorted by name, and skips directories without one.
     #[tokio::test]
     async fn sorted_with_status() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         for (name, status) in [("beta", "refined"), ("alpha", "refining")] {
             let slice = project.root.join(".specify/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
@@ -43,7 +43,7 @@ mod timestamps {
     /// metadata-mutating verb).
     #[tokio::test]
     async fn round_trip_rfc3339() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let slice = project.root.join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
@@ -78,7 +78,7 @@ mod timestamps {
 
     #[tokio::test]
     async fn malformed_rejected() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let slice = project.root.join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(

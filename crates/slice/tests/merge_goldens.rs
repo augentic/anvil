@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use slice::handlers::{Preview, PreviewInput};
-use testkit::{ScriptedProvider, run};
+use testkit::{Scripted, run};
 
 const MERGE_CASES: &[&str] = &[
     "spec-single-req",
@@ -21,7 +21,7 @@ fn fixtures() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
 
-fn stage(project: &ScriptedProvider, case: &Path, delta: &str) {
+fn stage(project: &Scripted, case: &Path, delta: &str) {
     let baseline = case.join("baseline.md");
     if baseline.is_file() {
         let destination = project.root.join(".specify/specs").join(delta);
@@ -50,7 +50,7 @@ fn assert_golden(path: &Path, actual: &str) {
 #[tokio::test]
 async fn merged_outputs() {
     for name in MERGE_CASES {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let case = fixtures().join(name);
         stage(&project, &case, "golden");
 
@@ -81,7 +81,7 @@ async fn merged_outputs() {
 #[tokio::test]
 async fn validation_outputs() {
     for name in VALIDATION_CASES {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let case = fixtures().join(name);
         stage(&project, &case, "FAIL");
 

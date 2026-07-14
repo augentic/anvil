@@ -5,17 +5,11 @@
 //! kernel inside the repair loop.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use change::{Divergence, plan};
 use serde_json::json;
-use testkit::{ReplayProvider, ScriptedProvider, answers, run};
-
-/// The committed replay fixtures — regenerate with
-/// `REGENERATE_FIXTURES=1 cargo nextest run -p change reconciliation`.
-fn fixtures(test: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/reconciliation").join(test)
-}
+use testkit::{Scripted, answers, goldens, run};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -55,7 +49,7 @@ fn uncovered_grouping_answer() -> String {
 }
 
 async fn author(
-    provider: &ReplayProvider,
+    provider: &Scripted,
 ) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
         provider,
@@ -72,11 +66,7 @@ async fn author(
 // divergence survives the projection.
 #[tokio::test]
 async fn overlap_merges() {
-    let provider = ReplayProvider::replay(
-        "fixture",
-        &fixtures("overlap_merges"),
-        vec![answers::adversarial_grouping()],
-    );
+    let provider = Scripted::scripted("fixture", vec![answers::adversarial_grouping()]);
 
     let authored = author(&provider).await.expect("author walks to pending");
     assert_eq!(authored.slices, ["login-flow", "session-policy", "password-reset"]);
@@ -114,16 +104,23 @@ async fn overlap_merges() {
     assert_eq!(session.divergence, Some(Divergence::Likely));
     assert_eq!(session.disagreements.len(), 1);
     assert_eq!(session.disagreements[0].field, "session-timeout-minutes");
+
+    // Prompt pinning: the assembled reconcile request is a committed
+    // golden — regenerate with `REGENERATE_GOLDENS=1` and review the
+    // diff whenever the propose prompt or answer schema changes.
+    goldens::assert_requests(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/goldens/reconciliation.json"),
+        &provider.model().requests(),
+    );
 }
 
 #[tokio::test]
 async fn uncovered_lead_exhausts() {
     // The same defective grouping for the whole budget: the first
     // dispatch plus every repair attempt, so the leg surfaces the
-    // kernel's refusal. Repeated repair prompts share one canonical
-    // replay key, so this repair-loop case remains scripted.
+    // kernel's refusal.
     let provider =
-        ScriptedProvider::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
+        Scripted::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
 
     let err = run::<plan::handlers::Author, _, _>(
         &provider,

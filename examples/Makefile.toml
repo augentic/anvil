@@ -15,7 +15,7 @@ skip_rust_env_info = true
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
 (cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example greeting-wasm --target wasm32-wasip2)
 '''
 
@@ -24,7 +24,7 @@ root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
 (cd "${root}" && cargo build --locked --lib -p specify --target wasm32-wasip2)
 (cd "${root}" && cargo build --locked -p examples --example greeting-wasm --target wasm32-wasip2)
 '''
@@ -36,7 +36,7 @@ dependencies = ["guests"]
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
 deployment="$(mktemp -d "${TMPDIR:-/tmp}/specify-wasm.XXXXXX")"
 trap 'rm -rf "${deployment}"' EXIT
 
@@ -62,7 +62,7 @@ if run plan author greeting --source main=fixture-fail-survey:value:hello; then
 fi
 rm "${deployment}/workspace/plan.yaml"
 
-run plan author greeting --source main=fixture:value:hello
+run plan author greeting --source main="fixture:value:The greeting service."
 run plan transition greeting approved
 run plan execute
 
@@ -75,7 +75,7 @@ test -s "${deployment}/workspace/fixture-build/greeting.md"
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
 (cd "${root}" && cargo run --locked -p examples --example prompt-eval)
 '''
 
@@ -86,6 +86,6 @@ root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
 script_runner = "bash"
 script = '''
 set -euo pipefail
-root="${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}"
+root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
 (cd "${root}" && cargo clippy -p examples --all-targets -- -D warnings)
 '''

@@ -12,7 +12,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use testkit::{ScriptedProvider, run};
+use testkit::{Scripted, run};
 
 /// Stage a one-project `registry.yaml` at the project root.
 fn stage_registry(root: &Path) {
@@ -28,7 +28,7 @@ mod registry {
 
     #[tokio::test]
     async fn add_mints_file() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let body = run::<project::registry::handlers::Add, _, _>(
             &project,
             project::registry::handlers::AddInput {
@@ -48,7 +48,7 @@ mod registry {
 
     #[tokio::test]
     async fn duplicate_add_errors() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         stage_registry(&project.root);
         let err = run::<project::registry::handlers::Add, _, _>(
             &project,
@@ -69,7 +69,7 @@ mod registry {
 
     #[tokio::test]
     async fn staged_catalogue_validates() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         stage_registry(&project.root);
         run::<project::registry::handlers::Validate, _, _>(
             &project,
@@ -84,7 +84,7 @@ mod registry {
     /// demand `.specify/project.yaml`.
     #[tokio::test]
     async fn validate_pre_init() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         stage_registry(&project.root);
         run::<project::registry::handlers::Validate, _, _>(
             &project,
@@ -96,7 +96,7 @@ mod registry {
 
     #[tokio::test]
     async fn remove_drops_entry() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         stage_registry(&project.root);
         run::<project::registry::handlers::Remove, _, _>(
             &project,
@@ -125,7 +125,7 @@ mod archive {
 
     #[tokio::test]
     async fn prune_keeps_newest() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let archive = stage(&project.root);
         let body = run::<slice::handlers::Prune, _, _>(
             &project,
@@ -144,7 +144,7 @@ mod archive {
 
     #[tokio::test]
     async fn prune_requires_bound() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         stage(&project.root);
         let err = run::<slice::handlers::Prune, _, _>(
             &project,
@@ -168,7 +168,7 @@ mod init {
 
     #[tokio::test]
     async fn adapter_required() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let err = run::<project::init::handlers::Init, _, _>(
             &project,
             project::init::handlers::InitInput::default(),
@@ -186,7 +186,7 @@ mod init {
 
     #[tokio::test]
     async fn reentry_and_upgrade() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let input = || project::init::handlers::InitInput {
             name: Some("demo-workspace".into()),
             workspace: true,
@@ -219,7 +219,7 @@ mod init {
 
     #[tokio::test]
     async fn workspace_mode() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let body = run::<project::init::handlers::Init, _, _>(
             &project,
             project::init::handlers::InitInput {
@@ -254,7 +254,7 @@ mod init {
 
     #[tokio::test]
     async fn regular_mode() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
 
         // Stage a fake `demo` component at the resolver's in-repo dev
         // probe path with a digest-valid metadata sidecar beside it:
@@ -310,7 +310,7 @@ mod init {
     /// native-harness (linked crates) shape: no component file exists
     /// anywhere on disk.
     #[derive(Clone)]
-    struct Linked(ScriptedProvider);
+    struct Linked(Scripted);
 
     impl project::handler::Anchor for Linked {
         fn project_root(&self) -> &Path {
@@ -358,7 +358,7 @@ mod init {
         // A bare adapter name is an identity, not a file: init defers
         // component resolution to the injected resolver, so no `.wasm`
         // artifact is staged anywhere for this test.
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let body = omnia_guest::api::invoke::Invoker::new("specify", Linked(project.clone()))
             .invoke::<project::init::handlers::Init>(omnia_guest::api::invocation::Invocation::new(
                 project::init::handlers::InitInput {
@@ -388,7 +388,7 @@ mod init {
         // (there is no sibling-checkout probe): an operator-supplied
         // local `.wasm` at init is mirrored into the project component
         // cache, where the bare-name resolver finds it afterwards.
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let staged = project.root.join("downloads/demo.wasm");
         fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir downloads");
         fs::write(&staged, b"\0asm-component").expect("stage local component");
@@ -436,7 +436,7 @@ mod init {
 
     #[tokio::test]
     async fn existing_agents_md_preserved() {
-        let project = ScriptedProvider::bare();
+        let project = Scripted::bare();
         let agents_path = project.root.join("AGENTS.md");
         fs::write(&agents_path, "# operator prose\n").expect("stage operator AGENTS.md");
 
@@ -474,7 +474,7 @@ mod journal {
 
     #[tokio::test]
     async fn emit_appends_line() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let body = run::<project::journal::handlers::Emit, _, _>(
             &project,
             project::journal::handlers::EmitInput {
@@ -495,7 +495,7 @@ mod journal {
 
     #[tokio::test]
     async fn emit_unknown_event_refused() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let err = run::<project::journal::handlers::Emit, _, _>(
             &project,
             project::journal::handlers::EmitInput {
@@ -513,7 +513,7 @@ mod journal {
 
     #[tokio::test]
     async fn emit_bad_payload_refused() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let err = run::<project::journal::handlers::Emit, _, _>(
             &project,
             project::journal::handlers::EmitInput {
@@ -535,7 +535,7 @@ mod journal {
 
     #[tokio::test]
     async fn show_reads_filtered() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         run::<project::journal::handlers::Emit, _, _>(
             &project,
             project::journal::handlers::EmitInput {

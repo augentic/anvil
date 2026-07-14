@@ -7,19 +7,16 @@ use std::path::{Path, PathBuf};
 
 use omnia_guest::api::invoke::Invoker;
 use tempfile::TempDir;
-use testkit::ScriptedProvider;
+use testkit::Scripted;
 
 // Grammar and parity coverage only: no test dispatches judgment or an
 // adapter seam, so the scripted provider's empty script never runs.
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<ScriptedProvider, transport::command::Globals> {
+) -> omnia_guest::api::command::Router<Scripted, transport::command::Globals> {
     let root = root.into();
-    transport::command::router(Invoker::new(
-        "specify",
-        ScriptedProvider::scripted_at(&root, Vec::new()),
-    ))
-    .expect("router")
+    transport::command::router(Invoker::new("specify", Scripted::scripted_at(&root, Vec::new())))
+        .expect("router")
 }
 
 #[test]
@@ -32,7 +29,7 @@ fn http_parity() {
         .collect();
     let http_types: BTreeSet<TypeId> = transport::http::router(Invoker::new(
         "specify",
-        ScriptedProvider::scripted_at(Path::new("."), Vec::new()),
+        Scripted::scripted_at(Path::new("."), Vec::new()),
     ))
     .inventory()
     .iter()

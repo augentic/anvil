@@ -9,10 +9,11 @@
 //! - [`provider`] — the unified capability provider (`Anchor + Model +
 //!   Resolver + Hydrator + SourceSeam + TargetSeam`) plus the
 //!   operation-invocation helpers.
-//! - [`model`] — scripted / replay model doubles and the
-//!   `REGENERATE_FIXTURES=1` record flow.
-//! - [`answers`] — the scripted judgment-answer corpus (the replay
-//!   fixtures' regeneration source of truth).
+//! - [`model`] — the recorded harness and scripted model double.
+//! - [`answers`] — the scripted judgment-answer corpus.
+//! - [`goldens`] — request canonicalization and the golden
+//!   compare-or-regenerate flow (`REGENERATE_GOLDENS=1`) that pins the
+//!   assembled judgment prompts.
 //! - [`cmd`], [`fs`], [`mod@env`], [`plan`] — command mocking, filesystem
 //!   and git helpers, env guards, and plan builders.
 //!
@@ -29,6 +30,8 @@ pub mod env;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod fs;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod goldens;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod model;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod plan;
@@ -36,4 +39,4 @@ pub mod plan;
 pub mod provider;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use provider::{Provider, ReplayProvider, ScriptedProvider, report_rule_ids, resolver, run};
+pub use provider::{Provider, Scripted, report_rule_ids, resolver, run};

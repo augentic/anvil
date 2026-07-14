@@ -3,19 +3,11 @@
 //! abort, a parked refine or build in the execute loop, or the
 //! outputs-exist gate — with the adapter's typed detail preserved.
 
-use std::path::{Path, PathBuf};
-
 use change::plan;
-use testkit::{ReplayProvider, answers, run};
-
-/// The committed replay fixtures for one test — regenerate with
-/// `REGENERATE_FIXTURES=1 cargo nextest run -p change adapter_seam`.
-fn fixtures(test: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/adapter_seam").join(test)
-}
+use testkit::{Scripted, answers, run};
 
 async fn author(
-    provider: &ReplayProvider, source_adapter: &str,
+    provider: &Scripted, source_adapter: &str,
 ) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
         provider,
@@ -28,7 +20,7 @@ async fn author(
     .await
 }
 
-async fn approve(provider: &ReplayProvider) {
+async fn approve(provider: &Scripted) {
     run::<plan::handlers::Transition, _, _>(
         provider,
         plan::handlers::TransitionInput {
@@ -42,7 +34,7 @@ async fn approve(provider: &ReplayProvider) {
     .expect("the operator stamps Gate 1");
 }
 
-async fn execute_err(provider: &ReplayProvider) -> String {
+async fn execute_err(provider: &Scripted) -> String {
     run::<plan::handlers::Execute, _, _>(provider, plan::handlers::ExecuteInput {})
         .await
         .expect_err("the failing phase parks the loop")
@@ -51,7 +43,7 @@ async fn execute_err(provider: &ReplayProvider) -> String {
 
 #[tokio::test]
 async fn survey_failure_aborts_author() {
-    let provider = ReplayProvider::replay("fixture", &fixtures("survey_fails"), Vec::new());
+    let provider = Scripted::scripted("fixture", Vec::new());
 
     let err = author(&provider, "fixture-fail-survey").await.expect_err("survey fails");
     let detail = err.to_string();
@@ -63,11 +55,7 @@ async fn survey_failure_aborts_author() {
 
 #[tokio::test]
 async fn extract_failure_parks_refine() {
-    let provider = ReplayProvider::replay(
-        "fixture",
-        &fixtures("extract_fails"),
-        vec![answers::greeting_grouping()],
-    );
+    let provider = Scripted::scripted("fixture", vec![answers::greeting_grouping()]);
 
     author(&provider, "fixture-fail-extract").await.expect("survey succeeds for this profile");
     approve(&provider).await;
@@ -79,11 +67,7 @@ async fn extract_failure_parks_refine() {
 
 #[tokio::test]
 async fn guidance_failure_parks_refine() {
-    let provider = ReplayProvider::replay(
-        "fixture-fail-guidance",
-        &fixtures("guidance_fails"),
-        vec![answers::greeting_grouping()],
-    );
+    let provider = Scripted::scripted("fixture-fail-guidance", vec![answers::greeting_grouping()]);
 
     author(&provider, "fixture").await.expect("author succeeds");
     approve(&provider).await;
@@ -95,9 +79,8 @@ async fn guidance_failure_parks_refine() {
 
 #[tokio::test]
 async fn build_failure_parks() {
-    let provider = ReplayProvider::replay(
+    let provider = Scripted::scripted(
         "fixture-fail-build",
-        &fixtures("build_fails"),
         vec![answers::greeting_grouping(), answers::greeting_synthesis()],
     );
 
@@ -111,9 +94,8 @@ async fn build_failure_parks() {
 
 #[tokio::test]
 async fn merge_failure_parks_built() {
-    let provider = ReplayProvider::replay(
+    let provider = Scripted::scripted(
         "fixture-fail-merge",
-        &fixtures("merge_fails"),
         vec![answers::greeting_grouping(), answers::greeting_synthesis()],
     );
 
@@ -136,9 +118,8 @@ async fn merge_failure_parks_built() {
 
 #[tokio::test]
 async fn missing_output_aborts() {
-    let provider = ReplayProvider::replay(
+    let provider = Scripted::scripted(
         "fixture-missing-output",
-        &fixtures("missing_output"),
         vec![answers::greeting_grouping(), answers::greeting_synthesis()],
     );
 

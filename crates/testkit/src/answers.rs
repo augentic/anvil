@@ -1,6 +1,5 @@
 //! Scripted judgment answers and source bindings shared by the
-//! fixture-provider suites — and the regeneration source of truth for
-//! the committed replay fixtures.
+//! fixture-provider suites and the examples package.
 //!
 //! Two fixture data sets exist: the minimal single-lead `greeting`
 //! profile (full loop, seam failures, repair loop) and the adversarial

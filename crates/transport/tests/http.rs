@@ -7,12 +7,12 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::axum::Router;
 use omnia_guest::axum::body::{Body, to_bytes};
 use omnia_guest::http::{Method, Request, StatusCode};
-use testkit::ScriptedProvider;
+use testkit::Scripted;
 use tower::ServiceExt as _;
 
 /// The HTTP router over an initialised scripted provider — routing
 /// coverage only; no test dispatches judgment or an adapter seam.
-fn router(project: &ScriptedProvider) -> Router {
+fn router(project: &Scripted) -> Router {
     transport::http::router(Invoker::new("specify", project.clone())).into_axum()
 }
 
@@ -37,7 +37,7 @@ mod routing {
 
     #[tokio::test]
     async fn get_json_body() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         stage_registry(&project.root);
         let request = Request::builder()
             .method(Method::GET)
@@ -50,7 +50,7 @@ mod routing {
 
     #[tokio::test]
     async fn post_body_reaches_operation() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let request = Request::builder()
             .method(Method::POST)
             .uri("/registry")
@@ -66,7 +66,7 @@ mod routing {
 
     #[tokio::test]
     async fn path_param_reaches_operation() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         stage_registry(&project.root);
         let request = Request::builder()
             .method(Method::POST)
@@ -86,7 +86,7 @@ mod errors {
 
     #[tokio::test]
     async fn taxonomy_failure_envelope() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let request = Request::builder()
             .method(Method::POST)
             .uri("/archive/prune")
@@ -98,7 +98,7 @@ mod errors {
 
     #[tokio::test]
     async fn missing_field_unprocessable() {
-        let project = ScriptedProvider::initialised();
+        let project = Scripted::initialised();
         let request = Request::builder()
             .method(Method::POST)
             .uri("/registry")

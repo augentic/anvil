@@ -14,14 +14,13 @@ cargo test -p checks
 
 ## Canonical regeneration
 
-There are exactly two supported regeneration switches, each with one canonical invocation shape. Always use `cargo nextest run`, never bare `cargo test`:
+There is exactly one supported regeneration switch, with one canonical invocation shape. Always use `cargo nextest run`, never bare `cargo test`:
 
 ```text
 REGENERATE_GOLDENS=1 cargo nextest run -p <crate> --test <binary>
-REGENERATE_FIXTURES=1 cargo nextest run -p change
 ```
 
-`REGENERATE_GOLDENS=1` refreshes checked-in golden outputs; `REGENERATE_FIXTURES=1` re-records the committed replay fixture rows under `crates/change/tests/fixtures/replay/` from the scripted corpus in `testkit::answers` (run it whenever a judgment prompt changes).
+`REGENERATE_GOLDENS=1` refreshes checked-in golden outputs, including the request goldens under `crates/change/tests/goldens/` that pin the assembled judgment prompts (regenerate them whenever a judgment prompt or answer schema changes).
 
 After regenerating, `git diff` the outputs and review every change: a diff that flips a kebab-case error `code` is a public-contract change, not a refresh.
 
@@ -31,13 +30,14 @@ After regenerating, `git diff` the outputs and review every change: a diff that 
 | --- | --- | --- |
 | `slice` | `merge_goldens` | `crates/slice/tests/fixtures/spec-*` |
 | `project` / `slice` | `answers` | `crates/project/answers/`, `crates/slice/answers/` |
+| `change` | `reconciliation` / `synthesis` | `crates/change/tests/goldens/` (request goldens) |
 
 Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Shared test helpers
 
-Cross-crate test support is single-sourced in the `crates/testkit` crate — the fixture adapter core, the unified capability provider, scripted answers, replay/record model doubles, command mocking, filesystem/git helpers (`GIT_ENV` / `run_git` / `copy_dir`), env guards, and plan builders. Suites depend on it as an ordinary dev-dependency (`use testkit::…`); do not reintroduce `#[path]` splices or per-suite provider copies.
+Cross-crate test support is single-sourced in the `crates/testkit` crate — the fixture adapter core, the unified capability provider, scripted answers, request goldens, command mocking, filesystem/git helpers (`GIT_ENV` / `run_git` / `copy_dir`), env guards, and plan builders. Suites depend on it as an ordinary dev-dependency (`use testkit::…`); do not reintroduce `#[path]` splices or per-suite provider copies.
 
 Crate-private helpers stay under that crate's `tests/<helper>/mod.rs` (the sole `mod.rs` exception blessed in [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)), e.g. `crates/diagnostics/tests/diagnostics_support/mod.rs`.
 
-Generic model test mechanics (`Harness`, `Scripted`, `Replay`, `Recorder`) come from Omnia's dev-only `omnia-testkit`, re-exported through `testkit::model`.
+Generic model test mechanics (`Harness`, `Scripted`) come from Omnia's dev-only `omnia-testkit`, re-exported through `testkit::model`.

@@ -5,18 +5,12 @@
 //! through the public refine / model / provenance operations.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use change::plan;
 use serde_json::json;
 use testkit::provider::Provider;
-use testkit::{ReplayProvider, ScriptedProvider, answers, run};
-
-/// The committed replay fixtures for one test — regenerate with
-/// `REGENERATE_FIXTURES=1 cargo nextest run -p change synthesis`.
-fn fixtures(test: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/synthesis").join(test)
-}
+use testkit::{Scripted, answers, goldens, run};
 
 /// Synthesis for `session-policy`: the two `session.timeout` claims
 /// disagree, so the answer carries the `disagreed` verdict and the
@@ -114,9 +108,8 @@ where
 // with the docs claim winning.
 #[tokio::test]
 async fn divergence_docs_wins() {
-    let provider = ReplayProvider::replay(
+    let provider = Scripted::scripted(
         "fixture",
-        &fixtures("divergence_docs_wins"),
         vec![answers::adversarial_grouping(), session_synthesis_answer()],
     );
     author_and_approve(&provider).await;
@@ -170,6 +163,15 @@ async fn divergence_docs_wins() {
     assert_eq!(req.resolution.to_string(), "authority-resolved");
     let trace = req.resolution_trace.as_ref().expect("authority-resolved carries a trace");
     assert_eq!(trace.winner.as_deref(), Some("docs"));
+
+    // Prompt pinning: the assembled reconcile and synthesis requests
+    // are a committed golden — regenerate with `REGENERATE_GOLDENS=1`
+    // and review the diff whenever a judgment prompt or answer schema
+    // changes.
+    goldens::assert_requests(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/goldens/synthesis.json"),
+        &provider.model().requests(),
+    );
 }
 
 /// [`session_synthesis_answer`] plus one accepted Decision Record
@@ -192,14 +194,12 @@ fn session_synthesis_with_decision() -> String {
 }
 
 // Decisions persist with baseline context surfaced to synthesis, and
-// re-synthesis replaces the slice's decision set exactly.
-//
-// Stays scripted rather than replayed: the re-refine re-issues the
-// same synthesis prompt and must receive a *different* answer, a
-// sequence dependence a request-keyed replay store cannot express.
+// re-synthesis replaces the slice's decision set exactly: the
+// re-refine re-issues the same synthesis prompt and receives a
+// *different* answer from the script.
 #[tokio::test]
 async fn decisions_exact_set() {
-    let provider = ScriptedProvider::scripted(
+    let provider = Scripted::scripted(
         "fixture",
         vec![
             answers::adversarial_grouping(),
@@ -278,9 +278,8 @@ async fn decisions_exact_set() {
 
 #[tokio::test]
 async fn evidence_gap_projects_unknown() {
-    let provider = ReplayProvider::replay(
+    let provider = Scripted::scripted(
         "fixture",
-        &fixtures("evidence_gap"),
         vec![answers::adversarial_grouping(), reset_synthesis_answer()],
     );
     author_and_approve(&provider).await;

@@ -1,15 +1,12 @@
 //! The judgment repair loop through the public authoring surface: a
 //! malformed reconciliation answer is repaired in-loop with the
 //! findings inlined, and an unrepairable answer exhausts the budget
-//! and surfaces the last failure.
-//!
-//! Stays scripted rather than replayed: the loop only engages when the
-//! model emits schema-violating answers, which the format-gated replay
-//! engine refuses to serve by design (it behaves like a
-//! schema-enforcing backend).
+//! and surfaces the last failure. The loop only engages when the model
+//! emits schema-violating answers, which the unvalidated script serves
+//! verbatim.
 
 use change::plan;
-use testkit::{ScriptedProvider, answers, run};
+use testkit::{Scripted, answers, run};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -24,7 +21,7 @@ fn malformed_answer() -> String {
 }
 
 async fn author(
-    provider: &ScriptedProvider,
+    provider: &Scripted,
 ) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
         provider,
@@ -39,10 +36,8 @@ async fn author(
 
 #[tokio::test]
 async fn malformed_repaired_in_loop() {
-    let provider = ScriptedProvider::scripted(
-        "fixture",
-        vec![malformed_answer(), answers::greeting_grouping()],
-    );
+    let provider =
+        Scripted::scripted("fixture", vec![malformed_answer(), answers::greeting_grouping()]);
 
     let authored = author(&provider).await.expect("the repaired answer lands");
     assert_eq!(authored.slices, ["greeting"]);
@@ -59,7 +54,7 @@ async fn malformed_repaired_in_loop() {
 
 #[tokio::test]
 async fn unrepairable_exhausts_budget() {
-    let provider = ScriptedProvider::scripted("fixture", vec![malformed_answer(); JUDGMENT_BUDGET]);
+    let provider = Scripted::scripted("fixture", vec![malformed_answer(); JUDGMENT_BUDGET]);
 
     let err = author(&provider).await.expect_err("the budget exhausts");
     let detail = err.to_string();

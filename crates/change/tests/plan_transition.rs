@@ -7,7 +7,7 @@ use std::fs;
 use std::os::unix::fs::MetadataExt;
 
 use change::plan::handlers::{Transition, TransitionInput};
-use testkit::{ScriptedProvider, run};
+use testkit::{Scripted, run};
 
 const PENDING_PLAN: &str = "\
 name: demo
@@ -25,7 +25,7 @@ fn approve_input() -> TransitionInput {
     .expect("input deserialises")
 }
 
-fn journal_lines(project: &ScriptedProvider) -> Vec<String> {
+fn journal_lines(project: &Scripted) -> Vec<String> {
     let path = project.root.join(".specify/journal.jsonl");
     if !path.exists() {
         return Vec::new();
@@ -40,7 +40,7 @@ fn journal_lines(project: &ScriptedProvider) -> Vec<String> {
 
 #[tokio::test]
 async fn repeated_approve_noop() {
-    let project = ScriptedProvider::initialised();
+    let project = Scripted::initialised();
     let plan_path = project.root.join("plan.yaml");
     fs::write(&plan_path, PENDING_PLAN).expect("stage plan.yaml");
 

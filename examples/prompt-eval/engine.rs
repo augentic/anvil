@@ -13,21 +13,21 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-mod cursor;
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
-use change::plan;
-use change::{NextReason, Status};
-use cursor::CursorModel;
+use change::{NextReason, Status, plan};
+use omnia::Backend as _;
 use omnia_guest::model::{Format, Request};
-use omnia_testkit::model::Harness;
+use omnia_testkit::model::{Harness, Native};
 use slice::handlers::{Build, BuildInput, MergeRun, MergeRunInput, Refine, RefineInput};
 use testkit::{Provider, answers, run};
 
-type EvalProvider = Provider<Harness<CursorModel>>;
+/// The live model: cursor-agent behind `omnia-testkit`'s [`Native`]
+/// adapter, which carries the guest→wire mapping, the request/answer
+/// gates, and the workspace lend natively.
+type EvalProvider = Provider<Harness<Native<omnia_cursor::Client>>>;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() {
@@ -56,11 +56,13 @@ fn scaffold() -> (PathBuf, testkit::env::CacheGuard) {
 }
 
 async fn connect(root: &Path) -> EvalProvider {
-    let model = CursorModel::connect(root).await.expect(
+    let client = omnia_cursor::Client::connect().await.expect(
         "cursor-agent backend unavailable: install cursor-agent, then `cursor-agent login` or \
          export CURSOR_API_KEY",
     );
-    Provider::new(root, Harness::new(model))
+    // In-guest the `"."` preopen resolves the lent workspace; natively
+    // the trial project root plays that part.
+    Provider::new(root, Harness::new(Native::with_workspace(client, root)))
 }
 
 // --- plan -------------------------------------------------------------------
@@ -90,11 +92,7 @@ async fn plan(provider: &EvalProvider, root: &Path) {
             .collect();
         pairs.contains(&("docs", "login-flow")) && pairs.contains(&("code", "login-flow"))
     });
-    assert!(
-        merged,
-        "the login-flow overlap must merge into one slice: {:?}",
-        authored.entries
-    );
+    assert!(merged, "the login-flow overlap must merge into one slice: {:?}", authored.entries);
 
     run::<plan::handlers::Transition, _, _>(
         provider,

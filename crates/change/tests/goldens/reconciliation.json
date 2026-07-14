@@ -1,5 +1,5 @@
-{
-  "key_request": {
+[
+  {
     "format": {
       "kind": "schema",
       "schema": {
@@ -8,41 +8,17 @@
       }
     },
     "generation": null,
-    "grants": {
-      "references": null,
-      "verify": []
-    },
+    "lend-workspace": true,
     "messages": [
       {
-        "content": "## Reconciliation request\n\n```json\n{\n  \"version\": 1,\n  \"kind\": \"request\",\n  \"projects\": [\n    {\n      \"name\": \"demo\",\n      \"target\": \"fixture-fail-merge@0.0.0\"\n    }\n  ],\n  \"leads\": [\n    {\n      \"source\": \"main\",\n      \"lead\": \"greeting\",\n      \"synopsis\": \"The greeting endpoint returns a static string.\",\n      \"topics\": [\n        \"greeting\"\n      ]\n    }\n  ]\n}\n```\n\n## Plan context\n\n- plan: demo\n- sources:\n  - main: adapter `fixture`, value \"The greeting service.\"\n",
+        "content": "## Reconciliation request\n\n```json\n{\n  \"version\": 1,\n  \"kind\": \"request\",\n  \"projects\": [\n    {\n      \"name\": \"demo\",\n      \"target\": \"fixture@0.0.0\"\n    }\n  ],\n  \"leads\": [\n    {\n      \"source\": \"code\",\n      \"lead\": \"login-flow\",\n      \"synopsis\": \"signIn(email, password) handler in the auth module.\",\n      \"topics\": [\n        \"auth\"\n      ]\n    },\n    {\n      \"source\": \"code\",\n      \"lead\": \"session-timeout\",\n      \"synopsis\": \"Session TTL constant in the session store.\",\n      \"topics\": [\n        \"auth\"\n      ]\n    },\n    {\n      \"source\": \"docs\",\n      \"lead\": \"login-flow\",\n      \"synopsis\": \"Users sign in with an email address and password.\",\n      \"topics\": [\n        \"auth\"\n      ]\n    },\n    {\n      \"source\": \"docs\",\n      \"lead\": \"session-timeout\",\n      \"synopsis\": \"Documented session expiry policy.\",\n      \"topics\": [\n        \"auth\"\n      ]\n    },\n    {\n      \"source\": \"docs\",\n      \"lead\": \"password-reset\",\n      \"synopsis\": \"A password reset flow is mentioned but never specified.\",\n      \"topics\": [\n        \"auth\"\n      ]\n    }\n  ]\n}\n```\n\n## Plan context\n\n- plan: auth\n- sources:\n  - code: adapter `fixture-code`, value \"The code source.\"\n  - docs: adapter `fixture-docs`, value \"The docs source.\"\n",
         "role": "user"
       }
     ],
     "model": null,
+    "references": null,
     "system": "# Lead reconciliation\n\nYou are the Specify plan-time reconciliation step. The user message carries a `kind: request` envelope: a flat `leads[]` catalog (one row per raw `(source, lead)` lead) and the `projects[]` topology. Group the leads into slices of work and answer with a `kind: response` envelope conforming to the answer schema.\n\n## Grouping rules\n\n- Match leads across sources by judgment from `synopsis`, shared slugs, and optional `topics[]` hints. At most one lead per source per slice — never fuse two leads from the same source.\n- Emit one `slices[]` row per slice of work, each carrying an explicit kebab-case `name`, its matched `sources[]` (`{ source, lead }` pairs), and a bound `project` chosen from the request's `projects[]`. When exactly one project exists, `project` may be omitted (it is auto-bound).\n- Bind a slice on the project's actual owned behaviour — its `target`, `description`, `surface[]`, `recent[]`, and `decisions[]` — not on description prose alone.\n- Coverage is at-least-once, not exactly-once: every catalog lead must be referenced by at least one slice, and a lead may appear in more than one slice (fan-out). Cross-project fan-out is multiple slices that may reference the same lead, joined by `depends-on`; there is no other grouping noun.\n- Add `rationale` when a cross-source match is not obvious from shared slugs or synopsis content, and `depends-on` when one slice's work requires another's.\n\n## Split on doubt\n\nAn over-merge is expensive and downstream-poisoning — two unrelated bodies of work land in one slice and one project, and slice-time synthesis inherits the bad match as conflict or divergence. An over-split is cheap and locally reversible at Gate 1. When a cross-source match is not well-supported by shared slug, alias, or synopsis, keep the leads in separate slices rather than gambling on an unrecoverable propose-time merge.\n\n## Multi-home cross-cutting leads\n\nWhen a lead is guidance that informs several work leads — a conventions or approach document, typically from a documentation source — bind it into every slice it informs (subject to the one-lead-per-source cap, so its slice-mates come from other sources) rather than forcing it into one arbitrary slice. Same-project multi-homing implies no `depends-on` edge.\n\n## Gate 1 prose\n\nWhen the answer schema requires a `gate` object (the collapsed plan-authoring flow), author the Gate 1 review prose alongside the grouping. Provide section **bodies only** — the caller owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, and the `##` headings around your discovery sections):\n\n- `change` — the `change.md` operator brief body: a short `## Intent` and `## Scope` for the change, then the Gate 1 review sections when applicable: `## Tentative merges` for cross-source pairings you kept split on doubt, `## Cross-cutting leads` listing each multi-homed lead and its member slices, and `## Likely divergences` with the operator-facing side-by-side synopses backing any `divergence: likely` flag (the machine-readable values stay in that slice's `disagreements[]`).\n- `discovery-summary` — the `discovery.md` `## Summary` body: one-line counts (`Sources: N. Leads: M.`); adapter-specific tallies are permitted.\n- `discovery-source-inventory` — the `discovery.md` `## Source inventory` body: a markdown table with one row per bound source (key, adapter, path or value), taken from the `## Plan context` section of the user message.\n\nNever emit `#` or `##` headings inside `discovery-summary` or `discovery-source-inventory`, and never restate the `## Lead inventory` (the caller preserves it verbatim).\n\n## Divergence\n\nWhen the matched leads of a slice materially disagree (different numeric values, conflicting verbs, mutually exclusive nouns), flag `divergence: likely` on the slice and record the structured `disagreements[]` (`{ field, values: [{ source, value }] }`) with at least two distinct source values per field. You never decide materiality for the operator — flag and record, never drop a lead over a disagreement.\n\nAuthority does not apply at propose — without Evidence, reconciliation runs on headlines alone. Authority activates at slice-time synthesis.\n",
-    "tools": []
-  },
-  "answer": {
-    "gate": {
-      "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nOne slice.",
-      "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| main | fixture | \"The greeting service.\" |",
-      "discovery-summary": "Sources: 1. Leads: 1."
-    },
-    "kind": "response",
-    "slices": [
-      {
-        "name": "greeting",
-        "rationale": "One fixture lead, one slice.",
-        "sources": [
-          {
-            "lead": "greeting",
-            "source": "main"
-          }
-        ]
-      }
-    ],
-    "version": 1
-  },
-  "usage": null,
-  "transcript": null
-}
+    "tools": [],
+    "verify": []
+  }
+]

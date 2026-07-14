@@ -3,22 +3,15 @@
 //! same transport-neutral operations the shipped guest dispatches,
 //! against the fixture provider — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
-//! model replayed and adapter behaviour supplied by the fixture core.
+//! model scripted and adapter behaviour supplied by the fixture core.
 //! No wasm builds, no sibling checkout, no network.
 
 use std::fs;
-use std::path::{Path, PathBuf};
 
 use change::{LoopStep, Status, plan};
-use testkit::{ReplayProvider, adapter, answers, run};
+use testkit::{Scripted, adapter, answers, run};
 
-/// The committed replay fixtures for one test — regenerate with
-/// `REGENERATE_FIXTURES=1 cargo nextest run -p change full_loop`.
-fn fixtures(test: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/full_loop").join(test)
-}
-
-/// The regeneration answers for the whole loop, in dispatch order: the
+/// The scripted answers for the whole loop, in dispatch order: the
 /// reconciliation grouping (author) and the synthesis response
 /// (execute's refine phase). Survey, extract, guidance, and build are
 /// deterministic fixture operations — no model dispatch.
@@ -28,7 +21,7 @@ fn suite_answers() -> Vec<String> {
 
 /// Scaffold a project bound to the fixture target and author + approve
 /// the single-slice plan — the shared preamble of every loop test.
-async fn scaffold_author_approve(provider: &ReplayProvider) {
+async fn scaffold_author_approve(provider: &Scripted) {
     let scaffolded = run::<project::init::handlers::Init, _, _>(
         provider,
         project::init::handlers::InitInput {
@@ -72,7 +65,7 @@ async fn scaffold_author_approve(provider: &ReplayProvider) {
 
 #[tokio::test]
 async fn author_approve_execute_drains() {
-    let provider = ReplayProvider::replay_bare(&fixtures("drains"), suite_answers());
+    let provider = Scripted::scripted_bare(suite_answers());
     let root = provider.root.clone();
 
     scaffold_author_approve(&provider).await;
@@ -162,7 +155,7 @@ async fn author_approve_execute_drains() {
 // A failed merge preflight gate parks the slice at `built`.
 #[tokio::test]
 async fn preflight_parks_built() {
-    let provider = ReplayProvider::replay_bare(&fixtures("preflight_parks"), suite_answers());
+    let provider = Scripted::scripted_bare(suite_answers());
     let root = provider.root.clone();
 
     scaffold_author_approve(&provider).await;
@@ -204,7 +197,7 @@ async fn preflight_parks_built() {
 // committed merge stands.
 #[tokio::test]
 async fn postflight_terminal() {
-    let provider = ReplayProvider::replay_bare(&fixtures("postflight_terminal"), suite_answers());
+    let provider = Scripted::scripted_bare(suite_answers());
     let root = provider.root.clone();
 
     scaffold_author_approve(&provider).await;
@@ -235,7 +228,7 @@ async fn postflight_terminal() {
 
 #[tokio::test]
 async fn build_parks_then_resumes() {
-    let provider = ReplayProvider::replay_bare(&fixtures("build_parks"), suite_answers());
+    let provider = Scripted::scripted_bare(suite_answers());
     let root = provider.root.clone();
 
     scaffold_author_approve(&provider).await;
