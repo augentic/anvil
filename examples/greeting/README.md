@@ -1,18 +1,16 @@
 # Example Adapter
 
-This example shows how to implement both Specify source and target adapters and use them to implement Specify's end-to-end workflow.
+This is an end-to-end example of the Specify application. It uses Specify's core engine + source and target adapters to implement a rudimentary workflow.
 
-The adapters implement a single MCP server for the model agent to use when requesting adapter reference documents.
+Both source and target adapters are implemented by the same wasm guest. The guest implements an MCP server for the model agent to use to request reference documents from the adapter.
 
 ## What it demonstrates
 
-The example runs a complete Specify change without model credentials:
+The example runs a Specify ***change*** using a mock model:
 
-1. The source adapter surveys and extracts greeting requirements.
-2. Specify reconciles them using deterministic scripted answers.
-3. The target adapter builds and merges the result.
-
-One WebAssembly component exports both adapter interfaces and serves their reference documentation over MCP.
+1. The source adapter ***surveys*** and ***extracts*** greeting requirements.
+2. Specify ***reconciles*** them using deterministic scripted answers.
+3. The target adapter ***builds*** and ***merges*** the result.
 
 After running, inspect the generated result at:
 
@@ -28,6 +26,7 @@ Run the example (and clean up afterwards):
 # Run the example (create plan -> execute)
 make run-example
 
-# Optionally, clean up
+# Clean up afterwards
 make clean-example
 ```
+
