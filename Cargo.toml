@@ -192,9 +192,9 @@ omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
 # TEMPORARY (do not commit): local omnia path patch while the reworked
-# scripted model double (dual-face `Scripted`) and the native
-# guest-Model-over-WasiModelCtx adapter land upstream. Restore the git
-# patch and `cargo update` the omnia-* pins before committing.
+# scripted model double (dual-face `Scripted`, `Harness` and replay
+# retired) lands upstream. Restore the git patch and `cargo update` the
+# omnia-* pins before committing.
 omnia = { path = "../omnia/crates/omnia" }
 omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { path = "../omnia/crates/omnia-guest" }

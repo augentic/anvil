@@ -20,7 +20,7 @@ There is exactly one supported regeneration switch, with one canonical invocatio
 REGENERATE_GOLDENS=1 cargo nextest run -p <crate> --test <binary>
 ```
 
-`REGENERATE_GOLDENS=1` refreshes checked-in golden outputs, including the request goldens under `crates/change/tests/goldens/` that pin the assembled judgment prompts (regenerate them whenever a judgment prompt or answer schema changes).
+`REGENERATE_GOLDENS=1` refreshes checked-in golden outputs.
 
 After regenerating, `git diff` the outputs and review every change: a diff that flips a kebab-case error `code` is a public-contract change, not a refresh.
 
@@ -30,14 +30,13 @@ After regenerating, `git diff` the outputs and review every change: a diff that 
 | --- | --- | --- |
 | `slice` | `merge_goldens` | `crates/slice/tests/fixtures/spec-*` |
 | `project` / `slice` | `answers` | `crates/project/answers/`, `crates/slice/answers/` |
-| `change` | `reconciliation` / `synthesis` | `crates/change/tests/goldens/` (request goldens) |
 
 Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Shared test helpers
 
-Cross-crate test support is single-sourced in the `crates/testkit` crate — the fixture adapter core, the unified capability provider, scripted answers, request goldens, command mocking, filesystem/git helpers (`GIT_ENV` / `run_git` / `copy_dir`), env guards, and plan builders. Suites depend on it as an ordinary dev-dependency (`use testkit::…`); do not reintroduce `#[path]` splices or per-suite provider copies.
+Cross-crate test support is single-sourced in the `crates/testkit` crate — the fixture adapter core, the unified capability provider, scripted answers, command mocking, filesystem/git helpers (`GIT_ENV` / `run_git` / `copy_dir`), env guards, and plan builders. Suites depend on it as an ordinary dev-dependency (`use testkit::…`); do not reintroduce `#[path]` splices or per-suite provider copies.
 
 Crate-private helpers stay under that crate's `tests/<helper>/mod.rs` (the sole `mod.rs` exception blessed in [`docs/standards/coding-standards.md`](../docs/standards/coding-standards.md#module-layout)), e.g. `crates/diagnostics/tests/diagnostics_support/mod.rs`.
 
-Generic model test mechanics (`Harness`, `Scripted`) come from Omnia's dev-only `omnia-testkit`, re-exported through `testkit::model`.
+Generic model test mechanics (the FIFO `Scripted` double) come from Omnia's dev-only `omnia-testkit`; the provider binds it behind the judgment legs (`testkit::Scripted`).

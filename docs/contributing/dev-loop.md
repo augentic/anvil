@@ -10,7 +10,7 @@ cargo make test                              # fast native integration tests; mo
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest` over the default workspace members: the workspace crates (including `testkit`), the examples package, and the `checks` package at `tests/`. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through `testkit`'s fixture adapter seams and its scripted model doubles — with the assembled judgment prompts pinned by committed request goldens (`REGENERATE_GOLDENS=1`) — so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest` over the default workspace members: the workspace crates (including `testkit`), the examples package, and the `checks` package at `tests/`. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through `testkit`'s fixture adapter seams and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 

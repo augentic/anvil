@@ -1146,7 +1146,6 @@ dependencies = [
  "omnia",
  "omnia-cursor",
  "omnia-guest",
- "omnia-testkit",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",

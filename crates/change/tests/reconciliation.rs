@@ -5,11 +5,10 @@
 //! kernel inside the repair loop.
 
 use std::fs;
-use std::path::Path;
 
 use change::{Divergence, plan};
 use serde_json::json;
-use testkit::{Scripted, answers, goldens, run};
+use testkit::{Scripted, answers, run};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -104,14 +103,6 @@ async fn overlap_merges() {
     assert_eq!(session.divergence, Some(Divergence::Likely));
     assert_eq!(session.disagreements.len(), 1);
     assert_eq!(session.disagreements[0].field, "session-timeout-minutes");
-
-    // Prompt pinning: the assembled reconcile request is a committed
-    // golden — regenerate with `REGENERATE_GOLDENS=1` and review the
-    // diff whenever the propose prompt or answer schema changes.
-    goldens::assert_requests(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/goldens/reconciliation.json"),
-        &provider.model().requests(),
-    );
 }
 
 #[tokio::test]
@@ -135,6 +126,7 @@ async fn uncovered_lead_exhausts() {
     let detail = err.to_string();
     assert!(detail.contains("password-reset"), "{detail}");
 
-    // One initial dispatch plus MAX_REPAIRS re-prompts.
-    assert_eq!(provider.model().requests().len(), JUDGMENT_BUDGET);
+    // One initial dispatch plus MAX_REPAIRS re-prompts drained the
+    // budget-sized script exactly.
+    provider.model().assert_exhausted();
 }

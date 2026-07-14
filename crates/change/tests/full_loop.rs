@@ -147,9 +147,9 @@ async fn author_approve_execute_drains() {
         .expect("postflight report beside the archive");
     assert!(postflight.contains("status: success"), "{postflight}");
 
-    // Model cadence: one reconciliation leg, one synthesis leg.
-    let requests = provider.model().requests();
-    assert_eq!(requests.len(), 2, "reconcile + synthesis only; adapters are deterministic");
+    // Model cadence: one reconciliation leg, one synthesis leg —
+    // exactly the two scripted answers, all consumed.
+    provider.model().assert_exhausted();
 }
 
 // A failed merge preflight gate parks the slice at `built`.

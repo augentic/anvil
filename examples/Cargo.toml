@@ -17,7 +17,6 @@ cfg-if.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-guest.workspace = true
-omnia-testkit.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true

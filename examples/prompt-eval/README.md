@@ -2,7 +2,7 @@
 
 A live-model example of the Specify engine workflow over the fixture adversarial lead set. Graded by deterministic validators only — never a second model judging the first.
 
-Layout: `engine.rs` is the whole example — the workflow driver over the live cursor-agent backend (`omnia_cursor::Client` behind `omnia-testkit`'s `Native` adapter, which owns the guest→wire mapping, the request/answer gates, and the workspace lend).
+Layout: `engine.rs` is the workflow driver over the live cursor-agent backend; `native.rs` is the example-local `Native` adapter that runs `omnia_cursor::Client` behind the guest-side `Model` trait (the guest→wire mapping, the request/answer gates, and the workspace lend).
 
 ## Workflow
 

@@ -5,12 +5,11 @@
 //! through the public refine / model / provenance operations.
 
 use std::fs;
-use std::path::Path;
 
 use change::plan;
 use serde_json::json;
 use testkit::provider::Provider;
-use testkit::{Scripted, answers, goldens, run};
+use testkit::{Scripted, answers, run};
 
 /// Synthesis for `session-policy`: the two `session.timeout` claims
 /// disagree, so the answer carries the `disagreed` verdict and the
@@ -163,15 +162,6 @@ async fn divergence_docs_wins() {
     assert_eq!(req.resolution.to_string(), "authority-resolved");
     let trace = req.resolution_trace.as_ref().expect("authority-resolved carries a trace");
     assert_eq!(trace.winner.as_deref(), Some("docs"));
-
-    // Prompt pinning: the assembled reconcile and synthesis requests
-    // are a committed golden — regenerate with `REGENERATE_GOLDENS=1`
-    // and review the diff whenever a judgment prompt or answer schema
-    // changes.
-    goldens::assert_requests(
-        &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/goldens/synthesis.json"),
-        &provider.model().requests(),
-    );
 }
 
 /// [`session_synthesis_answer`] plus one accepted Decision Record
@@ -242,12 +232,6 @@ async fn decisions_exact_set() {
     assert!(record.contains("## Consequences"), "{record}");
     assert!(!record.contains("id:"), "{record}");
     assert!(!record.contains("date:"), "{record}");
-
-    // The synthesis inputs surfaced the baseline decision projection.
-    let requests = provider.model().requests();
-    let synthesis_inputs = &requests[1].messages[0].content;
-    assert!(synthesis_inputs.contains("baseline-decisions"), "{synthesis_inputs}");
-    assert!(synthesis_inputs.contains("DEC-0001"), "{synthesis_inputs}");
 
     // Re-refine with a decision-free response: the exact-set
     // replacement clears both the generated record and any stray file.

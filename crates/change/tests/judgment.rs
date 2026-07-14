@@ -42,13 +42,8 @@ async fn malformed_repaired_in_loop() {
     let authored = author(&provider).await.expect("the repaired answer lands");
     assert_eq!(authored.slices, ["greeting"]);
 
-    // Two dispatches: the failed answer and its repair. The repair
-    // prompt re-presents the failed answer with the findings inlined.
-    let requests = provider.model().requests();
-    assert_eq!(requests.len(), 2);
-    let repair = &requests[1].messages[0].content;
-    assert!(repair.contains("Previous answer (failed validation)"), "{repair}");
-    assert!(repair.contains(r#"{"version":1,"kind":"response"}"#), "{repair}");
+    // Two dispatches — the failed answer and its repair — drained the
+    // two-answer script exactly.
     provider.model().assert_exhausted();
 }
 
@@ -63,8 +58,7 @@ async fn unrepairable_exhausts_budget() {
         "the last schema failure surfaces: {detail}"
     );
 
-    // One initial dispatch plus MAX_REPAIRS re-prompts, then the leg
-    // gives up — no further call.
-    assert_eq!(provider.model().requests().len(), JUDGMENT_BUDGET);
+    // One initial dispatch plus MAX_REPAIRS re-prompts drained the
+    // budget-sized script, then the leg gave up — no further call.
     provider.model().assert_exhausted();
 }

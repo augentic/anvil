@@ -49,8 +49,9 @@ async fn survey_failure_aborts_author() {
     let detail = err.to_string();
     assert!(detail.contains("survey"), "{detail}");
     assert!(detail.contains("fixture survey failure"), "typed detail preserved: {detail}");
-    // The failure aborted before any judgment dispatch.
-    assert!(provider.model().requests().is_empty());
+    // The failure aborted before any judgment dispatch: the script is
+    // empty, so a dispatch would have surfaced `model script exhausted`
+    // instead of the survey failure above.
 }
 
 #[tokio::test]

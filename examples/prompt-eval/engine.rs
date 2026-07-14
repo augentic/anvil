@@ -19,15 +19,17 @@ use std::path::{Path, PathBuf};
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
 use change::{NextReason, Status, plan};
 use omnia::Backend as _;
-use omnia_guest::model::{Format, Request};
-use omnia_testkit::model::{Harness, Native};
 use slice::handlers::{Build, BuildInput, MergeRun, MergeRunInput, Refine, RefineInput};
 use testkit::{Provider, answers, run};
 
-/// The live model: cursor-agent behind `omnia-testkit`'s [`Native`]
+use crate::native::Native;
+
+mod native;
+
+/// The live model: cursor-agent behind the example-local [`Native`]
 /// adapter, which carries the guest→wire mapping, the request/answer
 /// gates, and the workspace lend natively.
-type EvalProvider = Provider<Harness<Native<omnia_cursor::Client>>>;
+type EvalProvider = Provider<Native<omnia_cursor::Client>>;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() {
@@ -37,7 +39,7 @@ async fn main() {
     // The operator rhythm: plan → execute → finalize.
     plan(&provider, &root).await;
     let drained = execute(&provider, &root).await;
-    grade(&provider, &root, &drained);
+    grade(&root, &drained);
     finalize(&provider).await;
 
     fs::remove_dir_all(&root).expect("clean up the passing trial project");
@@ -62,7 +64,7 @@ async fn connect(root: &Path) -> EvalProvider {
     );
     // In-guest the `"."` preopen resolves the lent workspace; natively
     // the trial project root plays that part.
-    Provider::new(root, Harness::new(Native::with_workspace(client, root)))
+    Provider::new(root, Native::new(client, root))
 }
 
 // --- plan -------------------------------------------------------------------
@@ -197,10 +199,9 @@ async fn finalize(provider: &EvalProvider) {
 // --- grade ------------------------------------------------------------------
 
 /// Structural checks after execute, before finalize (plan.yaml still live).
-fn grade(provider: &EvalProvider, root: &Path, plan: &change::Plan) {
+fn grade(root: &Path, plan: &change::Plan) {
     assert_baseline(root);
     assert_build_outputs(root, plan);
-    report_repairs(provider, plan.entries.len());
 }
 
 fn assert_baseline(root: &Path) {
@@ -242,18 +243,6 @@ fn assert_build_outputs(root: &Path, plan: &change::Plan) {
     }
 }
 
-/// Per-leg request counts — reported, not asserted (early prompt-drift signal).
-fn report_repairs(provider: &EvalProvider, slices: usize) {
-    let requests = provider.model().requests();
-    let proposal = requests.iter().filter(|r| schema_name(r) == Some("proposal")).count();
-    let synthesis = requests.iter().filter(|r| schema_name(r) == Some("synthesis")).count();
-    eprintln!("reconcile leg: {proposal} request(s), {} repair(s)", proposal.saturating_sub(1));
-    eprintln!(
-        "synthesis legs: {synthesis} request(s) across {slices} slice(s), {} repair(s)",
-        synthesis.saturating_sub(slices)
-    );
-}
-
 fn read_plan(root: &Path) -> change::Plan {
     serde_saphyr::from_str(&fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"))
         .expect("parse plan.yaml")
@@ -269,11 +258,4 @@ fn requirements(root: &Path) -> Vec<Requirement> {
         }
     }
     requirements
-}
-
-const fn schema_name(request: &Request) -> Option<&str> {
-    match &request.format {
-        Format::Schema(schema) => Some(schema.name.as_str()),
-        Format::Text | Format::Json => None,
-    }
 }

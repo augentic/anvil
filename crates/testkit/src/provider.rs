@@ -25,7 +25,7 @@ use omnia_guest::api::invocation::Invocation;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::api::operation::Operation;
 use omnia_guest::model::{Reply, Request};
-use omnia_testkit::model::{Harness, Scripted};
+use omnia_testkit::model::Scripted as ScriptedModel;
 use project::adapter::metadata::Metadata;
 use project::adapter::{
     AdapterRef, Origin, PlatformsCapability, ResolvedSource, ResolvedTarget, Resolver,
@@ -37,8 +37,10 @@ use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus};
 use crate::adapter;
 use crate::env::{CacheGuard, scoped_cache};
 
-/// The provider shape the scripted suites run against.
-pub type Scripted = Provider<Harness<Scripted>>;
+/// The provider shape the scripted suites run against: the fixture
+/// adapter behind the seams, `omnia-testkit`'s FIFO script behind the
+/// judgment legs.
+pub type Scripted = Provider<ScriptedModel>;
 
 // How the provider answers adapter resolution.
 #[derive(Clone, Copy, Debug)]
@@ -98,7 +100,7 @@ impl<M> std::fmt::Debug for Provider<M> {
     }
 }
 
-impl Provider<Harness<Scripted>> {
+impl Provider<ScriptedModel> {
     /// A bare directory — nothing scaffolded (the scaffold-leg input):
     /// owned tempdir, pinned cache, current directory entered, the
     /// shipped component resolver behind adapter resolution, and an
@@ -113,7 +115,7 @@ impl Provider<Harness<Scripted>> {
         std::env::set_current_dir(&root).expect("enter project root");
         Self {
             root,
-            model: Harness::new(Scripted::answers(Vec::<String>::new())),
+            model: ScriptedModel::answers(Vec::<String>::new()),
             resolution: Resolution::Component,
             calls: Arc::new(Mutex::new(Vec::new())),
             owned: Some(Arc::new(Owned {
@@ -175,7 +177,7 @@ impl Provider<Harness<Scripted>> {
     /// A scripted fixture provider anchored at a caller-owned `root`.
     #[must_use]
     pub fn scripted_at(root: &Path, answers: Vec<String>) -> Self {
-        Self::new(root, Harness::new(Scripted::answers(answers)))
+        Self::new(root, ScriptedModel::answers(answers))
     }
 }
 
@@ -193,7 +195,7 @@ impl<M> Provider<M> {
     }
 
     /// The configured model backend — read access for suites that
-    /// assert on a scripted mock's recorded requests.
+    /// assert the script drained (`assert_exhausted`).
     pub const fn model(&self) -> &M {
         &self.model
     }

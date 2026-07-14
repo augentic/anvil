@@ -14,7 +14,7 @@ Specify is tested as a self-contained engine against its own WIT contract. No ru
 
 | Rung                   | Command                                 | Proves                                                                                                                                                                                                                                                                                 | Cadence                                                                                                                                                           |
 | ---------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Native integration** | `cargo make test`                       | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the workflow crates' public operations, `testkit`'s fixture adapter seams, and scripted model doubles, with the assembled judgment prompts pinned by committed request goldens                    | Every push (part of `cargo make ci`)                                                                                                                              |
+| **Native integration** | `cargo make test`                       | The complete workflow — reconciliation, synthesis, build, merge, lifecycle — through the workflow crates' public operations, `testkit`'s fixture adapter seams, and scripted model doubles                    | Every push (part of `cargo make ci`)                                                                                                                              |
 | **WASM boundary**      | `cd examples && cargo make test-wasm`   | The WASM seam only: the combined `greeting_wasm.wasm` loads through the checked-in `omnia.toml`, both axes dispatch through generated bindings, metadata reads, the guest calls the model host, preopens/cache are wired, and the typed error lift works across the component boundary | Weekly / path-filtered / manual (`.github/workflows/wasm.yaml`); required before release tags; per-push CI keeps the `wasm32-wasip2` compile check                |
 | **Prompt evaluation**  | `cd examples && cargo make prompt-eval` | The native prompt-evaluation harness checks that the configured live model produces validator-clean reconciliation and synthesis over an adversarial fixture lead set (cross-source overlap, authority disagreement, evidence gap); per-leg repair counts are reported, not asserted   | Operator-invoked: before a release tag and after judgment-prompt (`crates/slice/prompts/`, `crates/change/prompts/`) or answer-schema changes — never ordinary CI |
 
@@ -24,17 +24,7 @@ Each fact has one owning rung. The native suites own workflow behavior; the WASM
 
 `crates/testkit` is Specify's single test-support crate (`publish = false`, dev-dep'd by the suite-bearing crates — a legal Cargo dev-dependency cycle). It owns the fixture adapter core (`testkit::adapter`, both `specify:adapter` axes): controlled leads (including the adversarial set), controlled evidence with stable authority and claim anchors, deterministic guidance, an observable build output, and typed failures. Native tests reach it through `SourceSeam` / `TargetSeam` via the unified `testkit::Provider` (`Scripted`); `examples/greeting/guest.rs` wraps the same core as the `greeting-wasm` component in the manifest-hosted boundary example. Do not add another mock adapter, mock model, or fixture-adapter copy — extend the core and let both rungs inherit the behavior.
 
-Model doubles come from upstream: `omnia-testkit` owns the recorded harness and the FIFO script, re-exported through `testkit::model`. Specify owns only workflow scenario content — the leads, evidence, the scripted answer corpus (`testkit::answers`), the request goldens, and assertions.
-
-### Request goldens
-
-The scripted double answers regardless of the request, so the assembled judgment prompts are pinned explicitly: one representative reconciliation test and one representative synthesis test canonicalize their recorded request log (`testkit::goldens::assert_requests` over `Harness::requests()`) and compare it to committed goldens at `crates/change/tests/goldens/`. A judgment-prompt or answer-schema change breaks the golden; that is by design. Regenerate with:
-
-```bash
-REGENERATE_GOLDENS=1 cargo nextest run -p change
-```
-
-then `git diff` the goldens and review the prompt-side changes like any other golden. Do not add goldens to further tests — one per judgment leg is the pinning contract; more only duplicates churn.
+Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script; `testkit::Provider` binds it behind the judgment legs (`testkit::Scripted`). Specify owns only workflow scenario content — the leads, evidence, the scripted answer corpus (`testkit::answers`), and assertions. The scripted double answers regardless of the request; prompt quality is owned by the prompt-evaluation rung, not by the native suites.
 
 ## Integration-first policy
 
@@ -110,7 +100,7 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Golden file discipline
 
-`REGENERATE_GOLDENS=1` regenerates every checked-in golden — the structural artifact goldens, the generated answer schemas, and the request goldens (above). After regenerating, run `git diff` on the outputs and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors)).
+`REGENERATE_GOLDENS=1` regenerates every checked-in golden — the structural artifact goldens and the generated answer schemas. After regenerating, run `git diff` on the outputs and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors)).
 
 ## Test-side gotchas
 
