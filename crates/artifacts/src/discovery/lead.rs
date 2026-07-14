@@ -1,13 +1,13 @@
 //! In-memory representation of one `## Lead inventory` block.
 //!
-//! Mirrors `schemas/discovery/lead.schema.json` — one raw, unmerged
-//! lead as surfaced by one source: the `source` that produced
-//! it, the kebab-case `lead` (unique only within that
+//! One raw, unmerged lead as surfaced by one source: the `source` that
+//! produced it, the kebab-case `lead` (unique only within that
 //! `source`), and the content-bearing per-source `synopsis`. Identity
 //! is the `(source, lead)` pair; cross-source unification is deferred
 //! to plan time, where `/spec:plan`'s `propose` sub-step reads these
 //! leads but never edits `discovery.md`.
 
+use error::Error;
 use serde::{Deserialize, Serialize};
 
 /// One raw, unmerged block under `## Lead inventory` in `discovery.md`.
@@ -36,4 +36,40 @@ pub struct Lead {
     /// default) means unclassified and never blocks reconciliation.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<String>,
+}
+
+/// Deterministically re-check a survey's lead set.
+///
+/// Every `lead` id and topic slug must be a kebab slug and the
+/// `synopsis` non-empty. This is the `survey` validate-before-visible
+/// gate — the orchestrator only merges a clean set into
+/// `discovery.md`.
+///
+/// # Errors
+///
+/// Returns [`Error::Validation`] keyed on `discovery-lead-schema`
+/// (exit code 2) carrying one line per violation.
+pub fn validate_leads(leads: &[Lead]) -> Result<(), Error> {
+    let mut findings = Vec::new();
+    for lead in leads {
+        if !crate::evidence::is_kebab(&lead.lead) {
+            findings.push(format!("lead `{}` is not a kebab slug", lead.lead));
+        }
+        if lead.synopsis.trim().is_empty() {
+            findings.push(format!("lead `{}` has an empty synopsis", lead.lead));
+        }
+        for topic in &lead.topics {
+            if !crate::evidence::is_kebab(topic) {
+                findings.push(format!("lead `{}` topic `{topic}` is not a kebab slug", lead.lead));
+            }
+        }
+    }
+    if findings.is_empty() {
+        Ok(())
+    } else {
+        Err(Error::Validation {
+            code: "discovery-lead-schema".into(),
+            detail: findings.join("; "),
+        })
+    }
 }

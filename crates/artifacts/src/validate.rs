@@ -1,13 +1,10 @@
 //! Validation rule registry and runner.
 //!
-//! `Rule` / `CrossRule` declare their `Classification`; [`validate_slice`]
-//! returns a `Vec<Diagnostic>` — the neutral currency from
-//! `schema::diagnostics`. Structural `Fail` outcomes become deterministic
-//! `violation` diagnostics (`important`, blocking); semantic rules become
-//! non-blocking `review` diagnostics (`suggestion`,
-//! [`schema::diagnostics::DiagnosticKind::Review`]) that ask the agent to
-//! apply judgment. Passing structural rules emit no diagnostic — the
-//! report carries only findings, never the full pass checklist.
+//! [`validate_slice`] returns a `Vec<Diagnostic>` — the neutral currency
+//! from `diagnostics`. Structural `Fail` outcomes become
+//! deterministic `violation` diagnostics (`important`, blocking).
+//! Passing rules emit no diagnostic — the report carries only findings,
+//! never the full pass checklist.
 
 use std::path::Path;
 
@@ -20,19 +17,7 @@ mod run;
 
 pub use run::validate_slice;
 
-/// How the CLI decides a rule's outcome — declared at the rule's
-/// definition site.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Classification {
-    /// CLI decides Pass/Fail deterministically; `Fail` becomes a
-    /// deterministic `violation` diagnostic.
-    Structural,
-    /// CLI cannot decide; emits a non-blocking `review` diagnostic that
-    /// asks the agent to apply judgment.
-    Semantic,
-}
-
-/// Outcome of invoking a structural rule's `check` function.
+/// Outcome of invoking a rule's `check` function.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RuleOutcome {
     /// The rule passed.
@@ -51,11 +36,8 @@ pub struct Rule {
     pub id: &'static str,
     /// Human-readable description of what the rule checks.
     pub description: &'static str,
-    /// Whether the rule is structural or semantic.
-    pub classification: Classification,
-    /// `Some` for `Classification::Structural`; `None` for `Semantic`,
-    /// which the runner always materialises as `Deferred`.
-    pub check: Option<fn(&BriefContext<'_>) -> RuleOutcome>,
+    /// Checker function — Fail becomes a deterministic `violation`.
+    pub check: fn(&BriefContext<'_>) -> RuleOutcome,
 }
 
 /// Inputs a brief-scoped structural checker needs.
@@ -82,9 +64,7 @@ pub struct CrossRule {
     pub id: &'static str,
     /// Human-readable description of what the rule checks.
     pub description: &'static str,
-    /// Whether the rule is structural or semantic.
-    pub classification: Classification,
-    /// Checker function — only invoked for structural rules.
+    /// Checker function — Fail becomes a deterministic `violation`.
     pub check: fn(&CrossContext<'_>) -> RuleOutcome,
 }
 

@@ -6,9 +6,9 @@ The CLI itself is built in the in-tree Cargo workspace at the repo root. This do
 
 ## Rule: all deterministic operations live in the CLI
 
-The phase skills are agent-driven orchestrators. The skill markdown drives the agent-side work — eliciting user intent, reading brief bodies, writing artifacts, running the target adapter's build brief, and rendering summaries. Everything else runs through `specify`.
+Phase skills are ultrathin invoke-and-relay wrappers: they elicit missing arguments, invoke one `specify` verb, and relay its output. Guest orchestrations own judgment legs (survey, extract, synthesis, target build); target-adapter prompts own domain generation. Skill markdown must not grow orchestration, synthesis, or validation prose.
 
-When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb in the CLI repo and have the skill call it. The wrong fix is to make the skill smarter. The same rule is mirrored in the CLI repo's `AGENTS.md` under "Skill / CLI responsibility split".
+When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. See [AGENTS.md § Skill / CLI responsibility split](../../AGENTS.md#skill--cli-responsibility-split).
 
 Never hand-edit `metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
@@ -23,16 +23,17 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Slice (per-slice lifecycle)
 
-- `specify slice {create, validate, transition, touched-specs, overlap, drop}` — slice CRUD and lifecycle.
-- `specify slice refine` — guest-routed refinement: extraction per bound source plus the synthesis leg that projects the agent response into `model.yaml` and the Markdown artifacts (the only writer).
+- `specify slice list` — read-only listing of every slice with its lifecycle status and target.
+- `specify slice validate` — artifact and coherence validation for one slice.
+- `specify slice drop` — abandon a slice without merging (archives it and stamps the plan entry `dropped`). Slice directories are minted by the refine orchestration; lifecycle transitions are owned by the orchestrations (`refined`, `built`) and the merge/drop verbs — there is no standalone create or transition verb.
+- `specify slice refine` — guest-routed refinement: slice create (re-entry safe), extraction per bound source, plus the synthesis leg that projects the agent response into `model.yaml` and the Markdown artifacts (the only writer).
 - `specify slice build` — guest-routed target build: one orchestration assembles the build request, drives the adapter guest's build brief, validates the report, and gates the `built` transition.
 - `specify slice {model show, provenance}` — read-only views: `model show` renders `model.yaml`; `provenance` projects the audit-only inline-provenance view on demand.
 - `specify slice merge {preview, conflict-check, run}` — three-phase merge into the baseline.
-- `specify slice task {progress, mark}` — per-task progress writes.
 
 ### Change plan
 
-- `specify plan {create, author, validate, next, status, add, amend, remove, transition, archive, execute}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `author` is the guest-routed authoring orchestration and the default slice writer (surveys bound sources, reconciles leads, validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `execute` is the guest-routed driver loop over an approved plan; `add` appends an entry and `remove` drops a pending entry; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` health diagnostics; `next` is the sole writer of per-entry `in-progress` and `transition` the sole writer of plan-level `approved` and per-entry `done`; `status` is the read-only next-action projection (`refine|build|merge <slice>` / `stop <reason>` / `drained`) over plan entries, slice metadata, and the journal tail; its body also carries the re-entry fields `current-step` / `last-completed` / `resume` (the literal command that makes progress, `null` when no single command does). Driver mutual exclusion is guest-owned: the guest-routed verbs hold the `.specify/guest.lock` marker for the run's lifetime; there is no native lock wrapper.
+- `specify plan {author, validate, next, status, add, amend, remove, transition, archive, execute}` — plan CRUD and lifecycle. `author` scaffolds `plan.yaml` and is the guest-routed authoring orchestration and the default slice writer (surveys bound sources, reconciles leads, validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan); `execute` is the guest-routed driver loop over an approved plan; `add` appends an entry and `remove` drops a pending entry; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` health diagnostics; `next` is the sole writer of per-entry `in-progress` and `transition` the sole writer of plan-level `approved` and per-entry `done`; `status` is the read-only next-action projection (`refine|build|merge <slice>` / `stop <reason>` / `drained`) over plan entries, slice metadata, and the journal tail; its body also carries the re-entry fields `current-step` / `last-completed` / `resume` (the literal command that makes progress, `null` when no single command does). Driver mutual exclusion is guest-owned: the guest-routed verbs hold the `.specify/guest.lock` marker for the run's lifetime; there is no native lock wrapper.
 
 ### Change umbrella
 
@@ -45,7 +46,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Source / target adapters
 
-- `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. There is no declared-tool surface; adapter helpers are in-guest library code.
+- `specify source {resolve, survey, extract}` and `specify target {resolve}` — the axis-split adapter debug/breakout surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. The plan and refine orchestrations run these legs themselves; the standalone verbs exist for debugging and hand-driven breakouts. There is no declared-tool surface; adapter helpers are in-guest library code.
 
 ### Journal
 
@@ -62,7 +63,7 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 3. **Execute.** `specify plan execute` refuses unless the plan is `approved` (rendered as `specify plan status`'s `stop plan-not-approved`); under the guest lock it loops claim → refine → build → merge per entry, routing project-bound entries into the corresponding materialized slot. Per-entry `done` is stamped by `specify slice merge`. Exits on the first `stop <reason>` or on `drained`.
 4. **Publish and finalize.** After execution drains, the operator commits, publishes, and completes the required repository workflow. `/spec:finalize <change-name>` confirms publication is complete, then runs `specify plan archive`, which sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/spec:plan`, `specify plan execute`, and `/spec:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), complete publication through normal repository tooling, then run `specify plan archive` by hand.
+Hand-driven fallback: skip `specify plan execute` and `/spec:finalize`, author the plan with `/spec:plan` and adjust entries with `specify plan {add, amend}`, drive the loop yourself via `specify plan next → /spec:refine → /spec:build → /spec:merge` (per-entry `in-progress` is written by `specify plan next`; per-entry `done` is written by `specify slice merge`), complete publication through normal repository tooling, then run `specify plan archive` by hand.
 
 The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are written via `specify plan author` (default), `specify plan add`, `specify plan amend`, and `specify plan remove`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
@@ -80,13 +81,13 @@ Cross-project consumer-impact classification is deferred until a real consumer w
 
 Every CLI verb that skills consume emits a stable **flat envelope**: a top-level `envelope-version` integer plus the command-specific body fields at the same level. On success the body is exactly that — there is no `ok` discriminant and no `data` wrapper around the payload. On failure the same flat object carries three extra top-level keys: `error` (a kebab-case discriminant string), `message` (a humanised one-liner), and `exit-code` (the integer the binary returns). Skills invoked with `--format json` parse the envelope and branch on the `error` field rather than on stdout text.
 
-The canonical envelope shapes — including the success / error variants and per-command body examples — live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline; the `checkNoEnvelopeExamples` predicate enforces the rule. The reference is a hand-curated illustration of the happy path per command; variant coverage lives in the integration suites under `crates/*/tests/` and the wire-schema fixtures under [`tests/fixtures/plan/v2/`](../../tests/fixtures/plan/v2).
+The canonical envelope shapes — including the success / error variants and per-command body examples — live in [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md). SKILL.md bodies **link** to that reference rather than embedding envelope JSON inline (house style applied in review). The reference is a hand-curated illustration of the happy path per command; variant coverage lives in the integration suites under `crates/*/tests/`.
 
 The `error` discriminants are part of the public contract that skills and tests grep for. Examples skills handle today:
 
 - `registry-amendment-required` — execute-loop phase outcome carrying a structured proposal payload for adapters that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` / `unreachable-entry` — `specify plan validate` health diagnostics.
+- `cycle-in-depends-on` / `orphan-source` / `stale-workspace-clone` — `specify plan validate` health diagnostics.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 
 ## Journal events
@@ -97,15 +98,14 @@ Durable run telemetry is the newline-delimited JSON journal at `.specify/journal
 {"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}
 ```
 
-The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/workflow/src/journal/event.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum when the taxonomy changes:
+The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/project/src/journal/event.rs` is the single source of truth, and `specify journal emit <event> --payload` (the guarded front door for agent-orchestrated phases) rejects ids outside it. Keep the ids below aligned with that enum when the taxonomy changes:
 
 | Family | Event ids | Emitted by |
 |---|---|---|
 | Plan | `plan.transition.approved`, `plan.transition.undone`, `plan.entry.advanced`, `plan.reconcile.completed`, `plan.amend.authority-override`, `plan.amend.divergence` | `specify plan transition` (with the `actor` field on `approved`), `specify plan next`, the `plan author` reconcile kernel, `specify plan amend` |
-| Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg, `specify source extract`, `specify slice transition` |
+| Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg and its `refined` transition, `specify source extract` |
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed` | the guest-routed `specify slice build` orchestration |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created` | `specify slice merge` (fired on its validator outcome) |
-| Slice replay | `slice.replay.completed` | the replay target hook |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent` | `specify source survey` / `extract`, the `slice build` request-assembly leg |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills append only through `specify journal emit`, never by writing the file. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `specify journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`specify plan status`'s stop classification); nothing re-parses the JSONL by hand.
@@ -125,7 +125,6 @@ Skills should branch on the exit code first (success vs failure class) and on th
 
 ## Cross-references
 
-- [docs/standards/skill-authoring.md](skill-authoring.md) — the skill-side rules that surround this contract (description / argument-hint grammar, body caps, references discipline, guardrails).
+- [`tests/authoring.rs`](../../tests/authoring.rs) — the typed skill-frontmatter shape plus its description and argument-hint grammars (enforced by the `checks` package). Ultrathin-wrapper body style is guidance here, not a CI predicate.
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
-- [docs/standards/skill-guardrails.md](./skill-guardrails.md) — cross-cutting "skills MUST NOT" rules tied to this CLI surface.
 - [`AGENTS.md`](../../AGENTS.md#the-rust-workspace-specify-cli) — authoritative source for exit codes, error variants, and CLI architecture.

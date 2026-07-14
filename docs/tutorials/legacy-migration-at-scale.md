@@ -35,10 +35,6 @@ See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anat
 3. [Anatomy of an adapter](../explanation/adapter-anatomy.md) — survey vs extract operations
 4. [Target adapters](../reference/targets/omnia.md) — Omnia build and merge briefs
 
-## Eval scenarios
-
-The quality scenario pack includes a typescript-multi-slice scenario under [`quality/runbooks/typescript-multi-slice.md`](../../quality/runbooks/typescript-multi-slice.md) for operators validating releases. Contributors running quality profiles should see [Live quality profiles](../contributing/quality-profiles.md).
-
 ## Next steps
 
 - [Quick reference card](../reference/quick-reference.md) — source binding grammar

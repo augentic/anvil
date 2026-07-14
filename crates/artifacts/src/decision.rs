@@ -16,7 +16,7 @@
 //! baseline in hand. Like the spec provenance parser, findings
 //! aggregate so the operator sees every problem in one pass.
 
-use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};
 
 /// Maximum length of a Decision Record `slug` (`decision-slug-grammar`).
@@ -46,6 +46,7 @@ pub const REQUIRED_SECTIONS: [&str; 3] = ["Context", "Decision", "Consequences"]
     strum::Display,
     strum::EnumString,
     strum::IntoStaticStr,
+    schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

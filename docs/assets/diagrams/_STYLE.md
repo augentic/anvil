@@ -59,4 +59,4 @@ Adjust `../` depth for file location (`orientation/` uses `../assets/…`, `refe
 
 - **SVG**: workflow pipelines, layered architecture, state machines, adapter axis diagrams, crate graphs.
 - **Table**: field inventories, CLI flag lists, closed enums.
-- **` ```text `**: banned for pipeline diagrams in `docs/explanation/` and `docs/orientation/` (enforced by `tests/framework/prose.rs`).
+- **` ```text `**: avoid for pipeline diagrams in `docs/explanation/` and `docs/orientation/` — prefer an SVG (house style applied in review, not a CI check).

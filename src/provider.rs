@@ -1,21 +1,23 @@
 //! WIT-backed capabilities used by workflow orchestrators.
 //!
-//! Mappings live here so workflow code remains wasm-free. Claims stay
-//! raw JSON to preserve open per-kind fields. Compact build reports are
+//! Mappings live here so workflow code remains wasm-free. Claims map
+//! onto the typed [`artifacts::evidence::Claim`], whose flattened
+//! extras preserve open per-kind fields. Compact build reports are
 //! widened with caller-owned envelope fields before validation.
 
 use std::future::Future;
 
 use artifacts::evidence::AuthorityClass;
+use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Error;
-use schema::diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
-use workflow::adapter::metadata::{Metadata, Request};
-use workflow::adapter::{
+use project::adapter::metadata::{Metadata, Request};
+use project::adapter::{
     AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource, ResolvedTarget,
     Resolver,
 };
-use workflow::seam::{self, Evidence, Input, Lead, SourceSeam, TargetSeam, WorkingTree};
-use workflow::slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
+use project::seam::{self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree};
+use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
+use wasip3::http_compat::IncomingMessage as _;
 
 use crate::bindings::specify::adapter::{source, target, types};
 
@@ -24,7 +26,7 @@ pub struct Provider;
 
 impl omnia_guest::Model for Provider {}
 
-impl workflow::handler::Anchor for Provider {
+impl project::handler::Anchor for Provider {
     fn project_root(&self) -> &std::path::Path {
         std::path::Path::new(".")
     }
@@ -34,15 +36,50 @@ impl Resolver for Provider {
     fn resolve_source(
         &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
     ) -> Result<ResolvedSource, Error> {
-        workflow::adapter::resolver::Component::new(metadata)
+        project::adapter::resolver::Component::new(metadata)
             .resolve_source(adapter_ref, project_dir)
     }
 
     fn resolve_target(
         &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
     ) -> Result<ResolvedTarget, Error> {
-        workflow::adapter::resolver::Component::new(metadata)
+        project::adapter::resolver::Component::new(metadata)
             .resolve_target(adapter_ref, project_dir)
+    }
+}
+
+impl project::adapter::Hydrator for Provider {
+    // Straight `wasi:http/client` send — deliberately not
+    // `omnia_wasi_http::handle`, whose keyvalue-backed cache would add
+    // a `wasi:keyvalue` import no specify deployment links.
+    fn fetch(&self, url: &str) -> impl Future<Output = Result<Vec<u8>, Error>> + Send {
+        let url = url.to_string();
+        async move {
+            let diag = |detail: String| Error::Diag {
+                code: "http-fetch",
+                detail,
+            };
+            let request = omnia_guest::http::Request::get(&url)
+                .body(omnia_guest::axum::body::Body::empty())
+                .map_err(|err| diag(format!("building the request for {url}: {err}")))?;
+            let request = wasip3::http_compat::http_into_wasi_request(request)
+                .map_err(|err| diag(format!("converting the request for {url}: {err}")))?;
+            let response = wasip3::http::client::send(request)
+                .await
+                .map_err(|err| diag(format!("fetching {url}: {err}")))?;
+            let response = wasip3::http_compat::http_from_wasi_response(response)
+                .map_err(|err| diag(format!("reading the response from {url}: {err}")))?;
+            if !response.status().is_success() {
+                return Err(diag(format!("fetching {url}: HTTP {}", response.status())));
+            }
+            let (_, mut body) = response.into_parts();
+            let Some(wasi_response) = body.take_unstarted() else {
+                return Ok(Vec::new());
+            };
+            let (_, body_rx) = wasip3::wit_future::new(|| Ok(()));
+            let (stream, _trailers) = wasi_response.consume_body(body_rx);
+            Ok(stream.collect().await)
+        }
     }
 }
 
@@ -66,7 +103,7 @@ impl SourceSeam for Provider {
             let evidence = source::extract(id, wire).await.map_err(map_error)?;
             Ok(Evidence {
                 authority: map_authority(evidence.authority),
-                claims: evidence.claims.into_iter().map(claim_json).collect(),
+                claims: evidence.claims.into_iter().map(map_claim).collect(),
             })
         }
     }
@@ -87,6 +124,25 @@ impl TargetSeam for Provider {
                 subpath: tree.subpath,
             };
             let report = target::build(id.clone(), slice.clone(), wire_inputs, wire_tree)
+                .await
+                .map_err(map_error)?;
+            Ok(widen_report(&id, slice, report))
+        }
+    }
+
+    fn merge(
+        &self, id: String, slice: String, phase: MergePhase, tree: WorkingTree,
+    ) -> impl Future<Output = Result<BuildReport, seam::Error>> + Send {
+        async move {
+            let wire_phase = match phase {
+                MergePhase::Preflight => target::MergePhase::Preflight,
+                MergePhase::Postflight => target::MergePhase::Postflight,
+            };
+            let wire_tree = target::WorkingTree {
+                base: tree.base,
+                subpath: tree.subpath,
+            };
+            let report = target::merge(id.clone(), slice.clone(), wire_phase, wire_tree)
                 .await
                 .map_err(map_error)?;
             Ok(widen_report(&id, slice, report))
@@ -159,50 +215,39 @@ const fn map_authority(authority: source::Authority) -> AuthorityClass {
     }
 }
 
-/// Preserve open claim fields in their evidence-schema representation.
+/// Map a WIT claim record onto the typed [`artifacts::evidence::Claim`].
 ///
-/// A backing path uses `backing-path` to remain distinct from the claim
-/// anchor's `path`.
-fn claim_json(claim: source::Claim) -> serde_json::Value {
-    let mut object = serde_json::Map::new();
-    object.insert("kind".into(), claim_kind_str(claim.kind).into());
-    if let Some(id) = claim.id {
-        object.insert("id".into(), id.into());
-    }
-    if let Some(path) = claim.path {
-        object.insert("path".into(), path.into());
-    }
-    if let Some(synopsis) = claim.synopsis {
-        object.insert("synopsis".into(), synopsis.into());
-    }
-    match claim.backing {
-        Some(source::Backing::Payload(payload)) => {
-            object.insert("payload".into(), payload.into());
-        }
-        Some(source::Backing::Path(path)) => {
-            object.insert("backing-path".into(), path.into());
-        }
-        None => {}
-    }
-    serde_json::Value::Object(object)
+/// The backing variant flattens onto the wire shape's `payload` /
+/// `backing-path` keys via [`artifacts::evidence::Claim::set_backing`].
+fn map_claim(claim: source::Claim) -> artifacts::evidence::Claim {
+    let mut typed = artifacts::evidence::Claim::new(map_claim_kind(claim.kind));
+    typed.id = claim.id;
+    typed.path = claim.path;
+    typed.synopsis = claim.synopsis;
+    typed.set_backing(claim.backing.map(|backing| match backing {
+        source::Backing::Payload(payload) => artifacts::evidence::Backing::Payload(payload),
+        source::Backing::Path(path) => artifacts::evidence::Backing::Path(path),
+    }));
+    typed
 }
 
-const fn claim_kind_str(kind: source::ClaimKind) -> &'static str {
+const fn map_claim_kind(kind: source::ClaimKind) -> artifacts::evidence::ClaimKind {
+    use artifacts::evidence::ClaimKind;
     match kind {
-        source::ClaimKind::Intent => "intent",
-        source::ClaimKind::Requirement => "requirement",
-        source::ClaimKind::Criterion => "criterion",
-        source::ClaimKind::Decision => "decision",
-        source::ClaimKind::Section => "section",
-        source::ClaimKind::Diagram => "diagram",
-        source::ClaimKind::Contract => "contract",
-        source::ClaimKind::Example => "example",
-        source::ClaimKind::Excerpt => "excerpt",
-        source::ClaimKind::Type => "type",
-        source::ClaimKind::Call => "call",
-        source::ClaimKind::Region => "region",
-        source::ClaimKind::Container => "container",
-        source::ClaimKind::Leaf => "leaf",
+        source::ClaimKind::Intent => ClaimKind::Intent,
+        source::ClaimKind::Requirement => ClaimKind::Requirement,
+        source::ClaimKind::Criterion => ClaimKind::Criterion,
+        source::ClaimKind::Decision => ClaimKind::Decision,
+        source::ClaimKind::Section => ClaimKind::Section,
+        source::ClaimKind::Diagram => ClaimKind::Diagram,
+        source::ClaimKind::Contract => ClaimKind::Contract,
+        source::ClaimKind::Example => ClaimKind::Example,
+        source::ClaimKind::Excerpt => ClaimKind::Excerpt,
+        source::ClaimKind::Type => ClaimKind::Type,
+        source::ClaimKind::Call => ClaimKind::Call,
+        source::ClaimKind::Region => ClaimKind::Region,
+        source::ClaimKind::Container => ClaimKind::Container,
+        source::ClaimKind::Leaf => ClaimKind::Leaf,
     }
 }
 
@@ -254,7 +299,7 @@ fn widen_finding(finding: target::Finding) -> Diagnostic {
         None,
     );
     diagnostic.rule_id = finding.rule_id;
-    diagnostic.fingerprint = schema::diagnostics::fingerprint(&diagnostic);
+    diagnostic.fingerprint = diagnostics::fingerprint(&diagnostic);
     diagnostic
 }
 
@@ -267,8 +312,8 @@ const fn map_severity(severity: target::Severity) -> Severity {
     }
 }
 
-const fn map_platform(platform: target::Platform) -> workflow::platform::Platform {
-    use workflow::platform::Platform;
+const fn map_platform(platform: target::Platform) -> project::platform::Platform {
+    use project::platform::Platform;
     match platform {
         target::Platform::Core => Platform::Core,
         target::Platform::Ios => Platform::Ios,

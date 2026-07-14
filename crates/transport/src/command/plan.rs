@@ -4,8 +4,8 @@
 //! land directly in the workflow wire DTOs, with each `*Args` type
 //! mirroring its command's wire input.
 
+use ::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
 use clap::{ArgAction, Args};
-use workflow::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
 
 /// Parse the locked `--source` argv grammar into a [`SourceAssign`]:
 ///
@@ -94,61 +94,6 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
     }
 }
 
-/// Arguments for `plan create`.
-#[derive(Debug, Args)]
-pub struct CreateArgs {
-    /// Kebab-case change name
-    pub name: String,
-    /// Named source binding, repeatable. Wire grammar:
-    /// `--source <key>=<adapter>:<path>` for path-bound bindings,
-    /// or `--source <key>=<adapter>:value:<literal>` for
-    /// value-bound bindings (used by `intent`). Recorded in the
-    /// plan's `sources:` map as the structured
-    /// `{ adapter, path?, value? }` shape per workflow §Source.
-    #[arg(long = "source", value_parser = source_assign)]
-    pub sources: Vec<SourceAssign>,
-    /// Operator intent as a literal string — pure sugar for
-    /// `--source intent=intent:value:<string>` (the N=1 entry
-    /// point without hand-writing the binding grammar).
-    /// Combining it with an explicit `--source intent=...`
-    /// binding fails on the duplicate-key gate
-    /// (`plan-source-duplicate-key`), the same refusal two
-    /// conflicting `--source intent=...` occurrences get.
-    #[arg(long = "intent", value_name = "STRING")]
-    pub intent: Option<String>,
-    /// Stamp `lifecycle: approved` atomically with create
-    /// (auto-approve Gate-1 contract). Typing this flag *is* the operator's
-    /// Gate-1 consent — the CLI runs the same validation it
-    /// runs on the post-create path, refuses the create on
-    /// failure regardless of the flag, and on success writes a
-    /// single atomic `plan.yaml` carrying `lifecycle: approved`
-    /// plus the matching `plan.transition.approved` journal
-    /// event. Valid on any plan shape (empty scaffold,
-    /// single-slice, multi-slice).
-    #[arg(long = "auto-approve", action = ArgAction::SetTrue)]
-    pub auto_approve: bool,
-    /// Pre-seed a per-slice `authority-override` entry on a
-    /// named slice (per-slice authority override). Each occurrence takes two
-    /// positional values: the slice name and a
-    /// `<claim-kind>=<source>` assignment. Repeatable; later
-    /// occurrences override earlier ones on the same
-    /// `(slice, kind)` tuple. The slice MUST already exist in
-    /// the plan being created (unknown names short-circuit with
-    /// `plan-authority-override-unknown-slice`); the source key
-    /// is validated at `specify slice validate` time via the
-    /// orphan-key check. One
-    /// `plan.amend.authority-override` journal event fires per
-    /// resolved entry in the same batched append as
-    /// `--auto-approve`.
-    #[arg(
-        long = "authority-override",
-        value_names = ["SLICE", "KIND=KEY"],
-        num_args = 2,
-        action = ArgAction::Append,
-    )]
-    pub authority_override: Vec<String>,
-}
-
 /// Arguments for `plan validate`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
@@ -222,14 +167,13 @@ pub struct TransitionArgs {
 pub struct AuthorArgs {
     /// Kebab-case change name
     pub name: String,
-    /// Named source binding, repeatable — the `plan create`
-    /// grammar verbatim: `--source <key>=<adapter>:<path>` or
+    /// Named source binding, repeatable:
+    /// `--source <key>=<adapter>:<path>` or
     /// `--source <key>=<adapter>:value:<literal>`.
     #[arg(long = "source", value_parser = source_assign)]
     pub sources: Vec<SourceAssign>,
     /// Operator intent as a literal string — pure sugar for
-    /// `--source intent=intent:value:<string>`, exactly as on
-    /// `plan create`.
+    /// `--source intent=intent:value:<string>`.
     #[arg(long = "intent", value_name = "STRING")]
     pub intent: Option<String>,
 }

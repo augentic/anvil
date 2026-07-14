@@ -1,5 +1,4 @@
 {
-  "$schema": "../schemas/authoring/marketplace.schema.json",
   "name": "augentic",
   "owner": {
     "name": "augentic",
@@ -15,11 +14,6 @@
       "name": "capture",
       "source": "capture",
       "description": "Skills to capture runtime fixtures from legacy TypeScript services for Specify migration workflows."
-    },
-    {
-      "name": "client",
-      "source": "client",
-      "description": "Experimental: skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts. One skill, no eval scenario; status under review."
     },
     {
       "name": "spec",

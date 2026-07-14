@@ -1,70 +1,65 @@
 # Contributing to Specify
 
-This section is for developers working on the Specify framework itself -- the skills, adapters, references, and CLI that power the `/spec:*` workflow. If you are looking for how to *use* Specify in your own project, start with [What is Specify?](../orientation/index.md).
+This section is for developers working on the Specify framework itself — the Rust runtime, guest orchestrations, embedded prompts, Cursor skill wrappers, and docs. If you are looking for how to *use* Specify in your own project, start with [What is Specify?](../orientation/index.md).
 
 ## Repository map
 
 The workflow engine and operator plugins live in [`augentic/specify`](https://github.com/augentic/specify); source and target adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters):
 
-| Path                                                                   | Contents                                                                                         | Language       |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
-| `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/`, `quality/` | Skills, references, documentation, marketplace manifest, and canonical workflow scenarios | Markdown, YAML |
-| `src/`, `crates/`, `tests/`, `harness/` | The runtime, workspace crates, authoring checks, and native/composed execution surfaces | Rust |
+| Path | Contents | Language |
+| ---- | -------- | -------- |
+| `src/`, `crates/`, `tests/`, `examples/` | The runtime, workspace crates, repo checks, and manifest-hosted WASM / prompt-eval surfaces | Rust |
+| `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Ultrathin Cursor skill wrappers, documentation, and the marketplace manifest | Markdown, YAML |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 
-The prose defines *what agents do* (skills) and *how artifacts are generated* (adapters and briefs). The Rust workspace at the repo root implements *deterministic operations* that skills delegate to -- lifecycle transitions, validation, spec merging, plan management, and task tracking.
-
-The prose and the runtime share one version line and ship in one release. Skills invoke the CLI as a subprocess (`specify plan add ...`, `specify slice validate ...`, etc.) and consume its JSON output. They never import Rust code directly.
+The Rust workspace owns deterministic operations and guest orchestrations (lifecycle, validation, synthesis, plan execute, target build). Phase skills under `plugins/spec/` are ultrathin invoke-and-relay wrappers over those verbs. Adapter prompts in `specify-adapters` own domain-specific generation.
 
 ## Who you're contributing for
 
-Two audiences share this repository:
+| Audience | Typical edits | Touches the Rust workspace? |
+| -------- | ------------- | --------------------------- |
+| **Runtime / tooling contributors** | Crates, handlers, orchestrations, integration tests | Yes — `src/` and `crates/` |
+| **Adapter authors** | Adapter crates and `prose/prompts/` in `specify-adapters` | In that sibling repo |
+| **Docs and skill-wrapper authors** | `docs/`, `plugins/*/skills/*/SKILL.md`, marketplace manifest | No — markdown and YAML only |
 
-| Audience                      | Typical edits                                                  | Touches the Rust workspace?             |
-| ----------------------------- | -------------------------------------------------------------- | --------------------------------------- |
-| **Skill and adapter authors** | `SKILL.md`, adapter briefs, references, docs                   | No — markdown and YAML only             |
-| **Tooling contributors**      | Framework test predicates, schemas, deterministic tests | Yes — they work in `src/` and `crates/` |
-
-Every contributor runs `cargo test --test framework` locally with only a Rust toolchain: the framework checks are plain cargo tests over the prose and manifest surfaces (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree plugin changes, pass `--plugin-dir plugins/<name>` to Cursor Agent.
+Every contributor runs `cargo test -p checks` locally with only a Rust toolchain: adapter boundary and docs/plugin link integrity (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree skill wrappers, pass `--plugin-dir plugins/<name>` to Cursor Agent.
 
 ## Development environment
 
-**For skill and adapter work** (repo root):
+**For docs and skill-wrapper work** (repo root):
 
 - [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace
 - [mdBook](https://rust-lang.github.io/mdBook/) — for building documentation locally (optional)
 
 **For tooling and CLI work** (the Rust workspace at the repo root):
 
-- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt and the shared `cargo make dev -- <command>` loop uses nightly Cargo Script
-- [cargo-make](https://sagiegurari.github.io/cargo-make/) -- the root `Makefile` forwards unknown targets to `Makefile.toml`
-- [cargo-nextest](https://nexte.st/) -- test runner used by the CI targets
-- [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) -- supply-chain checks
+- Rust stable toolchain — `cargo build` and the test suites use the channel pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt
+- [cargo-make](https://sagiegurari.github.io/cargo-make/) — the root `Makefile` forwards unknown targets to `Makefile.toml`
+- [cargo-nextest](https://nexte.st/) — test runner used by the CI targets
+- [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) — supply-chain checks
 
 ## Contribution workflow
 
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.
 2. **Branch from `main`.** Create a feature branch for your change.
 3. **Make your edits.** Follow the conventions described in the sub-pages below.
-4. **Run checks.** `cargo test --test framework` over the prose (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
+4. **Run checks.** `cargo test -p checks` (works for every contributor); `cargo make ci` (or `make ci`) for the full gate. For documentation changes, also run `mdbook build docs` before opening the PR.
 5. **Open a pull request** against `main`. All patches require at least one maintainer review.
 6. **Sign off.** Every commit must carry a DCO sign-off (`git commit -s`). See [CONTRIBUTING.md](https://github.com/augentic/specify/blob/main/CONTRIBUTING.md) for the full certificate text.
 
 ## What to read next
 
-- [Quality gates](quality-gates.md) -- canonical scenarios, execution profiles, assertion ownership, and release cadence
-- [The developer loop](dev-loop.md) -- the three-rung `cargo make dev -- <command>` surface shared with `specify-adapters`: `check` (model-free), `live` (live model), `full` (WASM boundary)
-- [Lifecycle](../reference/lifecycle.md) and [synthesis references](../../plugins/spec/references/synthesis/) -- workflow state, evidence reconciliation, authority, and cache behavior
-- [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
-- [Anatomy of an adapter](../explanation/adapter-anatomy.md) -- how adapters declare brief pipelines
-- [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
-- [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Consistency Checks](checks.md) -- what the framework-quality cargo tests enforce and how to extend them
+- [Quality gates](quality-gates.md) — test rungs, assertion ownership, and release cadence
+- [The developer loop](dev-loop.md) — the three local rungs: `cargo make test` (native), `cargo make test-wasm` (WASM boundary), `cargo make prompt-eval` (prompt evaluation)
+- [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/slice/prompts/synthesis/) — workflow state, evidence reconciliation, authority, and cache behavior
+- [Anatomy of an adapter](../explanation/adapter-anatomy.md) — how adapters declare brief pipelines
+- [CLI Architecture](cli-architecture.md) — crate graph, dispatch pattern, and JSON contract
+- [Consistency Checks](checks.md) — what the `checks` package enforces and how to extend it
+- [Cursor operator plugins](operator-plugins.md) — marketplace layout and local `--plugin-dir` preview
 
 ## Example Patterns
 
-Advanced examples live beside the skills that own them, so they stay close to the implementation rules they illustrate:
+Advanced examples live beside the adapters that own them:
 
-- [`adapters/targets/omnia/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build.md) -- generated crate patterns, update cases, and provider-backed test patterns (this prompt carries the crate-writer and test-writer behavior).
-- [`adapters/targets/vectis/prose/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/) and [`adapters/targets/vectis/prose/references/examples/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/examples/) -- Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/prose/prompts/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/prompts/).
-- [`quality/`](../../quality/) -- unified workflow-quality tree containing canonical scenarios, profiles, runbooks, fixtures, reports, and shared references.
+- [`adapters/targets/omnia/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build.md) — generated crate patterns, update cases, and provider-backed test patterns (this prompt carries the former crate-writer and test-writer behavior).
+- [`adapters/targets/vectis/prose/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/) and [`adapters/targets/vectis/prose/references/examples/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/examples/) — Crux core, iOS / Android shell, and design-system reference material consumed by [`adapters/targets/vectis/prose/prompts/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/prompts/).

@@ -26,7 +26,7 @@ fn step(...) { ... }
 fn step(...) { ... }
 
 // GOOD — module-root waiver that legitimately covers every item below
-// crates/workflow/src/agents.rs
+// crates/project/src/agents.rs
 #![allow(
     missing_docs,
     clippy::pedantic,
@@ -101,7 +101,7 @@ match format {
 Ok(SomeBody::from(&result))
 ```
 
-Text mode renders through the body's `workflow::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
+Text mode renders through the body's `project::handler::Render` impl (`fn render(&self, w: &mut dyn Write) -> io::Result<()>`); the JSON path goes through `serde::Serialize` automatically. New code must not introduce `match … format`.
 
 ## One emit path
 

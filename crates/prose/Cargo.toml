@@ -1,0 +1,18 @@
+[package]
+name = "prose"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Build-time codegen for embedded prompt corpora: walk a markdown tree, link-check it, and emit a generated DOCS table"
+categories = ["development-tools::build-utils"]
+keywords = ["specify", "prose", "codegen"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+tempfile.workspace = true

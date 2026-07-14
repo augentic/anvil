@@ -51,10 +51,9 @@ none (it owns the registry of many). Mixing the two would produce a
 `project.yaml` whose semantics depend on whether downstream verbs
 treat the project as an adapter source or as a registry root, and
 different verbs would disagree. Supplying both is a clap conflict
-(exit 2); supplying neither engages the elicitation layer — a TTY
-prompt, or the typed `init-adapter-required` — with the
-`init-requires-adapter-or-workspace` discriminant as the workflow
-layer's defence-in-depth check.
+(exit 2); supplying neither fails typed with `init-adapter-required`
+(exit 2) — with the `init-requires-adapter-or-workspace` discriminant
+as the workflow layer's defence-in-depth check.
 
 ## Re-entry
 

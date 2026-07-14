@@ -6,7 +6,7 @@ argument-hint: "[slice-name]"
 
 # Merge Skill
 
-`specify slice merge run` owns the whole landing — baseline conflict detection, the deterministic delta merge, Decision Record promotion, the `merged` transition, the archive move, the `slice.archive.created` ledger entry, and the per-entry `done` stamp (it is the sole writer of `done`). This skill only resolves the slice name, confirms, invokes the verb, and relays its output.
+`specify slice merge run` owns the whole landing — the target's preflight gate, baseline conflict detection, the deterministic delta merge, Decision Record promotion, the `merged` transition, the archive move, the target's postflight gate, the `slice.archive.created` ledger entry, and the per-entry `done` stamp (it is the sole writer of `done`). This skill only resolves the slice name, confirms, invokes the verb, and relays its output.
 
 ## Invocation
 
@@ -19,4 +19,4 @@ When `[slice-name]` is omitted, run `specify plan status` and use the slice it n
 ## Relay
 
 - Surface the CLI output verbatim, including the archive path and the promoted `decisions[]` ids.
-- On non-zero exit (e.g. a baseline conflict), surface the structured error verbatim and stop; the slice stays `built` and the plan entry stays `in-progress`. Never auto-revert a landed merge and never move anything into `.specify/archive/` by hand — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+- On non-zero exit before the commit (a preflight gate failure or baseline conflict), surface the structured error verbatim and stop; the slice stays `built` and the plan entry stays `in-progress`, so re-running after a fix re-enters cleanly. A postflight failure is terminal-but-merged: the slice is already `merged` and archived, so relay the diagnostic without attempting any rollback. Never auto-revert a landed merge and never move anything into `.specify/archive/` by hand — the CLI is the single writer for lifecycle state.

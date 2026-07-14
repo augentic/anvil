@@ -1,5 +1,5 @@
 //! Evidence authority enums — the closed `AuthorityClass` and
-//! `ClaimKind` sets shared by `schemas/evidence.schema.json`,
+//! `ClaimKind` sets shared by the Evidence document,
 //! `plan.yaml`'s per-slice `authority-override` map, and the slice
 //! model.
 //!
@@ -11,14 +11,24 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Closed authority-class enum mirrored from
-/// `schemas/evidence.schema.json#/$defs/authorityClass`.
+/// Closed authority-class enum on the Evidence document.
 ///
 /// workflow §Authority hierarchy fixes the default ordering as
 /// `intent > documentation > behaviour`; Evidence authority override lifts authority
 /// from per-Evidence to per-(Evidence, claim-kind) without widening
 /// the class set. New classes still require a workflow contract update.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum AuthorityClass {
@@ -30,13 +40,11 @@ pub enum AuthorityClass {
     Behaviour,
 }
 
-/// Closed claim-kind enum mirrored from
-/// `schemas/evidence.schema.json#/$defs/claimKind`.
+/// Closed claim-kind enum on Evidence claims.
 ///
-/// Kept byte-identical with the schema enum so that the per-slice
-/// authority override map in `plan.yaml.slices[]` validates against the
-/// same closed set. `example` (runtime capture claim) is the runtime
-/// capture kind emitted by the `captures` source adapter.
+/// The per-slice authority override map in `plan.yaml.slices[]` keys
+/// against this same closed set. `example` (runtime capture claim) is
+/// the runtime capture kind emitted by the `captures` source adapter.
 #[derive(
     Debug,
     Clone,
@@ -50,6 +58,7 @@ pub enum AuthorityClass {
     Deserialize,
     strum::Display,
     strum::EnumString,
+    schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(

@@ -14,10 +14,10 @@ argument-hint: "[slice-name] [reason]"
 specify slice drop <slice-name> --reason "<rationale>"
 ```
 
-- When `[slice-name]` is omitted, enumerate `.specify/slices/*/` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
+- When `[slice-name]` is omitted, run `specify slice list` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
 - When invoked interactively (no `reason` argument), elicit the rationale and confirm the drop with the AskQuestion tool before running; warn first when the slice is `built`, since `/spec:merge` may be the intended action. When `reason` is supplied, skip the confirmations and run directly.
 
 ## Relay
 
 - Surface the CLI output verbatim, including the `archive-path` destination.
-- On non-zero exit, surface the structured error verbatim and stop. Never merge or rewrite anything under `.specify/specs/`, and never move the slice directory by hand — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+- On non-zero exit, surface the structured error verbatim and stop. Never merge or rewrite anything under `.specify/specs/`, and never move the slice directory by hand — the CLI is the single writer for lifecycle state.

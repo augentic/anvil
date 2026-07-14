@@ -1,28 +1,16 @@
-/// The `specify:adapter` adapter contract, revised per RFC-61.
-///
-/// Adapter guests export exactly one axis interface (`source` xor `target`)
-/// plus `wasi:http/incoming-handler`, which serves the adapter's compiled-in
-/// references over MCP; there is no typed `references` interface — the
-/// spawned agent fetches documents lazily through the HTTP export. Judgment
-/// is an Omnia host effect, not part of this package: each judgment operation
-/// issues `omnia:model/completion.create` from inside the adapter guest, with
-/// `format: schema(...)` so the host gate validates the answer before the
-/// guest deserializes it into the records below.
-///
-/// The answer schemas are not hand-written: they derive from the embedded
-/// canonical schemas (`schemas/discovery/lead.schema.json`,
-/// `schemas/evidence.schema.json`, `schemas/target/build-report.schema.json`)
-/// as the generated documents under `schemas/answers/`, and the records below
-/// mirror what those schemas carry minus call-scoped envelope fields (the
-/// surveyed source, the extracted lead, the built slice and target) that the
-/// caller already knows.
-///
-/// No resource types cross the guest-to-guest seam: Omnia's host-mediated
-/// dispatch carries plain values only, routed by each call's `adapter-id`
-/// first argument. Every guest in a deployment shares the same `[[mount]]`
-/// preopens, so operations name trees by `revision` (plus an optional
-/// subpath) and open their own `"."` preopen rather than receiving a
-/// directory handle.
+/// The `specify:adapter` contract. Adapter guests export exactly one axis
+/// interface (`source` xor `target`; the additive `adapter` world serves
+/// both, e.g. the Specify-owned fixture) plus `wasi:http/incoming-handler`,
+/// which serves the adapter's compiled-in references over MCP. Judgment is
+/// an Omnia host effect: each judgment operation issues
+/// `omnia:model/completion.create` with `format: schema(...)` so the host
+/// gate validates the answer. The records below are the contract's source
+/// of truth; the answer schemas the model host consumes are generated from
+/// the matching Rust wire types (`project::answers` in `augentic/specify`)
+/// minus call-scoped envelope fields the caller already knows. No resource
+/// types cross the seam: host-mediated dispatch carries plain values only,
+/// routed by each call's `adapter-id` first argument, and every guest opens
+/// its own `"."` preopen rather than receiving a directory handle.
 package specify:adapter@0.1.0;
 
 interface types {
@@ -38,38 +26,12 @@ interface types {
   /// first argument.
   type adapter-id = string;
 
-  /// A node-independent, content-addressed reference, e.g. "sha256: …".
-  /// Stable identity for caching, dedup, and replay. Forward hook for
-  /// distributed working trees (RFC-55, deferred): with today's shared
-  /// mounts, content is reachable directly through the `"."` preopen.
-  type artifact = string;
-
   /// A content-addressed snapshot identity (a git commit oid in the git
   /// backend). Portable: it names a build's starting point independently of
   /// which node the working tree lives on. With today's shared mounts it
   /// names the state of the one live project tree; it is the forward hook
-  /// for distributed working trees (RFC-55, deferred).
+  /// for distributed working trees (deferred).
   type revision = string;
-
-  /// One path-scoped edit, relative to a working tree's root. A present
-  /// `content` is an add or a modify; an absent `content` is a delete.
-  record edit {
-    /// The edited file's path, relative to the working tree root.
-    path: string,
-    /// The new content as a content-addressed handle, or absent for a deletion.
-    content: option<artifact>,
-  }
-
-  /// How a build changed a working tree, relative to `base`. With today's
-  /// shared mounts the edits also land in place in the live tree; the
-  /// changeset is the portable record of them, and the forward hook for
-  /// crossing nodes (RFC-55, deferred).
-  record changeset {
-    /// The revision the edits apply against.
-    base: revision,
-    /// The per-path edits the build produced.
-    edits: list<edit>,
-  }
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
@@ -79,14 +41,13 @@ interface types {
 interface source {
   use types.{ adapter-id, error };
 
-  /// The lead returned by the survey operation. Mirrors
-  /// `schemas/discovery/lead.schema.json` minus the envelope `source` key:
-  /// the workflow guest attributes every lead a survey produces to the
-  /// surveyed source itself.
+  /// The lead returned by the survey operation: the discovery lead
+  /// minus the envelope `source` key — the workflow guest attributes
+  /// every lead a survey produces to the surveyed source itself.
   record lead {
     /// Stable kebab-case lead identifier, unique only within its source;
     /// identity is the `(source, lead)` pair. Named `lead` to match the
-    /// schema key, so answers deserialize without a rename.
+    /// wire key, so answers deserialize without a rename.
     lead: string,
     /// A reconciliation-grade per-source headline of the lead as this source surfaced it.
     synopsis: string,
@@ -108,8 +69,9 @@ interface source {
     behaviour
   }
 
-  /// The closed claim-kind taxonomy from `schemas/evidence.schema.json`.
-  /// New kinds require updating the workflow contract and schemas together.
+  /// The closed claim-kind taxonomy shared with the Evidence wire type.
+  /// New kinds require updating the workflow contract and this record
+  /// together.
   enum claim-kind {
     intent,
     requirement,
@@ -149,15 +111,15 @@ interface source {
     path: option<string>,
     /// A synthesis-grade headline summarizing the semantic meaning of this evidence.
     /// Used by the synthesis engine to merge related claims across sources.
-    /// An open per-kind body field in the schema, so answers may omit it.
+    /// An open per-kind body field on the wire, so answers may omit it.
     synopsis: option<string>,
     /// The backing data of the claim's evidence (either a path or a raw payload).
     backing: option<backing>,
   }
 
-  /// The evidence returned by the extract operation. Mirrors
-  /// `schemas/evidence.schema.json` minus the envelope `lead` key: the
-  /// extract call names the lead, so the answer never repeats it.
+  /// The evidence returned by the extract operation: the Evidence
+  /// document minus the envelope `lead` key — the extract call names
+  /// the lead, so the answer never repeats it.
   record evidence {
     /// The document-level authority class of this evidence.
     authority: authority,
@@ -165,7 +127,7 @@ interface source {
     claims: list<claim>,
   }
 
-  /// The adapter's deterministic metadata (RFC-64) — the facts
+  /// The adapter's deterministic metadata — the facts
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world,
   /// so only the compatibility floor remains on the record.
@@ -198,7 +160,7 @@ interface source {
 /// call in the middle, validate-before-visible checks compiled in after the
 /// answer lands.
 interface target {
-  use types.{ adapter-id, changeset, error, revision };
+  use types.{ adapter-id, error, revision };
 
   /// Types of inputs used to build a slice.
   variant input {
@@ -221,9 +183,9 @@ interface target {
     subpath: option<string>,
   }
 
-  /// The severity of a finding. The closed review severity enum from
-  /// `schemas/diagnostics/diagnostic.schema.json`, ordered for sort
-  /// stability (`critical` < `important` < `suggestion` < `optional`).
+  /// The severity of a finding. The closed review severity enum shared
+  /// with the `Diagnostic` wire type, ordered for sort stability
+  /// (`critical` < `important` < `suggestion` < `optional`).
   enum severity {
     critical,
     important,
@@ -233,7 +195,7 @@ interface target {
 
   /// A finding from the operation: the compact projection of one
   /// diagnostic from the schema-gated answer (whose `findings[]` carry
-  /// the full `schemas/diagnostics/diagnostic.schema.json` shape). The
+  /// the full `Diagnostic` wire shape). The
   /// guest maps `rule-id` and `severity` through and folds the
   /// diagnostic's `title` / `impact` / `remediation` prose into
   /// `detail`; the full diagnostic stays in the answer, not on the seam.
@@ -253,8 +215,8 @@ interface target {
     failure,
   }
 
-  /// The closed target platform taxonomy from
-  /// `schemas/target/build-report.schema.json`.
+  /// The closed target platform taxonomy shared with the build-report
+  /// wire type.
   enum platform {
     core,
     ios,
@@ -280,13 +242,28 @@ interface target {
     screens: u32,
   }
 
-  /// Judgment returned by the `build` and `merge` operations. Mirrors
-  /// `schemas/target/build-report.schema.json` minus the envelope keys
-  /// (`version`, `slice`, `target`) the caller already knows. The
+  /// Which side of the deterministic core merge a `merge` dispatch runs
+  /// on. The engine folds the slice's deltas, promotes Decision Records,
+  /// and archives the slice deterministically in Rust; the target's
+  /// judgment brackets that commit.
+  enum merge-phase {
+    /// Before the deterministic commit: staged composition / contract /
+    /// build checks over the built slice. A blocking finding aborts the
+    /// merge with the slice still `built`.
+    preflight,
+    /// After the deterministic commit: merged-baseline validators over
+    /// the updated tree. The slice is already merged and archived, so a
+    /// blocking finding is a terminal diagnostic, never a rollback.
+    postflight,
+  }
+
+  /// Judgment returned by the `build` and `merge` operations: the
+  /// build report minus the envelope keys (`version`, `slice`,
+  /// `target`) the caller already knows. The
   /// resulting state — a build's delta, or the merged baseline — lives
   /// in the working tree, not in this report.
   record report {
-    /// The status of the operation. Named `status` to match the schema
+    /// The status of the operation. Named `status` to match the wire
     /// key, so answers deserialize without a rename.
     status: status,
     /// The findings from the operation. On success, only non-blocking
@@ -321,7 +298,7 @@ interface target {
     default: list<platform>,
   }
 
-  /// The adapter's deterministic metadata (RFC-64) — the facts
+  /// The adapter's deterministic metadata — the facts
   /// the host consumes before dispatching an operation. Identity lives
   /// in the wasm-pkg package reference and axis in the exported world;
   /// the record carries the compatibility floor plus the target's
@@ -358,18 +335,17 @@ interface target {
   /// own `"."` preopen, reads existing code through it, and writes its
   /// changes in place; the judgment leg runs behind the adapter's own
   /// `create` call, with references served from its MCP export. The report
-  /// carries only judgment — the resulting delta lives in the tree, and the
-  /// caller extracts it as a `changeset` against `base` where one is needed.
+  /// carries only judgment — the resulting delta lives in the tree.
   build: async func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
 
-  /// Merge a built slice into the project's baseline. `delta` is the build's
-  /// portable delta (theirs) against `delta.base`; the baseline (ours) is
-  /// reached through the shared mount named by `tree` and folded into in
-  /// place — a 3-way merge. Conflict resolution is a judgment leg behind
-  /// `create`; validators re-run in guest code after the answer lands. The
-  /// report carries the merge judgment; the caller commits the merged
-  /// baseline.
-  merge: async func(id: adapter-id, slice: string, delta: changeset, tree: working-tree) -> result<report, error>;
+  /// Run one target-specific merge gate around the engine's deterministic
+  /// core merge. Dispatched twice per slice merge: `preflight` before the
+  /// engine folds the slice's deltas into the baseline, `postflight` after
+  /// the commit and archive. The adapter reads both the built slice and the
+  /// baseline through the shared mount named by `tree`; the report carries
+  /// only judgment — lifecycle transitions, baseline spec merging, and
+  /// archive moves stay engine-owned.
+  merge: async func(id: adapter-id, slice: string, phase: merge-phase, tree: working-tree) -> result<report, error>;
 }
 
 /// A source adapter component: one axis interface plus the MCP reference
@@ -381,6 +357,16 @@ world source-adapter {
 /// A target adapter component: one axis interface plus the MCP reference
 /// references served over `wasi:http`.
 world target-adapter {
+  export target;
+}
+
+/// A combined source and target adapter component. Additive: external
+/// adapters remain single-axis (`source-adapter` xor `target-adapter`);
+/// this world exists for components that deliberately serve both axes,
+/// such as the Specify-owned harness adapter, bound under one artifact
+/// at both a `source:<name>` and a `target:<name>` dispatch id.
+world adapter {
+  export source;
   export target;
 }
 

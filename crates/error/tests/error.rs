@@ -13,7 +13,7 @@ fn diag_round_trip() {
 }
 
 #[test]
-fn cli_too_old_discriminant_display() {
+fn cli_too_old_display() {
     let err = Error::CliTooOld {
         required: "1.0.0".to_string(),
         found: "0.9.0".to_string(),
@@ -43,7 +43,7 @@ fn adapter_too_old_display() {
 }
 
 #[test]
-fn validation_static_code_and_display() {
+fn validation_code_and_display() {
     // The common path borrows a `&'static str` code, and
     // `validation_failed` folds `rule` + `detail` into one message.
     let err = Error::validation_failed("bad-thing", "rule", "detail");
@@ -52,7 +52,7 @@ fn validation_static_code_and_display() {
 }
 
 #[test]
-fn validation_empty_rule_omits_prefix() {
+fn empty_rule_omits_prefix() {
     // Edge: an empty `rule` must not leave a dangling `": "` prefix.
     let err = Error::validation_failed("code", "", "just detail");
     assert_eq!(err.to_string(), "code: just detail");

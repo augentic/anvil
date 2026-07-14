@@ -22,4 +22,4 @@ Composition only — the skill writes nothing under `.specify/` directly, and br
 Change <name> finalized. Plan archived at <.specify>/archive/plans/<name>-<YYYYMMDD>.yaml.
 ```
 
-- On non-zero exit at any step, surface the structured error verbatim and stop; re-running re-enters cleanly. Route every state write through the CLI — see [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+- On non-zero exit at any step, surface the structured error verbatim and stop; re-running re-enters cleanly. Route every state write through the CLI — it is the single writer for lifecycle state.

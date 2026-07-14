@@ -1,0 +1,26 @@
+[package]
+name = "diagnostics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Neutral diagnostic substrate, SHA-256 digest helpers, and digest-keyed cache paths shared by Specify crates"
+categories = ["development-tools"]
+keywords = ["specify", "diagnostics"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+base16ct.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true

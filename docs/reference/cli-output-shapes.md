@@ -1,6 +1,6 @@
 # CLI output shapes
 
-Canonical JSON envelope shapes for `specify *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline"](../standards/skill-authoring.md#skill-body-discipline)).
+Canonical JSON envelope shapes for `specify *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body.
 
 ## Conventions
 
@@ -15,11 +15,11 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 ## Shapes
 
-The examples below are hand-curated illustrations of the happy path for each command. For the wire-schema accept/reject variant set, browse the canonical fixtures in [`tests/fixtures/plan/v2/`](../../tests/fixtures/plan/v2/). When a command grows a new variant, copy the relevant fixture in here (trimmed if necessary) and add a sentence describing when the variant fires.
+The examples below are hand-curated illustrations of the happy path for each command; the accept/reject variant set is exercised by the integration suites under `crates/*/tests/`. When a command grows a new variant, copy the relevant output in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
-### `specify plan create`
+### `specify plan add`
 
-Scaffolds an empty plan and emits its first entry.
+Appends one entry to an existing plan.
 
 ```json
 {
@@ -128,7 +128,7 @@ Used for both entry transitions (`kind: "entry"`) and the plan-level review stam
 
 ### `specify plan status`
 
-Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the `stop-conditions.md` reason, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). The verb never writes: `plan next` stays the only `in-progress` writer.
+Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). The verb never writes: `plan next` stays the only `in-progress` writer.
 
 ```json
 {
@@ -232,39 +232,6 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
 }
 ```
 
-### `specify slice task mark`
-
-Marks one task complete. `idempotent: true` indicates the task was already complete and the call was a no-op; the `new-content-path` always points at the updated `tasks.md` regardless.
-
-```json
-{
-  "idempotent": true,
-  "marked": "1.1",
-  "new-content-path": "<TEMPDIR>/.specify/slices/my-slice/tasks.md"
-}
-```
-
-### `specify slice task progress`
-
-Reads task counts and per-task state from a slice's `tasks.md`. `complete` / `pending` are the headline counts; `tasks[]` carries each parsed task with its parent `group`, `number` (`X.Y`), free-form `description`, and optional `skill-directive` (the embedded `<!-- skill: plugin:skill-name -->` reference, if any).
-
-```json
-{
-  "complete": 2,
-  "pending": 3,
-  "tasks": [
-    {
-      "complete": true,
-      "description": "Wire the crate into the workspace",
-      "group": "1. Scaffold",
-      "number": "1.2",
-      "skill-directive": null
-    }
-  ],
-  "total": 5
-}
-```
-
 ### Synthesis envelopes {#synthesis-envelopes}
 
 The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
@@ -313,7 +280,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 
 ### `specify slice build`
 
-One envelope shape inside the guest-routed orchestration: the request is assembled and schema-validated, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail validates the report against `schemas/target/build-report.schema.json`, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+One envelope shape inside the guest-routed orchestration: the typed request is assembled, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail gates the typed report, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
 ```json
 {
@@ -333,35 +300,17 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
 - `kind: "violation"` — a structural defect. Open `critical`/`important` violations block the lifecycle gate (exit 2).
 - `kind: "review"` — a deterministically-raised request for agent/human judgment. Surfaced but never blocking; the refine agent reads its worklist as `findings.filter(kind == "review")`.
 
-`summary` carries per-severity counts. A clean run emits no `violation` findings; semantic checks still appear as `review` findings:
+`summary` carries per-severity counts. A clean run emits an empty `findings[]` and zero counts:
 
 ```json
 {
-  "findings": [
-    {
-      "artifact": "proposal",
-      "confidence": "medium",
-      "evidence": {
-        "kind": "snippet",
-        "value": "Semantic check — requires agent judgment"
-      },
-      "fingerprint": "sha256:…",
-      "id": "DIAG-0001",
-      "impact": "Semantic check — requires agent judgment",
-      "kind": "review",
-      "location": { "path": "proposal.md" },
-      "remediation": "Uses imperative language for motivation",
-      "rule-id": "proposal.uses-imperative-language",
-      "severity": "suggestion",
-      "source": "model-assisted",
-      "title": "Uses imperative language for motivation"
-    }
-  ],
-  "synopsis": { "critical": 0, "important": 0, "optional": 0, "suggestion": 1 },
+  "findings": [],
+  "synopsis": { "critical": 0, "important": 0, "optional": 0, "suggestion": 0 },
   "version": 1
 }
 ```
 
+Non-blocking `review` findings can still appear from pre-adapter advisories (e.g. `discovery-lead-synopsis-thin`) when a thin lead synopsis is present — those ride the same report shape but never block the gate.
 A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report.
 
 ### `specify init --upgrade`

@@ -35,7 +35,7 @@ A `[divergence]` already has an automatic winner (the higher-authority source); 
 specify plan amend <entry> --authority-override <entry> <kind>=<source>
 ```
 
-Authority order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../plugins/spec/references/synthesis/authority.md)). The override surface key must already appear in the slice's `sources[]` — an orphan key is rejected by `specify slice validate` with `slice-authority-override-orphan-source`.
+Authority order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)). The override surface key must already appear in the slice's `sources[]` — an orphan key is rejected by `specify slice validate` with `slice-authority-override-orphan-source`.
 
 ## Resolve a conflict
 

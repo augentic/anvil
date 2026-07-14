@@ -46,12 +46,12 @@ Each slice's `metadata.yaml` tracks an independent lifecycle:
 
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
-| `/spec:plan` exits at validate                   | plan: `pending` (initial)         | `specify plan create`                            |
+| `/spec:plan` exits at validate                   | plan: `pending` (initial)         | `specify plan author` (scaffold leg)             |
 | Operator stamps Gate 1                            | plan: `pending → approved`        | `specify plan transition <name> approved`        |
 | `specify plan next` picks next pending row       | per-entry: `pending → in-progress` | `specify plan next`                              |
-| `/spec:refine` creates slice                      | slice: (none) → `refining`         | `specify slice create`                           |
-| `/spec:refine` completes synthesis                | slice: `refining → refined`        | `specify slice transition <name> refined`        |
-| `/spec:build` completes tasks                     | slice: `refined → built`           | `specify slice transition <name> built`          |
+| `/spec:refine` creates slice                      | slice: (none) → `refining`         | the `specify slice refine` orchestration          |
+| `/spec:refine` completes synthesis                | slice: `refining → refined`        | the `specify slice refine` orchestration          |
+| `/spec:build` completes tasks                     | slice: `refined → built`           | the `specify slice build` orchestration           |
 | `/spec:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `specify slice merge`                            |
 | `/spec:drop` invoked                              | slice: `* → dropped`               | `specify slice drop <name> --reason "..."`       |
 

@@ -129,7 +129,7 @@ mod cross {
     }
 
     #[test]
-    fn composition_well_formed_passes() {
+    fn composition_passes() {
         let s = Slice::new();
         s.file("composition.yaml", "screens:\n  home:\n    maps_to: \"REQ-001\"\n");
 

@@ -1,6 +1,8 @@
 # Install: `cargo install cargo-make`
 # Help: https://sagiegurari.github.io/cargo-make/
 
+# extend = [{ path = "examples/Makefile.toml" }]
+
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
 
@@ -15,7 +17,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt-check", "lint", "wasm", "test", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "wasm", "test", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
@@ -23,24 +25,6 @@ dependencies = ["check", "vet", "deny"]
 # -------------------------------------
 # Individual Actions
 # -------------------------------------
-
-# Cross-repo developer loop. Pass the subcommand and its arguments after `--`.
-[tasks.dev]
-command = "rustup"
-args = [
-  "run",
-  "nightly",
-  "cargo",
-  "-Zscript",
-  "scripts/dev.rs",
-  "${@}",
-]
-
-# Live quality orchestrator. Pass the subcommand and its arguments after `--`,
-# e.g. `cargo make quality -- run wasm-live --trials 1`.
-[tasks.quality]
-command = "cargo"
-args = ["run", "-q", "-p", "quality", "--", "${@}"]
 
 # Audit
 [tasks.audit]
@@ -59,17 +43,12 @@ command = "rustup"
 args = ["run", "nightly", "cargo", "udeps", "--all-targets"]
 install_crate = "cargo-udeps"
 
-# Fmt — mutates; the gates use fmt-check
+# Fmt — mutates; the gates use fmt
 [tasks.fmt]
 command = "rustup"
-args = ["run", "nightly", "cargo", "fmt"]
+args = ["run", "nightly", "cargo", "fmt", "--all"]
 
-# Fmt check — what CI enforces; run `cargo make fmt` to fix
-[tasks.fmt-check]
-command = "rustup"
-args = ["run", "nightly", "cargo", "fmt", "--all", "--", "--check"]
-
-# Lint — --workspace so the opt-in harness packages stay linted, matching CI
+# Lint — --workspace so the examples package stays linted, matching CI
 [tasks.lint]
 command = "cargo"
 args = [
@@ -90,45 +69,36 @@ command = "cargo"
 args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
-# Check wasm core — the per-push WASM boundary gate
+# Check wasm core — the per-push WASM boundary gate: the shipped guest
+# crates plus the examples adapter shim. The adapter check lives in
+# examples/Makefile.toml; this task keeps `cargo make ci` one-shot.
 [tasks.wasm]
-command = "cargo"
-args = [
-    "check",
-    "--locked",
-    "--lib",
-    "-p",
-    "specify",
-    "-p",
-    "transport",
-    "--target",
-    "wasm32-wasip2",
-]
-env = { RUSTFLAGS = "-Dwarnings" }
-
-# Build guests — the workflow core plus the echo adapter fixtures
-[tasks.guests]
 script_runner = "@shell"
 script = '''
-cargo build --locked --lib -p specify --target wasm32-wasip2
-cargo build --locked -p fixtures --examples --target wasm32-wasip2
+cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+(cd examples && cargo make wasm)
+'''
+env = { RUSTFLAGS = "-Dwarnings" }
+
+# Opt-in example runners, exposed from the repository root without
+# merging the examples task definitions into this workspace file.
+[tasks.test-wasm]
+script = '''
+(cd examples && cargo make test-wasm)
+'''
+
+[tasks.prompt-eval]
+script = '''
+(cd examples && cargo make prompt-eval)
 '''
 
 # Test — the ordinary suite over the default workspace members
-# (crates/* plus tests/framework); the replay harness is opt-in via
-# test-replay.
+# (crates/*, examples, tests); the WASM boundary
+# smoke is opt-in via `cargo make test-wasm`.
 [tasks.test]
 command = "cargo"
 args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
-
-# replay smoke — hosts the freshly built guests in one Omnia
-# deployment. Matches the scheduled composed workflow; not part of
-# check/ci.
-[tasks.test-replay]
-command = "cargo"
-args = ["nextest", "run", "--locked", "-p", "replay", "--no-tests=pass"]
-dependencies = ["guests"]
 
 # Test Doc
 [tasks.test-docs]
@@ -157,4 +127,3 @@ cargo vet regenerate unpublished
 cargo vet --locked
 '''
 install_crate = "cargo-vet"
-

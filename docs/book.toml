@@ -34,8 +34,6 @@ exclude = [
   '_STYLE\.md',
   # Out-of-tree refs covered by docs/standards/doc-authoring.md as
   # intentional repo-root links that resolve at deploy time only.
-  '\.\./\.\./quality/fixtures/reference',
-  '\.\./\.\./scripts/checks',
   '\.\./\.\./adapters/targets/vectis/references/layout-inferer-contract\.md',
-  '\.\./\.\./plugins/spec/references/synthesis/authority\.md',
+  'crates/slice/prompts/synthesis',
 ]

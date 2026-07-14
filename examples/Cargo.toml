@@ -1,0 +1,52 @@
+[package]
+name = "examples"
+description = "Specify examples — prompt evaluation and hosted WASM boundary"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+autotests = false
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+anyhow.workspace = true
+artifacts.workspace = true
+change.workspace = true
+cfg-if.workspace = true
+omnia.workspace = true
+omnia-cursor.workspace = true
+omnia-guest.workspace = true
+omnia-wasi-http.workspace = true
+omnia-wasi-model.workspace = true
+omnia-wasi-otel.workspace = true
+serde_json.workspace = true
+serde-saphyr.workspace = true
+slice.workspace = true
+tempfile.workspace = true
+testkit.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+omnia-guest.workspace = true
+omnia-wasi-http.workspace = true
+serde_json.workspace = true
+testkit.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
+
+[lints]
+workspace = true
+
+[[example]]
+name = "greeting-wasm"
+path = "greeting/guest/lib.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "greeting"
+path = "greeting/runtime/main.rs"
+
+[[example]]
+name = "prompt-eval"
+path = "prompt-eval/engine.rs"

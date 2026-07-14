@@ -155,4 +155,4 @@ specify plan execute
 - **[How-to Guides](how-to/index.md)** -- task-oriented recipes for common operator situations.
 - **[Understanding Specify](explanation/concepts.md)** -- concepts, architecture, and design decisions.
 - **[Reference](reference/index.md)** -- skills, CLI commands, artifact formats, and configuration.
-- **[Contributing](contributing/index.md)** -- skill authoring, plugin development, and checks.
+- **[Contributing](contributing/index.md)** -- the Rust runtime, consistency checks, and Cursor skill wrappers.

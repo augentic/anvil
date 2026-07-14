@@ -41,7 +41,7 @@ mod parse {
     }
 
     #[test]
-    fn retired_aliases_bullet_rejected() {
+    fn rejects_retired_aliases() {
         let err = Discovery::parse(
             "\
 ## Lead inventory
@@ -82,7 +82,7 @@ mod parse {
     }
 
     #[test]
-    fn accepts_existing_inventory_heading() {
+    fn accepts_inventory_heading() {
         let lead_set = "\
 ## Lead inventory
 
@@ -98,7 +98,7 @@ mod parse {
     }
 
     #[test]
-    fn accepts_whitespace_only_content() {
+    fn accepts_whitespace_only() {
         let doc = Discovery::parse_lead_set("\n  \n").expect("parse ok");
 
         assert!(doc.leads().is_empty());

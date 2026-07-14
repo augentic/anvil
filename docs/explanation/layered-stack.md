@@ -17,13 +17,13 @@ The configuration surfaces:
 
 - **`.specify/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `specify-version`, `sources:` list of available adapters.
 - **Adapter components** — each source / target adapter is a single WebAssembly component whose metadata is its own `metadata` export (no manifest file; operations derive from the WIT contract per axis).
-- **JSON Schemas** — the authoritative `evidence.schema.json`, `discovery/lead.schema.json`, `discovery/proposal.schema.json`, and `plan.yaml` schemas are owned by and distributed with the `specify` binary, with sources in-tree under [`schemas/`](../../schemas).
+- **Typed wire shapes** — the authoritative Evidence, lead, proposal, and `plan.yaml` shapes are the Rust serde types compiled into the `specify` binary (`artifacts::evidence`, `artifacts::discovery`, `project::plan`); the judgment-answer schemas the model host consumes are generated from those types by `project::answers` / `slice::answers`.
 - **`AGENTS.md` Specify-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
 
 - **`specify init <target>`** / **`specify init --workspace`** — one-time scaffold of `.specify/`, writes `project.yaml`.
-- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/workflow/src/adapter/`) routes by axis.
+- **`specify source resolve <name>`** / **`specify target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/project/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 
@@ -49,7 +49,7 @@ The full set of Layer 1 skills:
 | `/spec:merge`  | Wrap `specify slice merge run`: baseline delta merge, archive; only writer of per-entry `done` |
 | `/spec:drop`   | Wrap `specify slice drop`: discard a slice without merging                                 |
 
-The matching CLI surface is the **`specify slice ...`** family: `slice refine`, `slice build`, `slice merge run`, plus the finer-grained `slice create`, `slice transition`, `slice validate`. The skills are one-to-one wrappers over it.
+The matching CLI surface is the **`specify slice ...`** family: `slice refine`, `slice build`, `slice merge run`, `slice drop`, plus the read-only `slice list` and `slice validate`. The skills are one-to-one wrappers over it.
 
 ## Layer 2: Planning and driving a change
 

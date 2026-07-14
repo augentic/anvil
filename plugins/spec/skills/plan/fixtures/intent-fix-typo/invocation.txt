@@ -1,1 +1,0 @@
-/spec:plan fix-typo source intent="fix typo in user.rs"

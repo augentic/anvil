@@ -1,31 +1,24 @@
 [package]
 name = "specify"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-description = "Specify — a generic Omnia command-mode runtime over the cursor-bound backends"
+description = "A tool for specifying and running code generation workflows"
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
-publish = false
-# The root package carries no tests: the framework-quality suite lives
-# in the lightweight tests/framework package, crate behavior lives in
-# each crate's tests/, and tests/fs_git.rs is a `#[path]`-shared helper
-# that must not become a (Wasmtime-heavy) empty test binary.
 autotests = false
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+version.workspace = true
 
 [lib]
 name = "specify"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
-test = false
-doctest = false
 
 [[bin]]
 name = "specify"
 path = "src/runtime.rs"
-test = false
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -43,9 +36,11 @@ serde.workspace = true
 serde_json.workspace = true
 transport.workspace = true
 error.workspace = true
-schema.workspace = true
+diagnostics.workspace = true
 artifacts.workspace = true
-workflow.workspace = true
+change.workspace = true
+project.workspace = true
+slice.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
 
@@ -53,12 +48,12 @@ wit-bindgen.workspace = true
 workspace = true
 
 [workspace]
-members = ["crates/*", "harness/*", "tests/framework"]
-# The ordinary test group: crate suites plus the framework-quality
-# package. The root runtime package and the harness packages are
-# explicit opt-ins (`-p specify`, `-p replay`), keeping
-# Wasmtime execution out of the per-commit build.
-default-members = ["crates/*", "tests/framework"]
+members = ["crates/*", "examples", "tests"]
+# The ordinary test group: crate suites (including testkit) plus the
+# lightweight repo-checks package and the examples package. The host runners
+# (hosted WASM, prompt-eval) remain opt-in through
+# `cd examples && cargo make test-wasm` / `prompt-eval`.
+default-members = ["crates/*", "examples", "tests"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -70,7 +65,6 @@ rust-version = "1.95"
 version = "0.27.2"
 
 [workspace.lints.rust]
-# https://dirname.github.io/rust-std-doc/rustc/lints/listing/allowed-by-default.html
 elided_lifetimes_in_paths = "warn"
 explicit_outlives_requirements = "warn"
 let_underscore_drop = "warn"
@@ -90,8 +84,7 @@ unused_lifetimes = "warn"
 unused_qualifications = "warn"
 
 [workspace.lints.clippy]
-# https://doc.rust-lang.org/stable/clippy/index.html
-# Groups carry priority = -1 so individual lints below can override them.
+# set priority = -1 so individual lints below can override them.
 all = { level = "warn", priority = -1 }
 cargo = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
@@ -153,19 +146,16 @@ verbose_file_reads = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.103"
-assert_cmd = "2.2.2"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.1", features = ["derive", "env"] }
 clap_complete = "4.6.7"
 glob = "0.3.3"
 jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
-jsonschema = { version = "0.47", default-features = false }
-libc = "0.2"
 petgraph = "0.8.3"
 proptest = "1.11.0"
 regex = "1.13.0"
-schema = { path = "crates/schema" }
+schemars = "1.2.1"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde-saphyr = "0.0.29"
@@ -181,16 +171,21 @@ wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
 
 artifacts = { path = "crates/artifacts" }
+change = { path = "crates/change" }
+diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
-scenario = { path = "crates/scenario" }
+project = { path = "crates/project" }
+prose = { path = "crates/prose" }
+slice = { path = "crates/slice" }
+testkit = { path = "crates/testkit" }
 transport = { path = "crates/transport" }
-workflow = { path = "crates/workflow" }
 
 omnia = "0.35.0"
 omnia-cursor = "0.28.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
+omnia-testkit = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
@@ -200,15 +195,17 @@ omnia = { git = "https://github.com/augentic/omnia.git" }
 omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 
 # omnia = { path = "../omnia/crates/omnia" }
-# omnia-cursor = { path = "../backends/crates/cursor" }
+# omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+# omnia-testkit = { path = "../omnia/crates/testkit" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
 # omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
@@ -223,44 +220,17 @@ lto = true
 opt-level = 2
 strip = true
 
-# Cranelift JIT-compiles WASI components at run time; built at debug
-# opt-level the vectis component costs 40-70s per compile, so the
-# compiler-path crates are optimized even in dev/test profiles. Only
-# these crates: a blanket `package."*"` override forces an optimized
-# rebuild of every dependency, which dominates cold CI builds.
-[profile.dev.package.cranelift-codegen]
-opt-level = 2
-
-[profile.dev.package.cranelift-frontend]
-opt-level = 2
-
-[profile.dev.package.cranelift-entity]
-opt-level = 2
-
-[profile.dev.package.cranelift-bforest]
-opt-level = 2
-
-[profile.dev.package.cranelift-bitset]
-opt-level = 2
-
-[profile.dev.package.cranelift-control]
-opt-level = 2
-
-[profile.dev.package.cranelift-native]
-opt-level = 2
-
-[profile.dev.package.cranelift-assembler-x64]
-opt-level = 2
-
-[profile.dev.package.regalloc2]
-opt-level = 2
-
-[profile.dev.package.wasmparser]
-opt-level = 2
-
-[profile.dev.package.wasmtime-internal-cranelift]
-opt-level = 2
-
-[profile.dev.package.wasmtime-environ]
-opt-level = 2
-
+# Optimise WASI debug builds because Cranelift JIT-compiles at run time.
+[profile.dev.package]
+cranelift-codegen = { opt-level = 2 }
+cranelift-frontend = { opt-level = 2 }
+cranelift-entity = { opt-level = 2 }
+cranelift-bforest = { opt-level = 2 }
+cranelift-bitset = { opt-level = 2 }
+cranelift-control = { opt-level = 2 }
+cranelift-native = { opt-level = 2 }
+cranelift-assembler-x64 = { opt-level = 2 }
+regalloc2 = { opt-level = 2 }
+wasmparser = { opt-level = 2 }
+wasmtime-internal-cranelift = { opt-level = 2 }
+wasmtime-environ = { opt-level = 2 }

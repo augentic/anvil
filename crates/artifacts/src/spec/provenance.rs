@@ -13,7 +13,7 @@
 
 use std::collections::BTreeSet;
 
-use schema::diagnostics::{Artifact, Diagnostic, FindingLocation};
+use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -65,6 +65,7 @@ pub struct Requirement {
     strum::Display,
     strum::EnumString,
     strum::IntoStaticStr,
+    schemars::JsonSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

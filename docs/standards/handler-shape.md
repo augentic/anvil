@@ -1,14 +1,14 @@
 # Operation shape
 
-The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in `crates/workflow`, how `Ctx` is constructed from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
+The contract every command operation obeys: how a command becomes an `omnia_guest::api::operation::Operation<P>` in the workflow crates (`project`, `slice`, `change`), how `Ctx` is constructed from the provider's `Anchor`, how typed outputs implement `Render + Serialize`, and how shared command and HTTP projectors map terminal results.
 
-## Shared operation plumbing (`workflow::handler`)
+## Shared operation plumbing (`project::handler`)
 
 Every command is implemented by one stateless type implementing `omnia_guest::api::operation::Operation<P>`:
 
-- **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`. See [handler-routing.md §"Design"](../../rfcs/handler-routing.md#design).
+- **`Input`** is a flat, transport-neutral serde DTO (`#[serde(rename_all = "kebab-case")]`, `#[serde(default)]` on optional fields). HTTP deserializes it from path/query/body; command routing reaches it through an exhaustive `TryFrom<Args>`.
 - **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
-- **`type Error = workflow::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
+- **`type Error = project::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
 Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + SourceSeam + TargetSeam` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted seams.
 
@@ -27,13 +27,13 @@ impl<P: Anchor> Operation<P> for Frob {
 }
 ```
 
-Operations live in each domain module's `handlers` submodule beside its kernels (see [handler-routing.md §"Where operations live"](../../rfcs/handler-routing.md#where-operations-live)).
+Operations live in each domain module's `handlers` submodule beside its kernels.
 
 ## Ctx construction and the Anchor
 
-Operations construct `workflow::handler::Ctx` inside `call` via `Ctx::load(context.provider)`. The project location comes from the provider's `Anchor`; operations never read the process CWD themselves.
+Operations construct `project::handler::Ctx` inside `call` via `Ctx::load(context.provider)`. The project location comes from the provider's `Anchor`; operations never read the process CWD themselves.
 
-The scaffold command (`init --scaffold-only`) is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `Ctx`.
+`specify init` is the one operation that runs before a project exists: it anchors at the raw `Anchor::project_root` instead of loading `Ctx`.
 
 ## Output: `Render + Serialize`
 
@@ -45,7 +45,7 @@ Check surfaces return `ReportBody` on success and `Error::Report { body, source 
 
 ## Errors and their projections
 
-`workflow::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The HTTP `SpecifyProjector` in `crates/transport/src/http.rs` owns the single taxonomy → status projection (validation/argument → 422, version floor → 426, everything else → 500) and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
+`project::handler::Error` wraps the workspace `error::Error` taxonomy (`Error::Core`) and adds `Error::Report`. The HTTP `SpecifyProjector` in `crates/transport/src/http.rs` owns the single taxonomy → status projection (validation/argument → 422, version floor → 426, everything else → 500) and builds the JSON error body from the underlying taxonomy. `Exit` stays in `crates/transport` — there is no second exit table.
 
 ## Exit codes
 
@@ -64,7 +64,7 @@ The four-slot CLI exit-code table is fixed:
 
 `crates/transport` is a pure transport library: per-leaf clap `Args`, the `Globals` type, exhaustive `TryFrom<Args>` operation-input conversions, the reusable `omnia_guest::api::command` route assembly, the shared HTTP route assembly, the Specify command/HTTP projectors, and the fixed exit contract.
 
-`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`. See [handler-routing.md §"Command router"](../../rfcs/handler-routing.md#command-router).
+`crates/transport/src/command/*.rs` declares the clap derive surface. Each leaf route names a concrete `*Args` type; explicit `TryFrom<Args> for Input` implementations form the command transport boundary. Field parsers (`SourceArg`, closed enums, repeatable flags) live on `Args`. Global flags (`--format`) stay in `Globals`, not operation `Input`.
 
 ## The HTTP route table (`http.rs`)
 

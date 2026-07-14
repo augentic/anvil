@@ -1,1 +1,0 @@
-/spec:plan identity-revamp source identity-design-notes=./design-notes/identity source legacy-monolith=./vendor/legacy-monolith
