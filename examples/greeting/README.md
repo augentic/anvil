@@ -6,7 +6,7 @@ Both source and target adapters are implemented by the same wasm guest. The gues
 
 ## What it demonstrates
 
-The example runs a Specify ***change*** using a mock model:
+The example runs the Specify ***change*** workflow. It will `author->approve->execute` a ***plan*** using a mock model:
 
 1. The source adapter ***surveys*** and ***extracts*** greeting requirements.
 2. Specify ***reconciles*** them using deterministic scripted answers.
@@ -17,6 +17,8 @@ After running, inspect the generated result at:
 ```text
 examples/greeting/workspace/fixture-build/greeting.md
 ```
+
+
 
 ## Run
 
