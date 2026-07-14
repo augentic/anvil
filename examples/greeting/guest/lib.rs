@@ -1,52 +1,53 @@
-//! The greeting example's combined source/target WASM component.
+//! # Example Adapter
 //!
-//! Exports the `specify:adapter` `adapter` world — both the `source`
-//! and `target` interfaces from one component — plus
-//! `wasi:http/incoming-handler`, serving a compiled-in single-document
-//! MCP reference. The shim delegates to the shared `testkit::adapter`
-//! core, so hosted WASM and native tests exercise identical adapter
-//! behaviour.
+//! This crate implements both Specify source and target adapters. It
+//! implements a single MCP server for the model agent to use to when
+//! requesting adapter reference documents.
+
 #![cfg(target_arch = "wasm32")]
+#![allow(missing_docs, unsafe_code)]
 
 mod bindings {
-    //! `wit_bindgen::generate!` output for the combined `adapter`
-    //! world. The `export!` shim is invoked here too: lint levels
-    //! resolve at the macro invocation's syntactic context, so the
-    //! generated `unsafe(export_name)` plumbing must expand inside
-    //! this allow scope.
-    #![allow(
-        missing_docs,
-        unsafe_code,
-        clippy::pedantic,
-        clippy::nursery,
-        reason = "wit-bindgen generated bindings are not hand-maintained;"
-    )]
-
-    use super::FixtureAdapter;
-
     wit_bindgen::generate!({
         world: "adapter",
         path: "../wit",
-        // Asyncness follows the WIT declarations: the judgment
-        // operations are `async func`s and async-lift; `metadata` is a
-        // plain `func` (deterministic, effect-free) and sync-lifts —
-        // forcing it async would fail component validation at load.
         generate_all,
+        pub_export_macro: true,
     });
-
-    export!(FixtureAdapter);
 }
+
+mod source;
+mod target;
 
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
 };
 use serde_json::{Value, json};
+use testkit::adapter;
 use wasip3::http::types as http;
 
-struct FixtureAdapter;
+use self::bindings::exports::specify::adapter::source::Error;
 
+// ----------------------------------------------
+// Specify source + target adapters
+// ----------------------------------------------
+struct Adapter;
+self::bindings::export!(Adapter with_types_in self::bindings);
+
+impl From<adapter::Error> for Error {
+    fn from(error: adapter::Error) -> Self {
+        match error {
+            adapter::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
+            adapter::Error::Io(detail) => Self::Io(detail),
+            adapter::Error::Internal(detail) => Self::Internal(detail),
+        }
+    }
+}
+
+// ----------------------------------------------
+// MCP server for adapter references
+// ----------------------------------------------
 struct HttpGuest;
-
 wasip3::http::service::export!(HttpGuest);
 
 impl wasip3::exports::http::handler::Guest for HttpGuest {
@@ -55,13 +56,12 @@ impl wasip3::exports::http::handler::Guest for HttpGuest {
     }
 }
 
-const REFERENCE_NAME: &str = "adapter-reference";
-const REFERENCE_BODY: &str = "# Adapter Reference\n\n\
+const REF_NAME: &str = "adapter-reference";
+const REF_DOC: &str = "# Adapter Reference\n\n\
      The harness adapter serves both axes from one component: \
      deterministic survey/extract data on the source interface and \
      guidance/build/merge on the target interface.\n";
 
-/// The compiled-in single-document references served over MCP.
 struct References;
 
 impl McpServer for References {
@@ -79,28 +79,25 @@ impl McpServer for References {
 
     fn call_tool(&self, name: &str, _arguments: &Value) -> Result<CallToolResult, McpError> {
         match name {
-            "read_reference" => Ok(CallToolResult::text(REFERENCE_BODY)),
+            "read_reference" => Ok(CallToolResult::text(REF_DOC)),
             other => Err(McpError::unknown_tool(other)),
         }
     }
 
     fn resources(&self) -> Vec<Resource> {
         vec![Resource::new(
-            format!("doc://{REFERENCE_NAME}"),
-            REFERENCE_NAME,
+            format!("doc://{REF_NAME}"),
+            REF_NAME,
             "The harness adapter's single reference document.",
             "text/markdown",
         )]
     }
 
     fn read_resource(&self, uri: &str) -> Result<ResourceContents, McpError> {
-        if uri.strip_prefix("doc://").unwrap_or(uri) == REFERENCE_NAME {
-            Ok(ResourceContents::text(uri, "text/markdown", REFERENCE_BODY))
+        if uri.strip_prefix("doc://").unwrap_or(uri) == REF_NAME {
+            Ok(ResourceContents::text(uri, "text/markdown", REF_DOC))
         } else {
             Err(McpError::resource_not_found(uri))
         }
     }
 }
-
-mod source;
-mod targets;

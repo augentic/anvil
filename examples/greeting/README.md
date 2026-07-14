@@ -23,8 +23,7 @@ export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 
 mkdir -p "$EXAMPLE"/{workspace,cache,store}
 cp target/wasm32-wasip2/debug/examples/greeting_wasm.wasm \
-  "$EXAMPLE/workspace/fixture.wasm" \
-
+  "$EXAMPLE/workspace/fixture.wasm"
 
 run() {
   cargo run --quiet -p examples --example greeting -- \
