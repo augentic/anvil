@@ -7,13 +7,41 @@ A deterministic, manifest-hosted Specify workflow over the fixture adapter. The 
 From the repository root:
 
 ```bash
-cargo make test-wasm
+# Build the greeting adapter(s) and specify.wasm
+cargo build --example greeting-wasm --target wasm32-wasip2
+cargo build --target wasm32-wasip2
 ```
 
-The task builds `specify.wasm` and `greeting_wasm.wasm`, stages this directory's `omnia.toml` unchanged in a temporary deployment, then drives:
+Stage the adapters:
 
-```text
-init → plan author → approve → execute
+```bash
+# create the cache and store directories
+set -euo pipefail
+
+EXAMPLE="examples/greeting"
+export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
+
+mkdir -p "$EXAMPLE"/{workspace,cache,store}
+cp target/wasm32-wasip2/debug/examples/greeting_wasm.wasm \
+  "$EXAMPLE/workspace/fixture.wasm" \
+
+
+run() {
+  cargo run --quiet -p examples --example greeting -- \
+    run --config "$EXAMPLE/omnia.toml" -- "$@"
+}
+
+# Initialize the workspace
+run init ./fixture.wasm --name greeting
+
+# Author, transition, and execute the plan
+run plan author greeting --source main="fixture:value:The greeting service."
+run plan transition greeting approved
+run plan execute
 ```
 
-The smoke checks adapter resolution on both axes, typed failure lifting, model-host invocation, writable preopens, component-cache writes, and the greeting build output.
+Clean up:
+
+```bash
+rm -rf examples/greeting/workspace examples/greeting/cache examples/greeting/store
+```
