@@ -2,8 +2,9 @@
 //! Specify engine the same way an operator does.
 //!
 //! ```text
+//! init        scaffold the fixture-bound project
 //! plan        author the change, stamp Gate 1 (`approved`)
-//! execute     per slice: plan next → refine → build → merge
+//! execute     drain the loop: refine → build → merge per slice
 //! finalize    archive the drained plan
 //! ```
 //!
@@ -17,9 +18,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
-use change::{NextReason, Status, plan};
+use change::{Status, plan};
 use omnia::Backend as _;
-use slice::handlers::{Build, BuildInput, MergeRun, MergeRunInput, Refine, RefineInput};
 use testkit::{Provider, answers, run};
 
 use crate::native::Native;
@@ -36,7 +36,8 @@ async fn main() {
     let (root, _cache) = scaffold();
     let provider = connect(&root).await;
 
-    // The operator rhythm: plan → execute → finalize.
+    // The operator rhythm: init → plan → execute → finalize.
+    init(&provider).await;
     plan(&provider, &root).await;
     let drained = execute(&provider, &root).await;
     grade(&root, &drained);
@@ -45,15 +46,14 @@ async fn main() {
     fs::remove_dir_all(&root).expect("clean up the passing trial project");
 }
 
-/// Scaffold a temp fixture project; retained until success cleans it up.
+/// A bare temp tree with the adapter cache pinned inside it; retained
+/// until success cleans it up. The project scaffold itself comes from
+/// the `Init` operation.
 fn scaffold() -> (PathBuf, testkit::env::CacheGuard) {
     let root = tempfile::TempDir::new().expect("tempdir").keep();
     let root = root.canonicalize().expect("canonical project root");
     eprintln!("prompt evaluation project (retained on failure): {}", root.display());
     let cache = testkit::env::scoped_cache(&root);
-    fs::create_dir_all(root.join(".specify")).expect("mkdir .specify");
-    fs::write(root.join(".specify/project.yaml"), "name: eval\nadapter: fixture\nrules: {}\n")
-        .expect("write project.yaml");
     (root, cache)
 }
 
@@ -65,6 +65,21 @@ async fn connect(root: &Path) -> EvalProvider {
     // In-guest the `"."` preopen resolves the lent workspace; natively
     // the trial project root plays that part.
     Provider::new(root, Native::new(client, root))
+}
+
+/// `specify init fixture` — scaffold the fixture-bound project through
+/// the real operation.
+async fn init(provider: &EvalProvider) {
+    run::<project::init::handlers::Init, _, _>(
+        provider,
+        project::init::handlers::InitInput {
+            adapter: Some("fixture".to_string()),
+            name: Some("eval".to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("init scaffolds the fixture-bound project");
 }
 
 // --- plan -------------------------------------------------------------------
@@ -111,17 +126,16 @@ async fn plan(provider: &EvalProvider, root: &Path) {
 
 // --- execute ----------------------------------------------------------------
 
-/// Hand-driven execute loop: claim each slice, then refine → build → merge.
-///
-/// This is the operator fallback (`plan next` + breakouts). Production
-/// `specify plan execute` drains the same phases automatically.
+/// `specify plan execute` — the production drained loop: refine →
+/// build → merge per entry until the plan is drained.
 async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
-    while let Some(slice) = next_slice(provider).await {
-        eprintln!("execute slice `{slice}`: refine → build → merge");
-        refine(provider, &slice).await;
-        build(provider, &slice).await;
-        merge(provider, &slice).await;
+    let executed = run::<plan::handlers::Execute, _, _>(provider, plan::handlers::ExecuteInput {})
+        .await
+        .expect("execute drains the plan");
+    for phase in &executed.phases {
+        eprintln!("executed {} {}", phase.step, phase.slice);
     }
+    assert_eq!(executed.status, "drained", "execute must exit drained");
 
     let plan = read_plan(root);
     assert!(
@@ -130,61 +144,6 @@ async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
         plan.entries
     );
     plan
-}
-
-/// `specify plan next` — sole writer of per-entry `in-progress`.
-/// Returns `None` when the plan is drained.
-async fn next_slice(provider: &EvalProvider) -> Option<String> {
-    let body = run::<plan::handlers::Next, _, _>(provider, plan::handlers::NextInput {})
-        .await
-        .expect("plan next");
-    let reason = body.reason;
-    if let Some(slice) = body.next.or(body.active) {
-        return Some(slice);
-    }
-    assert_eq!(
-        reason,
-        Some(NextReason::Drained),
-        "plan next with no entry must report drained (reason={reason:?})"
-    );
-    None
-}
-
-/// `specify slice refine <slice>` — extract + synthesize to `refined`.
-async fn refine(provider: &EvalProvider, slice: &str) {
-    run::<Refine, _, _>(
-        provider,
-        RefineInput {
-            name: slice.to_string(),
-        },
-    )
-    .await
-    .unwrap_or_else(|err| panic!("refine `{slice}`: {err}"));
-}
-
-/// `specify slice build <slice>` — target build to `built`.
-async fn build(provider: &EvalProvider, slice: &str) {
-    run::<Build, _, _>(
-        provider,
-        BuildInput {
-            name: slice.to_string(),
-        },
-    )
-    .await
-    .unwrap_or_else(|err| panic!("build `{slice}`: {err}"));
-}
-
-/// `specify slice merge run <slice>` — merge into baseline; stamps entry `done`.
-async fn merge(provider: &EvalProvider, slice: &str) {
-    run::<MergeRun, _, _>(
-        provider,
-        MergeRunInput {
-            name: slice.to_string(),
-            allow_composition_replace: false,
-        },
-    )
-    .await
-    .unwrap_or_else(|err| panic!("merge `{slice}`: {err}"));
 }
 
 // --- finalize ---------------------------------------------------------------

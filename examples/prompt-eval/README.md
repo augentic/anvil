@@ -9,12 +9,13 @@ Layout: `engine.rs` is the workflow driver over the live cursor-agent backend; `
 The driver mirrors the operator rhythm:
 
 ```text
+init        specify init fixture
 plan        specify plan author → Gate 1 approved
-execute     per slice: plan next → refine → build → merge  (until drained)
+execute     specify plan execute  (refine → build → merge per slice, until drained)
 finalize    specify plan archive
 ```
 
-`execute` is hand-driven with the breakout verbs so each phase is visible. Production `specify plan execute` drains the same refine → build → merge loop automatically.
+Every step runs the production operation — `execute` is the real drained loop, not a hand-driven breakout sequence. Completed phases are echoed as the loop runs.
 
 ## Run
 

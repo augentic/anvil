@@ -20,9 +20,9 @@ omnia-guest.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
+project.workspace = true
 serde_json.workspace = true
 serde-saphyr.workspace = true
-slice.workspace = true
 tempfile.workspace = true
 testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
