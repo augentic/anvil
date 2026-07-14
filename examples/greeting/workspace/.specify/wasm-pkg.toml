@@ -1,4 +1,0 @@
-default_registry = "augentic.io"
-
-[namespace_registries]
-specify = "augentic.io"

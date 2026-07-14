@@ -1,3 +1,0 @@
-{"timestamp":"2026-07-14T06:53:23Z","event":"source.execution.agent","payload":{"source":"main","adapter":"fixture","operation":"survey"}}
-{"timestamp":"2026-07-14T06:53:23Z","event":"source.survey.completed","payload":{"source":"main","adapter":"fixture"}}
-{"timestamp":"2026-07-14T06:53:23Z","event":"plan.reconcile.completed","payload":{"plan-name":"greeting","slice-count":1,"slice-names":["greeting"]}}

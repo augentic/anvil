@@ -1,7 +1,7 @@
 # Install: `cargo install cargo-make`
 # Help: https://sagiegurari.github.io/cargo-make/
 
-# extend = [{ path = "examples/Makefile.toml" }]
+extend = [{ path = "examples/Makefile.toml" }]
 
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
