@@ -1,4 +1,4 @@
-//! Deterministic model backend for the greeting workflow.
+//! Deterministic model backend for the change workflow.
 
 use std::sync::Arc;
 
@@ -34,7 +34,7 @@ impl WasiModelCtx for Scripted {
             Format::Schema(schema) if schema.name == "synthesis" => synthesis_answer(),
             format => {
                 return Box::pin(async move {
-                    Err(anyhow!("the greeting example has no answer for format {format:?}"))
+                    Err(anyhow!("the change example has no answer for format {format:?}"))
                 });
             }
         };

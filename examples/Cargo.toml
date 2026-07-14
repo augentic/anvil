@@ -39,13 +39,13 @@ wit-bindgen.workspace = true
 workspace = true
 
 [[example]]
-name = "greeting-wasm"
-path = "greeting/guest/lib.rs"
+name = "change-wasm"
+path = "change/guest/lib.rs"
 crate-type = ["cdylib"]
 
 [[example]]
-name = "greeting"
-path = "greeting/runtime/main.rs"
+name = "change"
+path = "change/runtime/main.rs"
 
 [[example]]
 name = "prompt-eval"

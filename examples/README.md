@@ -5,12 +5,12 @@ Specify's non-shipped example surfaces follow Omnia's [examples](https://github.
 | Path                     | Role                                                     |
 | ------------------------ | -------------------------------------------------------- |
 | `prompt-eval/engine.rs`  | Live-model workflow demo: plan → execute → finalize      |
-| `greeting/runtime.rs`    | Command-mode `runtime!` host (`greeting`)                 |
-| `greeting/scripted.rs`   | Deterministic model backend and judgment answers          |
-| `greeting/guest.rs`      | Combined source/target component (`greeting-wasm`)        |
-| `greeting/omnia.toml`    | Workflow, adapter bindings, links, and writable preopens |
+| `change/runtime.rs`      | Command-mode `runtime!` host (`change`)                  |
+| `change/scripted.rs`     | Deterministic model backend and judgment answers         |
+| `change/guest.rs`        | Combined source/target component (`change-wasm`)         |
+| `change/omnia.toml`      | Workflow, adapter bindings, links, and writable preopens |
 
-The greeting example mirrors Omnia's manifest-driven examples: the smoke task stages `omnia.toml` unchanged beside the built workflow and adapter components, then invokes the example runtime through Omnia's `run --config` grammar. The deterministic fixture adapter core shared by `greeting/guest.rs` and the native suites lives in `crates/testkit` as `testkit::adapter`.
+The change example mirrors Omnia's manifest-driven examples: the smoke task stages `omnia.toml` unchanged beside the built workflow and adapter components, then invokes the example runtime through Omnia's `run --config` grammar. The deterministic fixture adapter core shared by `change/guest.rs` and the native suites lives in `crates/testkit` as `testkit::adapter`.
 
 ## Commands
 

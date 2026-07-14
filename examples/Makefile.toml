@@ -10,42 +10,42 @@ skip_rust_env_info = true
 # script = '''
 # set -euo pipefail
 # root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
-# (cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example greeting-wasm --target wasm32-wasip2)
+# (cd "${root}" && RUSTFLAGS="-Dwarnings" cargo check --locked -p examples --example change-wasm --target wasm32-wasip2)
 # '''
 
-[tasks.build-example]
+[tasks.change-build]
 script = '''
-cargo build --example greeting-wasm --target wasm32-wasip2
+cargo build --example change-wasm --target wasm32-wasip2
 cargo build --target wasm32-wasip2
 # cargo build --lib -p specify --target wasm32-wasip2
 '''
 
-[tasks.clean-example]
+[tasks.change-clean]
 script = '''
-rm -rf examples/greeting/workspace examples/greeting/cache examples/greeting/store
+rm -rf examples/change/workspace examples/change/cache examples/change/store
 '''
 
-[tasks.run-example]
-dependencies = ["clean-example", "build-example"]
+[tasks.change-run]
+dependencies = ["change-clean", "change-build"]
 script = '''
 set -euo pipefail
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 
-mkdir -p examples/greeting/{workspace,cache,store}
-cp target/wasm32-wasip2/debug/examples/greeting_wasm.wasm \
-  examples/greeting/workspace/fixture.wasm
+mkdir -p examples/change/{workspace,cache,store}
+cp target/wasm32-wasip2/debug/examples/change_wasm.wasm \
+  examples/change/workspace/fixture.wasm
 
 run() {
-  cargo run --example greeting -- \
-    run --config examples/greeting/omnia.toml -- "$@"
+  cargo run --example change -- \
+    run --config examples/change/omnia.toml -- "$@"
 }
 
 # Initialize the workspace
-run init ./fixture.wasm --name greeting
+run init ./fixture.wasm --name change
 
 # Author, transition, and execute the plan
-run plan author greeting --source main="fixture:value:The greeting service."
-run plan transition greeting approved
+run plan author change --source main="fixture:value:The greeting service."
+run plan transition change approved
 run plan execute
 '''
 

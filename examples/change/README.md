@@ -1,4 +1,4 @@
-# Example Adapter
+# Change Example
 
 This is an end-to-end example of the Specify application. It uses Specify's core engine + source and target adapters to implement a rudimentary workflow.
 
@@ -15,7 +15,7 @@ The example runs the Specify ***change*** workflow. It will `author->approve->ex
 After running, inspect the generated result at:
 
 ```text
-examples/greeting/workspace/fixture-build/greeting.md
+examples/change/workspace/fixture-build/greeting.md
 ```
 
 
@@ -26,9 +26,8 @@ Run the example (and clean up afterwards):
 
 ```bash
 # Run the example (create plan -> execute)
-make run-example
+make change-run
 
 # Clean up afterwards
-make clean-example
+make change-clean
 ```
-

@@ -1,4 +1,4 @@
-# Specify's hosted greeting example.
+# Specify's hosted change example.
 
 [[guest]]
 id = "specify"
@@ -7,11 +7,11 @@ link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]
 
 [[guest]]
 id = "source:fixture"
-source.path = "../../target/wasm32-wasip2/debug/examples/greeting_wasm.wasm"
+source.path = "../../target/wasm32-wasip2/debug/examples/change_wasm.wasm"
 
 [[guest]]
 id = "target:fixture"
-source.path = "../../target/wasm32-wasip2/debug/examples/greeting_wasm.wasm"
+source.path = "../../target/wasm32-wasip2/debug/examples/change_wasm.wasm"
 
 [[route.http]]
 prefix = "/"

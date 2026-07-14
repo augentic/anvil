@@ -1,4 +1,4 @@
-//! Greeting example runtime.
+//! Change example runtime.
 //!
 //! `omnia.toml` deploys the Specify workflow guest with the fixture adapter
 //! bound on both axes. The runtime replaces the live model with deterministic

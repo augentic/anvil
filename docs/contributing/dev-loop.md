@@ -18,7 +18,7 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make test-wasm` (from `examples/`) — the WASM boundary
 
-Builds `specify.wasm` and `greeting_wasm.wasm`, stages [`examples/greeting/omnia.toml`](../../examples/greeting/omnia.toml) unchanged in a temporary deployment, and runs it through the `runtime!` host in `examples/greeting/runtime.rs`. It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest calls the model host, preopens and the component cache are wired, and the typed error lift works across the seam. A short scripted loop is the vehicle that reaches those seams; drained-loop and artifact-completeness outcomes stay on the native rung.
+Builds `specify.wasm` and `change_wasm.wasm`, stages [`examples/change/omnia.toml`](../../examples/change/omnia.toml) unchanged in a temporary deployment, and runs it through the `runtime!` host in `examples/change/runtime.rs`. It asserts only facts unique to the component boundary — the combined world loads, both axes dispatch by id, metadata reads, the guest calls the model host, preopens and the component cache are wired, and the typed error lift works across the seam. A short scripted loop is the vehicle that reaches those seams; drained-loop and artifact-completeness outcomes stay on the native rung.
 
 Escalate here only when the change crosses a WIT, dispatch, hosting, or preopen seam. Cadence: weekly / path-filtered / manual (`.github/workflows/wasm.yaml`), required before release tags — not every push. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 

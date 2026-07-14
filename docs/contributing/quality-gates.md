@@ -10,7 +10,7 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## Gate 2 — WASM boundary (weekly / path-filtered / manual; required for release)
 
-`cargo make test-wasm` from `examples/` (CI: `.github/workflows/wasm.yaml`) stages the greeting example's checked-in `omnia.toml` with `specify.wasm` and `greeting_wasm.wasm`, then runs the deployment through its `runtime!` host. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
+`cargo make test-wasm` from `examples/` (CI: `.github/workflows/wasm.yaml`) stages the change example's checked-in `omnia.toml` with `specify.wasm` and `change_wasm.wasm`, then runs the deployment through its `runtime!` host. It owns the facts only the component boundary can prove: WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam. A short scripted loop is the vehicle that reaches those seams — not a second workflow matrix. Drained-loop and artifact-completeness outcomes belong to Gate 1.
 
 Cadence: weekly schedule, pull requests that touch `wit/`, `src/`, or the harness guests, and manual dispatch. Required green before a release tag. Ordinary pushes keep only the compile-only `wasm32-wasip2` check.
 
@@ -35,7 +35,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `testkit::adapter` (in `crates/testkit`) is the only adapter double; `examples/greeting/guest.rs` is its WIT component example. Do not add another mock adapter or fixture-adapter copy.
+- `testkit::adapter` (in `crates/testkit`) is the only adapter double; `examples/change/guest.rs` is its WIT component example. Do not add another mock adapter or fixture-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance
