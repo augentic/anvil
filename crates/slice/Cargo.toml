@@ -17,17 +17,17 @@ workspace = true
 prose.workspace = true
 
 [dependencies]
+artifacts.workspace = true
+diagnostics.workspace = true
+error.workspace = true
 jiff.workspace = true
+omnia-guest.workspace = true
+project.workspace = true
 regex.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
-error.workspace = true
-artifacts.workspace = true
-omnia-guest.workspace = true
-project.workspace = true
-diagnostics.workspace = true
 strum.workspace = true
 
 [dev-dependencies]

@@ -23,7 +23,7 @@ plugins/<name>/
 └── rules/                      # optional .mdc context
 ```
 
-The marketplace manifest at `.cursor-plugin/marketplace.json` lists exactly these plugins. Shape is enforced by the typed structs in `tests/authoring.rs` (the `checks` package; see [Consistency Checks](checks.md) for what CI actually enforces).
+The marketplace manifest at `.cursor-plugin/marketplace.json` lists exactly these plugins. Shape is enforced by the typed structs in `crates/checks/authoring.rs` (the `checks` package; see [Consistency Checks](checks.md) for what CI actually enforces).
 
 ## Preview a working-tree plugin
 

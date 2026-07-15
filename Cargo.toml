@@ -4,11 +4,10 @@ description = "A tool for specifying and running code generation workflows"
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
-autotests = false
+publish = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
 version.workspace = true
 
 [lib]
@@ -31,29 +30,31 @@ omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-omnia-guest.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-transport.workspace = true
-error.workspace = true
-diagnostics.workspace = true
 artifacts.workspace = true
-change.workspace = true
+diagnostics.workspace = true
+error.workspace = true
+omnia-guest.workspace = true
 project.workspace = true
+serde_json.workspace = true
 slice.workspace = true
+transport.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+omnia-wasi-http.workspace = true
+testkit.workspace = true
+
+[[example]]
+name = "change"
+path = "examples/change/guest.rs"
+crate-type = ["cdylib"]
 
 [lints]
 workspace = true
 
 [workspace]
-members = ["crates/*", "examples", "tests"]
-# The ordinary test group: crate suites (including testkit) plus the
-# lightweight repo-checks package and the examples package. The host runners
-# (hosted WASM, prompt-eval) remain opt-in through
-# `cd examples && cargo make test-wasm` / `prompt-eval`.
-default-members = ["crates/*", "examples", "tests"]
+members = ["crates/*"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -195,8 +196,8 @@ omnia = { git = "https://github.com/augentic/omnia.git" }
 omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
-omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
@@ -205,8 +206,8 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 # omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-# omnia-testkit = { path = "../omnia/crates/testkit" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
+# omnia-testkit = { path = "../omnia/crates/testkit" }
 # omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
@@ -222,15 +223,15 @@ strip = true
 
 # Optimise WASI debug builds because Cranelift JIT-compiles at run time.
 [profile.dev.package]
-cranelift-codegen = { opt-level = 2 }
-cranelift-frontend = { opt-level = 2 }
-cranelift-entity = { opt-level = 2 }
+cranelift-assembler-x64 = { opt-level = 2 }
 cranelift-bforest = { opt-level = 2 }
 cranelift-bitset = { opt-level = 2 }
+cranelift-codegen = { opt-level = 2 }
 cranelift-control = { opt-level = 2 }
+cranelift-entity = { opt-level = 2 }
+cranelift-frontend = { opt-level = 2 }
 cranelift-native = { opt-level = 2 }
-cranelift-assembler-x64 = { opt-level = 2 }
 regalloc2 = { opt-level = 2 }
 wasmparser = { opt-level = 2 }
-wasmtime-internal-cranelift = { opt-level = 2 }
 wasmtime-environ = { opt-level = 2 }
+wasmtime-internal-cranelift = { opt-level = 2 }

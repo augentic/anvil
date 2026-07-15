@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::SourceSeam;
+use project::seam::Source;
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -29,7 +29,7 @@ pub struct ExtractInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Extract;
 
-impl<P: Anchor + SourceSeam> Operation<P> for Extract {
+impl<P: Anchor + Source> Operation<P> for Extract {
     type Error = project::handler::Error;
     type Input = ExtractInput;
     type Output = ExtractBody;

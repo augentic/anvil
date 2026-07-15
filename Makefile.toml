@@ -1,7 +1,7 @@
 # Install: `cargo install cargo-make`
 # Help: https://sagiegurari.github.io/cargo-make/
 
-# extend = [{ path = "examples/Makefile.toml" }]
+extend = [{ path = "examples/Makefile.toml" }]
 
 [env]
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
@@ -17,13 +17,13 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "wasm", "test", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "test", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
 
 # -------------------------------------
-# Individual Actions
+# Actions
 # -------------------------------------
 
 # Audit
@@ -40,15 +40,20 @@ install_crate = "cargo-deny"
 # Deps
 [tasks.deps]
 command = "rustup"
-args = ["run", "nightly", "cargo", "udeps", "--all-targets"]
+args = ["run", "nightly", "cargo", "udeps", "--workspace", "--all-targets"]
 install_crate = "cargo-udeps"
+
+# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI)
+[tasks.eval]
+command = "cargo"
+args = ["run", "--locked", "-p", "eval"]
 
 # Fmt — mutates; the gates use fmt
 [tasks.fmt]
 command = "rustup"
 args = ["run", "nightly", "cargo", "fmt", "--all"]
 
-# Lint — --workspace so the examples package stays linted, matching CI
+# Lint
 [tasks.lint]
 command = "cargo"
 args = [
@@ -69,35 +74,17 @@ command = "cargo"
 args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
-# Check wasm core — the per-push WASM boundary gate: the shipped guest
-# crates plus the examples adapter shim. The adapter check lives in
-# examples/Makefile.toml; this task keeps `cargo make ci` one-shot.
-[tasks.wasm]
-script_runner = "@shell"
-script = '''
-cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
-(cd examples && cargo make wasm)
-'''
-env = { RUSTFLAGS = "-Dwarnings" }
-
-# Opt-in example runners, exposed from the repository root without
-# merging the examples task definitions into this workspace file.
-[tasks.test-wasm]
-script = '''
-(cd examples && cargo make test-wasm)
-'''
-
-[tasks.prompt-eval]
-script = '''
-(cd examples && cargo make prompt-eval)
-'''
-
-# Test — the ordinary suite over the default workspace members
-# (crates/*, examples, tests); the WASM boundary
-# smoke is opt-in via `cargo make test-wasm`.
+# Test
 [tasks.test]
 command = "cargo"
-args = ["nextest", "run", "--locked", "--all-features", "--no-tests=pass"]
+args = [
+    "nextest",
+    "run",
+    "--locked",
+    "--workspace",
+    "--all-features",
+    "--no-tests=pass",
+]
 env = { RUSTFLAGS = "-Dwarnings" }
 
 # Test Doc
@@ -115,7 +102,7 @@ env = { RUSTDOCFLAGS = "-Dwarnings" }
 [tasks.miri]
 script = '''
 cargo +nightly miri setup
-cargo +nightly miri nextest run --no-tests=pass
+cargo +nightly miri nextest run --workspace --no-tests=pass
 '''
 
 # Vet

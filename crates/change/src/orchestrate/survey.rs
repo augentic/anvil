@@ -9,7 +9,7 @@ use project::adapter::SourceOperation;
 use project::config::Layout;
 use project::journal::{self, Event, EventKind};
 use project::plan::{Plan, SourceBinding};
-use project::seam::{SourceSeam, seam_failure, source_id};
+use project::seam::{Source, seam_failure, source_id};
 
 /// One source's merged survey result under [`survey_all`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +35,7 @@ pub struct SurveyedSource {
 /// Plan-load failures plus whatever [`survey`] surfaces for the first
 /// failing binding.
 pub async fn survey_all(
-    seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp,
+    seam: &impl Source, layout: Layout<'_>, now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
     let plan = Plan::load(&layout.plan_path())?;
     let mut surveyed = Vec::with_capacity(plan.sources.len());
@@ -58,8 +58,7 @@ pub async fn survey_all(
 /// error when the guard fails, seam and schema-gate failures from the
 /// adapter's survey leg, plus plan-load and merge I/O failures.
 pub async fn survey(
-    seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str,
-    plan_guard: Option<&str>,
+    seam: &impl Source, layout: Layout<'_>, now: Timestamp, source: &str, plan_guard: Option<&str>,
 ) -> Result<SurveyedSource, Error> {
     let plan = Plan::load(&layout.plan_path())?;
     if let Some(expected) = plan_guard
@@ -85,8 +84,7 @@ pub async fn survey(
 
 /// Survey one binding: dispatch, attribute, validate, merge, journal.
 async fn survey_one(
-    seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str,
-    binding: &SourceBinding,
+    seam: &impl Source, layout: Layout<'_>, now: Timestamp, source: &str, binding: &SourceBinding,
 ) -> Result<SurveyedSource, Error> {
     emit(
         layout,

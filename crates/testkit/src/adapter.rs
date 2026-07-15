@@ -1,117 +1,29 @@
 //! The Specify-owned harness adapter's native core.
 //!
 //! One deterministic, model-free library implementing both
-//! `specify:adapter` axes for engine tests. Its types mirror the WIT
-//! `specify:adapter/types` records so both consumers (the native test
-//! provider and the WASM adapter component) stay thin mapping layers.
+//! `specify:adapter` axes for engine tests. The core speaks the
+//! engine's own seam DTOs ([`project::seam`], [`artifacts::evidence`])
+//! on both targets, so the native test provider passes values straight
+//! through and only the WASM adapter guest maps to the WIT records.
 //!
-//! Behaviour keys off the routed adapter id — the profile catalog
-//! lives in `examples/README.md`. Builds and merge gates also
+//! Behaviour keys off the routed adapter id: an id containing `docs`
+//! or `code` selects that half of the adversarial pair, anything else
+//! the minimal single-lead `greeting` profile, and `fail-*` substrings
+//! select typed failures. Builds and merge gates also
 //! honour the per-project [`FAIL_BUILD_MARKER`] /
 //! [`FAIL_MERGE_PREFLIGHT_MARKER`] / [`FAIL_MERGE_POSTFLIGHT_MARKER`]
 //! files so interruption tests can park and resume without rebinding.
 
-#[cfg(not(target_arch = "wasm32"))]
 pub use metadata::metadata_json;
-pub use source::{Authority, Backing, Claim, ClaimKind, Evidence, Lead, extract, survey};
+pub use source::{extract, survey};
 pub use targets::{
-    BUILD_DIR, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER, Input,
-    MergePhase, Output, Platform, PlatformsCapability, Report, Status, build, build_artifact_path,
-    guidance, merge, target_platforms,
+    BUILD_DIR, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER, build,
+    build_artifact_path, guidance, merge, target_platforms,
 };
 
-/// Typed adapter failure, mirroring the WIT `types.error` variant.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Error {
-    /// The request itself is malformed; retrying unchanged is pointless.
-    InvalidRequest(String),
-    /// A filesystem operation failed on the adapter side.
-    Io(String),
-    /// An internal adapter step failed.
-    Internal(String),
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InvalidRequest(detail) => write!(f, "invalid request: {detail}"),
-            Self::Io(detail) => write!(f, "io: {detail}"),
-            Self::Internal(detail) => write!(f, "internal: {detail}"),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
 mod source {
-    use super::Error;
-
-    /// One lead surfaced by a survey (the WIT `lead` record).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Lead {
-        /// Stable kebab-case lead id, unique within this source.
-        pub lead: String,
-        /// Headline used for cross-source reconciliation.
-        pub synopsis: String,
-        /// Per-lead topic slugs.
-        pub topics: Vec<String>,
-    }
-
-    /// Document-level Evidence authority (the WIT `authority` enum).
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum Authority {
-        /// Operator intent — the highest class.
-        Intent,
-        /// Written documentation.
-        Documentation,
-        /// Observed behaviour — the lowest class.
-        Behaviour,
-    }
-
-    /// The claim kinds the fixture emits (a subset of the closed WIT
-    /// `claim-kind` taxonomy).
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum ClaimKind {
-        /// A behavioural requirement (id required).
-        Requirement,
-        /// An acceptance criterion (id required).
-        Criterion,
-        /// A prose section.
-        Section,
-    }
-
-    /// The claim's backing (the WIT `backing` variant).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub enum Backing {
-        /// Inline payload body.
-        Payload(String),
-        /// Filesystem pointer.
-        Path(String),
-    }
-
-    /// One extracted Evidence claim (the WIT `claim` record).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Claim {
-        /// Claim kind.
-        pub kind: ClaimKind,
-        /// Stable dotted-kebab claim id.
-        pub id: Option<String>,
-        /// `<path>#L<n>` anchor.
-        pub path: Option<String>,
-        /// One-line synopsis.
-        pub synopsis: Option<String>,
-        /// Claim backing.
-        pub backing: Option<Backing>,
-    }
-
-    /// The per-lead result of an extract (the WIT `evidence` record).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Evidence {
-        /// Document-level authority class.
-        pub authority: Authority,
-        /// Extracted claims.
-        pub claims: Vec<Claim>,
-    }
+    use artifacts::evidence::{AuthorityClass, Backing, Claim, ClaimKind};
+    use project::seam::{Error, Evidence, Lead};
 
     /// Survey the source selected by `id` into its controlled lead set.
     ///
@@ -162,7 +74,7 @@ mod source {
         }
         let evidence = match (profile(id), lead.lead.as_str()) {
             (Profile::Docs, "login-flow") => Evidence {
-                authority: Authority::Documentation,
+                authority: AuthorityClass::Documentation,
                 claims: vec![
                     requirement(
                         "login.flow",
@@ -176,7 +88,7 @@ mod source {
                 ],
             },
             (Profile::Docs, "session-timeout") => Evidence {
-                authority: Authority::Documentation,
+                authority: AuthorityClass::Documentation,
                 claims: vec![requirement(
                     "session.timeout",
                     "Documented session expiry",
@@ -187,19 +99,19 @@ mod source {
             // claim is an anchorless mention with no behavioural detail,
             // so a faithful synthesis marks the requirement `[unknown]`.
             (Profile::Docs, "password-reset") => Evidence {
-                authority: Authority::Documentation,
-                claims: vec![Claim {
-                    kind: ClaimKind::Section,
-                    id: Some("password-reset.mention".to_string()),
-                    path: None,
-                    synopsis: Some("Password reset exists".to_string()),
-                    backing: Some(Backing::Payload(
+                authority: AuthorityClass::Documentation,
+                claims: vec![{
+                    let mut claim = Claim::new(ClaimKind::Section);
+                    claim.id = Some("password-reset.mention".to_string());
+                    claim.synopsis = Some("Password reset exists".to_string());
+                    claim.set_backing(Some(Backing::Payload(
                         "A password reset flow is mentioned with no defined behaviour.".to_string(),
-                    )),
+                    )));
+                    claim
                 }],
             },
             (Profile::Code, "login-flow") => Evidence {
-                authority: Authority::Behaviour,
+                authority: AuthorityClass::Behaviour,
                 claims: vec![requirement(
                     "login.flow",
                     "Observed login handler",
@@ -211,7 +123,7 @@ mod source {
             // behaviour, so resolution is a `[divergence]` with the docs
             // source winning.
             (Profile::Code, "session-timeout") => Evidence {
-                authority: Authority::Behaviour,
+                authority: AuthorityClass::Behaviour,
                 claims: vec![requirement(
                     "session.timeout",
                     "Observed session TTL",
@@ -219,7 +131,7 @@ mod source {
                 )],
             },
             (Profile::Minimal, "greeting") => Evidence {
-                authority: Authority::Documentation,
+                authority: AuthorityClass::Documentation,
                 claims: vec![requirement(
                     "greeting.behaviour",
                     "Greeting behaviour",
@@ -265,97 +177,28 @@ mod source {
     }
 
     fn requirement(id: &str, synopsis: &str, statement: &str) -> Claim {
-        Claim {
-            kind: ClaimKind::Requirement,
-            id: Some(id.to_string()),
-            path: None,
-            synopsis: Some(synopsis.to_string()),
-            backing: Some(Backing::Payload(statement.to_string())),
-        }
+        let mut claim = Claim::new(ClaimKind::Requirement);
+        claim.id = Some(id.to_string());
+        claim.synopsis = Some(synopsis.to_string());
+        claim.set_backing(Some(Backing::Payload(statement.to_string())));
+        claim
     }
 
     fn criterion(id: &str, body: &str) -> Claim {
-        Claim {
-            kind: ClaimKind::Criterion,
-            id: Some(id.to_string()),
-            path: None,
-            synopsis: None,
-            backing: Some(Backing::Payload(body.to_string())),
-        }
+        let mut claim = Claim::new(ClaimKind::Criterion);
+        claim.id = Some(id.to_string());
+        claim.set_backing(Some(Backing::Payload(body.to_string())));
+        claim
     }
 }
 
 mod targets {
     use std::path::{Path, PathBuf};
 
-    use super::Error;
-
-    /// One slice-artifact input to a build (the WIT `input` variant).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub enum Input {
-        /// The slice's `proposal.md` body.
-        Proposal(String),
-        /// The slice's `design.md` body.
-        Design(String),
-        /// The slice's `tasks.md` body.
-        Tasks(String),
-        /// One behavioural spec body.
-        Spec(String),
-        /// Any additional artifact body.
-        Other(String),
-    }
-
-    /// Build status (the WIT `status` enum).
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum Status {
-        /// The build succeeded.
-        Success,
-        /// The build failed.
-        Failure,
-    }
-
-    /// One build output — the path half of the WIT `build-output` record.
-    /// The fixture only ever builds for the core platform, so the mapping
-    /// layers stamp `platform: core` when widening.
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Output {
-        /// Project-root-relative output path.
-        pub path: String,
-    }
-
-    /// A build or merge report (the WIT `report` record, minus findings
-    /// and UI surface — the fixture never emits either).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct Report {
-        /// Terminal status.
-        pub status: Status,
-        /// Core-platform outputs the build wrote.
-        pub outputs: Vec<Output>,
-    }
-
-    /// The platforms the fixture's capability shapes mention (the subset
-    /// of the WIT `platform` enum the fixture ever declares).
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum Platform {
-        /// The mandatory core platform.
-        Core,
-        /// iOS shell support.
-        Ios,
-        /// Android shell support.
-        Android,
-    }
-
-    /// A target's declared platform capability (the WIT
-    /// `platforms-capability` record).
-    #[derive(Clone, Debug, PartialEq, Eq)]
-    pub struct PlatformsCapability {
-        /// Whether the project must declare a platform set at init.
-        pub required: bool,
-        /// The platforms the target can build for.
-        pub allowed: Vec<Platform>,
-        /// The set assumed when the operator declares none.
-        pub default: Vec<Platform>,
-    }
+    use project::adapter::PlatformsCapability;
+    use project::platform::Platform;
+    use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus};
+    use project::seam::{Error, Input, MergePhase};
 
     /// The platform capability a target identity declares — deterministic
     /// per id, so one artifact stands in for several capability shapes
@@ -415,25 +258,24 @@ mod targets {
     ///
     /// - `Internal` when the id selects the `fail-build` profile.
     /// - `Io` when the artifact cannot be written.
-    pub fn build(root: &Path, id: &str, slice: &str, inputs: &[Input]) -> Result<Report, Error> {
+    pub fn build(
+        root: &Path, id: &str, slice: &str, inputs: &[Input],
+    ) -> Result<BuildReport, Error> {
         if id.contains("fail-build") {
             return Err(Error::Internal(format!("fixture build failure for `{id}`")));
         }
         if id.contains("missing-output") {
             // A dishonest success: the declared output is never written, so
             // the caller's outputs-exist gate must abort the build.
-            return Ok(Report {
-                status: Status::Success,
-                outputs: vec![Output {
-                    path: format!("{BUILD_DIR}/{slice}-never-written.md"),
-                }],
-            });
+            return Ok(report(
+                id,
+                slice,
+                BuildStatus::Success,
+                vec![core_output(format!("{BUILD_DIR}/{slice}-never-written.md"))],
+            ));
         }
         if root.join(FAIL_BUILD_MARKER).is_file() {
-            return Ok(Report {
-                status: Status::Failure,
-                outputs: Vec::new(),
-            });
+            return Ok(report(id, slice, BuildStatus::Failure, Vec::new()));
         }
         let relative = format!("{BUILD_DIR}/{slice}.md");
         let path = root.join(&relative);
@@ -442,20 +284,7 @@ mod targets {
         }
         std::fs::write(&path, build_artifact(id, slice, inputs))
             .map_err(|err| Error::Io(err.to_string()))?;
-        Ok(Report {
-            status: Status::Success,
-            outputs: vec![Output { path: relative }],
-        })
-    }
-
-    /// Which side of the engine's deterministic core merge a merge gate
-    /// runs on (the WIT `merge-phase` enum).
-    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub enum MergePhase {
-        /// Before the deterministic commit.
-        Preflight,
-        /// After the commit and archive.
-        Postflight,
+        Ok(report(id, slice, BuildStatus::Success, vec![core_output(relative)]))
     }
 
     /// Marker file (project-root-relative) that flips the preflight merge
@@ -473,7 +302,9 @@ mod targets {
     /// # Errors
     ///
     /// `Internal` when the id selects the `fail-merge` profile.
-    pub fn merge(root: &Path, id: &str, _slice: &str, phase: MergePhase) -> Result<Report, Error> {
+    pub fn merge(
+        root: &Path, id: &str, slice: &str, phase: MergePhase,
+    ) -> Result<BuildReport, Error> {
         if id.contains("fail-merge") {
             return Err(Error::Internal(format!("fixture merge failure for `{id}`")));
         }
@@ -481,11 +312,33 @@ mod targets {
             MergePhase::Preflight => FAIL_MERGE_PREFLIGHT_MARKER,
             MergePhase::Postflight => FAIL_MERGE_POSTFLIGHT_MARKER,
         };
-        let status = if root.join(marker).is_file() { Status::Failure } else { Status::Success };
-        Ok(Report {
+        let status =
+            if root.join(marker).is_file() { BuildStatus::Failure } else { BuildStatus::Success };
+        Ok(report(id, slice, status, Vec::new()))
+    }
+
+    /// A fully stamped [`BuildReport`] envelope — the same stamping the
+    /// engine's guest shim applies when widening a WIT report.
+    fn report(
+        id: &str, slice: &str, status: BuildStatus, outputs: Vec<BuildOutput>,
+    ) -> BuildReport {
+        BuildReport {
+            version: BUILD_VERSION,
+            slice: slice.to_string(),
+            target: id.strip_prefix("target:").unwrap_or(id).to_string(),
             status,
-            outputs: Vec::new(),
-        })
+            findings: Vec::new(),
+            outputs,
+            ui_surface: None,
+        }
+    }
+
+    /// The fixture only ever builds for the core platform.
+    const fn core_output(path: String) -> BuildOutput {
+        BuildOutput {
+            platform: Platform::Core,
+            path,
+        }
     }
 
     /// The written build artifact body: slice identity plus per-variant
@@ -519,11 +372,10 @@ mod targets {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 mod metadata {
     use serde_json::json;
 
-    use super::targets::{Platform, target_platforms};
+    use super::targets::target_platforms;
 
     /// The deterministic resolve-time metadata JSON a routed adapter id
     /// answers.
@@ -574,14 +426,7 @@ mod metadata {
         }
     }
 
-    fn platform_names(platforms: &[Platform]) -> Vec<&'static str> {
-        platforms
-            .iter()
-            .map(|platform| match platform {
-                Platform::Core => "core",
-                Platform::Ios => "ios",
-                Platform::Android => "android",
-            })
-            .collect()
+    fn platform_names(platforms: &[project::platform::Platform]) -> Vec<String> {
+        platforms.iter().map(ToString::to_string).collect()
     }
 }

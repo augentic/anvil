@@ -10,7 +10,7 @@ use omnia_guest::api::command::{
 use omnia_guest::api::invoke::Invoker;
 use project::adapter::{Hydrator, Resolver};
 use project::handler::{Anchor, Render};
-use project::seam::{SourceSeam, TargetSeam};
+use project::seam::{Source, Target};
 use serde::Serialize;
 
 pub use self::output::Format;
@@ -178,7 +178,7 @@ fn operation_response(
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Hydrator + SourceSeam + TargetSeam,
+    P: Provider + Anchor + Model + Resolver + Hydrator + Source + Target,
 {
     let command = clap::Command::new("specify").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)

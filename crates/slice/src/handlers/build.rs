@@ -6,7 +6,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::{TargetSeam, WorkingTree};
+use project::seam::{Target, WorkingTree};
 use serde::{Deserialize, Serialize};
 
 use crate::{BuildStatus, orchestrate};
@@ -23,7 +23,7 @@ pub struct BuildInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Build;
 
-impl<P: Anchor + Resolver + TargetSeam> Operation<P> for Build {
+impl<P: Anchor + Resolver + Target> Operation<P> for Build {
     type Error = project::handler::Error;
     type Input = BuildInput;
     type Output = BuildBody;

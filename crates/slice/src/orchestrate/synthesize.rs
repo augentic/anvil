@@ -3,7 +3,7 @@
 use error::Error;
 use omnia_guest::Model;
 use project::registry::topology::{Decision, Surface};
-use project::seam::TargetSeam;
+use project::seam::Target;
 
 use super::{seam_failure, target_id};
 use crate::judgment::synthesize::{Kernel, Synthesized};
@@ -42,7 +42,7 @@ pub struct SynthesizeRequest<'a> {
 ///
 /// - `seam-dispatch-failed` when the guidance dispatch fails.
 /// - propagates the judgment leg's model / schema / kernel failures.
-pub async fn synthesize<P: Model, T: TargetSeam>(
+pub async fn synthesize<P: Model, T: Target>(
     model: &P, seam: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
     let id = target_id(request.target);

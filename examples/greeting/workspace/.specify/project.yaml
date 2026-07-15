@@ -1,8 +1,0 @@
-name: greeting
-adapter: file:///fixture.wasm
-specify: 0.27.2
-rules:
-  design: ""
-  proposal: ""
-  specs: ""
-  tasks: ""

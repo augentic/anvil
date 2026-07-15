@@ -101,12 +101,12 @@ The closure skill (`/spec:finalize`) that verifies the plan is drained, confirms
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 **Gate (quality)**
-One of the three engine test rungs and its cadence: repository correctness (`cargo make ci`, every push), WASM boundary smoke (`cargo make test-wasm`, weekly/path-filtered/manual; required for release), or prompt evaluation (`cargo make prompt-eval`, operator-invoked). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
+One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run change example (`cargo make change-run`). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
 
 ## H
 
 **Hard assertion**
-A mechanically decidable test result, such as lifecycle state, exit status, schema validity, journal cadence, or filesystem shape. Every engine test — including `prompt-eval` — is graded by hard assertions only; there is no semantic grading machinery.
+A mechanically decidable test result, such as lifecycle state, exit status, schema validity, journal cadence, or filesystem shape. Every engine test — including the `eval` harness — is graded by hard assertions only; there is no semantic grading machinery.
 
 ## I
 
@@ -194,7 +194,7 @@ An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chose
 A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
-The single CLI binary produced by the Rust workspace at the repo root that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Repo **checks** for contributors to the `augentic/specify` repo run as plain cargo tests (`tests/` / `-p checks`), not as a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
+The single CLI binary produced by the Rust workspace at the repo root that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Repo **checks** for contributors to the `augentic/specify` repo run as plain cargo tests (`crates/checks` / `-p checks`), not as a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **Survey**
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.

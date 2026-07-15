@@ -167,6 +167,13 @@ impl<'a> Layout<'a> {
         self.specify_dir().join("project.yaml")
     }
 
+    /// Absolute path to `<project_dir>/.specify/specs/` — the baseline
+    /// specs tree, one domain directory per `spec.md`.
+    #[must_use]
+    pub fn specs_dir(&self) -> PathBuf {
+        self.specify_dir().join("specs")
+    }
+
     /// Absolute path to `<project_dir>/.specify/slices/`.
     #[must_use]
     pub fn slices_dir(&self) -> PathBuf {

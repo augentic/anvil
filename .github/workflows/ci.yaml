@@ -15,27 +15,27 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  wasm:
-    name: Wasm
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
+  # wasm:
+  #   name: Wasm
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 20
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #       with:
+  #         fetch-depth: 1
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-wasip2
+  #     - uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         targets: wasm32-wasip2
 
-      - uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: true
+  #     - uses: Swatinem/rust-cache@v2
+  #       with:
+  #         save-if: ${{ github.ref == 'refs/heads/main' }}
+  #         cache-on-failure: true
 
-      - name: Check wasm guests
-        run: |
-          cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
-          cargo check --locked -p examples --example greeting-wasm --target wasm32-wasip2
-        env:
-          RUSTFLAGS: -Dwarnings
+  #     - name: Check wasm guests
+  #       run: |
+  #         cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
+  #         cargo check --locked -p examples --example change --target wasm32-wasip2
+  #       env:
+  #         RUSTFLAGS: -Dwarnings

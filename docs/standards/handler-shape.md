@@ -10,7 +10,7 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 - **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = project::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + SourceSeam + TargetSeam` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted seams.
+Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + Source + Target` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
 
 ```rust
 // GOOD — default shape
@@ -74,7 +74,7 @@ The four-slot CLI exit-code table is fixed:
 
 The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary. The shared HTTP table lives in `crates/transport/src/http.rs`; native adds its write lock and MCP merge after `into_axum()`.
 
-On wasm, `command.rs` exports `wasi:cli/run` explicitly and calls `omnia_guest::api::command::execute_wasi`. Native calls `Router::execute` and writes the returned channels. Both paths use the same assembly and the same `SpecifyProjector`.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly and calls `omnia_guest::api::command::execute_wasi`. Native calls `Router::execute` and writes the returned channels. Both paths use the same assembly and the same `SpecifyProjector`.
 
 Target discipline per leaf arm:
 

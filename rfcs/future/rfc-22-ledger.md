@@ -214,7 +214,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 
 1. **Schemas.** Land `migration-log/schema.json`, the additive `status` field on `schemas/sources.schema.json`, and the additive `mapping` field on `plan/plan.schema.json`. Update each schema's README. Add JSON Schema fixtures.
 2. **Domain types.** Add `MigrationLog`, `MigrationEntry`, `MigrationOverride` types in `project` (`crates/project/src/migration_log/`). Mirror the `Registry` posture: `serde(deny_unknown_fields)`, `path()` / `load()` / `append()` helpers, byte-stable sort.
-3. **Ledger writers.** Hook `specify slice merge` and `specify plan archive` to derive ledger entries. Atomic file-write through the existing `AtomicYaml` trait. Land integration tests under `tests/migration_log.rs`.
+3. **Ledger writers.** Hook `specify slice merge` and `specify plan archive` to derive ledger entries. Atomic file-write through the existing `AtomicYaml` trait. Land integration tests under the owning crate's `tests/`.
 4. **`status` on `sources[]`.** Wire `specify plan archive` to update statuses. Add `specify source status` verb (`src/commands/source/status.rs`) with the operator-override override-block writer.
 5. **`specify migration-log show`.** Read-only verb; small handler with `--source`, `--target-project`, `--change` filters and JSON envelope.
 6. **`mapping` field plumbing.** Extend `Plan::validate` with the four advisory cross-checks. Extend `specify plan amend` to accept `--mapping` and `--clear-mapping`. Update propose brief to pre-fill `mapping` from survey recommendations.

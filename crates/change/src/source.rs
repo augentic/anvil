@@ -6,7 +6,7 @@ use std::io::Write;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::SourceSeam;
+use project::seam::Source;
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -26,7 +26,7 @@ pub struct SurveyInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Survey;
 
-impl<P: Anchor + SourceSeam> Operation<P> for Survey {
+impl<P: Anchor + Source> Operation<P> for Survey {
     type Error = project::handler::Error;
     type Input = SurveyInput;
     type Output = SurveyBody;

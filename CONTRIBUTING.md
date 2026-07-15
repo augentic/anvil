@@ -16,7 +16,7 @@ Unless you are fixing a known bug, we recommend discussing your change with the 
 
 The framework lives in one repository with two surfaces:
 
-- **Rust workspace** (`src/`, `crates/`, `tests/`, `examples/`) — the `specify` binary, guest orchestrations, and JSON schemas it distributes
+- **Rust workspace** (`src/`, `crates/`, `examples/`) — the `specify` binary, guest orchestrations, and JSON schemas it distributes
 - **Prose and Cursor wrappers** (`plugins/`, `docs/`, `.cursor-plugin/`) — ultrathin `/spec:*` skill wrappers, documentation, and the marketplace manifest
 
 Adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) repository.
@@ -100,7 +100,7 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that cover your change. For skill-wrapper or docs changes, this means `cargo test -p checks` passes (and, for wrapper changes, you have manually verified the skill in a target project). For CLI changes, add or update integration tests under `crates/*/tests/` or the root `tests/` directory.
+Normally, all pull requests must include tests that cover your change. For skill-wrapper or docs changes, this means `cargo test -p checks` passes (and, for wrapper changes, you have manually verified the skill in a target project). For CLI changes, add or update integration tests under `crates/*/tests/`.
 
 ## Conduct
 

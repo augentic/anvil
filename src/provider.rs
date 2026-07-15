@@ -15,7 +15,8 @@ use project::adapter::{
     AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource, ResolvedTarget,
     Resolver,
 };
-use project::seam::{self, Evidence, Input, Lead, MergePhase, SourceSeam, TargetSeam, WorkingTree};
+use project::handler::Anchor;
+use project::seam::{self, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree};
 use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 use wasip3::http_compat::IncomingMessage as _;
 
@@ -26,7 +27,7 @@ pub struct Provider;
 
 impl omnia_guest::Model for Provider {}
 
-impl project::handler::Anchor for Provider {
+impl Anchor for Provider {
     fn project_root(&self) -> &std::path::Path {
         std::path::Path::new(".")
     }
@@ -83,7 +84,7 @@ impl project::adapter::Hydrator for Provider {
     }
 }
 
-impl SourceSeam for Provider {
+impl Source for Provider {
     fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
         async move {
             let leads = source::survey(id).await.map_err(map_error)?;
@@ -109,7 +110,7 @@ impl SourceSeam for Provider {
     }
 }
 
-impl TargetSeam for Provider {
+impl Target for Provider {
     fn guidance(&self, id: String) -> impl Future<Output = Result<String, seam::Error>> + Send {
         async move { target::guidance(id).await.map_err(map_error) }
     }

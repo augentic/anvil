@@ -14,5 +14,5 @@ readme = "../../README.md"
 workspace = true
 
 [dependencies]
-thiserror.workspace = true
 serde-saphyr.workspace = true
+thiserror.workspace = true

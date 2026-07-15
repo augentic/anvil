@@ -16,7 +16,7 @@ use project::config::{Layout, ProjectConfig};
 use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, Status, resolve_topology};
 use project::registry::topology::{Decision, Surface};
-use project::seam::{SourceSeam, TargetSeam};
+use project::seam::{Source, Target};
 
 use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
@@ -86,7 +86,7 @@ impl TagCounts {
 /// - `slice-provenance-invalid` / `slice-pre-adapter-gate` /
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `lifecycle` gate error from the `refined` transition.
-pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
+pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp, slice: &str,
     target_value: &str,
 ) -> Result<RefineOutcome, Error> {
@@ -205,7 +205,7 @@ pub async fn refine<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
 /// - `slice-create-target-missing` when neither the slice metadata nor
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
-pub async fn refine_breakout<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
+pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
     let entry = load_entry(layout, slice)?;
@@ -235,7 +235,7 @@ fn breakout_target(
 
 /// The judgment leg plus the native persist tail — one fallible unit
 /// so the `slice.synthesize.*` pair brackets both.
-async fn synthesize_and_persist<P: Model, T: TargetSeam>(
+async fn synthesize_and_persist<P: Model, T: Target>(
     model: &P, targets: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>, slice_dir: &Path,
     baseline_index: &BaselineIndex,
 ) -> Result<Vec<String>, Error> {
@@ -316,7 +316,7 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
     classes
         .iter()
         .find(|class| matches!(class.strategy, MergeStrategy::ThreeWayMerge))
-        .map_or_else(|| layout.specify_dir().join("specs"), |class| class.baseline_dir.clone())
+        .map_or_else(|| layout.specs_dir(), |class| class.baseline_dir.clone())
 }
 
 /// The slice's bound-project baseline identity for the synthesis

@@ -11,16 +11,25 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-# Host-side test support. The wasm32 build carries only the dependency-free
-# `adapter` core, so the examples adapter guest can map it.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Dual-target: the `adapter` core speaks the engine's own seam DTOs, so
+# the examples adapter guest links these on wasm32 too.
+[dependencies]
 artifacts.workspace = true
+project.workspace = true
+serde_json.workspace = true
+
+# The `wit` module: the `adapter`-world export bindings the examples
+# guest shims over.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wit-bindgen.workspace = true
+
+# Host-only test support (tempdirs, scripted model doubles, cwd/env
+# mutation) behind the same target gate the guest shims use.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 change.workspace = true
 diagnostics.workspace = true
 error.workspace = true
 omnia-guest.workspace = true
 omnia-testkit.workspace = true
-project.workspace = true
-serde_json.workspace = true
 slice.workspace = true
 tempfile.workspace = true
