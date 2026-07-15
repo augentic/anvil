@@ -1147,7 +1147,6 @@ dependencies = [
  "omnia-guest",
  "omnia-wasi-model",
  "project",
- "serde-saphyr",
  "tempfile",
  "testkit",
  "tokio",

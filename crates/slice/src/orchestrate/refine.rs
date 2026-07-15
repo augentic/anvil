@@ -316,7 +316,7 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
     classes
         .iter()
         .find(|class| matches!(class.strategy, MergeStrategy::ThreeWayMerge))
-        .map_or_else(|| layout.specify_dir().join("specs"), |class| class.baseline_dir.clone())
+        .map_or_else(|| layout.specs_dir(), |class| class.baseline_dir.clone())
 }
 
 /// The slice's bound-project baseline identity for the synthesis

@@ -7,14 +7,16 @@ use std::path::{Path, PathBuf};
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
 use change::{Status, plan};
 use omnia::Backend as _;
+use project::config::Layout;
 use testkit::{Provider, answers, run as invoke};
 
 use crate::native::Native;
+use crate::telemetry::Telemetry;
 
 /// The live model: cursor-agent behind the harness-local [`Native`]
-/// adapter, which carries the guest→wire mapping, the request/answer
-/// gates, and the workspace lend natively.
-type EvalProvider = Provider<Native<omnia_cursor::Client>>;
+/// adapter (the guest→wire mapping, the request/answer gates, and the
+/// workspace lend), wrapped in the per-leg request tally.
+type EvalProvider = Provider<Telemetry<Native<omnia_cursor::Client>>>;
 
 /// One full trial: init → plan → execute → finalize, grading between
 /// execute and finalize while `plan.yaml` is still live.
@@ -23,9 +25,10 @@ pub async fn run() {
     let provider = connect(&root).await;
 
     init(&provider).await;
-    plan(&provider, &root).await;
+    author_and_approve(&provider, &root).await;
     let drained = execute(&provider, &root).await;
     grade(&root, &drained);
+    report_legs(&provider, &drained);
     finalize(&provider).await;
 
     fs::remove_dir_all(&root).expect("clean up the passing trial project");
@@ -49,7 +52,7 @@ async fn connect(root: &Path) -> EvalProvider {
     );
     // In-guest the `"."` preopen resolves the lent workspace; natively
     // the trial project root plays that part.
-    Provider::new(root, Native::new(client, root))
+    Provider::new(root, Telemetry::new(Native::new(client, root)))
 }
 
 /// `specify init fixture` — scaffold the fixture-bound project through
@@ -73,7 +76,7 @@ async fn init(provider: &EvalProvider) {
 ///
 /// Live reconcile over the adversarial lead catalog: every surveyed lead
 /// assigned, `login-flow` overlap merged into one slice.
-async fn plan(provider: &EvalProvider, root: &Path) {
+async fn author_and_approve(provider: &EvalProvider, root: &Path) {
     invoke::<plan::handlers::Author, _, _>(
         provider,
         plan::handlers::AuthorInput {
@@ -191,14 +194,38 @@ fn assert_build_outputs(root: &Path, plan: &change::Plan) {
     }
 }
 
+/// Per-leg request counts, reported (never asserted): requests beyond
+/// one per leg invocation are repairs — the early signal that a prompt
+/// or answer-schema change degraded the model's first answer.
+fn report_legs(provider: &EvalProvider, plan: &change::Plan) {
+    let slices = plan.entries.len();
+    for (leg, requests) in provider.model().counts() {
+        // One propose invocation per trial, one synthesis invocation
+        // per plan entry; other legs carry no invocation baseline.
+        match leg.as_str() {
+            "proposal" => {
+                let repairs = requests.saturating_sub(1);
+                eprintln!("leg proposal: {requests} request(s), {repairs} repair(s)");
+            }
+            "synthesis" => {
+                let repairs = requests.saturating_sub(slices);
+                eprintln!(
+                    "leg synthesis: {requests} request(s) over {slices} slice(s), \
+                     {repairs} repair(s)"
+                );
+            }
+            other => eprintln!("leg {other}: {requests} request(s)"),
+        }
+    }
+}
+
 fn read_plan(root: &Path) -> change::Plan {
-    serde_saphyr::from_str(&fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"))
-        .expect("parse plan.yaml")
+    change::Plan::load(&Layout::new(root).plan_path()).expect("load plan.yaml")
 }
 
 fn requirements(root: &Path) -> Vec<Requirement> {
     let mut requirements = Vec::new();
-    for domain in fs::read_dir(root.join(".specify/specs")).expect("baseline specs dir") {
+    for domain in fs::read_dir(Layout::new(root).specs_dir()).expect("baseline specs dir") {
         let spec = domain.expect("domain dir").path().join("spec.md");
         if spec.is_file() {
             let body = fs::read_to_string(&spec).expect("read baseline spec");

@@ -15,6 +15,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(not(target_arch = "wasm32"))]
+mod telemetry;
+#[cfg(not(target_arch = "wasm32"))]
 mod trial;
 
 #[cfg(not(target_arch = "wasm32"))]
