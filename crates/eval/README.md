@@ -35,6 +35,23 @@ Manual operations share `sandbox/eval/`. While `make eval init` will reinitializ
 make eval clean
 ```
 
+
+
+## Model judgment
+
+Specify core has exactly two steps that require a model's judgement.
+
+
+| Schema      | Step       | Crate    | Purpose                                                                                                                                     |
+| ----------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proposal`  | Propose    | `change` | Reconcile *surveyed* leads across sources into plan slices and author the Gate 1 prose.                                                     |
+| `synthesis` | Synthesize | `slice`  | Reconcile *extracted* evidence with baseline context and target guidance, to produce build artifacts such as `proposal.md`, `spec.md`, etc. |
+
+
+The execution and repair loop lives in the `project` crate and are considered infrastructure, not judgment. Source `survey` / `extract` and target `guidance` / `build` / `merge` are adapter operations.
+
+The `plan` evaluation isolates the proposal leg. The `execute` evaluation runs synthesis as part of the complete `refine → build → merge` loop. The synthesis artifacts are fields of one model response, so the harness does not invoke `spec.md` or `design.md` generation as independent judgment legs.
+
 ## Workflow
 
 The driver mirrors the operator rhythm:
