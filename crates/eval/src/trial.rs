@@ -12,18 +12,16 @@ use change::plan::handlers::{
 use change::{Entry, Plan, Status};
 use clap::Subcommand;
 use omnia::Backend as _;
-use omnia_cursor::Client;
 use project::config::Layout;
 use project::init::handlers::{Init, InitInput};
 use testkit::adapter::build_artifact_path;
-use testkit::env::scoped_cache;
 use testkit::{Provider, Scripted, answers, run as invoke};
 
 use crate::native::Native;
 use crate::telemetry::Telemetry;
 
 // The live model: cursor-agent behind the harness-local [`Native`]
-type EvalProvider = Provider<Telemetry<Native<Client>>>;
+type EvalProvider = Provider<Telemetry<Native<omnia_cursor::Client>>>;
 
 const CHANGE: &str = "auth";
 
@@ -60,7 +58,7 @@ impl Phase {
 async fn init() {
     let root = replace();
     println!("prompt evaluation project: {}", root.display());
-    let _cache = scoped_cache(&root);
+    let _cache = testkit::env::scoped_cache(&root);
     let provider = Scripted::scripted_at(&root, Vec::new());
     invoke::<Init, _, _>(
         &provider,
@@ -173,28 +171,26 @@ fn root() -> PathBuf {
 fn replace() -> PathBuf {
     let root = root();
     if root.exists() {
-        fs::remove_dir_all(&root).expect("replace the previous evaluation project");
+        fs::remove_dir_all(&root).expect("replace the previous project");
     }
-    fs::create_dir_all(&root).expect("create the evaluation project root");
-    root.canonicalize().expect("canonical evaluation project root")
+    fs::create_dir_all(&root).expect("create the project root");
+    root.canonicalize().expect("canonical project root")
 }
 
 fn require() -> PathBuf {
     let root = root();
     assert!(
         root.join(".specify/project.yaml").is_file(),
-        "evaluation project is not initialised; run `cargo make eval init` first"
+        "project is not initialised; run `cargo make eval init` first"
     );
-    root.canonicalize().expect("canonical evaluation project root")
+    root.canonicalize().expect("canonical project root")
 }
 
 async fn connect(root: &Path) -> EvalProvider {
     let client = omnia_cursor::Client::connect().await.expect(
-        "cursor-agent backend unavailable: install cursor-agent, then `cursor-agent login` or \
+        "cursor-agent unavailable: install cursor-agent, then `cursor-agent login` or \
          export CURSOR_API_KEY",
     );
-    // In-guest the `"."` preopen resolves the lent workspace; natively
-    // the trial project root plays that part.
     Provider::new(root, Telemetry::new(Native::new(client, root)))
 }
 
