@@ -133,7 +133,7 @@ Specify strictly enforces an **aggressive integration-first posture**.
 - **Crate-Level Integration:** Put tests in `crates/<name>/tests/` via the crate's public API. Wire-contract coverage lives in `crates/transport/tests/`; repo invariants live in `crates/checks`.
 - **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced in `augentic/specify-adapters` by the WIT contract plus each adapter crate's `tests/` suite and that repo's composed-deployment tests.
 
-The test surface is three rungs: native integration tests over `crates/testkit`'s fixture adapter and scripted model doubles (`cargo make test`, per push), one WASM boundary smoke over the real component seam (`cd examples && cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one native prompt-evaluation harness over a live model (`cargo make eval`, explicit; `crates/eval`). `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify's `testkit` crate owns the fixture adapter, provider, and answer corpus; the suites own workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
+The test surface is two rungs: native integration tests over `crates/testkit`'s fixture adapter and scripted model doubles (`cargo make test`, per push), and one native prompt-evaluation harness over a live model (`cargo make eval`, explicit; `crates/eval`). There is no automated WASM boundary rung: the real component seam is exercised by the operator-invoked change example (`cargo make change-run`, live model; see [`examples/change/README.md`](examples/change/README.md)) and by the composed-deployment tests in `augentic/specify-adapters`. `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify's `testkit` crate owns the fixture adapter, provider, and answer corpus; the suites own workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
 
 ## Commands
 
@@ -142,7 +142,7 @@ All commands are run from the repository root:
 - `cargo test -p checks` — adapter boundary + docs/plugin link integrity (the lightweight `checks` package at `crates/checks`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package.
 
-Per-push CI is the shared org workflow (nextest `--workspace` over `crates/*` and `examples`, with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cd examples && cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest, clippy, doc, doctest, vet, and deny over the whole workspace); no sibling checkout is required — the engine embeds no adapter-authored prose. There is no per-push WASM gate; the wasm32 guests compile-check locally with `cargo check --lib -p specify --example change --target wasm32-wasip2`, and boundary execution is the operator-invoked change example. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Frontmatter shape is enforced by the typed check in [`crates/checks/authoring.rs`](crates/checks/authoring.rs) (the `checks` package); body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
@@ -177,11 +177,10 @@ slice                    # the slice loop — depends on project: refine/build/m
 change                   # the change loop — depends on {project,slice}: plan author/execute orchestration (change::orchestrate incl. the survey half of the source axis and workspace routing), the propose judgment leg, change::plan::handlers (the specify plan operations) + change::source (source survey), and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
-testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes), the unified capability Provider (Scripted), scripted answers, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples package, and depended on by the eval harness
+testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes), the wasm32-only `wit` export bindings the examples guest shims over, the unified capability Provider (Scripted), scripted answers, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples guest, and depended on by the eval harness
 checks                   # dev-only repo invariants (publish = false) — boundaries, links, authoring as plain cargo tests
 eval                     # live-model prompt-evaluation harness (publish = false, native-only bin) — the operator-invoked engine trial over testkit's fixture plumbing with a live cursor-agent model
-examples                 # Omnia-shaped examples package: a manifest-hosted WASM example over testkit's fixture adapter core
-specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
+specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime + the examples/change cargo example (the fixture adapter guest over testkit's wit bindings)
 ```
 
 The artifact validation rule registry lives in `artifacts::validate`: `artifacts` depends on none of the workflow crates, so a rule cannot transition a slice or stamp a plan. `artifacts` is the lifecycle-free leaf holding the artifact types and parsers the workflow layer reads. The neutral `Diagnostic` / `DiagnosticReport` substrate lives in the `diagnostics` crate alongside the shared `diagnostics::digest` SHA-256 helpers, so every check producer — validate and review alike — emits the same finding currency without importing the other surface's code. Engineering-standards rules ship inside the target adapters in `augentic/specify-adapters`; there is no engine-side rules crate.
@@ -210,10 +209,8 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/transport/src/co
 
 ```text
 src/runtime.rs           shipped binary — omnia::runtime! command mode over cursor backends
-src/lib.rs               wasm32 core guest shim (mod command; mod http; mod provider;)
+src/lib.rs               wasm32 core guest — the wasi:cli/run + wasi:http/incoming-handler exports over transport's routers (mod provider;)
 src/provider.rs          WIT-backed Provider (Anchor + Model + Source + Target over the world's imports)
-src/command.rs              struct Cli + Guest::run + route(cli)
-src/http.rs              struct Http + Guest impl + the HTTP route table
 crates/transport/         shared command/HTTP routing, clap grammar, conversions, projectors, and exit contract
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
@@ -221,7 +218,7 @@ crates/change/           the change loop — plan author/execute orchestration, 
 crates/testkit/          dev-only test-support crate — fixture adapter core, unified Provider, scripted answers
 crates/checks/           lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
 crates/eval/             live-model prompt-evaluation harness (native-only bin; cargo make eval)
-examples/                Omnia-shaped examples package (manifest-hosted WASM over testkit's adapter core)
+examples/                the change example: a root-crate cargo example (the fixture adapter guest) plus its omnia.toml deployment and runner tasks
 ```
 
 | Code | Name                     | When                                                                  |
@@ -283,10 +280,10 @@ External references:
 All driven by `cargo make` (see [`Makefile.toml`](./Makefile.toml)). Run the full local CI suite before committing; do not rely on narrower substitutes such as `cargo test` or `cargo clippy`.
 
 ```bash
-cargo make ci             # fmt + lint + wasm + test + test-docs + doc + vet + deny
-cargo make check          # fmt + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
+cargo make ci             # fmt + lint + test + test-docs + doc + vet + deny
+cargo make check          # fmt + lint + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
 cargo make test           # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
-cd examples && cargo make test-wasm  # builds the WASM guests then runs the boundary smoke
+cargo make change-run     # the end-to-end change example over the WASM seam; operator-invoked, needs CURSOR_API_KEY in examples/.env
 cargo make eval           # the live-model prompt-evaluation harness; operator-invoked, needs cursor-agent credentials
 cargo make lint           # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt            # nightly cargo fmt --all

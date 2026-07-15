@@ -6,8 +6,10 @@
 //! on both targets, so the native test provider passes values straight
 //! through and only the WASM adapter guest maps to the WIT records.
 //!
-//! Behaviour keys off the routed adapter id — the profile catalog
-//! lives in `examples/README.md`. Builds and merge gates also
+//! Behaviour keys off the routed adapter id: an id containing `docs`
+//! or `code` selects that half of the adversarial pair, anything else
+//! the minimal single-lead `greeting` profile, and `fail-*` substrings
+//! select typed failures. Builds and merge gates also
 //! honour the per-project [`FAIL_BUILD_MARKER`] /
 //! [`FAIL_MERGE_PREFLIGHT_MARKER`] / [`FAIL_MERGE_POSTFLIGHT_MARKER`]
 //! files so interruption tests can park and resume without rebinding.

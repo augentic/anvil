@@ -26,7 +26,7 @@ src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest  →  ty
 
 The full operator grammar — unsupported provisioning commands included — is assembled in `crates/transport/src/command.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/transport/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 
-The guest exports both transports explicitly from `command.rs` and `http.rs` — no `guest!` macro in `lib.rs`. Each shim constructs an `Invoker`; the route inventories remain in `crates/transport`.
+The guest exports both transports explicitly from `src/lib.rs` — no `guest!` macro. Each shim constructs an `Invoker`; the route inventories remain in `crates/transport`.
 
 ## JSON envelope contract
 

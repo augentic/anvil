@@ -1,46 +1,80 @@
 //! # Example Adapter
 //!
-//! This crate implements both Specify source and target adapters. It
-//! implements a single MCP server for the model agent to use to when
-//! requesting adapter reference documents.
+//! This crate implements both Specify source and target adapters as a
+//! thin shim over testkit's fixture core: `testkit::wit` owns the
+//! WIT bindings and the seam mappings, so each operation below is one
+//! delegation with `From` conversions at the edges. It also implements
+//! a single MCP server for the model agent to use when requesting
+//! adapter reference documents.
 
 #![cfg(target_arch = "wasm32")]
 #![allow(missing_docs, unsafe_code)]
 
-mod bindings {
-    wit_bindgen::generate!({
-        world: "adapter",
-        path: "wit",
-        generate_all,
-        pub_export_macro: true,
-    });
-}
-
-mod source;
-mod target;
+use std::path::Path;
 
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
 };
 use project::seam;
 use serde_json::{Value, json};
+use testkit::adapter;
+use testkit::wit::exports::specify::adapter::{source, target};
 use wasip3::http::types as http;
-
-use self::bindings::exports::specify::adapter::source::Error;
 
 // ----------------------------------------------
 // Specify source + target adapters
 // ----------------------------------------------
 struct Adapter;
-self::bindings::export!(Adapter with_types_in self::bindings);
+testkit::wit::export!(Adapter with_types_in testkit::wit);
 
-impl From<seam::Error> for Error {
-    fn from(error: seam::Error) -> Self {
-        match error {
-            seam::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
-            seam::Error::Io(detail) => Self::Io(detail),
-            seam::Error::Internal(detail) => Self::Internal(detail),
+impl source::Guest for Adapter {
+    fn metadata(_id: source::AdapterId) -> source::AdapterMetadata {
+        source::AdapterMetadata { specify_floor: None }
+    }
+
+    async fn survey(id: source::AdapterId) -> Result<Vec<source::Lead>, source::Error> {
+        let leads = adapter::survey(&id).map_err(source::Error::from)?;
+        Ok(leads.into_iter().map(source::Lead::from).collect())
+    }
+
+    async fn extract(
+        id: source::AdapterId, lead: source::Lead,
+    ) -> Result<source::Evidence, source::Error> {
+        Ok(adapter::extract(&id, &lead.into()).map_err(source::Error::from)?.into())
+    }
+}
+
+impl target::Guest for Adapter {
+    fn metadata(id: target::AdapterId) -> target::AdapterMetadata {
+        target::AdapterMetadata {
+            specify_floor: None,
+            inputs: Vec::new(),
+            platforms: adapter::target_platforms(&id).map(target::PlatformsCapability::from),
         }
+    }
+
+    async fn guidance(id: target::AdapterId) -> Result<String, target::Error> {
+        adapter::guidance(&id).map_err(target::Error::from)
+    }
+
+    async fn build(
+        id: target::AdapterId, slice: String, inputs: Vec<target::Input>,
+        _tree: target::WorkingTree,
+    ) -> Result<target::Report, target::Error> {
+        // Every guest shares the deployment's `[[mount]]` preopens, so
+        // the build writes through its own `"."` preopen.
+        let inputs: Vec<seam::Input> = inputs.into_iter().map(seam::Input::from).collect();
+        let report =
+            adapter::build(Path::new("."), &id, &slice, &inputs).map_err(target::Error::from)?;
+        Ok(report.into())
+    }
+
+    async fn merge(
+        id: target::AdapterId, slice: String, phase: target::MergePhase, _tree: target::WorkingTree,
+    ) -> Result<target::Report, target::Error> {
+        let report = adapter::merge(Path::new("."), &id, &slice, phase.into())
+            .map_err(target::Error::from)?;
+        Ok(report.into())
     }
 }
 

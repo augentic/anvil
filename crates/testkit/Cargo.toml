@@ -18,6 +18,11 @@ artifacts.workspace = true
 project.workspace = true
 serde_json.workspace = true
 
+# The `wit` module: the `adapter`-world export bindings the examples
+# guest shims over.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wit-bindgen.workspace = true
+
 # Host-only test support (tempdirs, scripted model doubles, cwd/env
 # mutation) behind the same target gate the guest shims use.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

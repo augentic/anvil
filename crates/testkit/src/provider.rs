@@ -8,9 +8,8 @@
 //!
 //! The fixture core speaks the workflow seam DTOs directly, so the
 //! `Source` / `Target` impls are pass-throughs; only the WASM adapter
-//! guest (`examples/change/guest/`) maps to the WIT records, and the
-//! WASM boundary smoke exercises that shim path over the same fixture
-//! core.
+//! guest (`examples/change/guest.rs`, over the `wit` module's
+//! bindings) maps to the WIT records.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};

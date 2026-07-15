@@ -13,13 +13,11 @@ source.path = "../../target/wasm32-wasip2/debug/examples/change.wasm"
 id = "target:fixture"
 source.path = "../../target/wasm32-wasip2/debug/examples/change.wasm"
 
+# One route suffices: both dispatch ids are served by the same
+# component, whose MCP references server is identical on either axis.
 [[route.http]]
 prefix = "/"
 guest = "source:fixture"
-
-[[route.http]]
-prefix = "/"
-guest = "target:fixture"
 
 [[mount]]
 name = "."

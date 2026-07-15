@@ -1,11 +1,13 @@
 //! Specify's single test-support crate.
 //!
 //! Every cross-crate test helper lives here, so the integration suites
-//! in `crates/*/tests/` and the examples package stay free of `#[path]`
+//! in `crates/*/tests/` and the examples guest stay free of `#[path]`
 //! splices and per-suite provider copies:
 //!
 //! - [`adapter`] — the deterministic fixture adapter core (both WIT
 //!   axes) shared by the native provider and the WASM adapter guest.
+//! - `wit` (`wasm32` only) — the `adapter`-world export bindings plus
+//!   the seam mappings the examples guest shims over.
 //! - [`provider`] — the unified capability provider (`Anchor + Model +
 //!   Resolver + Hydrator + Source + Target`) plus the
 //!   operation-invocation helpers.
@@ -19,6 +21,9 @@
 //! it); only the host-only test-support modules below stay gated.
 
 pub mod adapter;
+
+#[cfg(target_arch = "wasm32")]
+pub mod wit;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod answers;
