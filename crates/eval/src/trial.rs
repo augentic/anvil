@@ -51,7 +51,7 @@ pub async fn run() {
     fs::remove_dir_all(&root).expect("clean up the passing trial project");
 }
 
-/// Run one operation against the persistent `target/eval` project.
+/// Run one operation against the persistent `sandbox/eval` project.
 pub async fn run_phase(phase: Phase) {
     let root = manual_root();
     if matches!(phase, Phase::Clean) {
@@ -117,7 +117,7 @@ fn scaffold() -> (PathBuf, testkit::env::CacheGuard) {
 }
 
 fn manual_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/eval")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval")
 }
 
 async fn connect(root: &Path) -> EvalProvider {

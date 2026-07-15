@@ -26,6 +26,8 @@ Clean up afterwards:
 make change-clean
 ```
 
+Artifacts land under the gitignored `sandbox/change/`.
+
 ## What it demonstrates
 
 The example runs the Specify ***change*** workflow. It will `author->approve->execute` a ***plan*** using a mock model:
@@ -37,5 +39,6 @@ The example runs the Specify ***change*** workflow. It will `author->approve->ex
 After running, inspect the generated result at:
 
 ```text
-examples/change/workspace/fixture-build/greeting.md
+sandbox/change/workspace/fixture-build/greeting.md
 ```
+

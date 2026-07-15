@@ -13,26 +13,26 @@ agent login
 or set `CURSOR_API_KEY` in `examples/.env`.
 
 ```bash
-cargo make eval
+make eval
 ```
 
-The default command runs the entire workflow in a temporary project. A passing run removes the project; a failing run retains it at the path printed on startup.
+This will run the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it.
 
 ## Manual workflow
 
 Run one operation at a time to inspect its artifacts:
 
 ```bash
-cargo make eval init
-cargo make eval plan
-cargo make eval execute
-cargo make eval finalize
+make eval init
+make eval plan
+make eval execute
+make eval finalize
 ```
 
-Manual operations share `target/eval/` and leave it in place. `init` replaces any previous manual project; each later operation requires the preceding state. Remove the project when finished:
+Manual operations share `sandbox/eval/` and leave it in place. `init` replaces any previous manual project; each later operation requires the preceding state. Remove the project when finished:
 
 ```bash
-cargo make eval clean
+make eval clean
 ```
 
 ## Workflow
@@ -52,6 +52,7 @@ Every step runs the production operation — `execute` is the real drained loop,
 
 Hard assertions only:
 
+
 | Stage   | Check                  | Pass condition                                               |
 | ------- | ---------------------- | ------------------------------------------------------------ |
 | plan    | Cross-source overlap   | `login-flow` from `docs` and `code` merge into one slice     |
@@ -60,6 +61,7 @@ Hard assertions only:
 | execute | Authority disagreement | Session-timeout surfaces as `[divergence]` or `[conflict]`   |
 | execute | Evidence gap           | Password-reset is marked `[unknown]`, not invented           |
 | execute | Build output           | Every slice leaves a non-empty fixture build artifact        |
+
 
 Per-leg request / repair counts are **reported, not asserted**: after grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
 
