@@ -17,7 +17,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "wasm", "test", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "test", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]

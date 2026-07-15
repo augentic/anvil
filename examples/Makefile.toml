@@ -1,8 +1,7 @@
 
 [tasks.change-build]
 script = '''
-cargo build --example change --target wasm32-wasip2
-cargo build --lib -p specify --target wasm32-wasip2
+cargo build -p specify --lib --example change --target wasm32-wasip2
 '''
 
 [tasks.change-clean]
