@@ -184,7 +184,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 
 1. **Schema and validator.** Land `schemas/sources.schema.json` and `schemas/adapters/sources/README.md`. Add a `Sources` validator in `specify-validate`.
 2. **Domain types.** Add `Sources`, `SourceEntry` types in `workflow` (`crates/project/src/adapters/sources/`). Mirror the `Registry` posture: `serde(deny_unknown_fields)`, `path()` / `load()` helpers, `validate_shape()`. `error` gains `sources-*` discriminants.
-3. **`specify source` verb family.** Add `src/commands/source/{add,remove,show,list,validate,sync}.rs` beside the existing source adapter `resolve` command. Each verb gets a JSON envelope mirroring `specify registry`. Land integration tests under `tests/source_catalogue.rs`.
+3. **`specify source` verb family.** Add `src/commands/source/{add,remove,show,list,validate,sync}.rs` beside the existing source adapter `resolve` command. Each verb gets a JSON envelope mirroring `specify registry`. Land integration tests under `crates/project/tests/` (or the owning crate's `tests/`).
 4. **Source-clone cache lifecycle.** Implement `.specify/cache/sources/<key>/` materialisation in `specify source sync`. Update `.gitignore` defaults (already covered by [`Registry::ensure_specify_gitignore_entries`](../../crates/project/src/registry/gitignore.rs); extend to add `.specify/cache/`).
 5. **Plan source binding resolution.** When `/spec:plan` resolves `--source @<key>`, materialise the cache slot if needed and lower it to the normal source binding shape before source adapter `survey` runs.
 6. **Archive snapshot.** Update `specify plan archive` to write `.specify/archive/plans/<date>-<name>/.snapshot.yaml`. Define schema at `schemas/archive-snapshot/schema.json`.

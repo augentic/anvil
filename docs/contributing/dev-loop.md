@@ -10,7 +10,7 @@ cargo make test                              # fast native integration tests; mo
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest` over the default workspace members: the workspace crates (including `testkit`), the examples package, and the `checks` package at `tests/`. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through `testkit`'s fixture adapter seams and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates (including `testkit` and `checks`) and the examples package. The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through `testkit`'s fixture adapter seams and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
@@ -30,7 +30,7 @@ Live runs are always explicit, never a side effect. The documented cadence: befo
 
 ## What CI runs
 
-- Per push: `cargo make ci` — the self-contained workspace gate (nextest over default members, clippy/doc/doctest/vet/deny, the `wasm32-wasip2` compile check). No sibling checkout, no component hosting, no model.
+- Per push: `cargo make ci` — the self-contained workspace gate (nextest `--workspace`, clippy/doc/doctest/vet/deny, the `wasm32-wasip2` compile check). No sibling checkout, no component hosting, no model.
 - Weekly / path-filtered / manual: the WASM workflow, running rung 2.
 - Never: rung 3. CI never requires model credentials.
 

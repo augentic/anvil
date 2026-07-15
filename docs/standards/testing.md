@@ -4,7 +4,7 @@ Integration-first test posture: `cargo nextest` over public crate and binary bou
 
 ## Posture
 
-Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The selection is the default workspace members — `crates/*` (including `testkit`), `examples`, and the `tests` (`checks`) package; the WASM boundary smoke and the live trial are opt-in rungs (below) so ordinary test runs never compile Wasmtime or call a model.
+Use `cargo make test` rather than `cargo test`. It runs `cargo nextest run --locked --workspace --all-features --no-tests=pass` with `RUSTFLAGS=-Dwarnings` and a clean prelude, matching CI exactly. The WASM boundary smoke and the live trial are opt-in rungs (below) so ordinary test runs never host a component or call a model.
 
 `cargo nextest` and `cargo test` differ on `--no-tests=pass`. CI uses nextest with `--no-tests=pass`, so an empty test target is fine — cross-check `cargo test` output if you suspect a target is being skipped.
 
@@ -28,7 +28,7 @@ Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` scrip
 
 ## Integration-first policy
 
-Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/change/tests/handlers.rs`, `crates/change/tests/full_loop.rs`, and so on. Cross-crate helpers come from the `testkit` dev-dependency (`use testkit::…`); crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. The repo-root `tests/` carries only the lightweight `checks` package (`boundaries`, `links`, `authoring`); fixtures are crate-local under `crates/<name>/tests/fixtures/`.
+Integration tests live in each crate's `tests/` directory and assert against public boundaries — stdout JSON, exit codes, filesystem state. Each `tests/<area>.rs` file is its own auto-discovered test binary — `crates/change/tests/handlers.rs`, `crates/change/tests/full_loop.rs`, and so on. Cross-crate helpers come from the `testkit` dev-dependency (`use testkit::…`); crate-private helpers live in the dir form `tests/<helper>/mod.rs` (invisible to auto-discovery), declared per binary with `mod <helper>;`. Repo invariants (adapter boundary, docs/plugin links, plugin authoring shape) live in the lightweight `crates/checks` package; fixtures are crate-local under `crates/<name>/tests/fixtures/`.
 
 If a function needs unit tests, it belongs in a workspace crate, not the binary — see [architecture.md §"Workspace layout"](./architecture.md#workspace-layout) and [handler-shape.md §"Dispatch contract"](./handler-shape.md#dispatch-contract-commandrs).
 
@@ -40,7 +40,7 @@ Every behavior gets a home in exactly one of three layers. Decide the layer **be
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Kernel unit**               | `#[cfg(test)] mod tests` (or a sibling `tests.rs`) next to the code                                                                           | The branch is genuinely unreachable through the CLI (an error variant no flag can trigger, a defensive guard), **or** the behavior is a dense parse/projection edge matrix whose case-per-cell integration port would inflate the 4-wide subprocess pool | The behavior is reachable through the binary and an integration test already covers it — or could, without a matrix explosion                                                    |
 | **Crate integration**         | `crates/<name>/tests/`                                                                                                                        | The behavior spans modules within one crate and is unreachable (or impractical to reach) through the binary — internal invariants, filesystem-shape corner cases, registry-pinned schema compilation                                                     | The same observable behavior is already asserted through the binary; if a CLI test exists, the crate test must cover a *different* edge, not re-derive the happy path in-process |
-| **Wire-contract integration** | `crates/transport/tests/` (the routing crate; the root package carries no test binaries — repo-root `tests/` holds only the `checks` package) | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, route dispatch                                                                                                                                               | The assertion re-tests kernel logic already covered elsewhere — wire tests buy routing/projection confidence, not rule-by-rule behavior matrices                                 |
+| **Wire-contract integration** | `crates/transport/tests/` (the routing crate; the root package carries no test binaries — repo invariants live in `crates/checks`) | The behavior is part of the CLI wire contract: flag parsing, exit codes, stdout JSON shape, route dispatch                                                                                                                                               | The assertion re-tests kernel logic already covered elsewhere — wire tests buy routing/projection confidence, not rule-by-rule behavior matrices                                 |
 
 Rules of thumb:
 
@@ -100,7 +100,20 @@ Test function names are identifiers, not sentences — the same brevity rules as
 
 ## Golden file discipline
 
+There is exactly one supported regeneration switch. Always use `cargo nextest run`, never bare `cargo test`:
+
+```text
+REGENERATE_GOLDENS=1 cargo nextest run -p <crate> --test <binary>
+```
+
 `REGENERATE_GOLDENS=1` regenerates every checked-in golden — the structural artifact goldens and the generated answer schemas. After regenerating, run `git diff` on the outputs and review every change — a diff that updates a kebab-case error `code` field is a public-contract change (see [coding-standards.md §"Errors"](./coding-standards.md#errors)).
+
+| Crate | Test binary | Fixture / golden dir(s) |
+| --- | --- | --- |
+| `slice` | `merge_goldens` | `crates/slice/tests/fixtures/spec-*` |
+| `project` / `slice` | `answers` | `crates/project/answers/`, `crates/slice/answers/` |
+
+Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Test-side gotchas
 

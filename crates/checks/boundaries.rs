@@ -35,8 +35,9 @@ const ADAPTER_REPOSITORY: &str = "specify-adapters";
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("tests/ sits under the repo root")
+        .ancestors()
+        .nth(2)
+        .expect("crates/checks/ sits two levels under the repo root")
         .to_path_buf()
 }
 

@@ -52,7 +52,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | **Artifacts**             | Slice-local and baseline product intent       | `spec.md`, `plan.yaml`, `.specify/specs/`                                                           |
 | **Engineering standards** | Durable policy that outlives any slice        | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays, embedded in each target adapter |
 
-**Authoring standards** (`docs/standards/`) govern docs house style and the thin skill-wrapper shape; a small risk-based subset (adapter boundary, docs/plugin links) is enforced by the `checks` package at [`tests/`](tests/). **Engineering standards** (rules in `augentic/specify-adapters` — `codex/rules/universal/` and per-adapter `prose/rules/` overlays, embedded in each target adapter's component and served by its references server) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`) govern docs house style and the thin skill-wrapper shape; a small risk-based subset (adapter boundary, docs/plugin links) is enforced by the `checks` package at [`crates/checks`](crates/checks/). **Engineering standards** (rules in `augentic/specify-adapters` — `codex/rules/universal/` and per-adapter `prose/rules/` overlays, embedded in each target adapter's component and served by its references server) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 Engineering standards reach consumer projects through the target adapters' embedded prose, applied by their build review prompts — there is no engine-side lint or rules-export surface. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
@@ -130,7 +130,7 @@ Specify strictly enforces an **aggressive integration-first posture**.
 
 - **Design against the public surface:** before adding a unit test, ask whether integration can reach the behavior — reachable through a CLI input or `pub` fn, observable at a public boundary (stdout JSON, exit code, filesystem), and affordable to assert there without a subprocess explosion. If yes, write the integration test; the unit test is redundant.
 - **Default to Deletion:** a `src` unit test survives only when it is reachable and observable but cheap *only* in-process against a **private** kernel (a proptest or dense matrix), or covers a genuinely CLI-unreachable branch. If the kernel is already `pub`, re-home the test to `crates/<name>/tests/` instead.
-- **Crate-Level Integration:** Put tests in `crates/<name>/tests/` instead of the root `tests/` when they test isolated domain logic that does not require full CLI orchestration. End-to-end and purely CLI-focused tests belong in the root `tests/`.
+- **Crate-Level Integration:** Put tests in `crates/<name>/tests/` via the crate's public API. Wire-contract coverage lives in `crates/transport/tests/`; repo invariants live in `crates/checks`.
 - **Widening is a last resort:** do NOT alter public APIs simply to support integration tests — prefer collapse-and-keep. The target is *near-zero* unit tests (no redundant or integration-reachable ones), not literal zero. `cargo llvm-cov nextest` remains the brake that ensures coverage holds during migrations; adapter posture is enforced in `augentic/specify-adapters` by the WIT contract plus each adapter crate's `tests/` suite and that repo's composed-deployment tests.
 
 The test surface is three rungs: native integration tests over `crates/testkit`'s fixture adapter and scripted model doubles (`cargo make test`, per push), one WASM boundary smoke over the real component seam (`cd examples && cargo make test-wasm`, weekly/path-filtered/manual; required for release), and one native prompt-evaluation harness over a live model (`cd examples && cargo make prompt-eval`, explicit). `omnia-testkit` owns generic model/scripted/runtime test mechanics; Specify's `testkit` crate owns the fixture adapter, provider, and answer corpus; the suites own workflow scenario semantics and assertions. See [`docs/standards/testing.md`](docs/standards/testing.md) and [`docs/contributing/quality-gates.md`](docs/contributing/quality-gates.md).
@@ -139,12 +139,12 @@ The test surface is three rungs: native integration tests over `crates/testkit`'
 
 All commands are run from the repository root:
 
-- `cargo test -p checks` — adapter boundary + docs/plugin link integrity (the lightweight `checks` package at `tests/`). Only a Rust toolchain is required.
+- `cargo test -p checks` — adapter boundary + docs/plugin link integrity (the lightweight `checks` package at `crates/checks`). Only a Rust toolchain is required.
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package.
 
-Per-push CI is the shared org workflow (nextest over the default workspace members — `crates/*`, `examples`, and `tests` — with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cd examples && cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest `--workspace` over `crates/*` and `examples`, with clippy/doc/doctest/vet/deny over the whole workspace) plus one `wasm32-wasip2` compile check; no sibling checkout is required — the engine embeds no adapter-authored prose. WASM boundary execution runs on the weekly/path-filtered `.github/workflows/wasm.yaml` workflow (locally: `cd examples && cargo make test-wasm`), not per push. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
-The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Frontmatter shape is enforced by the typed check in [`tests/authoring.rs`](tests/authoring.rs) (the `checks` package); body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
+The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Frontmatter shape is enforced by the typed check in [`crates/checks/authoring.rs`](crates/checks/authoring.rs) (the `checks` package); body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
 ## Gotchas
 
@@ -178,6 +178,7 @@ change                   # the change loop — depends on {project,slice}: plan 
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
 testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes), the unified capability Provider (Scripted), scripted answers, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples package
+checks                   # dev-only repo invariants (publish = false) — boundaries, links, authoring as plain cargo tests
 examples                 # Omnia-shaped examples package: prompt-eval plus a manifest-hosted WASM example over testkit's fixture adapter core
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime
 ```
@@ -195,7 +196,7 @@ Modules of note across the workspace (workflow layer):
 - `crates/project/src/journal.rs` — newline-delimited JSON journal event log at `<project_dir>/.specify/journal.jsonl`; closed `Event` / `EventKind` taxonomy with kebab-case wire ids and `snake_case` Rust variants joined by `#[serde(rename = "…")]`, including the single `PlanReconcileCompleted` variant covering a successful `plan author` write, `plan.entry.advanced`, and the closed `Actor` enum (`operator | agent`) on `plan.transition.approved`.
 - `crates/project/src/answers.rs` + `crates/slice/src/answers.rs` — the generated judgment-answer schemas (`leads`, `evidence`, `report`, `proposal`; `synthesis` in `slice`), produced via `schemars` from the same Rust wire types the deterministic tails parse. The committed goldens under `crates/project/answers/` and `crates/slice/answers/` are parity-gated by each crate's `tests/answers.rs` (regenerate with `REGENERATE_GOLDENS=1`); adapters in `augentic/specify-adapters` vendor the `leads` / `evidence` / `report` documents. There is no other JSON Schema machinery — the typed serde parse is the load gate for every on-disk artifact.
 - `crates/diagnostics/` — the neutral `Diagnostic` substrate: the `Diagnostic` / `DiagnosticReport` / `DiagnosticSummary` types with the orthogonal `source` (`deterministic | model-assisted | hybrid | human | tool`) and `kind` (`violation | review`) axes, the fingerprint algorithm, and the `blocking` predicate. Import it from the `diagnostics` crate root.
-- **No lint engine, no `Check` substrate.** Repo checks are plain cargo tests in the lightweight [`tests/`](./tests/) package (`boundaries`, `links`). Contributor model: [docs/contributing/checks.md](./docs/contributing/checks.md).
+- **No lint engine, no `Check` substrate.** Repo checks are plain cargo tests in the lightweight [`crates/checks`](./crates/checks/) package (`boundaries`, `links`, `authoring`). Contributor model: [docs/contributing/checks.md](./docs/contributing/checks.md).
 - `crates/project/src/agents/` — crate-private init-time `AGENTS.md` context generation: shallow root-marker detection, deterministic Markdown rendering, context-fence parsing, input fingerprinting, and `context.lock` writing. `specify init` drives it through `project::init` (generate root `AGENTS.md` + `.specify/context.lock` when `AGENTS.md` is absent; skip inside materialised workspace slots).
 
 The two **adapter validators** (`contract`, `vectis`) are in-guest adapter library code inside each adapter's published component in `augentic/specify-adapters` — the host dispatches no adapter WASI tool. Crux shell presence and launcher-icon heuristics live **only** in the vectis adapter's in-guest core: the host performs no plan-time shell detection.
@@ -216,9 +217,9 @@ crates/transport/         shared command/HTTP routing, clap grammar, conversions
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
-crates/testkit/ dev-only test-support crate — fixture adapter core, unified Provider, scripted answers
+crates/testkit/          dev-only test-support crate — fixture adapter core, unified Provider, scripted answers
+crates/checks/           lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
 examples/                Omnia-shaped examples package (prompt-eval plus manifest-hosted WASM over testkit's adapter core)
-tests/                    lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
 ```
 
 | Code | Name                     | When                                                                  |
@@ -244,11 +245,11 @@ tests/                    lightweight checks package (boundaries, links, authori
 ### Rust quality {#rust-quality}
 
 **Aggressive Integration-First Posture:**
-Specify mandates an aggressive integration-first test strategy. Agents must actively work to remove unit tests (`#[cfg(test)]`) in favor of crate-level (`crates/<name>/tests/`) and binary integration tests (`tests/<area>.rs`).
+Specify mandates an aggressive integration-first test strategy. Agents must actively work to remove unit tests (`#[cfg(test)]`) in favor of crate-level (`crates/<name>/tests/`) and wire-contract integration (`crates/transport/tests/`).
 - **Design against the public surface first:** before adding a unit test, ask whether integration can reach the behavior — is it reachable through a CLI input or a `pub` fn, is its effect observable at a public boundary (stdout JSON, exit code, filesystem), and is that affordable without a subprocess-pool explosion? If yes, write the integration test; the unit test is redundant.
 - **Default to deletion:** a `src` unit test survives only when it is reachable and observable but cheap *only* in-process against a **private** kernel (a proptest or dense matrix), or it covers a genuinely CLI-unreachable branch. If the kernel is already `pub`, relocate the test to `crates/<name>/tests/` rather than leaving it in `src`.
 - **Do NOT widen public APIs to test a private kernel.** Widening trades durable surface stability for coverage you already have; prefer collapse-and-keep. The target is *near-zero* `src` unit tests — no redundant or integration-reachable ones — not literal zero. Use `cargo llvm-cov nextest` to prove coverage holds when removing unit tests.
-- **Push crate-specific tests down:** `tests/` at the root of the workspace is for E2E workflows. Crate-specific logic must be tested in `crates/<name>/tests/` via the crate's public API.
+- **Push crate-specific tests down:** Crate-specific logic must be tested in `crates/<name>/tests/` via the crate's public API; wire-contract coverage lives in `crates/transport/tests/`; repo invariants live in `crates/checks`.
 
 Read [style.md](./docs/standards/style.md), [coding-standards.md](./docs/standards/coding-standards.md), and [testing.md § Test naming](./docs/standards/testing.md#test-naming) before adding types, suppressions, or tests. Run `cargo make ci` (not bare `cargo test` — CI uses `RUSTFLAGS=-Dwarnings`).
 
@@ -282,7 +283,7 @@ All driven by `cargo make` (see [`Makefile.toml`](./Makefile.toml)). Run the ful
 ```bash
 cargo make ci             # fmt + lint + wasm + test + test-docs + doc + vet + deny
 cargo make check          # fmt + lint + wasm + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
-cargo make test           # cargo nextest run --locked --all-features --no-tests=pass over the default members, under -Dwarnings
+cargo make test           # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 cd examples && cargo make test-wasm  # builds the WASM guests then runs the boundary smoke
 cd examples && cargo make prompt-eval # operator-invoked; needs cursor-agent credentials
 cargo make lint           # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings

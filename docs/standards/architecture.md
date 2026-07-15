@@ -9,17 +9,19 @@ Deployment crate (`name = "specify"`) at the repo root. [`src/runtime.rs`](../..
 ```text
 error                    # leaf — thiserror + serde-saphyr only
 diagnostics              # dependency-light leaf (the neutral Diagnostic substrate: report, fingerprint, blocking — plus diagnostics::digest, SHA-256 hex via sha2 + base16ct, and diagnostics::cache)
-artifacts                # depends on {error,schema} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on the workflow crates or anything named lint)
-project                  # foundation — depends on {error,schema,artifacts,omnia-guest}; init (+ agents), adapter resolution, config/Layout, journal, registry, the plan and slice data models, seam capability traits, the judgment kernel, shared handler plumbing
+artifacts                # depends on {error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on the workflow crates or anything named lint)
+project                  # foundation — depends on {error,diagnostics,artifacts,omnia-guest}; init (+ agents), adapter resolution, config/Layout, journal, registry, the plan and slice data models, seam capability traits, the judgment kernel, shared handler plumbing
 slice                    # the slice loop — depends on project; refine/build/merge orchestration, synthesis, validation, the delta-merge engine, the specify slice operations, and its own prompts/ corpus (synthesize.md + synthesis/*)
 change                   # the change loop — depends on {project,slice}; plan author/execute orchestration, the specify plan operations, and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency — embed-time prompt-corpus walk + link check, generating each crate's DOCS table
+testkit                  # dev-only test-support — fixture adapter core, unified Provider, scripted answers
+checks                   # dev-only repo invariants — boundaries, links, authoring (plain cargo tests)
 examples                 # Omnia-shaped examples package — live / wasm guest / smoke examples over testkit's adapter core
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 
-The repo checks run as plain cargo tests in the lightweight [`tests/`](../../tests/) package (`checks`); there is no lint engine or `Check` substrate.
+The repo checks run as plain cargo tests in the lightweight [`crates/checks`](../../crates/checks/) package; there is no lint engine or `Check` substrate.
 
 The artifact validation rule registry (`artifacts::validate`) sits on `artifacts`, which depends on none of the workflow crates nor anything named lint, so an artifact rule cannot reach workflow lifecycle types. `artifacts` is the lifecycle-free leaf carrying the artifact types, parsers, and validation registry the workflow layer reads, alongside `diagnostics` and `error` at the bottom. The neutral `Diagnostic` substrate lives in the `diagnostics` crate, so every check producer mints findings without depending on anything named `lint`.
 
@@ -54,7 +56,7 @@ Four module trees carry the workflow contract — two in `project`, plus `spec/p
 
 The two adapter validators — `contract` and `vectis` — are in-guest adapter library code compiled into each adapter's published component in `augentic/specify-adapters`. The carve-out discipline (leaner lint posture and minimal `[workspace.dependencies]`) lives in that repo's workspace. Crux shell presence and launcher-icon heuristics live in the vectis adapter's in-guest core: the host performs no plan-time shell detection, so this repo carries no shell-detect crate.
 
-The repo checks are not WASI components either — they are plain cargo tests in `tests/`, dev-only and outside every shipped crate.
+The repo checks are not WASI components either — they are plain cargo tests in `crates/checks`, dev-only and outside every shipped crate.
 
 **Host runner invariant.** The host CLI dispatches no adapter-owned tool: adapter validation, scaffold, and rendering logic lives entirely in the adapters repo as in-guest library code. There is no declared-tool surface. No `specify-*` workspace crate may import adapter-specific validation, scaffold, or rendering logic.
 

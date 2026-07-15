@@ -10,8 +10,6 @@ license.workspace = true
 repository.workspace = true
 version.workspace = true
 
-autotests = false # do not treat root tests/ as integration tests
-
 [lib]
 name = "specify"
 path = "src/lib.rs"
@@ -49,9 +47,7 @@ wit-bindgen.workspace = true
 workspace = true
 
 [workspace]
-members = ["crates/*", "examples", "tests"]
-# exclude the root /src folder from tests
-default-members = ["crates/*", "examples", "tests"]
+members = ["crates/*", "examples"]
 
 [workspace.package]
 authors = ["Augentic"]
