@@ -50,7 +50,7 @@ workspace = true
 
 [workspace]
 members = ["crates/*", "examples", "tests"]
-# excludes the root /src folder from tests
+# exclude the root /src folder from tests
 default-members = ["crates/*", "examples", "tests"]
 
 [workspace.package]
