@@ -1,14 +1,14 @@
 //! The live-model trial body: the operator rhythm over the fixture
 //! adversarial lead set, graded by deterministic validators only.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
-use change::{Status, plan};
+use change::{Entry, Status, plan};
 use clap::Subcommand;
 use omnia::Backend as _;
-use omnia_guest::model::Model;
 use project::config::Layout;
 use testkit::{Provider, Scripted, answers, run as invoke};
 
@@ -35,83 +35,81 @@ pub enum Phase {
     Clean,
 }
 
-/// One full trial: init → plan → execute → finalize, grading between
-/// execute and finalize while `plan.yaml` is still live. Runs in
+/// One full trial: init → plan → execute → finalize → clean. Runs in
 /// `sandbox/eval/`; a passing trial removes the project, a failing one
 /// retains it for the manual operations to inspect and re-drive.
 pub async fn run() {
-    let root = replace_project();
-    eprintln!("prompt evaluation project (retained on failure): {}", root.display());
-    let _cache = testkit::env::scoped_cache(&root);
-    let provider = connect(&root).await;
-
-    init(&provider).await;
-    author_and_approve(&provider, &root).await;
-    let drained = execute(&provider, &root).await;
-    grade(&root, &drained);
-    report_legs(&provider, &drained);
-    finalize(&provider).await;
-
-    fs::remove_dir_all(&root).expect("clean up the passing trial project");
+    Phase::Init.run().await;
+    Phase::Plan.run().await;
+    Phase::Execute.run().await;
+    Phase::Finalize.run().await;
+    Phase::Clean.run().await;
 }
 
 impl Phase {
     /// Run one operation against the persistent `sandbox/eval` project.
     pub async fn run(&self) {
-        if matches!(self, Phase::Clean) {
-            let root = project_root();
-            if root.exists() {
-                fs::remove_dir_all(&root).expect("clean up the evaluation project");
+        match self {
+            Phase::Clean => {
+                let root = project_root();
+                if root.exists() {
+                    fs::remove_dir_all(&root).expect("clean up the evaluation project");
+                }
             }
-            return;
-        }
-
-        let root = if matches!(self, Phase::Init) {
-            replace_project()
-        } else {
-            let root = project_root();
-            assert!(
-                root.join(".specify/project.yaml").is_file(),
-                "evaluation project is not initialised; run `cargo make eval init` first"
-            );
-            root.canonicalize().expect("canonical evaluation project root")
-        };
-        eprintln!("prompt evaluation project: {}", root.display());
-        let _cache = testkit::env::scoped_cache(&root);
-
-        match *self {
-            Phase::Init => init(&Scripted::scripted_at(&root, Vec::new())).await,
-            Phase::Finalize => finalize(&Scripted::scripted_at(&root, Vec::new())).await,
+            Phase::Init => {
+                let root = replace_project();
+                println!("prompt evaluation project: {}", root.display());
+                let _cache = testkit::env::scoped_cache(&root);
+                init(&root).await;
+            }
             Phase::Plan => {
+                let root = require_project();
+                println!("prompt evaluation project: {}", root.display());
+                let _cache = testkit::env::scoped_cache(&root);
                 let provider = connect(&root).await;
-                author_and_approve(&provider, &root).await;
-                report_legs(&provider, &read_plan(&root));
+                author(&provider, &root).await;
+                approve(&provider).await;
+                let plan = read_plan(&root);
+                report(&provider.model().counts(), plan.entries.len());
             }
             Phase::Execute => {
+                let root = require_project();
+                println!("prompt evaluation project: {}", root.display());
+                let _cache = testkit::env::scoped_cache(&root);
                 let provider = connect(&root).await;
                 let drained = execute(&provider, &root).await;
                 grade(&root, &drained);
-                report_legs(&provider, &drained);
+                report(&provider.model().counts(), drained.entries.len());
             }
-            Phase::Clean => unreachable!("clean returns before project preparation"),
+            Phase::Finalize => {
+                let root = require_project();
+                println!("prompt evaluation project: {}", root.display());
+                let _cache = testkit::env::scoped_cache(&root);
+                finalize(&root).await;
+            }
         }
     }
 }
 
-// The shared project location — `sandbox/eval/` at the repository
-// root — used by the full trial and the manual operations alike.
 fn project_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval")
 }
 
-// Replace any previous project at [`project_root`] with an empty
-// tree. The project scaffold itself comes from the `Init` operation.
 fn replace_project() -> PathBuf {
     let root = project_root();
     if root.exists() {
         fs::remove_dir_all(&root).expect("replace the previous evaluation project");
     }
     fs::create_dir_all(&root).expect("create the evaluation project root");
+    root.canonicalize().expect("canonical evaluation project root")
+}
+
+fn require_project() -> PathBuf {
+    let root = project_root();
+    assert!(
+        root.join(".specify/project.yaml").is_file(),
+        "evaluation project is not initialised; run `cargo make eval init` first"
+    );
     root.canonicalize().expect("canonical evaluation project root")
 }
 
@@ -125,14 +123,9 @@ async fn connect(root: &Path) -> EvalProvider {
     Provider::new(root, Telemetry::new(Native::new(client, root)))
 }
 
-// `specify init fixture` — scaffold the fixture-bound project through
-// the real operation.
-async fn init<M>(provider: &Provider<M>)
-where
-    M: Clone + Model + Send + Sync + 'static,
-{
+async fn init(root: &Path) {
     invoke::<project::init::handlers::Init, _, _>(
-        provider,
+        &Scripted::scripted_at(root, Vec::new()),
         project::init::handlers::InitInput {
             adapter: Some("fixture".to_string()),
             name: Some("eval".to_string()),
@@ -143,13 +136,10 @@ where
     .expect("init scaffolds the fixture-bound project");
 }
 
-// --- plan -------------------------------------------------------------------
-
-// `specify plan author` + Gate 1 `approved` stamp.
-//
-// Live reconcile over the adversarial lead catalog: every surveyed lead
-// assigned, `login-flow` overlap merged into one slice.
-async fn author_and_approve(provider: &EvalProvider, root: &Path) {
+// `specify plan author` — live reconcile over the adversarial lead
+// catalog: every surveyed lead assigned, `login-flow` overlap merged
+// into one slice.
+async fn author(provider: &EvalProvider, root: &Path) {
     invoke::<plan::handlers::Author, _, _>(
         provider,
         plan::handlers::AuthorInput {
@@ -162,16 +152,17 @@ async fn author_and_approve(provider: &EvalProvider, root: &Path) {
     .expect("plan author produces a validator-clean plan");
 
     let authored = read_plan(root);
-    let merged = authored.entries.iter().any(|entry| {
-        let pairs: Vec<(&str, &str)> = entry
-            .sources
-            .iter()
-            .map(|b| (b.source.as_str(), b.lead.as_deref().unwrap_or(entry.name.as_str())))
-            .collect();
-        pairs.contains(&("docs", "login-flow")) && pairs.contains(&("code", "login-flow"))
-    });
-    assert!(merged, "the login-flow overlap must merge into one slice: {:?}", authored.entries);
+    assert!(
+        authored.entries.iter().any(|entry| {
+            binds(entry, "docs", "login-flow") && binds(entry, "code", "login-flow")
+        }),
+        "the login-flow overlap must merge into one slice: {:?}",
+        authored.entries
+    );
+}
 
+// Gate 1: operator stamps `approved`.
+async fn approve(provider: &EvalProvider) {
     invoke::<plan::handlers::Transition, _, _>(
         provider,
         plan::handlers::TransitionInput {
@@ -185,7 +176,12 @@ async fn author_and_approve(provider: &EvalProvider, root: &Path) {
     .expect("Gate 1: operator stamps approved");
 }
 
-// --- execute ----------------------------------------------------------------
+fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
+    entry
+        .sources
+        .iter()
+        .any(|b| b.source == source && b.lead.as_deref().unwrap_or(entry.name.as_str()) == lead)
+}
 
 // `specify plan execute` — the production drained loop: refine →
 // build → merge per entry until the plan is drained.
@@ -208,30 +204,17 @@ async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
     plan
 }
 
-// --- finalize ---------------------------------------------------------------
-
-// `specify plan archive` — close the drained change (`/spec:finalize`).
-async fn finalize<M>(provider: &Provider<M>)
-where
-    M: Clone + Model + Send + Sync + 'static,
-{
+async fn finalize(root: &Path) {
     invoke::<plan::handlers::Archive, _, _>(
-        provider,
+        &Scripted::scripted_at(root, Vec::new()),
         plan::handlers::ArchiveInput { force: false },
     )
     .await
     .expect("finalize archives the drained plan");
 }
 
-// --- grade ------------------------------------------------------------------
-
 // Structural checks after execute, before finalize (plan.yaml still live).
 fn grade(root: &Path, plan: &change::Plan) {
-    assert_baseline(root);
-    assert_build_outputs(root, plan);
-}
-
-fn assert_baseline(root: &Path) {
     let requirements = requirements(root);
     assert!(!requirements.is_empty(), "the baseline carries no requirements");
     for requirement in &requirements {
@@ -259,9 +242,7 @@ fn assert_baseline(root: &Path) {
          contributing claims for the unevidenced lead (an answer that anchors it to the bare \
          `password-reset.mention` section claim projects `agreed` instead): {requirements:?}"
     );
-}
 
-fn assert_build_outputs(root: &Path, plan: &change::Plan) {
     for entry in &plan.entries {
         let artifact = testkit::adapter::build_artifact_path(root, &entry.name);
         let body = fs::read_to_string(&artifact)
@@ -273,9 +254,8 @@ fn assert_build_outputs(root: &Path, plan: &change::Plan) {
 // Per-leg request counts, reported (never asserted): requests beyond
 // one per leg invocation are repairs — the early signal that a prompt
 // or answer-schema change degraded the model's first answer.
-fn report_legs(provider: &EvalProvider, plan: &change::Plan) {
-    let slices = plan.entries.len();
-    for (leg, requests) in provider.model().counts() {
+fn report(counts: &BTreeMap<String, usize>, slices: usize) {
+    for (leg, requests) in counts {
         // One propose invocation per trial, one synthesis invocation
         // per plan entry; other legs carry no invocation baseline.
         match leg.as_str() {
