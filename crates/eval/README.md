@@ -7,7 +7,7 @@ A live-model harness for use in testing specify core prompts used in core model 
 Login to the Cursor agent:
 
 ```bash
-cursor-agent login
+[cursor-]agent login
 ```
 
 or set `CURSOR_API_KEY` in `.env` at the repository root.
