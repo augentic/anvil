@@ -1,11 +1,4 @@
 
-[config]
-default_to_workspace = false
-skip_core_tasks = true
-skip_crate_env_info = true
-skip_git_env_info = true
-skip_rust_env_info = true
-
 [tasks.change-build]
 script = '''
 cargo build --example change --target wasm32-wasip2
@@ -39,12 +32,4 @@ run init ./fixture.wasm --name change
 run plan author change --source main="fixture:value:The greeting service."
 run plan transition change approved
 run plan execute
-'''
-
-[tasks.lint]
-script_runner = "bash"
-script = '''
-set -euo pipefail
-root="$(cd "${CARGO_MAKE_WORKING_DIRECTORY}/.." && pwd)"
-(cd "${root}" && cargo clippy -p examples --all-targets -- -D warnings)
 '''

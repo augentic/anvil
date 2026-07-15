@@ -59,13 +59,12 @@ impl From<evidence::AuthorityClass> for Authority {
 
 impl From<evidence::Claim> for Claim {
     fn from(claim: evidence::Claim) -> Self {
-        let backing = claim.backing().map(Backing::from);
         Self {
             kind: claim.kind.into(),
             id: claim.id,
             path: claim.path,
             synopsis: claim.synopsis,
-            backing,
+            backing: claim.backing().map(Backing::from),
         }
     }
 }
