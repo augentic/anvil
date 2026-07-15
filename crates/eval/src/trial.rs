@@ -91,8 +91,9 @@ async fn execute() {
     let _cache = testkit::env::scoped_cache(&root);
     let provider = connect(&root).await;
 
-    let executed =
-        testkit::run::<Execute, _, _>(&provider, ExecuteInput {}).await.expect("execute drains the plan");
+    let executed = testkit::run::<Execute, _, _>(&provider, ExecuteInput {})
+        .await
+        .expect("execute drains the plan");
     for phase in &executed.phases {
         eprintln!("executed {} {}", phase.step, phase.slice);
     }
@@ -114,7 +115,7 @@ async fn finalize() {
     println!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
     let provider = Scripted::scripted_at(&root, Vec::new());
-    
+
     testkit::run::<Archive, _, _>(&provider, ArchiveInput { force: false })
         .await
         .expect("finalize archives the drained plan");
