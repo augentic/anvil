@@ -1136,27 +1136,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "examples"
+name = "eval"
 version = "0.27.2"
 dependencies = [
  "anyhow",
  "artifacts",
- "cfg-if",
  "change",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
- "omnia-wasi-http",
  "omnia-wasi-model",
- "omnia-wasi-otel",
  "project",
  "serde-saphyr",
- "serde_json",
  "tempfile",
  "testkit",
  "tokio",
- "wasip3",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -3881,6 +3875,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slice",
+ "testkit",
  "tokio",
  "transport",
  "wasip3",

@@ -13,6 +13,5 @@ readme = "../../README.md"
 workspace = true
 
 [dependencies]
-
 [dev-dependencies]
 tempfile.workspace = true

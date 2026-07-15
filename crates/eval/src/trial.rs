@@ -1,18 +1,5 @@
-//! Prompt-evaluation example: one live-model trial that drives the
-//! Specify engine the same way an operator does.
-//!
-//! ```text
-//! init        scaffold the fixture-bound project
-//! plan        author the change, stamp Gate 1 (`approved`)
-//! execute     drain the loop: refine → build → merge per slice
-//! finalize    archive the drained plan
-//! ```
-//!
-//! Graded by deterministic validators only (see [README.md](README.md)).
-//! Run `cargo make prompt-eval` (never CI). Needs `cursor-agent` on
-//! `PATH` with credentials. The temporary project is retained on failure.
-
-#![cfg(not(target_arch = "wasm32"))]
+//! The live-model trial body: the operator rhythm over the fixture
+//! adversarial lead set, graded by deterministic validators only.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,23 +7,21 @@ use std::path::{Path, PathBuf};
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
 use change::{Status, plan};
 use omnia::Backend as _;
-use testkit::{Provider, answers, run};
+use testkit::{Provider, answers, run as invoke};
 
 use crate::native::Native;
 
-mod native;
-
-/// The live model: cursor-agent behind the example-local [`Native`]
+/// The live model: cursor-agent behind the harness-local [`Native`]
 /// adapter, which carries the guest→wire mapping, the request/answer
 /// gates, and the workspace lend natively.
 type EvalProvider = Provider<Native<omnia_cursor::Client>>;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
-async fn main() {
+/// One full trial: init → plan → execute → finalize, grading between
+/// execute and finalize while `plan.yaml` is still live.
+pub async fn run() {
     let (root, _cache) = scaffold();
     let provider = connect(&root).await;
 
-    // The operator rhythm: init → plan → execute → finalize.
     init(&provider).await;
     plan(&provider, &root).await;
     let drained = execute(&provider, &root).await;
@@ -70,7 +55,7 @@ async fn connect(root: &Path) -> EvalProvider {
 /// `specify init fixture` — scaffold the fixture-bound project through
 /// the real operation.
 async fn init(provider: &EvalProvider) {
-    run::<project::init::handlers::Init, _, _>(
+    invoke::<project::init::handlers::Init, _, _>(
         provider,
         project::init::handlers::InitInput {
             adapter: Some("fixture".to_string()),
@@ -89,7 +74,7 @@ async fn init(provider: &EvalProvider) {
 /// Live reconcile over the adversarial lead catalog: every surveyed lead
 /// assigned, `login-flow` overlap merged into one slice.
 async fn plan(provider: &EvalProvider, root: &Path) {
-    run::<plan::handlers::Author, _, _>(
+    invoke::<plan::handlers::Author, _, _>(
         provider,
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
@@ -111,7 +96,7 @@ async fn plan(provider: &EvalProvider, root: &Path) {
     });
     assert!(merged, "the login-flow overlap must merge into one slice: {:?}", authored.entries);
 
-    run::<plan::handlers::Transition, _, _>(
+    invoke::<plan::handlers::Transition, _, _>(
         provider,
         plan::handlers::TransitionInput {
             name: "auth".to_string(),
@@ -129,9 +114,10 @@ async fn plan(provider: &EvalProvider, root: &Path) {
 /// `specify plan execute` — the production drained loop: refine →
 /// build → merge per entry until the plan is drained.
 async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
-    let executed = run::<plan::handlers::Execute, _, _>(provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect("execute drains the plan");
+    let executed =
+        invoke::<plan::handlers::Execute, _, _>(provider, plan::handlers::ExecuteInput {})
+            .await
+            .expect("execute drains the plan");
     for phase in &executed.phases {
         eprintln!("executed {} {}", phase.step, phase.slice);
     }
@@ -150,9 +136,12 @@ async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
 
 /// `specify plan archive` — close the drained change (`/spec:finalize`).
 async fn finalize(provider: &EvalProvider) {
-    run::<plan::handlers::Archive, _, _>(provider, plan::handlers::ArchiveInput { force: false })
-        .await
-        .expect("finalize archives the drained plan");
+    invoke::<plan::handlers::Archive, _, _>(
+        provider,
+        plan::handlers::ArchiveInput { force: false },
+    )
+    .await
+    .expect("finalize archives the drained plan");
 }
 
 // --- grade ------------------------------------------------------------------

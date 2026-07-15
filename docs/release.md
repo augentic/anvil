@@ -5,7 +5,7 @@ A Specify release ships three artifacts: the **platform binaries** (the archives
 ## Before tagging
 
 - **Check the omnia pins.** Release builds run `cargo build --locked`, so the `[patch.crates-io]` entries in `Cargo.toml` must resolve on a clean runner: git-rev pins build anywhere, sibling *path* pins only build where the sibling checkout exists. Re-pin any local-path patch to a pushed rev before tagging.
-- **Run the outer test rungs.** From `examples/`: `cargo make test-wasm` (the WASM boundary smoke, if the weekly/path-filtered workflow has not covered the release candidate) and `cargo make prompt-eval` (needs command-mode model credentials; see [the developer loop](contributing/dev-loop.md)). Read rising per-leg repair counts as prompt drift even when the run passes.
+- **Run the outer test rungs.** `cd examples && cargo make test-wasm` (the WASM boundary smoke, if the weekly/path-filtered workflow has not covered the release candidate) and `cargo make eval` from the repository root (needs command-mode model credentials; see [the developer loop](contributing/dev-loop.md)). Read rising per-leg repair counts as prompt drift even when the run passes.
 
 ## Triggering a release
 

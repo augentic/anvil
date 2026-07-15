@@ -10,7 +10,7 @@
 mod bindings {
     wit_bindgen::generate!({
         world: "adapter",
-        path: "../wit",
+        path: "wit",
         generate_all,
         pub_export_macro: true,
     });

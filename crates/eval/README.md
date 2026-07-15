@@ -1,8 +1,8 @@
 # Prompt evaluation
 
-A live-model example of the Specify engine workflow over the fixture adversarial lead set. Graded by deterministic validators only — never a second model judging the first.
+A live-model harness over the Specify engine workflow and the fixture adversarial lead set. Graded by deterministic validators only — never a second model judging the first.
 
-Layout: `engine.rs` is the workflow driver over the live cursor-agent backend; `native.rs` is the example-local `Native` adapter that runs `omnia_cursor::Client` behind the guest-side `Model` trait (the guest→wire mapping, the request/answer gates, and the workspace lend).
+Layout: `src/main.rs` is the workflow driver over the live cursor-agent backend; `src/native.rs` is the harness-local `Native` adapter that runs `omnia_cursor::Client` behind the guest-side `Model` trait (the guest→wire mapping, the request/answer gates, and the workspace lend). Fixture plumbing — the adapter core, the model-generic provider, the adversarial bindings — comes from `crates/testkit`; only the model is live.
 
 ## Workflow
 
@@ -22,7 +22,7 @@ Every step runs the production operation — `execute` is the real drained loop,
 Install and authenticate `cursor-agent`, then run from the repository root:
 
 ```bash
-cargo make prompt-eval
+cargo make eval
 ```
 
 ## Grading contract

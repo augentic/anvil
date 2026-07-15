@@ -30,24 +30,33 @@ omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-omnia-guest.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-transport.workspace = true
-error.workspace = true
-diagnostics.workspace = true
 artifacts.workspace = true
 change.workspace = true
+diagnostics.workspace = true
+error.workspace = true
+omnia-guest.workspace = true
 project.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 slice.workspace = true
+transport.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+omnia-wasi-http.workspace = true
+testkit.workspace = true
+
+[[example]]
+name = "change"
+path = "examples/change/guest.rs"
+crate-type = ["cdylib"]
 
 [lints]
 workspace = true
 
 [workspace]
-members = ["crates/*", "examples"]
+members = ["crates/*"]
 
 [workspace.package]
 authors = ["Augentic"]
@@ -189,8 +198,8 @@ omnia = { git = "https://github.com/augentic/omnia.git" }
 omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
-omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
@@ -199,8 +208,8 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 # omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-# omnia-testkit = { path = "../omnia/crates/testkit" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
+# omnia-testkit = { path = "../omnia/crates/testkit" }
 # omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
@@ -216,15 +225,15 @@ strip = true
 
 # Optimise WASI debug builds because Cranelift JIT-compiles at run time.
 [profile.dev.package]
-cranelift-codegen = { opt-level = 2 }
-cranelift-frontend = { opt-level = 2 }
-cranelift-entity = { opt-level = 2 }
+cranelift-assembler-x64 = { opt-level = 2 }
 cranelift-bforest = { opt-level = 2 }
 cranelift-bitset = { opt-level = 2 }
+cranelift-codegen = { opt-level = 2 }
 cranelift-control = { opt-level = 2 }
+cranelift-entity = { opt-level = 2 }
+cranelift-frontend = { opt-level = 2 }
 cranelift-native = { opt-level = 2 }
-cranelift-assembler-x64 = { opt-level = 2 }
 regalloc2 = { opt-level = 2 }
 wasmparser = { opt-level = 2 }
-wasmtime-internal-cranelift = { opt-level = 2 }
 wasmtime-environ = { opt-level = 2 }
+wasmtime-internal-cranelift = { opt-level = 2 }

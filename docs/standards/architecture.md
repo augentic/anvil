@@ -17,7 +17,8 @@ transport                # wasm-clean transport assembly — shared typed comman
 prose                    # build-dependency — embed-time prompt-corpus walk + link check, generating each crate's DOCS table
 testkit                  # dev-only test-support — fixture adapter core, unified Provider, scripted answers
 checks                   # dev-only repo invariants — boundaries, links, authoring (plain cargo tests)
-examples                 # Omnia-shaped examples package — live / wasm guest / smoke examples over testkit's adapter core
+eval                     # live-model prompt-evaluation harness — native-only bin over testkit's fixture plumbing
+examples                 # Omnia-shaped examples package — wasm guest / smoke examples over testkit's adapter core
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively
 ```
 
@@ -35,7 +36,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-`crates/testkit` is the single test-support crate that prevents adapter test behavior from being copied across the native workflow suites and the WASM smoke: `testkit::adapter` is the shared fixture core, `examples/change/guest.rs` is its thin WIT component example, and the examples package provides the manifest-hosted change runtime plus the native `prompt-eval` engine demo (`plan → execute → finalize`). Neither carries production lifecycle authority and neither is linked into the shipped guest. Generic model doubles (the FIFO `Scripted` script), temporary deployment mechanics, and HTTP driving remain in upstream `omnia-testkit`; this repository's change example uses Omnia's public `runtime!` and `omnia.toml` surfaces directly.
+`crates/testkit` is the single test-support crate that prevents adapter test behavior from being copied across the native workflow suites and the WASM smoke: `testkit::adapter` is the shared fixture core, `examples/change/guest.rs` is its thin WIT component example, and the examples package provides the manifest-hosted change runtime. The native live-model engine trial (`plan → execute → finalize`) lives in `crates/eval` over the same `testkit` plumbing. None of these carry production lifecycle authority and none are linked into the shipped guest. Generic model doubles (the FIFO `Scripted` script), temporary deployment mechanics, and HTTP driving remain in upstream `omnia-testkit`; this repository's change example uses Omnia's public `runtime!` and `omnia.toml` surfaces directly.
 
 The root `specify` package carries the Omnia deployment unit under `src/`: the guest lib (`src/lib.rs`, with the WIT-backed provider in `src/provider.rs`, command entry in `src/command.rs`, and HTTP entry in `src/http.rs`) and the shipped runtime (`src/runtime.rs`). The guest exports both transports explicitly from those files: `wasi:cli/run` through `command.rs` (`CliGuest` + `Guest::run`), and `wasi:http/incoming-handler` through `http.rs` (`Http` + `Guest::handle` + `omnia_guest::api::http::serve`). `lib.rs` is module wiring only — no `guest!` macro. Commands live in the workflow crates (`project`, `slice`, `change`) as transport-neutral `Operation<P>` implementations, each family in a `handlers` submodule beside its domain kernels (shared plumbing in `project::handler`). `crates/transport/src/command.rs` and `crates/transport/src/http.rs` own the explicit typed command and HTTP route inventories over `Invoker<P>`; the WASI and native shims only construct invokers and adapt transport output. The routing design is documented in [handler-shape.md](handler-shape.md).
 
