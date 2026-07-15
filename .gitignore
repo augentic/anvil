@@ -19,6 +19,9 @@ docs/book/
 # Stable, browsable quality-profile sandbox
 quality/.sandbox/
 
+# Operator-invoked local runs (eval harness + change example)
+sandbox/
+
 # Specify project state and integration-run scratch logs
 .specify/.cache/
 .specify/project.yaml

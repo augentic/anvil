@@ -1,8 +1,39 @@
 # Prompt evaluation
 
-A live-model harness over the Specify engine workflow and the fixture adversarial lead set. Graded by deterministic validators only — never a second model judging the first.
+A live-model harness for use in testing specify core prompts used when model judgement is required. For example, in lead reconciliation or slice synthesis. Outputs are graded by deterministic validators — not a model.
 
-Layout: `src/main.rs` is the workflow driver over the live cursor-agent backend; `src/native.rs` is the harness-local `Native` adapter that runs `omnia_cursor::Client` behind the guest-side `Model` trait (the guest→wire mapping, the request/answer gates, and the workspace lend); `src/telemetry.rs` is the per-leg request tally wrapped around it. Fixture plumbing — the adapter core, the model-generic provider, the adversarial bindings — comes from `crates/testkit`; only the model is live.
+## Quick start
+
+Login to the Cursor agent:
+
+```bash
+cursor-agent login
+```
+
+or set `CURSOR_API_KEY` in `.env` at the repository root.
+
+```bash
+make eval
+```
+
+This will run the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it — inspect it in place, or re-drive individual operations with the manual workflow below.
+
+## Manual workflow
+
+Run one operation at a time to inspect its artifacts:
+
+```bash
+make eval init
+make eval plan
+make eval execute
+make eval finalize
+```
+
+Manual operations share `sandbox/eval/`. While `make eval init` will reinitialize a project, a project can be removed with:
+
+```bash
+make eval clean
+```
 
 ## Workflow
 
@@ -17,27 +48,21 @@ finalize    specify plan archive
 
 Every step runs the production operation — `execute` is the real drained loop, not a hand-driven breakout sequence. Completed phases are echoed as the loop runs.
 
-## Run
-
-Install and authenticate `cursor-agent`, then run from the repository root:
-
-```bash
-cargo make eval
-```
-
 ## Grading contract
 
 Hard assertions only:
 
-| Stage | Check | Pass condition |
-| ----- | ----- | -------------- |
-| plan | Cross-source overlap | `login-flow` from `docs` and `code` merge into one slice |
-| execute | Lifecycle | Every plan entry is `done` |
-| execute | Provenance | Every evidenced requirement carries sources; ids are present |
-| execute | Authority disagreement | Session-timeout surfaces as `[divergence]` or `[conflict]` |
-| execute | Evidence gap | Password-reset is marked `[unknown]`, not invented |
-| execute | Build output | Every slice leaves a non-empty fixture build artifact |
 
-Per-leg request / repair counts are **reported, not asserted**: after grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
+| Stage   | Check                  | Pass condition                                               |
+| ------- | ---------------------- | ------------------------------------------------------------ |
+| plan    | Cross-source overlap   | `login-flow` from `docs` and `code` merge into one slice     |
+| execute | Lifecycle              | Every plan entry is `done`                                   |
+| execute | Provenance             | Every evidenced requirement carries sources; ids are present |
+| execute | Authority disagreement | Session-timeout surfaces as `[divergence]` or `[conflict]`   |
+| execute | Evidence gap           | Password-reset is marked `[unknown]`, not invented           |
+| execute | Build output           | Every slice leaves a non-empty fixture build artifact        |
 
-The temporary project path is printed at startup. Successful runs remove it; failed runs retain it for inspection.
+
+Per-leg request / repair counts are **reported, not asserted**. After grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
+
+In manual mode, repair counts cover only model requests made by that operation.

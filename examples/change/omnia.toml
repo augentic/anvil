@@ -21,14 +21,14 @@ guest = "source:fixture"
 
 [[mount]]
 name = "."
-path = "workspace"
+path = "../../sandbox/change/workspace"
 writable = true
 
 [[mount]]
 name = "/specify-cache"
-path = "cache"
+path = "../../sandbox/change/cache"
 writable = true
 [[mount]]
 name = "/specify-store"
-path = "store"
+path = "../../sandbox/change/store"
 writable = true

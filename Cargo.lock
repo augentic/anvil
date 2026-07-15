@@ -1142,12 +1142,12 @@ dependencies = [
  "anyhow",
  "artifacts",
  "change",
+ "clap",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
  "omnia-wasi-model",
  "project",
- "tempfile",
  "testkit",
  "tokio",
 ]

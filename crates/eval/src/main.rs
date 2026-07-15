@@ -1,5 +1,6 @@
-//! Prompt-evaluation harness: one live-model trial that drives the
-//! Specify engine the same way an operator does.
+//! # Prompt-evaluation harness
+//!
+//! A live-model trial that drives the Specify engine the same way an operator does.
 //!
 //! ```text
 //! init        scaffold the fixture-bound project
@@ -8,24 +9,26 @@
 //! finalize    archive the drained plan
 //! ```
 //!
-//! Graded by deterministic validators only (see [README.md](../README.md)).
-//! Run `cargo make eval` (never CI). Needs `cursor-agent` on
-//! `PATH` with credentials. The temporary project is retained on failure.
+//! See [README.md](../README.md) for more details.
 
-#[cfg(not(target_arch = "wasm32"))]
+mod grade;
 mod native;
-#[cfg(not(target_arch = "wasm32"))]
 mod telemetry;
-#[cfg(not(target_arch = "wasm32"))]
 mod trial;
 
-#[cfg(not(target_arch = "wasm32"))]
-#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
-async fn main() {
-    trial::run().await;
+use clap::Parser;
+
+#[derive(Debug, Parser)]
+#[command(about = "Run the live-model prompt evaluation")]
+struct Cli {
+    #[command(subcommand)]
+    phase: Option<trial::Phase>,
 }
 
-// The harness is native-only; the stub keeps workspace-wide wasm32
-// builds green without pulling the cursor backend into the guest graph.
-#[cfg(target_arch = "wasm32")]
-fn main() {}
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
+async fn main() {
+    match Cli::parse().phase {
+        Some(phase) => phase.run().await,
+        None => trial::run().await,
+    }
+}

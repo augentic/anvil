@@ -46,7 +46,8 @@ install_crate = "cargo-udeps"
 # Eval — the live-model prompt-evaluation harness (operator-invoked, never CI)
 [tasks.eval]
 command = "cargo"
-args = ["run", "--locked", "-p", "eval"]
+args = ["run", "-p", "eval", "--", "${@}"]
+env_files = [".env"]
 
 # Fmt — mutates; the gates use fmt
 [tasks.fmt]
