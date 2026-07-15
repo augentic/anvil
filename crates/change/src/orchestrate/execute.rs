@@ -16,7 +16,7 @@ use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::plan::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
-use project::seam::{SourceSeam, TargetSeam, WorkingTree};
+use project::seam::{Source, Target, WorkingTree};
 
 /// One phase the loop completed, in run order.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,7 +85,7 @@ pub enum ExecuteOutcome {
 ///   says which file to delete.
 /// Phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
-pub async fn execute<P: Model, S: SourceSeam, T: TargetSeam, R: Resolver>(
+pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp,
     tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {

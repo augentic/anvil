@@ -22,8 +22,8 @@ mod target;
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
 };
+use project::seam;
 use serde_json::{Value, json};
-use testkit::adapter;
 use wasip3::http::types as http;
 
 use self::bindings::exports::specify::adapter::source::Error;
@@ -34,12 +34,12 @@ use self::bindings::exports::specify::adapter::source::Error;
 struct Adapter;
 self::bindings::export!(Adapter with_types_in self::bindings);
 
-impl From<adapter::Error> for Error {
-    fn from(error: adapter::Error) -> Self {
+impl From<seam::Error> for Error {
+    fn from(error: seam::Error) -> Self {
         match error {
-            adapter::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
-            adapter::Error::Io(detail) => Self::Io(detail),
-            adapter::Error::Internal(detail) => Self::Internal(detail),
+            seam::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
+            seam::Error::Io(detail) => Self::Io(detail),
+            seam::Error::Internal(detail) => Self::Internal(detail),
         }
     }
 }

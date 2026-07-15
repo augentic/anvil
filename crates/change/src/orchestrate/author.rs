@@ -23,7 +23,7 @@ use project::plan::{
     author_gate, build_request, resolve_topology,
 };
 use project::registry::Registry;
-use project::seam::SourceSeam;
+use project::seam::Source;
 
 use super::SurveyedSource;
 use crate::judgment::propose::{self, GateContext};
@@ -65,7 +65,7 @@ pub struct AuthorOutcome {
 ///   once the repair budget is exhausted.
 /// - `plan-structural-errors` when the doctor sweep finds blocking
 ///   findings after the write.
-pub async fn author<P: Model, S: SourceSeam, R: Resolver>(
+pub async fn author<P: Model, S: Source, R: Resolver>(
     caps: super::Capabilities<'_, P, S, (), R>, layout: Layout<'_>, now: Timestamp, name: &str,
     bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<AuthorOutcome, Error> {

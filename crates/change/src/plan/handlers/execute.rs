@@ -10,7 +10,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
-use project::seam::{SourceSeam, TargetSeam, WorkingTree};
+use project::seam::{Source, Target, WorkingTree};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
@@ -28,7 +28,7 @@ pub struct ExecuteInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
-impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Execute {
+impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
     type Error = project::handler::Error;
     type Input = ExecuteInput;
     type Output = ExecuteBody;

@@ -8,7 +8,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::{SourceSeam, TargetSeam};
+use project::seam::{Source, Target};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -26,7 +26,7 @@ pub struct RefineInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Refine;
 
-impl<P: Anchor + Model + Resolver + SourceSeam + TargetSeam> Operation<P> for Refine {
+impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Refine {
     type Error = project::handler::Error;
     type Input = RefineInput;
     type Output = RefineBody;

@@ -10,7 +10,7 @@ Every command is implemented by one stateless type implementing `omnia_guest::ap
 - **`call(input, context)`** loads `Ctx` from `context.provider`, delegates to the deterministic kernel, and returns the typed body.
 - **`type Error = project::handler::Error`** — the workspace taxonomy plus the report-carrying `Error::Report` shape (below).
 
-Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + SourceSeam + TargetSeam` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted seams.
+Deterministic operations bind `P: Anchor` only unless their kernel resolves adapters, in which case they additionally bind `Resolver`. The orchestration operations (`orchestrate::handlers`) bind the capabilities they drive: `P: Anchor + Model + Resolver + Source + Target` (or the subset they need), so the same impl serves the wasm guest, the native dev shim, and tests against scripted adapters.
 
 ```rust
 // GOOD — default shape

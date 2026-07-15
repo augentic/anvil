@@ -1,3 +1,5 @@
+use artifacts::evidence;
+use project::seam;
 use testkit::adapter;
 
 use crate::Adapter;
@@ -25,7 +27,7 @@ impl Guest for Adapter {
     }
 }
 
-impl From<Lead> for adapter::Lead {
+impl From<Lead> for seam::Lead {
     fn from(lead: Lead) -> Self {
         Self {
             lead: lead.lead,
@@ -35,8 +37,8 @@ impl From<Lead> for adapter::Lead {
     }
 }
 
-impl From<adapter::Lead> for Lead {
-    fn from(lead: adapter::Lead) -> Self {
+impl From<seam::Lead> for Lead {
+    fn from(lead: seam::Lead) -> Self {
         Self {
             lead: lead.lead,
             synopsis: lead.synopsis,
@@ -45,43 +47,55 @@ impl From<adapter::Lead> for Lead {
     }
 }
 
-impl From<adapter::Authority> for Authority {
-    fn from(authority: adapter::Authority) -> Self {
+impl From<evidence::AuthorityClass> for Authority {
+    fn from(authority: evidence::AuthorityClass) -> Self {
         match authority {
-            adapter::Authority::Intent => Authority::Intent,
-            adapter::Authority::Documentation => Authority::Documentation,
-            adapter::Authority::Behaviour => Authority::Behaviour,
+            evidence::AuthorityClass::Intent => Self::Intent,
+            evidence::AuthorityClass::Documentation => Self::Documentation,
+            evidence::AuthorityClass::Behaviour => Self::Behaviour,
         }
     }
 }
 
-impl From<adapter::Claim> for Claim {
-    fn from(claim: adapter::Claim) -> Self {
+impl From<evidence::Claim> for Claim {
+    fn from(claim: evidence::Claim) -> Self {
+        let backing = claim.backing().map(Backing::from);
         Self {
             kind: claim.kind.into(),
             id: claim.id,
             path: claim.path,
             synopsis: claim.synopsis,
-            backing: claim.backing.map(Backing::from),
+            backing,
         }
     }
 }
 
-impl From<adapter::ClaimKind> for ClaimKind {
-    fn from(kind: adapter::ClaimKind) -> Self {
+impl From<evidence::ClaimKind> for ClaimKind {
+    fn from(kind: evidence::ClaimKind) -> Self {
         match kind {
-            adapter::ClaimKind::Requirement => Self::Requirement,
-            adapter::ClaimKind::Criterion => Self::Criterion,
-            adapter::ClaimKind::Section => Self::Section,
+            evidence::ClaimKind::Intent => Self::Intent,
+            evidence::ClaimKind::Requirement => Self::Requirement,
+            evidence::ClaimKind::Criterion => Self::Criterion,
+            evidence::ClaimKind::Decision => Self::Decision,
+            evidence::ClaimKind::Section => Self::Section,
+            evidence::ClaimKind::Diagram => Self::Diagram,
+            evidence::ClaimKind::Contract => Self::Contract,
+            evidence::ClaimKind::Example => Self::Example,
+            evidence::ClaimKind::Excerpt => Self::Excerpt,
+            evidence::ClaimKind::Type => Self::Type,
+            evidence::ClaimKind::Call => Self::Call,
+            evidence::ClaimKind::Region => Self::Region,
+            evidence::ClaimKind::Container => Self::Container,
+            evidence::ClaimKind::Leaf => Self::Leaf,
         }
     }
 }
 
-impl From<adapter::Backing> for Backing {
-    fn from(backing: adapter::Backing) -> Self {
+impl From<evidence::Backing> for Backing {
+    fn from(backing: evidence::Backing) -> Self {
         match backing {
-            adapter::Backing::Payload(payload) => Self::Payload(payload),
-            adapter::Backing::Path(path) => Self::Path(path),
+            evidence::Backing::Payload(payload) => Self::Payload(payload),
+            evidence::Backing::Path(path) => Self::Path(path),
         }
     }
 }

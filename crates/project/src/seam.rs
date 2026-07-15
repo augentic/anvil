@@ -1,6 +1,6 @@
 //! Capability traits over the `specify:adapter` guest-to-guest contract.
 //!
-//! [`SourceSeam`] and [`TargetSeam`] mirror the WIT `source` / `target`
+//! [`Source`] and [`Target`] mirror the WIT `source` / `target`
 //! interfaces. Their DTOs omit caller-owned fields, such as the source
 //! attribution added by the orchestrator. Keeping `wit-bindgen` providers
 //! outside this crate leaves workflow code wasm-free.
@@ -126,7 +126,7 @@ impl std::fmt::Display for MergePhase {
 }
 
 /// Plan-time discovery and slice-time extraction for a source adapter.
-pub trait SourceSeam: Send + Sync {
+pub trait Source: Send + Sync {
     /// Lightly survey the source into a lead set.
     fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, Error>> + Send;
 
@@ -138,7 +138,7 @@ pub trait SourceSeam: Send + Sync {
 
 /// Synthesis guidance, slice builds, and phased merge gates for a
 /// target adapter.
-pub trait TargetSeam: Send + Sync {
+pub trait Target: Send + Sync {
     /// Guidance on the expected build artifacts for this target.
     fn guidance(&self, id: String) -> impl Future<Output = Result<String, Error>> + Send;
 

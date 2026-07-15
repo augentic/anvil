@@ -9,7 +9,7 @@ use jiff::Timestamp;
 use project::config::{Layout, Mutation, with_state};
 use project::journal::{self, EventKind};
 use project::plan::{Plan, Status};
-use project::seam::{MergePhase, TargetSeam, WorkingTree};
+use project::seam::{MergePhase, Target, WorkingTree};
 
 use super::{seam_failure, target_id};
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
@@ -42,7 +42,7 @@ pub struct MergeOutcome {
 /// `target-merge-preflight-failed`), the terminal
 /// `target-merge-postflight-failed`, plus commit, plan-stamp, and
 /// archive I/O failures.
-pub async fn merge<T: TargetSeam>(
+pub async fn merge<T: Target>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
     preflight_completion(layout, slice)?;
@@ -136,7 +136,7 @@ fn journal_on_failure<V>(
 
 /// Dispatch one target merge gate and gate its report: slice-name
 /// match, blocking findings, and status.
-async fn run_gate<T: TargetSeam>(
+async fn run_gate<T: Target>(
     targets: &T, id: &str, slice: &str, phase: MergePhase,
 ) -> Result<BuildReport, Error> {
     let report = targets

@@ -10,7 +10,7 @@ use project::adapter::SourceOperation;
 use project::config::Layout;
 use project::journal::{self, Event, EventKind};
 use project::plan::Plan;
-use project::seam::{SourceSeam, seam_failure, source_id};
+use project::seam::{Source, seam_failure, source_id};
 
 /// The result of a completed [`extract`]: the persisted Evidence path.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,8 +37,7 @@ pub struct ExtractOutcome {
 /// `evidence-schema` validation failures from the adapter's extract
 /// leg, plus plan-load and persistence I/O failures.
 pub async fn extract(
-    seam: &impl SourceSeam, layout: Layout<'_>, now: Timestamp, source: &str, lead: &str,
-    slice: &str,
+    seam: &impl Source, layout: Layout<'_>, now: Timestamp, source: &str, lead: &str, slice: &str,
 ) -> Result<ExtractOutcome, Error> {
     let plan = Plan::load(&layout.plan_path())?;
     let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {

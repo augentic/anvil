@@ -8,7 +8,7 @@ use jiff::Timestamp;
 use project::adapter::{AdapterRef, TargetAdapter};
 use project::config::Layout;
 use project::journal::{self, EventKind};
-use project::seam::{Input, TargetSeam, WorkingTree};
+use project::seam::{Input, Target, WorkingTree};
 
 use super::{seam_failure, target_id};
 use crate::{
@@ -51,8 +51,8 @@ pub struct BuildOutcome {
 /// Dispatch and finalize failures retain their seam, report, output, or
 /// lifecycle diagnostics.
 pub async fn build(
-    seam: &impl TargetSeam, layout: Layout<'_>, now: Timestamp, slice: &str,
-    adapter: &TargetAdapter, tree: WorkingTree,
+    seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, adapter: &TargetAdapter,
+    tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
     let slice_dir = layout.slice_dir(slice);
     let metadata = SliceMetadata::load(&slice_dir)?;
@@ -109,7 +109,7 @@ pub async fn build(
 /// brackets it.
 #[expect(clippy::too_many_arguments, reason = "internal seam-dispatch kernel; callers use `build`")]
 async fn finalize(
-    seam: &impl TargetSeam, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
+    seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
     target_name: &str, request: &BuildRequest, tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
     let inputs = read_inputs(request)?;

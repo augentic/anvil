@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use project::platform;
+use project::seam::{self, wire};
 use testkit::adapter;
 
 use crate::Adapter;
@@ -26,7 +28,7 @@ impl Guest for Adapter {
     ) -> Result<Report, Error> {
         // Every guest shares the deployment's `[[mount]]` preopens, so
         // the build writes through its own `"."` preopen.
-        let inputs: Vec<adapter::Input> = inputs.into_iter().map(adapter::Input::from).collect();
+        let inputs: Vec<seam::Input> = inputs.into_iter().map(seam::Input::from).collect();
         let report = adapter::build(Path::new("."), &id, &slice, &inputs).map_err(Error::from)?;
         Ok(report.into())
     }
@@ -40,8 +42,8 @@ impl Guest for Adapter {
     }
 }
 
-impl From<adapter::PlatformsCapability> for PlatformsCapability {
-    fn from(capability: adapter::PlatformsCapability) -> Self {
+impl From<project::adapter::PlatformsCapability> for PlatformsCapability {
+    fn from(capability: project::adapter::PlatformsCapability) -> Self {
         Self {
             required: capability.required,
             allowed: capability.allowed.into_iter().map(Platform::from).collect(),
@@ -50,17 +52,19 @@ impl From<adapter::PlatformsCapability> for PlatformsCapability {
     }
 }
 
-impl From<adapter::Platform> for Platform {
-    fn from(platform: adapter::Platform) -> Self {
+impl From<platform::Platform> for Platform {
+    fn from(platform: platform::Platform) -> Self {
         match platform {
-            adapter::Platform::Core => Platform::Core,
-            adapter::Platform::Ios => Platform::Ios,
-            adapter::Platform::Android => Platform::Android,
+            platform::Platform::Core => Self::Core,
+            platform::Platform::Ios => Self::Ios,
+            platform::Platform::Android => Self::Android,
+            platform::Platform::Web => Self::Web,
+            platform::Platform::Desktop => Self::Desktop,
         }
     }
 }
 
-impl From<Input> for adapter::Input {
+impl From<Input> for seam::Input {
     fn from(input: Input) -> Self {
         match input {
             Input::Proposal(body) => Self::Proposal(body),
@@ -72,7 +76,7 @@ impl From<Input> for adapter::Input {
     }
 }
 
-impl From<MergePhase> for adapter::MergePhase {
+impl From<MergePhase> for seam::MergePhase {
     fn from(phase: MergePhase) -> Self {
         match phase {
             MergePhase::Preflight => Self::Preflight,
@@ -81,8 +85,11 @@ impl From<MergePhase> for adapter::MergePhase {
     }
 }
 
-impl From<adapter::Report> for Report {
-    fn from(report: adapter::Report) -> Self {
+// Narrow the fixture's stamped `BuildReport` to the WIT report: the
+// envelope keys (`version`, `slice`, `target`) stay caller-owned on the
+// seam, and the fixture never emits findings or a UI surface.
+impl From<wire::BuildReport> for Report {
+    fn from(report: wire::BuildReport) -> Self {
         Self {
             status: report.status.into(),
             findings: Vec::new(),
@@ -92,19 +99,19 @@ impl From<adapter::Report> for Report {
     }
 }
 
-impl From<adapter::Status> for Status {
-    fn from(status: adapter::Status) -> Self {
+impl From<wire::BuildStatus> for Status {
+    fn from(status: wire::BuildStatus) -> Self {
         match status {
-            adapter::Status::Success => Status::Success,
-            adapter::Status::Failure => Status::Failure,
+            wire::BuildStatus::Success => Self::Success,
+            wire::BuildStatus::Failure => Self::Failure,
         }
     }
 }
 
-impl From<adapter::Output> for BuildOutput {
-    fn from(output: adapter::Output) -> Self {
+impl From<wire::BuildOutput> for BuildOutput {
+    fn from(output: wire::BuildOutput) -> Self {
         Self {
-            platform: Platform::Core,
+            platform: output.platform.into(),
             path: output.path,
         }
     }
