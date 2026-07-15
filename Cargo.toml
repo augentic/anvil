@@ -4,12 +4,13 @@ description = "A tool for specifying and running code generation workflows"
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["specify", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
-autotests = false
+publish = false
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
 version.workspace = true
+
+autotests = false # do not treat root tests/ as integration tests
 
 [lib]
 name = "specify"
@@ -49,10 +50,7 @@ workspace = true
 
 [workspace]
 members = ["crates/*", "examples", "tests"]
-# The ordinary test group: crate suites (including testkit) plus the
-# lightweight repo-checks package and the examples package. The host runners
-# (hosted WASM, prompt-eval) remain opt-in through
-# `cd examples && cargo make test-wasm` / `prompt-eval`.
+# excludes the root /src folder from tests
 default-members = ["crates/*", "examples", "tests"]
 
 [workspace.package]

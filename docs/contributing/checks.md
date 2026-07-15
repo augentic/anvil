@@ -42,4 +42,4 @@ cargo make ci     # fmt + clippy + all tests (incl. checks) + docs + vet + deny
 cargo make check  # the pre-commit subset
 ```
 
-Per-push CI ([`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml)) needs no sibling checkout. WASM boundary execution lives in the weekly/path-filtered [`.github/workflows/wasm.yaml`](../../.github/workflows/wasm.yaml).
+Per-push CI ([`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml)) needs no sibling checkout.

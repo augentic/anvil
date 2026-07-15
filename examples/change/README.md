@@ -18,9 +18,9 @@ After running, inspect the generated result at:
 examples/change/workspace/fixture-build/greeting.md
 ```
 
-
-
 ## Run
+
+Before the first run, set `CURSOR_API_KEY` in `examples/.env`.
 
 Run the example (and clean up afterwards):
 
@@ -31,3 +31,4 @@ make change-run
 # Clean up afterwards
 make change-clean
 ```
+
