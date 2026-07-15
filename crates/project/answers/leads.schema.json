@@ -5,6 +5,7 @@
       "properties": {
         "lead": {
           "description": "Stable kebab-case lead identifier, unique only within its\nsource; identity is the `(source, lead)` pair.",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
           "type": "string"
         },
         "synopsis": {
@@ -14,6 +15,7 @@
         "topics": {
           "description": "Agent-authored per-lead topic slugs (kebab-case). Empty means\nunclassified.",
           "items": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
             "type": "string"
           },
           "type": "array"
@@ -29,7 +31,7 @@
   "$id": "https://github.com/augentic/specify/answers/leads.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source). Lead ids must additionally be kebab-case slugs — re-checked deterministically after the gate.",
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source). Lead ids and topic slugs carry the kebab-case grammar in-schema and are re-checked deterministically after the gate, alongside the trim-aware synopsis check the schema cannot express.",
   "properties": {
     "leads": {
       "description": "Every lead the survey surfaced, in source order.",

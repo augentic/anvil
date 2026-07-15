@@ -23,6 +23,17 @@
     "Claim": {
       "additionalProperties": true,
       "description": "One extracted Evidence claim, mirroring the WIT `claim` record.\n\nThe shape stays open (`extras` flattens unmodeled keys) because\nper-kind body fields are deliberately unconstrained — a closed\nmirror could drop data that synthesis reads verbatim.",
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "requirement",
+              "criterion",
+              "example"
+            ]
+          }
+        }
+      },
       "properties": {
         "backing-path": {
           "description": "Filesystem backing pointer ([`Backing::Path`] on the wire).",
@@ -33,6 +44,7 @@
         },
         "id": {
           "description": "Stable claim identifier (dotted kebab slug, e.g.\n`password-reset.expiry`). Required when `kind` is\n`requirement`, `criterion`, or `example`; optional on other\nkinds — enforced deterministically by [`validate_claims`].",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
           "type": [
             "string",
             "null"
@@ -67,6 +79,17 @@
       "required": [
         "kind"
       ],
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "type": "object"
     },
     "ClaimKind": {
@@ -147,7 +170,7 @@
   },
   "$id": "https://github.com/augentic/specify/answers/evidence.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the Evidence shape minus the envelope `lead` key (the extract call names the lead). Per-kind claim body fields are intentionally open; claim id grammar and the `requirement` / `criterion` / `example` id requirement are re-checked deterministically after the gate.",
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the Evidence shape minus the envelope `lead` key (the extract call names the lead). Per-kind claim body fields are intentionally open; claim ids carry the dotted-kebab grammar in-schema and `requirement` / `criterion` / `example` claims conditionally require one — both re-checked deterministically after the gate.",
   "properties": {
     "authority": {
       "$ref": "#/$defs/AuthorityClass",

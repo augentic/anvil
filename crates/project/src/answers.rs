@@ -4,9 +4,12 @@
 //! with `format: schema(...)` so the host gate validates the answer before
 //! the guest sees it. The documents here are never hand-written: each is
 //! generated (via `schemars`) from the Rust wire type that deserialises
-//! the answer, so the types stay the single source of truth. Deterministic
-//! tails re-check the constraints a generated schema cannot express (id
-//! grammars, the per-kind claim id requirement).
+//! the answer, so the types stay the single source of truth. Safely
+//! expressible semantic constraints (the kebab id grammars, the
+//! per-kind claim id requirement) are patched onto the generated shape
+//! so the host gate rejects them early; deterministic tails remain the
+//! authority and additionally cover what a schema cannot express
+//! (trim-aware synopsis checks, cross-field domain checks).
 //!
 //! The committed copies under `crates/project/answers/` (and
 //! `crates/slice/answers/` for the synthesis leg) are parity-gated
@@ -22,6 +25,15 @@ use crate::seam::{Evidence, Lead};
 
 /// `$id` base for the generated answer documents.
 const ANSWERS_ID_BASE: &str = "https://github.com/augentic/specify/answers";
+
+/// Kebab slug grammar for lead ids and topic slugs, mirroring
+/// `artifacts::evidence::is_kebab` in the deterministic tail.
+const KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*$";
+
+/// Dotted-kebab claim-id grammar, mirroring
+/// `artifacts::evidence::claim::is_dotted_kebab` in the deterministic
+/// tail.
+const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
 /// The `survey` answer envelope: `{ "leads": [ ... ] }`, each item a
 /// [`Lead`] (the discovery lead minus the envelope `source` key — the
@@ -74,35 +86,76 @@ pub fn root_schema<T: JsonSchema>(file: &str, title: &str, description: &str) ->
 }
 
 /// The `survey` answer schema.
+///
+/// The generated shape is patched with the kebab grammar on lead ids
+/// and topic slugs, so the host gate rejects malformed slugs before
+/// the deterministic tail re-checks them.
+///
+/// # Panics
+///
+/// Panics when the generated schema drops the patched properties — a
+/// compile-adjacent invariant, not a runtime input condition.
 #[must_use]
 pub fn leads() -> Value {
-    root_schema::<LeadsAnswer>(
+    let mut schema = root_schema::<LeadsAnswer>(
         "leads.schema.json",
         "Specify survey answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a source \
          adapter's survey operation: an object carrying `leads[]`, each item the lead shape \
          minus the envelope `source` key (the caller attributes every lead to the surveyed \
-         source). Lead ids must additionally be kebab-case slugs — re-checked \
-         deterministically after the gate.",
-    )
+         source). Lead ids and topic slugs carry the kebab-case grammar in-schema and are \
+         re-checked deterministically after the gate, alongside the trim-aware synopsis \
+         check the schema cannot express.",
+    );
+    set_pattern(&mut schema, "/$defs/Lead/properties/lead", KEBAB_PATTERN);
+    set_pattern(&mut schema, "/$defs/Lead/properties/topics/items", KEBAB_PATTERN);
+    schema
 }
 
 /// The `extract` answer schema: the Evidence shape minus the envelope
 /// `lead` key (the extract call names the lead, so the answer never
 /// repeats it).
+///
+/// The generated shape is patched with the dotted-kebab grammar on
+/// claim ids and a conditional `required` making the id mandatory on
+/// `requirement` / `criterion` / `example` claims, so the host gate
+/// rejects those defects before the deterministic tail re-checks them.
+///
+/// # Panics
+///
+/// Panics when the generated schema drops the patched properties — a
+/// compile-adjacent invariant, not a runtime input condition.
 #[must_use]
 pub fn evidence() -> Value {
-    root_schema::<Evidence>(
+    let mut schema = root_schema::<Evidence>(
         "evidence.schema.json",
         "Specify extract answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a source \
          adapter's extract operation: the Evidence shape minus the envelope `lead` key (the \
          extract call names the lead). Per-kind claim body fields are intentionally open; \
-         claim id grammar and the `requirement` / `criterion` / `example` id requirement are \
-         re-checked deterministically after the gate.",
-    )
+         claim ids carry the dotted-kebab grammar in-schema and `requirement` / `criterion` \
+         / `example` claims conditionally require one — both re-checked deterministically \
+         after the gate.",
+    );
+    set_pattern(&mut schema, "/$defs/Claim/properties/id", DOTTED_KEBAB_PATTERN);
+    let claim = schema
+        .pointer_mut("/$defs/Claim")
+        .and_then(Value::as_object_mut)
+        .expect("evidence answer schema carries the Claim definition");
+    claim.insert(
+        "if".to_string(),
+        json!({ "properties": { "kind": { "enum": ["requirement", "criterion", "example"] } } }),
+    );
+    claim.insert(
+        "then".to_string(),
+        json!({
+            "properties": { "id": { "pattern": DOTTED_KEBAB_PATTERN, "type": "string" } },
+            "required": ["id"]
+        }),
+    );
+    schema
 }
 
 /// The `build` / `merge` answer schema.
@@ -155,6 +208,15 @@ pub fn proposal() -> Value {
         .expect("proposal answer schema carries a kind property");
     *kind = json!({ "const": "response" });
     schema
+}
+
+// Stamp a `pattern` constraint onto the string schema at `pointer`.
+fn set_pattern(schema: &mut Value, pointer: &str, pattern: &str) {
+    let target = schema
+        .pointer_mut(pointer)
+        .and_then(Value::as_object_mut)
+        .expect("answer schema carries the patched property");
+    target.insert("pattern".to_string(), json!(pattern));
 }
 
 /// Render an answer schema the way the committed golden files are
