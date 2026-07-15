@@ -1148,7 +1148,6 @@ dependencies = [
  "omnia-guest",
  "omnia-wasi-model",
  "project",
- "tempfile",
  "testkit",
  "tokio",
 ]

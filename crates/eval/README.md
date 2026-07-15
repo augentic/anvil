@@ -1,22 +1,22 @@
 # Prompt evaluation
 
-A live-model harness for use in testing specify core prompts used when model judgement is required. For example, iin lead reconciliation or slice synthesis. Outputs are graded by deterministic validators — not a model.
+A live-model harness for use in testing specify core prompts used when model judgement is required. For example, in lead reconciliation or slice synthesis. Outputs are graded by deterministic validators — not a model.
 
 ## Quick start
 
 Login to the Cursor agent:
 
 ```bash
-agent login
+cursor-agent login
 ```
 
-or set `CURSOR_API_KEY` in `.env`.
+or set `CURSOR_API_KEY` in `.env` at the repository root.
 
 ```bash
 make eval
 ```
 
-This will run the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it.
+This will run the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it — inspect it in place, or re-drive individual operations with the manual workflow below.
 
 ## Manual workflow
 
@@ -29,7 +29,7 @@ make eval execute
 make eval finalize
 ```
 
-Manual operations share `sandbox/eval/` and leave it in place. `init` replaces any previous manual project; each later operation requires the preceding state. Remove the project when finished:
+Manual operations share `sandbox/eval/`. While `make eval init` will reinitialize a project, a project can be removed with:
 
 ```bash
 make eval clean

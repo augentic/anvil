@@ -10,7 +10,8 @@
 //!
 //! Graded by deterministic validators only (see [README.md](../README.md)).
 //! Run `cargo make eval` (never CI). Needs `cursor-agent` on
-//! `PATH` with credentials. The temporary project is retained on failure.
+//! `PATH` with credentials. Runs in `sandbox/eval/`; the project is
+//! removed on success and retained on failure.
 
 #[cfg(not(target_arch = "wasm32"))]
 use clap::Parser;

@@ -36,9 +36,13 @@ pub enum Phase {
 }
 
 /// One full trial: init → plan → execute → finalize, grading between
-/// execute and finalize while `plan.yaml` is still live.
+/// execute and finalize while `plan.yaml` is still live. Runs in
+/// `sandbox/eval/`; a passing trial removes the project, a failing one
+/// retains it for the manual operations to inspect and re-drive.
 pub async fn run() {
-    let (root, _cache) = scaffold();
+    let root = replace_project();
+    eprintln!("prompt evaluation project (retained on failure): {}", root.display());
+    let _cache = testkit::env::scoped_cache(&root);
     let provider = connect(&root).await;
 
     init(&provider).await;
@@ -53,71 +57,60 @@ pub async fn run() {
 
 /// Run one operation against the persistent `sandbox/eval` project.
 pub async fn run_phase(phase: Phase) {
-    let root = manual_root();
     if matches!(phase, Phase::Clean) {
+        let root = project_root();
         if root.exists() {
-            fs::remove_dir_all(&root).expect("clean up the manual evaluation project");
+            fs::remove_dir_all(&root).expect("clean up the evaluation project");
         }
         return;
     }
 
-    if matches!(phase, Phase::Init) {
-        if root.exists() {
-            fs::remove_dir_all(&root).expect("replace the manual evaluation project");
-        }
-        fs::create_dir_all(&root).expect("create the manual evaluation project");
+    let root = if matches!(phase, Phase::Init) {
+        replace_project()
     } else {
+        let root = project_root();
         assert!(
             root.join(".specify/project.yaml").is_file(),
-            "manual evaluation project is not initialised; run `cargo make eval init` first"
+            "evaluation project is not initialised; run `cargo make eval init` first"
         );
-    }
-
-    let root = root.canonicalize().expect("canonical manual evaluation project root");
+        root.canonicalize().expect("canonical evaluation project root")
+    };
     eprintln!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
 
-    if matches!(phase, Phase::Init | Phase::Finalize) {
-        let provider = Scripted::scripted_at(&root, Vec::new());
-        match phase {
-            Phase::Init => init(&provider).await,
-            Phase::Finalize => finalize(&provider).await,
-            _ => unreachable!("only deterministic phases enter this branch"),
-        }
-        return;
-    }
-
-    let provider = connect(&root).await;
-
     match phase {
+        Phase::Init => init(&Scripted::scripted_at(&root, Vec::new())).await,
+        Phase::Finalize => finalize(&Scripted::scripted_at(&root, Vec::new())).await,
         Phase::Plan => {
+            let provider = connect(&root).await;
             author_and_approve(&provider, &root).await;
             report_legs(&provider, &read_plan(&root));
         }
         Phase::Execute => {
+            let provider = connect(&root).await;
             let drained = execute(&provider, &root).await;
             grade(&root, &drained);
             report_legs(&provider, &drained);
         }
-        Phase::Init | Phase::Finalize | Phase::Clean => {
-            unreachable!("non-model phases return before connecting the live provider")
-        }
+        Phase::Clean => unreachable!("clean returns before project preparation"),
     }
 }
 
-/// A bare temp tree with the adapter cache pinned inside it; retained
-/// until success cleans it up. The project scaffold itself comes from
-/// the `Init` operation.
-fn scaffold() -> (PathBuf, testkit::env::CacheGuard) {
-    let root = tempfile::TempDir::new().expect("tempdir").keep();
-    let root = root.canonicalize().expect("canonical project root");
-    eprintln!("prompt evaluation project (retained on failure): {}", root.display());
-    let cache = testkit::env::scoped_cache(&root);
-    (root, cache)
+/// The shared project location — `sandbox/eval/` at the repository
+/// root — used by the full trial and the manual operations alike.
+fn project_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval")
 }
 
-fn manual_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval")
+/// Replace any previous project at [`project_root`] with an empty
+/// tree. The project scaffold itself comes from the `Init` operation.
+fn replace_project() -> PathBuf {
+    let root = project_root();
+    if root.exists() {
+        fs::remove_dir_all(&root).expect("replace the previous evaluation project");
+    }
+    fs::create_dir_all(&root).expect("create the evaluation project root");
+    root.canonicalize().expect("canonical evaluation project root")
 }
 
 async fn connect(root: &Path) -> EvalProvider {
