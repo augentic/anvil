@@ -12,9 +12,10 @@ use std::fmt::Write as _;
 
 use error::Error;
 use omnia_guest::Model;
+use project::judgment::{render_json, repaired};
 use project::plan::{ProposalRequest, ProposalResponse, SourceBinding};
 
-use super::{prose, schema_gated};
+use crate::judgment::prose;
 
 /// Plan-authoring context for the Gate 1 prose the answer schema
 /// requires.
@@ -73,13 +74,15 @@ where
     let schema = project::answers::render(&project::answers::proposal());
     let mut user = format!(
         "## Reconciliation request\n\n```json\n{}\n```",
-        super::render_json(request, "reconciliation request")?
+        render_json(request, "reconciliation request")?
     );
+
     if let Some(context) = gate {
         user.push_str("\n\n");
         user.push_str(&context.render());
     }
-    schema_gated(model, prose::propose(), user, "proposal", &schema, |answer| {
+
+    repaired(model, prose::propose(), user, "proposal", &schema, |answer| {
         let response: ProposalResponse = serde_json::from_str(answer).map_err(|err| {
             Error::validation_failed(
                 "plan-propose-response-parse",
