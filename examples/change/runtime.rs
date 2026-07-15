@@ -1,6 +1,6 @@
 //! # Change Runtime
-//! 
-//! This is the runtime for the change example. It can use either the Cursor 
+//!
+//! This is the runtime for the change example. It can use either the Cursor
 //! (live, probablistic) or Scripted (deterministic) models to generate answers.
 
 // #[cfg(not(target_arch = "wasm32"))]
