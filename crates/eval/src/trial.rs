@@ -9,6 +9,7 @@ use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md}
 use change::{Entry, Status, plan};
 use clap::Subcommand;
 use omnia::Backend as _;
+use plan::handlers::{Execute, ExecuteInput};
 use project::config::Layout;
 use testkit::{Provider, Scripted, answers, run as invoke};
 
@@ -41,46 +42,147 @@ impl Phase {
     /// Run one operation against the persistent `sandbox/eval` project.
     pub async fn run(&self) {
         match self {
-            Self::Clean => {
-                let root = root();
-                if root.exists() {
-                    fs::remove_dir_all(&root).expect("clean up the evaluation project");
-                }
-            }
-            Self::Init => {
-                let root = replace();
-                println!("prompt evaluation project: {}", root.display());
-                let _cache = testkit::env::scoped_cache(&root);
-                Scripted::scripted_at(&root, Vec::new()).init().await;
-            }
-            Self::Plan => {
-                let root = require();
-                println!("prompt evaluation project: {}", root.display());
-                let _cache = testkit::env::scoped_cache(&root);
-                let provider = connect(&root).await;
-                provider.author().await;
-                provider.approve().await;
-                let plan = read_plan(&provider.root);
-                report(&provider.model().counts(), plan.entries.len());
-            }
-            Self::Execute => {
-                let root = require();
-                println!("prompt evaluation project: {}", root.display());
-                let _cache = testkit::env::scoped_cache(&root);
-                let provider = connect(&root).await;
-                let drained = provider.execute().await;
-                grade(&provider.root, &drained);
-                report(&provider.model().counts(), drained.entries.len());
-            }
-            Self::Finalize => {
-                let root = require();
-                println!("prompt evaluation project: {}", root.display());
-                let _cache = testkit::env::scoped_cache(&root);
-                Scripted::scripted_at(&root, Vec::new()).finalize().await;
-            }
+            Self::Init => init().await,
+            Self::Plan => plan().await,
+            Self::Execute => execute().await,
+            Self::Finalize => finalize().await,
+            Self::Clean => clean(),
         }
     }
 }
+
+async fn init() {
+    let root = replace();
+    println!("prompt evaluation project: {}", root.display());
+    let _cache = testkit::env::scoped_cache(&root);
+    let provider = Scripted::scripted_at(&root, Vec::new());
+    invoke::<project::init::handlers::Init, _, _>(
+        &provider,
+        project::init::handlers::InitInput {
+            adapter: Some("fixture".to_string()),
+            name: Some("eval".to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("init scaffolds the fixture-bound project");
+}
+
+async fn plan() {
+    let root = require();
+    println!("prompt evaluation project: {}", root.display());
+    let _cache = testkit::env::scoped_cache(&root);
+    let provider = connect(&root).await;
+    author(&provider).await;
+    approve(&provider).await;
+    let plan = read_plan(&provider.root);
+    report(&provider.model().counts(), plan.entries.len());
+}
+
+async fn execute() {
+    let root = require();
+    println!("prompt evaluation project: {}", root.display());
+    let _cache = testkit::env::scoped_cache(&root);
+    let provider = connect(&root).await;
+
+    let executed =
+        invoke::<Execute, _, _>(&provider, ExecuteInput {}).await.expect("execute drains the plan");
+    for phase in &executed.phases {
+        eprintln!("executed {} {}", phase.step, phase.slice);
+    }
+    assert_eq!(executed.status, "drained", "execute must exit drained");
+
+    let plan = read_plan(&provider.root);
+    assert!(
+        plan.entries.iter().all(|entry| entry.status == Status::Done),
+        "execute must leave every entry done: {:?}",
+        plan.entries
+    );
+
+    grade(&provider.root, &plan);
+    report(&provider.model().counts(), plan.entries.len());
+}
+
+async fn finalize() {
+    let root = require();
+    println!("prompt evaluation project: {}", root.display());
+    let _cache = testkit::env::scoped_cache(&root);
+    let provider = Scripted::scripted_at(&root, Vec::new());
+    invoke::<plan::handlers::Archive, _, _>(
+        &provider,
+        plan::handlers::ArchiveInput { force: false },
+    )
+    .await
+    .expect("finalize archives the drained plan");
+}
+
+fn clean() {
+    let root = root();
+    if root.exists() {
+        fs::remove_dir_all(&root).expect("clean up the evaluation project");
+    }
+}
+
+// `specify plan author` — live reconcile over the adversarial lead
+// catalog: every surveyed lead assigned, `login-flow` overlap merged
+// into one slice.
+async fn author(provider: &EvalProvider) {
+    invoke::<plan::handlers::Author, _, _>(
+        provider,
+        plan::handlers::AuthorInput {
+            name: "auth".to_string(),
+            sources: answers::adversarial_bindings(),
+            intent: None,
+        },
+    )
+    .await
+    .expect("plan author produces a validator-clean plan");
+
+    let authored = read_plan(&provider.root);
+    assert!(
+        authored.entries.iter().any(|entry| {
+            binds(entry, "docs", "login-flow") && binds(entry, "code", "login-flow")
+        }),
+        "the login-flow overlap must merge into one slice: {:?}",
+        authored.entries
+    );
+}
+
+// Gate 1: operator stamps `approved`.
+async fn approve(provider: &EvalProvider) {
+    invoke::<plan::handlers::Transition, _, _>(
+        provider,
+        plan::handlers::TransitionInput {
+            name: "auth".to_string(),
+            target: Some("approved".to_string()),
+            undo: false,
+            actor: "operator".to_string(),
+        },
+    )
+    .await
+    .expect("Gate 1: operator stamps approved");
+}
+
+// `specify plan execute` — the production drained loop: refine →
+// build → merge per entry until the plan is drained.
+// async fn execute(provider: &EvalProvider) -> change::Plan {
+//     let executed =
+//         invoke::<plan::handlers::Execute, _, _>(provider, plan::handlers::ExecuteInput {})
+//             .await
+//             .expect("execute drains the plan");
+//     for phase in &executed.phases {
+//         eprintln!("executed {} {}", phase.step, phase.slice);
+//     }
+//     assert_eq!(executed.status, "drained", "execute must exit drained");
+
+//     let plan = read_plan(&provider.root);
+//     assert!(
+//         plan.entries.iter().all(|entry| entry.status == Status::Done),
+//         "execute must leave every entry done: {:?}",
+//         plan.entries
+//     );
+//     plan
+// }
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval")
@@ -112,123 +214,6 @@ async fn connect(root: &Path) -> EvalProvider {
     // In-guest the `"."` preopen resolves the lent workspace; natively
     // the trial project root plays that part.
     Provider::new(root, Telemetry::new(Native::new(client, root)))
-}
-
-/// Evaluation operations over a [`Provider`]. Defaults panic so a
-/// mismatched model (Scripted vs live) fails loudly.
-trait Operation {
-    async fn init(&self) {
-        unimplemented!("init requires a Scripted provider")
-    }
-
-    async fn author(&self) {
-        unimplemented!("author requires the live EvalProvider")
-    }
-
-    async fn approve(&self) {
-        unimplemented!("approve requires the live EvalProvider")
-    }
-
-    async fn execute(&self) -> change::Plan {
-        unimplemented!("execute requires the live EvalProvider")
-    }
-
-    async fn finalize(&self) {
-        unimplemented!("finalize requires a Scripted provider")
-    }
-}
-
-impl Operation for Scripted {
-    async fn init(&self) {
-        let provider = self.clone();
-        invoke::<project::init::handlers::Init, _, _>(
-            &provider,
-            project::init::handlers::InitInput {
-                adapter: Some("fixture".to_string()),
-                name: Some("eval".to_string()),
-                ..Default::default()
-            },
-        )
-        .await
-        .expect("init scaffolds the fixture-bound project");
-    }
-
-    async fn finalize(&self) {
-        let provider = self.clone();
-        invoke::<plan::handlers::Archive, _, _>(
-            &provider,
-            plan::handlers::ArchiveInput { force: false },
-        )
-        .await
-        .expect("finalize archives the drained plan");
-    }
-}
-
-impl Operation for EvalProvider {
-    // `specify plan author` — live reconcile over the adversarial lead
-    // catalog: every surveyed lead assigned, `login-flow` overlap merged
-    // into one slice.
-    async fn author(&self) {
-        let provider = self.clone();
-        invoke::<plan::handlers::Author, _, _>(
-            &provider,
-            plan::handlers::AuthorInput {
-                name: "auth".to_string(),
-                sources: answers::adversarial_bindings(),
-                intent: None,
-            },
-        )
-        .await
-        .expect("plan author produces a validator-clean plan");
-
-        let authored = read_plan(&provider.root);
-        assert!(
-            authored.entries.iter().any(|entry| {
-                binds(entry, "docs", "login-flow") && binds(entry, "code", "login-flow")
-            }),
-            "the login-flow overlap must merge into one slice: {:?}",
-            authored.entries
-        );
-    }
-
-    // Gate 1: operator stamps `approved`.
-    async fn approve(&self) {
-        let provider = self.clone();
-        invoke::<plan::handlers::Transition, _, _>(
-            &provider,
-            plan::handlers::TransitionInput {
-                name: "auth".to_string(),
-                target: Some("approved".to_string()),
-                undo: false,
-                actor: "operator".to_string(),
-            },
-        )
-        .await
-        .expect("Gate 1: operator stamps approved");
-    }
-
-    // `specify plan execute` — the production drained loop: refine →
-    // build → merge per entry until the plan is drained.
-    async fn execute(&self) -> change::Plan {
-        let provider = self.clone();
-
-        let executed =
-            invoke::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-                .await
-                .expect("execute drains the plan");
-        for phase in &executed.phases {
-            eprintln!("executed {} {}", phase.step, phase.slice);
-        }
-        assert_eq!(executed.status, "drained", "execute must exit drained");
-
-        let plan = read_plan(&provider.root);
-        assert!(
-            plan.entries.iter().all(|entry| entry.status == Status::Done),
-            "execute must leave every entry done: {:?}",
-            plan.entries
-        );
-        plan
-    }
 }
 
 fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
