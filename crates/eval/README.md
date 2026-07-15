@@ -1,6 +1,6 @@
 # Prompt evaluation
 
-A live-model harness over the Specify engine workflow and the fixture adversarial lead set. Graded by deterministic validators only — never a second model judging the first.
+A live-model harness for use in testing specify core prompts used when model judgement is required. For example, iin lead reconciliation or slice synthesis. Outputs are graded by deterministic validators — not a model.
 
 ## Quick start
 
@@ -10,7 +10,7 @@ Login to the Cursor agent:
 agent login
 ```
 
-or set `CURSOR_API_KEY` in `examples/.env`.
+or set `CURSOR_API_KEY` in `.env`.
 
 ```bash
 make eval
@@ -63,6 +63,6 @@ Hard assertions only:
 | execute | Build output           | Every slice leaves a non-empty fixture build artifact        |
 
 
-Per-leg request / repair counts are **reported, not asserted**: after grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
+Per-leg request / repair counts are **reported, not asserted**. After grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
 
-The project path is printed at startup. In manual mode, repair counts cover only model requests made by that operation.
+In manual mode, repair counts cover only model requests made by that operation.

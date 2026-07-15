@@ -12,7 +12,7 @@ Login to the Cursor agent:
 agent login
 ```
 
-or set `CURSOR_API_KEY` in `examples/.env`.
+or set `CURSOR_API_KEY` in `.env`.
 
 Run the example:
 
