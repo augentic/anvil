@@ -13,6 +13,9 @@
 //! `PATH` with credentials. The temporary project is retained on failure.
 
 #[cfg(not(target_arch = "wasm32"))]
+use clap::Parser;
+
+#[cfg(not(target_arch = "wasm32"))]
 mod native;
 #[cfg(not(target_arch = "wasm32"))]
 mod telemetry;
@@ -20,9 +23,20 @@ mod telemetry;
 mod trial;
 
 #[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Parser)]
+#[command(about = "Run the live-model prompt evaluation")]
+struct Cli {
+    #[command(subcommand)]
+    phase: Option<trial::Phase>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() {
-    trial::run().await;
+    match Cli::parse().phase {
+        Some(phase) => trial::run_phase(phase).await,
+        None => trial::run().await,
+    }
 }
 
 // The harness is native-only; the stub keeps workspace-wide wasm32

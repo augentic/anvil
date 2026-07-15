@@ -19,6 +19,7 @@ workspace = true
 anyhow.workspace = true
 artifacts.workspace = true
 change.workspace = true
+clap.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-guest.workspace = true

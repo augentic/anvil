@@ -6,9 +6,11 @@ use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
 use change::{Status, plan};
+use clap::Subcommand;
 use omnia::Backend as _;
+use omnia_guest::model::Model;
 use project::config::Layout;
-use testkit::{Provider, answers, run as invoke};
+use testkit::{Provider, Scripted, answers, run as invoke};
 
 use crate::native::Native;
 use crate::telemetry::Telemetry;
@@ -17,6 +19,21 @@ use crate::telemetry::Telemetry;
 /// adapter (the guest→wire mapping, the request/answer gates, and the
 /// workspace lend), wrapped in the per-leg request tally.
 type EvalProvider = Provider<Telemetry<Native<omnia_cursor::Client>>>;
+
+/// One operation in the persistent manual evaluation workflow.
+#[derive(Clone, Copy, Debug, Subcommand)]
+pub enum Phase {
+    /// Initialise a fresh evaluation project.
+    Init,
+    /// Author the plan and stamp Gate 1 approved.
+    Plan,
+    /// Execute and grade the approved plan.
+    Execute,
+    /// Archive the drained plan.
+    Finalize,
+    /// Remove the persistent evaluation project.
+    Clean,
+}
 
 /// One full trial: init → plan → execute → finalize, grading between
 /// execute and finalize while `plan.yaml` is still live.
@@ -34,6 +51,60 @@ pub async fn run() {
     fs::remove_dir_all(&root).expect("clean up the passing trial project");
 }
 
+/// Run one operation against the persistent `target/eval` project.
+pub async fn run_phase(phase: Phase) {
+    let root = manual_root();
+    if matches!(phase, Phase::Clean) {
+        if root.exists() {
+            fs::remove_dir_all(&root).expect("clean up the manual evaluation project");
+        }
+        return;
+    }
+
+    if matches!(phase, Phase::Init) {
+        if root.exists() {
+            fs::remove_dir_all(&root).expect("replace the manual evaluation project");
+        }
+        fs::create_dir_all(&root).expect("create the manual evaluation project");
+    } else {
+        assert!(
+            root.join(".specify/project.yaml").is_file(),
+            "manual evaluation project is not initialised; run `cargo make eval init` first"
+        );
+    }
+
+    let root = root.canonicalize().expect("canonical manual evaluation project root");
+    eprintln!("prompt evaluation project: {}", root.display());
+    let _cache = testkit::env::scoped_cache(&root);
+
+    if matches!(phase, Phase::Init | Phase::Finalize) {
+        let provider = Scripted::scripted_at(&root, Vec::new());
+        match phase {
+            Phase::Init => init(&provider).await,
+            Phase::Finalize => finalize(&provider).await,
+            _ => unreachable!("only deterministic phases enter this branch"),
+        }
+        return;
+    }
+
+    let provider = connect(&root).await;
+
+    match phase {
+        Phase::Plan => {
+            author_and_approve(&provider, &root).await;
+            report_legs(&provider, &read_plan(&root));
+        }
+        Phase::Execute => {
+            let drained = execute(&provider, &root).await;
+            grade(&root, &drained);
+            report_legs(&provider, &drained);
+        }
+        Phase::Init | Phase::Finalize | Phase::Clean => {
+            unreachable!("non-model phases return before connecting the live provider")
+        }
+    }
+}
+
 /// A bare temp tree with the adapter cache pinned inside it; retained
 /// until success cleans it up. The project scaffold itself comes from
 /// the `Init` operation.
@@ -43,6 +114,10 @@ fn scaffold() -> (PathBuf, testkit::env::CacheGuard) {
     eprintln!("prompt evaluation project (retained on failure): {}", root.display());
     let cache = testkit::env::scoped_cache(&root);
     (root, cache)
+}
+
+fn manual_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/eval")
 }
 
 async fn connect(root: &Path) -> EvalProvider {
@@ -57,7 +132,10 @@ async fn connect(root: &Path) -> EvalProvider {
 
 /// `specify init fixture` — scaffold the fixture-bound project through
 /// the real operation.
-async fn init(provider: &EvalProvider) {
+async fn init<M>(provider: &Provider<M>)
+where
+    M: Clone + Model + Send + Sync + 'static,
+{
     invoke::<project::init::handlers::Init, _, _>(
         provider,
         project::init::handlers::InitInput {
@@ -138,7 +216,10 @@ async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
 // --- finalize ---------------------------------------------------------------
 
 /// `specify plan archive` — close the drained change (`/spec:finalize`).
-async fn finalize(provider: &EvalProvider) {
+async fn finalize<M>(provider: &Provider<M>)
+where
+    M: Clone + Model + Send + Sync + 'static,
+{
     invoke::<plan::handlers::Archive, _, _>(
         provider,
         plan::handlers::ArchiveInput { force: false },

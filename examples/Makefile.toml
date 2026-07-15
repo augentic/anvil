@@ -11,7 +11,7 @@ rm -rf examples/change/workspace examples/change/cache examples/change/store
 
 [tasks.change-run]
 dependencies = ["change-clean", "change-build"]
-env_files = ["examples/.env"]
+env_files = [".env"]
 script = '''
 set -euo pipefail
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
