@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
 use change::plan::handlers::{
     Archive, ArchiveInput, Author, AuthorInput, Execute, ExecuteInput, Transition, TransitionInput,
 };
@@ -14,9 +13,9 @@ use clap::Subcommand;
 use omnia::Backend as _;
 use project::config::Layout;
 use project::init::handlers::{Init, InitInput};
-use testkit::adapter::build_artifact_path;
 use testkit::{Provider, Scripted, answers, run as invoke};
 
+use crate::grade;
 use crate::native::Native;
 use crate::telemetry::Telemetry;
 
@@ -103,7 +102,7 @@ async fn execute() {
         plan.entries
     );
 
-    grade(&root, &plan);
+    grade::run(&root, &plan);
     report(&provider.model().counts(), plan.entries.len());
 }
 
@@ -201,51 +200,6 @@ fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
         .any(|b| b.source == source && b.lead.as_deref().unwrap_or(entry.name.as_str()) == lead)
 }
 
-// Structural checks after execute, before finalize (plan.yaml still live).
-fn grade(root: &Path, plan: &Plan) {
-    let requirements = requirements(root);
-    grade_requirements(&requirements);
-    grade_outputs(root, plan);
-}
-
-fn grade_requirements(requirements: &[Requirement]) {
-    assert!(!requirements.is_empty(), "the baseline carries no requirements");
-    for requirement in requirements {
-        assert!(!requirement.id.is_empty(), "requirement `{}` carries no id", requirement.name);
-        if requirement.status != Some(RequirementStatus::Unknown) {
-            assert!(
-                !requirement.sources.is_empty(),
-                "evidenced requirement `{}` carries no provenance",
-                requirement.name
-            );
-        }
-    }
-    assert!(
-        requirements.iter().any(|requirement| matches!(
-            requirement.status,
-            Some(RequirementStatus::Divergence | RequirementStatus::Conflict)
-        )),
-        "the session-timeout disagreement must surface as a divergence or conflict: {requirements:?}"
-    );
-    assert!(
-        requirements
-            .iter()
-            .any(|requirement| requirement.status == Some(RequirementStatus::Unknown)),
-        "the password-reset gap must be marked unknown — the faithful answer records zero \
-         contributing claims for the unevidenced lead (an answer that anchors it to the bare \
-         `password-reset.mention` section claim projects `agreed` instead): {requirements:?}"
-    );
-}
-
-fn grade_outputs(root: &Path, plan: &Plan) {
-    for entry in &plan.entries {
-        let artifact = build_artifact_path(root, &entry.name);
-        let body = fs::read_to_string(&artifact)
-            .unwrap_or_else(|err| panic!("build output for `{}`: {err}", entry.name));
-        assert!(!body.trim().is_empty(), "empty build output for `{}`", entry.name);
-    }
-}
-
 // Per-leg request counts, reported (never asserted): requests beyond
 // one per leg invocation are repairs — the early signal that a prompt
 // or answer-schema change degraded the model's first answer.
@@ -272,16 +226,4 @@ fn report(counts: &BTreeMap<String, usize>, slices: usize) {
 
 fn read_plan(root: &Path) -> Plan {
     Plan::load(&Layout::new(root).plan_path()).expect("load plan.yaml")
-}
-
-fn requirements(root: &Path) -> Vec<Requirement> {
-    let mut requirements = Vec::new();
-    for domain in fs::read_dir(Layout::new(root).specs_dir()).expect("baseline specs dir") {
-        let spec = domain.expect("domain dir").path().join("spec.md");
-        if spec.is_file() {
-            let body = fs::read_to_string(&spec).expect("read baseline spec");
-            requirements.extend(parse_spec_md(&body).requirements);
-        }
-    }
-    requirements
 }

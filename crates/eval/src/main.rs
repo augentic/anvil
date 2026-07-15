@@ -11,6 +11,7 @@
 //!
 //! See [README.md](../README.md) for more details.
 
+mod grade;
 mod native;
 mod telemetry;
 mod trial;
