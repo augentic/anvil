@@ -13,7 +13,7 @@ use clap::Subcommand;
 use omnia::Backend as _;
 use project::config::Layout;
 use project::init::handlers::{Init, InitInput};
-use testkit::{Provider, Scripted, answers, run as invoke};
+use testkit::{Provider, Scripted, answers};
 
 use crate::grade;
 use crate::native::Native;
@@ -59,7 +59,8 @@ async fn init() {
     println!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
     let provider = Scripted::scripted_at(&root, Vec::new());
-    invoke::<Init, _, _>(
+
+    testkit::run::<Init, _, _>(
         &provider,
         InitInput {
             adapter: Some("fixture".to_string()),
@@ -76,8 +77,10 @@ async fn plan() {
     println!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
     let provider = connect(&root).await;
+
     author(&provider, &root).await;
     approve(&provider).await;
+
     let plan = read_plan(&root);
     report(&provider.model().counts(), plan.entries.len());
 }
@@ -89,7 +92,7 @@ async fn execute() {
     let provider = connect(&root).await;
 
     let executed =
-        invoke::<Execute, _, _>(&provider, ExecuteInput {}).await.expect("execute drains the plan");
+        testkit::run::<Execute, _, _>(&provider, ExecuteInput {}).await.expect("execute drains the plan");
     for phase in &executed.phases {
         eprintln!("executed {} {}", phase.step, phase.slice);
     }
@@ -111,7 +114,8 @@ async fn finalize() {
     println!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
     let provider = Scripted::scripted_at(&root, Vec::new());
-    invoke::<Archive, _, _>(&provider, ArchiveInput { force: false })
+    
+    testkit::run::<Archive, _, _>(&provider, ArchiveInput { force: false })
         .await
         .expect("finalize archives the drained plan");
 }
@@ -127,7 +131,7 @@ fn clean() {
 // catalog: every surveyed lead assigned, `login-flow` overlap merged
 // into one slice.
 async fn author(provider: &EvalProvider, root: &Path) {
-    invoke::<Author, _, _>(
+    testkit::run::<Author, _, _>(
         provider,
         AuthorInput {
             name: CHANGE.to_string(),
@@ -150,7 +154,7 @@ async fn author(provider: &EvalProvider, root: &Path) {
 
 // Gate 1: operator stamps `approved`.
 async fn approve(provider: &EvalProvider) {
-    invoke::<Transition, _, _>(
+    testkit::run::<Transition, _, _>(
         provider,
         TransitionInput {
             name: CHANGE.to_string(),
@@ -193,6 +197,10 @@ async fn connect(root: &Path) -> EvalProvider {
     Provider::new(root, Telemetry::new(Native::new(client, root)))
 }
 
+fn read_plan(root: &Path) -> Plan {
+    Plan::load(&Layout::new(root).plan_path()).expect("load plan.yaml")
+}
+
 fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
     entry
         .sources
@@ -200,9 +208,10 @@ fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
         .any(|b| b.source == source && b.lead.as_deref().unwrap_or(entry.name.as_str()) == lead)
 }
 
-// Per-leg request counts, reported (never asserted): requests beyond
-// one per leg invocation are repairs — the early signal that a prompt
-// or answer-schema change degraded the model's first answer.
+// Report per-leg request counts.
+//
+// Requests beyond one per leg invocation are repairs — the early signal that a
+// prompt, or answer-schema change degraded the model's first answer.
 fn report(counts: &BTreeMap<String, usize>, slices: usize) {
     for (leg, requests) in counts {
         // One propose invocation per trial, one synthesis invocation
@@ -222,8 +231,4 @@ fn report(counts: &BTreeMap<String, usize>, slices: usize) {
             other => eprintln!("leg {other}: {requests} request(s)"),
         }
     }
-}
-
-fn read_plan(root: &Path) -> Plan {
-    Plan::load(&Layout::new(root).plan_path()).expect("load plan.yaml")
 }
