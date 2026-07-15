@@ -55,55 +55,57 @@ pub async fn run() {
     fs::remove_dir_all(&root).expect("clean up the passing trial project");
 }
 
-/// Run one operation against the persistent `sandbox/eval` project.
-pub async fn run_phase(phase: Phase) {
-    if matches!(phase, Phase::Clean) {
-        let root = project_root();
-        if root.exists() {
-            fs::remove_dir_all(&root).expect("clean up the evaluation project");
+impl Phase {
+    /// Run one operation against the persistent `sandbox/eval` project.
+    pub async fn run(&self) {
+        if matches!(self, Phase::Clean) {
+            let root = project_root();
+            if root.exists() {
+                fs::remove_dir_all(&root).expect("clean up the evaluation project");
+            }
+            return;
         }
-        return;
-    }
 
-    let root = if matches!(phase, Phase::Init) {
-        replace_project()
-    } else {
-        let root = project_root();
-        assert!(
-            root.join(".specify/project.yaml").is_file(),
-            "evaluation project is not initialised; run `cargo make eval init` first"
-        );
-        root.canonicalize().expect("canonical evaluation project root")
-    };
-    eprintln!("prompt evaluation project: {}", root.display());
-    let _cache = testkit::env::scoped_cache(&root);
+        let root = if matches!(self, Phase::Init) {
+            replace_project()
+        } else {
+            let root = project_root();
+            assert!(
+                root.join(".specify/project.yaml").is_file(),
+                "evaluation project is not initialised; run `cargo make eval init` first"
+            );
+            root.canonicalize().expect("canonical evaluation project root")
+        };
+        eprintln!("prompt evaluation project: {}", root.display());
+        let _cache = testkit::env::scoped_cache(&root);
 
-    match phase {
-        Phase::Init => init(&Scripted::scripted_at(&root, Vec::new())).await,
-        Phase::Finalize => finalize(&Scripted::scripted_at(&root, Vec::new())).await,
-        Phase::Plan => {
-            let provider = connect(&root).await;
-            author_and_approve(&provider, &root).await;
-            report_legs(&provider, &read_plan(&root));
+        match *self {
+            Phase::Init => init(&Scripted::scripted_at(&root, Vec::new())).await,
+            Phase::Finalize => finalize(&Scripted::scripted_at(&root, Vec::new())).await,
+            Phase::Plan => {
+                let provider = connect(&root).await;
+                author_and_approve(&provider, &root).await;
+                report_legs(&provider, &read_plan(&root));
+            }
+            Phase::Execute => {
+                let provider = connect(&root).await;
+                let drained = execute(&provider, &root).await;
+                grade(&root, &drained);
+                report_legs(&provider, &drained);
+            }
+            Phase::Clean => unreachable!("clean returns before project preparation"),
         }
-        Phase::Execute => {
-            let provider = connect(&root).await;
-            let drained = execute(&provider, &root).await;
-            grade(&root, &drained);
-            report_legs(&provider, &drained);
-        }
-        Phase::Clean => unreachable!("clean returns before project preparation"),
     }
 }
 
-/// The shared project location — `sandbox/eval/` at the repository
-/// root — used by the full trial and the manual operations alike.
+// The shared project location — `sandbox/eval/` at the repository
+// root — used by the full trial and the manual operations alike.
 fn project_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval")
 }
 
-/// Replace any previous project at [`project_root`] with an empty
-/// tree. The project scaffold itself comes from the `Init` operation.
+// Replace any previous project at [`project_root`] with an empty
+// tree. The project scaffold itself comes from the `Init` operation.
 fn replace_project() -> PathBuf {
     let root = project_root();
     if root.exists() {
@@ -123,8 +125,8 @@ async fn connect(root: &Path) -> EvalProvider {
     Provider::new(root, Telemetry::new(Native::new(client, root)))
 }
 
-/// `specify init fixture` — scaffold the fixture-bound project through
-/// the real operation.
+// `specify init fixture` — scaffold the fixture-bound project through
+// the real operation.
 async fn init<M>(provider: &Provider<M>)
 where
     M: Clone + Model + Send + Sync + 'static,
@@ -143,10 +145,10 @@ where
 
 // --- plan -------------------------------------------------------------------
 
-/// `specify plan author` + Gate 1 `approved` stamp.
-///
-/// Live reconcile over the adversarial lead catalog: every surveyed lead
-/// assigned, `login-flow` overlap merged into one slice.
+// `specify plan author` + Gate 1 `approved` stamp.
+//
+// Live reconcile over the adversarial lead catalog: every surveyed lead
+// assigned, `login-flow` overlap merged into one slice.
 async fn author_and_approve(provider: &EvalProvider, root: &Path) {
     invoke::<plan::handlers::Author, _, _>(
         provider,
@@ -185,8 +187,8 @@ async fn author_and_approve(provider: &EvalProvider, root: &Path) {
 
 // --- execute ----------------------------------------------------------------
 
-/// `specify plan execute` — the production drained loop: refine →
-/// build → merge per entry until the plan is drained.
+// `specify plan execute` — the production drained loop: refine →
+// build → merge per entry until the plan is drained.
 async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
     let executed =
         invoke::<plan::handlers::Execute, _, _>(provider, plan::handlers::ExecuteInput {})
@@ -208,7 +210,7 @@ async fn execute(provider: &EvalProvider, root: &Path) -> change::Plan {
 
 // --- finalize ---------------------------------------------------------------
 
-/// `specify plan archive` — close the drained change (`/spec:finalize`).
+// `specify plan archive` — close the drained change (`/spec:finalize`).
 async fn finalize<M>(provider: &Provider<M>)
 where
     M: Clone + Model + Send + Sync + 'static,
@@ -223,7 +225,7 @@ where
 
 // --- grade ------------------------------------------------------------------
 
-/// Structural checks after execute, before finalize (plan.yaml still live).
+// Structural checks after execute, before finalize (plan.yaml still live).
 fn grade(root: &Path, plan: &change::Plan) {
     assert_baseline(root);
     assert_build_outputs(root, plan);
@@ -268,9 +270,9 @@ fn assert_build_outputs(root: &Path, plan: &change::Plan) {
     }
 }
 
-/// Per-leg request counts, reported (never asserted): requests beyond
-/// one per leg invocation are repairs — the early signal that a prompt
-/// or answer-schema change degraded the model's first answer.
+// Per-leg request counts, reported (never asserted): requests beyond
+// one per leg invocation are repairs — the early signal that a prompt
+// or answer-schema change degraded the model's first answer.
 fn report_legs(provider: &EvalProvider, plan: &change::Plan) {
     let slices = plan.entries.len();
     for (leg, requests) in provider.model().counts() {
