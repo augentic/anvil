@@ -79,15 +79,15 @@ user-login = "Darksonn"
 user-name = "Alice Ryhl"
 
 [[publisher.clap]]
-version = "4.6.1"
-when = "2026-04-15"
+version = "4.6.2"
+when = "2026-07-15"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.clap_builder]]
-version = "4.6.0"
-when = "2026-03-12"
+version = "4.6.2"
+when = "2026-07-15"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -365,15 +365,15 @@ user-login = "cfallin"
 user-name = "Chris Fallin"
 
 [[publisher.regex]]
-version = "1.13.0"
-when = "2026-07-09"
+version = "1.13.1"
+when = "2026-07-15"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.regex-automata]]
-version = "0.4.15"
-when = "2026-07-09"
+version = "0.4.16"
+when = "2026-07-15"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"
@@ -448,8 +448,8 @@ user-login = "mbrubeck"
 user-name = "Matt Brubeck"
 
 [[publisher.syn]]
-version = "2.0.118"
-when = "2026-06-16"
+version = "2.0.119"
+when = "2026-07-15"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -818,8 +818,8 @@ user-login = "kennykerr"
 user-name = "Kenny Kerr"
 
 [[publisher.winnow]]
-version = "1.0.3"
-when = "2026-05-14"
+version = "1.0.4"
+when = "2026-07-13"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -1523,17 +1523,6 @@ who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
 delta = "0.4.1 -> 0.5.0"
 notes = "Minor changes for a `no_std` upgrade but otherwise everything looks as expected."
-
-[[audits.bytecode-alliance.audits.http-body]]
-who = "Pat Hickey <phickey@fastly.com>"
-criteria = "safe-to-deploy"
-version = "1.0.0-rc.2"
-
-[[audits.bytecode-alliance.audits.http-body]]
-who = "Alex Crichton <alex@alexcrichton.com>"
-criteria = "safe-to-deploy"
-delta = "1.0.0-rc.2 -> 1.0.0"
-notes = "Only minor changes made for a stable release."
 
 [[audits.bytecode-alliance.audits.iana-time-zone-haiku]]
 who = "Dan Gohman <dev@sunfishcode.online>"
@@ -3148,12 +3137,6 @@ who = "Daira-Emma Hopwood <daira@jacaranda.org>"
 criteria = "safe-to-deploy"
 delta = "0.14.2 -> 0.14.5"
 notes = "I did not thoroughly check the safety argument for fold_impl, but it at least seems to be well documented."
-aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
-
-[[audits.zcash.audits.http-body]]
-who = "Jack Grigg <jack@electriccoin.co>"
-criteria = "safe-to-deploy"
-delta = "1.0.0 -> 1.0.1"
 aggregated-from = "https://raw.githubusercontent.com/zcash/librustzcash/main/supply-chain/audits.toml"
 
 [[audits.zcash.audits.num-conv]]
