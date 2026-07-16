@@ -38,7 +38,8 @@ pub type GradeHook = fn(&Path, &Plan, &ExecuteBody) -> Result<()>;
 /// no adapter dependencies.
 #[derive(Debug)]
 pub struct Profile {
-    /// The persistent sandbox project root (e.g. `sandbox/eval`).
+    /// The sandbox root: the trial project, and the parent of scenario
+    /// scratch trees (`sandbox/<adapter>/<name>/run-…`).
     pub sandbox: PathBuf,
     /// Optional seed tree copied into the fresh sandbox at init.
     pub seed: Option<PathBuf>,
@@ -99,7 +100,7 @@ pub async fn run<B: Binding>(profile: &Profile, argv: &[String]) -> Result<ExitC
         Some(Phase::Scenario { id }) => {
             let scenarios =
                 profile.scenarios.as_ref().context("this wrapper declares no prompt scenarios")?;
-            scenario::run::<B>(scenarios, id.as_deref()).await?;
+            scenario::run::<B>(scenarios, &profile.sandbox, id.as_deref()).await?;
         }
         None => {
             init::<B>(profile).await?;

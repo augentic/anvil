@@ -16,14 +16,11 @@ use crate::model::DevModel;
 use crate::provider::Provider;
 use crate::{env, fs as evalfs};
 
-/// The repository-specific scenario roots.
+/// The repository-specific committed scenarios root.
 #[derive(Debug, Clone)]
 pub struct Scenarios {
     /// The committed scenarios root (e.g. `eval/scenarios/`).
     pub dir: PathBuf,
-    /// The scratch base fresh run directories allocate under
-    /// (e.g. `sandbox/scenarios/`).
-    pub sandbox: PathBuf,
 }
 
 /// One scenario's machine-readable routing, from `scenario.toml`.
@@ -73,14 +70,16 @@ impl Operation {
 ///
 /// Returns an unknown or malformed scenario, seeding failures, a failing adapter
 /// report, and a missing `expect` artifact.
-pub async fn run<B: Binding>(scenarios: &Scenarios, id: Option<&str>) -> Result<()> {
+pub async fn run<B: Binding>(
+    scenarios: &Scenarios, sandbox: &Path, id: Option<&str>,
+) -> Result<()> {
     let Some(id) = id else {
         return list(scenarios);
     };
     let dir = scenarios.dir.join(id);
     let config = load::<B>(scenarios, &dir).with_context(|| format!("scenario `{id}`"))?;
 
-    let scratch = seed(scenarios, id, &dir)?;
+    let scratch = seed(sandbox, id, &dir)?;
     let _cache = env::scoped_cache(&scratch);
     println!(
         "eval scenario {id}: {} `{}` slice={} scratch={}",
@@ -313,8 +312,8 @@ fn read_dirs(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(dirs)
 }
 
-fn seed(scenarios: &Scenarios, id: &str, dir: &Path) -> Result<PathBuf> {
-    let base = scenarios.sandbox.join(id);
+fn seed(sandbox: &Path, id: &str, dir: &Path) -> Result<PathBuf> {
+    let base = sandbox.join(id);
     let scratch = allocate_run_dir(&base)?;
     let seed = dir.join("seed");
     if seed.is_dir() {

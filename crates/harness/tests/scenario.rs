@@ -77,7 +77,6 @@ mod config {
         fs::write(dir.join("scenario.toml"), body).expect("write scenario.toml");
         let scenarios = Scenarios {
             dir: tmp.path().to_path_buf(),
-            sandbox: tmp.path().join("sandbox"),
         };
         (tmp, scenarios, dir)
     }

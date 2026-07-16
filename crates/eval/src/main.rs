@@ -43,11 +43,14 @@ impl Binding for Fixtures {
 
 const CHANGE: &str = "auth";
 
+/// The sandbox root for the trial project.
+const SANDBOX: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../sandbox");
+
 // The adversarial two-source pair: a docs source and a code source,
 // both served by the fixture core under different adapter names.
 fn profile() -> Profile {
     Profile {
-        sandbox: Path::new(env!("CARGO_MANIFEST_DIR")).join("../../sandbox/eval"),
+        sandbox: SANDBOX.into(),
         seed: None,
         init: argv(&["init", "fixture", "--name", "eval"]),
         author: argv(&[
