@@ -12,7 +12,7 @@ impl Drop for CacheGuard {
     #[expect(unsafe_code, reason = "restore the cache-root env var pinned for the run")]
     fn drop(&mut self) {
         // SAFETY: the guard lives in single-purpose processes — one
-        // nextest test process, or one sequential `specify-dev eval`
+        // nextest test process, or one sequential `engine eval`
         // phase — so no other thread observes the env mutation for the
         // guard's lifetime.
         unsafe {

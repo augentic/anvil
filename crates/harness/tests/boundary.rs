@@ -1,7 +1,7 @@
 //! The harness stays adapter-agnostic: no dependency on any concrete
 //! adapter crate. This invariant is what keeps both wrappers
 //! declarative — the engine's eval crate instantiates the catalog with
-//! its testkit fixture, `specify-dev` (in `augentic/specify-adapters`)
+//! its testkit fixture, `engine` (in `augentic/specify-adapters`)
 //! with the first-party adapters.
 
 use std::fs;

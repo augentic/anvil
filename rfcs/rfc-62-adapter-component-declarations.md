@@ -1,6 +1,6 @@
 # RFC-62: Adapter operations traits and component exports
 
-> **Status: Accepted — implemented.** Depends: [RFC-61](rfc-61-adapter-sdk.md) · Owns: the per-axis adapter operations traits and the source and target export macros. The traits, export macros, and the shared native harness over them (`specify/crates/harness`, consumed by both the engine's `eval` wrapper and the adapters repository's `specify-dev`) are in place.
+> **Status: Accepted — implemented.** Depends: [RFC-61](rfc-61-adapter-sdk.md) · Owns: the per-axis adapter operations traits and the source and target export macros. The traits, export macros, and the shared native harness over them (`specify/crates/harness`, consumed by both the engine's `eval` wrapper and the adapters repository's `engine`) are in place.
 
 ## Abstract
 
@@ -205,7 +205,7 @@ The traits pay for themselves off `wasm32`:
 - **The eval catalog.** `linked!`'s helper macros (`source_leg!`, `guidance_leg!`, `build_leg!`, `merge_leg!`, `metadata_of!`) exist to compensate for the missing trait. With the trait, the catalog keeps its one-line-per-adapter table, but each entry becomes a typed constructor (`Entry::of::<Captures>()`) and each dispatch leg a compile-checked `A::survey(model, ctx)` call. The duck-typed `$krate::operations::$op` path convention disappears.
 - **The testkit fixture.** One native type may implement both operations traits — the one-axis rule constrains component *exports* and remains enforced where it lives, at the export macros. The fixture stops being the last hand-written copy of the shim glue.
 - **Conformance fixtures.** RFC-61's shared contract conformance fixtures become functions generic over the traits (`fn conformance<A: adapter::Source>()`), written once and instantiated per adapter.
-- **A shared eval core.** The engine and adapters eval harnesses used to keep a verbatim-mirror module in sync by hand. A harness generic over the operations traits serves both — realized as `specify/crates/harness`: the engine's `eval` wrapper instantiates it with the testkit fixture, the adapters repository's `specify-dev` with the real implementors.
+- **A shared eval core.** The engine and adapters eval harnesses used to keep a verbatim-mirror module in sync by hand. A harness generic over the operations traits serves both — realized as `specify/crates/harness`: the engine's `eval` wrapper instantiates it with the testkit fixture, the adapters repository's `engine` with the real implementors.
 
 
 

@@ -47,7 +47,7 @@ type MergeFn<M> = for<'a> fn(
 ///
 /// The single hook a wrapper implements to bind its concrete adapters
 /// into the shared harness (the engine's eval crate binds the testkit
-/// fixture; `specify-dev` binds the first-party adapters). Generic
+/// fixture; `engine` binds the first-party adapters). Generic
 /// over the model backend so one declaration serves every provider
 /// shape the trial, scenario, command, and HTTP entrypoints construct.
 pub trait Binding {

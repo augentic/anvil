@@ -11,7 +11,7 @@
 //! [`trial`] / [`scenario`] drivers over their wrapper-supplied
 //! [`trial::Profile`] — is generic over that catalog. The two wrappers
 //! (the engine's eval crate over the testkit fixture, the adapters
-//! repository's `specify-dev` over the first-party adapters) stay
+//! repository's `engine` over the first-party adapters) stay
 //! declarative bindings.
 
 pub mod catalog;
