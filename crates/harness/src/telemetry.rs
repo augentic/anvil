@@ -49,3 +49,29 @@ impl<M: Model> Model for Telemetry<M> {
         self.inner.create(request).await
     }
 }
+
+/// Report per-leg request counts after a trial run.
+///
+/// Requests beyond one per leg invocation are repairs — the early
+/// signal that a prompt or answer-schema change degraded the model's
+/// first answer. The engine legs carry an invocation baseline (one
+/// propose per trial, one synthesis per plan entry); adapter legs are
+/// reported raw — their invocation counts depend on the authored plan.
+pub fn report(counts: &BTreeMap<String, usize>, slices: usize) {
+    for (leg, requests) in counts {
+        match leg.as_str() {
+            "proposal" => {
+                let repairs = requests.saturating_sub(1);
+                eprintln!("leg proposal: {requests} request(s), {repairs} repair(s)");
+            }
+            "synthesis" => {
+                let repairs = requests.saturating_sub(slices);
+                eprintln!(
+                    "leg synthesis: {requests} request(s) over {slices} slice(s), \
+                     {repairs} repair(s)"
+                );
+            }
+            other => eprintln!("leg {other}: {requests} request(s)"),
+        }
+    }
+}

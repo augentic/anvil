@@ -12,11 +12,6 @@
 //! id fills `Request.model` only when the caller left it `None`, so a
 //! guest-supplied id always wins. Read once at construction; unset or
 //! blank means no override.
-//!
-//! This module mirrors the adapters harness's `eval/src/model.rs` in
-//! `augentic/specify-adapters` — with [`crate::native`] and
-//! [`crate::telemetry`], part of the shared eval-core seam. Keep them
-//! in sync.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

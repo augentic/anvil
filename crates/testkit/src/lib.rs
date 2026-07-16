@@ -6,6 +6,9 @@
 //!
 //! - [`adapter`] — the deterministic fixture adapter core (both WIT
 //!   axes) shared by the native provider and the WASM adapter guest.
+//! - [`fixture`] — the canonical SDK operations-trait implementors
+//!   (`adapter::Source` / `adapter::Target`) over the same core, for
+//!   catalog-linked harness runs and the WASM guest's dispatch.
 //! - `wit` (`wasm32` only) — the `adapter`-world export bindings plus
 //!   the seam mappings the examples guest shims over.
 //! - [`provider`] — the unified capability provider (`Anchor + Model +
@@ -21,6 +24,7 @@
 //! it); only the host-only test-support modules below stay gated.
 
 pub mod adapter;
+pub mod fixture;
 
 #[cfg(target_arch = "wasm32")]
 pub mod wit;
@@ -34,9 +38,13 @@ pub mod env;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod fs;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod model;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod plan;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod provider;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use model::{Harness, mcp_grants};
 #[cfg(not(target_arch = "wasm32"))]
 pub use provider::{Provider, Scripted, report_rule_ids, resolver, run};

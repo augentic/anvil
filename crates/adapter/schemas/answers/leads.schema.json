@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "Lead": {
+      "description": "One lead surfaced by a survey.\n\nThe shape is the discovery lead minus the envelope `source` key,\nwhich the orchestrator stamps. Doubles as the item shape of the\ngenerated `survey` judgment-answer schema.",
+      "properties": {
+        "lead": {
+          "description": "Stable kebab-case lead identifier, unique only within its\nsource; identity is the `(source, lead)` pair.",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "synopsis": {
+          "description": "Headline used for cross-source reconciliation.",
+          "type": "string"
+        },
+        "topics": {
+          "description": "Agent-authored per-lead topic slugs (kebab-case). Empty means\nunclassified.",
+          "items": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "lead",
+        "synopsis"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/augentic/specify/answers/leads.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source). Lead ids and topic slugs carry the kebab-case grammar in-schema and are re-checked deterministically after the gate, alongside the trim-aware synopsis check the schema cannot express.",
+  "properties": {
+    "leads": {
+      "description": "Every lead the survey surfaced, in source order.",
+      "items": {
+        "$ref": "#/$defs/Lead"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "leads"
+  ],
+  "title": "Specify survey answer",
+  "type": "object"
+}

@@ -3,6 +3,22 @@
 version = 4
 
 [[package]]
+name = "adapter"
+version = "0.27.2"
+dependencies = [
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "testkit",
+ "thiserror 2.0.18",
+ "tokio",
+ "wasip3",
+ "wit-bindgen 0.59.0",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -210,6 +226,8 @@ dependencies = [
  "http",
  "http-body",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "itoa",
  "matchit",
  "memchr",
@@ -221,9 +239,11 @@ dependencies = [
  "serde_path_to_error",
  "serde_urlencoded",
  "sync_wrapper",
+ "tokio",
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -242,6 +262,7 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -1142,11 +1163,8 @@ dependencies = [
  "anyhow",
  "artifacts",
  "change",
- "clap",
- "omnia",
- "omnia-cursor",
+ "harness",
  "omnia-guest",
- "omnia-wasi-model",
  "project",
  "testkit",
  "tokio",
@@ -1463,6 +1481,32 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "harness"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "anyhow",
+ "artifacts",
+ "axum",
+ "change",
+ "clap",
+ "diagnostics",
+ "error",
+ "omnia",
+ "omnia-cursor",
+ "omnia-guest",
+ "omnia-testkit",
+ "omnia-wasi-model",
+ "project",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+ "transport",
 ]
 
 [[package]]
@@ -3858,6 +3902,7 @@ dependencies = [
 name = "specify"
 version = "0.27.2"
 dependencies = [
+ "adapter",
  "anyhow",
  "artifacts",
  "cfg-if",
@@ -4020,6 +4065,7 @@ dependencies = [
 name = "testkit"
 version = "0.27.2"
 dependencies = [
+ "adapter",
  "artifacts",
  "change",
  "diagnostics",
@@ -4343,6 +4389,7 @@ version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",

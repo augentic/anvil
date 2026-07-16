@@ -172,14 +172,16 @@ The workspace is leaf → root. `error` is the dependency leaf and depends on no
 error                    # leaf — thiserror + serde-saphyr only
 diagnostics              # dependency-light leaf (the neutral Diagnostic substrate: report, fingerprint, blocking — plus diagnostics::digest, SHA-256 hex via sha2 + base16ct, and diagnostics::cache)
 artifacts                # depends on {error,diagnostics} (artifact types + parsers: spec, task, evidence, discovery; shared atomic writer; artifacts::validate artifact rule registry — NOT on the workflow crates or anything named lint)
+adapter                  # the adapter SDK (leaf over omnia-guest, no workspace-crate deps) — the per-axis operations traits (adapter::Source / adapter::Target), the WIT package and the source!/target! wasm export macros, seam DTOs, judgment/answer scaffolding, and the embedded prose registry; implemented by testkit's fixture here and by the first-party adapters in augentic/specify-adapters
 project                  # foundation — depends on {error,diagnostics,artifacts,omnia-guest}: init (+ project::agents — init-time AGENTS.md context-fence generation), adapter resolution, config/Layout, journal, registry, the plan data model (Plan/Entry/Status/Lifecycle + transitions, doctor, the propose kernel), the slice data model (metadata/lifecycle/outcome), the seam capability traits + build wire DTOs (project::seam), the judgment kernel (repaired, MAX_REPAIRS), and the shared handler plumbing (project::handler: Anchor, Ctx, Render, ReportBody, the operation-layer Error); operation families in handlers submodules: journal::handlers, registry::handlers, adapter::handlers, init::handlers
 slice                    # the slice loop — depends on project: refine/build/merge orchestration (slice::orchestrate incl. the extract half of the source axis), synthesis + the synthesize judgment leg, validation, provenance, the delta-merge engine, slice::handlers (the specify slice operations) + slice::source (source extract), and its own prompts/ corpus (synthesize.md + synthesis/*)
 change                   # the change loop — depends on {project,slice}: plan author/execute orchestration (change::orchestrate incl. the survey half of the source axis and workspace routing), the propose judgment leg, change::plan::handlers (the specify plan operations) + change::source (source survey), and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
-testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes), the wasm32-only `wit` export bindings the examples guest shims over, the unified capability Provider (Scripted), scripted answers, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples guest, and depended on by the eval harness
+harness                  # native eval-harness core (publish = false) — the linked-adapter Catalog over the SDK operations traits, the native seam Provider, the DevModel cursor bridge, telemetry, MCP reference shelves, and the generic trial/scenario/command/HTTP plumbing behind one catalog::Binding hook; depends on {adapter,transport,…} and never on a concrete adapter — both wrappers (crates/eval here, specify-dev in augentic/specify-adapters) are declarative bindings over it
+testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes) plus its canonical SDK operations-trait implementors (testkit::fixture), the wasm32-only `wit` export bindings the examples guest shims over, the unified capability Provider (Scripted), scripted answers, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples guest, and depended on by the eval harness
 checks                   # dev-only repo invariants (publish = false) — boundaries, links, authoring as plain cargo tests
-eval                     # live-model prompt-evaluation harness (publish = false, native-only bin) — the operator-invoked engine trial over testkit's fixture plumbing with a live cursor-agent model
+eval                     # live-model prompt-evaluation wrapper (publish = false, native-only bin) — a declarative binding over harness: the testkit fixture catalog plus the engine trial profile and its deterministic assertions, run with a live cursor-agent model
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime + the examples/change cargo example (the fixture adapter guest over testkit's wit bindings)
 ```
 
@@ -212,12 +214,14 @@ src/runtime.rs           shipped binary — omnia::runtime! command mode over cu
 src/lib.rs               wasm32 core guest — the wasi:cli/run + wasi:http/incoming-handler exports over transport's routers (mod provider;)
 src/provider.rs          WIT-backed Provider (Anchor + Model + Source + Target over the world's imports)
 crates/transport/         shared command/HTTP routing, clap grammar, conversions, projectors, and exit contract
+crates/adapter/          the adapter SDK — per-axis operations traits, WIT package + wasm export macros, seam DTOs, embedded prose registry
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
 crates/testkit/          dev-only test-support crate — fixture adapter core, unified Provider, scripted answers
 crates/checks/           lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
-crates/eval/             live-model prompt-evaluation harness (native-only bin; cargo make eval)
+crates/harness/          native eval-harness core — linked-adapter catalog, seam provider, model bridge, trial/scenario/command/HTTP plumbing
+crates/eval/             live-model prompt-evaluation wrapper (native-only bin; cargo make eval) — the fixture binding over crates/harness
 examples/                the change example: a root-crate cargo example (the fixture adapter guest) plus its omnia.toml deployment and runner tasks
 ```
 

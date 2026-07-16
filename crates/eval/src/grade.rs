@@ -3,37 +3,45 @@
 use std::fs;
 use std::path::Path;
 
+use anyhow::{Context as _, Result, ensure};
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
 use change::Plan;
+use change::plan::handlers::ExecuteBody;
 use project::config::Layout;
 use testkit::adapter::build_artifact_path;
 
 /// Grade the drained plan against the adversarial fixture contract.
-pub fn run(root: &Path, plan: &Plan) {
-    requirements(&baseline(root));
-    outputs(root, plan);
+///
+/// # Errors
+///
+/// Returns one failing assertion at a time, with the evidence inline.
+pub fn run(root: &Path, plan: &Plan, _executed: &ExecuteBody) -> Result<()> {
+    requirements(&baseline(root)?)?;
+    outputs(root, plan)?;
+    Ok(())
 }
 
-fn requirements(requirements: &[Requirement]) {
-    assert!(!requirements.is_empty(), "the baseline carries no requirements");
+fn requirements(requirements: &[Requirement]) -> Result<()> {
+    ensure!(!requirements.is_empty(), "the baseline carries no requirements");
     for requirement in requirements {
-        assert!(!requirement.id.is_empty(), "requirement `{}` carries no id", requirement.name);
+        ensure!(!requirement.id.is_empty(), "requirement `{}` carries no id", requirement.name);
         if requirement.status != Some(RequirementStatus::Unknown) {
-            assert!(
+            ensure!(
                 !requirement.sources.is_empty(),
                 "evidenced requirement `{}` carries no provenance",
                 requirement.name
             );
         }
     }
-    assert!(
+    ensure!(
         requirements.iter().any(|requirement| matches!(
             requirement.status,
             Some(RequirementStatus::Divergence | RequirementStatus::Conflict)
         )),
-        "the session-timeout disagreement must surface as a divergence or conflict: {requirements:?}"
+        "the session-timeout disagreement must surface as a divergence or conflict: \
+         {requirements:?}"
     );
-    assert!(
+    ensure!(
         requirements
             .iter()
             .any(|requirement| requirement.status == Some(RequirementStatus::Unknown)),
@@ -41,25 +49,30 @@ fn requirements(requirements: &[Requirement]) {
          contributing claims for the unevidenced lead (an answer that anchors it to the bare \
          `password-reset.mention` section claim projects `agreed` instead): {requirements:?}"
     );
+    Ok(())
 }
 
-fn outputs(root: &Path, plan: &Plan) {
+fn outputs(root: &Path, plan: &Plan) -> Result<()> {
     for entry in &plan.entries {
         let artifact = build_artifact_path(root, &entry.name);
         let body = fs::read_to_string(&artifact)
-            .unwrap_or_else(|err| panic!("build output for `{}`: {err}", entry.name));
-        assert!(!body.trim().is_empty(), "empty build output for `{}`", entry.name);
+            .with_context(|| format!("build output for `{}`", entry.name))?;
+        ensure!(!body.trim().is_empty(), "empty build output for `{}`", entry.name);
     }
+    Ok(())
 }
 
-fn baseline(root: &Path) -> Vec<Requirement> {
+fn baseline(root: &Path) -> Result<Vec<Requirement>> {
     let mut requirements = Vec::new();
-    for domain in fs::read_dir(Layout::new(root).specs_dir()).expect("baseline specs dir") {
-        let spec = domain.expect("domain dir").path().join("spec.md");
+    let specs = Layout::new(root).specs_dir();
+    for domain in fs::read_dir(&specs)
+        .with_context(|| format!("reading the baseline specs dir {}", specs.display()))?
+    {
+        let spec = domain.context("domain dir")?.path().join("spec.md");
         if spec.is_file() {
-            let body = fs::read_to_string(&spec).expect("read baseline spec");
+            let body = fs::read_to_string(&spec).context("reading a baseline spec")?;
             requirements.extend(parse_spec_md(&body).requirements);
         }
     }
-    requirements
+    Ok(requirements)
 }

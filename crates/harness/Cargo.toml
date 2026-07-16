@@ -1,0 +1,47 @@
+# The reusable native eval-harness core: the linked-adapter catalog
+# machinery over the per-axis operations traits, the native seam
+# provider, the guest-side model bridge, telemetry, MCP shelves, and the
+# generic trial / scenario / command / HTTP application plumbing.
+# Carries no dependency on any concrete adapter crate — the invariant
+# that lets both wrappers stay declarative bindings (the engine's eval
+# crate instantiates the catalog with the testkit fixture; the adapters
+# repository's `specify-dev` instantiates it with the first-party
+# adapters).
+[package]
+name = "harness"
+description = "Reusable native eval harness core: adapter catalog, seam provider, model bridge, and trial plumbing"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+# Native-only: the cursor backend and host-side model wiring never
+# build for wasm32.
+[dependencies]
+adapter.workspace = true
+anyhow.workspace = true
+artifacts.workspace = true
+axum.workspace = true
+change.workspace = true
+clap.workspace = true
+diagnostics.workspace = true
+error.workspace = true
+omnia.workspace = true
+omnia-cursor.workspace = true
+omnia-guest.workspace = true
+omnia-wasi-model.workspace = true
+project.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread", "sync"] }
+toml.workspace = true
+transport.workspace = true
+
+[dev-dependencies]
+omnia-testkit.workspace = true
+tempfile.workspace = true
