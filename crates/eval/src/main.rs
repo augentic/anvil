@@ -1,19 +1,6 @@
-//! # Prompt-evaluation harness
-//!
-//! A live-model trial that drives the Specify engine the same way an operator does.
-//!
-//! ```text
-//! init        scaffold the fixture-bound project
-//! plan        author the change, stamp Gate 1 (`approved`)
-//! execute     drain the loop: refine → build → merge per slice
-//! finalize    archive the drained plan
-//! ```
-//!
-//! The crate is a declarative binding over the shared harness: it
-//! links the testkit fixture catalog and supplies the adversarial
-//! trial profile plus deterministic fixture assertions; phase
-//! sequencing, provider construction, sandbox lifecycle, and telemetry
-//! reporting live in `harness`. See [README.md](../README.md).
+//! `eval` — live-model trial over the fixture catalog: the shared
+//! harness entrypoint with the adversarial trial profile and
+//! deterministic fixture grading.
 
 mod grade;
 
@@ -22,29 +9,23 @@ use std::process::ExitCode;
 
 use anyhow::{Result, ensure};
 use change::{Entry, Plan};
-use harness::catalog::{Binding, Catalog};
+use eval::{Fixtures, SANDBOX};
 use harness::trial::{self, Profile};
-use omnia_guest::Model;
-use testkit::fixture::{Fixture, FixtureCode, FixtureDocs};
-
-/// The Specify-owned fixture adapters linked into the engine trial.
-struct Fixtures;
-
-impl Binding for Fixtures {
-    fn catalog<M: Model>() -> Catalog<M> {
-        Catalog::builder()
-            .source::<Fixture>()
-            .source::<FixtureDocs>()
-            .source::<FixtureCode>()
-            .target::<Fixture>()
-            .build()
-    }
-}
 
 const CHANGE: &str = "auth";
 
-/// The sandbox root for the trial project.
-const SANDBOX: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../sandbox");
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
+async fn main() -> ExitCode {
+    let argv: Vec<String> = std::env::args().collect();
+    report(trial::run::<Fixtures>(&profile(), &argv).await)
+}
+
+fn report(outcome: Result<ExitCode>) -> ExitCode {
+    outcome.unwrap_or_else(|err| {
+        eprintln!("eval: {err:#}");
+        ExitCode::FAILURE
+    })
+}
 
 // The adversarial two-source pair: a docs source and a code source,
 // both served by the fixture core under different adapter names.
@@ -92,16 +73,4 @@ fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
 
 fn argv(parts: &[&str]) -> Vec<String> {
     parts.iter().map(ToString::to_string).collect()
-}
-
-#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
-async fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().collect();
-    match trial::run::<Fixtures>(&profile(), &args).await {
-        Ok(code) => code,
-        Err(err) => {
-            eprintln!("eval: {err:#}");
-            ExitCode::FAILURE
-        }
-    }
 }

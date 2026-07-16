@@ -181,7 +181,7 @@ prose                    # build-dependency crate — embed-time prompt-corpus w
 harness                  # native eval-harness core (publish = false) — the linked-adapter Catalog over the SDK operations traits, the native seam Provider, the DevModel cursor bridge, telemetry, MCP reference shelves, and the generic trial/scenario/command/HTTP plumbing behind one catalog::Binding hook; depends on {adapter,transport,…} and never on a concrete adapter — both wrappers (crates/eval here, engine in augentic/specify-adapters) are declarative bindings over it
 testkit                  # dev-only test-support crate (publish = false) — the fixture adapter core (both WIT axes) plus its canonical SDK operations-trait implementors (testkit::fixture), the wasm32-only `wit` export bindings the examples guest shims over, the unified capability Provider (Scripted), scripted answers, MockCmd, fs/git helpers, env guards, plan builders; dev-dep'd (legally cyclically) by project/slice/change/transport suites and the examples guest, and depended on by the eval harness
 checks                   # dev-only repo invariants (publish = false) — boundaries, links, authoring as plain cargo tests
-eval                     # live-model prompt-evaluation wrapper (publish = false, native-only bin) — a declarative binding over harness: the testkit fixture catalog plus the engine trial profile and its deterministic assertions, run with a live cursor-agent model
+eval                     # live-model prompt-evaluation wrapper (publish = false, native-only) — a declarative binding over harness: the testkit fixture catalog plus the engine trial profile and its deterministic assertions, run with a live cursor-agent model
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime + the examples/change cargo example (the fixture adapter guest over testkit's wit bindings)
 ```
 
@@ -221,7 +221,7 @@ crates/change/           the change loop — plan author/execute orchestration, 
 crates/testkit/          dev-only test-support crate — fixture adapter core, unified Provider, scripted answers
 crates/checks/           lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
 crates/harness/          native eval-harness core — linked-adapter catalog, seam provider, model bridge, trial/scenario/command/HTTP plumbing
-crates/eval/             live-model prompt-evaluation wrapper (native-only bin; cargo make eval) — the fixture binding over crates/harness
+crates/eval/             live-model prompt-evaluation wrapper (native-only; cargo make eval) — the fixture binding over crates/harness
 examples/                the change example: a root-crate cargo example (the fixture adapter guest) plus its omnia.toml deployment and runner tasks
 ```
 
