@@ -1,7 +1,7 @@
 //! Embedded prose vocabulary and lookup helpers.
 //!
 //! Each adapter's `build.rs` emits a sorted `DOCS` table; the adapter's
-//! `registry` module includes it via [`registry!`].
+//! `registry` module includes it via [`crate::registry!`].
 
 /// One embedded reference document.
 #[derive(Clone, Copy, Debug)]
