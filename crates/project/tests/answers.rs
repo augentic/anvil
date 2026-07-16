@@ -37,3 +37,57 @@ fn report_golden() {
 fn proposal_golden() {
     assert_golden("proposal.schema.json", &project::answers::proposal());
 }
+
+/// The semantic constraints patched onto the generated shapes: kebab
+/// grammars on lead ids and topic slugs, the dotted-kebab claim-id
+/// grammar, and the conditional id requirement on `requirement` /
+/// `criterion` / `example` claims.
+mod patched_constraints {
+    use serde_json::Value;
+
+    const KEBAB: &str = "^[a-z0-9]+(-[a-z0-9]+)*$";
+    const DOTTED_KEBAB: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
+
+    fn pattern_at(schema: &Value, pointer: &str) -> String {
+        schema
+            .pointer(pointer)
+            .and_then(|property| property.get("pattern"))
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| panic!("pattern at {pointer}"))
+            .to_string()
+    }
+
+    #[test]
+    fn lead_id_kebab() {
+        let schema = project::answers::leads();
+        assert_eq!(pattern_at(&schema, "/$defs/Lead/properties/lead"), KEBAB);
+    }
+
+    #[test]
+    fn topic_slug_kebab() {
+        let schema = project::answers::leads();
+        assert_eq!(pattern_at(&schema, "/$defs/Lead/properties/topics/items"), KEBAB);
+    }
+
+    #[test]
+    fn claim_id_dotted_kebab() {
+        let schema = project::answers::evidence();
+        assert_eq!(pattern_at(&schema, "/$defs/Claim/properties/id"), DOTTED_KEBAB);
+    }
+
+    #[test]
+    fn claim_id_conditionally_required() {
+        let schema = project::answers::evidence();
+        let condition = schema.pointer("/$defs/Claim/if").expect("if clause on Claim");
+        assert_eq!(
+            condition.pointer("/properties/kind/enum").expect("kind enum"),
+            &serde_json::json!(["requirement", "criterion", "example"])
+        );
+        let consequence = schema.pointer("/$defs/Claim/then").expect("then clause on Claim");
+        assert_eq!(consequence.get("required").expect("required"), &serde_json::json!(["id"]));
+        assert_eq!(
+            consequence.pointer("/properties/id/type").expect("id type"),
+            &serde_json::json!("string")
+        );
+    }
+}

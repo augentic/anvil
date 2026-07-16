@@ -38,7 +38,7 @@ pub const MAX_REPAIRS: usize = 2;
 ///
 /// The mapped model failure or the last tail failure once the repair
 /// budget is exhausted.
-pub async fn schema_gated<P, T, F>(
+pub async fn repaired<P, T, F>(
     model: &P, system: &str, user: String, schema_name: &str, schema: &str, mut tail: F,
 ) -> Result<T, Error>
 where
@@ -47,6 +47,7 @@ where
 {
     let mut prompt = user.clone();
     let mut attempt = 0;
+
     loop {
         let reply = create(model, system, prompt, schema_name, schema).await?;
         match tail(&reply.answer) {

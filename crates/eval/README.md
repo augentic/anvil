@@ -1,13 +1,13 @@
 # Prompt evaluation
 
-A live-model harness for use in testing specify core prompts used when model judgement is required. For example, in lead reconciliation or slice synthesis. Outputs are graded by deterministic validators — not a model.
+A live-model harness for use in testing specify core prompts used in core model judgement steps. Outputs are graded by deterministic validators — not a model.
 
 ## Quick start
 
 Login to the Cursor agent:
 
 ```bash
-cursor-agent login
+[cursor-]agent login
 ```
 
 or set `CURSOR_API_KEY` in `.env` at the repository root.
@@ -16,9 +16,9 @@ or set `CURSOR_API_KEY` in `.env` at the repository root.
 make eval
 ```
 
-This will run the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it — inspect it in place, or re-drive individual operations with the manual workflow below.
+This runs the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
-## Manual workflow
+### Manual workflow
 
 Run one operation at a time to inspect its artifacts:
 
@@ -29,11 +29,28 @@ make eval execute
 make eval finalize
 ```
 
-Manual operations share `sandbox/eval/`. While `make eval init` will reinitialize a project, a project can be removed with:
+While `make eval init` will reinitialize a project, a project can also be removed using:
 
 ```bash
 make eval clean
 ```
+
+
+
+## Model judgment
+
+Specify core has two steps that require a model's judgement.
+
+
+| Schema      | Step       | Crate    | Purpose                                                                                                                                     |
+| ----------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proposal`  | Propose    | `change` | Reconcile *surveyed* leads across sources into plan slices and author the Gate 1 prose.                                                     |
+| `synthesis` | Synthesize | `slice`  | Reconcile *extracted* evidence with baseline context and target guidance, to produce build artifacts such as `proposal.md`, `spec.md`, etc. |
+
+
+The execution and repair loop lives in the `project` crate and are considered infrastructure, not judgment. Source `survey` / `extract` and target `guidance` / `build` / `merge` are adapter operations.
+
+The `plan` evaluation isolates the proposal leg. The `execute` evaluation runs synthesis as part of the complete `refine → build → merge` loop. The synthesis artifacts are fields of one model response, so the harness does not invoke `spec.md` or `design.md` generation as independent judgment legs.
 
 ## Workflow
 
@@ -48,7 +65,7 @@ finalize    specify plan archive
 
 Every step runs the production operation — `execute` is the real drained loop, not a hand-driven breakout sequence. Completed phases are echoed as the loop runs.
 
-## Grading contract
+## Grading
 
 Hard assertions only:
 

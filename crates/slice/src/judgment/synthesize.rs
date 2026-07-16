@@ -14,7 +14,7 @@ use artifacts::evidence::{AuthorityClass, ClaimKind};
 use error::Error;
 use omnia_guest::Model;
 
-use super::{prose, schema_gated};
+use super::{prose, repaired};
 use crate::{
     BaselineIndex, ProjectionHeader, SliceModel, SynthesisInputs, SynthesisResponse, project,
 };
@@ -63,7 +63,7 @@ pub async fn synthesize<P: Model>(
         "## Synthesis inputs\n\n```json\n{}\n```",
         super::render_json(inputs, "synthesis inputs")?
     );
-    schema_gated(model, &system, user, "synthesis", &schema, |answer| {
+    repaired(model, &system, user, "synthesis", &schema, |answer| {
         let response: SynthesisResponse = serde_saphyr::from_str(answer).map_err(|err| {
             Error::validation_failed(
                 "slice-synthesize-response-parse",
