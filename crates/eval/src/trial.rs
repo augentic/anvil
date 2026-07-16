@@ -10,17 +10,17 @@ use change::plan::handlers::{
 };
 use change::{Entry, Plan, Status};
 use clap::Subcommand;
-use omnia::Backend as _;
 use project::config::Layout;
 use project::init::handlers::{Init, InitInput};
 use testkit::{Provider, Scripted, answers};
 
 use crate::grade;
-use crate::native::Native;
+use crate::model::DevModel;
 use crate::telemetry::Telemetry;
 
-// The live model: cursor-agent behind the harness-local [`Native`]
-type EvalProvider = Provider<Telemetry<Native<omnia_cursor::Client>>>;
+// The live model: cursor backend behind the request tally — 
+// deterministic steps never demand cursor-agent.
+type EvalProvider = Provider<Telemetry<DevModel>>;
 
 const CHANGE: &str = "auth";
 
@@ -76,7 +76,7 @@ async fn plan() {
     let root = require();
     println!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
-    let provider = connect(&root).await;
+    let provider = live(&root);
 
     author(&provider, &root).await;
     approve(&provider).await;
@@ -89,7 +89,7 @@ async fn execute() {
     let root = require();
     println!("prompt evaluation project: {}", root.display());
     let _cache = testkit::env::scoped_cache(&root);
-    let provider = connect(&root).await;
+    let provider = live(&root);
 
     let executed = testkit::run::<Execute, _, _>(&provider, ExecuteInput {})
         .await
@@ -190,12 +190,10 @@ fn require() -> PathBuf {
     root.canonicalize().expect("canonical project root")
 }
 
-async fn connect(root: &Path) -> EvalProvider {
-    let client = omnia_cursor::Client::connect().await.expect(
-        "cursor-agent unavailable: install cursor-agent, then `cursor-agent login` or \
-         export CURSOR_API_KEY",
-    );
-    Provider::new(root, Telemetry::new(Native::new(client, root)))
+// The live provider: cursor-agent connects lazily on the first
+// judgment leg (`DevModel`), so building the provider is free.
+fn live(root: &Path) -> EvalProvider {
+    Provider::new(root, Telemetry::new(DevModel::new(root)))
 }
 
 fn read_plan(root: &Path) -> Plan {

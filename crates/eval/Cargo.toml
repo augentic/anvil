@@ -26,4 +26,4 @@ omnia-guest.workspace = true
 omnia-wasi-model.workspace = true
 project.workspace = true
 testkit.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }

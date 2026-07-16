@@ -18,6 +18,8 @@ make eval
 
 This runs the entire workflow in `sandbox/eval/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
+`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the driver fills `Request.model` only when the guest left it `None`, so a guest-supplied id always wins; unset or blank means the cursor backend's default. The cursor connection is lazy — it happens on the first judgment leg, so deterministic phases never require `cursor-agent` on `PATH`. This model stack (`native.rs`, `telemetry.rs`, `model.rs`) mirrors the adapters harness's `eval/` in `augentic/specify-adapters`; the mirrored modules are the seam a future shared `eval-support` crate would own.
+
 ### Manual workflow
 
 Run one operation at a time to inspect its artifacts:
