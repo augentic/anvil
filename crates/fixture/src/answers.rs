@@ -1,63 +1,13 @@
-//! Scripted judgment answers and source bindings shared by the
-//! fixture-provider suites.
+//! The scripted judgment-answer corpus over the fixture data sets.
 //!
 //! Two fixture data sets exist: the minimal single-lead `greeting`
 //! profile (full loop, seam failures, repair loop) and the adversarial
 //! `docs` / `code` pair (reconciliation, synthesis). Keeping one copy
 //! of each answer here stops the suites drifting apart on envelope
-//! shape.
+//! shape. Source-binding builders live with the `change` suites — the
+//! corpus itself is plain JSON and depends on no workflow crate.
 
-use change::plan::wire::SourceAssign;
 use serde_json::json;
-
-/// The single `main` binding onto the minimal fixture source.
-///
-/// # Panics
-///
-/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn greeting_binding() -> Vec<SourceAssign> {
-    let main: SourceAssign = serde_json::from_value(
-        json!({ "key": "main", "adapter": "fixture", "value": "The greeting service." }),
-    )
-    .expect("fixture binding parses");
-    vec![main]
-}
-
-/// The single `main` binding onto the named fixture source adapter
-/// (for the typed-failure profiles).
-///
-/// # Panics
-///
-/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn greeting_binding_for(adapter: &str) -> Vec<SourceAssign> {
-    let main: SourceAssign = serde_json::from_value(
-        json!({ "key": "main", "adapter": adapter, "value": "The greeting service." }),
-    )
-    .expect("fixture binding parses");
-    vec![main]
-}
-
-/// The adversarial two-source pair: a docs source and a code source,
-/// both served by the fixture core under different adapter names.
-///
-/// # Panics
-///
-/// Panics when a binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn adversarial_bindings() -> Vec<SourceAssign> {
-    ["docs", "code"]
-        .map(|key| {
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": format!("fixture-{key}"),
-                "value": format!("The {key} source."),
-            }))
-            .expect("fixture binding parses")
-        })
-        .to_vec()
-}
 
 /// The reconciliation grouping for the minimal profile: one lead, one
 /// slice.

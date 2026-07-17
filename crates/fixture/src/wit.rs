@@ -6,9 +6,9 @@
 //! seam DTOs ([`adapter::seam`]). The combined `adapter` world stays
 //! Specify-owned — the SDK's `source!` / `target!` macros export one
 //! axis each — so the fixture guest implements the axis `Guest` traits
-//! itself, wires them in with `testkit::wit::export!(Adapter
-//! with_types_in testkit::wit)`, and dispatches every operation through
-//! the canonical [`crate::fixture`] trait implementors.
+//! itself, wires them in with `fixture::wit::export!(Adapter
+//! with_types_in fixture::wit)`, and dispatches every operation through
+//! the canonical [`crate::ops`] trait implementors.
 
 mod generated {
     #![allow(
@@ -29,7 +29,6 @@ mod generated {
 
 use adapter::seam as aseam;
 pub use generated::*;
-use project::platform;
 
 use self::generated::exports::specify::adapter::{source, target};
 
@@ -39,18 +38,6 @@ impl From<aseam::Error> for source::Error {
             aseam::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
             aseam::Error::Io(detail) => Self::Io(detail),
             aseam::Error::Internal(detail) => Self::Internal(detail),
-        }
-    }
-}
-
-// The engine-seam error, for the one operation (id-keyed guidance)
-// the guest still routes through the fixture core directly.
-impl From<project::seam::Error> for source::Error {
-    fn from(error: project::seam::Error) -> Self {
-        match error {
-            project::seam::Error::InvalidRequest(detail) => Self::InvalidRequest(detail),
-            project::seam::Error::Io(detail) => Self::Io(detail),
-            project::seam::Error::Internal(detail) => Self::Internal(detail),
         }
     }
 }
@@ -132,28 +119,6 @@ impl From<aseam::Backing> for source::Backing {
         match backing {
             aseam::Backing::Payload(payload) => Self::Payload(payload),
             aseam::Backing::Path(path) => Self::Path(path),
-        }
-    }
-}
-
-impl From<project::adapter::PlatformsCapability> for target::PlatformsCapability {
-    fn from(capability: project::adapter::PlatformsCapability) -> Self {
-        Self {
-            required: capability.required,
-            allowed: capability.allowed.into_iter().map(target::Platform::from).collect(),
-            default: capability.default.into_iter().map(target::Platform::from).collect(),
-        }
-    }
-}
-
-impl From<platform::Platform> for target::Platform {
-    fn from(platform: platform::Platform) -> Self {
-        match platform {
-            platform::Platform::Core => Self::Core,
-            platform::Platform::Ios => Self::Ios,
-            platform::Platform::Android => Self::Android,
-            platform::Platform::Web => Self::Web,
-            platform::Platform::Desktop => Self::Desktop,
         }
     }
 }

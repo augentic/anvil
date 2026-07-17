@@ -1,29 +1,27 @@
-//! The Specify-owned harness adapter's native core.
+//! The fixture adapter's deterministic, model-free behaviour core.
 //!
-//! One deterministic, model-free library implementing both
-//! `specify:adapter` axes for engine tests. The core speaks the
-//! engine's own seam DTOs ([`project::seam`], [`artifacts::evidence`])
-//! on both targets, so the native test provider passes values straight
-//! through and only the WASM adapter guest maps to the WIT records.
+//! One id-keyed library implementing both `specify:adapter` axes over
+//! the SDK seam DTOs ([`adapter::seam`]) — the canonical internal
+//! representation. The trait implementors in [`crate::ops`] and the
+//! WASM adapter guest both route through it; only the workflow
+//! providers (`harness::convert`) widen the values onto engine DTOs.
 //!
 //! Behaviour keys off the routed adapter id: an id containing `docs`
 //! or `code` selects that half of the adversarial pair, anything else
 //! the minimal single-lead `greeting` profile, and `fail-*` substrings
-//! select typed failures. Builds and merge gates also
-//! honour the per-project [`FAIL_BUILD_MARKER`] /
-//! [`FAIL_MERGE_PREFLIGHT_MARKER`] / [`FAIL_MERGE_POSTFLIGHT_MARKER`]
-//! files so interruption tests can park and resume without rebinding.
+//! select typed failures. Builds and merge gates also honour the
+//! per-project [`FAIL_BUILD_MARKER`] / [`FAIL_MERGE_PREFLIGHT_MARKER`]
+//! / [`FAIL_MERGE_POSTFLIGHT_MARKER`] files so interruption tests can
+//! park and resume without rebinding.
 
-pub use metadata::metadata_json;
 pub use source::{extract, survey};
 pub use targets::{
     BUILD_DIR, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER, build,
-    build_artifact_path, guidance, merge, target_platforms,
+    build_artifact_path, guidance, merge,
 };
 
 mod source {
-    use artifacts::evidence::{AuthorityClass, Backing, Claim, ClaimKind};
-    use project::seam::{Error, Evidence, Lead};
+    use adapter::seam::{Authority, Backing, Claim, ClaimKind, Error, Evidence, Lead};
 
     /// Survey the source selected by `id` into its controlled lead set.
     ///
@@ -74,7 +72,7 @@ mod source {
         }
         let evidence = match (profile(id), lead.lead.as_str()) {
             (Profile::Docs, "login-flow") => Evidence {
-                authority: AuthorityClass::Documentation,
+                authority: Authority::Documentation,
                 claims: vec![
                     requirement(
                         "login.flow",
@@ -88,7 +86,7 @@ mod source {
                 ],
             },
             (Profile::Docs, "session-timeout") => Evidence {
-                authority: AuthorityClass::Documentation,
+                authority: Authority::Documentation,
                 claims: vec![requirement(
                     "session.timeout",
                     "Documented session expiry",
@@ -99,19 +97,19 @@ mod source {
             // claim is an anchorless mention with no behavioural detail,
             // so a faithful synthesis marks the requirement `[unknown]`.
             (Profile::Docs, "password-reset") => Evidence {
-                authority: AuthorityClass::Documentation,
-                claims: vec![{
-                    let mut claim = Claim::new(ClaimKind::Section);
-                    claim.id = Some("password-reset.mention".to_string());
-                    claim.synopsis = Some("Password reset exists".to_string());
-                    claim.set_backing(Some(Backing::Payload(
+                authority: Authority::Documentation,
+                claims: vec![Claim {
+                    kind: ClaimKind::Section,
+                    id: Some("password-reset.mention".to_string()),
+                    path: None,
+                    synopsis: Some("Password reset exists".to_string()),
+                    backing: Some(Backing::Payload(
                         "A password reset flow is mentioned with no defined behaviour.".to_string(),
-                    )));
-                    claim
+                    )),
                 }],
             },
             (Profile::Code, "login-flow") => Evidence {
-                authority: AuthorityClass::Behaviour,
+                authority: Authority::Behaviour,
                 claims: vec![requirement(
                     "login.flow",
                     "Observed login handler",
@@ -123,7 +121,7 @@ mod source {
             // behaviour, so resolution is a `[divergence]` with the docs
             // source winning.
             (Profile::Code, "session-timeout") => Evidence {
-                authority: AuthorityClass::Behaviour,
+                authority: Authority::Behaviour,
                 claims: vec![requirement(
                     "session.timeout",
                     "Observed session TTL",
@@ -131,7 +129,7 @@ mod source {
                 )],
             },
             (Profile::Minimal, "greeting") => Evidence {
-                authority: AuthorityClass::Documentation,
+                authority: Authority::Documentation,
                 claims: vec![requirement(
                     "greeting.behaviour",
                     "Greeting behaviour",
@@ -177,56 +175,30 @@ mod source {
     }
 
     fn requirement(id: &str, synopsis: &str, statement: &str) -> Claim {
-        let mut claim = Claim::new(ClaimKind::Requirement);
-        claim.id = Some(id.to_string());
-        claim.synopsis = Some(synopsis.to_string());
-        claim.set_backing(Some(Backing::Payload(statement.to_string())));
-        claim
+        Claim {
+            kind: ClaimKind::Requirement,
+            id: Some(id.to_string()),
+            path: None,
+            synopsis: Some(synopsis.to_string()),
+            backing: Some(Backing::Payload(statement.to_string())),
+        }
     }
 
     fn criterion(id: &str, body: &str) -> Claim {
-        let mut claim = Claim::new(ClaimKind::Criterion);
-        claim.id = Some(id.to_string());
-        claim.set_backing(Some(Backing::Payload(body.to_string())));
-        claim
+        Claim {
+            kind: ClaimKind::Criterion,
+            id: Some(id.to_string()),
+            path: None,
+            synopsis: None,
+            backing: Some(Backing::Payload(body.to_string())),
+        }
     }
 }
 
 mod targets {
     use std::path::{Path, PathBuf};
 
-    use project::adapter::PlatformsCapability;
-    use project::platform::Platform;
-    use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus};
-    use project::seam::{Error, Input, MergePhase};
-
-    /// The platform capability a target identity declares — deterministic
-    /// per id, so one artifact stands in for several capability shapes
-    /// (real adapters compile in one answer):
-    ///
-    /// - a name containing `limited` requires platforms from
-    ///   `{core, ios}`;
-    /// - a name containing `platforms` requires platforms from
-    ///   `{core, ios, android}`;
-    /// - anything else is platform-agnostic (`None`).
-    #[must_use]
-    pub fn target_platforms(id: &str) -> Option<PlatformsCapability> {
-        if id.contains("limited") {
-            Some(PlatformsCapability {
-                required: true,
-                allowed: vec![Platform::Core, Platform::Ios],
-                default: vec![Platform::Core, Platform::Ios],
-            })
-        } else if id.contains("platforms") {
-            Some(PlatformsCapability {
-                required: true,
-                allowed: vec![Platform::Core, Platform::Ios, Platform::Android],
-                default: vec![Platform::Core, Platform::Ios, Platform::Android],
-            })
-        } else {
-            None
-        }
-    }
+    use adapter::seam::{BuildOutput, Error, Input, MergePhase, Platform, Report, Status};
 
     /// Marker file (project-root-relative) that flips builds to a failed
     /// report while it exists.
@@ -258,9 +230,7 @@ mod targets {
     ///
     /// - `Internal` when the id selects the `fail-build` profile.
     /// - `Io` when the artifact cannot be written.
-    pub fn build(
-        root: &Path, id: &str, slice: &str, inputs: &[Input],
-    ) -> Result<BuildReport, Error> {
+    pub fn build(root: &Path, id: &str, slice: &str, inputs: &[Input]) -> Result<Report, Error> {
         if id.contains("fail-build") {
             return Err(Error::Internal(format!("fixture build failure for `{id}`")));
         }
@@ -268,14 +238,12 @@ mod targets {
             // A dishonest success: the declared output is never written, so
             // the caller's outputs-exist gate must abort the build.
             return Ok(report(
-                id,
-                slice,
-                BuildStatus::Success,
+                Status::Success,
                 vec![core_output(format!("{BUILD_DIR}/{slice}-never-written.md"))],
             ));
         }
         if root.join(FAIL_BUILD_MARKER).is_file() {
-            return Ok(report(id, slice, BuildStatus::Failure, Vec::new()));
+            return Ok(report(Status::Failure, Vec::new()));
         }
         let relative = format!("{BUILD_DIR}/{slice}.md");
         let path = root.join(&relative);
@@ -284,7 +252,7 @@ mod targets {
         }
         std::fs::write(&path, build_artifact(id, slice, inputs))
             .map_err(|err| Error::Io(err.to_string()))?;
-        Ok(report(id, slice, BuildStatus::Success, vec![core_output(relative)]))
+        Ok(report(Status::Success, vec![core_output(relative)]))
     }
 
     /// Marker file (project-root-relative) that flips the preflight merge
@@ -302,9 +270,8 @@ mod targets {
     /// # Errors
     ///
     /// `Internal` when the id selects the `fail-merge` profile.
-    pub fn merge(
-        root: &Path, id: &str, slice: &str, phase: MergePhase,
-    ) -> Result<BuildReport, Error> {
+    pub fn merge(root: &Path, id: &str, slice: &str, phase: MergePhase) -> Result<Report, Error> {
+        let _ = slice;
         if id.contains("fail-merge") {
             return Err(Error::Internal(format!("fixture merge failure for `{id}`")));
         }
@@ -312,20 +279,14 @@ mod targets {
             MergePhase::Preflight => FAIL_MERGE_PREFLIGHT_MARKER,
             MergePhase::Postflight => FAIL_MERGE_POSTFLIGHT_MARKER,
         };
-        let status =
-            if root.join(marker).is_file() { BuildStatus::Failure } else { BuildStatus::Success };
-        Ok(report(id, slice, status, Vec::new()))
+        let status = if root.join(marker).is_file() { Status::Failure } else { Status::Success };
+        Ok(report(status, Vec::new()))
     }
 
-    /// A fully stamped [`BuildReport`] envelope — the same stamping the
-    /// engine's guest shim applies when widening a WIT report.
-    fn report(
-        id: &str, slice: &str, status: BuildStatus, outputs: Vec<BuildOutput>,
-    ) -> BuildReport {
-        BuildReport {
-            version: BUILD_VERSION,
-            slice: slice.to_string(),
-            target: id.strip_prefix("target:").unwrap_or(id).to_string(),
+    // The seam report carries no envelope keys (`version`, `slice`,
+    // `target`) — the workflow provider stamps them when widening.
+    const fn report(status: Status, outputs: Vec<BuildOutput>) -> Report {
+        Report {
             status,
             findings: Vec::new(),
             outputs,
@@ -369,64 +330,5 @@ mod targets {
     #[must_use]
     pub fn build_artifact_path(root: &Path, slice: &str) -> PathBuf {
         root.join(BUILD_DIR).join(format!("{slice}.md"))
-    }
-}
-
-mod metadata {
-    use serde_json::json;
-
-    use super::targets::target_platforms;
-
-    /// The deterministic resolve-time metadata JSON a routed adapter id
-    /// answers.
-    ///
-    /// This is the one id-keyed convention behind both the direct
-    /// fixture resolution and the stub metadata runner fed to the
-    /// shipped `resolver::Component`. The special identities:
-    ///
-    /// - `target:demo-target` — a `specify` floor newer than any real
-    ///   binary (the `adapter-cli-too-old` gate);
-    /// - `target:bad-floor` — an unparseable floor
-    ///   (`adapter-floor-malformed`);
-    /// - `target:vectis` — declared build inputs plus the full
-    ///   three-platform capability;
-    /// - ids matching a [`target_platforms`] profile (`limited`,
-    ///   `platforms`) — that profile's capability;
-    /// - anything else — `{}` (no floor, no inputs, no capability).
-    #[must_use]
-    pub fn metadata_json(adapter_id: &str) -> String {
-        match adapter_id {
-            "target:demo-target" => r#"{"specify-floor":"999.0.0"}"#.to_string(),
-            "target:bad-floor" => r#"{"specify-floor":"v1"}"#.to_string(),
-            "target:vectis" => json!({
-                "inputs": [
-                    { "path": "tokens.yaml", "required": true },
-                    { "path": "assets.yaml", "required": false },
-                ],
-                "platforms": {
-                    "required": true,
-                    "allowed": ["core", "ios", "android"],
-                    "default": ["core", "ios", "android"],
-                },
-            })
-            .to_string(),
-            id => target_platforms(id).map_or_else(
-                || "{}".to_string(),
-                |capability| {
-                    json!({
-                        "platforms": {
-                            "required": capability.required,
-                            "allowed": platform_names(&capability.allowed),
-                            "default": platform_names(&capability.default),
-                        },
-                    })
-                    .to_string()
-                },
-            ),
-        }
-    }
-
-    fn platform_names(platforms: &[project::platform::Platform]) -> Vec<String> {
-        platforms.iter().map(ToString::to_string).collect()
     }
 }
