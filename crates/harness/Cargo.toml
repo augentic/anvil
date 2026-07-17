@@ -1,6 +1,6 @@
 [package]
 name = "harness"
-description = "Reusable native eval harness core: adapter catalog, seam provider, model bridge, and trial plumbing"
+description = "Native eval harness"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -11,8 +11,6 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-# The default layer is the model-free native provider used throughout
-# the workspace tests. Eval binaries opt into the one runtime layer.
 [features]
 cursor = [
     "dep:anyhow",
@@ -59,8 +57,6 @@ omnia-testkit.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
-# `boundary`, `catalog`, and `provider` are auto-discovered; only the
-# runtime-gated binaries need declaring.
 [[test]]
 name = "command"
 required-features = ["cursor"]

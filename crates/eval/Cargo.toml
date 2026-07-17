@@ -1,6 +1,6 @@
 [package]
 name = "eval"
-description = "Specify's live-model prompt-evaluation harness: the operator-invoked engine trial over the fixture adversarial lead set"
+description = "Live-model prompt-evaluation harness"
 publish = false
 version.workspace = true
 edition.workspace = true
