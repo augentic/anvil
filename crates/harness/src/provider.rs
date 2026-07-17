@@ -51,7 +51,7 @@ impl<M> Provider<M> {
     /// on an ephemeral background listener (skipped when no port can
     /// be bound); the shelf base URL feeds the per-operation MCP grant
     /// rewrite.
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "cursor")]
     pub async fn bound<B: crate::catalog::Binding>(root: impl Into<PathBuf>, model: M) -> Self
     where
         M: Model,

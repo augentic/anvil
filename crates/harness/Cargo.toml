@@ -14,7 +14,7 @@ workspace = true
 # The default layer is the model-free native provider used throughout
 # the workspace tests. Eval binaries opt into the one runtime layer.
 [features]
-runtime = [
+cursor = [
     "dep:anyhow",
     "dep:axum",
     "dep:change",
@@ -38,6 +38,7 @@ adapter.workspace = true
 anyhow = { workspace = true, optional = true }
 artifacts.workspace = true
 axum = { workspace = true, optional = true }
+cfg-if = "1.0.4"
 change = { workspace = true, optional = true }
 clap = { workspace = true, optional = true }
 diagnostics.workspace = true
@@ -62,16 +63,16 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 # runtime-gated binaries need declaring.
 [[test]]
 name = "command"
-required-features = ["runtime"]
+required-features = ["cursor"]
 
 [[test]]
 name = "mcp"
-required-features = ["runtime"]
+required-features = ["cursor"]
 
 [[test]]
 name = "scenario"
-required-features = ["runtime"]
+required-features = ["cursor"]
 
 [[test]]
 name = "grade"
-required-features = ["runtime"]
+required-features = ["cursor"]

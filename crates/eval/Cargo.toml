@@ -13,4 +13,4 @@ workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 fixture.workspace = true
-harness = { workspace = true, features = ["runtime"] }
+harness = { workspace = true, features = ["cursor"] }

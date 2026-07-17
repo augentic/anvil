@@ -16,21 +16,18 @@ use crate::provider::Provider;
 use crate::telemetry::{self, Telemetry};
 use crate::{command, env, fs as evalfs, grade, sandbox, scenario};
 
+/// Persistent trial project and scenario scratch root.
+const SANDBOX: &str = "sandbox";
+
 #[derive(Debug, Parser)]
 #[command(name = "eval", about = "Run the live-model trial over linked adapters")]
 struct Args {
-    /// Persistent trial project and scenario scratch root.
-    #[arg(long)]
-    sandbox: PathBuf,
     /// Optional tree copied into a fresh trial project.
     #[arg(long)]
     seed: Option<PathBuf>,
     /// Target adapter passed to `specify init`.
     #[arg(long)]
     target: Option<String>,
-    /// Project name passed to `specify init`.
-    #[arg(long)]
-    name: Option<String>,
     /// Change name passed to plan author and Gate 1.
     #[arg(long)]
     change: Option<String>,
@@ -80,7 +77,7 @@ pub(crate) async fn run<B: Binding>(raw: &[String], scenarios: Option<&Path>) ->
     let args = Args::parse_from(raw);
     if let Some(Phase::Scenario { id }) = &args.phase {
         let scenarios = scenarios.context("this eval binding has no prompt scenarios")?;
-        scenario::run::<B>(scenarios, &args.sandbox, id.as_deref()).await?;
+        scenario::run::<B>(scenarios, Path::new(SANDBOX), id.as_deref()).await?;
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -106,14 +103,13 @@ pub(crate) async fn run<B: Binding>(raw: &[String], scenarios: Option<&Path>) ->
 impl Trial {
     fn from_args(args: &Args) -> Result<Self> {
         let target = args.target.as_deref().context("trial requires --target")?;
-        let name = args.name.as_deref().context("trial requires --name")?;
         let change = args.change.as_deref().context("trial requires --change")?;
         ensure!(
             args.intent.is_some() || !args.sources.is_empty(),
             "trial requires --intent or at least one --source"
         );
 
-        let init = ["init", target, "--name", name].map(String::from).to_vec();
+        let init = ["init", target].map(String::from).to_vec();
         let mut author = ["plan", "author", change].map(String::from).to_vec();
         if let Some(intent) = &args.intent {
             author.extend(["--intent".to_string(), intent.clone()]);
@@ -123,7 +119,7 @@ impl Trial {
         }
 
         Ok(Self {
-            sandbox: args.sandbox.clone(),
+            sandbox: PathBuf::from(SANDBOX),
             seed: args.seed.clone(),
             init,
             author,

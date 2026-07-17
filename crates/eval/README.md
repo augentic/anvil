@@ -18,9 +18,7 @@ make eval
 
 This runs the entire workflow in `sandbox/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
-`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the driver fills `Request.model` only when the guest left it `None`, so a guest-supplied id always wins; unset or blank means the cursor backend's default. The cursor connection is lazy — it happens on the first judgment leg, so deterministic phases never require `cursor-agent` on `PATH`. The model stack, provider, telemetry, trial driver, grading, and binary entry all live in the shared `crates/harness`. This crate contains only the fixture adapter binding; the `cargo make eval` task passes the trial inputs explicitly.
-
-The binary runs the trial behind the `eval` subcommand and sends any other argv through the CLI dev shim over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
+`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: unset means the cursor backend's default.
 
 ### Manual workflow
 
@@ -38,8 +36,6 @@ While `make eval init` will reinitialize a project, a project can also be remove
 ```bash
 make eval clean
 ```
-
-
 
 ## Model judgment
 
@@ -76,7 +72,7 @@ Hard assertions only:
 
 | Stage   | Check      | Pass condition                                               |
 | ------- | ---------- | ------------------------------------------------------------ |
-| plan    | Entries    | `plan author` produces at least one entry                     |
+| plan    | Entries    | `plan author` produces at least one entry                    |
 | execute | Lifecycle  | Every plan entry is `done`                                   |
 | execute | Provenance | Every evidenced requirement carries sources; ids are present |
 
