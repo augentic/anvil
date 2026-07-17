@@ -12,17 +12,15 @@ rust-version.workspace = true
 name = "eval"
 path = "src/main.rs"
 
+[lib]
+name = "eval_binding"
+path = "src/lib.rs"
+
 [lints]
 workspace = true
 
-# Live harness: native-only. The crate is a declarative binding over
-# the shared `harness` crate — the fixture catalog plus the trial
-# profile and deterministic fixture assertions; the binary body
-# (runtime, mode dispatch, failure report) is `harness::entry`'s.
+# Native-only adapter binding. Runtime and trial policy live in
+# `harness`; this package declares only its linked adapters.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-anyhow.workspace = true
-artifacts.workspace = true
-change.workspace = true
 fixture.workspace = true
-harness = { workspace = true, features = ["full"] }
-omnia-guest.workspace = true
+harness = { workspace = true, features = ["runtime"] }

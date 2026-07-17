@@ -16,6 +16,8 @@ use adapter::seam::{self as aseam, Context};
 use adapter::{Source, Target, references};
 use error::Error;
 use omnia_guest::Model;
+#[doc(hidden)]
+pub use omnia_guest::Model as CatalogModel;
 use project::adapter::Axis;
 use project::adapter::metadata::{Metadata, Request as MetadataRequest};
 
@@ -380,4 +382,35 @@ fn merge_leg<'a, A: Target + 'static, M: Model>(
 
 fn unlinked(id: &str) -> aseam::Error {
     aseam::Error::InvalidRequest(format!("adapter `{id}` is not linked into the native shim"))
+}
+
+/// Declare the only repository-specific part of a native harness
+/// binary: its statically linked adapters.
+#[macro_export]
+macro_rules! adapters {
+    (
+        $visibility:vis $name:ident {
+            $($axis:ident $adapter:ty),+ $(,)?
+        }
+    ) => {
+        #[doc = concat!("Linked adapter binding `", stringify!($name), "`.")]
+        #[derive(Clone, Copy, Debug)]
+        $visibility struct $name;
+
+        impl $crate::catalog::Binding for $name {
+            fn catalog<M: $crate::catalog::CatalogModel>() -> $crate::catalog::Catalog<M> {
+                let builder = $crate::catalog::Catalog::builder();
+                $(
+                    let builder = $crate::adapters!(@register builder, $axis, $adapter);
+                )+
+                builder.build()
+            }
+        }
+    };
+    (@register $builder:ident, source, $adapter:ty) => {
+        $builder.source::<$adapter>()
+    };
+    (@register $builder:ident, target, $adapter:ty) => {
+        $builder.target::<$adapter>()
+    };
 }

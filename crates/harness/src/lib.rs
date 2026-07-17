@@ -1,54 +1,39 @@
-//! Reusable native eval-harness core: adapter-agnostic machinery for
-//! running the Specify workflow in-process, without a wasm runtime.
+//! Native Specify harness: an adapter-agnostic provider for model-free
+//! workflow tests, plus the optional live eval runtime.
 //!
 //! Consumers declare which adapters are linked through the typed
 //! [`catalog::Catalog`] builder over the per-axis operations traits
 //! (`adapter::Source` / `adapter::Target`), exposed to the shared
 //! entrypoints as one [`catalog::Binding`] hook; everything else — the
 //! seam [`provider::Provider`], typed operation invocation
-//! ([`invoke`]), and the optional layers — is generic over that
-//! catalog. The two wrappers (the engine's eval crate over the fixture
-//! adapters, the adapters repository's `engine` over the first-party
-//! adapters) stay declarative bindings.
-//!
-//! Features are dependency cuts. The always-on core is the catalog,
-//! the provider, typed invocation, and the env guard; `model` adds the
-//! live cursor backend and the [`native`] bridge, `mcp` the reference
-//! shelves and `Provider::bound`, `command` / `http` the native
-//! transports, `scenario` the prompt-scenario runner (plus the [`fs`]
-//! and [`inputs`] helpers), and `trial` the live-model trial driver
-//! with [`sandbox`], [`telemetry`], and shared [`grade`] helpers.
-//! `entry` adds the shared wrapper-binary `main` over all three modes.
-//! `full` enables everything.
+//! ([`invoke`]), and live runtime — is generic over that catalog. Eval
+//! binaries enable `runtime` and provide only their adapter binding;
+//! trial inputs are explicit command arguments.
 
 pub mod catalog;
-#[cfg(feature = "command")]
+#[cfg(feature = "runtime")]
 pub mod command;
 pub mod convert;
-#[cfg(feature = "entry")]
+#[cfg(feature = "runtime")]
 pub mod entry;
 pub mod env;
-#[cfg(feature = "scenario")]
-pub mod fs;
-#[cfg(feature = "trial")]
+#[cfg(feature = "runtime")]
+mod fs;
+#[cfg(feature = "runtime")]
 pub mod grade;
-#[cfg(feature = "http")]
-pub mod http;
-#[cfg(feature = "scenario")]
-pub mod inputs;
 pub mod invoke;
-#[cfg(feature = "mcp")]
+#[cfg(feature = "runtime")]
 pub mod mcp;
-#[cfg(feature = "model")]
-pub mod model;
-#[cfg(feature = "model")]
-pub mod native;
+#[cfg(feature = "runtime")]
+mod model;
+#[cfg(feature = "runtime")]
+mod native;
 pub mod provider;
-#[cfg(feature = "trial")]
-pub mod sandbox;
-#[cfg(feature = "scenario")]
+#[cfg(feature = "runtime")]
+mod sandbox;
+#[cfg(feature = "runtime")]
 pub mod scenario;
-#[cfg(feature = "trial")]
-pub mod telemetry;
-#[cfg(feature = "trial")]
+#[cfg(feature = "runtime")]
+mod telemetry;
+#[cfg(feature = "runtime")]
 pub mod trial;

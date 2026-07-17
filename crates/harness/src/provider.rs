@@ -57,7 +57,7 @@ impl<M> Provider<M> {
     /// A provider over `B`'s catalog with its reference shelves served
     /// on an ephemeral background listener (skipped when no port can
     /// be bound).
-    #[cfg(feature = "mcp")]
+    #[cfg(feature = "runtime")]
     pub async fn bound<B: crate::catalog::Binding>(root: impl Into<PathBuf>, model: M) -> Self
     where
         M: Model,

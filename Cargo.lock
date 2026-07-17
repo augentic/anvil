@@ -1161,12 +1161,8 @@ dependencies = [
 name = "eval"
 version = "0.27.2"
 dependencies = [
- "anyhow",
- "artifacts",
- "change",
  "fixture",
  "harness",
- "omnia-guest",
 ]
 
 [[package]]

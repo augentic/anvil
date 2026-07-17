@@ -11,42 +11,27 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-# Features are dependency cuts, not capability toggles: the always-on
-# core (catalog, provider, typed invocation, env) needs only the
-# workflow crates, and each optional layer pulls exactly the heavy
-# dependencies its modules use.
+# The default layer is the model-free native provider used throughout
+# the workspace tests. Eval binaries opt into the one runtime layer.
 [features]
-# `model` + `native`: the live cursor backend and the guest-over-host
-# model bridge.
-model = [
+runtime = [
     "dep:anyhow",
+    "dep:axum",
+    "dep:change",
+    "dep:clap",
     "dep:omnia",
     "dep:omnia-cursor",
     "dep:omnia-wasi-model",
-    "dep:tokio",
-    "tokio/sync",
-]
-# `mcp` + `Provider::bound`: reference shelves on a background listener.
-mcp = ["dep:axum", "dep:tokio", "tokio/net", "tokio/rt"]
-# `command`: the native argv entry over the shared typed router.
-command = ["dep:anyhow", "dep:transport", "mcp", "model"]
-# `http`: the native `serve` transport.
-http = ["command", "dep:clap"]
-# `scenario` plus its filesystem (`fs`) and trial-input (`inputs`) helpers.
-scenario = [
-    "dep:anyhow",
     "dep:serde",
     "dep:serde_json",
+    "dep:tokio",
     "dep:toml",
-    "mcp",
-    "model",
+    "dep:transport",
+    "tokio/net",
+    "tokio/rt",
+    "tokio/rt-multi-thread",
+    "tokio/sync",
 ]
-# `trial` + `sandbox` + `telemetry`: the live-model trial driver.
-trial = ["command", "dep:change", "dep:clap", "scenario"]
-# `entry`: the shared wrapper-binary `main` over all three modes.
-entry = ["http", "tokio/rt-multi-thread", "trial"]
-# Everything; the eval wrapper binaries request this.
-full = ["entry"]
 
 [dependencies]
 adapter.workspace = true
@@ -82,25 +67,25 @@ name = "catalog"
 path = "tests/catalog.rs"
 
 [[test]]
+name = "command"
+path = "tests/command.rs"
+required-features = ["runtime"]
+
+[[test]]
 name = "mcp"
 path = "tests/mcp.rs"
-required-features = ["mcp"]
+required-features = ["runtime"]
 
 [[test]]
 name = "provider"
 path = "tests/provider.rs"
 
 [[test]]
-name = "inputs"
-path = "tests/inputs.rs"
-required-features = ["scenario"]
-
-[[test]]
 name = "scenario"
 path = "tests/scenario.rs"
-required-features = ["scenario"]
+required-features = ["runtime"]
 
 [[test]]
 name = "grade"
 path = "tests/grade.rs"
-required-features = ["trial"]
+required-features = ["runtime"]

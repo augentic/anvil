@@ -8,7 +8,7 @@ use adapter::Target;
 use adapter::registry::Doc;
 use adapter::seam::{Context, Error, Input, MergePhase, Report, TargetMetadata, WorkingTree};
 use harness::catalog::{Binding, Catalog};
-use harness::scenario::{self, Scenarios};
+use harness::scenario;
 use omnia_guest::Model;
 use project::seam::wire::{BUILD_VERSION, BuildReport, BuildStatus};
 use tempfile::TempDir;
@@ -70,15 +70,13 @@ fn report(status: BuildStatus) -> BuildReport {
 mod config {
     use super::*;
 
-    fn stage(body: &str) -> (TempDir, Scenarios, PathBuf) {
+    fn stage(body: &str) -> (TempDir, PathBuf, PathBuf) {
         let tmp = TempDir::new().expect("tempdir");
         let dir = tmp.path().join("fixture/scenario");
         fs::create_dir_all(&dir).expect("mkdir");
         fs::write(dir.join("scenario.toml"), body).expect("write scenario.toml");
-        let scenarios = Scenarios {
-            dir: tmp.path().to_path_buf(),
-        };
-        (tmp, scenarios, dir)
+        let root = tmp.path().to_path_buf();
+        (tmp, root, dir)
     }
 
     #[test]

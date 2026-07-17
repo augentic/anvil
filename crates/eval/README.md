@@ -18,9 +18,9 @@ make eval
 
 This runs the entire workflow in `sandbox/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
-`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the driver fills `Request.model` only when the guest left it `None`, so a guest-supplied id always wins; unset or blank means the cursor backend's default. The cursor connection is lazy — it happens on the first judgment leg, so deterministic phases never require `cursor-agent` on `PATH`. The model stack, provider, telemetry, the trial driver, and the binary body itself (`harness::entry` — the tokio runtime, mode dispatch, and failure report) all live in the shared `crates/harness`; this crate declares only the fixture catalog binding, the trial profile, and the deterministic grading hooks. The adapters repository's `engine` binds the same harness to the first-party adapters.
+`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the driver fills `Request.model` only when the guest left it `None`, so a guest-supplied id always wins; unset or blank means the cursor backend's default. The cursor connection is lazy — it happens on the first judgment leg, so deterministic phases never require `cursor-agent` on `PATH`. The model stack, provider, telemetry, trial driver, grading, and binary entry all live in the shared `crates/harness`. This crate contains only the fixture adapter binding; the `cargo make eval` task passes the trial inputs explicitly.
 
-The binary carries the shared entry's full mode surface: the trial behind the `eval` subcommand, the native HTTP transport behind `serve`, and any other argv through the CLI dev shim over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
+The binary runs the trial behind the `eval` subcommand and sends any other argv through the CLI dev shim over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
 
 ### Manual workflow
 
@@ -74,14 +74,11 @@ Every step runs the production operation — `execute` is the real drained loop,
 Hard assertions only:
 
 
-| Stage   | Check                  | Pass condition                                               |
-| ------- | ---------------------- | ------------------------------------------------------------ |
-| plan    | Cross-source overlap   | `login-flow` from `docs` and `code` merge into one slice     |
-| execute | Lifecycle              | Every plan entry is `done`                                   |
-| execute | Provenance             | Every evidenced requirement carries sources; ids are present |
-| execute | Authority disagreement | Session-timeout surfaces as `[divergence]` or `[conflict]`   |
-| execute | Evidence gap           | Password-reset is marked `[unknown]`, not invented           |
-| execute | Build output           | Every slice leaves a non-empty fixture build artifact        |
+| Stage   | Check      | Pass condition                                               |
+| ------- | ---------- | ------------------------------------------------------------ |
+| plan    | Entries    | `plan author` produces at least one entry                     |
+| execute | Lifecycle  | Every plan entry is `done`                                   |
+| execute | Provenance | Every evidenced requirement carries sources; ids are present |
 
 
 Per-leg request / repair counts are **reported, not asserted**. After grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.

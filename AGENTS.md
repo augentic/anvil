@@ -178,10 +178,10 @@ slice                    # the slice loop — depends on project: refine/build/m
 change                   # the change loop — depends on {project,slice}: plan author/execute orchestration (change::orchestrate incl. the survey half of the source axis and workspace routing), the propose judgment leg, change::plan::handlers (the specify plan operations) + change::source (source survey), and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
-harness                  # native eval-harness core (publish = false) — the linked-adapter Catalog over the SDK operations traits, the native seam Provider, the DevModel cursor bridge, telemetry, MCP reference shelves, the generic trial/scenario/command/HTTP plumbing behind one catalog::Binding hook, and the shared wrapper-binary entry (harness::entry: runtime, mode dispatch, failure report); depends on {adapter,transport,…} and never on a concrete adapter — both wrappers (crates/eval here, engine in augentic/specify-adapters) are declarative bindings over it
+harness                  # native eval-harness core (publish = false) — the linked-adapter Catalog over the SDK operations traits, native seam Provider, and one optional live runtime (model bridge, MCP shelves, CLI shim, and shared trial/scenario drivers); depends on {adapter,transport,…} and never on a concrete adapter — both eval binaries provide only a catalog binding
 fixture                  # dev-only fixture crate (publish = false) — the canonical SDK-native fixture adapter core (fixture::behaviour over the seam DTOs), the typed operations-trait implementors and exhaustive catalog registry (fixture::registry), the scripted answer corpus, the request-recording model Harness, the host-only Session helpers over the harness default layer, and the wasm32-only `wit` export bindings the examples guest shims over; dev-dep'd (legally cyclically) by the workflow/transport suites and the examples guest, and depended on by the eval wrapper
 checks                   # dev-only repo invariants (publish = false) — boundaries, links, authoring as plain cargo tests
-eval                     # live-model prompt-evaluation wrapper (publish = false, native-only) — a declarative binding over harness: the fixture catalog plus the engine trial profile and its deterministic assertions, run with a live cursor-agent model
+eval                     # live-model prompt-evaluation wrapper (publish = false, native-only) — the fixture adapter binding over harness; `cargo make eval` supplies explicit trial inputs
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime + the examples/change cargo example (the fixture adapter guest over fixture's wit bindings)
 ```
 
@@ -220,7 +220,7 @@ crates/slice/            the slice loop — refine/build/merge orchestration, sy
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
 crates/fixture/          dev-only fixture crate — SDK-native fixture adapter core, catalog registry, answer corpus, session helpers
 crates/checks/           lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
-crates/harness/          native eval-harness core — linked-adapter catalog, seam provider, model bridge, trial/scenario/command/HTTP plumbing
+crates/harness/          native eval-harness core — linked-adapter catalog, seam provider, model bridge, CLI shim, and data-driven trial/scenario runners
 crates/eval/             live-model prompt-evaluation wrapper (native-only; cargo make eval) — the fixture binding over crates/harness
 examples/                the change example: a root-crate cargo example (the fixture adapter guest) plus its omnia.toml deployment and runner tasks
 ```

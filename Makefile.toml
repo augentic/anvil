@@ -48,7 +48,26 @@ install_crate = "cargo-udeps"
 # scenarios pass through (`cargo make eval execute`).
 [tasks.eval]
 command = "cargo"
-args = ["run", "-p", "eval", "--", "eval", "${@}"]
+args = [
+  "run",
+  "-p",
+  "eval",
+  "--",
+  "eval",
+  "--sandbox",
+  "sandbox",
+  "--target",
+  "fixture",
+  "--name",
+  "eval",
+  "--change",
+  "auth",
+  "--source",
+  "docs=fixture-docs:value:The docs source.",
+  "--source",
+  "code=fixture-code:value:The code source.",
+  "${@}",
+]
 env_files = [".env"]
 
 # The `eval` CLI passthrough: any specify verb against the native shim
@@ -57,12 +76,12 @@ env_files = [".env"]
 command = "cargo"
 args = ["run", "-q", "-p", "eval", "--", "${@}"]
 
-# Harness feature layering — the lean core and default feature set
-# must hold without --all-features, so the dependency cuts cannot rot
+# Harness layers: the model-free default used by workspace tests and
+# the single live runtime enabled by eval binaries.
 [tasks.harness-features]
 script = '''
 cargo check -p harness --no-default-features --locked
-cargo nextest run -p harness --locked --no-tests=pass
+cargo nextest run -p harness --features runtime --locked --no-tests=pass
 '''
 env = { RUSTFLAGS = "-Dwarnings" }
 

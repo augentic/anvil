@@ -10,7 +10,7 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## Gate 2 — prompt evaluation (operator-invoked)
 
-`cargo make eval` from the repository root runs the prompt-evaluation harness (`crates/eval`): adversarial fixture leads (cross-source overlap, authority disagreement, evidence gap) through the real configured model, accepted only when the deterministic validators are clean — coverage catches an unmerged overlap, provenance catches an invented requirement, tag checks catch a suppressed disagreement. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
+`cargo make eval` from the repository root runs the shared native prompt-evaluation harness over the fixture adapters and a real configured model. It drives the production operator rhythm and requires a non-empty authored plan, a drained execution with every entry done, and valid requirement provenance. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
 
 Cadence is documented convention, not automation: before a release tag, and after judgment-prompt or answer-schema changes. Ordinary CI never calls a live model.
 

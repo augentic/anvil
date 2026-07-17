@@ -38,7 +38,7 @@ where
 
 /// Parse and execute one native command invocation over `B`'s linked
 /// adapters: the dev-shim entry behind a wrapper binary's default
-/// (non-`serve`, non-`eval`) mode.
+/// (non-`eval`) mode.
 pub async fn run<B: Binding>(mut argv: Vec<String>) -> u8 {
     let root = match take_project_dir(&mut argv) {
         Ok(Some(dir)) => match dir.canonicalize() {

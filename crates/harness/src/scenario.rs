@@ -1,5 +1,5 @@
 //! Single-operation prompt scenarios for fast adapter prompt iteration.
-//! Each scenario is a data directory under `<scenarios.dir>/<adapter>/<name>/`.
+//! Each scenario is a data directory under `<root>/<adapter>/<name>/`.
 
 use std::collections::HashSet;
 use std::fs;
@@ -15,13 +15,6 @@ use crate::catalog::Binding;
 use crate::model::DevModel;
 use crate::provider::Provider;
 use crate::{env, fs as evalfs};
-
-/// The repository-specific committed scenarios root.
-#[derive(Debug, Clone)]
-pub struct Scenarios {
-    /// The committed scenarios root (e.g. `eval/scenarios/`).
-    pub dir: PathBuf,
-}
 
 /// One scenario's machine-readable routing, from `scenario.toml`.
 #[derive(Debug, Deserialize)]
@@ -70,14 +63,12 @@ impl Operation {
 ///
 /// Returns an unknown or malformed scenario, seeding failures, a failing adapter
 /// report, and a missing `expect` artifact.
-pub async fn run<B: Binding>(
-    scenarios: &Scenarios, sandbox: &Path, id: Option<&str>,
-) -> Result<()> {
+pub async fn run<B: Binding>(root: &Path, sandbox: &Path, id: Option<&str>) -> Result<()> {
     let Some(id) = id else {
-        return list(scenarios);
+        return list(root);
     };
-    let dir = scenarios.dir.join(id);
-    let config = load::<B>(scenarios, &dir).with_context(|| format!("scenario `{id}`"))?;
+    let dir = root.join(id);
+    let config = load::<B>(root, &dir).with_context(|| format!("scenario `{id}`"))?;
 
     let scratch = seed(sandbox, id, &dir)?;
     let _cache = env::scoped_cache(&scratch);
@@ -100,13 +91,13 @@ pub async fn run<B: Binding>(
 /// # Errors
 ///
 /// Returns a missing or unparseable `scenario.toml` and any validation failure.
-pub fn load<B: Binding>(scenarios: &Scenarios, dir: &Path) -> Result<Config> {
+pub fn load<B: Binding>(root: &Path, dir: &Path) -> Result<Config> {
     let path = dir.join("scenario.toml");
     if !path.is_file() {
         bail!(
             "no scenario.toml at {}; known scenarios: {}",
             path.display(),
-            ids(scenarios).unwrap_or_default().join(", ")
+            ids(root).unwrap_or_default().join(", ")
         );
     }
     let body = fs::read_to_string(&path)?;
@@ -276,10 +267,10 @@ async fn dispatch(
     report.map_err(|error| anyhow::anyhow!("{} failed: {error:?}", config.operation.label()))
 }
 
-fn list(scenarios: &Scenarios) -> Result<()> {
-    let mut ids = ids(scenarios)?;
+fn list(root: &Path) -> Result<()> {
+    let mut ids = ids(root)?;
     ids.sort();
-    ensure!(!ids.is_empty(), "no scenarios under {}", scenarios.dir.display());
+    ensure!(!ids.is_empty(), "no scenarios under {}", root.display());
     println!("scenarios (run with `eval scenario <id>`):");
     for id in ids {
         println!("  {id}");
@@ -287,9 +278,9 @@ fn list(scenarios: &Scenarios) -> Result<()> {
     Ok(())
 }
 
-fn ids(scenarios: &Scenarios) -> Result<Vec<String>> {
+fn ids(root: &Path) -> Result<Vec<String>> {
     let mut ids = Vec::new();
-    for adapter in read_dirs(&scenarios.dir)? {
+    for adapter in read_dirs(root)? {
         let name = adapter.file_name().unwrap_or_default().to_string_lossy().into_owned();
         for scenario in read_dirs(&adapter)? {
             if scenario.join("scenario.toml").is_file() {

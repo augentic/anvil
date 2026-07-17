@@ -1,11 +1,9 @@
-//! `eval` — the shared harness wrapper binary over the fixture
-//! catalog: CLI dev shim (default), HTTP (`serve`), and the
-//! live-model trial (`eval`).
+//! Native CLI and live eval over the linked adapters.
 
 use std::process::ExitCode;
 
-use eval::{Adapters, SHELL};
+use eval_binding::Adapters;
 
 fn main() -> ExitCode {
-    harness::entry::main::<Adapters>(&SHELL)
+    harness::entry::main::<Adapters>()
 }
