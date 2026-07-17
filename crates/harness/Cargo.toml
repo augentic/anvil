@@ -82,6 +82,11 @@ name = "catalog"
 path = "tests/catalog.rs"
 
 [[test]]
+name = "mcp"
+path = "tests/mcp.rs"
+required-features = ["mcp"]
+
+[[test]]
 name = "provider"
 path = "tests/provider.rs"
 
