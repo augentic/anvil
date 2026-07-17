@@ -9,7 +9,7 @@ cargo make eval                              # run the prompt-evaluation harness
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest --workspace` over the workspace crates (including `testkit` and `checks`). The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through `testkit`'s fixture adapter seams and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates (including `fixture`, `harness`, and `checks`). The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `fixture` catalog behind the shared `harness` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 

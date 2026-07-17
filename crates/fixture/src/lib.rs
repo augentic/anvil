@@ -16,6 +16,8 @@
 //!   default layer, plus the RAII current-directory guard.
 //! - [`answers`] (host) — the scripted judgment-answer corpus behind
 //!   `omnia-testkit`'s FIFO `Scripted` model double.
+//! - [`model`] (host) — the request-recording `Harness` model double
+//!   and `mcp_grants`, pending their move upstream to `omnia-testkit`.
 //! - `wit` (`wasm32` only) — the combined `adapter`-world export
 //!   bindings plus the seam mappings the examples guest shims over.
 //!
@@ -31,6 +33,8 @@ pub mod wit;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod answers;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod model;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod registry;
 #[cfg(not(target_arch = "wasm32"))]

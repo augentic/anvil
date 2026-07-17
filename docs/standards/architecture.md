@@ -16,10 +16,10 @@ slice                    # the slice loop — depends on project; refine/build/m
 change                   # the change loop — depends on {project,slice}; plan author/execute orchestration, the specify plan operations, and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency — embed-time prompt-corpus walk + link check, generating each crate's DOCS table
-testkit                  # dev-only test-support — fixture adapter core + its SDK operations-trait implementors, unified Provider, scripted answers
+fixture                  # dev-only fixture crate — SDK-native fixture adapter core + typed catalog registry, answer corpus, request-recording Harness, session helpers
 checks                   # dev-only repo invariants — boundaries, links, authoring (plain cargo tests)
 harness                  # native eval-harness core — linked-adapter catalog over the SDK traits, seam provider, model bridge, trial/scenario/command/HTTP plumbing; no concrete adapter deps
-eval                     # live-model prompt-evaluation wrapper — native-only bin binding the testkit fixture catalog and engine trial profile over harness
+eval                     # live-model prompt-evaluation wrapper — native-only bin binding the fixture catalog and engine trial profile over harness
 specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively; carries the examples/change cargo example (the fixture adapter guest)
 ```
 

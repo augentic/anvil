@@ -5,8 +5,11 @@
 //! emits schema-violating answers, which the unvalidated script serves
 //! verbatim.
 
+mod support;
+
 use change::plan;
-use testkit::{Scripted, answers, run};
+use fixture::session::Session;
+use harness::invoke::run;
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -21,13 +24,13 @@ fn malformed_answer() -> String {
 }
 
 async fn author(
-    provider: &Scripted,
+    session: &Session,
 ) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
-        provider,
+        session.provider(),
         plan::handlers::AuthorInput {
             name: "demo".to_string(),
-            sources: answers::greeting_binding(),
+            sources: support::greeting_binding(),
             intent: None,
         },
     )
@@ -36,22 +39,24 @@ async fn author(
 
 #[tokio::test]
 async fn malformed_repaired_in_loop() {
-    let provider =
-        Scripted::scripted("fixture", vec![malformed_answer(), answers::greeting_grouping()]);
+    let session = Session::scripted(
+        "fixture",
+        vec![malformed_answer(), fixture::answers::greeting_grouping()],
+    );
 
-    let authored = author(&provider).await.expect("the repaired answer lands");
+    let authored = author(&session).await.expect("the repaired answer lands");
     assert_eq!(authored.slices, ["greeting"]);
 
     // Two dispatches — the failed answer and its repair — drained the
     // two-answer script exactly.
-    provider.model().assert_exhausted();
+    session.model().assert_exhausted();
 }
 
 #[tokio::test]
 async fn unrepairable_exhausts_budget() {
-    let provider = Scripted::scripted("fixture", vec![malformed_answer(); JUDGMENT_BUDGET]);
+    let session = Session::scripted("fixture", vec![malformed_answer(); JUDGMENT_BUDGET]);
 
-    let err = author(&provider).await.expect_err("the budget exhausts");
+    let err = author(&session).await.expect_err("the budget exhausts");
     let detail = err.to_string();
     assert!(
         detail.contains("plan-propose-response-parse"),
@@ -60,5 +65,5 @@ async fn unrepairable_exhausts_budget() {
 
     // One initial dispatch plus MAX_REPAIRS re-prompts drained the
     // budget-sized script, then the leg gave up — no further call.
-    provider.model().assert_exhausted();
+    session.model().assert_exhausted();
 }

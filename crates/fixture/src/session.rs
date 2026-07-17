@@ -12,10 +12,12 @@ use harness::env::CacheGuard;
 use harness::provider::Provider;
 use omnia_testkit::model::Scripted as ScriptedModel;
 
+use crate::model::Harness;
+
 /// The provider shape the scripted suites run against: the fixture
-/// catalog behind the seams, `omnia-testkit`'s FIFO script behind the
-/// judgment legs.
-pub type Scripted = Provider<ScriptedModel>;
+/// catalog behind the seams, a request-recording [`Harness`] over
+/// `omnia-testkit`'s FIFO script behind the judgment legs.
+pub type Scripted = Provider<Harness<ScriptedModel>>;
 
 /// A throw-away project tree plus the scripted fixture provider.
 ///
@@ -39,7 +41,7 @@ impl Session {
     #[must_use]
     pub fn bare(answers: Vec<String>) -> Self {
         let (tmp, root, cache) = owned_tree();
-        let provider = Provider::new(&root, ScriptedModel::answers(answers), crate::catalog());
+        let provider = Provider::new(&root, Harness::answering(answers), crate::catalog());
         Self {
             root,
             provider,
@@ -78,9 +80,10 @@ impl Session {
         &self.provider
     }
 
-    /// The scripted model backend — for `assert_exhausted`.
+    /// The recording model backend — for `requests()` and
+    /// `assert_exhausted`.
     #[must_use]
-    pub const fn model(&self) -> &ScriptedModel {
+    pub const fn model(&self) -> &Harness<ScriptedModel> {
         self.provider.model()
     }
 }

@@ -25,6 +25,6 @@ wasip3.workspace = true
 wit-bindgen.workspace = true
 
 [dev-dependencies]
+fixture.workspace = true
 tempfile.workspace = true
-testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

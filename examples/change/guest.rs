@@ -2,9 +2,9 @@
 //!
 //! This crate implements both Specify source and target adapters as a
 //! thin shim over the canonical SDK operations traits: every judgment
-//! operation dispatches through `testkit::fixture`'s `adapter::Source`
+//! operation dispatches through the `fixture` crate's `adapter::Source`
 //! / `adapter::Target` implementors with `From` conversions at the
-//! edges (`testkit::wit` owns the combined-world WIT bindings and the
+//! edges (`fixture::wit` owns the combined-world WIT bindings and the
 //! seam mappings). It also implements a single MCP server for the
 //! model agent to use when requesting adapter reference documents.
 
@@ -13,19 +13,19 @@
 
 use adapter::seam::{self as aseam, Context};
 use adapter::{Source as _, Target as _, WasiModel};
+use fixture::Fixture;
+use fixture::wit::exports::specify::adapter::{source, target};
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
 };
 use serde_json::{Value, json};
-use testkit::fixture::Fixture;
-use testkit::wit::exports::specify::adapter::{source, target};
 use wasip3::http::types as http;
 
 // ----------------------------------------------
 // Specify source + target adapters
 // ----------------------------------------------
 struct Adapter;
-testkit::wit::export!(Adapter with_types_in testkit::wit);
+fixture::wit::export!(Adapter with_types_in fixture::wit);
 
 impl source::Guest for Adapter {
     fn metadata(_id: source::AdapterId) -> source::AdapterMetadata {
@@ -48,18 +48,17 @@ impl source::Guest for Adapter {
 }
 
 impl target::Guest for Adapter {
-    fn metadata(id: target::AdapterId) -> target::AdapterMetadata {
+    fn metadata(_id: target::AdapterId) -> target::AdapterMetadata {
         target::AdapterMetadata {
             specify_floor: None,
             inputs: Vec::new(),
-            platforms: testkit::adapter::target_platforms(&id)
-                .map(target::PlatformsCapability::from),
+            platforms: None,
         }
     }
 
     async fn guidance(id: target::AdapterId) -> Result<String, target::Error> {
-        // The id-keyed core guidance, matching the native provider path.
-        testkit::adapter::guidance(&id).map_err(target::Error::from)
+        let ctx = Context::guest(&id, None);
+        Fixture::guidance(&WasiModel, &ctx).await.map_err(target::Error::from)
     }
 
     async fn build(

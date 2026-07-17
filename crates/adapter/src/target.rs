@@ -169,13 +169,13 @@ pub fn dispatch_metadata<A: crate::Target>() -> AdapterMetadata {
     A::metadata().into()
 }
 
-/// Infallible today; WIT marks the operation fallible, so this returns `Result`.
-///
 /// # Errors
 ///
-/// Never — always `Ok`.
-pub fn dispatch_guidance<A: crate::Target>() -> Result<String, Error> {
-    Ok(A::guidance().to_string())
+/// As the implementor's [`guidance`](crate::Target::guidance).
+pub async fn dispatch_guidance<A: crate::Target>(id: AdapterId) -> Result<String, Error> {
+    let url = crate::references::mcp_url(A::NAME);
+    let ctx = crate::seam::Context::guest(&id, url.as_deref());
+    A::guidance(&crate::WasiModel, &ctx).await.map_err(Into::into)
 }
 
 /// # Errors
@@ -229,9 +229,9 @@ macro_rules! target {
             }
 
             async fn guidance(
-                _id: $crate::target::AdapterId,
+                id: $crate::target::AdapterId,
             ) -> Result<String, $crate::target::Error> {
-                $crate::target::dispatch_guidance::<$adapter>()
+                $crate::target::dispatch_guidance::<$adapter>(id).await
             }
 
             async fn build(

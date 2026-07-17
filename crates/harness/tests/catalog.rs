@@ -73,8 +73,11 @@ impl Target for Fixture {
         DOCS
     }
 
-    fn guidance() -> &'static str {
-        "fixture guidance"
+    async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
+        if ctx.adapter_id.contains("fail-guidance") {
+            return Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)));
+        }
+        Ok("fixture guidance".to_string())
     }
 
     async fn build<P: Model>(
@@ -129,7 +132,9 @@ async fn target_legs_dispatch() {
     };
     let linked = linked();
 
-    assert_eq!(linked.guidance("target:fixture").expect("guidance"), "fixture guidance");
+    let guidance =
+        linked.guidance(&model, &ctx, "target:fixture").await.expect("guidance dispatches");
+    assert_eq!(guidance, "fixture guidance");
 
     let inputs = vec![Input::Proposal("BODY".to_string())];
     let report = linked
@@ -145,6 +150,60 @@ async fn target_legs_dispatch() {
     assert_eq!(report, Report::success());
 }
 
+// A typed guidance error crosses catalog dispatch intact. The routed
+// id reaches the implementor through `ctx.adapter_id`, so the failing
+// identity selects its own failure.
+#[tokio::test]
+async fn guidance_failure_propagates() {
+    struct FailGuidance;
+
+    impl Target for FailGuidance {
+        const NAME: &'static str = "fixture-fail-guidance";
+
+        fn metadata() -> TargetMetadata {
+            TargetMetadata {
+                specify_floor: None,
+                inputs: Vec::new(),
+                platforms: None,
+            }
+        }
+
+        fn docs() -> &'static [Doc] {
+            DOCS
+        }
+
+        async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
+            Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)))
+        }
+
+        async fn build<P: Model>(
+            _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        ) -> Result<Report, Error> {
+            Ok(Report::success())
+        }
+
+        async fn merge<P: Model>(
+            _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        ) -> Result<Report, Error> {
+            Ok(Report::success())
+        }
+    }
+
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let model = Scripted::answers::<&str>([]);
+    let ctx = ctx("target:fixture-fail-guidance", tmp.path());
+    let linked: Catalog<Scripted> = Catalog::builder().target::<FailGuidance>().build();
+
+    let err = linked
+        .guidance(&model, &ctx, "target:fixture-fail-guidance")
+        .await
+        .expect_err("the failing identity fails guidance");
+    assert!(
+        matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-guidance")),
+        "the adapter's typed error survives catalog dispatch"
+    );
+}
+
 #[tokio::test]
 async fn axis_routing() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -155,7 +214,7 @@ async fn axis_routing() {
     // A target id never reaches the source legs, and vice versa.
     let err = linked.survey(&model, &ctx, "target:fixture").await.expect_err("axis mismatch");
     assert!(matches!(err, Error::InvalidRequest(detail) if detail.contains("target:fixture")));
-    let err = linked.guidance("source:fixture").expect_err("axis mismatch");
+    let err = linked.guidance(&model, &ctx, "source:fixture").await.expect_err("axis mismatch");
     assert!(matches!(err, Error::InvalidRequest(_)));
 
     // Unlinked ids refuse on both axes.

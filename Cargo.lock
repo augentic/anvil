@@ -6,12 +6,12 @@ version = 4
 name = "adapter"
 version = "0.27.2"
 dependencies = [
+ "fixture",
  "omnia-guest",
  "omnia-wasi-http",
  "serde",
  "serde_json",
  "tempfile",
- "testkit",
  "thiserror 2.0.18",
  "tokio",
  "wasip3",
@@ -501,6 +501,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
+ "fixture",
+ "harness",
  "jiff",
  "omnia-guest",
  "project",
@@ -510,7 +512,6 @@ dependencies = [
  "serde_json",
  "slice",
  "tempfile",
- "testkit",
  "tokio",
  "tower",
 ]
@@ -1163,10 +1164,9 @@ dependencies = [
  "anyhow",
  "artifacts",
  "change",
+ "fixture",
  "harness",
  "omnia-guest",
- "project",
- "testkit",
  "tokio",
 ]
 
@@ -1210,6 +1210,21 @@ name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
+
+[[package]]
+name = "fixture"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "harness",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "wit-bindgen 0.59.0",
+]
 
 [[package]]
 name = "fluent-uri"
@@ -2934,6 +2949,7 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
+ "harness",
  "jiff",
  "omnia-guest",
  "petgraph",
@@ -2944,7 +2960,6 @@ dependencies = [
  "serde_json",
  "strum",
  "tempfile",
- "testkit",
  "thiserror 2.0.18",
  "tokio",
  "toml",
@@ -3864,6 +3879,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
+ "fixture",
+ "harness",
  "jiff",
  "omnia-guest",
  "project",
@@ -3875,7 +3892,6 @@ dependencies = [
  "serde_json",
  "strum",
  "tempfile",
- "testkit",
  "tokio",
 ]
 
@@ -3908,6 +3924,7 @@ dependencies = [
  "cfg-if",
  "diagnostics",
  "error",
+ "fixture",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -3917,7 +3934,6 @@ dependencies = [
  "project",
  "serde_json",
  "slice",
- "testkit",
  "tokio",
  "transport",
  "wasip3",
@@ -4059,24 +4075,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "testkit"
-version = "0.27.2"
-dependencies = [
- "adapter",
- "artifacts",
- "change",
- "diagnostics",
- "error",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "serde_json",
- "slice",
- "tempfile",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -4469,6 +4467,8 @@ dependencies = [
  "change",
  "clap",
  "error",
+ "fixture",
+ "harness",
  "omnia-guest",
  "project",
  "serde",
@@ -4476,7 +4476,6 @@ dependencies = [
  "slice",
  "strum",
  "tempfile",
- "testkit",
  "tokio",
  "tower",
 ]

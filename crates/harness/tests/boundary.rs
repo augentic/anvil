@@ -1,8 +1,8 @@
 //! The harness stays adapter-agnostic: no dependency on any concrete
 //! adapter crate. This invariant is what keeps both wrappers
 //! declarative — the engine's eval crate instantiates the catalog with
-//! its testkit fixture, `engine` (in `augentic/specify-adapters`)
-//! with the first-party adapters.
+//! the `fixture` crate's registry, `engine` (in
+//! `augentic/specify-adapters`) with the first-party adapters.
 
 use std::fs;
 
@@ -24,6 +24,7 @@ fn no_adapter_crate_dependencies() {
         "typescript",
         "vectis",
         "testkit",
+        "fixture",
     ] {
         assert!(
             !manifest.lines().any(|line| line.trim_start().starts_with(&format!("{name}."))

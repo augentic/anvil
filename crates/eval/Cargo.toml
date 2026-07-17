@@ -22,8 +22,7 @@ workspace = true
 anyhow.workspace = true
 artifacts.workspace = true
 change.workspace = true
-harness.workspace = true
+fixture.workspace = true
+harness = { workspace = true, features = ["full"] }
 omnia-guest.workspace = true
-project.workspace = true
-testkit.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

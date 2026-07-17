@@ -17,7 +17,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "test", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "test", "harness-features", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
@@ -48,6 +48,15 @@ install_crate = "cargo-udeps"
 command = "cargo"
 args = ["run", "-p", "eval", "--", "${@}"]
 env_files = [".env"]
+
+# Harness feature layering — the lean core and default feature set
+# must hold without --all-features, so the dependency cuts cannot rot
+[tasks.harness-features]
+script = '''
+cargo check -p harness --no-default-features --locked
+cargo nextest run -p harness --locked --no-tests=pass
+'''
+env = { RUSTFLAGS = "-Dwarnings" }
 
 # Fmt — mutates; the gates use fmt
 [tasks.fmt]

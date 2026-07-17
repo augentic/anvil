@@ -65,8 +65,12 @@ pub trait Target {
 
     fn docs() -> &'static [registry::Doc];
 
-    /// The embedded synthesis-guidance prompt.
-    fn guidance() -> &'static str;
+    /// The synthesis-guidance prompt. Async and fallible per the WIT
+    /// contract; deterministic implementors ignore `model`.
+    fn guidance<P: Model>(
+        model: &P,
+        ctx: &Context<'_>,
+    ) -> impl Future<Output = Result<String, seam::Error>> + Send;
 
     /// Build `slice` against the lent working tree.
     fn build<P: Model>(

@@ -2,7 +2,11 @@
 
 use std::fs;
 
-use testkit::{Scripted, report_rule_ids, run};
+mod support;
+
+use fixture::session::Session;
+use harness::invoke::run;
+use support::report_rule_ids;
 
 #[tokio::test]
 async fn structural_findings() {
@@ -34,15 +38,15 @@ async fn structural_findings() {
     ];
 
     for (expected, body) in cases {
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         fs::write(
-            project.root.join("plan.yaml"),
+            project.root().join("plan.yaml"),
             format!("name: validation\nlifecycle: pending\n{body}"),
         )
         .expect("stage plan");
 
         let err = run::<change::plan::handlers::Validate, _, _>(
-            &project,
+            project.provider(),
             change::plan::handlers::ValidateInput {},
         )
         .await

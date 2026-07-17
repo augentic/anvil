@@ -11,26 +11,89 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
+# Features are dependency cuts, not capability toggles: the always-on
+# core (catalog, provider, typed invocation, env) needs only the
+# workflow crates, and each optional layer pulls exactly the heavy
+# dependencies its modules use.
+[features]
+# `model` + `native`: the live cursor backend and the guest-over-host
+# model bridge.
+model = [
+    "dep:anyhow",
+    "dep:omnia",
+    "dep:omnia-cursor",
+    "dep:omnia-wasi-model",
+    "dep:tokio",
+    "tokio/sync",
+]
+# `mcp` + `Provider::bound`: reference shelves on a background listener.
+mcp = ["dep:axum", "dep:tokio", "tokio/net", "tokio/rt"]
+# `command`: the native argv entry over the shared typed router.
+command = ["dep:anyhow", "dep:transport", "mcp", "model"]
+# `http`: the native `serve` transport.
+http = ["command", "dep:clap"]
+# `scenario` plus its filesystem (`fs`) and trial-input (`inputs`) helpers.
+scenario = [
+    "dep:anyhow",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:toml",
+    "mcp",
+    "model",
+]
+# `trial` + `sandbox` + `telemetry`: the live-model trial driver.
+trial = ["command", "dep:change", "dep:clap", "scenario"]
+# Everything; the eval wrapper binaries request this.
+full = ["http", "trial"]
+
 [dependencies]
 adapter.workspace = true
-anyhow.workspace = true
+anyhow = { workspace = true, optional = true }
 artifacts.workspace = true
-axum.workspace = true
-change.workspace = true
-clap.workspace = true
+axum = { workspace = true, optional = true }
+change = { workspace = true, optional = true }
+clap = { workspace = true, optional = true }
 diagnostics.workspace = true
 error.workspace = true
-omnia.workspace = true
-omnia-cursor.workspace = true
+omnia = { workspace = true, optional = true }
+omnia-cursor = { workspace = true, optional = true }
 omnia-guest.workspace = true
-omnia-wasi-model.workspace = true
+omnia-wasi-model = { workspace = true, optional = true }
 project.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-tokio = { workspace = true, features = ["macros", "net", "rt-multi-thread", "sync"] }
-toml.workspace = true
-transport.workspace = true
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+transport = { workspace = true, optional = true }
 
 [dev-dependencies]
 omnia-testkit.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[[test]]
+name = "boundary"
+path = "tests/boundary.rs"
+
+[[test]]
+name = "catalog"
+path = "tests/catalog.rs"
+
+[[test]]
+name = "provider"
+path = "tests/provider.rs"
+
+[[test]]
+name = "inputs"
+path = "tests/inputs.rs"
+required-features = ["scenario"]
+
+[[test]]
+name = "scenario"
+path = "tests/scenario.rs"
+required-features = ["scenario"]
+
+[[test]]
+name = "grade"
+path = "tests/grade.rs"
+required-features = ["trial"]

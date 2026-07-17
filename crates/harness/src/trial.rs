@@ -19,8 +19,9 @@ use change::{Entry as PlanEntry, Plan, Status};
 use clap::{Parser, Subcommand};
 
 use crate::catalog::Binding;
+use crate::invoke::run as run_op;
 use crate::model::DevModel;
-use crate::provider::{Provider, run as run_op};
+use crate::provider::Provider;
 use crate::scenario::{self, Scenarios};
 use crate::telemetry::{self, Telemetry};
 use crate::{command, env, fs as evalfs, sandbox};

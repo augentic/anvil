@@ -2,7 +2,8 @@
 
 use std::fs;
 
-use testkit::{Scripted, run};
+use fixture::session::Session;
+use harness::invoke::run;
 
 mod list {
     use super::*;
@@ -11,9 +12,9 @@ mod list {
     /// sorted by name, and skips directories without one.
     #[tokio::test]
     async fn sorted_with_status() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         for (name, status) in [("beta", "refined"), ("alpha", "refining")] {
-            let slice = project.root.join(".specify/slices").join(name);
+            let slice = project.root().join(".specify/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
             fs::write(
                 slice.join("metadata.yaml"),
@@ -21,11 +22,11 @@ mod list {
             )
             .expect("stage metadata");
         }
-        fs::create_dir_all(project.root.join(".specify/slices/not-a-slice"))
+        fs::create_dir_all(project.root().join(".specify/slices/not-a-slice"))
             .expect("stage stray dir");
 
         let body =
-            run::<slice::handlers::List, _, _>(&project, slice::handlers::ListInput::default())
+            run::<slice::handlers::List, _, _>(project.provider(), slice::handlers::ListInput::default())
                 .await
                 .expect("list succeeds");
 
@@ -43,8 +44,8 @@ mod timestamps {
     /// metadata-mutating verb).
     #[tokio::test]
     async fn round_trip_rfc3339() {
-        let project = Scripted::initialised();
-        let slice = project.root.join(".specify/slices/demo");
+        let project = Session::scripted("fixture", Vec::new());
+        let slice = project.root().join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
             slice.join("metadata.yaml"),
@@ -55,7 +56,7 @@ mod timestamps {
         .expect("stage metadata");
 
         run::<slice::handlers::Drop, _, _>(
-            &project,
+            project.provider(),
             slice::handlers::DropInput {
                 name: "demo".to_string(),
                 reason: None,
@@ -64,7 +65,7 @@ mod timestamps {
         .await
         .expect("metadata parses and the drop saves");
 
-        let archived = project.root.join(".specify/archive");
+        let archived = project.root().join(".specify/archive");
         let dir = fs::read_dir(&archived)
             .expect("archive dir")
             .next()
@@ -78,8 +79,8 @@ mod timestamps {
 
     #[tokio::test]
     async fn malformed_rejected() {
-        let project = Scripted::initialised();
-        let slice = project.root.join(".specify/slices/demo");
+        let project = Session::scripted("fixture", Vec::new());
+        let slice = project.root().join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
             slice.join("metadata.yaml"),
@@ -88,7 +89,7 @@ mod timestamps {
         .expect("stage metadata");
 
         let err = run::<slice::handlers::Drop, _, _>(
-            &project,
+            project.provider(),
             slice::handlers::DropInput {
                 name: "demo".to_string(),
                 reason: None,

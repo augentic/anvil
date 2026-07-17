@@ -11,7 +11,7 @@ use adapter::seam::{
     BuildOutput, Context, Finding, Input, Platform, Report, Severity, Status, WorkingTree,
 };
 use tempfile::tempdir;
-use testkit::Harness;
+use fixture::model::Harness;
 
 const fn context(root: &Path) -> Context<'_> {
     Context {

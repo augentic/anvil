@@ -16,13 +16,17 @@ use adapter::seam::{self as aseam, Context};
 use adapter::{Source, Target, references};
 use error::Error;
 use omnia_guest::Model;
+use project::adapter::Axis;
 use project::adapter::metadata::{Metadata, Request as MetadataRequest};
-use project::adapter::{Axis, BuildInputDeclaration, PlatformsCapability};
+
+use crate::convert;
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 type SurveyFn<M> =
     for<'a> fn(&'a M, &'a Context<'a>) -> BoxFuture<'a, Result<Vec<aseam::Lead>, aseam::Error>>;
+type GuidanceFn<M> =
+    for<'a> fn(&'a M, &'a Context<'a>) -> BoxFuture<'a, Result<String, aseam::Error>>;
 type ExtractFn<M> = for<'a> fn(
     &'a M,
     &'a Context<'a>,
@@ -46,8 +50,8 @@ type MergeFn<M> = for<'a> fn(
 /// One repository's linked-adapter declaration.
 ///
 /// The single hook a wrapper implements to bind its concrete adapters
-/// into the shared harness (the engine's eval crate binds the testkit
-/// fixture; `engine` binds the first-party adapters). Generic
+/// into the shared harness (the engine's eval crate binds the fixture
+/// registry; `engine` binds the first-party adapters). Generic
 /// over the model backend so one declaration serves every provider
 /// shape the trial, scenario, command, and HTTP entrypoints construct.
 pub trait Binding {
@@ -58,7 +62,7 @@ pub trait Binding {
 /// The monomorphized operation legs of one linked adapter.
 enum Ops<M> {
     Source { survey: SurveyFn<M>, extract: ExtractFn<M> },
-    Target { guidance: fn() -> &'static str, build: BuildFn<M>, merge: MergeFn<M> },
+    Target { guidance: GuidanceFn<M>, build: BuildFn<M>, merge: MergeFn<M> },
 }
 
 impl<M> Clone for Ops<M> {
@@ -185,18 +189,6 @@ impl<M> Catalog<M> {
             })
     }
 
-    /// Serve the linked target adapter's embedded guidance prompt.
-    ///
-    /// # Errors
-    ///
-    /// Returns `invalid-request` when `id` routes to no linked target.
-    pub fn guidance(&self, id: &str) -> Result<&'static str, aseam::Error> {
-        match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { guidance, .. }) => Ok(guidance()),
-            _ => Err(unlinked(id)),
-        }
-    }
-
     /// In-process metadata dispatch used by seam-level parity tests.
     ///
     /// # Errors
@@ -220,6 +212,21 @@ impl<M> Catalog<M> {
 }
 
 impl<M: Model> Catalog<M> {
+    /// Dispatch `guidance` to the linked target adapter behind `id`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the adapter's failure, or `invalid-request` when `id`
+    /// routes to no linked target.
+    pub async fn guidance(
+        &self, model: &M, ctx: &Context<'_>, id: &str,
+    ) -> Result<String, aseam::Error> {
+        match self.find(id).map(|entry| entry.ops) {
+            Some(Ops::Target { guidance, .. }) => guidance(model, ctx).await,
+            _ => Err(unlinked(id)),
+        }
+    }
+
     /// Dispatch `survey` to the linked source adapter behind `id`.
     ///
     /// # Errors
@@ -302,7 +309,7 @@ impl<M: Model> Builder<M> {
             axis: Axis::Source,
             name: A::NAME,
             server_name: references::server_name(A::NAME),
-            metadata: || source_metadata(A::metadata()),
+            metadata: || convert::source_metadata(A::metadata()),
             docs: A::docs,
             ops: Ops::Source {
                 survey: survey_leg::<A, M>,
@@ -319,10 +326,10 @@ impl<M: Model> Builder<M> {
             axis: Axis::Target,
             name: A::NAME,
             server_name: references::server_name(A::NAME),
-            metadata: || target_metadata(A::metadata()),
+            metadata: || convert::target_metadata(A::metadata()),
             docs: A::docs,
             ops: Ops::Target {
-                guidance: A::guidance,
+                guidance: guidance_leg::<A, M>,
                 build: build_leg::<A, M>,
                 merge: merge_leg::<A, M>,
             },
@@ -351,6 +358,12 @@ fn extract_leg<'a, A: Source + 'static, M: Model>(
     Box::pin(A::extract(model, ctx, lead))
 }
 
+fn guidance_leg<'a, A: Target + 'static, M: Model>(
+    model: &'a M, ctx: &'a Context<'a>,
+) -> BoxFuture<'a, Result<String, aseam::Error>> {
+    Box::pin(A::guidance(model, ctx))
+}
+
 fn build_leg<'a, A: Target + 'static, M: Model>(
     model: &'a M, ctx: &'a Context<'a>, slice: &'a str, inputs: &'a [aseam::Input],
     tree: &'a aseam::WorkingTree,
@@ -367,42 +380,4 @@ fn merge_leg<'a, A: Target + 'static, M: Model>(
 
 fn unlinked(id: &str) -> aseam::Error {
     aseam::Error::InvalidRequest(format!("adapter `{id}` is not linked into the native shim"))
-}
-
-fn source_metadata(record: aseam::SourceMetadata) -> Metadata {
-    Metadata {
-        specify_floor: record.specify_floor,
-        inputs: Vec::new(),
-        platforms: None,
-    }
-}
-
-fn target_metadata(record: aseam::TargetMetadata) -> Metadata {
-    Metadata {
-        specify_floor: record.specify_floor,
-        inputs: record
-            .inputs
-            .into_iter()
-            .map(|input| BuildInputDeclaration {
-                path: input.path,
-                required: input.required,
-            })
-            .collect(),
-        platforms: record.platforms.map(|capability| PlatformsCapability {
-            required: capability.required,
-            allowed: capability.allowed.into_iter().map(platform).collect(),
-            default: capability.default.into_iter().map(platform).collect(),
-        }),
-    }
-}
-
-const fn platform(platform: aseam::Platform) -> project::platform::Platform {
-    use project::platform::Platform;
-    match platform {
-        aseam::Platform::Core => Platform::Core,
-        aseam::Platform::Ios => Platform::Ios,
-        aseam::Platform::Android => Platform::Android,
-        aseam::Platform::Web => Platform::Web,
-        aseam::Platform::Desktop => Platform::Desktop,
-    }
 }

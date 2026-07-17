@@ -43,8 +43,8 @@ wit-bindgen.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 adapter.workspace = true
+fixture.workspace = true
 omnia-wasi-http.workspace = true
-testkit.workspace = true
 
 [[example]]
 name = "change"
@@ -178,11 +178,11 @@ artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
+fixture = { path = "crates/fixture" }
 harness = { path = "crates/harness" }
 project = { path = "crates/project" }
 prose = { path = "crates/prose" }
 slice = { path = "crates/slice" }
-testkit = { path = "crates/testkit" }
 transport = { path = "crates/transport" }
 
 omnia = "0.35.0"

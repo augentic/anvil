@@ -2,14 +2,16 @@
 //! harness entrypoint with the adversarial trial profile and
 //! deterministic fixture grading.
 
-mod grade;
-
+use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
-use anyhow::{Result, ensure};
+use anyhow::{Context as _, Result, ensure};
+use artifacts::spec::provenance::{Requirement, RequirementStatus};
+use change::plan::handlers::ExecuteBody;
 use change::{Entry, Plan};
 use eval::{Fixtures, SANDBOX};
+use fixture::behaviour::build_artifact_path;
 use harness::trial::{self, Profile};
 
 const CHANGE: &str = "auth";
@@ -45,7 +47,7 @@ fn profile() -> Profile {
         ]),
         change: CHANGE.to_string(),
         authored: Some(authored),
-        grade: grade::run,
+        grade,
         scenarios: None,
     }
 }
@@ -73,4 +75,44 @@ fn binds(entry: &Entry, source: &str, lead: &str) -> bool {
 
 fn argv(parts: &[&str]) -> Vec<String> {
     parts.iter().map(ToString::to_string).collect()
+}
+
+// Grade the drained plan against the adversarial fixture contract:
+// one failing assertion at a time, with the evidence inline.
+fn grade(root: &Path, plan: &Plan, _executed: &ExecuteBody) -> Result<()> {
+    let requirements = harness::grade::baseline(root)?;
+    harness::grade::provenance(&requirements)?;
+    adversarial(&requirements)?;
+    outputs(root, plan)?;
+    Ok(())
+}
+
+fn adversarial(requirements: &[Requirement]) -> Result<()> {
+    ensure!(
+        requirements.iter().any(|requirement| matches!(
+            requirement.status,
+            Some(RequirementStatus::Divergence | RequirementStatus::Conflict)
+        )),
+        "the session-timeout disagreement must surface as a divergence or conflict: \
+         {requirements:?}"
+    );
+    ensure!(
+        requirements
+            .iter()
+            .any(|requirement| requirement.status == Some(RequirementStatus::Unknown)),
+        "the password-reset gap must be marked unknown — the faithful answer records zero \
+         contributing claims for the unevidenced lead (an answer that anchors it to the bare \
+         `password-reset.mention` section claim projects `agreed` instead): {requirements:?}"
+    );
+    Ok(())
+}
+
+fn outputs(root: &Path, plan: &Plan) -> Result<()> {
+    for entry in &plan.entries {
+        let artifact = build_artifact_path(root, &entry.name);
+        let body = fs::read_to_string(&artifact)
+            .with_context(|| format!("build output for `{}`", entry.name))?;
+        ensure!(!body.trim().is_empty(), "empty build output for `{}`", entry.name);
+    }
+    Ok(())
 }

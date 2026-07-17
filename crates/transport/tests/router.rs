@@ -3,20 +3,27 @@
 use std::any::TypeId;
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
+use fixture::model::Harness;
+use fixture::session::Scripted;
 use omnia_guest::api::invoke::Invoker;
 use tempfile::TempDir;
-use testkit::Scripted;
 
 // Grammar and parity coverage only: no test dispatches judgment or an
 // adapter seam, so the scripted provider's empty script never runs.
+fn provider(root: impl Into<PathBuf>) -> Scripted {
+    harness::provider::Provider::new(
+        root.into(),
+        Harness::answering(Vec::<String>::new()),
+        fixture::catalog(),
+    )
+}
+
 fn command_router(
     root: impl Into<PathBuf>,
 ) -> omnia_guest::api::command::Router<Scripted, transport::command::Globals> {
-    let root = root.into();
-    transport::command::router(Invoker::new("specify", Scripted::scripted_at(&root, Vec::new())))
-        .expect("router")
+    transport::command::router(Invoker::new("specify", provider(root))).expect("router")
 }
 
 #[test]
@@ -27,14 +34,12 @@ fn http_parity() {
         .iter()
         .filter_map(omnia_guest::api::command::RouteInfo::operation_type_id)
         .collect();
-    let http_types: BTreeSet<TypeId> = transport::http::router(Invoker::new(
-        "specify",
-        Scripted::scripted_at(Path::new("."), Vec::new()),
-    ))
-    .inventory()
-    .iter()
-    .map(omnia_guest::api::http::RouteInfo::operation)
-    .collect();
+    let http_types: BTreeSet<TypeId> =
+        transport::http::router(Invoker::new("specify", provider(".")))
+            .inventory()
+            .iter()
+            .map(omnia_guest::api::http::RouteInfo::operation)
+            .collect();
     let transport_only: BTreeSet<Vec<String>> = command
         .inventory()
         .iter()

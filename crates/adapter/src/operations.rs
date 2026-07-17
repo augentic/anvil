@@ -58,8 +58,13 @@ pub trait Target {
     /// Embedded prose registry.
     fn docs() -> &'static [Doc];
 
-    /// Embedded synthesis-guidance prompt.
-    fn guidance() -> &'static str;
+    /// Synthesis-guidance prompt, read by core synthesis. Deterministic
+    /// in every current implementor (they ignore `model`), but the WIT
+    /// contract already reserves model-consulting guidance, so the
+    /// trait threads the backend now.
+    fn guidance<P: Model>(
+        model: &P, ctx: &Context<'_>,
+    ) -> impl Future<Output = Result<String, Error>> + Send;
 
     /// Build `slice` against the lent working tree.
     fn build<P: Model>(

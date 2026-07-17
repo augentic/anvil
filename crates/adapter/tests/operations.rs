@@ -7,7 +7,7 @@ use adapter::seam::{
     WorkingTree,
 };
 use adapter::{Model, Source, Target, references, repaired};
-use testkit::Harness;
+use fixture::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
     path: "prompts/survey.md",
@@ -71,8 +71,11 @@ impl Target for Probe {
         DOCS
     }
 
-    fn guidance() -> &'static str {
-        "GUIDANCE"
+    async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
+        if ctx.adapter_id.contains("fail-guidance") {
+            return Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)));
+        }
+        Ok("GUIDANCE".to_string())
     }
 
     async fn build<P: Model>(
@@ -127,7 +130,22 @@ async fn target_dispatch() {
         .await
         .expect("merge succeeds");
     assert_eq!(report, Report::success());
-    assert_eq!(Probe::guidance(), "GUIDANCE");
+    let guidance = Probe::guidance(&model, &ctx()).await.expect("guidance succeeds");
+    assert_eq!(guidance, "GUIDANCE");
+}
+
+// The WIT marks guidance fallible; a typed adapter error crosses the
+// trait surface intact.
+#[tokio::test]
+async fn guidance_failure() {
+    let model = Harness::answering([""; 0]);
+    let failing = Context {
+        adapter_id: "target:probe-fail-guidance",
+        project_root: std::path::Path::new("."),
+        mcp_url: None,
+    };
+    let err = Probe::guidance(&model, &failing).await.expect_err("guidance fails");
+    assert!(matches!(err, Error::Internal(detail) if detail.contains("probe-fail-guidance")));
 }
 
 #[test]

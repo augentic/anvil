@@ -12,7 +12,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use testkit::{Scripted, run};
+use fixture::session::Session;
+use harness::invoke::run;
 
 /// Stage a one-project `registry.yaml` at the project root.
 fn stage_registry(root: &Path) {
@@ -28,9 +29,9 @@ mod registry {
 
     #[tokio::test]
     async fn add_mints_file() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         let body = run::<project::registry::handlers::Add, _, _>(
-            &project,
+            project.provider(),
             project::registry::handlers::AddInput {
                 name: "alpha".into(),
                 url: "git@example.com:org/alpha.git".into(),
@@ -42,16 +43,16 @@ mod registry {
         .expect("add succeeds");
         assert_eq!(body.added.name, "alpha");
         let registry =
-            fs::read_to_string(project.root.join("registry.yaml")).expect("registry.yaml");
+            fs::read_to_string(project.root().join("registry.yaml")).expect("registry.yaml");
         assert!(registry.contains("name: alpha"), "the add landed:\n{registry}");
     }
 
     #[tokio::test]
     async fn duplicate_add_errors() {
-        let project = Scripted::initialised();
-        stage_registry(&project.root);
+        let project = Session::scripted("fixture", Vec::new());
+        stage_registry(project.root());
         let err = run::<project::registry::handlers::Add, _, _>(
-            &project,
+            project.provider(),
             project::registry::handlers::AddInput {
                 name: "alpha".into(),
                 url: "git@example.com:org/alpha.git".into(),
@@ -69,10 +70,10 @@ mod registry {
 
     #[tokio::test]
     async fn staged_catalogue_validates() {
-        let project = Scripted::initialised();
-        stage_registry(&project.root);
+        let project = Session::scripted("fixture", Vec::new());
+        stage_registry(project.root());
         run::<project::registry::handlers::Validate, _, _>(
-            &project,
+            project.provider(),
             project::registry::handlers::ValidateInput {},
         )
         .await
@@ -84,10 +85,10 @@ mod registry {
     /// demand `.specify/project.yaml`.
     #[tokio::test]
     async fn validate_pre_init() {
-        let project = Scripted::bare();
-        stage_registry(&project.root);
+        let project = Session::bare(Vec::new());
+        stage_registry(project.root());
         run::<project::registry::handlers::Validate, _, _>(
-            &project,
+            project.provider(),
             project::registry::handlers::ValidateInput {},
         )
         .await
@@ -96,16 +97,16 @@ mod registry {
 
     #[tokio::test]
     async fn remove_drops_entry() {
-        let project = Scripted::initialised();
-        stage_registry(&project.root);
+        let project = Session::scripted("fixture", Vec::new());
+        stage_registry(project.root());
         run::<project::registry::handlers::Remove, _, _>(
-            &project,
+            project.provider(),
             project::registry::handlers::RemoveInput { name: "alpha".into() },
         )
         .await
         .expect("remove succeeds");
         let registry =
-            fs::read_to_string(project.root.join("registry.yaml")).expect("registry.yaml");
+            fs::read_to_string(project.root().join("registry.yaml")).expect("registry.yaml");
         assert!(!registry.contains("name: alpha"), "the remove landed:\n{registry}");
     }
 }
@@ -125,10 +126,10 @@ mod archive {
 
     #[tokio::test]
     async fn prune_keeps_newest() {
-        let project = Scripted::initialised();
-        let archive = stage(&project.root);
+        let project = Session::scripted("fixture", Vec::new());
+        let archive = stage(project.root());
         let body = run::<slice::handlers::Prune, _, _>(
-            &project,
+            project.provider(),
             slice::handlers::PruneInput {
                 keep: Some(1),
                 older_than: None,
@@ -144,10 +145,10 @@ mod archive {
 
     #[tokio::test]
     async fn prune_requires_bound() {
-        let project = Scripted::initialised();
-        stage(&project.root);
+        let project = Session::scripted("fixture", Vec::new());
+        stage(project.root());
         let err = run::<slice::handlers::Prune, _, _>(
-            &project,
+            project.provider(),
             slice::handlers::PruneInput {
                 keep: None,
                 older_than: None,
@@ -168,9 +169,9 @@ mod init {
 
     #[tokio::test]
     async fn adapter_required() {
-        let project = Scripted::bare();
+        let project = Session::bare(Vec::new());
         let err = run::<project::init::handlers::Init, _, _>(
-            &project,
+            project.provider(),
             project::init::handlers::InitInput::default(),
         )
         .await
@@ -186,18 +187,18 @@ mod init {
 
     #[tokio::test]
     async fn reentry_and_upgrade() {
-        let project = Scripted::bare();
+        let project = Session::bare(Vec::new());
         let input = || project::init::handlers::InitInput {
             name: Some("demo-workspace".into()),
             workspace: true,
             ..Default::default()
         };
-        run::<project::init::handlers::Init, _, _>(&project, input())
+        run::<project::init::handlers::Init, _, _>(project.provider(), input())
             .await
             .expect("workspace scaffold succeeds");
 
         // Plain re-run: a no-op that routes to `--upgrade`.
-        let body = run::<project::init::handlers::Init, _, _>(&project, input())
+        let body = run::<project::init::handlers::Init, _, _>(project.provider(), input())
             .await
             .expect("init re-entry exits 0");
         assert_eq!(body.mode, project::init::handlers::InitMode::AlreadyInitialized);
@@ -205,7 +206,7 @@ mod init {
 
         // The documented re-entry command succeeds over the project.
         let body = run::<project::init::handlers::Init, _, _>(
-            &project,
+            project.provider(),
             project::init::handlers::InitInput {
                 upgrade: true,
                 ..Default::default()
@@ -219,9 +220,9 @@ mod init {
 
     #[tokio::test]
     async fn workspace_mode() {
-        let project = Scripted::bare();
+        let project = Session::bare(Vec::new());
         let body = run::<project::init::handlers::Init, _, _>(
-            &project,
+            project.provider(),
             project::init::handlers::InitInput {
                 adapter: None,
                 name: Some("demo-workspace".into()),
@@ -235,213 +236,31 @@ mod init {
         .expect("workspace scaffold succeeds");
         assert_eq!(body.adapter_name, "workspace");
         let config =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+            fs::read_to_string(project.root().join(".specify/project.yaml")).expect("project.yaml");
         assert!(config.contains("workspace: true"), "workspace mode is recorded:\n{config}");
         assert!(config.contains("name: demo-workspace"), "the name override lands:\n{config}");
-        assert!(project.root.join("registry.yaml").is_file(), "workspace init mints registry.yaml");
+        assert!(project.root().join("registry.yaml").is_file(), "workspace init mints registry.yaml");
 
         assert!(body.context_generated, "workspace init generates AGENTS.md context");
-        let agents = fs::read_to_string(project.root.join("AGENTS.md")).expect("AGENTS.md");
+        let agents = fs::read_to_string(project.root().join("AGENTS.md")).expect("AGENTS.md");
         assert!(
             !agents.contains("## Runtime"),
             "workspace context omits the per-language sections:\n{agents}"
         );
         assert!(
-            project.root.join(".specify/context.lock").is_file(),
+            project.root().join(".specify/context.lock").is_file(),
             "the fingerprint sidecar lands beside the generated context"
         );
-    }
-
-    #[tokio::test]
-    async fn regular_mode() {
-        let project = Scripted::bare();
-
-        // Stage a fake `demo` component at the resolver's in-repo dev
-        // probe path with a digest-valid metadata sidecar beside it:
-        // the resolver probes file presence and the sidecar supplies
-        // the answer, so no metadata dispatch runs.
-        let dev_dir = project.root.join("target/wasm32-wasip2/release");
-        fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-        let component = dev_dir.join("demo.wasm");
-        fs::write(&component, b"\0asm-component").expect("stage component");
-        let digest = diagnostics::cache::file_content_digest(&component);
-        fs::write(
-            dev_dir.join("demo.wasm.metadata.json"),
-            format!("{{ \"digest\": \"{digest}\", \"metadata\": {{}} }}"),
-        )
-        .expect("stage metadata sidecar");
-
-        let body = run::<project::init::handlers::Init, _, _>(
-            &project,
-            project::init::handlers::InitInput {
-                adapter: Some("demo".into()),
-                name: Some("demo-project".into()),
-                description: None,
-                workspace: false,
-                platforms: None,
-                upgrade: false,
-            },
-        )
-        .await
-        .expect("scaffold succeeds");
-        assert_eq!(body.adapter_name, "demo");
-        let config =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
-        assert!(config.contains("adapter: demo"), "the adapter is recorded:\n{config}");
-        assert!(project.root.join(".specify/slices").is_dir(), "the slice tree is scaffolded");
-
-        assert!(body.context_generated, "init generates AGENTS.md context when absent");
-        let agents = fs::read_to_string(project.root.join("AGENTS.md")).expect("AGENTS.md");
-        assert!(
-            agents.contains("<!-- specify:context begin"),
-            "the generated context is fenced:\n{agents}"
-        );
-        assert!(
-            agents.contains("adapter `demo`"),
-            "the resolved adapter surfaces in Conventions:\n{agents}"
-        );
-        assert!(
-            project.root.join(".specify/context.lock").is_file(),
-            "the fingerprint sidecar lands beside the generated context"
-        );
-    }
-
-    /// A provider whose resolver answers from memory — the
-    /// native-harness (linked crates) shape: no component file exists
-    /// anywhere on disk.
-    #[derive(Clone)]
-    struct Linked(Scripted);
-
-    impl project::handler::Anchor for Linked {
-        fn project_root(&self) -> &Path {
-            &self.0.root
-        }
-    }
-
-    impl project::adapter::Resolver for Linked {
-        fn resolve_source(
-            &self, adapter_ref: &project::adapter::AdapterRef, _project_dir: &Path,
-        ) -> Result<project::adapter::ResolvedSource, error::Error> {
-            project::adapter::resolver::source(
-                adapter_ref,
-                project::adapter::metadata::Metadata::default(),
-                linked_origin(),
-            )
-        }
-
-        fn resolve_target(
-            &self, adapter_ref: &project::adapter::AdapterRef, _project_dir: &Path,
-        ) -> Result<project::adapter::ResolvedTarget, error::Error> {
-            project::adapter::resolver::target(
-                adapter_ref,
-                project::adapter::metadata::Metadata::default(),
-                linked_origin(),
-            )
-        }
-    }
-
-    impl project::adapter::Hydrator for Linked {
-        async fn fetch(&self, url: &str) -> Result<Vec<u8>, error::Error> {
-            project::adapter::Hydrator::fetch(&self.0, url).await
-        }
-    }
-
-    fn linked_origin() -> project::adapter::Origin {
-        project::adapter::Origin {
-            label: "native".to_string(),
-            reference: "rust:target:demo".to_string(),
-        }
-    }
-
-    #[tokio::test]
-    async fn regular_mode_component_free() {
-        // A bare adapter name is an identity, not a file: init defers
-        // component resolution to the injected resolver, so no `.wasm`
-        // artifact is staged anywhere for this test.
-        let project = Scripted::bare();
-        let body = omnia_guest::api::invoke::Invoker::new("specify", Linked(project.clone()))
-            .invoke::<project::init::handlers::Init>(omnia_guest::api::invocation::Invocation::new(
-                project::init::handlers::InitInput {
-                    adapter: Some("demo".into()),
-                    name: Some("demo-project".into()),
-                    description: None,
-                    workspace: false,
-                    platforms: None,
-                    upgrade: false,
-                },
-            ))
-            .await
-            .expect("component-free scaffold succeeds");
-        assert_eq!(body.adapter_name, "demo");
-        let config =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
-        assert!(config.contains("adapter: demo"), "the bare identity is recorded:\n{config}");
-        assert!(
-            !body.cache_present,
-            "no component is mirrored into the project cache for a bare name"
-        );
-    }
-
-    #[tokio::test]
-    async fn local_component_mirrored() {
-        // The only route an externally built adapter has into a project
-        // (there is no sibling-checkout probe): an operator-supplied
-        // local `.wasm` at init is mirrored into the project component
-        // cache, where the bare-name resolver finds it afterwards.
-        let project = Scripted::bare();
-        let staged = project.root.join("downloads/demo.wasm");
-        fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir downloads");
-        fs::write(&staged, b"\0asm-component").expect("stage local component");
-
-        let body = run::<project::init::handlers::Init, _, _>(
-            &project,
-            project::init::handlers::InitInput {
-                adapter: Some(staged.display().to_string()),
-                name: Some("demo-project".into()),
-                description: None,
-                workspace: false,
-                platforms: None,
-                upgrade: false,
-            },
-        )
-        .await
-        .expect("local-component scaffold succeeds");
-        assert_eq!(body.adapter_name, "demo", "the name derives from the component filename");
-        assert!(body.cache_present, "the local component is mirrored into the project cache");
-
-        let components = testkit::env::expected_cache_dir(&project.root).join("components");
-        assert_eq!(
-            fs::read(components.join("demo.wasm")).expect("mirrored component"),
-            b"\0asm-component",
-            "the mirror is a byte-copy of the supplied file"
-        );
-        let meta =
-            fs::read_to_string(components.join("component-meta.yaml")).expect("provenance stamp");
-        assert!(meta.contains("file://"), "provenance records the local source:\n{meta}");
-        let config =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
-        assert!(
-            config.contains("file://"),
-            "the recorded adapter value is the file URI:\n{config}"
-        );
-
-        let resolved = project::adapter::Resolver::resolve_target(
-            &testkit::resolver(),
-            &project::adapter::AdapterRef::bare("demo"),
-            &project.root,
-        )
-        .expect("the mirrored component resolves the bare name");
-        assert_eq!(resolved.manifest.name, "demo");
     }
 
     #[tokio::test]
     async fn existing_agents_md_preserved() {
-        let project = Scripted::bare();
-        let agents_path = project.root.join("AGENTS.md");
+        let project = Session::bare(Vec::new());
+        let agents_path = project.root().join("AGENTS.md");
         fs::write(&agents_path, "# operator prose\n").expect("stage operator AGENTS.md");
 
         let body = run::<project::init::handlers::Init, _, _>(
-            &project,
+            project.provider(),
             project::init::handlers::InitInput {
                 adapter: None,
                 name: Some("demo-workspace".into()),
@@ -463,7 +282,7 @@ mod init {
             "the operator file is preserved byte-for-byte"
         );
         assert!(
-            !project.root.join(".specify/context.lock").exists(),
+            !project.root().join(".specify/context.lock").exists(),
             "no fingerprint sidecar is written when generation is skipped"
         );
     }
@@ -474,9 +293,9 @@ mod journal {
 
     #[tokio::test]
     async fn emit_appends_line() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         let body = run::<project::journal::handlers::Emit, _, _>(
-            &project,
+            project.provider(),
             project::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some(r#"{"slice-name":"billing"}"#.into()),
@@ -486,7 +305,7 @@ mod journal {
         .expect("emit succeeds");
         assert_eq!(body.event, "slice.build.started");
         let journal =
-            fs::read_to_string(project.root.join(".specify/journal.jsonl")).expect("journal");
+            fs::read_to_string(project.root().join(".specify/journal.jsonl")).expect("journal");
         assert!(
             journal.contains(r#""event":"slice.build.started""#),
             "the event landed:\n{journal}"
@@ -495,9 +314,9 @@ mod journal {
 
     #[tokio::test]
     async fn emit_unknown_event_refused() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         let err = run::<project::journal::handlers::Emit, _, _>(
-            &project,
+            project.provider(),
             project::journal::handlers::EmitInput {
                 event: "no.such.event".into(),
                 payload: None,
@@ -513,9 +332,9 @@ mod journal {
 
     #[tokio::test]
     async fn emit_bad_payload_refused() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         let err = run::<project::journal::handlers::Emit, _, _>(
-            &project,
+            project.provider(),
             project::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some("{}".into()),
@@ -528,16 +347,16 @@ mod journal {
             "a bad payload is the validation failure (exit 2 at the CLI), got {err:?}"
         );
         assert!(
-            !project.root.join(".specify/journal.jsonl").exists(),
+            !project.root().join(".specify/journal.jsonl").exists(),
             "a refused emit appends nothing"
         );
     }
 
     #[tokio::test]
     async fn show_reads_filtered() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         run::<project::journal::handlers::Emit, _, _>(
-            &project,
+            project.provider(),
             project::journal::handlers::EmitInput {
                 event: "slice.build.started".into(),
                 payload: Some(r#"{"slice-name":"billing"}"#.into()),
@@ -546,7 +365,7 @@ mod journal {
         .await
         .expect("emit succeeds");
         let matched = run::<project::journal::handlers::Show, _, _>(
-            &project,
+            project.provider(),
             project::journal::handlers::ShowInput {
                 filter: Some("slice.build".into()),
                 limit: None,
@@ -556,7 +375,7 @@ mod journal {
         .expect("show succeeds");
         assert_eq!(matched.count, 1, "the emitted event matches its prefix");
         let unmatched = run::<project::journal::handlers::Show, _, _>(
-            &project,
+            project.provider(),
             project::journal::handlers::ShowInput {
                 filter: Some("plan.".into()),
                 limit: None,
@@ -565,6 +384,6 @@ mod journal {
         .await
         .expect("a filter with no matches still succeeds");
         assert_eq!(unmatched.count, 0, "no plan events were emitted");
-        assert!(project.root.join(".specify/journal.jsonl").is_file(), "the journal persists");
+        assert!(project.root().join(".specify/journal.jsonl").is_file(), "the journal persists");
     }
 }

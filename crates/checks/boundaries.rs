@@ -212,14 +212,14 @@ fn bad_fixtures() {
     );
     assert!(findings(dir.path()).is_empty());
 
-    // The in-tree testkit crate (the fixture adapter core's home) is an
+    // The in-tree fixture crate (the fixture adapter core's home) is an
     // ordinary workspace member; its name collides with nothing in
     // specify-adapters and needs no allowance.
     let dir = tempfile::tempdir().expect("tempdir");
     write(
         dir.path(),
         "Cargo.toml",
-        "[workspace.dependencies]\ntestkit = { path = \"crates/testkit\" }\n",
+        "[workspace.dependencies]\nfixture = { path = \"crates/fixture\" }\n",
     );
     assert!(findings(dir.path()).is_empty());
 

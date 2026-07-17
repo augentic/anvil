@@ -4,12 +4,14 @@
 //! requirement, and the provenance projection stays complete — all
 //! through the public refine / model / provenance operations.
 
+mod support;
+
 use std::fs;
 
 use change::plan;
+use fixture::session::Session;
+use harness::invoke::run;
 use serde_json::json;
-use testkit::provider::Provider;
-use testkit::{Scripted, answers, run};
 
 /// Synthesis for `session-policy`: the two `session.timeout` claims
 /// disagree, so the answer carries the `disagreed` verdict and the
@@ -76,22 +78,19 @@ fn reset_synthesis_answer() -> String {
     .expect("synthesis serialises")
 }
 
-async fn author_and_approve<M>(provider: &Provider<M>)
-where
-    M: omnia_guest::Model + Clone + Send + Sync + 'static,
-{
+async fn author_and_approve(session: &Session) {
     run::<plan::handlers::Author, _, _>(
-        provider,
+        session.provider(),
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
-            sources: answers::adversarial_bindings(),
+            sources: support::adversarial_bindings(),
             intent: None,
         },
     )
     .await
     .expect("author walks to pending");
     run::<plan::handlers::Transition, _, _>(
-        provider,
+        session.provider(),
         plan::handlers::TransitionInput {
             name: "auth".to_string(),
             target: Some("approved".to_string()),
@@ -107,14 +106,14 @@ where
 // with the docs claim winning.
 #[tokio::test]
 async fn divergence_docs_wins() {
-    let provider = Scripted::scripted(
+    let session = Session::scripted(
         "fixture",
-        vec![answers::adversarial_grouping(), session_synthesis_answer()],
+        vec![fixture::answers::adversarial_grouping(), session_synthesis_answer()],
     );
-    author_and_approve(&provider).await;
+    author_and_approve(&session).await;
 
     let refined = run::<slice::handlers::Refine, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
@@ -125,7 +124,7 @@ async fn divergence_docs_wins() {
 
     // The kernel resolved the disagreement: divergence, docs winning.
     let model = run::<slice::handlers::ModelShow, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::ModelShowInput {
             name: "session-policy".to_string(),
         },
@@ -143,7 +142,7 @@ async fn divergence_docs_wins() {
 
     // The written spec carries the inline `[divergence]` tag.
     let spec = fs::read_to_string(
-        provider.root.join(".specify/slices/session-policy/specs/session/spec.md"),
+        session.root().join(".specify/slices/session-policy/specs/session/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[divergence]"), "{spec}");
@@ -151,7 +150,7 @@ async fn divergence_docs_wins() {
     // The provenance projection recomputes the authority-resolved
     // label with the docs source as winner.
     let provenance = run::<slice::handlers::Provenance, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::ProvenanceInput {
             name: "session-policy".to_string(),
         },
@@ -189,15 +188,15 @@ fn session_synthesis_with_decision() -> String {
 // *different* answer from the script.
 #[tokio::test]
 async fn decisions_exact_set() {
-    let provider = Scripted::scripted(
+    let session = Session::scripted(
         "fixture",
         vec![
-            answers::adversarial_grouping(),
+            fixture::answers::adversarial_grouping(),
             session_synthesis_with_decision(),
             session_synthesis_answer(),
         ],
     );
-    let root = provider.root.clone();
+    let root = session.root().to_path_buf();
 
     // A baseline Decision Record the slice can legally supersede — and
     // the projection the synthesis inputs must surface.
@@ -211,10 +210,10 @@ async fn decisions_exact_set() {
     )
     .expect("write baseline decision");
 
-    author_and_approve(&provider).await;
+    author_and_approve(&session).await;
 
     run::<slice::handlers::Refine, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
@@ -243,7 +242,7 @@ async fn decisions_exact_set() {
         .expect("rewind lifecycle for the re-refine");
 
     run::<slice::handlers::Refine, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::RefineInput {
             name: "session-policy".to_string(),
         },
@@ -257,19 +256,19 @@ async fn decisions_exact_set() {
         .collect();
     assert!(survivors.is_empty(), "{survivors:?}");
 
-    provider.model().assert_exhausted();
+    session.model().assert_exhausted();
 }
 
 #[tokio::test]
 async fn evidence_gap_projects_unknown() {
-    let provider = Scripted::scripted(
+    let session = Session::scripted(
         "fixture",
-        vec![answers::adversarial_grouping(), reset_synthesis_answer()],
+        vec![fixture::answers::adversarial_grouping(), reset_synthesis_answer()],
     );
-    author_and_approve(&provider).await;
+    author_and_approve(&session).await;
 
     run::<slice::handlers::Refine, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::RefineInput {
             name: "password-reset".to_string(),
         },
@@ -278,7 +277,7 @@ async fn evidence_gap_projects_unknown() {
     .expect("refine synthesises the gapped slice");
 
     let model = run::<slice::handlers::ModelShow, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::ModelShowInput {
             name: "password-reset".to_string(),
         },
@@ -290,7 +289,7 @@ async fn evidence_gap_projects_unknown() {
     assert!(requirement.claims.is_empty(), "{requirement:?}");
 
     let spec = fs::read_to_string(
-        provider.root.join(".specify/slices/password-reset/specs/password-reset/spec.md"),
+        session.root().join(".specify/slices/password-reset/specs/password-reset/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[unknown]"), "{spec}");

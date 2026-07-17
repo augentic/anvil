@@ -30,8 +30,8 @@ impl Target for Fixture {
         &[]
     }
 
-    fn guidance() -> &'static str {
-        "fixture guidance"
+    async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
+        Ok("fixture guidance".to_string())
     }
 
     async fn build<P: Model>(
