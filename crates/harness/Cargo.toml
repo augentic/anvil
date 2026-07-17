@@ -43,8 +43,10 @@ scenario = [
 ]
 # `trial` + `sandbox` + `telemetry`: the live-model trial driver.
 trial = ["command", "dep:change", "dep:clap", "scenario"]
+# `entry`: the shared wrapper-binary `main` over all three modes.
+entry = ["http", "tokio/rt-multi-thread", "trial"]
 # Everything; the eval wrapper binaries request this.
-full = ["http", "trial"]
+full = ["entry"]
 
 [dependencies]
 adapter.workspace = true

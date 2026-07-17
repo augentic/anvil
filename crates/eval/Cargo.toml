@@ -17,7 +17,8 @@ workspace = true
 
 # Live harness: native-only. The crate is a declarative binding over
 # the shared `harness` crate — the fixture catalog plus the trial
-# profile and deterministic fixture assertions.
+# profile and deterministic fixture assertions; the binary body
+# (runtime, mode dispatch, failure report) is `harness::entry`'s.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 artifacts.workspace = true
@@ -25,4 +26,3 @@ change.workspace = true
 fixture.workspace = true
 harness = { workspace = true, features = ["full"] }
 omnia-guest.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

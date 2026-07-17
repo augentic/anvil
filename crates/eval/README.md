@@ -18,7 +18,9 @@ make eval
 
 This runs the entire workflow in `sandbox/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
-`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the driver fills `Request.model` only when the guest left it `None`, so a guest-supplied id always wins; unset or blank means the cursor backend's default. The cursor connection is lazy — it happens on the first judgment leg, so deterministic phases never require `cursor-agent` on `PATH`. The model stack, provider, telemetry, and the trial driver all live in the shared `crates/harness`; this crate declares only the fixture catalog binding, the trial profile, and the deterministic grading hooks. The adapters repository's `engine` binds the same harness to the first-party adapters.
+`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the driver fills `Request.model` only when the guest left it `None`, so a guest-supplied id always wins; unset or blank means the cursor backend's default. The cursor connection is lazy — it happens on the first judgment leg, so deterministic phases never require `cursor-agent` on `PATH`. The model stack, provider, telemetry, the trial driver, and the binary body itself (`harness::entry` — the tokio runtime, mode dispatch, and failure report) all live in the shared `crates/harness`; this crate declares only the fixture catalog binding, the trial profile, and the deterministic grading hooks. The adapters repository's `engine` binds the same harness to the first-party adapters.
+
+The binary carries the shared entry's full mode surface: the trial behind the `eval` subcommand, the native HTTP transport behind `serve`, and any other argv through the CLI dev shim over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
 
 ### Manual workflow
 

@@ -10,8 +10,8 @@
 //!   (success profiles and typed failure profiles alike), implementing
 //!   the per-axis operations traits (`adapter::Source` /
 //!   `adapter::Target`) over the core.
-//! - [`registry`] (host) — the exhaustive linked catalog and the
-//!   [`registry::Fixtures`] binding handed to the shared harness.
+//! - [`registry`] (host) — the exhaustive linked catalog behind each
+//!   wrapper's `Binding` onto the shared harness.
 //! - [`session`] (host) — throw-away project trees over the harness
 //!   default layer, plus the RAII current-directory guard.
 //! - [`answers`] (host) — the scripted judgment-answer corpus behind
@@ -45,6 +45,6 @@ pub use ops::{
     FixtureDocs, MissingOutput,
 };
 #[cfg(not(target_arch = "wasm32"))]
-pub use registry::{Fixtures, catalog};
+pub use registry::catalog;
 #[cfg(not(target_arch = "wasm32"))]
 pub use session::{Cwd, Session};

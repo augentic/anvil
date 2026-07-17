@@ -32,10 +32,19 @@ pub fn shelves<M>(catalog: &Catalog<M>) -> Vec<Shelf> {
 }
 
 /// Shelf router nested at `/mcp/<name>`, ready to merge onto the verb router.
+///
+/// A native implementor registered on both axes (legal for linked
+/// crates, unlike component exports) shares one embedded docs registry,
+/// so its shelf mounts once.
 pub fn router<M>(catalog: &Catalog<M>) -> Router {
-    shelves(catalog).into_iter().fold(Router::new(), |router, shelf| {
-        router.nest(&format!("/mcp/{}", shelf.name), omnia_guest::mcp::router(shelf.references))
-    })
+    let mut mounted = std::collections::HashSet::new();
+    shelves(catalog)
+        .into_iter()
+        .filter(|shelf| mounted.insert(shelf.name))
+        .fold(Router::new(), |router, shelf| {
+            router
+                .nest(&format!("/mcp/{}", shelf.name), omnia_guest::mcp::router(shelf.references))
+        })
 }
 
 /// Serve the shelves on an ephemeral background listener.

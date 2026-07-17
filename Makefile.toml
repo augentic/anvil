@@ -43,11 +43,19 @@ command = "rustup"
 args = ["run", "nightly", "cargo", "udeps", "--workspace", "--all-targets"]
 install_crate = "cargo-udeps"
 
-# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI)
+# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI).
+# Rides the shared wrapper entry's `eval` mode: phases and prompt
+# scenarios pass through (`cargo make eval execute`).
 [tasks.eval]
 command = "cargo"
-args = ["run", "-p", "eval", "--", "${@}"]
+args = ["run", "-p", "eval", "--", "eval", "${@}"]
 env_files = [".env"]
+
+# The `eval` CLI passthrough: any specify verb against the native shim
+# over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
+[tasks.dev]
+command = "cargo"
+args = ["run", "-q", "-p", "eval", "--", "${@}"]
 
 # Harness feature layering — the lean core and default feature set
 # must hold without --all-features, so the dependency cuts cannot rot

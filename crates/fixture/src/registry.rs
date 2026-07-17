@@ -1,6 +1,6 @@
 //! The exhaustive fixture registry linked into the shared harness.
 
-use harness::catalog::{Binding, Catalog};
+use harness::catalog::Catalog;
 use omnia_guest::Model;
 
 use crate::ops::{
@@ -27,14 +27,4 @@ pub fn catalog<M: Model>() -> Catalog<M> {
         .target::<FailMerge>()
         .target::<MissingOutput>()
         .build()
-}
-
-/// The fixture binding handed to the shared harness entrypoints.
-#[derive(Clone, Copy, Debug)]
-pub struct Fixtures;
-
-impl Binding for Fixtures {
-    fn catalog<M: Model>() -> Catalog<M> {
-        catalog()
-    }
 }

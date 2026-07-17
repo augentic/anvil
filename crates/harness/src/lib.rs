@@ -18,12 +18,15 @@
 //! transports, `scenario` the prompt-scenario runner (plus the [`fs`]
 //! and [`inputs`] helpers), and `trial` the live-model trial driver
 //! with [`sandbox`], [`telemetry`], and shared [`grade`] helpers.
+//! `entry` adds the shared wrapper-binary `main` over all three modes.
 //! `full` enables everything.
 
 pub mod catalog;
 #[cfg(feature = "command")]
 pub mod command;
 pub mod convert;
+#[cfg(feature = "entry")]
+pub mod entry;
 pub mod env;
 #[cfg(feature = "scenario")]
 pub mod fs;
