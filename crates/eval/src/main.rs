@@ -1,9 +1,13 @@
 //! Native CLI and live eval over the linked adapters.
 
-use std::process::ExitCode;
+fn main() -> std::process::ExitCode {
+    harness::entry::main::<Adapters>(None)
+}
 
-use eval_binding::Adapters;
-
-fn main() -> ExitCode {
-    harness::entry::main::<Adapters>()
+harness::adapters! {
+    Adapters {
+        source fixture::Docs,
+        source fixture::Code,
+        target fixture::Adapter,
+    }
 }

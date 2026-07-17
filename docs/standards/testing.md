@@ -27,7 +27,7 @@ Each fact has one owning rung. The native suites own workflow behavior; the live
 
 Model doubles come from upstream: `omnia-testkit` owns the FIFO `Scripted` script; `fixture::model::Harness` wraps it with request recording and `Session` binds it behind the judgment legs. Specify owns only workflow scenario content — the leads, evidence, the scripted answer corpus (`fixture::answers`), and assertions. The scripted double answers regardless of the request; prompt quality is owned by the prompt-evaluation rung, not by the native suites.
 
-The prompt-evaluation wrapper (`crates/eval`) is a fixture adapter binding over the shared native harness (`crates/harness`). The harness owns the catalog machinery, seam `Provider<M>`, live model bridge, telemetry, trial execution, and deterministic grading; `cargo make eval` passes adapter and scenario inputs explicitly. Only the model is live. The same harness is consumed by `engine` in `augentic/specify-adapters`; its Rust wrapper differs only in the linked adapters.
+The prompt-evaluation wrapper (`crates/eval`) is a fixture adapter binding over the shared native harness (`crates/harness`). The harness owns the catalog machinery, seam `Provider<M>`, live model bridge, telemetry, trial execution, and deterministic grading; `cargo make eval` passes trial inputs explicitly. Only the model is live. The same harness is consumed by `engine` in `augentic/specify-adapters`; that wrapper also declares its prompt-scenario root.
 
 ## Integration-first policy
 

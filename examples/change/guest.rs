@@ -13,7 +13,6 @@
 
 use adapter::seam::{self as aseam, Context};
 use adapter::{Source as _, Target as _, WasiModel};
-use fixture::Fixture;
 use fixture::wit::exports::specify::adapter::{source, target};
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
@@ -34,7 +33,8 @@ impl source::Guest for Adapter {
 
     async fn survey(id: source::AdapterId) -> Result<Vec<source::Lead>, source::Error> {
         let ctx = Context::guest(&id, None);
-        let leads = Fixture::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
+        let leads =
+            fixture::Adapter::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
         Ok(leads.into_iter().map(source::Lead::from).collect())
     }
 
@@ -43,7 +43,10 @@ impl source::Guest for Adapter {
     ) -> Result<source::Evidence, source::Error> {
         let ctx = Context::guest(&id, None);
         let lead = aseam::Lead::from(lead);
-        Ok(Fixture::extract(&WasiModel, &ctx, &lead).await.map_err(source::Error::from)?.into())
+        Ok(fixture::Adapter::extract(&WasiModel, &ctx, &lead)
+            .await
+            .map_err(source::Error::from)?
+            .into())
     }
 }
 
@@ -58,7 +61,7 @@ impl target::Guest for Adapter {
 
     async fn guidance(id: target::AdapterId) -> Result<String, target::Error> {
         let ctx = Context::guest(&id, None);
-        Fixture::guidance(&WasiModel, &ctx).await.map_err(target::Error::from)
+        fixture::Adapter::guidance(&WasiModel, &ctx).await.map_err(target::Error::from)
     }
 
     async fn build(
@@ -69,7 +72,7 @@ impl target::Guest for Adapter {
         let ctx = Context::guest(&id, None);
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(aseam::Input::from).collect();
         let tree = aseam::WorkingTree::from(tree);
-        let report = Fixture::build(&WasiModel, &ctx, &slice, &inputs, &tree)
+        let report = fixture::Adapter::build(&WasiModel, &ctx, &slice, &inputs, &tree)
             .await
             .map_err(target::Error::from)?;
         Ok(report.into())
@@ -80,7 +83,7 @@ impl target::Guest for Adapter {
     ) -> Result<target::Report, target::Error> {
         let ctx = Context::guest(&id, None);
         let tree = aseam::WorkingTree::from(tree);
-        let report = Fixture::merge(&WasiModel, &ctx, &slice, phase.into(), &tree)
+        let report = fixture::Adapter::merge(&WasiModel, &ctx, &slice, phase.into(), &tree)
             .await
             .map_err(target::Error::from)?;
         Ok(report.into())

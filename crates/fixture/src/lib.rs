@@ -41,8 +41,8 @@ pub mod registry;
 pub mod session;
 
 pub use ops::{
-    DOCS, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, Fixture, FixtureCode,
-    FixtureDocs, MissingOutput,
+    Adapter, Code, DOCS, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey,
+    MissingOutput,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use registry::catalog;

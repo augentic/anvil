@@ -90,22 +90,22 @@ macro_rules! fixture_target {
 
 /// The default fixture identity — both axes, like the WASM guest.
 #[derive(Clone, Copy, Debug)]
-pub struct Fixture;
+pub struct Adapter;
 
-fixture_source!(Fixture, "fixture");
-fixture_target!(Fixture, "fixture");
+fixture_source!(Adapter, "fixture");
+fixture_target!(Adapter, "fixture");
 
 /// The documentation half of the adversarial source pair.
 #[derive(Clone, Copy, Debug)]
-pub struct FixtureDocs;
+pub struct Docs;
 
-fixture_source!(FixtureDocs, "fixture-docs");
+fixture_source!(Docs, "fixture-docs");
 
 /// The behaviour (code) half of the adversarial source pair.
 #[derive(Clone, Copy, Debug)]
-pub struct FixtureCode;
+pub struct Code;
 
-fixture_source!(FixtureCode, "fixture-code");
+fixture_source!(Code, "fixture-code");
 
 /// A source whose `survey` fails with a typed internal error.
 #[derive(Clone, Copy, Debug)]

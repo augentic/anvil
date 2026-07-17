@@ -4,8 +4,7 @@ use harness::catalog::Catalog;
 use omnia_guest::Model;
 
 use crate::ops::{
-    FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, Fixture, FixtureCode, FixtureDocs,
-    MissingOutput,
+    Adapter, Code, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput,
 };
 
 /// Every fixture catalog identity, success and failure profiles alike.
@@ -16,12 +15,12 @@ use crate::ops::{
 #[must_use]
 pub fn catalog<M: Model>() -> Catalog<M> {
     Catalog::builder()
-        .source::<Fixture>()
-        .source::<FixtureDocs>()
-        .source::<FixtureCode>()
+        .source::<Adapter>()
+        .source::<Docs>()
+        .source::<Code>()
         .source::<FailSurvey>()
         .source::<FailExtract>()
-        .target::<Fixture>()
+        .target::<Adapter>()
         .target::<FailGuidance>()
         .target::<FailBuild>()
         .target::<FailMerge>()

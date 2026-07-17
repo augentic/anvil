@@ -40,9 +40,6 @@ struct Args {
     /// Source binding passed to plan author; repeat for multiple sources.
     #[arg(long = "source")]
     sources: Vec<String>,
-    /// Root containing single-operation prompt scenarios.
-    #[arg(long)]
-    scenarios: Option<PathBuf>,
     #[command(subcommand)]
     phase: Option<Phase>,
 }
@@ -61,7 +58,7 @@ enum Phase {
     Clean,
     /// Run one prompt scenario, or list them all.
     Scenario {
-        /// `<adapter>/<scenario>` under `--scenarios`.
+        /// `<adapter>/<scenario>` under the binding's scenario root.
         id: Option<String>,
     },
 }
@@ -79,10 +76,10 @@ struct Trial {
 /// # Errors
 ///
 /// Returns argument, command, grading, model, and sandbox failures.
-pub(crate) async fn run<B: Binding>(raw: &[String]) -> Result<ExitCode> {
+pub(crate) async fn run<B: Binding>(raw: &[String], scenarios: Option<&Path>) -> Result<ExitCode> {
     let args = Args::parse_from(raw);
     if let Some(Phase::Scenario { id }) = &args.phase {
-        let scenarios = args.scenarios.as_deref().context("scenario requires --scenarios")?;
+        let scenarios = scenarios.context("this eval binding has no prompt scenarios")?;
         scenario::run::<B>(scenarios, &args.sandbox, id.as_deref()).await?;
         return Ok(ExitCode::SUCCESS);
     }

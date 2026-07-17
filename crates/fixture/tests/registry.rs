@@ -4,7 +4,7 @@
 use adapter::seam::{Context, Error, Input, MergePhase, Status, WorkingTree};
 use adapter::{Source, Target};
 use fixture::{
-    FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, Fixture, MissingOutput, catalog,
+    Adapter, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput, catalog,
 };
 use omnia_testkit::model::Scripted;
 use project::adapter::Axis;
@@ -124,7 +124,7 @@ async fn build_writes_artifact() {
     let _guard = fixture::Cwd::enter(tmp.path());
 
     let inputs = [Input::Proposal("# p".to_string()), Input::Spec("## s".to_string())];
-    let report = Fixture::build(&model, &ctx("target:fixture"), "greeting", &inputs, &tree())
+    let report = Adapter::build(&model, &ctx("target:fixture"), "greeting", &inputs, &tree())
         .await
         .expect("fixture builds");
     assert_eq!(report.status, Status::Success);
