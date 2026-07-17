@@ -17,7 +17,7 @@ Skill frontmatter shape and the marketplace manifest are enforced by the typed `
 | Embedded prompt-corpus links                   | `crates/prose` via `crates/slice/build.rs` + `crates/change/build.rs` — a dangling reference **fails the build** | Every compile                                         |
 | Published docs book links                      | mdbook-linkcheck2 in [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml)                          | Push to `main` for `docs/**` only — **not** a PR gate |
 
-The `checks` package stays a separate workspace member (not root-package tests) so the Wasmtime-heavy runtime graph stays out of the ordinary test build. Cross-crate test support is the `crates/testkit` dev-dependency; fixtures live crate-locally under `crates/<name>/tests/fixtures/`.
+The `checks` package stays a separate workspace member (not root-package tests) so the Wasmtime-heavy runtime graph stays out of the ordinary test build. Cross-crate test support comes from the `crates/harness` and `crates/fixture` dev-dependencies; fixtures live crate-locally under `crates/<name>/tests/fixtures/`.
 
 ## What the checks enforce
 

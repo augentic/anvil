@@ -1,31 +1,30 @@
 //! # Example Adapter
 //!
 //! This crate implements both Specify source and target adapters as a
-//! thin shim over testkit's fixture core: `testkit::wit` owns the
-//! WIT bindings and the seam mappings, so each operation below is one
-//! delegation with `From` conversions at the edges. It also implements
-//! a single MCP server for the model agent to use when requesting
-//! adapter reference documents.
+//! thin shim over the canonical SDK operations traits: every judgment
+//! operation dispatches through the `fixture` crate's `adapter::Source`
+//! / `adapter::Target` implementors with `From` conversions at the
+//! edges (`fixture::wit` owns the combined-world WIT bindings and the
+//! seam mappings). It also implements a single MCP server for the
+//! model agent to use when requesting adapter reference documents.
 
 #![cfg(target_arch = "wasm32")]
 #![allow(missing_docs, unsafe_code)]
 
-use std::path::Path;
-
+use adapter::seam::{self as aseam, Context};
+use adapter::{Source as _, Target as _, WasiModel};
+use fixture::wit::exports::specify::adapter::{source, target};
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
 };
-use project::seam;
 use serde_json::{Value, json};
-use testkit::adapter;
-use testkit::wit::exports::specify::adapter::{source, target};
 use wasip3::http::types as http;
 
 // ----------------------------------------------
 // Specify source + target adapters
 // ----------------------------------------------
 struct Adapter;
-testkit::wit::export!(Adapter with_types_in testkit::wit);
+fixture::wit::export!(Adapter with_types_in fixture::wit);
 
 impl source::Guest for Adapter {
     fn metadata(_id: source::AdapterId) -> source::AdapterMetadata {
@@ -33,46 +32,59 @@ impl source::Guest for Adapter {
     }
 
     async fn survey(id: source::AdapterId) -> Result<Vec<source::Lead>, source::Error> {
-        let leads = adapter::survey(&id).map_err(source::Error::from)?;
+        let ctx = Context::guest(&id, None);
+        let leads =
+            fixture::Adapter::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
         Ok(leads.into_iter().map(source::Lead::from).collect())
     }
 
     async fn extract(
         id: source::AdapterId, lead: source::Lead,
     ) -> Result<source::Evidence, source::Error> {
-        Ok(adapter::extract(&id, &lead.into()).map_err(source::Error::from)?.into())
+        let ctx = Context::guest(&id, None);
+        let lead = aseam::Lead::from(lead);
+        Ok(fixture::Adapter::extract(&WasiModel, &ctx, &lead)
+            .await
+            .map_err(source::Error::from)?
+            .into())
     }
 }
 
 impl target::Guest for Adapter {
-    fn metadata(id: target::AdapterId) -> target::AdapterMetadata {
+    fn metadata(_id: target::AdapterId) -> target::AdapterMetadata {
         target::AdapterMetadata {
             specify_floor: None,
             inputs: Vec::new(),
-            platforms: adapter::target_platforms(&id).map(target::PlatformsCapability::from),
+            platforms: None,
         }
     }
 
     async fn guidance(id: target::AdapterId) -> Result<String, target::Error> {
-        adapter::guidance(&id).map_err(target::Error::from)
+        let ctx = Context::guest(&id, None);
+        fixture::Adapter::guidance(&WasiModel, &ctx).await.map_err(target::Error::from)
     }
 
     async fn build(
-        id: target::AdapterId, slice: String, inputs: Vec<target::Input>,
-        _tree: target::WorkingTree,
+        id: target::AdapterId, slice: String, inputs: Vec<target::Input>, tree: target::WorkingTree,
     ) -> Result<target::Report, target::Error> {
         // Every guest shares the deployment's `[[mount]]` preopens, so
         // the build writes through its own `"."` preopen.
-        let inputs: Vec<seam::Input> = inputs.into_iter().map(seam::Input::from).collect();
-        let report =
-            adapter::build(Path::new("."), &id, &slice, &inputs).map_err(target::Error::from)?;
+        let ctx = Context::guest(&id, None);
+        let inputs: Vec<aseam::Input> = inputs.into_iter().map(aseam::Input::from).collect();
+        let tree = aseam::WorkingTree::from(tree);
+        let report = fixture::Adapter::build(&WasiModel, &ctx, &slice, &inputs, &tree)
+            .await
+            .map_err(target::Error::from)?;
         Ok(report.into())
     }
 
     async fn merge(
-        id: target::AdapterId, slice: String, phase: target::MergePhase, _tree: target::WorkingTree,
+        id: target::AdapterId, slice: String, phase: target::MergePhase, tree: target::WorkingTree,
     ) -> Result<target::Report, target::Error> {
-        let report = adapter::merge(Path::new("."), &id, &slice, phase.into())
+        let ctx = Context::guest(&id, None);
+        let tree = aseam::WorkingTree::from(tree);
+        let report = fixture::Adapter::merge(&WasiModel, &ctx, &slice, phase.into(), &tree)
+            .await
             .map_err(target::Error::from)?;
         Ok(report.into())
     }

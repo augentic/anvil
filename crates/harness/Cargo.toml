@@ -1,0 +1,77 @@
+[package]
+name = "harness"
+description = "Reusable native eval harness core: adapter catalog, seam provider, model bridge, and trial plumbing"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+# The default layer is the model-free native provider used throughout
+# the workspace tests. Eval binaries opt into the one runtime layer.
+[features]
+runtime = [
+    "dep:anyhow",
+    "dep:axum",
+    "dep:change",
+    "dep:clap",
+    "dep:omnia",
+    "dep:omnia-cursor",
+    "dep:omnia-wasi-model",
+    "dep:serde",
+    "dep:serde_json",
+    "dep:tokio",
+    "dep:toml",
+    "dep:transport",
+    "tokio/net",
+    "tokio/rt",
+    "tokio/rt-multi-thread",
+    "tokio/sync",
+]
+
+[dependencies]
+adapter.workspace = true
+anyhow = { workspace = true, optional = true }
+artifacts.workspace = true
+axum = { workspace = true, optional = true }
+change = { workspace = true, optional = true }
+clap = { workspace = true, optional = true }
+diagnostics.workspace = true
+error.workspace = true
+omnia = { workspace = true, optional = true }
+omnia-cursor = { workspace = true, optional = true }
+omnia-guest.workspace = true
+omnia-wasi-model = { workspace = true, optional = true }
+project.workspace = true
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+transport = { workspace = true, optional = true }
+
+[dev-dependencies]
+omnia-testkit.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+# `boundary`, `catalog`, and `provider` are auto-discovered; only the
+# runtime-gated binaries need declaring.
+[[test]]
+name = "command"
+required-features = ["runtime"]
+
+[[test]]
+name = "mcp"
+required-features = ["runtime"]
+
+[[test]]
+name = "scenario"
+required-features = ["runtime"]
+
+[[test]]
+name = "grade"
+required-features = ["runtime"]

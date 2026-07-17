@@ -4,11 +4,14 @@
 //! projection, and a grouping that drops a lead is refused by the
 //! kernel inside the repair loop.
 
+mod support;
+
 use std::fs;
 
 use change::{Divergence, plan};
+use fixture::session::Session;
+use harness::invoke::run;
 use serde_json::json;
-use testkit::{Scripted, answers, run};
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -47,14 +50,12 @@ fn uncovered_grouping_answer() -> String {
     .expect("grouping serialises")
 }
 
-async fn author(
-    provider: &Scripted,
-) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
+async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
-        provider,
+        session.provider(),
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
-            sources: answers::adversarial_bindings(),
+            sources: support::adversarial_bindings(),
             intent: None,
         },
     )
@@ -65,9 +66,9 @@ async fn author(
 // divergence survives the projection.
 #[tokio::test]
 async fn overlap_merges() {
-    let provider = Scripted::scripted("fixture", vec![answers::adversarial_grouping()]);
+    let session = Session::scripted("fixture", vec![fixture::answers::adversarial_grouping()]);
 
-    let authored = author(&provider).await.expect("author walks to pending");
+    let authored = author(&session).await.expect("author walks to pending");
     assert_eq!(authored.slices, ["login-flow", "session-policy", "password-reset"]);
     // Both fixture sources surveyed (key order), docs with its three
     // leads including the docs-only password-reset.
@@ -78,7 +79,7 @@ async fn overlap_merges() {
     assert_eq!(authored.surveyed[1].leads, ["login-flow", "session-timeout", "password-reset"]);
 
     let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(provider.root.join("plan.yaml")).expect("read plan.yaml"),
+        &fs::read_to_string(session.root().join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
 
@@ -99,10 +100,10 @@ async fn overlap_merges() {
     );
 
     // The divergence flag and its recorded disagreement survive.
-    let session = plan.entries.iter().find(|e| e.name == "session-policy").expect("session slice");
-    assert_eq!(session.divergence, Some(Divergence::Likely));
-    assert_eq!(session.disagreements.len(), 1);
-    assert_eq!(session.disagreements[0].field, "session-timeout-minutes");
+    let entry = plan.entries.iter().find(|e| e.name == "session-policy").expect("session slice");
+    assert_eq!(entry.divergence, Some(Divergence::Likely));
+    assert_eq!(entry.disagreements.len(), 1);
+    assert_eq!(entry.disagreements[0].field, "session-timeout-minutes");
 }
 
 #[tokio::test]
@@ -110,23 +111,13 @@ async fn uncovered_lead_exhausts() {
     // The same defective grouping for the whole budget: the first
     // dispatch plus every repair attempt, so the leg surfaces the
     // kernel's refusal.
-    let provider =
-        Scripted::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
+    let session = Session::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
 
-    let err = run::<plan::handlers::Author, _, _>(
-        &provider,
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: answers::adversarial_bindings(),
-            intent: None,
-        },
-    )
-    .await
-    .expect_err("coverage gap refused");
+    let err = author(&session).await.expect_err("coverage gap refused");
     let detail = err.to_string();
     assert!(detail.contains("password-reset"), "{detail}");
 
     // One initial dispatch plus MAX_REPAIRS re-prompts drained the
     // budget-sized script exactly.
-    provider.model().assert_exhausted();
+    session.model().assert_exhausted();
 }

@@ -1,0 +1,30 @@
+[package]
+name = "adapter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Specify adapter SDK: the per-axis operations traits, seam DTOs, judgment scaffolding, embedded prose registry, and the wasm export macros"
+categories = ["development-tools"]
+keywords = ["specify", "adapter", "sdk"]
+readme = "../../README.md"
+
+[lints]
+workspace = true
+
+[dependencies]
+omnia-guest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+omnia-wasi-http.workspace = true
+wasip3.workspace = true
+wit-bindgen.workspace = true
+
+[dev-dependencies]
+fixture.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

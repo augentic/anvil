@@ -17,7 +17,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "test", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "test", "harness-features", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
@@ -43,11 +43,47 @@ command = "rustup"
 args = ["run", "nightly", "cargo", "udeps", "--workspace", "--all-targets"]
 install_crate = "cargo-udeps"
 
-# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI)
+# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI).
+# Rides the shared wrapper entry's `eval` mode: phases and prompt
+# scenarios pass through (`cargo make eval execute`).
 [tasks.eval]
 command = "cargo"
-args = ["run", "-p", "eval", "--", "${@}"]
+args = [
+  "run",
+  "-p",
+  "eval",
+  "--",
+  "eval",
+  "--sandbox",
+  "sandbox",
+  "--target",
+  "fixture",
+  "--name",
+  "eval",
+  "--change",
+  "auth",
+  "--source",
+  "docs=fixture-docs:value:The docs source.",
+  "--source",
+  "code=fixture-code:value:The code source.",
+  "${@}",
+]
 env_files = [".env"]
+
+# The `eval` CLI passthrough: any specify verb against the native shim
+# over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
+[tasks.dev]
+command = "cargo"
+args = ["run", "-q", "-p", "eval", "--", "${@}"]
+
+# Harness layers: the model-free default used by workspace tests and
+# the single live runtime enabled by eval binaries.
+[tasks.harness-features]
+script = '''
+cargo check -p harness --no-default-features --locked
+cargo nextest run -p harness --features runtime --locked --no-tests=pass
+'''
+env = { RUSTFLAGS = "-Dwarnings" }
 
 # Fmt — mutates; the gates use fmt
 [tasks.fmt]

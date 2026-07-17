@@ -3,6 +3,22 @@
 version = 4
 
 [[package]]
+name = "adapter"
+version = "0.27.2"
+dependencies = [
+ "fixture",
+ "omnia-guest",
+ "omnia-wasi-http",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "wasip3",
+ "wit-bindgen 0.59.0",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -210,6 +226,8 @@ dependencies = [
  "http",
  "http-body",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "itoa",
  "matchit",
  "memchr",
@@ -221,9 +239,11 @@ dependencies = [
  "serde_path_to_error",
  "serde_urlencoded",
  "sync_wrapper",
+ "tokio",
  "tower",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -242,6 +262,7 @@ dependencies = [
  "sync_wrapper",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
@@ -480,6 +501,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
+ "fixture",
+ "harness",
  "jiff",
  "omnia-guest",
  "project",
@@ -489,7 +512,6 @@ dependencies = [
  "serde_json",
  "slice",
  "tempfile",
- "testkit",
  "tokio",
  "tower",
 ]
@@ -1139,17 +1161,8 @@ dependencies = [
 name = "eval"
 version = "0.27.2"
 dependencies = [
- "anyhow",
- "artifacts",
- "change",
- "clap",
- "omnia",
- "omnia-cursor",
- "omnia-guest",
- "omnia-wasi-model",
- "project",
- "testkit",
- "tokio",
+ "fixture",
+ "harness",
 ]
 
 [[package]]
@@ -1192,6 +1205,21 @@ name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
+
+[[package]]
+name = "fixture"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "harness",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "wit-bindgen 0.59.0",
+]
 
 [[package]]
 name = "fluent-uri"
@@ -1463,6 +1491,32 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "harness"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "anyhow",
+ "artifacts",
+ "axum",
+ "change",
+ "clap",
+ "diagnostics",
+ "error",
+ "omnia",
+ "omnia-cursor",
+ "omnia-guest",
+ "omnia-testkit",
+ "omnia-wasi-model",
+ "project",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+ "transport",
 ]
 
 [[package]]
@@ -2324,7 +2378,7 @@ dependencies = [
 [[package]]
 name = "omnia-cursor"
 version = "0.28.0"
-source = "git+https://github.com/augentic/backends.git#4ba27b3e0741c9d09894d4ac871d70205c2f232e"
+source = "git+https://github.com/augentic/backends.git#9403a190c1cbd778a1d541d1057aa2a6569ed776"
 dependencies = [
  "anyhow",
  "omnia",
@@ -2890,6 +2944,7 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
+ "harness",
  "jiff",
  "omnia-guest",
  "petgraph",
@@ -2900,7 +2955,6 @@ dependencies = [
  "serde_json",
  "strum",
  "tempfile",
- "testkit",
  "thiserror 2.0.18",
  "tokio",
  "toml",
@@ -3820,6 +3874,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
+ "fixture",
+ "harness",
  "jiff",
  "omnia-guest",
  "project",
@@ -3831,7 +3887,6 @@ dependencies = [
  "serde_json",
  "strum",
  "tempfile",
- "testkit",
  "tokio",
 ]
 
@@ -3858,11 +3913,13 @@ dependencies = [
 name = "specify"
 version = "0.27.2"
 dependencies = [
+ "adapter",
  "anyhow",
  "artifacts",
  "cfg-if",
  "diagnostics",
  "error",
+ "fixture",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -3872,7 +3929,6 @@ dependencies = [
  "project",
  "serde_json",
  "slice",
- "testkit",
  "tokio",
  "transport",
  "wasip3",
@@ -4014,23 +4070,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "testkit"
-version = "0.27.2"
-dependencies = [
- "artifacts",
- "change",
- "diagnostics",
- "error",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "serde_json",
- "slice",
- "tempfile",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -4343,6 +4382,7 @@ version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
@@ -4422,6 +4462,8 @@ dependencies = [
  "change",
  "clap",
  "error",
+ "fixture",
+ "harness",
  "omnia-guest",
  "project",
  "serde",
@@ -4429,7 +4471,6 @@ dependencies = [
  "slice",
  "strum",
  "tempfile",
- "testkit",
  "tokio",
  "tower",
 ]

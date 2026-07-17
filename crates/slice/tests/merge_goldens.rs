@@ -2,8 +2,9 @@
 
 use std::path::{Path, PathBuf};
 
+use fixture::session::Session;
+use harness::invoke::run;
 use slice::handlers::{Preview, PreviewInput};
-use testkit::{Scripted, run};
 
 const MERGE_CASES: &[&str] = &[
     "spec-single-req",
@@ -21,15 +22,15 @@ fn fixtures() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")
 }
 
-fn stage(project: &Scripted, case: &Path, delta: &str) {
+fn stage(project: &Session, case: &Path, delta: &str) {
     let baseline = case.join("baseline.md");
     if baseline.is_file() {
-        let destination = project.root.join(".specify/specs").join(delta);
+        let destination = project.root().join(".specify/specs").join(delta);
         std::fs::create_dir_all(&destination).expect("create baseline directory");
         std::fs::copy(baseline, destination.join("spec.md")).expect("stage baseline");
     }
 
-    let destination = project.root.join(".specify/slices/golden/specs").join(delta);
+    let destination = project.root().join(".specify/slices/golden/specs").join(delta);
     std::fs::create_dir_all(&destination).expect("create delta directory");
     let source = case.join("delta.md");
     if source.is_file() {
@@ -50,12 +51,12 @@ fn assert_golden(path: &Path, actual: &str) {
 #[tokio::test]
 async fn merged_outputs() {
     for name in MERGE_CASES {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         let case = fixtures().join(name);
         stage(&project, &case, "golden");
 
         let result = run::<Preview, _, _>(
-            &project,
+            project.provider(),
             PreviewInput {
                 name: "golden".to_string(),
             },
@@ -81,12 +82,12 @@ async fn merged_outputs() {
 #[tokio::test]
 async fn validation_outputs() {
     for name in VALIDATION_CASES {
-        let project = Scripted::initialised();
+        let project = Session::scripted("fixture", Vec::new());
         let case = fixtures().join(name);
         stage(&project, &case, "FAIL");
 
         let result = run::<Preview, _, _>(
-            &project,
+            project.provider(),
             PreviewInput {
                 name: "golden".to_string(),
             },

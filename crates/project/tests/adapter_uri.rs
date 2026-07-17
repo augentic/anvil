@@ -2,8 +2,10 @@
 
 use std::fs;
 
-use testkit::env::{scoped_store, stage_dev_component};
-use testkit::{Scripted, run};
+mod support;
+
+use harness::invoke::run;
+use support::{Provider, scoped_store, stage_dev_component};
 
 fn input(adapter: &str) -> project::init::handlers::InitInput {
     project::init::handlers::InitInput {
@@ -18,7 +20,7 @@ fn input(adapter: &str) -> project::init::handlers::InitInput {
 
 #[tokio::test]
 async fn github_uri_refused() {
-    let project = Scripted::bare();
+    let project = Provider::bare();
     let err = run::<project::init::handlers::Init, _, _>(
         &project,
         input("https://github.com/augentic/specify/adapters/targets/demo"),
@@ -36,7 +38,7 @@ mod package {
     async fn unhydratable_refused() {
         // The store misses the pin and the registry has no staged
         // response: init fails typed on the hydration leg.
-        let project = Scripted::bare();
+        let project = Provider::bare();
         let store = tempfile::tempdir().expect("store");
         let _guard = scoped_store(store.path());
 
@@ -55,7 +57,7 @@ mod package {
         // The store misses the pin; the staged registry response is
         // fetched, installed with its digest sidecar, verified, and
         // resolution proceeds against the fresh entry.
-        let project = Scripted::bare();
+        let project = Provider::bare();
         let store = tempfile::tempdir().expect("store");
         let _guard = scoped_store(store.path());
         let staged = project.root.join("hydrator/demo@1.2.0.wasm");
@@ -81,7 +83,7 @@ mod package {
 
         // A second init over a fresh project reuses the installed
         // entry without fetching.
-        let project = Scripted::bare();
+        let project = Provider::bare();
         let body =
             run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
                 .await
@@ -91,7 +93,7 @@ mod package {
 
     #[tokio::test]
     async fn installed_resolves() {
-        let project = Scripted::bare();
+        let project = Provider::bare();
         let store = tempfile::tempdir().expect("store");
         let _guard = scoped_store(store.path());
         let entry = diagnostics::cache::adapter_store_entry("demo", "1.2.0");
@@ -128,7 +130,7 @@ mod shorthand {
 
     #[tokio::test]
     async fn canonicalised() {
-        let project = Scripted::bare();
+        let project = Provider::bare();
         stage_dev_component(&project.root, "demo");
 
         run::<project::init::handlers::Init, _, _>(&project, input("demo"))
@@ -138,7 +140,7 @@ mod shorthand {
             fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
         assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
 
-        let project = Scripted::bare();
+        let project = Provider::bare();
         let store = tempfile::tempdir().expect("store");
         let _guard = scoped_store(store.path());
         fs::write(diagnostics::cache::adapter_store_entry("demo", "1.2.0"), b"\0asm-component")
@@ -155,7 +157,7 @@ mod shorthand {
     #[tokio::test]
     async fn invalid_not_registry_sugar() {
         for value in ["Demo-target", "demo-target@latest", "demo-target@1"] {
-            let project = Scripted::bare();
+            let project = Provider::bare();
             let err = run::<project::init::handlers::Init, _, _>(&project, input(value))
                 .await
                 .expect_err("invalid shorthand must not resolve as registry sugar");

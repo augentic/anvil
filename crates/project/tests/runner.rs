@@ -4,6 +4,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+mod support;
+
 use artifacts::validate::validate_slice;
 use diagnostics::DiagnosticKind;
 use tempfile::TempDir;
@@ -79,7 +81,7 @@ mod validate {
         let fixture = crate_root().join("tests/fixtures/change-good");
         let (_guard, project_dir) = stage_project();
         let slice_dir = project_dir.join(".specify/slices/change-good");
-        testkit::fs::copy_dir(&fixture, &slice_dir);
+        support::copy_dir(&fixture, &slice_dir);
 
         let findings = validate_slice(&slice_dir).expect("validate_slice ok");
 

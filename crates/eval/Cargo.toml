@@ -11,19 +11,6 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-# Live harness: native-only. The cursor backend and the host-side model
-# wiring never build for wasm32; `main.rs` gates every module and the
-# entrypoint behind per-item `#[cfg(not(target_arch = "wasm32"))]`,
-# keeping only a stub `main` for wasm32 workspace builds.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-anyhow.workspace = true
-artifacts.workspace = true
-change.workspace = true
-clap.workspace = true
-omnia.workspace = true
-omnia-cursor.workspace = true
-omnia-guest.workspace = true
-omnia-wasi-model.workspace = true
-project.workspace = true
-testkit.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+fixture.workspace = true
+harness = { workspace = true, features = ["runtime"] }

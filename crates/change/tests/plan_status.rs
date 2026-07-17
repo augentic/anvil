@@ -13,13 +13,16 @@
 //! torn merge-incomplete state, re-entry resume points, and workspace
 //! slot routing.
 
+mod support;
+
 use change::plan::handlers::{Status as StatusOp, StatusInput};
 use change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
+use fixture::session::Session;
+use harness::invoke::run;
 use jiff::Timestamp;
 use project::journal::{Event as JournalEvent, EventKind};
 use slice::LifecycleStatus;
-use testkit::plan::{change, change_with_deps, plan_with_changes};
-use testkit::{Scripted, run};
+use support::{change, change_with_deps, plan_with_changes};
 
 struct Event;
 
@@ -35,15 +38,15 @@ const fn approved(mut plan: Plan) -> Plan {
 }
 
 /// Stage `plan.yaml` at the project root.
-fn write_plan(project: &Scripted, plan: &Plan) {
+fn write_plan(project: &Session, plan: &Plan) {
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
-    std::fs::write(project.root.join("plan.yaml"), yaml).expect("write plan.yaml");
+    std::fs::write(project.root().join("plan.yaml"), yaml).expect("write plan.yaml");
 }
 
 /// Project the status body for `plan` staged inside `project`.
-async fn status(project: &Scripted, plan: &Plan) -> StatusBody {
+async fn status(project: &Session, plan: &Plan) -> StatusBody {
     write_plan(project, plan);
-    run::<StatusOp, _, _>(project, StatusInput {}).await.expect("status")
+    run::<StatusOp, _, _>(project.provider(), StatusInput {}).await.expect("status")
 }
 
 fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
@@ -96,7 +99,7 @@ mod next_action {
 
     #[tokio::test]
     async fn unmet_deps_stuck() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         let plan =
             approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
         let body = status(&project, &plan).await;
@@ -105,8 +108,8 @@ mod next_action {
 
     #[tokio::test]
     async fn dropped_slice_stops() {
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Dropped);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Dropped);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
@@ -116,7 +119,7 @@ mod next_action {
     async fn drained_finalize_line() {
         // The drained projection and the literal stop-conditions
         // drained string, asserted through the text rendering.
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
@@ -135,10 +138,10 @@ mod failure_overlay {
 
     #[tokio::test]
     async fn merge_failure_conflict() {
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Built);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Built);
         append(
-            &project.root,
+            project.root(),
             &[
                 advanced(0, "test", "a"),
                 Event::event(
@@ -157,9 +160,9 @@ mod failure_overlay {
 
     #[tokio::test]
     async fn refine_failure_stops() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         append(
-            &project.root,
+            project.root(),
             &[
                 advanced(0, "test", "a"),
                 Event::event(
@@ -178,10 +181,10 @@ mod failure_overlay {
 
     #[tokio::test]
     async fn later_success_clears_failure() {
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Refined);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Refined);
         append(
-            &project.root,
+            project.root(),
             &[
                 advanced(0, "test", "a"),
                 build_failed(10, "a", "first attempt"),
@@ -202,9 +205,9 @@ mod failure_overlay {
     async fn non_awaited_failure_ignored() {
         // The slice was hand-advanced past the failed phase; the stale
         // failure must not pin the projection.
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Built);
-        append(&project.root, &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Built);
+        append(project.root(), &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
@@ -215,9 +218,9 @@ mod failure_overlay {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
         // dispatch falls back to the lifecycle.
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Refined);
-        append(&project.root, &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Refined);
+        append(project.root(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a");
@@ -227,9 +230,9 @@ mod failure_overlay {
     async fn unstamped_merge_stops() {
         // Torn state: the merge landed (slice dir archived) but the
         // entry is still in-progress.
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         append(
-            &project.root,
+            project.root(),
             &[
                 advanced(0, "test", "a"),
                 Event::event(
@@ -251,9 +254,9 @@ mod failure_overlay {
         // window); a later failed retry against the archived slice is
         // noise — the torn state still projects merge-incomplete, not
         // merge-conflict.
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         append(
-            &project.root,
+            project.root(),
             &[
                 advanced(0, "test", "a"),
                 Event::event(
@@ -280,9 +283,9 @@ mod failure_overlay {
     async fn pre_claim_skips_overlay() {
         // Stale same-name events (e.g. from an archived plan) must not
         // classify an entry that has not been claimed yet.
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         append(
-            &project.root,
+            project.root(),
             &[Event::event(
                 ts(0),
                 EventKind::SliceMergeSucceeded {
@@ -304,9 +307,9 @@ mod re_entry {
 
     #[tokio::test]
     async fn merge_incomplete_done_stamp() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         append(
-            &project.root,
+            project.root(),
             &[
                 advanced(0, "test", "a"),
                 Event::event(
@@ -326,7 +329,7 @@ mod re_entry {
 
     #[tokio::test]
     async fn drained_finalize() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
@@ -336,7 +339,7 @@ mod re_entry {
 
     #[tokio::test]
     async fn gate_one_approved_stamp() {
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
@@ -347,15 +350,15 @@ mod re_entry {
     async fn repair_stops_no_resume() {
         // `stuck` and `slice-dropped` need operator repair — no single
         // command makes progress, so `resume` stays empty.
-        let project = Scripted::initialised();
+        let project = Session::scripted("demo", Vec::new());
         let plan =
             approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
         assert_eq!(body.resume, None);
 
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Dropped);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Dropped);
         let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
@@ -370,8 +373,8 @@ mod workspace_routing {
 
     #[tokio::test]
     async fn entry_uses_slot_state() {
-        let project = Scripted::initialised();
-        let slot = project.root.join("workspace").join("storefront");
+        let project = Session::scripted("demo", Vec::new());
+        let slot = project.root().join("workspace").join("storefront");
         std::fs::create_dir_all(&slot).expect("create slot");
         write_slice(&slot, "a", LifecycleStatus::Refined);
         append(&slot, &[advanced(0, "test", "a"), build_failed(10, "a", "slot failure")]);
@@ -388,8 +391,8 @@ mod workspace_routing {
     // project root's state.
     #[tokio::test]
     async fn missing_slot_falls_back() {
-        let project = Scripted::initialised();
-        write_slice(&project.root, "a", LifecycleStatus::Built);
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", LifecycleStatus::Built);
         let mut entry = change("a", Status::InProgress);
         entry.project = Some("storefront".to_string());
         let plan = approved(plan_with_changes(vec![entry]));

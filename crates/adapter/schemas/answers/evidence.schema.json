@@ -1,0 +1,193 @@
+{
+  "$defs": {
+    "AuthorityClass": {
+      "description": "Closed authority-class enum on the Evidence document.\n\nworkflow §Authority hierarchy fixes the default ordering as\n`intent > documentation > behaviour`; Evidence authority override lifts authority\nfrom per-Evidence to per-(Evidence, claim-kind) without widening\nthe class set. New classes still require a workflow contract update.",
+      "oneOf": [
+        {
+          "const": "intent",
+          "description": "Operator intent — highest precedence.",
+          "type": "string"
+        },
+        {
+          "const": "documentation",
+          "description": "Written documentation, design notes, or briefs.",
+          "type": "string"
+        },
+        {
+          "const": "behaviour",
+          "description": "Observed runtime behaviour (legacy code, runtime captures).",
+          "type": "string"
+        }
+      ]
+    },
+    "Claim": {
+      "additionalProperties": true,
+      "description": "One extracted Evidence claim, mirroring the WIT `claim` record.\n\nThe shape stays open (`extras` flattens unmodeled keys) because\nper-kind body fields are deliberately unconstrained — a closed\nmirror could drop data that synthesis reads verbatim.",
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "requirement",
+              "criterion",
+              "example"
+            ]
+          }
+        }
+      },
+      "properties": {
+        "backing-path": {
+          "description": "Filesystem backing pointer ([`Backing::Path`] on the wire).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "Stable claim identifier (dotted kebab slug, e.g.\n`password-reset.expiry`). Required when `kind` is\n`requirement`, `criterion`, or `example`; optional on other\nkinds — enforced deterministically by [`validate_claims`].",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/ClaimKind",
+          "description": "The claim's kind from the closed taxonomy."
+        },
+        "path": {
+          "description": "Per-claim source anchor: `<path>`, `<path>#L<n>`, or\n`<path>#L<start>-L<end>`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "payload": {
+          "description": "Inline backing payload ([`Backing::Payload`] on the wire).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "synopsis": {
+          "description": "Headline summarizing the semantic meaning of this claim.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "type": "object"
+    },
+    "ClaimKind": {
+      "description": "Closed claim-kind enum on Evidence claims.\n\nThe per-slice authority override map in `plan.yaml.slices[]` keys\nagainst this same closed set. `example` (runtime capture claim) is\nthe runtime capture kind emitted by the `captures` source adapter.",
+      "oneOf": [
+        {
+          "const": "intent",
+          "description": "`kind: intent` — operator-stated intent (e.g. `change.md`).",
+          "type": "string"
+        },
+        {
+          "const": "requirement",
+          "description": "`kind: requirement` — behavioural requirement.",
+          "type": "string"
+        },
+        {
+          "const": "criterion",
+          "description": "`kind: criterion` — acceptance criterion.",
+          "type": "string"
+        },
+        {
+          "const": "decision",
+          "description": "`kind: decision` — captured design decision.",
+          "type": "string"
+        },
+        {
+          "const": "section",
+          "description": "`kind: section` — documentation section anchor.",
+          "type": "string"
+        },
+        {
+          "const": "diagram",
+          "description": "`kind: diagram` — diagram or architectural illustration.",
+          "type": "string"
+        },
+        {
+          "const": "contract",
+          "description": "`kind: contract` — interface contract excerpt.",
+          "type": "string"
+        },
+        {
+          "const": "example",
+          "description": "`kind: example` — runtime capture (runtime capture claim, `captures`).",
+          "type": "string"
+        },
+        {
+          "const": "excerpt",
+          "description": "`kind: excerpt` — code excerpt.",
+          "type": "string"
+        },
+        {
+          "const": "type",
+          "description": "`kind: type` — type definition.",
+          "type": "string"
+        },
+        {
+          "const": "call",
+          "description": "`kind: call` — function or method call site.",
+          "type": "string"
+        },
+        {
+          "const": "region",
+          "description": "`kind: region` — spatial region (`screenshots`).",
+          "type": "string"
+        },
+        {
+          "const": "container",
+          "description": "`kind: container` — spatial container (`screenshots`).",
+          "type": "string"
+        },
+        {
+          "const": "leaf",
+          "description": "`kind: leaf` — spatial leaf (`screenshots`).",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$id": "https://github.com/augentic/specify/answers/evidence.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the Evidence shape minus the envelope `lead` key (the extract call names the lead). Per-kind claim body fields are intentionally open; claim ids carry the dotted-kebab grammar in-schema and `requirement` / `criterion` / `example` claims conditionally require one — both re-checked deterministically after the gate.",
+  "properties": {
+    "authority": {
+      "$ref": "#/$defs/AuthorityClass",
+      "description": "Document-level authority class of this evidence."
+    },
+    "claims": {
+      "description": "The claims extracted from the source, in answer order.",
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "authority",
+    "claims"
+  ],
+  "title": "Specify extract answer",
+  "type": "object"
+}

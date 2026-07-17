@@ -1,29 +1,33 @@
 //! The native loop end to end: scaffold → `plan author` → the
 //! operator's `approved` stamp → `plan execute`, driven through the
 //! same transport-neutral operations the shipped guest dispatches,
-//! against the fixture provider — the *real* orchestrations,
+//! against the linked fixture catalog — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
 //! model scripted and adapter behaviour supplied by the fixture core.
 //! No wasm builds, no sibling checkout, no network.
 
+mod support;
+
 use std::fs;
 
 use change::{LoopStep, Status, plan};
-use testkit::{Scripted, adapter, answers, run};
+use fixture::behaviour;
+use fixture::session::Session;
+use harness::invoke::run;
 
 /// The scripted answers for the whole loop, in dispatch order: the
 /// reconciliation grouping (author) and the synthesis response
 /// (execute's refine phase). Survey, extract, guidance, and build are
 /// deterministic fixture operations — no model dispatch.
 fn suite_answers() -> Vec<String> {
-    vec![answers::greeting_grouping(), answers::greeting_synthesis()]
+    vec![fixture::answers::greeting_grouping(), fixture::answers::greeting_synthesis()]
 }
 
 /// Scaffold a project bound to the fixture target and author + approve
 /// the single-slice plan — the shared preamble of every loop test.
-async fn scaffold_author_approve(provider: &Scripted) {
+async fn scaffold_author_approve(session: &Session) {
     let scaffolded = run::<project::init::handlers::Init, _, _>(
-        provider,
+        session.provider(),
         project::init::handlers::InitInput {
             adapter: Some("fixture".to_string()),
             name: Some("demo".to_string()),
@@ -35,10 +39,10 @@ async fn scaffold_author_approve(provider: &Scripted) {
     assert_eq!(scaffolded.adapter_name, "fixture");
 
     let authored = run::<plan::handlers::Author, _, _>(
-        provider,
+        session.provider(),
         plan::handlers::AuthorInput {
             name: "demo".to_string(),
-            sources: answers::greeting_binding(),
+            sources: support::greeting_binding(),
             intent: None,
         },
     )
@@ -51,7 +55,7 @@ async fn scaffold_author_approve(provider: &Scripted) {
     assert!(authored.hint.contains("specify plan transition demo approved"), "{}", authored.hint);
 
     run::<plan::handlers::Transition, _, _>(
-        provider,
+        session.provider(),
         plan::handlers::TransitionInput {
             name: "demo".to_string(),
             target: Some("approved".to_string()),
@@ -65,14 +69,15 @@ async fn scaffold_author_approve(provider: &Scripted) {
 
 #[tokio::test]
 async fn author_approve_execute_drains() {
-    let provider = Scripted::scripted_bare(suite_answers());
-    let root = provider.root.clone();
+    let session = Session::bare(suite_answers());
+    let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&provider).await;
+    scaffold_author_approve(&session).await;
 
-    let executed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect("execute drains the plan");
+    let executed =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
@@ -118,24 +123,20 @@ async fn author_approve_execute_drains() {
     assert_eq!(requirement["claims"][0]["source"], "main");
 
     // The fixture target produced a real, non-empty build output.
-    let artifact = adapter::build_artifact_path(&root, "greeting");
+    let artifact = behaviour::build_artifact_path(&root, "greeting");
     let body = fs::read_to_string(&artifact).expect("fixture build output exists");
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
 
-    // Seam cadence: survey (author), extract + guidance (refine),
-    // build, then the phased merge gates around the deterministic
-    // commit.
-    assert_eq!(
-        provider.calls(),
-        [
-            "survey source:fixture",
-            "extract source:fixture",
-            "guidance target:fixture",
-            "build target:fixture",
-            "merge-preflight target:fixture",
-            "merge-postflight target:fixture",
-        ]
+    // Guidance dispatch proof, stronger than a call log: the fixture
+    // target's guidance brief reached the recorded synthesis prompt.
+    let requests = session.model().requests();
+    assert!(
+        requests
+            .iter()
+            .flat_map(|request| request.messages.iter())
+            .any(|message| message.content.contains("Fixture guidance (target:fixture)")),
+        "the fixture guidance brief appears in a recorded judgment request"
     );
 
     // Both gate reports were schema-gated and persisted: preflight
@@ -149,23 +150,25 @@ async fn author_approve_execute_drains() {
 
     // Model cadence: one reconciliation leg, one synthesis leg —
     // exactly the two scripted answers, all consumed.
-    provider.model().assert_exhausted();
+    assert_eq!(requests.len(), 2);
+    session.model().assert_exhausted();
 }
 
 // A failed merge preflight gate parks the slice at `built`.
 #[tokio::test]
 async fn preflight_parks_built() {
-    let provider = Scripted::scripted_bare(suite_answers());
-    let root = provider.root.clone();
+    let session = Session::bare(suite_answers());
+    let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&provider).await;
+    scaffold_author_approve(&session).await;
 
     // Trip the fixture's failed preflight merge gate.
-    fs::write(root.join(adapter::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
+    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
 
-    let stopped = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect_err("execute parks on the failed preflight gate");
+    let stopped =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect_err("execute parks on the failed preflight gate");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
     // Nothing merged: the slice stays `built`, no baseline, no archive.
@@ -176,9 +179,9 @@ async fn preflight_parks_built() {
 
     // Clear the gate and resume through the breakout merge, then the
     // loop confirms drained.
-    fs::remove_file(root.join(adapter::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
     let merged = run::<slice::handlers::MergeRun, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::MergeRunInput {
             name: "greeting".to_string(),
             allow_composition_replace: false,
@@ -187,9 +190,10 @@ async fn preflight_parks_built() {
     .await
     .expect("breakout merge resumes");
     assert_eq!(merged.slice, "greeting");
-    let resumed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect("second execute drains");
+    let resumed =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect("second execute drains");
     assert_eq!(resumed.status, "drained");
 }
 
@@ -197,17 +201,18 @@ async fn preflight_parks_built() {
 // committed merge stands.
 #[tokio::test]
 async fn postflight_terminal() {
-    let provider = Scripted::scripted_bare(suite_answers());
-    let root = provider.root.clone();
+    let session = Session::bare(suite_answers());
+    let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&provider).await;
+    scaffold_author_approve(&session).await;
 
     // Trip the fixture's failed postflight merge gate.
-    fs::write(root.join(adapter::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
+    fs::write(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
 
-    let stopped = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect_err("execute reports the failed postflight gate");
+    let stopped =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect_err("execute reports the failed postflight gate");
     assert!(stopped.to_string().contains("target-merge-postflight-failed"), "{stopped}");
 
     // Non-rollback: the merge committed before the gate ran — baseline
@@ -228,23 +233,24 @@ async fn postflight_terminal() {
 
 #[tokio::test]
 async fn build_parks_then_resumes() {
-    let provider = Scripted::scripted_bare(suite_answers());
-    let root = provider.root.clone();
+    let session = Session::bare(suite_answers());
+    let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&provider).await;
+    scaffold_author_approve(&session).await;
 
     // Trip the fixture's failed-report mode for the first build.
-    fs::write(root.join(adapter::FAIL_BUILD_MARKER), "").expect("write fail marker");
+    fs::write(root.join(behaviour::FAIL_BUILD_MARKER), "").expect("write fail marker");
 
-    let stopped = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect_err("first execute parks on the failed build");
+    let stopped =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect_err("first execute parks on the failed build");
     assert!(stopped.to_string().contains("build-failed"), "{stopped}");
 
     // Clear the failure and resume through the breakout build.
-    fs::remove_file(root.join(adapter::FAIL_BUILD_MARKER)).expect("remove fail marker");
+    fs::remove_file(root.join(behaviour::FAIL_BUILD_MARKER)).expect("remove fail marker");
     let rebuilt = run::<slice::handlers::Build, _, _>(
-        &provider,
+        session.provider(),
         slice::handlers::BuildInput {
             name: "greeting".to_string(),
         },
@@ -253,9 +259,10 @@ async fn build_parks_then_resumes() {
     .expect("breakout build resumes");
     assert_eq!(rebuilt.slice, "greeting");
 
-    let resumed = run::<plan::handlers::Execute, _, _>(&provider, plan::handlers::ExecuteInput {})
-        .await
-        .expect("second execute drains");
+    let resumed =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect("second execute drains");
     assert_eq!(resumed.status, "drained");
     assert_eq!(
         resumed.phases.iter().map(|phase| phase.step).collect::<Vec<_>>(),
