@@ -23,20 +23,21 @@ fn provenance_refuses_empty() {
 
 #[test]
 fn provenance_refuses_missing_id() {
-    let err = grade::provenance(&[req("Login", "", vec!["docs".into()], Some(RequirementStatus::Agreed))])
-        .expect_err("missing id refuses");
+    let err = grade::provenance(&[req(
+        "Login",
+        "",
+        vec!["docs".into()],
+        Some(RequirementStatus::Agreed),
+    )])
+    .expect_err("missing id refuses");
     assert!(format!("{err:#}").contains("no id"), "{err:#}");
 }
 
 #[test]
 fn provenance_refuses_evidenced_without_sources() {
-    let err = grade::provenance(&[req(
-        "Login",
-        "REQ-001",
-        vec![],
-        Some(RequirementStatus::Agreed),
-    )])
-    .expect_err("evidenced without sources refuses");
+    let err =
+        grade::provenance(&[req("Login", "REQ-001", vec![], Some(RequirementStatus::Agreed))])
+            .expect_err("evidenced without sources refuses");
     assert!(format!("{err:#}").contains("no provenance"), "{err:#}");
 }
 
@@ -56,10 +57,7 @@ fn baseline_reads_domain_specs() {
 }
 
 fn req(
-    name: &str,
-    id: &str,
-    sources: Vec<String>,
-    status: Option<RequirementStatus>,
+    name: &str, id: &str, sources: Vec<String>, status: Option<RequirementStatus>,
 ) -> Requirement {
     Requirement {
         id: id.into(),
@@ -70,6 +68,10 @@ fn req(
         tag: None,
         sources_line_absent: false,
         body: String::new(),
-        span: Span { byte_start: 0, byte_end: 0, line_start: 1 },
+        span: Span {
+            byte_start: 0,
+            byte_end: 0,
+            line_start: 1,
+        },
     }
 }

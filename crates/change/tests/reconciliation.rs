@@ -50,9 +50,7 @@ fn uncovered_grouping_answer() -> String {
     .expect("grouping serialises")
 }
 
-async fn author(
-    session: &Session,
-) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
+async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
         session.provider(),
         plan::handlers::AuthorInput {
@@ -113,8 +111,7 @@ async fn uncovered_lead_exhausts() {
     // The same defective grouping for the whole budget: the first
     // dispatch plus every repair attempt, so the leg surfaces the
     // kernel's refusal.
-    let session =
-        Session::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
+    let session = Session::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
 
     let err = author(&session).await.expect_err("coverage gap refused");
     let detail = err.to_string();

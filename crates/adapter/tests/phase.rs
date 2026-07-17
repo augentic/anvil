@@ -10,8 +10,8 @@ use adapter::phase::{
 use adapter::seam::{
     BuildOutput, Context, Finding, Input, Platform, Report, Severity, Status, WorkingTree,
 };
-use tempfile::tempdir;
 use fixture::model::Harness;
+use tempfile::tempdir;
 
 const fn context(root: &Path) -> Context<'_> {
     Context {

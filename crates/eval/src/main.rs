@@ -10,7 +10,7 @@ use anyhow::{Context as _, Result, ensure};
 use artifacts::spec::provenance::{Requirement, RequirementStatus};
 use change::plan::handlers::ExecuteBody;
 use change::{Entry, Plan};
-use eval::{Fixtures, SANDBOX};
+use eval::{Adapters, SANDBOX};
 use fixture::behaviour::build_artifact_path;
 use harness::trial::{self, Profile};
 
@@ -19,7 +19,7 @@ const CHANGE: &str = "auth";
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().collect();
-    report(trial::run::<Fixtures>(&profile(), &argv).await)
+    report(trial::run::<Adapters>(&profile(), &argv).await)
 }
 
 fn report(outcome: Result<ExitCode>) -> ExitCode {

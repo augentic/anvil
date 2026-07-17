@@ -17,6 +17,10 @@ use serde_json::json;
 /// exactly the capabilities the init / resolve operations bind
 /// (`Anchor + Resolver + Hydrator`) — no adapter catalog, no model.
 #[derive(Clone)]
+#[expect(
+    clippy::partial_pub_fields,
+    reason = "tests read `root` directly; the tempdir and env guard are lifetime detail"
+)]
 pub struct Provider {
     /// The project root every project-scoped verb anchors at.
     pub root: PathBuf,

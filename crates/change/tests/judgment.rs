@@ -23,9 +23,7 @@ fn malformed_answer() -> String {
     r#"{"version":1,"kind":"response"}"#.to_string()
 }
 
-async fn author(
-    session: &Session,
-) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
+async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
     run::<plan::handlers::Author, _, _>(
         session.provider(),
         plan::handlers::AuthorInput {

@@ -25,10 +25,12 @@ mod list {
         fs::create_dir_all(project.root().join(".specify/slices/not-a-slice"))
             .expect("stage stray dir");
 
-        let body =
-            run::<slice::handlers::List, _, _>(project.provider(), slice::handlers::ListInput::default())
-                .await
-                .expect("list succeeds");
+        let body = run::<slice::handlers::List, _, _>(
+            project.provider(),
+            slice::handlers::ListInput::default(),
+        )
+        .await
+        .expect("list succeeds");
 
         let listed: Vec<(&str, &str)> =
             body.slices.iter().map(|e| (e.name.as_str(), e.status.as_str())).collect();

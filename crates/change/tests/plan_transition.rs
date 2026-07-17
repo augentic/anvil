@@ -45,7 +45,8 @@ async fn repeated_approve_noop() {
     let plan_path = project.root().join("plan.yaml");
     fs::write(&plan_path, PENDING_PLAN).expect("stage plan.yaml");
 
-    let body = run::<Transition, _, _>(project.provider(), approve_input()).await.expect("Gate 1 stamps");
+    let body =
+        run::<Transition, _, _>(project.provider(), approve_input()).await.expect("Gate 1 stamps");
     assert_eq!(body.previous, "pending");
     assert_eq!(body.current, "approved");
     let events = journal_lines(&project);
@@ -58,8 +59,9 @@ async fn repeated_approve_noop() {
     let stamped_bytes = fs::read(&plan_path).expect("plan bytes");
 
     // Idempotent approval preserves both the inode and journal.
-    let body =
-        run::<Transition, _, _>(project.provider(), approve_input()).await.expect("re-stamp is a no-op");
+    let body = run::<Transition, _, _>(project.provider(), approve_input())
+        .await
+        .expect("re-stamp is a no-op");
     assert_eq!(body.previous, "approved");
     assert_eq!(body.current, "approved");
 

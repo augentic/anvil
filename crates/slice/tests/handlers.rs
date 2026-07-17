@@ -239,7 +239,10 @@ mod init {
             fs::read_to_string(project.root().join(".specify/project.yaml")).expect("project.yaml");
         assert!(config.contains("workspace: true"), "workspace mode is recorded:\n{config}");
         assert!(config.contains("name: demo-workspace"), "the name override lands:\n{config}");
-        assert!(project.root().join("registry.yaml").is_file(), "workspace init mints registry.yaml");
+        assert!(
+            project.root().join("registry.yaml").is_file(),
+            "workspace init mints registry.yaml"
+        );
 
         assert!(body.context_generated, "workspace init generates AGENTS.md context");
         let agents = fs::read_to_string(project.root().join("AGENTS.md")).expect("AGENTS.md");
