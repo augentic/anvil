@@ -19,7 +19,7 @@ Two different uses of "standards" appear in this repository:
 
 | Term                      | Meaning                                                        | Location                                                                                                                                                                                                                                                                                       |
 | ------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Authoring standards**   | House style for docs, skill wrappers, and framework contributions | [`docs/standards/`](../standards/) — a risk-based subset (adapter boundary, docs/plugin links) is enforced by the `checks` package at [`crates/checks`](../../crates/checks/); the rest is applied in review |
+| **Authoring standards**   | House style for docs, skill wrappers, and framework contributions | [`docs/standards/`](../standards/) — a risk-based subset is enforced in CI (adapter boundary and plugin authoring by the `checks` package at [`crates/checks`](../../crates/checks/); docs/plugin links by lychee); the rest is applied in review |
 | **Engineering standards** | Durable engineering policy for generated and hand-written code | Cross-target `UNI-*` rules under `codex/rules/universal/` ([`augentic/specify-adapters`](https://github.com/augentic/specify-adapters)); per-adapter overlays under `targets/<name>/prose/rules/` and `sources/<name>/prose/rules/` — embedded in each adapter component and served by its references server |
 
 Do not conflate them. Skill-wrapper body style is guidance in [`docs/standards/cli-contract.md`](../standards/cli-contract.md); `UNI-*` / `OMNIA-*` codex files govern what Omnia guest code must never do.
@@ -30,7 +30,7 @@ Enforcement splits by audience, not by rule id:
 
 | Surface             | Binary                          | Audience                             | What it checks                                                     |
 | ------------------- | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| Repo checks         | `cargo test -p checks`          | `augentic/specify` contributors      | Adapter boundary, docs/plugin link integrity                       |
+| Repo checks         | `cargo test -p checks` + `cargo make links` | `augentic/specify` contributors      | Adapter boundary and plugin authoring shape; docs/plugin link integrity (lychee) |
 | Rule shape          | The adapters repo's `rule_shape` cargo test | `augentic/specify-adapters` contributors | Frontmatter fields, `## Rule` heading, id uniqueness, namespace ownership |
 | Build-time judgment | Target `build/review.md` briefs | Active slice during `/spec:build`    | Model-assisted application of codex policy → human `REVIEW.md`     |
 

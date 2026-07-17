@@ -1,12 +1,13 @@
-# Repo-local checks as a lightweight package: architecture boundary,
-# docs/plugin link integrity, and plugin authoring shape. Kept as its
-# own crate (not root-package tests) so the Wasmtime-heavy runtime
-# graph stays out of the ordinary test build. Cross-crate test support
-# lives in `crates/harness` and `crates/fixture`; fixtures are
-# crate-local under `crates/<name>/tests/fixtures/`.
+# Repo-local checks as a lightweight package: architecture boundary
+# and plugin authoring shape. Kept as its own crate (not root-package
+# tests) so the Wasmtime-heavy runtime graph stays out of the ordinary
+# test build. Docs/plugin link integrity is lychee's job (`cargo make
+# links`). Cross-crate test support lives in `crates/harness` and
+# `crates/fixture`; fixtures are crate-local under
+# `crates/<name>/tests/fixtures/`.
 [package]
 name = "checks"
-description = "Repo architecture boundary and docs link integrity checks"
+description = "Repo architecture boundary and plugin authoring checks"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -20,10 +21,6 @@ autoexamples = false
 [[test]]
 name = "boundaries"
 path = "boundaries.rs"
-
-[[test]]
-name = "links"
-path = "links.rs"
 
 [[test]]
 name = "authoring"

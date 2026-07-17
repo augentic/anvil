@@ -4,7 +4,7 @@ Specify proves engine correctness from this repository alone: native integration
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and binary integration, and the `checks` package (adapter boundary + docs/plugin links). The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the harness adapter and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + plugin authoring), and the lychee links gate (docs/plugin link integrity, `cargo make links`). The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the harness adapter and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 

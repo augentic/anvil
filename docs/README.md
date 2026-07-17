@@ -8,7 +8,6 @@ Install the mdBook 0.5 toolchain locally:
 
 ```bash
 cargo install --locked mdbook
-cargo install --locked mdbook-linkcheck2
 ```
 
 ## Serve (live reload)
@@ -22,10 +21,10 @@ Opens at [http://localhost:3000](http://localhost:3000) by default and live-relo
 ## Build
 
 ```bash
-mdbook build docs   # from the repo root, runs HTML + linkcheck2
+mdbook build docs   # from the repo root
 ```
 
-Output lands in `docs/book/html/` (with `[output.linkcheck2]` enabled mdbook nests each backend in its own subdirectory; the CI deploy step points Cloudflare Pages at that path). Linkcheck2 validates every internal link and fails the build on the first broken reference — see [`book.toml`](book.toml) `[output.linkcheck2]`.
+Output lands in `docs/book/` (the CI deploy step points Cloudflare Pages at that path). Internal link integrity is not a book concern: lychee validates every relative link under `docs/` and `plugins/` at PR time — run `cargo make links` locally (config in the repo-root `lychee.toml`).
 
 ## Custom theme and diagrams
 

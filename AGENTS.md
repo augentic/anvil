@@ -52,7 +52,7 @@ Specify separates three concerns. Use the terms verbatim; see [docs/explanation/
 | **Artifacts**             | Slice-local and baseline product intent       | `spec.md`, `plan.yaml`, `.specify/specs/`                                                           |
 | **Engineering standards** | Durable policy that outlives any slice        | Rules under `codex/rules/` and per-adapter `prose/rules/` overlays, embedded in each target adapter |
 
-**Authoring standards** (`docs/standards/`) govern docs house style and the thin skill-wrapper shape; a small risk-based subset (adapter boundary, docs/plugin links) is enforced by the `checks` package at [`crates/checks`](crates/checks/). **Engineering standards** (rules in `augentic/specify-adapters` — `codex/rules/universal/` and per-adapter `prose/rules/` overlays, embedded in each target adapter's component and served by its references server) govern generated and hand-written code in consumer projects. Do not conflate them.
+**Authoring standards** (`docs/standards/`) govern docs house style and the thin skill-wrapper shape; a small risk-based subset is enforced in CI: adapter boundary and plugin authoring by the `checks` package at [`crates/checks`](crates/checks/), docs/plugin links by lychee (`cargo make links`, config in `lychee.toml`). **Engineering standards** (rules in `augentic/specify-adapters` — `codex/rules/universal/` and per-adapter `prose/rules/` overlays, embedded in each target adapter's component and served by its references server) govern generated and hand-written code in consumer projects. Do not conflate them.
 
 Engineering standards reach consumer projects through the target adapters' embedded prose, applied by their build review prompts — there is no engine-side lint or rules-export surface. Build-time `REVIEW.md` and plan Gate 1 `approved` are separate surfaces.
 
@@ -139,8 +139,9 @@ The test surface is two rungs: native integration tests over `crates/fixture`'s 
 
 All commands are run from the repository root:
 
-- `cargo test -p checks` — adapter boundary + docs/plugin link integrity (the lightweight `checks` package at `crates/checks`). Only a Rust toolchain is required.
-- `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package.
+- `cargo test -p checks` — adapter boundary + plugin authoring shape (the lightweight `checks` package at `crates/checks`). Only a Rust toolchain is required.
+- `cargo make links` — docs/plugin link integrity via lychee (config in `lychee.toml`).
+- `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package and the links gate.
 
 Per-push CI is the shared org workflow (nextest, clippy, doc, doctest, vet, and deny over the whole workspace); no sibling checkout is required — the engine embeds no adapter-authored prose. There is no per-push WASM gate; the wasm32 guests compile-check locally with `cargo check --lib -p specify --example change --target wasm32-wasip2`, and boundary execution is the operator-invoked change example. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
@@ -149,7 +150,7 @@ The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill /
 ## Gotchas
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
-- The `checks` package (`cargo test -p checks`) enforces the adapter boundary and docs/plugin link integrity; if you rename docs paths, update links in the same change.
+- The `checks` package (`cargo test -p checks`) enforces the adapter boundary and plugin authoring shape; lychee (`cargo make links`) enforces docs/plugin link integrity — if you rename docs paths, update links in the same change.
 - **Adapter names are unique across axes** — a name appears under `sources/<name>/` xor `targets/<name>/`, never both. The store carries no axis segment, so a colliding name would make a binding's axis ambiguous; the `<axis>:<name>` adapter-id routing at the metadata/dispatch seam is the enforcement point.
 - **First-party adapters resolve from the registry or a project-contained dev build** — `specify init <adapter>` accepts a package reference (`specify:omnia@1.0.0`) or the first-party shorthand (`omnia`, `omnia@1.0.0`). A semver pin is registry sugar: it installs the published component into the global single-file store (`<store-root>/<name>@<version>.wasm`). A bare name is the development shorthand: it resolves the project component cache (`<project-cache>/components/<name>.wasm`) then the project's own release build at `target/wasm32-wasip2/release/<name>.wasm`. There is no sibling-checkout probe — an adapter built elsewhere reaches the project as an operator-supplied local `.wasm` at init or a pinned store install. GitHub URLs are refused (`adapter-github-uri-unsupported`).
 - Target review prompts in `augentic/specify-adapters` symlink `agent-teams.md` from each adapter's `references/` directory to that repo's shared `codex/references/runtime/review-team-protocol.md` overlay, forked from the canonical `docs/reference/review-team-protocol.md` here. If the canonical document is removed, the adapter overlays break — keep the file when changing review-team prose.
@@ -180,7 +181,7 @@ transport                # wasm-clean transport assembly — explicit typed comm
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
 harness                  # native eval-harness core (publish = false) — the linked-adapter Catalog over the SDK operations traits, native seam Provider, and one optional live runtime (model bridge, MCP shelves, CLI shim, and shared trial/scenario drivers); depends on {adapter,transport,…} and never on a concrete adapter — both eval binaries provide only a catalog binding
 fixture                  # dev-only fixture crate (publish = false) — the canonical SDK-native fixture adapter core (fixture::behaviour over the seam DTOs), the typed operations-trait implementors and exhaustive catalog registry (fixture::registry), the scripted answer corpus, the request-recording model Harness, the host-only Session helpers over the harness default layer, and the wasm32-only `wit` export bindings the examples guest shims over; dev-dep'd (legally cyclically) by the workflow/transport suites and the examples guest, and depended on by the eval wrapper
-checks                   # dev-only repo invariants (publish = false) — boundaries, links, authoring as plain cargo tests
+checks                   # dev-only repo invariants (publish = false) — boundaries, authoring as plain cargo tests (links are lychee's job)
 eval                     # live-model prompt-evaluation wrapper (publish = false, native-only) — the fixture adapter binding over harness; `cargo make eval` supplies explicit trial inputs
 specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime + the examples/change cargo example (the fixture adapter guest over fixture's wit bindings)
 ```
@@ -198,7 +199,7 @@ Modules of note across the workspace (workflow layer):
 - `crates/project/src/journal.rs` — newline-delimited JSON journal event log at `<project_dir>/.specify/journal.jsonl`; closed `Event` / `EventKind` taxonomy with kebab-case wire ids and `snake_case` Rust variants joined by `#[serde(rename = "…")]`, including the single `PlanReconcileCompleted` variant covering a successful `plan author` write, `plan.entry.advanced`, and the closed `Actor` enum (`operator | agent`) on `plan.transition.approved`.
 - `crates/project/src/answers.rs` + `crates/slice/src/answers.rs` — the generated judgment-answer schemas (`leads`, `evidence`, `report`, `proposal`; `synthesis` in `slice`), produced via `schemars` from the same Rust wire types the deterministic tails parse. The committed goldens under `crates/project/answers/` and `crates/slice/answers/` are parity-gated by each crate's `tests/answers.rs` (regenerate with `REGENERATE_GOLDENS=1`); adapters in `augentic/specify-adapters` vendor the `leads` / `evidence` / `report` documents. There is no other JSON Schema machinery — the typed serde parse is the load gate for every on-disk artifact.
 - `crates/diagnostics/` — the neutral `Diagnostic` substrate: the `Diagnostic` / `DiagnosticReport` / `DiagnosticSummary` types with the orthogonal `source` (`deterministic | model-assisted | hybrid | human | tool`) and `kind` (`violation | review`) axes, the fingerprint algorithm, and the `blocking` predicate. Import it from the `diagnostics` crate root.
-- **No lint engine, no `Check` substrate.** Repo checks are plain cargo tests in the lightweight [`crates/checks`](./crates/checks/) package (`boundaries`, `links`, `authoring`). Contributor model: [docs/contributing/checks.md](./docs/contributing/checks.md).
+- **No lint engine, no `Check` substrate.** Repo checks are plain cargo tests in the lightweight [`crates/checks`](./crates/checks/) package (`boundaries`, `authoring`) plus the lychee links gate (`cargo make links`). Contributor model: [docs/contributing/checks.md](./docs/contributing/checks.md).
 - `crates/project/src/agents/` — crate-private init-time `AGENTS.md` context generation: shallow root-marker detection, deterministic Markdown rendering, context-fence parsing, input fingerprinting, and `context.lock` writing. `specify init` drives it through `project::init` (generate root `AGENTS.md` + `.specify/context.lock` when `AGENTS.md` is absent; skip inside materialised workspace slots).
 
 The two **adapter validators** (`contract`, `vectis`) are in-guest adapter library code inside each adapter's published component in `augentic/specify-adapters` — the host dispatches no adapter WASI tool. Crux shell presence and launcher-icon heuristics live **only** in the vectis adapter's in-guest core: the host performs no plan-time shell detection.
@@ -219,7 +220,7 @@ crates/project/          foundation — init, adapter resolution, config, journa
 crates/slice/            the slice loop — refine/build/merge orchestration, synthesis, validation, merge engine, prompts
 crates/change/           the change loop — plan author/execute orchestration, plan operations, prompts
 crates/fixture/          dev-only fixture crate — SDK-native fixture adapter core, catalog registry, answer corpus, session helpers
-crates/checks/           lightweight checks package (boundaries, links, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
+crates/checks/           lightweight checks package (boundaries, authoring); fixtures are crate-local under crates/<name>/tests/fixtures/
 crates/harness/          native eval-harness core — linked-adapter catalog, seam provider, model bridge, CLI shim, and data-driven trial/scenario runners
 crates/eval/             live-model prompt-evaluation wrapper (native-only; cargo make eval) — the fixture binding over crates/harness
 examples/                the change example: a root-crate cargo example (the fixture adapter guest) plus its omnia.toml deployment and runner tasks

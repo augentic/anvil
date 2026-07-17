@@ -16,24 +16,3 @@ admonitions = true
 [output.html.fold]
 enable = true
 level = 1
-
-[output.linkcheck2]
-follow-web-links = false
-warning-policy = "error"
-traverse-parent-directories = true
-exclude = [
-  # Directory-style links (path ends with `/`). mdbook-linkcheck2 cannot
-  # follow directory links to file listings; cleanup happens in a follow-up
-  # PR that retargets each ref to a specific anchor.
-  '/$',
-  # Retired-stub redirect pages — present on disk so external bookmarks
-  # don't 404, but intentionally omitted from SUMMARY.md so they don't
-  # clutter the nav.
-  'contributing/adapter-anatomy\.md',
-  'cli-contract\.md',
-  '_STYLE\.md',
-  # Out-of-tree refs covered by docs/standards/doc-authoring.md as
-  # intentional repo-root links that resolve at deploy time only.
-  '\.\./\.\./adapters/targets/vectis/references/layout-inferer-contract\.md',
-  'crates/slice/prompts/synthesis',
-]

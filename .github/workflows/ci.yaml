@@ -15,6 +15,21 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
+  links:
+    name: Links
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Check docs/plugin links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config lychee.toml "docs/**/*.md" "plugins/**/*.md"
+          fail: true
+
   # wasm:
   #   name: Wasm
   #   runs-on: ubuntu-latest
