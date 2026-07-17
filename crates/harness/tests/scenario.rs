@@ -1,57 +1,22 @@
 //! Model-free scenario runner gates: config, artifacts, run dirs,
-//! outcomes — over a minimal in-test target binding.
+//! outcomes — over the shared probe target.
+
+mod support;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use adapter::Target;
-use adapter::registry::Doc;
-use adapter::seam::{Context, Error, Input, MergePhase, Report, TargetMetadata, WorkingTree};
 use harness::catalog::{Binding, Catalog};
 use harness::scenario;
 use omnia_guest::Model;
 use project::seam::wire::{BUILD_VERSION, BuildReport, BuildStatus};
 use tempfile::TempDir;
 
-struct Fixture;
-
-impl Target for Fixture {
-    const NAME: &'static str = "fixture";
-
-    fn metadata() -> TargetMetadata {
-        TargetMetadata {
-            specify_floor: None,
-            inputs: Vec::new(),
-            platforms: None,
-        }
-    }
-
-    fn docs() -> &'static [Doc] {
-        &[]
-    }
-
-    async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
-        Ok("fixture guidance".to_string())
-    }
-
-    async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
-    }
-
-    async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
-    }
-}
-
 struct Probe;
 
 impl Binding for Probe {
     fn catalog<M: Model>() -> Catalog<M> {
-        Catalog::builder().target::<Fixture>().build()
+        Catalog::builder().target::<support::Probe>().build()
     }
 }
 

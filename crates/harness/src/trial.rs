@@ -113,8 +113,8 @@ impl Trial {
             "trial requires --intent or at least one --source"
         );
 
-        let init = strings(&["init", target, "--name", name]);
-        let mut author = strings(&["plan", "author", change]);
+        let init = ["init", target, "--name", name].map(String::from).to_vec();
+        let mut author = ["plan", "author", change].map(String::from).to_vec();
         if let Some(intent) = &args.intent {
             author.extend(["--intent".to_string(), intent.clone()]);
         }
@@ -139,7 +139,7 @@ async fn init<B: Binding>(trial: &Trial) -> Result<()> {
     if let Some(seed) = &trial.seed {
         evalfs::copy_tree(seed, &root)?;
     }
-    invoke(&provider::<B>(&root).await, &trial.init).await
+    command::invoke(&provider::<B>(&root).await, &trial.init).await
 }
 
 async fn plan<B: Binding>(trial: &Trial) -> Result<()> {
@@ -148,7 +148,7 @@ async fn plan<B: Binding>(trial: &Trial) -> Result<()> {
     let _cache = env::scoped_cache(&root);
     let provider = provider::<B>(&root).await;
 
-    invoke(&provider, &trial.author).await?;
+    command::invoke(&provider, &trial.author).await?;
     let authored = sandbox::read_plan(&root)?;
     ensure!(!authored.entries.is_empty(), "plan author produced no entries");
 
@@ -194,25 +194,6 @@ fn clean(trial: &Trial) -> Result<()> {
         fs::remove_dir_all(&trial.sandbox).context("cleaning up the trial project")?;
     }
     Ok(())
-}
-
-async fn invoke<P>(provider: &P, argv: &[String]) -> Result<()>
-where
-    P: omnia_guest::api::Provider
-        + project::handler::Anchor
-        + omnia_guest::Model
-        + project::adapter::Resolver
-        + project::adapter::Hydrator
-        + project::seam::Source
-        + project::seam::Target
-        + Clone,
-{
-    let argv: Vec<&str> = argv.iter().map(String::as_str).collect();
-    command::invoke(provider, &argv).await
-}
-
-fn strings(values: &[&str]) -> Vec<String> {
-    values.iter().map(ToString::to_string).collect()
 }
 
 async fn provider<B: Binding>(root: &Path) -> Provider<Telemetry<DevModel>> {

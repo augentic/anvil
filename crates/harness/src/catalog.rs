@@ -19,7 +19,7 @@ use omnia_guest::Model;
 #[doc(hidden)]
 pub use omnia_guest::Model as CatalogModel;
 use project::adapter::Axis;
-use project::adapter::metadata::{Metadata, Request as MetadataRequest};
+use project::adapter::metadata::Metadata;
 
 use crate::convert;
 
@@ -124,7 +124,7 @@ impl<M> Entry<M> {
     /// Routed adapter id (`<axis>:<name>`).
     #[must_use]
     pub fn id(&self) -> String {
-        format!("{}:{}", self.axis.dir_segment().trim_end_matches('s'), self.name)
+        format!("{}:{}", self.axis, self.name)
     }
 
     /// Adapter metadata projected onto the workflow shape.
@@ -189,23 +189,6 @@ impl<M> Catalog<M> {
                     "adapter `{name}` (axis `{axis}`) is not linked into the native harness"
                 ),
             })
-    }
-
-    /// In-process metadata dispatch used by seam-level parity tests.
-    ///
-    /// # Errors
-    ///
-    /// `adapter-metadata-failed` when the request names an adapter this
-    /// catalog does not link.
-    pub fn metadata(&self, request: &MetadataRequest<'_>) -> Result<Metadata, Error> {
-        let name = request.adapter_id.split_once(':').map(|(_, name)| name).unwrap_or_default();
-        self.get(request.axis, name).map(|entry| entry.metadata()).map_err(|_error| Error::Diag {
-            code: "adapter-metadata-failed",
-            detail: format!(
-                "adapter `{}` is not linked into the native harness",
-                request.adapter_id
-            ),
-        })
     }
 
     fn find(&self, id: &str) -> Option<&Entry<M>> {
@@ -314,8 +297,8 @@ impl<M: Model> Builder<M> {
             metadata: || convert::source_metadata(A::metadata()),
             docs: A::docs,
             ops: Ops::Source {
-                survey: survey_leg::<A, M>,
-                extract: extract_leg::<A, M>,
+                survey: |model, ctx| Box::pin(A::survey(model, ctx)),
+                extract: |model, ctx, lead| Box::pin(A::extract(model, ctx, lead)),
             },
         });
         self
@@ -331,9 +314,13 @@ impl<M: Model> Builder<M> {
             metadata: || convert::target_metadata(A::metadata()),
             docs: A::docs,
             ops: Ops::Target {
-                guidance: guidance_leg::<A, M>,
-                build: build_leg::<A, M>,
-                merge: merge_leg::<A, M>,
+                guidance: |model, ctx| Box::pin(A::guidance(model, ctx)),
+                build: |model, ctx, slice, inputs, tree| {
+                    Box::pin(A::build(model, ctx, slice, inputs, tree))
+                },
+                merge: |model, ctx, slice, phase, tree| {
+                    Box::pin(A::merge(model, ctx, slice, phase, tree))
+                },
             },
         });
         self
@@ -346,38 +333,6 @@ impl<M: Model> Builder<M> {
             entries: self.entries,
         }
     }
-}
-
-fn survey_leg<'a, A: Source + 'static, M: Model>(
-    model: &'a M, ctx: &'a Context<'a>,
-) -> BoxFuture<'a, Result<Vec<aseam::Lead>, aseam::Error>> {
-    Box::pin(A::survey(model, ctx))
-}
-
-fn extract_leg<'a, A: Source + 'static, M: Model>(
-    model: &'a M, ctx: &'a Context<'a>, lead: &'a aseam::Lead,
-) -> BoxFuture<'a, Result<aseam::Evidence, aseam::Error>> {
-    Box::pin(A::extract(model, ctx, lead))
-}
-
-fn guidance_leg<'a, A: Target + 'static, M: Model>(
-    model: &'a M, ctx: &'a Context<'a>,
-) -> BoxFuture<'a, Result<String, aseam::Error>> {
-    Box::pin(A::guidance(model, ctx))
-}
-
-fn build_leg<'a, A: Target + 'static, M: Model>(
-    model: &'a M, ctx: &'a Context<'a>, slice: &'a str, inputs: &'a [aseam::Input],
-    tree: &'a aseam::WorkingTree,
-) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>> {
-    Box::pin(A::build(model, ctx, slice, inputs, tree))
-}
-
-fn merge_leg<'a, A: Target + 'static, M: Model>(
-    model: &'a M, ctx: &'a Context<'a>, slice: &'a str, phase: aseam::MergePhase,
-    tree: &'a aseam::WorkingTree,
-) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>> {
-    Box::pin(A::merge(model, ctx, slice, phase, tree))
 }
 
 fn unlinked(id: &str) -> aseam::Error {

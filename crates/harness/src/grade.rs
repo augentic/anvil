@@ -1,8 +1,8 @@
 //! Shared deterministic grading helpers for live-model trial wrappers.
 //!
-//! Catalog-specific asserts (fixture adversarial tags, contracts
-//! baseline validation, …) stay in each wrapper's `grade` hook; this
-//! module owns only the provenance gate both trials share.
+//! The trial's `execute` phase walks the baseline specs and runs the
+//! provenance gate directly; anything catalog-specific stays out of
+//! the shared harness.
 
 use std::fs;
 use std::path::Path;

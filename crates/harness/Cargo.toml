@@ -58,34 +58,20 @@ omnia-testkit.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
-[[test]]
-name = "boundary"
-path = "tests/boundary.rs"
-
-[[test]]
-name = "catalog"
-path = "tests/catalog.rs"
-
+# `boundary`, `catalog`, and `provider` are auto-discovered; only the
+# runtime-gated binaries need declaring.
 [[test]]
 name = "command"
-path = "tests/command.rs"
 required-features = ["runtime"]
 
 [[test]]
 name = "mcp"
-path = "tests/mcp.rs"
 required-features = ["runtime"]
 
 [[test]]
-name = "provider"
-path = "tests/provider.rs"
-
-[[test]]
 name = "scenario"
-path = "tests/scenario.rs"
 required-features = ["runtime"]
 
 [[test]]
 name = "grade"
-path = "tests/grade.rs"
 required-features = ["runtime"]

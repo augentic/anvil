@@ -270,8 +270,7 @@ mod targets {
     /// # Errors
     ///
     /// `Internal` when the id selects the `fail-merge` profile.
-    pub fn merge(root: &Path, id: &str, slice: &str, phase: MergePhase) -> Result<Report, Error> {
-        let _ = slice;
+    pub fn merge(root: &Path, id: &str, _slice: &str, phase: MergePhase) -> Result<Report, Error> {
         if id.contains("fail-merge") {
             return Err(Error::Internal(format!("fixture merge failure for `{id}`")));
         }

@@ -48,7 +48,7 @@ pub fn router<M>(catalog: &Catalog<M>) -> Router {
 
 /// Serve the shelves on an ephemeral background listener.
 ///
-/// Returns the base URL for `Provider::mcp_base`, or `None` when no port can be bound.
+/// Returns the shelf base URL for `Provider::bound`, or `None` when no port can be bound.
 pub async fn ephemeral_base<M>(catalog: &Catalog<M>) -> Option<String> {
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.ok()?;
     let base = format!("http://127.0.0.1:{}", listener.local_addr().ok()?.port());

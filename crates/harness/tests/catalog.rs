@@ -1,103 +1,20 @@
-//! Catalog builder and vtable dispatch over a minimal in-test
-//! implementor of both operations traits.
+//! Catalog builder and vtable dispatch over the shared probe
+//! implementors.
 //!
 //! One native type may implement both axes (the one-axis rule binds
 //! component exports, not native impls); the catalog still routes each
 //! axis-qualified id to its own operation set.
 
-use adapter::registry::Doc;
-use adapter::seam::{
-    Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
-    WorkingTree,
-};
-use adapter::{Source, Target};
+mod support;
+
+use adapter::seam::{Context, Error, Input, MergePhase, WorkingTree};
 use harness::catalog::Catalog;
-use omnia_guest::Model;
-use omnia_guest::model::{Format, Request};
 use omnia_testkit::model::Scripted;
 use project::adapter::Axis;
-use project::adapter::metadata::Request as MetadataRequest;
-
-struct Fixture;
-
-const DOCS: &[Doc] = &[Doc {
-    path: "prompts/guidance.md",
-    body: "fixture guidance",
-}];
-
-impl Source for Fixture {
-    const NAME: &'static str = "fixture";
-
-    fn metadata() -> SourceMetadata {
-        SourceMetadata { specify_floor: None }
-    }
-
-    fn docs() -> &'static [Doc] {
-        DOCS
-    }
-
-    async fn survey<P: Model>(model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
-        let reply = model
-            .create(Request {
-                format: Format::Json,
-                ..Request::default()
-            })
-            .await
-            .map_err(Error::from)?;
-        Ok(vec![Lead {
-            lead: reply.answer,
-            synopsis: format!("surveyed by {}", ctx.adapter_id),
-            topics: Vec::new(),
-        }])
-    }
-
-    async fn extract<P: Model>(
-        _model: &P, _ctx: &Context<'_>, lead: &Lead,
-    ) -> Result<Evidence, Error> {
-        Err(Error::Internal(format!("no evidence for {}", lead.lead)))
-    }
-}
-
-impl Target for Fixture {
-    const NAME: &'static str = "fixture";
-
-    fn metadata() -> TargetMetadata {
-        TargetMetadata {
-            specify_floor: Some("9.9.9".to_string()),
-            inputs: Vec::new(),
-            platforms: None,
-        }
-    }
-
-    fn docs() -> &'static [Doc] {
-        DOCS
-    }
-
-    async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
-        if ctx.adapter_id.contains("fail-guidance") {
-            return Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)));
-        }
-        Ok("fixture guidance".to_string())
-    }
-
-    async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, slice: &str, inputs: &[Input], _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        assert_eq!(slice, "demo");
-        assert_eq!(inputs.len(), 1);
-        Ok(Report::success())
-    }
-
-    async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, phase: MergePhase, _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        assert_eq!(phase, MergePhase::Preflight);
-        Ok(Report::success())
-    }
-}
+use support::{FailGuidance, Floored, Probe};
 
 fn linked() -> Catalog<Scripted> {
-    Catalog::builder().source::<Fixture>().target::<Fixture>().build()
+    Catalog::builder().source::<Probe>().target::<Probe>().build()
 }
 
 const fn ctx<'a>(id: &'a str, root: &'a std::path::Path) -> Context<'a> {
@@ -136,18 +53,20 @@ async fn target_legs_dispatch() {
         linked.guidance(&model, &ctx, "target:fixture").await.expect("guidance dispatches");
     assert_eq!(guidance, "fixture guidance");
 
+    // The probe echoes its arguments through the report's single
+    // output path, so the asserts prove the legs thread them intact.
     let inputs = vec![Input::Proposal("BODY".to_string())];
     let report = linked
         .build(&model, &ctx, "target:fixture", "demo", &inputs, &tree)
         .await
         .expect("build dispatches");
-    assert_eq!(report, Report::success());
+    assert_eq!(report.outputs[0].path, "build:demo:1");
 
     let report = linked
         .merge(&model, &ctx, "target:fixture", "demo", MergePhase::Preflight, &tree)
         .await
         .expect("merge dispatches");
-    assert_eq!(report, Report::success());
+    assert_eq!(report.outputs[0].path, "merge:demo:preflight");
 }
 
 // A typed guidance error crosses catalog dispatch intact. The routed
@@ -155,40 +74,6 @@ async fn target_legs_dispatch() {
 // identity selects its own failure.
 #[tokio::test]
 async fn guidance_failure_propagates() {
-    struct FailGuidance;
-
-    impl Target for FailGuidance {
-        const NAME: &'static str = "fixture-fail-guidance";
-
-        fn metadata() -> TargetMetadata {
-            TargetMetadata {
-                specify_floor: None,
-                inputs: Vec::new(),
-                platforms: None,
-            }
-        }
-
-        fn docs() -> &'static [Doc] {
-            DOCS
-        }
-
-        async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
-            Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)))
-        }
-
-        async fn build<P: Model>(
-            _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
-        ) -> Result<Report, Error> {
-            Ok(Report::success())
-        }
-
-        async fn merge<P: Model>(
-            _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
-        ) -> Result<Report, Error> {
-            Ok(Report::success())
-        }
-    }
-
     let tmp = tempfile::tempdir().expect("tempdir");
     let model = Scripted::answers::<&str>([]);
     let ctx = ctx("target:fixture-fail-guidance", tmp.path());
@@ -224,22 +109,18 @@ async fn axis_routing() {
 
 #[test]
 fn entries_and_metadata() {
-    let linked = linked();
+    let linked: Catalog<Scripted> =
+        Catalog::builder().source::<Probe>().target::<Probe>().target::<Floored>().build();
     let ids: Vec<String> = linked.entries().iter().map(harness::catalog::Entry::id).collect();
-    assert_eq!(ids, ["source:fixture", "target:fixture"]);
+    assert_eq!(ids, ["source:fixture", "target:fixture", "target:floored"]);
 
     let entry = linked.get(Axis::Target, "fixture").expect("target entry");
     assert_eq!(entry.server_name(), "fixture-references");
-    assert_eq!(entry.metadata().specify_floor.as_deref(), Some("9.9.9"));
+    assert_eq!(entry.metadata().specify_floor, None);
     assert!(!entry.docs().is_empty());
 
-    let metadata = linked
-        .metadata(&MetadataRequest {
-            axis: Axis::Source,
-            adapter_id: "source:fixture",
-        })
-        .expect("source metadata");
-    assert_eq!(metadata.specify_floor, None);
+    let floored = linked.get(Axis::Target, "floored").expect("floored entry");
+    assert_eq!(floored.metadata().specify_floor.as_deref(), Some("9.9.9"));
 
     let err = linked.get(Axis::Source, "unknown").expect_err("unlinked refuses");
     assert_eq!(err.variant_str(), "adapter-not-found");

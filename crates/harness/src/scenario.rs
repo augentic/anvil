@@ -221,29 +221,25 @@ fn holds_a_file(root: &Path, dir: &Path, visited: &mut HashSet<PathBuf>) -> bool
 
 /// Atomically allocate a fresh run directory under `base`.
 ///
+/// A process-local counter disambiguates same-second runs, so the
+/// `run-<stamp>-<pid>[-<seq>]` name is unique by construction and the
+/// single `create_dir` either succeeds or reports a real failure.
+///
 /// # Errors
 ///
 /// Returns directory-creation failures and clock errors.
 pub fn allocate_run_dir(base: &Path) -> Result<PathBuf> {
+    static SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
     fs::create_dir_all(base).with_context(|| format!("creating {}", base.display()))?;
     let stamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let pid = std::process::id();
-    for attempt in 0..u32::MAX {
-        let name = if attempt == 0 {
-            format!("run-{stamp}-{pid}")
-        } else {
-            format!("run-{stamp}-{pid}-{attempt}")
-        };
-        let candidate = base.join(name);
-        match fs::create_dir(&candidate) {
-            Ok(()) => return candidate.canonicalize().context("canonical run dir"),
-            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(err) => {
-                return Err(err).with_context(|| format!("creating {}", candidate.display()));
-            }
-        }
-    }
-    bail!("could not allocate a unique run directory under {}", base.display())
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let name =
+        if seq == 0 { format!("run-{stamp}-{pid}") } else { format!("run-{stamp}-{pid}-{seq}") };
+    let candidate = base.join(name);
+    fs::create_dir(&candidate).with_context(|| format!("creating {}", candidate.display()))?;
+    candidate.canonicalize().context("canonical run dir")
 }
 
 async fn dispatch(

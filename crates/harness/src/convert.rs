@@ -94,6 +94,15 @@ const fn claim_kind(kind: aseam::ClaimKind) -> artifacts::evidence::ClaimKind {
     }
 }
 
+/// Narrow a workflow working tree to the SDK tree.
+#[must_use]
+pub fn narrow_tree(tree: seam::WorkingTree) -> aseam::WorkingTree {
+    aseam::WorkingTree {
+        base: tree.base,
+        subpath: tree.subpath,
+    }
+}
+
 /// Narrow a workflow merge phase to the SDK phase.
 #[must_use]
 pub const fn narrow_phase(phase: seam::MergePhase) -> aseam::MergePhase {

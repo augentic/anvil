@@ -47,16 +47,10 @@ impl<M> Provider<M> {
         }
     }
 
-    /// Attach the reference-shelf base URL for MCP grant rewrite.
-    #[must_use]
-    pub fn mcp_base(mut self, base: impl Into<String>) -> Self {
-        self.mcp_base = Some(base.into());
-        self
-    }
-
     /// A provider over `B`'s catalog with its reference shelves served
     /// on an ephemeral background listener (skipped when no port can
-    /// be bound).
+    /// be bound); the shelf base URL feeds the per-operation MCP grant
+    /// rewrite.
     #[cfg(feature = "runtime")]
     pub async fn bound<B: crate::catalog::Binding>(root: impl Into<PathBuf>, model: M) -> Self
     where
@@ -65,9 +59,7 @@ impl<M> Provider<M> {
         let catalog = B::catalog();
         let base = crate::mcp::ephemeral_base(&catalog).await;
         let mut provider = Self::new(root, model, catalog);
-        if let Some(base) = base {
-            provider = provider.mcp_base(base);
-        }
+        provider.mcp_base = base;
         provider
     }
 
@@ -84,6 +76,16 @@ impl<M> Provider<M> {
     fn mcp_url(&self, id: &str) -> Option<String> {
         let name = id.rsplit(':').next().unwrap_or(id);
         self.mcp_base.as_ref().map(|base| format!("{base}/mcp/{name}"))
+    }
+
+    // Every operation method computes the URL first (the ctx borrows it),
+    // then assembles the SDK context through this one place.
+    fn ctx<'a>(&'a self, id: &'a str, url: Option<&'a str>) -> Context<'a> {
+        Context {
+            adapter_id: id,
+            project_root: &self.project_dir,
+            mcp_url: url,
+        }
     }
 }
 
@@ -131,22 +133,14 @@ impl<M: Model> Model for Provider<M> {
 impl<M: Model> Source for Provider<M> {
     async fn survey(&self, id: String) -> Result<Vec<Lead>, seam::Error> {
         let url = self.mcp_url(&id);
-        let ctx = Context {
-            adapter_id: &id,
-            project_root: &self.project_dir,
-            mcp_url: url.as_deref(),
-        };
+        let ctx = self.ctx(&id, url.as_deref());
         let leads = self.catalog.survey(&self.model, &ctx, &id).await.map_err(convert::error)?;
         Ok(leads.into_iter().map(convert::lead).collect())
     }
 
     async fn extract(&self, id: String, lead: Lead) -> Result<Evidence, seam::Error> {
         let url = self.mcp_url(&id);
-        let ctx = Context {
-            adapter_id: &id,
-            project_root: &self.project_dir,
-            mcp_url: url.as_deref(),
-        };
+        let ctx = self.ctx(&id, url.as_deref());
         let lead = convert::narrow_lead(lead);
         let evidence =
             self.catalog.extract(&self.model, &ctx, &id, &lead).await.map_err(convert::error)?;
@@ -157,11 +151,7 @@ impl<M: Model> Source for Provider<M> {
 impl<M: Model> Target for Provider<M> {
     async fn guidance(&self, id: String) -> Result<String, seam::Error> {
         let url = self.mcp_url(&id);
-        let ctx = Context {
-            adapter_id: &id,
-            project_root: &self.project_dir,
-            mcp_url: url.as_deref(),
-        };
+        let ctx = self.ctx(&id, url.as_deref());
         self.catalog.guidance(&self.model, &ctx, &id).await.map_err(convert::error)
     }
 
@@ -169,16 +159,9 @@ impl<M: Model> Target for Provider<M> {
         &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
         let url = self.mcp_url(&id);
-        let ctx = Context {
-            adapter_id: &id,
-            project_root: &self.project_dir,
-            mcp_url: url.as_deref(),
-        };
+        let ctx = self.ctx(&id, url.as_deref());
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(convert::narrow_input).collect();
-        let tree = aseam::WorkingTree {
-            base: tree.base,
-            subpath: tree.subpath,
-        };
+        let tree = convert::narrow_tree(tree);
         let report = self
             .catalog
             .build(&self.model, &ctx, &id, &slice, &inputs, &tree)
@@ -191,16 +174,9 @@ impl<M: Model> Target for Provider<M> {
         &self, id: String, slice: String, phase: seam::MergePhase, tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
         let url = self.mcp_url(&id);
-        let ctx = Context {
-            adapter_id: &id,
-            project_root: &self.project_dir,
-            mcp_url: url.as_deref(),
-        };
+        let ctx = self.ctx(&id, url.as_deref());
         let phase = convert::narrow_phase(phase);
-        let tree = aseam::WorkingTree {
-            base: tree.base,
-            subpath: tree.subpath,
-        };
+        let tree = convert::narrow_tree(tree);
         let report = self
             .catalog
             .merge(&self.model, &ctx, &id, &slice, phase, &tree)

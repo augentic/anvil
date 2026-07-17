@@ -1,132 +1,26 @@
-//! Provider gates over a minimal in-test binding: linked-only
+//! Provider gates over the shared probe implementors: linked-only
 //! resolution, pinned-identity refusal, hydrator refusal, and the
 //! operation legs crossing the workflow seam.
 
-use adapter::registry::Doc;
-use adapter::seam::{
-    Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
-    WorkingTree,
-};
-use adapter::{Source, Target};
+mod support;
+
 use harness::catalog::Catalog;
 use harness::provider::Provider;
-use omnia_guest::Model;
 use omnia_testkit::model::Scripted;
 use project::adapter::{AdapterRef, Hydrator as _, Resolver as _};
 use project::seam::{self, Source as _, Target as _};
+use support::{FailGuidance, Probe};
 
-struct Fixture;
-
-const DOCS: &[Doc] = &[Doc {
-    path: "prompts/guidance.md",
-    body: "fixture guidance",
-}];
-
-impl Source for Fixture {
-    const NAME: &'static str = "fixture";
-
-    fn metadata() -> SourceMetadata {
-        SourceMetadata { specify_floor: None }
-    }
-
-    fn docs() -> &'static [Doc] {
-        DOCS
-    }
-
-    async fn survey<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
-        Ok(vec![Lead {
-            lead: "greeting".to_string(),
-            synopsis: "The greeting endpoint.".to_string(),
-            topics: Vec::new(),
-        }])
-    }
-
-    async fn extract<P: Model>(
-        _model: &P, _ctx: &Context<'_>, lead: &Lead,
-    ) -> Result<Evidence, Error> {
-        Err(Error::Internal(format!("no evidence for {}", lead.lead)))
-    }
-}
-
-impl Target for Fixture {
-    const NAME: &'static str = "fixture";
-
-    fn metadata() -> TargetMetadata {
-        TargetMetadata {
-            specify_floor: None,
-            inputs: Vec::new(),
-            platforms: None,
-        }
-    }
-
-    fn docs() -> &'static [Doc] {
-        DOCS
-    }
-
-    async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
-        if ctx.adapter_id.contains("fail-guidance") {
-            return Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)));
-        }
-        Ok("fixture guidance".to_string())
-    }
-
-    async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
-    }
-
-    async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
-    }
-}
-
-struct FailGuidance;
-
-impl Target for FailGuidance {
-    const NAME: &'static str = "fixture-fail-guidance";
-
-    fn metadata() -> TargetMetadata {
-        TargetMetadata {
-            specify_floor: None,
-            inputs: Vec::new(),
-            platforms: None,
-        }
-    }
-
-    fn docs() -> &'static [Doc] {
-        DOCS
-    }
-
-    async fn guidance<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<String, Error> {
-        Err(Error::Internal(format!("guidance failure for `{}`", ctx.adapter_id)))
-    }
-
-    async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
-    }
-
-    async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
-    }
-}
-
-fn provider(root: &std::path::Path) -> Provider<Scripted> {
+fn provider(root: &std::path::Path, answers: &[&str]) -> Provider<Scripted> {
     let catalog: Catalog<Scripted> =
-        Catalog::builder().source::<Fixture>().target::<Fixture>().target::<FailGuidance>().build();
-    Provider::new(root, Scripted::answers::<&str>([]), catalog)
+        Catalog::builder().source::<Probe>().target::<Probe>().target::<FailGuidance>().build();
+    Provider::new(root, Scripted::answers(answers.iter().copied()), catalog)
 }
 
 #[test]
 fn linked_resolution() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let provider = provider(tmp.path());
+    let provider = provider(tmp.path(), &[]);
 
     let source = provider
         .resolve_source(&AdapterRef::bare("fixture"), tmp.path())
@@ -150,7 +44,7 @@ fn linked_resolution() {
 #[test]
 fn pinned_and_hydration_refused() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let provider = provider(tmp.path());
+    let provider = provider(tmp.path(), &[]);
 
     let pinned = provider
         .resolve_target(
@@ -168,7 +62,7 @@ fn pinned_and_hydration_refused() {
 #[tokio::test]
 async fn guidance_crosses_workflow_seam() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let provider = provider(tmp.path());
+    let provider = provider(tmp.path(), &[]);
 
     let prompt =
         provider.guidance("target:fixture".to_string()).await.expect("guidance dispatches");
@@ -189,11 +83,14 @@ async fn guidance_crosses_workflow_seam() {
 #[tokio::test]
 async fn survey_crosses_workflow_seam() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let provider = provider(tmp.path());
+    // The probe's survey threads the model, so the scripted answer
+    // crossing the seam proves the model reached the adapter leg.
+    let provider = provider(tmp.path(), &["greeting"]);
 
     let leads = provider.survey("source:fixture".to_string()).await.expect("survey dispatches");
     assert_eq!(leads.len(), 1);
     assert_eq!(leads[0].lead, "greeting");
+    assert_eq!(leads[0].synopsis, "surveyed by source:fixture");
 }
 
 // Minimal block-on for the one async trait call in a sync test.

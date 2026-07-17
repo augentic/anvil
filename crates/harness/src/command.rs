@@ -21,18 +21,19 @@ use crate::provider::Provider;
 /// # Errors
 ///
 /// Returns a router-assembly failure and any non-zero verb exit.
-pub async fn invoke<P>(provider: &P, argv: &[&str]) -> Result<()>
+pub async fn invoke<P>(provider: &P, argv: &[impl AsRef<str> + Sync]) -> Result<()>
 where
     P: ApiProvider + Anchor + Model + Resolver + Hydrator + Source + Target + Clone,
 {
-    eprintln!("==> specify {}", argv.join(" "));
+    let display = argv.iter().map(AsRef::as_ref).collect::<Vec<_>>().join(" ");
+    eprintln!("==> specify {display}");
     let router = transport::command::router(Invoker::new("specify", provider.clone()))
         .map_err(|error| anyhow::anyhow!("building the command router: {error}"))?;
     let mut full: Vec<String> = vec!["specify".to_string()];
-    full.extend(argv.iter().map(ToString::to_string));
+    full.extend(argv.iter().map(|arg| arg.as_ref().to_string()));
     let response = router.execute(full).await;
     drop(response.write_to(&mut io::stdout().lock(), &mut io::stderr().lock()));
-    ensure!(response.exit == 0, "`specify {}` exited {}", argv.join(" "), response.exit);
+    ensure!(response.exit == 0, "`specify {display}` exited {}", response.exit);
     Ok(())
 }
 
