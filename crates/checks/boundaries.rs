@@ -200,20 +200,56 @@ mod direction {
     /// one host dependency).
     const EVAL_REJECTS: &[&str] = &["fixture", "lab", "harness", "omnia-cursor", "change"];
 
-    fn production_dependencies(document: &Table) -> Vec<(String, String)> {
+    /// Effective package names declared under the root
+    /// `[workspace.dependencies]`, keyed by alias, so a member's
+    /// `host.workspace = true` resolves to the real package.
+    fn workspace_aliases(root: &Path) -> std::collections::BTreeMap<String, String> {
+        let mut aliases = std::collections::BTreeMap::new();
+        let Some(document) = fs::read_to_string(root.join("Cargo.toml"))
+            .ok()
+            .and_then(|body| body.parse::<Table>().ok())
+        else {
+            return aliases;
+        };
+        let Some(entries) = document
+            .get("workspace")
+            .and_then(Value::as_table)
+            .and_then(|workspace| workspace.get("dependencies"))
+            .and_then(Value::as_table)
+        else {
+            return aliases;
+        };
+        for (name, spec) in entries {
+            let package = spec
+                .as_table()
+                .and_then(|table| table.get("package"))
+                .and_then(Value::as_str)
+                .unwrap_or(name);
+            aliases.insert(name.clone(), package.replace('_', "-"));
+        }
+        aliases
+    }
+
+    fn production_dependencies(
+        document: &Table, aliases: &std::collections::BTreeMap<String, String>,
+    ) -> Vec<(String, String)> {
         dependency_tables(document)
             .into_iter()
             .filter(|(table, _)| !table.contains("dev-dependencies"))
             .flat_map(|(table, entries)| {
-                // Resolve the effective package name, so a Cargo alias
-                // (`host = { package = "linked", … }`) cannot bypass
-                // the direction rules.
+                // Resolve the effective package name — a local
+                // `package = "…"` rename first, then the root
+                // workspace declaration behind `workspace = true` — so
+                // a Cargo alias cannot bypass the direction rules.
                 entries.iter().map(move |(name, spec)| {
                     let package = spec
                         .as_table()
                         .and_then(|table| table.get("package"))
                         .and_then(Value::as_str)
-                        .unwrap_or(name);
+                        .map_or_else(
+                            || aliases.get(name).cloned().unwrap_or_else(|| name.clone()),
+                            ToString::to_string,
+                        );
                     (table.clone(), package.replace('_', "-"))
                 })
             })
@@ -221,6 +257,7 @@ mod direction {
     }
 
     fn direction_findings(root: &Path) -> Vec<String> {
+        let aliases = workspace_aliases(root);
         let mut out = Vec::new();
         for (member, rejected) in std::iter::empty()
             .chain(WORKFLOW_CORE.iter().map(|name| (*name, HOST_CRATES)))
@@ -233,7 +270,7 @@ mod direction {
             let Ok(document) = body.parse::<Table>() else {
                 continue;
             };
-            for (table, name) in production_dependencies(&document) {
+            for (table, name) in production_dependencies(&document, &aliases) {
                 if rejected.contains(&name.as_str()) {
                     out.push(format!("crates/{member}/Cargo.toml: [{table}] {name}"));
                 }
@@ -268,6 +305,20 @@ mod direction {
             dir.path(),
             "crates/slice/Cargo.toml",
             "[dependencies]\nhost = { package = \"linked\", version = \"1\" }\n",
+        );
+        assert!(!direction_findings(dir.path()).is_empty());
+
+        // Nor can an alias inherited from the root workspace declaration.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "Cargo.toml",
+            "[workspace.dependencies]\nhost = { package = \"linked\", path = \"crates/linked\" }\n",
+        );
+        write(
+            dir.path(),
+            "crates/slice/Cargo.toml",
+            "[dependencies]\nhost = { workspace = true }\n",
         );
         assert!(!direction_findings(dir.path()).is_empty());
 
