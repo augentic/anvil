@@ -11,8 +11,9 @@ use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::adapter::Resolver;
+use project::adapter::{AdapterSelector, Resolver};
 use project::config::{Layout, ProjectConfig};
+use project::handler::ExecutionPaths;
 use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, Status, resolve_topology};
 use project::registry::topology::{Decision, Surface};
@@ -87,9 +88,10 @@ impl TagCounts {
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `lifecycle` gate error from the `refined` transition.
 pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
-    caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp, slice: &str,
+    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str,
 ) -> Result<RefineOutcome, Error> {
+    let layout = Layout::new(paths.project_root());
     let entry = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
     std::fs::create_dir_all(&parent_dir).map_err(Error::Io)?;
@@ -103,7 +105,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let lead = binding.lead(slice).to_string();
-        super::extract(caps.sources, layout, now, &source, &lead, slice).await?;
+        super::extract(caps.sources, caps.resolver, paths, now, &source, &lead, slice).await?;
         extracted.push((source, lead));
     }
 
@@ -113,7 +115,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
-    let (baseline, baseline_decisions) = baseline_identity(caps.resolver, layout, &entry)?;
+    let (baseline, baseline_decisions) = baseline_identity(caps.resolver, paths, &entry)?;
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
     let header = ProjectionHeader {
         version: 1,
@@ -206,8 +208,9 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
 pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
-    caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp, slice: &str,
+    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
+    let layout = Layout::new(paths.project_root());
     let entry = load_entry(layout, slice)?;
     if entry.status == Status::Done {
         return Err(Error::validation_failed(
@@ -219,18 +222,18 @@ pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
             ),
         ));
     }
-    let target = breakout_target(caps.resolver, layout, &entry, slice)?;
-    refine(caps, layout, now, slice, &target).await
+    let target = breakout_target(caps.resolver, paths, &entry, slice)?;
+    refine(caps, paths, now, slice, &target).await
 }
 
 /// Resolve the breakout's target value: the slice's recorded
 /// `metadata.yaml` target when the slice directory already exists
 /// (resumed policy), else the bound project's topology (fresh policy).
 fn breakout_target(
-    resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry, slice: &str,
+    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry, slice: &str,
 ) -> Result<String, Error> {
-    project::target_policy::resumed(layout, slice)
-        .or_else(|_| project::target_policy::fresh(resolver, layout, entry, slice, "refining"))
+    project::target_policy::resumed(Layout::new(paths.project_root()), slice)
+        .or_else(|_| project::target_policy::fresh(resolver, paths, entry, slice, "refining"))
 }
 
 /// The judgment leg plus the native persist tail — one fallible unit
@@ -325,10 +328,10 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
 /// context, so any topology resolution miss degrades to empty vectors
 /// (the native handler's posture).
 fn baseline_identity(
-    resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry,
+    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry,
 ) -> Result<(Vec<Surface>, Vec<Decision>), Error> {
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let topology = resolve_topology(resolver, &config, layout.project_dir())?;
+    let config = ProjectConfig::load(Layout::new(paths.project_root()).project_dir())?;
+    let topology = resolve_topology(resolver, &config, paths)?;
     let bound = match entry.project.as_deref() {
         Some(name) => topology.iter().find(|p| p.name == name),
         None if topology.len() == 1 => topology.first(),
@@ -340,7 +343,7 @@ fn baseline_identity(
 /// Bare adapter name from a recorded target value (`omnia@1.0.0` →
 /// `omnia`) — the seam routes by the plan-bound name.
 fn target_name(target_value: &str) -> String {
-    project::adapter::AdapterRef::from_value(target_value).name
+    AdapterSelector::recorded_name(target_value)
 }
 
 /// Warning scope for the best-effort `slice.synthesize.*` brackets.

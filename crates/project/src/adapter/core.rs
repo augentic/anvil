@@ -245,8 +245,8 @@ pub enum AdapterLocation {
     /// at `<store-root>/<name>@<version>.wasm` — the immutable,
     /// version-keyed install target resolved by
     /// `diagnostics::cache::adapter_store_entry` and populated by
-    /// the wasm-pkg transport. Probed whenever the [`AdapterRef`]
-    /// carries a pinned version.
+    /// the wasm-pkg transport. Probed whenever the selector carries a
+    /// pinned version.
     Store(PathBuf),
     /// Resolved from the project component cache
     /// (`<project-cache>/components/<name>.wasm`) or the project's own
@@ -273,51 +273,6 @@ impl AdapterLocation {
         match self {
             Self::Store(path) | Self::Dev(path) => path,
         }
-    }
-}
-
-/// The identity an adapter resolves against: a kebab-case `name` plus
-/// an optional pinned semver `version`.
-///
-/// Resolution keys on `(name, version)`. A `Some(_)` version is an
-/// exact pin resolved against the global store entry installed for
-/// that identity; `version: None` is the bare-name development
-/// shorthand resolved against the project component cache or the
-/// in-repo release build.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AdapterRef {
-    /// Kebab-case adapter name.
-    pub name: String,
-    /// Optional exact semver pin; `None` selects the development
-    /// artifact.
-    pub version: Option<semver::Version>,
-}
-
-impl AdapterRef {
-    /// A bare-name reference with no version pin.
-    #[must_use]
-    pub fn bare(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            version: None,
-        }
-    }
-
-    /// A reference pinned to an exact semver version.
-    #[must_use]
-    pub fn pinned(name: impl Into<String>, version: semver::Version) -> Self {
-        Self {
-            name: name.into(),
-            version: Some(version),
-        }
-    }
-
-    /// The version this identity resolves as: the pin when present,
-    /// else the [`dev_version`] placeholder a development artifact
-    /// carries.
-    #[must_use]
-    pub(crate) fn resolved_version(&self) -> semver::Version {
-        self.version.clone().unwrap_or_else(dev_version)
     }
 }
 
@@ -367,7 +322,7 @@ pub struct SourceAdapter {
 /// In-memory identity + metadata of a resolved target adapter.
 ///
 /// Constructed by a [`crate::adapter::Resolver`]: `name`/`version` from
-/// the [`AdapterRef`] identity, the rest from its metadata answer.
+/// the resolved selector identity, the rest from its metadata answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetAdapter {
     /// Kebab-case adapter name from the resolved identity.

@@ -12,6 +12,7 @@ use std::future::Future;
 
 use omnia_guest::Model;
 
+use crate::identity::AdapterIdentity;
 use crate::registry::Doc;
 use crate::seam::{
     Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
@@ -23,8 +24,9 @@ use crate::seam::{
 /// Generic over [`Model`] so native tests bind scripted doubles and the
 /// wasm shim binds `WasiModel`.
 pub trait Source {
-    /// Axis-local adapter name, e.g. `"captures"`.
-    const NAME: &'static str;
+    /// Compile-time `(name, version)` identity, e.g.
+    /// `AdapterIdentity { name: "captures", version: env!("CARGO_PKG_VERSION") }`.
+    const IDENTITY: AdapterIdentity;
 
     /// Resolve-time metadata.
     fn metadata() -> SourceMetadata;
@@ -49,8 +51,9 @@ pub trait Source {
 /// Generic over [`Model`] so native tests bind scripted doubles and the
 /// wasm shim binds `WasiModel`.
 pub trait Target {
-    /// Axis-local adapter name, e.g. `"vectis"`.
-    const NAME: &'static str;
+    /// Compile-time `(name, version)` identity, e.g.
+    /// `AdapterIdentity { name: "vectis", version: env!("CARGO_PKG_VERSION") }`.
+    const IDENTITY: AdapterIdentity;
 
     /// Resolve-time metadata.
     fn metadata() -> TargetMetadata;

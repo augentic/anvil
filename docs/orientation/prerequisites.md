@@ -69,7 +69,7 @@ cargo install --git https://github.com/augentic/specify   # source install
 The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `specify`. Repo checks are cargo tests inside the same workspace:
 
 ```bash
-cargo test -p checks  # adapter boundary + docs/plugin link integrity
+cargo test -p checks  # adapter boundary + plugin authoring shape
 make ci          # the full Rust workspace gate (cargo make ci)
 cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
 ```

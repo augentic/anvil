@@ -39,7 +39,7 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
         let cx = Ctx::load(context.provider)?;
         let tree = WorkingTree::live();
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, cx.layout(), cx.now(), &tree).await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree).await?;
         match outcome {
             ExecuteOutcome::Drained { phases } => Ok(ExecuteBody {
                 status: "drained",

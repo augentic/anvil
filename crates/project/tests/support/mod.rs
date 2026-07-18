@@ -1,7 +1,8 @@
 //! Suite-local provider and helpers for the resolver / install /
 //! store suites: the shipped `resolver::Component` behind a
-//! deterministic metadata runner, a file-backed hydrator, and the
-//! env guards pinning the cache and store roots into tempdirs.
+//! deterministic metadata runner, a file-backed ensure fetch, and the
+//! env guard pinning the store root into a tempdir (the project cache
+//! is isolated through the provider's [`ExecutionPaths`]).
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
@@ -10,32 +11,29 @@ use std::sync::Arc;
 
 use error::Error;
 use project::adapter::metadata::Metadata;
-use project::adapter::{AdapterRef, ResolvedSource, ResolvedTarget, Resolver};
+use project::adapter::{AdapterSelector, ResolvedSource, ResolvedTarget, Resolver};
+use project::handler::ExecutionPaths;
 use serde_json::json;
 
 /// The concrete provider the resolver-flavoured suites run against:
 /// exactly the capabilities the init / resolve operations bind
-/// (`Anchor + Resolver + Hydrator`) — no adapter catalog, no model.
+/// (`Anchor + Resolver`) — no adapter catalog, no model.
 #[derive(Clone)]
 #[expect(
     clippy::partial_pub_fields,
-    reason = "tests read `root` directly; the tempdir and env guard are lifetime detail"
+    reason = "tests read `root` directly; the tempdir is lifetime detail"
 )]
 pub struct Provider {
     /// The project root every project-scoped verb anchors at.
     pub root: PathBuf,
-    // Owned tempdir + env pinning; dropped with the last clone.
-    _owned: Arc<Owned>,
-}
-
-struct Owned {
-    _cache: harness::env::CacheGuard,
-    _tmp: tempfile::TempDir,
+    paths: ExecutionPaths,
+    // Owned tempdir; dropped with the last clone.
+    _owned: Arc<tempfile::TempDir>,
 }
 
 impl Provider {
     /// A bare directory — nothing scaffolded: owned tempdir with the
-    /// out-of-tree project cache pinned inside it.
+    /// out-of-tree project cache isolated inside it.
     ///
     /// # Panics
     ///
@@ -44,49 +42,81 @@ impl Provider {
     pub fn bare() -> Self {
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let root = tmp.path().canonicalize().expect("canonical tempdir");
-        let cache = harness::env::scoped_cache(&root);
+        let paths = ExecutionPaths::isolated(&root, root.join("project-cache"));
         Self {
             root,
-            _owned: Arc::new(Owned {
-                _cache: cache,
-                _tmp: tmp,
-            }),
+            paths,
+            _owned: Arc::new(tmp),
         }
     }
 }
 
 impl project::handler::Anchor for Provider {
-    fn project_root(&self) -> &Path {
-        &self.root
+    fn paths(&self) -> &ExecutionPaths {
+        &self.paths
     }
 }
 
 impl Resolver for Provider {
     fn resolve_source(
-        &self, adapter_ref: &AdapterRef, project_dir: &Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        Resolver::resolve_source(&resolver(), adapter_ref, project_dir)
+        Resolver::resolve_source(&resolver(), selector, paths)
     }
 
     fn resolve_target(
-        &self, adapter_ref: &AdapterRef, project_dir: &Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
-        Resolver::resolve_target(&resolver(), adapter_ref, project_dir)
+        Resolver::resolve_target(&resolver(), selector, paths)
+    }
+
+    // The component-deployment ensure kernels over a file-backed
+    // registry: a test stages the expected component bytes at
+    // `<root>/hydrator/<name>@<version>.wasm` and the fetch serves
+    // them; an unstaged URL refuses, standing in for a fetch failure.
+    async fn ensure_source(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedSource, Error> {
+        project::adapter::ensure::source(stub_metadata, selector, paths, test_now(), |url| {
+            let response = staged_fetch(&self.root, &url);
+            async move { response }
+        })
+        .await
+    }
+
+    async fn ensure_target(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedTarget, Error> {
+        project::adapter::ensure::target(stub_metadata, selector, paths, test_now(), |url| {
+            let response = staged_fetch(&self.root, &url);
+            async move { response }
+        })
+        .await
     }
 }
 
-// A file-backed registry: a test stages the expected component bytes
-// at `<root>/hydrator/<name>@<version>.wasm` and the fetch serves
-// them; an unstaged URL refuses, standing in for a fetch failure.
-impl project::adapter::Hydrator for Provider {
-    async fn fetch(&self, url: &str) -> Result<Vec<u8>, Error> {
-        let entry = url.rsplit('/').next().unwrap_or_default();
-        let staged = self.root.join("hydrator").join(entry);
-        std::fs::read(&staged).map_err(|err| Error::Diag {
-            code: "http-fetch",
-            detail: format!("no staged registry response for {url}: {err}"),
-        })
-    }
+/// Deterministic timestamp for ensure provenance stamps.
+const fn test_now() -> jiff::Timestamp {
+    jiff::Timestamp::UNIX_EPOCH
+}
+
+/// Serve staged registry bytes from `<root>/hydrator/<entry>`.
+fn staged_fetch(root: &Path, url: &str) -> Result<Vec<u8>, Error> {
+    let entry = url.rsplit('/').next().unwrap_or_default();
+    let staged = root.join("hydrator").join(entry);
+    std::fs::read(&staged).map_err(|err| Error::Diag {
+        code: "http-fetch",
+        detail: format!("no staged registry response for {url}: {err}"),
+    })
+}
+
+/// The deterministic metadata runner behind [`resolver`], as a plain
+/// `fn` for the ensure kernels.
+fn stub_metadata(request: &project::adapter::metadata::Request<'_>) -> Result<Metadata, Error> {
+    serde_json::from_str(&metadata_json(request.adapter_id)).map_err(|err| Error::Diag {
+        code: "adapter-metadata-failed",
+        detail: format!("mock metadata parse {}: {err}", request.adapter_id),
+    })
 }
 
 /// The shipped component resolver with the deterministic
@@ -94,14 +124,7 @@ impl project::adapter::Hydrator for Provider {
 /// intact for the resolve / install / store suites.
 #[must_use]
 pub fn resolver() -> project::adapter::resolver::Component {
-    fn stub(request: &project::adapter::metadata::Request<'_>) -> Result<Metadata, Error> {
-        serde_json::from_str(&metadata_json(request.adapter_id)).map_err(|err| Error::Diag {
-            code: "adapter-metadata-failed",
-            detail: format!("fixture metadata parse {}: {err}", request.adapter_id),
-        })
-    }
-
-    project::adapter::resolver::Component::new(stub)
+    project::adapter::resolver::Component::new(stub_metadata)
 }
 
 /// The deterministic resolve-time metadata JSON a routed adapter id
@@ -135,10 +158,11 @@ pub fn metadata_json(adapter_id: &str) -> String {
     }
 }
 
-/// Out-of-tree cache directory for `project_dir` under the pinned root.
+/// Out-of-tree cache directory for the provider's project root under
+/// its isolated cache parent.
 #[must_use]
-pub fn expected_cache_dir(project_dir: &Path) -> PathBuf {
-    diagnostics::cache::project_cache_dir(project_dir)
+pub fn expected_cache_dir(provider: &Provider) -> PathBuf {
+    provider.paths.cache_dir()
 }
 
 const STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";

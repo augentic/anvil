@@ -13,10 +13,10 @@ use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver, SourceAdapter,
+    AdapterSelector, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver, SourceAdapter,
     TargetAdapter,
 };
-use crate::handler::{Anchor, Render};
+use crate::handler::{Anchor, ExecutionPaths, Render};
 
 /// Wire input for `source resolve` / `target resolve`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,9 +42,9 @@ impl<P: Anchor + Resolver> Operation<P> for SourceResolve {
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let project_dir = project_dir(&input, context.provider);
+        let paths = paths(&input, context.provider);
         let resolved =
-            context.provider.resolve_source(&AdapterRef::from_value(&input.value), &project_dir)?;
+            context.provider.resolve_source(&AdapterSelector::parse(&input.value)?, &paths)?;
         Ok(ResolveBody::from(resolved))
     }
 }
@@ -61,15 +61,20 @@ impl<P: Anchor + Resolver> Operation<P> for TargetResolve {
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let project_dir = project_dir(&input, context.provider);
+        let paths = paths(&input, context.provider);
         let resolved =
-            context.provider.resolve_target(&AdapterRef::from_value(&input.value), &project_dir)?;
+            context.provider.resolve_target(&AdapterSelector::parse(&input.value)?, &paths)?;
         Ok(ResolveBody::from(resolved))
     }
 }
 
-fn project_dir(input: &ResolveInput, provider: &impl Anchor) -> PathBuf {
-    input.project_dir.clone().unwrap_or_else(|| provider.project_root().to_path_buf())
+/// The provider's cache placement, re-anchored at the input's
+/// `--project-dir` when supplied.
+fn paths(input: &ResolveInput, provider: &impl Anchor) -> ExecutionPaths {
+    input
+        .project_dir
+        .clone()
+        .map_or_else(|| provider.paths().clone(), |dir| provider.paths().with_root(dir))
 }
 
 /// Wire-stable resolve envelope shared by both axes.

@@ -5,24 +5,25 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
-use fixture::model::Harness;
-use fixture::session::Scripted;
+use linked::{DynModel, Provider, ReferenceMode};
+use mock::model::Harness;
 use omnia_guest::api::invoke::Invoker;
 use tempfile::TempDir;
 
 // Grammar and parity coverage only: no test dispatches judgment or an
 // adapter seam, so the scripted provider's empty script never runs.
-fn provider(root: impl Into<PathBuf>) -> Scripted {
-    harness::provider::Provider::new(
-        root.into(),
-        Harness::answering(Vec::<String>::new()),
-        fixture::catalog(),
+fn provider(root: impl Into<PathBuf>) -> Provider {
+    Provider::new(
+        project::handler::ExecutionPaths::operator(root.into()),
+        DynModel::new(Harness::answering(Vec::<String>::new())),
+        mock::catalog(),
+        ReferenceMode::Offline,
     )
 }
 
 fn command_router(
     root: impl Into<PathBuf>,
-) -> omnia_guest::api::command::Router<Scripted, transport::command::Globals> {
+) -> omnia_guest::api::command::Router<Provider, transport::command::Globals> {
     transport::command::router(Invoker::new("specify", provider(root))).expect("router")
 }
 

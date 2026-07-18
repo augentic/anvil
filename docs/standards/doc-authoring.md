@@ -310,14 +310,12 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 
 ## Link gate
 
-[`mdbook-linkcheck2`](https://crates.io/crates/mdbook-linkcheck2) validates every internal link on every `mdbook build`. Settings live in [`docs/book.toml`](../book.toml) under `[output.linkcheck2]`:
+[lychee](https://github.com/lycheeverse/lychee) validates every relative link under `docs/` and `plugins/` at PR time. Settings live in the repo-root [`lychee.toml`](../../lychee.toml):
 
-- `follow-web-links = false` — local links only.
-- `warning-policy = "error"` — broken refs fail the build.
-- `traverse-parent-directories = true` — refs outside `docs/` (e.g. `../../adapters/…`) are allowed.
-- `exclude = [ … ]` — regexes for intentional out-of-tree refs and retired stubs.
+- `offline = true` — local links only; web links are house style, not a CI predicate.
+- `exclude_path = [ … ]` — pages that intentionally cite illustrative asset paths (this page is one of them).
 
-`mdbook build docs` runs the full pipeline (HTML + linkcheck2). If a build fails on a new ref, the cleanest fix is to retarget the link to the canonical 2.0 page; only add to `exclude` if the path is intentionally external.
+Run `cargo make links` locally. If the gate fails on a new ref, the cleanest fix is to retarget the link to the canonical page; only add to `exclude_path` if the page intentionally cites paths that do not exist.
 
 ## RFC citations
 
@@ -326,10 +324,10 @@ User-facing docs should not cite RFC numbers in visible prose except in [`../con
 ## Building locally
 
 ```bash
-mdbook build docs   # HTML + linkcheck2
+mdbook build docs   # HTML
 mdbook serve docs   # live reload at http://localhost:3000
 ```
 
-Requires mdBook **0.5.1+** (linkcheck2 compatibility) and `mdbook-linkcheck2` — see [`docs/README.md`](../README.md).
+Requires mdBook **0.5.1+** — see [`docs/README.md`](../README.md).
 
 Run `mdbook build docs` before opening a documentation PR so `docs/book/` stays in sync with CI deploy output.

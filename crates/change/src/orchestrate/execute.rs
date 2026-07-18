@@ -15,6 +15,7 @@ use jiff::Timestamp;
 use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
+use project::handler::ExecutionPaths;
 use project::plan::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
 use project::seam::{Source, Target, WorkingTree};
 
@@ -86,13 +87,13 @@ pub enum ExecuteOutcome {
 /// Phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
-    caps: super::Capabilities<'_, P, S, T, R>, layout: Layout<'_>, now: Timestamp,
+    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {
+    let layout = Layout::new(paths.project_root());
     refuse_workspace_routing(layout)?;
     let config = ProjectConfig::load(layout.project_dir())?;
-    let adapter =
-        project::target_policy::project_adapter(caps.resolver, &config, layout.project_dir())?;
+    let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
     let _marker = GuestMarker::acquire(layout, now)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
@@ -123,7 +124,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
 
         // Claim: `plan next` before every phase, exactly as the skill
         // drives it (returns the active entry unchanged mid-slice).
-        let Some(claim) = claim_next(caps.resolver, layout, now)? else {
+        let Some(claim) = claim_next(caps.resolver, paths, now)? else {
             // The status projection targeted a phase but the claim
             // found nothing runnable — plan state moved underneath us.
             // Surface it as the stuck stop rather than spinning.
@@ -146,7 +147,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                          (or fix the bound project's topology) before executing"
                     ),
                 })?;
-                slice::orchestrate::refine(caps, layout, now, &slice, &target).await.map(drop)
+                slice::orchestrate::refine(caps, paths, now, &slice, &target).await.map(drop)
             }
             LoopStep::Build => slice::orchestrate::build(
                 caps.targets,
@@ -224,10 +225,11 @@ struct Claim {
 /// nothing is runnable (drained / stuck — the status projection
 /// decides which).
 fn claim_next(
-    resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp,
+    resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<Option<Claim>, Error> {
+    let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
-    let body = project::plan::claim_next(resolver, layout, now, &config)?;
+    let body = project::plan::claim_next(resolver, paths, now, &config)?;
     // A fresh advance carries the resolved target; the active-entry
     // return does not, so re-resolve lazily from the slice's own
     // metadata at the phase (refine reads it from the claim, and only

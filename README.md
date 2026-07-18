@@ -73,10 +73,11 @@ See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and
 Run documentation and consistency checks from the repository root:
 
 ```bash
-cargo test -p checks
+cargo test -p checks   # adapter boundary + plugin authoring shape
+cargo make links       # docs/plugin link integrity (lychee)
 ```
 
-Adapter boundary + docs/plugin link integrity. Only a Rust toolchain is required; the same tests run inside `cargo make ci`. See [Consistency Checks](docs/contributing/checks.md).
+Only a Rust toolchain is required for `cargo test -p checks`; both gates run inside `cargo make ci`. See [Consistency Checks](docs/contributing/checks.md).
 
 ### Local iteration
 

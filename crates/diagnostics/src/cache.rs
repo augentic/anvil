@@ -61,10 +61,23 @@ pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
 /// same degradation as an unpopulated cache natively.
 #[must_use]
 pub fn project_cache_dir(project_dir: &Path) -> PathBuf {
+    project_cache_dir_under(None, project_dir)
+}
+
+/// [`project_cache_dir`] with an optional explicit cache parent.
+///
+/// `Some(parent)` places the per-project directory directly beneath
+/// `parent` (the execution-context override sandboxed sessions carry);
+/// `None` falls through to the process-start environment resolution.
+#[must_use]
+pub fn project_cache_dir_under(cache_parent: Option<&Path>, project_dir: &Path) -> PathBuf {
     if cfg!(target_arch = "wasm32") {
         return PathBuf::from(GUEST_CACHE_MOUNT);
     }
-    project_cache_dir_in(&projects_root(), project_dir)
+    cache_parent.map_or_else(
+        || project_cache_dir_in(&projects_root(), project_dir),
+        |parent| project_cache_dir_in(parent, project_dir),
+    )
 }
 
 /// Per-project cache directory beneath an explicit `projects_root` —
@@ -112,9 +125,10 @@ const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 /// workflow verbs resolve pinned identities in-guest (store probe,
 /// verify-on-read against the `.meta` sidecar), and `specify init`
 /// hydration installs a missing pin through the same mount (fetch over
-/// the provider's `Hydrator` seam, write entry + digest sidecar,
-/// verify-after-write). Installed entries themselves remain immutable
-/// — hydration only ever creates absent `(name, version)` files.
+/// the provider's `Resolver::ensure_*` leg, write entry + digest
+/// sidecar, verify-after-write). Installed entries themselves remain
+/// immutable — hydration only ever creates absent `(name, version)`
+/// files.
 pub const GUEST_STORE_MOUNT: &str = "/specify-store";
 
 /// Absolute path to the global adapter store entry for an immutable

@@ -1,0 +1,16 @@
+# Docs/plugin link integrity: every relative Markdown link under
+# `docs/` and `plugins/` must resolve on disk. Web links are house
+# style, not a CI predicate — `offline` skips them. Run locally with
+# `cargo make links`; CI runs the same config through lychee-action.
+# Embedded judgment prose under `crates/*/prompts/` is out of scope:
+# `crates/prose` link-checks it at embed time and fails the build.
+offline = true
+no_progress = true
+
+# Docs pages that intentionally cite illustrative (non-existent) asset
+# paths as examples, plus the gitignored mdbook build output.
+exclude_path = [
+  "docs/assets/diagrams/_STYLE.md",
+  "docs/standards/doc-authoring.md",
+  "docs/book",
+]

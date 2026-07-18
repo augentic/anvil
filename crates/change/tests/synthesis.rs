@@ -1,4 +1,4 @@
-//! Synthesis over the adversarial fixture evidence: an authority
+//! Synthesis over the adversarial mock evidence: an authority
 //! disagreement resolves to a `[divergence]` with the documentation
 //! source winning, an evidence gap projects an `[unknown]`
 //! requirement, and the provenance projection stays complete — all
@@ -9,8 +9,8 @@ mod support;
 use std::fs;
 
 use change::plan;
-use fixture::session::Session;
-use harness::invoke::run;
+use mock::invoke::run;
+use mock::session::Session;
 use serde_json::json;
 
 /// Synthesis for `session-policy`: the two `session.timeout` claims
@@ -107,8 +107,8 @@ async fn author_and_approve(session: &Session) {
 #[tokio::test]
 async fn divergence_docs_wins() {
     let session = Session::scripted(
-        "fixture",
-        vec![fixture::answers::adversarial_grouping(), session_synthesis_answer()],
+        "mock",
+        vec![mock::answers::adversarial_grouping(), session_synthesis_answer()],
     );
     author_and_approve(&session).await;
 
@@ -189,9 +189,9 @@ fn session_synthesis_with_decision() -> String {
 #[tokio::test]
 async fn decisions_exact_set() {
     let session = Session::scripted(
-        "fixture",
+        "mock",
         vec![
-            fixture::answers::adversarial_grouping(),
+            mock::answers::adversarial_grouping(),
             session_synthesis_with_decision(),
             session_synthesis_answer(),
         ],
@@ -262,8 +262,8 @@ async fn decisions_exact_set() {
 #[tokio::test]
 async fn evidence_gap_projects_unknown() {
     let session = Session::scripted(
-        "fixture",
-        vec![fixture::answers::adversarial_grouping(), reset_synthesis_answer()],
+        "mock",
+        vec![mock::answers::adversarial_grouping(), reset_synthesis_answer()],
     );
     author_and_approve(&session).await;
 

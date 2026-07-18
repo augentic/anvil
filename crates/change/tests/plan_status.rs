@@ -17,9 +17,9 @@ mod support;
 
 use change::plan::handlers::{Status as StatusOp, StatusInput};
 use change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
-use fixture::session::Session;
-use harness::invoke::run;
 use jiff::Timestamp;
+use mock::invoke::run;
+use mock::session::Session;
 use project::journal::{Event as JournalEvent, EventKind};
 use slice::LifecycleStatus;
 use support::{change, change_with_deps, plan_with_changes};

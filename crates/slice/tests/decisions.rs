@@ -3,8 +3,8 @@
 use std::fs;
 use std::path::Path;
 
-use fixture::session::Session;
-use harness::invoke::run;
+use mock::invoke::run;
+use mock::session::Session;
 
 /// Rule ids carried by a failing validate operation's report.
 fn report_rule_ids(err: &project::handler::Error) -> Vec<String> {
@@ -22,7 +22,7 @@ fn write_decision(path: &Path, frontmatter: &str) {
 
 #[tokio::test]
 async fn orphan_supersede_reported() {
-    let project = Session::scripted("fixture", Vec::new());
+    let project = Session::scripted("mock", Vec::new());
     let decisions = project.root().join(".specify/slices/demo/decisions");
     fs::create_dir_all(&decisions).expect("create slice decisions");
     write_decision(
@@ -45,13 +45,13 @@ async fn orphan_supersede_reported() {
 
 #[tokio::test]
 async fn merge_promotes_and_supersedes() {
-    let project = Session::scripted("fixture", Vec::new());
+    let project = Session::scripted("mock", Vec::new());
     let slice = project.root().join(".specify/slices/demo");
     let staged = slice.join("decisions");
     let baseline = project.root().join(".specify/decisions");
     fs::create_dir_all(&staged).expect("create staged decisions");
     fs::create_dir_all(&baseline).expect("create baseline decisions");
-    fs::write(slice.join("metadata.yaml"), "target: fixture\nstatus: built\ntouched-specs: []\n")
+    fs::write(slice.join("metadata.yaml"), "target: mock\nstatus: built\ntouched-specs: []\n")
         .expect("stage built metadata");
     write_decision(
         &baseline.join("DEC-0001-old-choice.md"),

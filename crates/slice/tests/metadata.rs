@@ -2,8 +2,8 @@
 
 use std::fs;
 
-use fixture::session::Session;
-use harness::invoke::run;
+use mock::invoke::run;
+use mock::session::Session;
 
 mod list {
     use super::*;
@@ -12,7 +12,7 @@ mod list {
     /// sorted by name, and skips directories without one.
     #[tokio::test]
     async fn sorted_with_status() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         for (name, status) in [("beta", "refined"), ("alpha", "refining")] {
             let slice = project.root().join(".specify/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
@@ -46,7 +46,7 @@ mod timestamps {
     /// metadata-mutating verb).
     #[tokio::test]
     async fn round_trip_rfc3339() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let slice = project.root().join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
@@ -81,7 +81,7 @@ mod timestamps {
 
     #[tokio::test]
     async fn malformed_rejected() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let slice = project.root().join(".specify/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(

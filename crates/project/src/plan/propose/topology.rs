@@ -12,8 +12,9 @@ use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severi
 use error::{Error, Result};
 
 use super::wire::ProjectRef;
-use crate::adapter::{AdapterRef, Resolver};
+use crate::adapter::{AdapterSelector, Resolver};
 use crate::config::{Layout, ProjectConfig};
+use crate::handler::ExecutionPaths;
 use crate::registry::catalog::Registry;
 use crate::registry::topology::{Surface, TopologyLock};
 
@@ -44,12 +45,12 @@ use crate::registry::topology::{Surface, TopologyLock};
 /// A workspace requires a committed topology lock; a regular project
 /// requires a resolvable target adapter. Resolver failures are preserved.
 pub fn resolve_topology(
-    resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path,
+    resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths,
 ) -> Result<Vec<ProjectRef>> {
     if config.workspace {
-        workspace_topology(project_dir)
+        workspace_topology(paths.project_root())
     } else {
-        regular_topology(resolver, config, project_dir).map(|project| vec![project])
+        regular_topology(resolver, config, paths).map(|project| vec![project])
     }
 }
 
@@ -163,7 +164,7 @@ fn workspace_topology(project_dir: &Path) -> Result<Vec<ProjectRef>> {
 
 /// Synthesise the sole [`ProjectRef`] for a single regular project.
 fn regular_topology(
-    resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path,
+    resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths,
 ) -> Result<ProjectRef> {
     let adapter_value = config.adapter.as_deref().ok_or_else(|| {
         Error::validation_failed(
@@ -172,9 +173,9 @@ fn regular_topology(
             "non-workspace project.yaml omits the `adapter` field",
         )
     })?;
-    let adapter = resolver.resolve_target(&AdapterRef::from_value(adapter_value), project_dir)?;
+    let adapter = resolver.resolve_target(&AdapterSelector::parse(adapter_value)?, paths)?;
     let target = format!("{}@{}", adapter.manifest.name, adapter.manifest.version);
-    let projection = crate::registry::identity::project_baseline(project_dir)?;
+    let projection = crate::registry::identity::project_baseline(paths.project_root())?;
     Ok(ProjectRef {
         name: config.name.clone(),
         target,

@@ -1,4 +1,4 @@
-//! Typed adapter failures crossing the seam: each fixture failure
+//! Typed adapter failures crossing the seam: each mock failure
 //! profile surfaces at the public operation boundary — an author
 //! abort, a parked refine or build in the execute loop, or the
 //! outputs-exist gate — with the adapter's typed detail preserved.
@@ -6,8 +6,8 @@
 mod support;
 
 use change::plan;
-use fixture::session::Session;
-use harness::invoke::run;
+use mock::invoke::run;
+use mock::session::Session;
 
 async fn author(
     session: &Session, source_adapter: &str,
@@ -46,65 +46,157 @@ async fn execute_err(session: &Session) -> String {
 
 #[tokio::test]
 async fn survey_failure_aborts_author() {
-    let session = Session::scripted("fixture", Vec::new());
+    let session = Session::scripted("mock", Vec::new());
 
-    let err = author(&session, "fixture-fail-survey").await.expect_err("survey fails");
+    let err = author(&session, "mock-fail-survey").await.expect_err("survey fails");
     let detail = err.to_string();
     assert!(detail.contains("survey"), "{detail}");
-    assert!(detail.contains("fixture survey failure"), "typed detail preserved: {detail}");
+    assert!(detail.contains("mock survey failure"), "typed detail preserved: {detail}");
     // The failure aborted before any judgment dispatch: the script is
     // empty, so a dispatch would have surfaced `model script exhausted`
     // instead of the survey failure above.
 }
 
 #[tokio::test]
-async fn extract_failure_parks_refine() {
-    let session = Session::scripted("fixture", vec![fixture::answers::greeting_grouping()]);
+async fn unknown_adapter_fails_ensure_before_scaffold() {
+    let session = Session::scripted("mock", Vec::new());
 
-    author(&session, "fixture-fail-extract").await.expect("survey succeeds for this profile");
+    // Ensure runs over every binding before the plan scaffold write, so
+    // an unlinked adapter aborts with nothing on disk — not a seam
+    // failure halfway through the survey fan-out.
+    let err = author(&session, "no-such-adapter").await.expect_err("ensure fails");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn mismatched_pin_refused_before_scaffold() {
+    let session = Session::scripted("mock", Vec::new());
+
+    // `<name>@<semver>` parses into the first-party package pin
+    // (implicit `specify` namespace); linked ensure succeeds only on
+    // the exact compiled identity, so a mismatched pin refuses before
+    // survey.
+    let err = author(&session, "mock@1.0.0").await.expect_err("ensure refuses the pin");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
+    assert!(detail.contains("specify:mock@1.0.0"), "pin parsed into the package form: {detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn placeholder_pin_refused_before_scaffold() {
+    let session = Session::scripted("mock", Vec::new());
+
+    // The mock source compiles with the `0.0.0` development
+    // placeholder, which remains a bare-only identity: even the
+    // matching "exact" pin refuses before survey. (Exact-pin success
+    // against a published identity is covered by the linked provider
+    // suite.)
+    let err = author(&session, "mock@0.0.0").await.expect_err("ensure refuses the pin");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
+    assert!(detail.contains("placeholder"), "{detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn survey_ensures_pinned_binding_before_dispatch() {
+    let session = Session::scripted("mock", Vec::new());
+
+    // A pinned binding already on disk (the plan schema has carried
+    // `version` all along) must be ensured at dispatch time too — the
+    // breakout `source survey` path, not just plan author.
+    let mut bindings = std::collections::BTreeMap::new();
+    bindings.insert(
+        "main".to_string(),
+        project::plan::SourceBinding {
+            adapter: "mock".to_string(),
+            version: Some(semver::Version::new(1, 0, 0)),
+            path: None,
+            value: Some("The greeting service.".to_string()),
+        },
+    );
+    let plan_path = session.root().join("plan.yaml");
+    project::plan::scaffold(&plan_path, "demo", bindings)
+        .expect("scaffold")
+        .save(&plan_path)
+        .expect("save plan.yaml");
+
+    let err = run::<change::source::Survey, _, _>(
+        session.provider(),
+        change::source::SurveyInput {
+            source: "main".to_string(),
+            plan: None,
+        },
+    )
+    .await
+    .expect_err("ensure refuses the pin before dispatch");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
+    assert!(detail.contains("specify:mock@1.0.0"), "{detail}");
+}
+
+#[tokio::test]
+async fn malformed_adapter_token_refused_at_parse() {
+    let session = Session::scripted("mock", Vec::new());
+
+    // A non-semver `@` suffix is neither a bare name nor a first-party
+    // pin, so the wire parse refuses it before ensure or scaffold.
+    let err = author(&session, "mock@not-semver").await.expect_err("parse refuses the token");
+    let detail = err.to_string();
+    assert!(detail.contains("plan-source-adapter-invalid"), "{detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn extract_failure_parks_refine() {
+    let session = Session::scripted("mock", vec![mock::answers::greeting_grouping()]);
+
+    author(&session, "mock-fail-extract").await.expect("survey succeeds for this profile");
     approve(&session).await;
 
     let detail = execute_err(&session).await;
     assert!(detail.contains("refine-failed"), "{detail}");
-    assert!(detail.contains("fixture extract failure"), "typed detail preserved: {detail}");
+    assert!(detail.contains("mock extract failure"), "typed detail preserved: {detail}");
 }
 
 #[tokio::test]
 async fn guidance_failure_parks_refine() {
-    let session =
-        Session::scripted("fixture-fail-guidance", vec![fixture::answers::greeting_grouping()]);
+    let session = Session::scripted("mock-fail-guidance", vec![mock::answers::greeting_grouping()]);
 
-    author(&session, "fixture").await.expect("author succeeds");
+    author(&session, "mock").await.expect("author succeeds");
     approve(&session).await;
 
     let detail = execute_err(&session).await;
     assert!(detail.contains("refine-failed"), "{detail}");
-    assert!(detail.contains("fixture guidance failure"), "typed detail preserved: {detail}");
+    assert!(detail.contains("mock guidance failure"), "typed detail preserved: {detail}");
 }
 
 #[tokio::test]
 async fn build_failure_parks() {
     let session = Session::scripted(
-        "fixture-fail-build",
-        vec![fixture::answers::greeting_grouping(), fixture::answers::greeting_synthesis()],
+        "mock-fail-build",
+        vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()],
     );
 
-    author(&session, "fixture").await.expect("author succeeds");
+    author(&session, "mock").await.expect("author succeeds");
     approve(&session).await;
 
     let detail = execute_err(&session).await;
     assert!(detail.contains("build-failed"), "{detail}");
-    assert!(detail.contains("fixture build failure"), "typed detail preserved: {detail}");
+    assert!(detail.contains("mock build failure"), "typed detail preserved: {detail}");
 }
 
 #[tokio::test]
 async fn merge_failure_parks_built() {
     let session = Session::scripted(
-        "fixture-fail-merge",
-        vec![fixture::answers::greeting_grouping(), fixture::answers::greeting_synthesis()],
+        "mock-fail-merge",
+        vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()],
     );
 
-    author(&session, "fixture").await.expect("author succeeds");
+    author(&session, "mock").await.expect("author succeeds");
     approve(&session).await;
 
     // Refine and build succeed; the merge preflight dispatch itself
@@ -112,7 +204,7 @@ async fn merge_failure_parks_built() {
     // loop parks with the deterministic commit never attempted.
     let detail = execute_err(&session).await;
     assert!(detail.contains("seam-dispatch-failed"), "{detail}");
-    assert!(detail.contains("fixture merge failure"), "typed detail preserved: {detail}");
+    assert!(detail.contains("mock merge failure"), "typed detail preserved: {detail}");
 
     let metadata =
         std::fs::read_to_string(session.root().join(".specify/slices/greeting/metadata.yaml"))
@@ -124,14 +216,14 @@ async fn merge_failure_parks_built() {
 #[tokio::test]
 async fn missing_output_aborts() {
     let session = Session::scripted(
-        "fixture-missing-output",
-        vec![fixture::answers::greeting_grouping(), fixture::answers::greeting_synthesis()],
+        "mock-missing-output",
+        vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()],
     );
 
-    author(&session, "fixture").await.expect("author succeeds");
+    author(&session, "mock").await.expect("author succeeds");
     approve(&session).await;
 
-    // The fixture reports success but never writes its declared
+    // The mock reports success but never writes its declared
     // output, so the orchestrator's outputs-exist gate aborts.
     let detail = execute_err(&session).await;
     assert!(detail.contains("target-build-output-missing"), "{detail}");

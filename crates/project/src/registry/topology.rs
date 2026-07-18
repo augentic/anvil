@@ -22,8 +22,9 @@ use error::Error;
 use serde::{Deserialize, Serialize};
 
 use crate::Platform;
-use crate::adapter::{AdapterRef, PlatformsSurface, Resolver};
+use crate::adapter::{AdapterSelector, PlatformsSurface, Resolver};
 use crate::config::ProjectConfig;
+use crate::handler::ExecutionPaths;
 use crate::plan::finding;
 use crate::registry::Registry;
 
@@ -195,7 +196,8 @@ impl TopologyProject {
     /// - Any error from [`crate::adapter::Resolver::resolve_target`] when the adapter
     ///   cannot be resolved against the slot.
     pub fn resolve(
-        resolver: &impl Resolver, registry_name: &str, config: &ProjectConfig, slot_dir: &Path,
+        resolver: &impl Resolver, registry_name: &str, config: &ProjectConfig,
+        slot_paths: &ExecutionPaths,
     ) -> Result<Self, Error> {
         let adapter_value = config.adapter.as_deref().ok_or_else(|| {
             Error::validation_failed(
@@ -205,7 +207,7 @@ impl TopologyProject {
             )
         })?;
         let target_adapter =
-            resolver.resolve_target(&AdapterRef::from_value(adapter_value), slot_dir)?;
+            resolver.resolve_target(&AdapterSelector::parse(adapter_value)?, slot_paths)?;
         let target =
             format!("{}@{}", target_adapter.manifest.name, target_adapter.manifest.version);
 
@@ -216,7 +218,7 @@ impl TopologyProject {
             &target_adapter.manifest.name,
         )?;
 
-        let projection = super::identity::project_baseline(slot_dir)?;
+        let projection = super::identity::project_baseline(slot_paths.project_root())?;
         Ok(Self {
             name: registry_name.to_string(),
             target,
@@ -271,8 +273,10 @@ fn validate_topology_platforms(
 /// diagnostics — it owns no projection logic of its own.
 #[must_use]
 pub fn cache_staleness(
-    resolver: &impl Resolver, registry: &Registry, workspace_base: &Path, topology_lock_path: &Path,
+    resolver: &impl Resolver, registry: &Registry, paths: &ExecutionPaths,
+    topology_lock_path: &Path,
 ) -> Vec<Diagnostic> {
+    let workspace_base = paths.project_root().join("workspace");
     let mut results = Vec::new();
     let lock = TopologyLock::load(topology_lock_path).ok().flatten();
     let cached: HashMap<&str, &TopologyProject> = lock
@@ -285,8 +289,9 @@ pub fn cache_staleness(
         if !slot_project_dir.join(".specify").join("project.yaml").exists() {
             continue;
         }
+        let slot_paths = paths.with_root(&slot_project_dir);
         let fresh = match ProjectConfig::load(&slot_project_dir)
-            .and_then(|cfg| TopologyProject::resolve(resolver, &rp.name, &cfg, &slot_project_dir))
+            .and_then(|cfg| TopologyProject::resolve(resolver, &rp.name, &cfg, &slot_paths))
         {
             Ok(fresh) => fresh,
             Err(err) => {

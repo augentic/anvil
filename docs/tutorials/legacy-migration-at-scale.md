@@ -1,6 +1,6 @@
 # Legacy migration at scale
 
-Bring existing codebases into Specify through source adapters rather than rewriting intent by hand. This page orients you to the migration path; it is not a full fixture walk-through.
+Bring existing codebases into Specify through source adapters rather than rewriting intent by hand. This page orients you to the migration path; it is not a full mock walk-through.
 
 ## Prerequisites
 

@@ -8,8 +8,8 @@ use std::path::PathBuf;
 
 use error::Error;
 
+use crate::adapter::ComponentMeta;
 use crate::config::{Layout, ProjectConfig};
-use crate::init::cache::ComponentMeta;
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
     upsert_gitignore,
@@ -105,7 +105,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
 
     upsert_gitignore(opts.project_dir)?;
 
-    let cache_present = ComponentMeta::path(opts.project_dir).exists();
+    let cache_present = ComponentMeta::path(opts.paths).exists();
 
     Ok(InitResult {
         config_path,

@@ -2,7 +2,7 @@
 
 mod support;
 
-use harness::invoke::run;
+use mock::invoke::run;
 use support::{Provider, stage_dev_component};
 
 #[tokio::test]

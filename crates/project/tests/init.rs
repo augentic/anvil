@@ -5,11 +5,12 @@
 //! with the slice handler suite.
 
 use std::fs;
-use std::path::Path;
 
 mod support;
 
-use harness::invoke::run;
+use mock::invoke::run;
+use project::adapter::AdapterSelector;
+use project::handler::{Anchor as _, ExecutionPaths};
 use support::Provider;
 
 #[tokio::test]
@@ -66,44 +67,43 @@ async fn regular_mode() {
     );
 }
 
-/// A provider whose resolver answers from memory — the
-/// native-harness (linked crates) shape: no component file exists
-/// anywhere on disk.
+/// A provider whose resolver answers from memory — the linked-host
+/// shape: no component file exists anywhere on disk.
 #[derive(Clone)]
 struct Linked(Provider);
 
 impl project::handler::Anchor for Linked {
-    fn project_root(&self) -> &Path {
-        &self.0.root
+    fn paths(&self) -> &ExecutionPaths {
+        self.0.paths()
     }
 }
 
 impl project::adapter::Resolver for Linked {
     fn resolve_source(
-        &self, adapter_ref: &project::adapter::AdapterRef, _project_dir: &Path,
+        &self, selector: &AdapterSelector, _paths: &ExecutionPaths,
     ) -> Result<project::adapter::ResolvedSource, error::Error> {
         project::adapter::resolver::source(
-            adapter_ref,
+            &selector.name()?,
+            linked_version(),
             project::adapter::metadata::Metadata::default(),
             linked_origin(),
         )
     }
 
     fn resolve_target(
-        &self, adapter_ref: &project::adapter::AdapterRef, _project_dir: &Path,
+        &self, selector: &AdapterSelector, _paths: &ExecutionPaths,
     ) -> Result<project::adapter::ResolvedTarget, error::Error> {
         project::adapter::resolver::target(
-            adapter_ref,
+            &selector.name()?,
+            linked_version(),
             project::adapter::metadata::Metadata::default(),
             linked_origin(),
         )
     }
 }
 
-impl project::adapter::Hydrator for Linked {
-    async fn fetch(&self, url: &str) -> Result<Vec<u8>, error::Error> {
-        project::adapter::Hydrator::fetch(&self.0, url).await
-    }
+const fn linked_version() -> semver::Version {
+    semver::Version::new(0, 0, 0)
 }
 
 fn linked_origin() -> project::adapter::Origin {
@@ -166,7 +166,7 @@ async fn local_component_mirrored() {
     assert_eq!(body.adapter_name, "demo", "the name derives from the component filename");
     assert!(body.cache_present, "the local component is mirrored into the project cache");
 
-    let components = support::expected_cache_dir(&project.root).join("components");
+    let components = support::expected_cache_dir(&project).join("components");
     assert_eq!(
         fs::read(components.join("demo.wasm")).expect("mirrored component"),
         b"\0asm-component",
@@ -181,9 +181,28 @@ async fn local_component_mirrored() {
 
     let resolved = project::adapter::Resolver::resolve_target(
         &support::resolver(),
-        &project::adapter::AdapterRef::bare("demo"),
-        &project.root,
+        &AdapterSelector::parse("demo").expect("bare selector"),
+        project.paths(),
     )
     .expect("the mirrored component resolves the bare name");
     assert_eq!(resolved.manifest.name, "demo");
+
+    // The persisted selector survives the operator's original file:
+    // `--upgrade` re-ensures the recorded `file://` binding through
+    // the project-cache mirror after the download is deleted.
+    fs::remove_file(&staged).expect("remove the operator's original file");
+    let body = run::<project::init::handlers::Init, _, _>(
+        &project,
+        project::init::handlers::InitInput {
+            adapter: None,
+            name: None,
+            description: None,
+            workspace: false,
+            platforms: None,
+            upgrade: true,
+        },
+    )
+    .await
+    .expect("re-ensure resolves through the mirrored component");
+    assert_eq!(body.adapter_name, "demo");
 }

@@ -23,14 +23,14 @@ error.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 project.workspace = true
+semver.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true
 slice.workspace = true
 
 [dev-dependencies]
-fixture.workspace = true
-harness.workspace = true
+mock.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }

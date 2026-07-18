@@ -17,7 +17,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "test", "harness-features", "test-docs", "doc"]
+dependencies = ["fmt", "lint", "test", "test-docs", "doc", "links"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
@@ -43,65 +43,29 @@ command = "rustup"
 args = ["run", "nightly", "cargo", "udeps", "--workspace", "--all-targets"]
 install_crate = "cargo-udeps"
 
-# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI).
-# Rides the shared wrapper entry's `eval` mode: phases and prompt
-# scenarios pass through (`cargo make eval execute`).
-[tasks.eval]
-command = "cargo"
-args = [
-  "run",
-  "-p",
-  "eval",
-  "--",
-  "eval",
-  "--sandbox",
-  "sandbox",
-  "--target",
-  "fixture",
-  "--name",
-  "eval",
-  "--change",
-  "auth",
-  "--source",
-  "docs=fixture-docs:value:The docs source.",
-  "--source",
-  "code=fixture-code:value:The code source.",
-  "${@}",
-]
-env_files = [".env"]
-
-# The `eval` CLI passthrough: any specify verb against the native shim
-# over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
-[tasks.dev]
-command = "cargo"
-args = ["run", "-q", "-p", "eval", "--", "${@}"]
-
-# Harness layers: the model-free default used by workspace tests and
-# the single live runtime enabled by eval binaries.
-[tasks.harness-features]
-script = '''
-cargo check -p harness --no-default-features --locked
-cargo nextest run -p harness --features runtime --locked --no-tests=pass
-'''
-env = { RUSTFLAGS = "-Dwarnings" }
-
 # Fmt — mutates; the gates use fmt
 [tasks.fmt]
 command = "rustup"
 args = ["run", "nightly", "cargo", "fmt", "--all"]
 
+# Links — docs/plugin relative-link integrity (config in lychee.toml)
+[tasks.links]
+command = "lychee"
+args = ["--config", "lychee.toml", "docs/**/*.md", "plugins/**/*.md"]
+install_crate = { crate_name = "lychee", binary = "lychee", test_arg = "--version" }
+
 # Lint
 [tasks.lint]
 command = "cargo"
 args = [
-    "clippy",
-    "--locked",
-    "--workspace",
-    "--all-targets",
-    "--all-features",
-    "--",
-    "-D",
-    "warnings",
+  "clippy",
+  "--locked",
+  "--workspace",
+  "--all-targets",
+  "--all-features",
+  "--",
+  "-D",
+  "warnings",
 ]
 install_crate = { rustup_component_name = "clippy" }
 
@@ -115,12 +79,12 @@ install_crate = "cargo-outdated"
 [tasks.test]
 command = "cargo"
 args = [
-    "nextest",
-    "run",
-    "--locked",
-    "--workspace",
-    "--all-features",
-    "--no-tests=pass",
+  "nextest",
+  "run",
+  "--locked",
+  "--workspace",
+  "--all-features",
+  "--no-tests=pass",
 ]
 env = { RUSTFLAGS = "-Dwarnings" }
 
@@ -151,3 +115,20 @@ cargo vet regenerate unpublished
 cargo vet --locked
 '''
 install_crate = "cargo-vet"
+
+# Any `specify` command through crates/lab.
+[tasks.specify]
+command = "cargo"
+args = ["run", "-q", "-p", "lab", "--", "${@}"]
+
+# Live-model prompt evaluation over the crates/lab.
+[tasks.eval]
+env_files = [".env"]
+script = '''
+  cargo run -p lab -- eval \
+  --change "auth" \
+  --source "docs=mock-docs:value:The docs source." \
+  --source "code=mock-code:value:The code source." \
+  --target "mock" \
+  "$@"
+'''

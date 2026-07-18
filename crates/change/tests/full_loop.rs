@@ -1,9 +1,9 @@
 //! The native loop end to end: scaffold → `plan author` → the
 //! operator's `approved` stamp → `plan execute`, driven through the
 //! same transport-neutral operations the shipped guest dispatches,
-//! against the linked fixture catalog — the *real* orchestrations,
+//! against the linked mock catalog — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
-//! model scripted and adapter behaviour supplied by the fixture core.
+//! model scripted and adapter behaviour supplied by the mock core.
 //! No wasm builds, no sibling checkout, no network.
 
 mod support;
@@ -11,32 +11,32 @@ mod support;
 use std::fs;
 
 use change::{LoopStep, Status, plan};
-use fixture::behaviour;
-use fixture::session::Session;
-use harness::invoke::run;
+use mock::behaviour;
+use mock::invoke::run;
+use mock::session::Session;
 
 /// The scripted answers for the whole loop, in dispatch order: the
 /// reconciliation grouping (author) and the synthesis response
 /// (execute's refine phase). Survey, extract, guidance, and build are
-/// deterministic fixture operations — no model dispatch.
+/// deterministic mock operations — no model dispatch.
 fn suite_answers() -> Vec<String> {
-    vec![fixture::answers::greeting_grouping(), fixture::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
 }
 
-/// Scaffold a project bound to the fixture target and author + approve
+/// Scaffold a project bound to the mock target and author + approve
 /// the single-slice plan — the shared preamble of every loop test.
 async fn scaffold_author_approve(session: &Session) {
     let scaffolded = run::<project::init::handlers::Init, _, _>(
         session.provider(),
         project::init::handlers::InitInput {
-            adapter: Some("fixture".to_string()),
+            adapter: Some("mock".to_string()),
             name: Some("demo".to_string()),
             ..Default::default()
         },
     )
     .await
-    .expect("scaffold initialises the fixture-bound project");
-    assert_eq!(scaffolded.adapter_name, "fixture");
+    .expect("scaffold initialises the mock-bound project");
+    assert_eq!(scaffolded.adapter_name, "mock");
 
     let authored = run::<plan::handlers::Author, _, _>(
         session.provider(),
@@ -122,21 +122,21 @@ async fn author_approve_execute_drains() {
     assert_eq!(requirement["status"], "agreed");
     assert_eq!(requirement["claims"][0]["source"], "main");
 
-    // The fixture target produced a real, non-empty build output.
+    // The mock target produced a real, non-empty build output.
     let artifact = behaviour::build_artifact_path(&root, "greeting");
-    let body = fs::read_to_string(&artifact).expect("fixture build output exists");
+    let body = fs::read_to_string(&artifact).expect("mock build output exists");
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
 
-    // Guidance dispatch proof, stronger than a call log: the fixture
+    // Guidance dispatch proof, stronger than a call log: the mock
     // target's guidance brief reached the recorded synthesis prompt.
     let requests = session.model().requests();
     assert!(
         requests
             .iter()
             .flat_map(|request| request.messages.iter())
-            .any(|message| message.content.contains("Fixture guidance (target:fixture)")),
-        "the fixture guidance brief appears in a recorded judgment request"
+            .any(|message| message.content.contains("Fixture guidance (target:mock)")),
+        "the mock guidance brief appears in a recorded judgment request"
     );
 
     // Both gate reports were schema-gated and persisted: preflight
@@ -162,7 +162,7 @@ async fn preflight_parks_built() {
 
     scaffold_author_approve(&session).await;
 
-    // Trip the fixture's failed preflight merge gate.
+    // Trip the mock's failed preflight merge gate.
     fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
 
     let stopped =
@@ -206,7 +206,7 @@ async fn postflight_terminal() {
 
     scaffold_author_approve(&session).await;
 
-    // Trip the fixture's failed postflight merge gate.
+    // Trip the mock's failed postflight merge gate.
     fs::write(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
 
     let stopped =
@@ -238,7 +238,7 @@ async fn build_parks_then_resumes() {
 
     scaffold_author_approve(&session).await;
 
-    // Trip the fixture's failed-report mode for the first build.
+    // Trip the mock's failed-report mode for the first build.
     fs::write(root.join(behaviour::FAIL_BUILD_MARKER), "").expect("write fail marker");
 
     let stopped =

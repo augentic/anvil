@@ -8,7 +8,7 @@ The workflow engine and operator plugins live in [`augentic/specify`](https://gi
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |
-| `src/`, `crates/`, `examples/` | The runtime, workspace crates (including `checks` and the `eval` harness), and the change example | Rust |
+| `src/`, `crates/`, `examples/` | The runtime, workspace crates (including `checks`, the `linked` host, and the `eval`/`lab` live rung), and the change example | Rust |
 | `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Ultrathin Cursor skill wrappers, documentation, and the marketplace manifest | Markdown, YAML |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 
@@ -22,7 +22,7 @@ The Rust workspace owns deterministic operations and guest orchestrations (lifec
 | **Adapter authors** | Adapter crates and `prose/prompts/` in `specify-adapters` | In that sibling repo |
 | **Docs and skill-wrapper authors** | `docs/`, `plugins/*/skills/*/SKILL.md`, marketplace manifest | No — markdown and YAML only |
 
-Every contributor runs `cargo test -p checks` locally with only a Rust toolchain: adapter boundary and docs/plugin link integrity (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree skill wrappers, pass `--plugin-dir plugins/<name>` to Cursor Agent.
+Every contributor runs `cargo test -p checks` locally with only a Rust toolchain: adapter boundary and plugin authoring shape. Docs/plugin link integrity is lychee's job — `cargo make links` (see [Consistency Checks](checks.md)). Tooling contributors run the full `cargo make ci` gate before opening a PR. To preview working-tree skill wrappers, pass `--plugin-dir plugins/<name>` to Cursor Agent.
 
 ## Development environment
 

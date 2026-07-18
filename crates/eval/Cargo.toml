@@ -1,6 +1,6 @@
 [package]
 name = "eval"
-description = "Specify's live-model prompt-evaluation harness: the operator-invoked engine trial over the fixture adversarial lead set"
+description = "Lab-only live-model evaluation library over the linked host"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -11,6 +11,19 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-fixture.workspace = true
-harness = { workspace = true, features = ["runtime"] }
+[dependencies]
+anyhow.workspace = true
+artifacts.workspace = true
+clap.workspace = true
+linked = { workspace = true, features = ["cli"] }
+omnia-guest.workspace = true
+project.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+mock.workspace = true
+omnia-testkit.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

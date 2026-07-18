@@ -6,8 +6,8 @@ use adapter::seam::{
     Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
     WorkingTree,
 };
-use adapter::{Model, Source, Target, references, repaired};
-use fixture::model::Harness;
+use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
+use mock::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
     path: "prompts/survey.md",
@@ -17,7 +17,10 @@ const DOCS: &[Doc] = &[Doc {
 struct Probe;
 
 impl Source for Probe {
-    const NAME: &'static str = "probe";
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "probe",
+        version: "0.0.0",
+    };
 
     fn metadata() -> SourceMetadata {
         SourceMetadata { specify_floor: None }
@@ -57,7 +60,10 @@ impl Source for Probe {
 }
 
 impl Target for Probe {
-    const NAME: &'static str = "probe";
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "probe",
+        version: "0.0.0",
+    };
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
@@ -111,7 +117,8 @@ async fn source_dispatch() {
     assert_eq!(leads.len(), 1);
     assert_eq!(leads[0].lead, "one");
 
-    assert_eq!(<Probe as Source>::NAME, "probe");
+    assert_eq!(<Probe as Source>::IDENTITY.name, "probe");
+    assert_eq!(<Probe as Source>::IDENTITY.version, "0.0.0");
     assert_eq!(<Probe as Source>::metadata(), SourceMetadata { specify_floor: None });
     assert_eq!(<Probe as Source>::docs()[0].path, "prompts/survey.md");
 }

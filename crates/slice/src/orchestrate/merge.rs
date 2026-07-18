@@ -48,7 +48,7 @@ pub async fn merge<T: Target>(
     preflight_completion(layout, slice)?;
     let slice_dir = layout.slice_dir(slice);
     let target = project::target_policy::resumed(layout, slice)?;
-    let id = target_id(&project::adapter::AdapterRef::from_value(&target).name);
+    let id = target_id(&project::adapter::AdapterSelector::recorded_name(&target));
 
     journal::emit_best_effort(
         layout,

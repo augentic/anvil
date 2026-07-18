@@ -5,7 +5,7 @@ use std::path::Path;
 use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
-use project::adapter::{AdapterRef, TargetAdapter};
+use project::adapter::{AdapterSelector, TargetAdapter};
 use project::config::Layout;
 use project::journal::{self, EventKind};
 use project::seam::{Input, Target, WorkingTree};
@@ -56,7 +56,7 @@ pub async fn build(
 ) -> Result<BuildOutcome, Error> {
     let slice_dir = layout.slice_dir(slice);
     let metadata = SliceMetadata::load(&slice_dir)?;
-    let target_name = AdapterRef::from_value(&metadata.target).name;
+    let target_name = AdapterSelector::recorded_name(&metadata.target);
     if target_name != adapter.name {
         return Err(Error::validation_failed(
             "target-build-adapter-mismatch",

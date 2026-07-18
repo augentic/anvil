@@ -106,7 +106,7 @@ One of the two engine test rungs and its cadence: repository correctness (`cargo
 ## H
 
 **Hard assertion**
-A mechanically decidable test result, such as lifecycle state, exit status, schema validity, journal cadence, or filesystem shape. Every engine test — including the `eval` harness — is graded by hard assertions only; there is no semantic grading machinery.
+A mechanically decidable test result, such as lifecycle state, exit status, schema validity, journal cadence, or filesystem shape. Every engine test — including the live `eval` rung — is graded by hard assertions only; there is no semantic grading machinery.
 
 ## I
 
