@@ -7,7 +7,7 @@ use adapter::seam::{
     WorkingTree,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
-use fixture::model::Harness;
+use mock::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
     path: "prompts/survey.md",

@@ -1,6 +1,6 @@
-//! The scripted judgment-answer corpus over the fixture data sets.
+//! The scripted judgment-answer corpus over the mock data sets.
 //!
-//! Two fixture data sets exist: the minimal single-lead `greeting`
+//! Two mock data sets exist: the minimal single-lead `greeting`
 //! profile (full loop, seam failures, repair loop) and the adversarial
 //! `docs` / `code` pair (reconciliation, synthesis). Keeping one copy
 //! of each answer here stops the suites drifting apart on envelope
@@ -23,12 +23,12 @@ pub fn greeting_grouping() -> String {
         "slices": [{
             "name": "greeting",
             "sources": [{ "source": "main", "lead": "greeting" }],
-            "rationale": "One fixture lead, one slice."
+            "rationale": "One mock lead, one slice."
         }],
         "gate": {
             "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nOne slice.",
             "discovery-summary": "Sources: 1. Leads: 1.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| main | fixture | \"The greeting service.\" |"
+            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| main | mock | \"The greeting service.\" |"
         }
     }))
     .expect("grouping serialises")
@@ -58,7 +58,7 @@ pub fn greeting_synthesis() -> String {
             ]
         },
         "artifacts": {
-            "proposal": "# greeting\n\n## Why\n\nThe fixture source surfaced it.\n\n## Domains\n\n- greeting — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
+            "proposal": "# greeting\n\n## Why\n\nThe mock source surfaced it.\n\n## Domains\n\n- greeting — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
             "design": "# Design\n\nHow the greeting slice lands.\n",
             "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Implement the endpoint (TASK-001)\n",
             "specs": [{ "domain": "greeting", "content": "## greeting\nAgent prose body.\n" }]
@@ -113,7 +113,7 @@ pub fn adversarial_grouping() -> String {
         "gate": {
             "change": "## Intent\n\nCharacterise the auth surface.\n\n## Scope\n\nThree slices.\n\n## Likely divergences\n\n- session-policy: docs say 30 minutes, code says 15.",
             "discovery-summary": "Sources: 2. Leads: 5.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | fixture-docs | \"The docs source.\" |\n| code | fixture-code | \"The code source.\" |"
+            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | mock-docs | \"The docs source.\" |\n| code | mock-code | \"The code source.\" |"
         }
     }))
     .expect("grouping serialises")

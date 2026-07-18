@@ -7,8 +7,8 @@ use std::fs;
 use std::os::unix::fs::MetadataExt;
 
 use change::plan::handlers::{Transition, TransitionInput};
-use fixture::invoke::run;
-use fixture::session::Session;
+use mock::invoke::run;
+use mock::session::Session;
 
 const PENDING_PLAN: &str = "\
 name: demo

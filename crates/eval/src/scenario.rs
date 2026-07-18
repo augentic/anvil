@@ -72,7 +72,7 @@ pub async fn run(
     let dir = root.join(id);
     let config = load(root, &dir, catalog).with_context(|| format!("scenario `{id}`"))?;
 
-    let scratch = seed(sandbox, id, &dir)?;
+    let scratch = materialize_fixture(sandbox, id, &dir)?;
     println!(
         "eval scenario {id}: {} `{}` slice={} scratch={}",
         config.operation.label(),
@@ -306,12 +306,12 @@ fn read_dirs(dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(dirs)
 }
 
-fn seed(sandbox: &Path, id: &str, dir: &Path) -> Result<PathBuf> {
+fn materialize_fixture(sandbox: &Path, id: &str, dir: &Path) -> Result<PathBuf> {
     let base = sandbox.join(id);
     let scratch = allocate_run_dir(&base)?;
-    let seed = dir.join("seed");
-    if seed.is_dir() {
-        evalfs::copy_tree(&seed, &scratch)?;
+    let fixture = dir.join("fixture");
+    if fixture.is_dir() {
+        evalfs::copy_tree(&fixture, &scratch)?;
     }
     Ok(scratch)
 }

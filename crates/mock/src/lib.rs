@@ -1,6 +1,6 @@
-//! Specify's canonical fixture adapter crate.
+//! Specify's canonical mock adapter crate.
 //!
-//! One SDK-native fixture kernel serving every workflow suite and the
+//! One SDK-native mock kernel serving every workflow suite and the
 //! examples guest:
 //!
 //! - [`behaviour`] — the deterministic, model-free behaviour core over

@@ -2,7 +2,7 @@
 //!
 //! Each unit type binds one catalog identity onto the shared
 //! [`crate::behaviour`] core: behaviour still keys off the routed
-//! `ctx.adapter_id`, so one core serves every fixture name and every
+//! `ctx.adapter_id`, so one core serves every mock name and every
 //! failure profile fails through the trait surface (no provider
 //! hooks). The impls stay on the SDK seam DTOs end to end.
 
@@ -16,18 +16,18 @@ use omnia_guest::Model;
 
 use crate::behaviour;
 
-/// The fixture's single embedded reference document.
+/// The mock's single embedded reference document.
 pub const DOCS: &[Doc] = &[Doc {
     path: "reference.md",
-    body: "# Adapter Reference\n\nThe fixture adapter serves both axes from one component: \
+    body: "# Adapter Reference\n\nThe mock adapter serves both axes from one component: \
            deterministic survey/extract data on the source interface and guidance/build/merge \
            on the target interface.\n",
 }];
 
-macro_rules! fixture_source {
+macro_rules! mock_source {
     ($ty:ident, $name:literal) => {
         impl Source for $ty {
-            // Unpublished fixture identity: a development placeholder
+            // Unpublished mock identity: a development placeholder
             // version, never a pin-matchable release.
             const IDENTITY: AdapterIdentity = AdapterIdentity {
                 name: $name,
@@ -55,10 +55,10 @@ macro_rules! fixture_source {
     };
 }
 
-macro_rules! fixture_target {
+macro_rules! mock_target {
     ($ty:ident, $name:literal) => {
         impl Target for $ty {
-            // Unpublished fixture identity: a development placeholder
+            // Unpublished mock identity: a development placeholder
             // version, never a pin-matchable release.
             const IDENTITY: AdapterIdentity = AdapterIdentity {
                 name: $name,
@@ -98,58 +98,58 @@ macro_rules! fixture_target {
     };
 }
 
-/// The default fixture identity — both axes, like the WASM guest.
+/// The default mock identity — both axes, like the WASM guest.
 #[derive(Clone, Copy, Debug)]
 pub struct Adapter;
 
-fixture_source!(Adapter, "fixture");
-fixture_target!(Adapter, "fixture");
+mock_source!(Adapter, "mock");
+mock_target!(Adapter, "mock");
 
 /// The documentation half of the adversarial source pair.
 #[derive(Clone, Copy, Debug)]
 pub struct Docs;
 
-fixture_source!(Docs, "fixture-docs");
+mock_source!(Docs, "mock-docs");
 
 /// The behaviour (code) half of the adversarial source pair.
 #[derive(Clone, Copy, Debug)]
 pub struct Code;
 
-fixture_source!(Code, "fixture-code");
+mock_source!(Code, "mock-code");
 
 /// A source whose `survey` fails with a typed internal error.
 #[derive(Clone, Copy, Debug)]
 pub struct FailSurvey;
 
-fixture_source!(FailSurvey, "fixture-fail-survey");
+mock_source!(FailSurvey, "mock-fail-survey");
 
 /// A source whose `extract` fails with a typed internal error.
 #[derive(Clone, Copy, Debug)]
 pub struct FailExtract;
 
-fixture_source!(FailExtract, "fixture-fail-extract");
+mock_source!(FailExtract, "mock-fail-extract");
 
 /// A target whose `guidance` fails with a typed internal error.
 #[derive(Clone, Copy, Debug)]
 pub struct FailGuidance;
 
-fixture_target!(FailGuidance, "fixture-fail-guidance");
+mock_target!(FailGuidance, "mock-fail-guidance");
 
 /// A target whose `build` fails with a typed internal error.
 #[derive(Clone, Copy, Debug)]
 pub struct FailBuild;
 
-fixture_target!(FailBuild, "fixture-fail-build");
+mock_target!(FailBuild, "mock-fail-build");
 
 /// A target whose `merge` gates fail with a typed internal error.
 #[derive(Clone, Copy, Debug)]
 pub struct FailMerge;
 
-fixture_target!(FailMerge, "fixture-fail-merge");
+mock_target!(FailMerge, "mock-fail-merge");
 
 /// A target whose `build` reports success but never writes its
 /// declared output — for the outputs-exist gate.
 #[derive(Clone, Copy, Debug)]
 pub struct MissingOutput;
 
-fixture_target!(MissingOutput, "fixture-missing-output");
+mock_target!(MissingOutput, "mock-missing-output");

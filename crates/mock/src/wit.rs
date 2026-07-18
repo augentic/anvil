@@ -5,9 +5,9 @@
 //! and the [`From`] impls between the generated records and the SDK's
 //! seam DTOs ([`adapter::seam`]). The combined `adapter` world stays
 //! Specify-owned — the SDK's `source!` / `target!` macros export one
-//! axis each — so the fixture guest implements the axis `Guest` traits
-//! itself, wires them in with `fixture::wit::export!(Adapter
-//! with_types_in fixture::wit)`, and dispatches every operation through
+//! axis each — so the mock guest implements the axis `Guest` traits
+//! itself, wires them in with `mock::wit::export!(Adapter
+//! with_types_in mock::wit)`, and dispatches every operation through
 //! the canonical [`crate::ops`] trait implementors.
 
 mod generated {

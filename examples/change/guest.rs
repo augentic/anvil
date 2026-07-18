@@ -2,9 +2,9 @@
 //!
 //! This crate implements both Specify source and target adapters as a
 //! thin shim over the canonical SDK operations traits: every judgment
-//! operation dispatches through the `fixture` crate's `adapter::Source`
+//! operation dispatches through the `mock` crate's `adapter::Source`
 //! / `adapter::Target` implementors with `From` conversions at the
-//! edges (`fixture::wit` owns the combined-world WIT bindings and the
+//! edges (`mock::wit` owns the combined-world WIT bindings and the
 //! seam mappings). It also implements a single MCP server for the
 //! model agent to use when requesting adapter reference documents.
 
@@ -13,7 +13,7 @@
 
 use adapter::seam::{self as aseam, Context};
 use adapter::{Source as _, Target as _, WasiModel};
-use fixture::wit::exports::specify::adapter::{source, target};
+use mock::wit::exports::specify::adapter::{source, target};
 use omnia_guest::mcp::{
     self, CallToolResult, Implementation, McpError, McpServer, Resource, ResourceContents, Tool,
 };
@@ -24,7 +24,7 @@ use wasip3::http::types as http;
 // Specify source + target adapters
 // ----------------------------------------------
 struct Adapter;
-fixture::wit::export!(Adapter with_types_in fixture::wit);
+mock::wit::export!(Adapter with_types_in mock::wit);
 
 impl source::Guest for Adapter {
     fn metadata(_id: source::AdapterId) -> source::AdapterMetadata {
@@ -34,7 +34,7 @@ impl source::Guest for Adapter {
     async fn survey(id: source::AdapterId) -> Result<Vec<source::Lead>, source::Error> {
         let ctx = Context::guest(&id, None);
         let leads =
-            fixture::Adapter::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
+            mock::Adapter::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
         Ok(leads.into_iter().map(source::Lead::from).collect())
     }
 
@@ -43,7 +43,7 @@ impl source::Guest for Adapter {
     ) -> Result<source::Evidence, source::Error> {
         let ctx = Context::guest(&id, None);
         let lead = aseam::Lead::from(lead);
-        Ok(fixture::Adapter::extract(&WasiModel, &ctx, &lead)
+        Ok(mock::Adapter::extract(&WasiModel, &ctx, &lead)
             .await
             .map_err(source::Error::from)?
             .into())
@@ -61,7 +61,7 @@ impl target::Guest for Adapter {
 
     async fn guidance(id: target::AdapterId) -> Result<String, target::Error> {
         let ctx = Context::guest(&id, None);
-        fixture::Adapter::guidance(&WasiModel, &ctx).await.map_err(target::Error::from)
+        mock::Adapter::guidance(&WasiModel, &ctx).await.map_err(target::Error::from)
     }
 
     async fn build(
@@ -72,7 +72,7 @@ impl target::Guest for Adapter {
         let ctx = Context::guest(&id, None);
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(aseam::Input::from).collect();
         let tree = aseam::WorkingTree::from(tree);
-        let report = fixture::Adapter::build(&WasiModel, &ctx, &slice, &inputs, &tree)
+        let report = mock::Adapter::build(&WasiModel, &ctx, &slice, &inputs, &tree)
             .await
             .map_err(target::Error::from)?;
         Ok(report.into())
@@ -83,7 +83,7 @@ impl target::Guest for Adapter {
     ) -> Result<target::Report, target::Error> {
         let ctx = Context::guest(&id, None);
         let tree = aseam::WorkingTree::from(tree);
-        let report = fixture::Adapter::merge(&WasiModel, &ctx, &slice, phase.into(), &tree)
+        let report = mock::Adapter::merge(&WasiModel, &ctx, &slice, phase.into(), &tree)
             .await
             .map_err(target::Error::from)?;
         Ok(report.into())
@@ -104,7 +104,7 @@ impl wasip3::exports::http::handler::Guest for HttpGuest {
 
 const REF_NAME: &str = "adapter-reference";
 const REF_DOC: &str = "# Adapter Reference\n\n\
-     The fixture adapter serves both axes from one component: \
+     The mock adapter serves both axes from one component: \
      deterministic survey/extract data on the source interface and \
      guidance/build/merge on the target interface.\n";
 
@@ -118,7 +118,7 @@ impl McpServer for References {
     fn tools(&self) -> Vec<Tool> {
         vec![Tool::new(
             "read_reference",
-            "Read the fixture adapter's single reference document in full.",
+            "Read the mock adapter's single reference document in full.",
             json!({ "type": "object", "properties": {} }),
         )]
     }
@@ -134,7 +134,7 @@ impl McpServer for References {
         vec![Resource::new(
             format!("doc://{REF_NAME}"),
             REF_NAME,
-            "The fixture adapter's single reference document.",
+            "The mock adapter's single reference document.",
             "text/markdown",
         )]
     }

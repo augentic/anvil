@@ -16,12 +16,12 @@ slice                    # the slice loop — depends on project; refine/build/m
 change                   # the change loop — depends on {project,slice}; plan author/execute orchestration, the specify plan operations, and its own prompts/ corpus (propose.md)
 transport                # wasm-clean transport assembly — shared typed command/HTTP routers, Args conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency — embed-time prompt-corpus walk + link check, generating each crate's DOCS table
-fixture                  # dev-only fixture crate — SDK-native fixture adapter core + typed catalog registry, answer corpus, request-recording Harness, session helpers
+mock                     # dev-only mock crate — SDK-native mock adapter core + typed catalog registry, answer corpus, request-recording Harness, session helpers
 checks                   # dev-only repo invariants — boundaries, links, authoring (plain cargo tests)
 linked                   # the linked host — validated adapter catalog over the SDK traits, DynModel, seam provider, reference hosting, cli-gated command execution; no concrete adapter deps
 eval                     # lab-only live-model evaluation library — trial, scenarios, grading, telemetry, sandbox over linked's cli feature; no runtime, no Cursor, no concrete adapters
-lab                      # unpublished composition binary — Tokio runtime, Cursor backend, fixture catalog binding; dispatches linked command mode vs eval::run
-specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively; carries the examples/change cargo example (the fixture adapter guest)
+lab                      # unpublished composition binary — Tokio runtime, Cursor backend, mock catalog binding; dispatches linked command mode vs eval::run
+specify (root crate)     # Omnia deployment unit under src/: wasm32 guest lib exporting wasi:cli/run + wasi:http/incoming-handler, plus the omnia::runtime! binary — depends on no specify-* crate natively; carries the examples/change cargo example (the mock adapter guest)
 ```
 
 The repo checks run as plain cargo tests in the lightweight [`crates/checks`](../../crates/checks/) package; there is no lint engine or `Check` substrate.
@@ -38,7 +38,7 @@ Every crate uses the shared `[workspace.package]` (`edition = "2024"`, `rust-ver
 
 **New workspace crates** are an exception, not the default.
 
-`crates/fixture` is the single test-support crate that prevents adapter test behavior from being copied across the native workflow suites and the change example. It owns the shared fixture core, canonical SDK operations-trait implementors (`adapter::Source` / `adapter::Target`), wasm32-only WIT mappings, scripted answers, and native session helpers. The unpublished `crates/lab` binary owns the runtime and Cursor backend and binds the fixture catalog; the lab-only `crates/eval` library receives its catalog and model factory explicitly from the composition root. The adapters repository's `lab` binary uses the same libraries with the first-party catalog. None of these carry production lifecycle authority or enter the shipped guest.
+`crates/mock` is the single test-support crate that prevents adapter test behavior from being copied across the native workflow suites and the change example. It owns the shared mock core, canonical SDK operations-trait implementors (`adapter::Source` / `adapter::Target`), wasm32-only WIT mappings, scripted answers, and native session helpers. The unpublished `crates/lab` binary owns the runtime and Cursor backend and binds the mock catalog; the lab-only `crates/eval` library receives its catalog and model factory explicitly from the composition root. The adapters repository's `lab` binary uses the same libraries with the first-party catalog. None of these carry production lifecycle authority or enter the shipped guest.
 
 ## Deployments: Wasm provider and linked host
 

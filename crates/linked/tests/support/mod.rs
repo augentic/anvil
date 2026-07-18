@@ -1,6 +1,6 @@
 //! Shared probe implementors for the linked-host test binaries.
 //!
-//! One dual-axis [`Probe`] registered as `fixture`, the always-failing
+//! One dual-axis [`Probe`] registered as `mock`, the always-failing
 //! [`FailGuidance`] target, the [`Floored`] target carrying a
 //! metadata floor, the [`Reflect`] source echoing its reference URL,
 //! the [`Pinned`] target with a published identity version, and the
@@ -23,10 +23,10 @@ use omnia_guest::model::{Format, Request};
 /// The single embedded reference document every probe serves.
 pub const DOCS: &[Doc] = &[Doc {
     path: "prompts/guidance.md",
-    body: "fixture guidance",
+    body: "mock guidance",
 }];
 
-/// Dual-axis probe implementor, `fixture` on both axes.
+/// Dual-axis probe implementor, `mock` on both axes.
 ///
 /// Every leg echoes its inputs so the suites can assert dispatch
 /// threading: `survey` returns the model's answer as the lead and the
@@ -38,7 +38,7 @@ pub struct Probe;
 
 impl Source for Probe {
     const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "fixture",
+        name: "mock",
         version: "0.0.0",
     };
 
@@ -74,7 +74,7 @@ impl Source for Probe {
 
 impl Target for Probe {
     const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "fixture",
+        name: "mock",
         version: "0.0.0",
     };
 
@@ -91,7 +91,7 @@ impl Target for Probe {
     }
 
     async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
-        Ok("fixture guidance".to_string())
+        Ok("mock guidance".to_string())
     }
 
     async fn build<P: Model>(
@@ -118,7 +118,7 @@ pub struct FailGuidance;
 
 impl Target for FailGuidance {
     const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "fixture-fail-guidance",
+        name: "mock-fail-guidance",
         version: "0.0.0",
     };
 
@@ -175,7 +175,7 @@ impl Target for Floored {
     }
 
     async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
-        Ok("fixture guidance".to_string())
+        Ok("mock guidance".to_string())
     }
 
     async fn build<P: Model>(
@@ -250,7 +250,7 @@ impl Target for Pinned {
     }
 
     async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
-        Ok("fixture guidance".to_string())
+        Ok("mock guidance".to_string())
     }
 
     async fn build<P: Model>(
@@ -290,7 +290,7 @@ impl Target for BadVersion {
     }
 
     async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
-        Ok("fixture guidance".to_string())
+        Ok("mock guidance".to_string())
     }
 
     async fn build<P: Model>(
@@ -306,14 +306,14 @@ impl Target for BadVersion {
     }
 }
 
-/// A target reusing the `fixture` name at a different version, for
+/// A target reusing the `mock` name at a different version, for
 /// reference-shelf conflict asserts.
 #[derive(Clone, Copy, Debug)]
 pub struct ProbeV2;
 
 impl Target for ProbeV2 {
     const IDENTITY: AdapterIdentity = AdapterIdentity {
-        name: "fixture",
+        name: "mock",
         version: "0.1.0",
     };
 
@@ -330,7 +330,7 @@ impl Target for ProbeV2 {
     }
 
     async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
-        Ok("fixture guidance".to_string())
+        Ok("mock guidance".to_string())
     }
 
     async fn build<P: Model>(

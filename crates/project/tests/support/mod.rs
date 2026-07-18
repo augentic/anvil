@@ -115,7 +115,7 @@ fn staged_fetch(root: &Path, url: &str) -> Result<Vec<u8>, Error> {
 fn stub_metadata(request: &project::adapter::metadata::Request<'_>) -> Result<Metadata, Error> {
     serde_json::from_str(&metadata_json(request.adapter_id)).map_err(|err| Error::Diag {
         code: "adapter-metadata-failed",
-        detail: format!("fixture metadata parse {}: {err}", request.adapter_id),
+        detail: format!("mock metadata parse {}: {err}", request.adapter_id),
     })
 }
 

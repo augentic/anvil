@@ -1,5 +1,5 @@
 //! Specify's unpublished composition binary: linked command
-//! passthrough over the fixture catalog by default, the live eval
+//! passthrough over the mock catalog by default, the live eval
 //! client under `eval`.
 //!
 //! The composition root owns what `linked` and `eval` refuse to: the
@@ -33,12 +33,12 @@ async fn main() -> ExitCode {
 
 async fn entry() -> anyhow::Result<ExitCode> {
     let mut argv: Vec<String> = std::env::args().collect();
-    // `cargo make dev -- ARGS` forwards the literal `--` separator.
+    // `cargo make specify -- ARGS` forwards the literal `--` separator.
     if argv.get(1).is_some_and(|arg| arg == "--") {
         argv.remove(1);
     }
     let root = project_root(&mut argv)?;
-    let catalog = fixture::catalog();
+    let catalog = mock::catalog();
 
     if argv.get(1).is_some_and(|arg| arg == "eval") {
         return eval::run(root, catalog, cursor_factory(), &argv[1..], None).await;

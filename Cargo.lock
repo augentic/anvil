@@ -6,7 +6,7 @@ version = 4
 name = "adapter"
 version = "0.27.2"
 dependencies = [
- "fixture",
+ "mock",
  "omnia-guest",
  "omnia-wasi-http",
  "serde",
@@ -501,8 +501,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
- "fixture",
  "jiff",
+ "mock",
  "omnia-guest",
  "project",
  "prose",
@@ -1164,8 +1164,8 @@ dependencies = [
  "anyhow",
  "artifacts",
  "clap",
- "fixture",
  "linked",
+ "mock",
  "omnia-guest",
  "omnia-testkit",
  "project",
@@ -1216,21 +1216,6 @@ name = "fixedbitset"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
-
-[[package]]
-name = "fixture"
-version = "0.27.2"
-dependencies = [
- "adapter",
- "linked",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "serde_json",
- "tempfile",
- "tokio",
- "wit-bindgen 0.59.0",
-]
 
 [[package]]
 name = "fluent-uri"
@@ -2023,8 +2008,8 @@ version = "0.27.2"
 dependencies = [
  "anyhow",
  "eval",
- "fixture",
  "linked",
+ "mock",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -2210,6 +2195,21 @@ dependencies = [
  "libc",
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "mock"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "linked",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -2963,8 +2963,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
- "fixture",
  "jiff",
+ "mock",
  "omnia-guest",
  "petgraph",
  "schemars",
@@ -3893,8 +3893,8 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
- "fixture",
  "jiff",
+ "mock",
  "omnia-guest",
  "project",
  "prose",
@@ -3937,8 +3937,8 @@ dependencies = [
  "cfg-if",
  "diagnostics",
  "error",
- "fixture",
  "jiff",
+ "mock",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -4481,8 +4481,8 @@ dependencies = [
  "change",
  "clap",
  "error",
- "fixture",
  "linked",
+ "mock",
  "omnia-guest",
  "project",
  "serde",

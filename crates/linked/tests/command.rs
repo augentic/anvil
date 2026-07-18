@@ -21,7 +21,7 @@ fn project() -> (TempDir, PathBuf) {
     for sub in [".specify/slices", ".specify/specs"] {
         fs::create_dir_all(root.join(sub)).expect("mkdir");
     }
-    fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: fixture\nrules: {}\n")
+    fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: mock\nrules: {}\n")
         .expect("write project.yaml");
     (tmp, root)
 }

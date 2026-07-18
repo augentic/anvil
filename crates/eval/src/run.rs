@@ -38,7 +38,7 @@ pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<ModelInstance> + Send + Sync
 struct Args {
     /// Optional tree copied into a fresh trial project.
     #[arg(long)]
-    seed: Option<PathBuf>,
+    fixture: Option<PathBuf>,
     /// Target adapter passed to `specify init`.
     #[arg(long)]
     target: Option<String>,
@@ -76,7 +76,7 @@ enum Phase {
 
 struct Trial {
     sandbox: PathBuf,
-    seed: Option<PathBuf>,
+    fixture: Option<PathBuf>,
     init: Vec<String>,
     author: Vec<String>,
     change: String,
@@ -154,9 +154,9 @@ impl Trial {
 
         Ok(Self {
             sandbox,
-            // A relative seed anchors at the workspace root, not the
+            // A relative fixture anchors at the workspace root, not the
             // process current directory.
-            seed: args.seed.as_deref().map(|seed| anchored(workspace_root, seed)),
+            fixture: args.fixture.as_deref().map(|fixture| anchored(workspace_root, fixture)),
             init,
             author,
             change: change.to_string(),
@@ -189,8 +189,8 @@ impl Trial {
     async fn init(&self) -> Result<()> {
         let root = sandbox::replace(&self.sandbox)?;
         println!("trial project: {}", root.display());
-        if let Some(seed) = &self.seed {
-            evalfs::copy_tree(seed, &root)?;
+        if let Some(fixture) = &self.fixture {
+            evalfs::copy_tree(fixture, &root)?;
         }
         let (model, _telemetry, _default) = self.model(&root)?;
         let init: Vec<&str> = self.init.iter().map(String::as_str).collect();

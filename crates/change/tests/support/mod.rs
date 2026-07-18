@@ -2,7 +2,7 @@
 //! types.
 //!
 //! The builders return `change` types, so they live with the owning
-//! suites rather than in the fixture crate, keeping `fixture` free of
+//! suites rather than in the mock crate, keeping `mock` free of
 //! workflow-crate dependencies.
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
@@ -10,17 +10,17 @@
 use change::plan::wire::SourceAssign;
 use serde_json::json;
 
-/// The single `main` binding onto the minimal fixture source.
+/// The single `main` binding onto the minimal mock source.
 ///
 /// # Panics
 ///
 /// Panics when the binding JSON stops parsing as a [`SourceAssign`].
 #[must_use]
 pub fn greeting_binding() -> Vec<SourceAssign> {
-    greeting_binding_for("fixture")
+    greeting_binding_for("mock")
 }
 
-/// The single `main` binding onto the named fixture source adapter
+/// The single `main` binding onto the named mock source adapter
 /// (for the typed-failure profiles).
 ///
 /// # Panics
@@ -31,12 +31,12 @@ pub fn greeting_binding_for(adapter: &str) -> Vec<SourceAssign> {
     let main: SourceAssign = serde_json::from_value(
         json!({ "key": "main", "adapter": adapter, "value": "The greeting service." }),
     )
-    .expect("fixture binding parses");
+    .expect("mock binding parses");
     vec![main]
 }
 
 /// The adversarial two-source pair: a docs source and a code source,
-/// both served by the fixture core under different adapter names.
+/// both served by the mock core under different adapter names.
 ///
 /// # Panics
 ///
@@ -47,10 +47,10 @@ pub fn adversarial_bindings() -> Vec<SourceAssign> {
         .map(|key| {
             serde_json::from_value(json!({
                 "key": key,
-                "adapter": format!("fixture-{key}"),
+                "adapter": format!("mock-{key}"),
                 "value": format!("The {key} source."),
             }))
-            .expect("fixture binding parses")
+            .expect("mock binding parses")
         })
         .to_vec()
 }

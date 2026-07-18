@@ -1,4 +1,4 @@
-//! The fixture adapter's deterministic, model-free behaviour core.
+//! The mock adapter's deterministic, model-free behaviour core.
 //!
 //! One id-keyed library implementing both `specify:adapter` axes over
 //! the SDK seam DTOs ([`adapter::seam`]) — the canonical internal
@@ -30,7 +30,7 @@ mod source {
     /// `Internal` when the id selects the `fail-survey` profile.
     pub fn survey(id: &str) -> Result<Vec<Lead>, Error> {
         if id.contains("fail-survey") {
-            return Err(Error::Internal(format!("fixture survey failure for `{id}`")));
+            return Err(Error::Internal(format!("mock survey failure for `{id}`")));
         }
         Ok(match profile(id) {
             Profile::Docs => vec![
@@ -68,7 +68,7 @@ mod source {
     /// - `InvalidRequest` when `lead` is not one this source surveys.
     pub fn extract(id: &str, lead: &Lead) -> Result<Evidence, Error> {
         if id.contains("fail-extract") {
-            return Err(Error::Internal(format!("fixture extract failure for `{id}`")));
+            return Err(Error::Internal(format!("mock extract failure for `{id}`")));
         }
         let evidence = match (profile(id), lead.lead.as_str()) {
             (Profile::Docs, "login-flow") => Evidence {
@@ -138,7 +138,7 @@ mod source {
             },
             (_, unknown) => {
                 return Err(Error::InvalidRequest(format!(
-                    "fixture source `{id}` surveys no lead `{unknown}`"
+                    "mock source `{id}` surveys no lead `{unknown}`"
                 )));
             }
         };
@@ -202,11 +202,11 @@ mod targets {
 
     /// Marker file (project-root-relative) that flips builds to a failed
     /// report while it exists.
-    pub const FAIL_BUILD_MARKER: &str = "fixture-fail-build";
+    pub const FAIL_BUILD_MARKER: &str = "mock-fail-build";
 
-    /// Directory (project-root-relative) fixture builds write their
+    /// Directory (project-root-relative) mock builds write their
     /// observable output into.
-    pub const BUILD_DIR: &str = "fixture-build";
+    pub const BUILD_DIR: &str = "mock-build";
 
     /// The deterministic guidance brief served to synthesis.
     ///
@@ -215,7 +215,7 @@ mod targets {
     /// `Internal` when the id selects the `fail-guidance` profile.
     pub fn guidance(id: &str) -> Result<String, Error> {
         if id.contains("fail-guidance") {
-            return Err(Error::Internal(format!("fixture guidance failure for `{id}`")));
+            return Err(Error::Internal(format!("mock guidance failure for `{id}`")));
         }
         Ok(format!(
             "Fixture guidance ({id}): keep specs behavioural, one domain per spec; builds write \
@@ -232,7 +232,7 @@ mod targets {
     /// - `Io` when the artifact cannot be written.
     pub fn build(root: &Path, id: &str, slice: &str, inputs: &[Input]) -> Result<Report, Error> {
         if id.contains("fail-build") {
-            return Err(Error::Internal(format!("fixture build failure for `{id}`")));
+            return Err(Error::Internal(format!("mock build failure for `{id}`")));
         }
         if id.contains("missing-output") {
             // A dishonest success: the declared output is never written, so
@@ -257,11 +257,11 @@ mod targets {
 
     /// Marker file (project-root-relative) that flips the preflight merge
     /// gate to a failed report while it exists.
-    pub const FAIL_MERGE_PREFLIGHT_MARKER: &str = "fixture-fail-merge-preflight";
+    pub const FAIL_MERGE_PREFLIGHT_MARKER: &str = "mock-fail-merge-preflight";
 
     /// Marker file (project-root-relative) that flips the postflight merge
     /// gate to a failed report while it exists.
-    pub const FAIL_MERGE_POSTFLIGHT_MARKER: &str = "fixture-fail-merge-postflight";
+    pub const FAIL_MERGE_POSTFLIGHT_MARKER: &str = "mock-fail-merge-postflight";
 
     /// One phased merge gate: a success report with no outputs, unless the
     /// id selects a failure profile or the matching per-phase marker file
@@ -272,7 +272,7 @@ mod targets {
     /// `Internal` when the id selects the `fail-merge` profile.
     pub fn merge(root: &Path, id: &str, _slice: &str, phase: MergePhase) -> Result<Report, Error> {
         if id.contains("fail-merge") {
-            return Err(Error::Internal(format!("fixture merge failure for `{id}`")));
+            return Err(Error::Internal(format!("mock merge failure for `{id}`")));
         }
         let marker = match phase {
             MergePhase::Preflight => FAIL_MERGE_PREFLIGHT_MARKER,
@@ -293,7 +293,7 @@ mod targets {
         }
     }
 
-    /// The fixture only ever builds for the core platform.
+    /// The mock only ever builds for the core platform.
     const fn core_output(path: String) -> BuildOutput {
         BuildOutput {
             platform: Platform::Core,

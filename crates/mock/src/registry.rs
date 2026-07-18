@@ -1,4 +1,4 @@
-//! The exhaustive fixture registry linked into the workflow suites.
+//! The exhaustive mock registry linked into the workflow suites.
 
 use linked::Catalog;
 
@@ -6,7 +6,7 @@ use crate::ops::{
     Adapter, Code, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput,
 };
 
-/// Every fixture catalog identity, success and failure profiles alike.
+/// Every mock catalog identity, success and failure profiles alike.
 ///
 /// Axis correctness is compile-checked by the typed `source::<A>` /
 /// `target::<A>` registrations; the registry integration test asserts
@@ -14,7 +14,7 @@ use crate::ops::{
 ///
 /// # Panics
 ///
-/// Never in practice: the fixture inventory is statically valid, so
+/// Never in practice: the mock inventory is statically valid, so
 /// catalog validation cannot fail.
 #[must_use]
 pub fn catalog() -> Catalog {
@@ -30,5 +30,5 @@ pub fn catalog() -> Catalog {
         .target::<FailMerge>()
         .target::<MissingOutput>()
         .build()
-        .expect("the fixture catalog is statically valid")
+        .expect("the mock catalog is statically valid")
 }

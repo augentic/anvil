@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use fixture::session::Session;
+use mock::session::Session;
 use omnia_guest::api::invoke::Invoker;
 use omnia_guest::axum::Router;
 use omnia_guest::axum::body::{Body, to_bytes};
@@ -37,7 +37,7 @@ mod routing {
 
     #[tokio::test]
     async fn get_json_body() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         stage_registry(project.root());
         let request = Request::builder()
             .method(Method::GET)
@@ -50,7 +50,7 @@ mod routing {
 
     #[tokio::test]
     async fn post_body_reaches_operation() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)
             .uri("/registry")
@@ -66,7 +66,7 @@ mod routing {
 
     #[tokio::test]
     async fn path_param_reaches_operation() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         stage_registry(project.root());
         let request = Request::builder()
             .method(Method::POST)
@@ -86,7 +86,7 @@ mod errors {
 
     #[tokio::test]
     async fn taxonomy_failure_envelope() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)
             .uri("/archive/prune")
@@ -98,7 +98,7 @@ mod errors {
 
     #[tokio::test]
     async fn missing_field_unprocessable() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)
             .uri("/registry")

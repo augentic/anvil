@@ -4,13 +4,13 @@ Specify proves engine correctness from this repository alone: native integration
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + plugin authoring), and the lychee links gate (docs/plugin link integrity, `cargo make links`). The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the fixture adapter over the offline linked provider and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + plugin authoring), and the lychee links gate (docs/plugin link integrity, `cargo make links`). The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the mock adapter over the offline linked provider and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
 ## Gate 2 — prompt evaluation (operator-invoked)
 
-`cargo make eval` from the repository root runs the native prompt-evaluation rung (the `lab` binary driving the `eval` library) over the fixture adapters and a real configured model. It drives the production operator rhythm and requires a non-empty authored plan, a drained execution with every entry done, and valid requirement provenance. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
+`cargo make eval` from the repository root runs the native prompt-evaluation rung (the `lab` binary driving the `eval` library) over the mock adapters and a real configured model. It drives the production operator rhythm and requires a non-empty authored plan, a drained execution with every entry done, and valid requirement provenance. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
 
 Cadence is documented convention, not automation: before a release tag, and after judgment-prompt or answer-schema changes. Ordinary CI never calls a live model.
 
@@ -24,7 +24,7 @@ When adding coverage:
 
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
-3. Put cross-crate workflow behavior in the native workflow suites over the fixture adapter and scripted answers.
+3. Put cross-crate workflow behavior in the native workflow suites over the mock adapter and scripted answers.
 4. Behavior that only a WebAssembly/WIT/runtime seam can prove has no automated home here — it is covered by the operator-run change example and by the composed-deployment tests in `specify-adapters`.
 5. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
@@ -32,8 +32,8 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 
 ## Boundaries
 
-- `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: fixture leads, evidence, scripted answers, and assertions.
-- `fixture::behaviour` (in `crates/fixture`) is the only adapter double; `examples/change/guest.rs` is its WIT component example over the `fixture::wit` bindings. Do not add another mock adapter or fixture-adapter copy.
+- `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: mock leads, evidence, scripted answers, and assertions.
+- `mock::behaviour` (in `crates/mock`) is the only adapter double; `examples/change/guest.rs` is its WIT component example over the `mock::wit` bindings. Do not add another mock adapter or mock-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance

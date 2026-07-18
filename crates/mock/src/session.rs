@@ -1,7 +1,7 @@
 //! Host-only session helpers over the offline linked provider.
 //!
 //! A [`Session`] is a throw-away project tree plus an offline
-//! [`linked::Provider`] over the full fixture
+//! [`linked::Provider`] over the full mock
 //! [`crate::registry::catalog`] and `omnia-testkit`'s FIFO `Scripted`
 //! model double. Reference mode is always [`ReferenceMode::Offline`],
 //! so native tests start no listeners; the recording model handle is
@@ -20,7 +20,7 @@ use crate::model::Harness;
 /// FIFO script behind the judgment legs.
 pub type Scripted = Harness<ScriptedModel>;
 
-/// A throw-away project tree plus the scripted fixture provider.
+/// A throw-away project tree plus the scripted mock provider.
 ///
 /// The tempdir and the session's isolated project-cache parent live
 /// exactly as long as the session, so adapter cache writes stay
@@ -84,7 +84,7 @@ impl Session {
         &self.root
     }
 
-    /// The scripted fixture provider.
+    /// The scripted mock provider.
     #[must_use]
     pub const fn provider(&self) -> &Provider {
         &self.provider

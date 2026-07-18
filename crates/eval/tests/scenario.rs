@@ -1,5 +1,5 @@
 //! Model-free scenario runner gates: config, artifacts, run dirs,
-//! outcomes — over the fixture target.
+//! outcomes — over the mock target.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,14 +10,14 @@ use project::seam::wire::{BUILD_VERSION, BuildReport, BuildStatus};
 use tempfile::TempDir;
 
 fn catalog() -> Catalog {
-    fixture::catalog()
+    mock::catalog()
 }
 
 fn report(status: BuildStatus) -> BuildReport {
     BuildReport {
         version: BUILD_VERSION,
         slice: "demo".to_string(),
-        target: "fixture".to_string(),
+        target: "mock".to_string(),
         status,
         findings: Vec::new(),
         outputs: Vec::new(),
@@ -30,7 +30,7 @@ mod config {
 
     fn stage(body: &str) -> (TempDir, PathBuf, PathBuf) {
         let tmp = TempDir::new().expect("tempdir");
-        let dir = tmp.path().join("fixture/scenario");
+        let dir = tmp.path().join("mock/scenario");
         fs::create_dir_all(&dir).expect("mkdir");
         fs::write(dir.join("scenario.toml"), body).expect("write scenario.toml");
         let root = tmp.path().to_path_buf();
@@ -51,7 +51,7 @@ mod config {
     #[test]
     fn build_requires_expect() {
         let (_tmp, scenarios, dir) =
-            stage("adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n");
+            stage("adapter = \"target:mock\"\noperation = \"build\"\nslice = \"demo\"\n");
         let err =
             scenario::load(&scenarios, &dir, &catalog()).expect_err("build without expect refuses");
         assert!(format!("{err:#}").contains("at least one `expect`"), "{err:#}");
@@ -60,7 +60,7 @@ mod config {
     #[test]
     fn merge_gate_allows_empty_expect() {
         let (_tmp, scenarios, dir) = stage(
-            "adapter = \"target:fixture\"\noperation = \"merge-preflight\"\nslice = \"demo\"\n",
+            "adapter = \"target:mock\"\noperation = \"merge-preflight\"\nslice = \"demo\"\n",
         );
         scenario::load(&scenarios, &dir, &catalog())
             .expect("merge gates carry no mandatory expect");
@@ -69,7 +69,7 @@ mod config {
     #[test]
     fn absolute_expect_refused() {
         let (_tmp, scenarios, dir) = stage(
-            "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
+            "adapter = \"target:mock\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"/etc/passwd\"]\n",
         );
         let err =
@@ -80,7 +80,7 @@ mod config {
     #[test]
     fn traversing_expect_refused() {
         let (_tmp, scenarios, dir) = stage(
-            "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
+            "adapter = \"target:mock\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"../outside\"]\n",
         );
         let err = scenario::load(&scenarios, &dir, &catalog())
@@ -91,7 +91,7 @@ mod config {
     #[test]
     fn empty_expect_entry_refused() {
         let (_tmp, scenarios, dir) = stage(
-            "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
+            "adapter = \"target:mock\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"  \"]\n",
         );
         let err =
@@ -102,7 +102,7 @@ mod config {
     #[test]
     fn unknown_key_refused() {
         let (_tmp, scenarios, dir) = stage(
-            "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
+            "adapter = \"target:mock\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"contracts\"]\nsurprise = true\n",
         );
         let err = scenario::load(&scenarios, &dir, &catalog()).expect_err("unknown keys refuse");

@@ -2,7 +2,7 @@
 
 mod support;
 
-use fixture::invoke::run;
+use mock::invoke::run;
 use project::adapter::{AdapterSelector, Resolver};
 use project::handler::{Anchor as _, ExecutionPaths};
 use support::{Provider, stage_dev_component};

@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
-use fixture::model::Harness;
+use mock::model::Harness;
 use linked::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use tempfile::TempDir;
@@ -16,7 +16,7 @@ fn provider(root: impl Into<PathBuf>) -> Provider {
     Provider::new(
         project::handler::ExecutionPaths::operator(root.into()),
         DynModel::new(Harness::answering(Vec::<String>::new())),
-        fixture::catalog(),
+        mock::catalog(),
         ReferenceMode::Offline,
     )
 }

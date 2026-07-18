@@ -18,7 +18,7 @@ Skill frontmatter shape and the marketplace manifest are enforced by the typed `
 | Docs/plugin link integrity                      | lychee over [`lychee.toml`](../../lychee.toml) — `cargo make links` locally, the `links` job in [`ci.yaml`](../../.github/workflows/ci.yaml) per push | Every `cargo make ci` and every push    |
 | Embedded prompt-corpus links                    | `crates/prose` via `crates/slice/build.rs` + `crates/change/build.rs` — a dangling reference **fails the build** | Every compile                           |
 
-The `checks` package stays a separate workspace member (not root-package tests) so the Wasmtime-heavy runtime graph stays out of the ordinary test build. Cross-crate test support comes from the `crates/linked` and `crates/fixture` dev-dependencies; fixtures live crate-locally under `crates/<name>/tests/fixtures/`.
+The `checks` package stays a separate workspace member (not root-package tests) so the Wasmtime-heavy runtime graph stays out of the ordinary test build. Cross-crate test support comes from the `crates/linked` and `crates/mock` dev-dependencies; fixtures live crate-locally under `crates/<name>/tests/fixtures/`.
 
 ## What the checks enforce
 

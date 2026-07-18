@@ -3,13 +3,13 @@
 
 use adapter::seam::{Context, Error, Input, MergePhase, Status, WorkingTree};
 use adapter::{Source, Target};
-use fixture::{
+use mock::{
     Adapter, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput, catalog,
 };
 use omnia_testkit::model::Scripted;
 use project::adapter::Axis;
 
-// The full fixture registry, by `(axis, name)` — a new identity or a
+// The full mock registry, by `(axis, name)` — a new identity or a
 // renamed one must update this inventory deliberately.
 #[test]
 fn inventory() {
@@ -19,16 +19,16 @@ fn inventory() {
     assert_eq!(
         entries,
         vec![
-            (Axis::Source, "fixture"),
-            (Axis::Source, "fixture-docs"),
-            (Axis::Source, "fixture-code"),
-            (Axis::Source, "fixture-fail-survey"),
-            (Axis::Source, "fixture-fail-extract"),
-            (Axis::Target, "fixture"),
-            (Axis::Target, "fixture-fail-guidance"),
-            (Axis::Target, "fixture-fail-build"),
-            (Axis::Target, "fixture-fail-merge"),
-            (Axis::Target, "fixture-missing-output"),
+            (Axis::Source, "mock"),
+            (Axis::Source, "mock-docs"),
+            (Axis::Source, "mock-code"),
+            (Axis::Source, "mock-fail-survey"),
+            (Axis::Source, "mock-fail-extract"),
+            (Axis::Target, "mock"),
+            (Axis::Target, "mock-fail-guidance"),
+            (Axis::Target, "mock-fail-build"),
+            (Axis::Target, "mock-fail-merge"),
+            (Axis::Target, "mock-missing-output"),
         ]
     );
 }
@@ -52,46 +52,46 @@ fn tree() -> WorkingTree {
 async fn source_failures() {
     let model = model();
 
-    let err = FailSurvey::survey(&model, &ctx("source:fixture-fail-survey"))
+    let err = FailSurvey::survey(&model, &ctx("source:mock-fail-survey"))
         .await
         .expect_err("fail-survey fails");
-    assert!(matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-survey")));
+    assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-survey")));
 
     // The failing identity still surveys nothing before extract: the
     // extract failure is its own typed error.
-    let lead = fixture::behaviour::survey("source:fixture").expect("minimal survey").remove(0);
-    let err = FailExtract::extract(&model, &ctx("source:fixture-fail-extract"), &lead)
+    let lead = mock::behaviour::survey("source:mock").expect("minimal survey").remove(0);
+    let err = FailExtract::extract(&model, &ctx("source:mock-fail-extract"), &lead)
         .await
         .expect_err("fail-extract fails");
-    assert!(matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-extract")));
+    assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-extract")));
 }
 
 #[tokio::test]
 async fn target_failures() {
     let model = model();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let _guard = fixture::Cwd::enter(tmp.path());
+    let _guard = mock::Cwd::enter(tmp.path());
 
-    let err = FailGuidance::guidance(&model, &ctx("target:fixture-fail-guidance"))
+    let err = FailGuidance::guidance(&model, &ctx("target:mock-fail-guidance"))
         .await
         .expect_err("fail-guidance fails through the trait surface");
-    assert!(matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-guidance")));
+    assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-guidance")));
 
-    let err = FailBuild::build(&model, &ctx("target:fixture-fail-build"), "s", &[], &tree())
+    let err = FailBuild::build(&model, &ctx("target:mock-fail-build"), "s", &[], &tree())
         .await
         .expect_err("fail-build fails");
-    assert!(matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-build")));
+    assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-build")));
 
     let err = FailMerge::merge(
         &model,
-        &ctx("target:fixture-fail-merge"),
+        &ctx("target:mock-fail-merge"),
         "s",
         MergePhase::Preflight,
         &tree(),
     )
     .await
     .expect_err("fail-merge fails");
-    assert!(matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-merge")));
+    assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-merge")));
 }
 
 // The dishonest success: a success report declaring an output that was
@@ -100,11 +100,11 @@ async fn target_failures() {
 async fn missing_output_reports_unwritten_path() {
     let model = model();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let _guard = fixture::Cwd::enter(tmp.path());
+    let _guard = mock::Cwd::enter(tmp.path());
 
     let report = MissingOutput::build(
         &model,
-        &ctx("target:fixture-missing-output"),
+        &ctx("target:mock-missing-output"),
         "greeting",
         &[],
         &tree(),
@@ -121,15 +121,15 @@ async fn missing_output_reports_unwritten_path() {
 async fn build_writes_artifact() {
     let model = model();
     let tmp = tempfile::tempdir().expect("tempdir");
-    let _guard = fixture::Cwd::enter(tmp.path());
+    let _guard = mock::Cwd::enter(tmp.path());
 
     let inputs = [Input::Proposal("# p".to_string()), Input::Spec("## s".to_string())];
-    let report = Adapter::build(&model, &ctx("target:fixture"), "greeting", &inputs, &tree())
+    let report = Adapter::build(&model, &ctx("target:mock"), "greeting", &inputs, &tree())
         .await
-        .expect("fixture builds");
+        .expect("mock builds");
     assert_eq!(report.status, Status::Success);
 
-    let artifact = fixture::behaviour::build_artifact_path(tmp.path(), "greeting");
+    let artifact = mock::behaviour::build_artifact_path(tmp.path(), "greeting");
     let body = std::fs::read_to_string(artifact).expect("artifact written");
     assert!(body.contains("proposal 1"));
     assert!(body.contains("specs 1"));

@@ -18,17 +18,17 @@ export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 
 mkdir -p sandbox/change/{workspace,cache,store}
 cp target/wasm32-wasip2/debug/examples/change.wasm \
-  sandbox/change/workspace/fixture.wasm
+  sandbox/change/workspace/mock.wasm
 
 run() {
   cargo run -p specify -- run --config examples/change/omnia.toml -- "$@"
 }
 
 # Initialize the workspace
-run init ./fixture.wasm --name change
+run init ./mock.wasm --name change
 
 # Author, transition, and execute the plan
-run plan author change --source main="fixture:value:The greeting service."
+run plan author change --source main="mock:value:The greeting service."
 run plan transition change approved
 run plan execute
 '''

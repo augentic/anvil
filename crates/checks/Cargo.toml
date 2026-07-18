@@ -3,7 +3,7 @@
 # tests) so the Wasmtime-heavy runtime graph stays out of the ordinary
 # test build. Docs/plugin link integrity is lychee's job (`cargo make
 # links`). Cross-crate test support lives in `crates/linked` and
-# `crates/fixture`; fixtures are crate-local under
+# `crates/mock`; fixtures are crate-local under
 # `crates/<name>/tests/fixtures/`.
 [package]
 name = "checks"

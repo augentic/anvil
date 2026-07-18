@@ -44,11 +44,11 @@ fn entries_and_metadata() {
         .build()
         .expect("valid catalog");
     let ids: Vec<String> = linked.entries().iter().map(linked::Entry::id).collect();
-    assert_eq!(ids, ["source:fixture", "target:fixture", "target:floored"]);
+    assert_eq!(ids, ["source:mock", "target:mock", "target:floored"]);
 
-    let entry = linked.get(Axis::Target, "fixture").expect("target entry");
+    let entry = linked.get(Axis::Target, "mock").expect("target entry");
     assert_eq!(entry.version(), "0.0.0");
-    assert_eq!(entry.server_name(), "fixture-references");
+    assert_eq!(entry.server_name(), "mock-references");
     assert_eq!(entry.metadata().specify_floor, None);
     assert!(!entry.docs().is_empty());
 
@@ -74,7 +74,7 @@ mod validation {
 
     #[test]
     fn dual_axis_same_identity_allowed() {
-        // Fixture's intentional dual-axis `fixture` shape stays legal.
+        // Fixture's intentional dual-axis `mock` shape stays legal.
         Catalog::builder()
             .source::<Probe>()
             .target::<Probe>()

@@ -12,7 +12,7 @@
 /// The immutable `(name, version)` identity a catalog entry provides.
 ///
 /// Published adapters set the exact package version, normally from
-/// `env!("CARGO_PKG_VERSION")`. Unpublished fixture/probe adapters may
+/// `env!("CARGO_PKG_VERSION")`. Unpublished mock/probe adapters may
 /// use a development placeholder version; they remain bare-only
 /// identities for pin matching.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

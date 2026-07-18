@@ -57,7 +57,7 @@ The `plan` evaluation isolates the proposal leg. The `execute` evaluation runs s
 The driver mirrors the operator rhythm:
 
 ```text
-init        specify init fixture
+init        specify init mock
 plan        specify plan author → Gate 1 approved
 execute     specify plan execute  (refine → build → merge per slice, until drained)
 finalize    specify plan archive

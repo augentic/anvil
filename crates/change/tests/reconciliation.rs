@@ -1,4 +1,4 @@
-//! Reconciliation through the native fixture pair: surveyed leads
+//! Reconciliation through the native mock pair: surveyed leads
 //! become complete, non-duplicated slice assignments — cross-source
 //! overlap merges into one slice, a recorded divergence survives the
 //! projection, and a grouping that drops a lead is refused by the
@@ -9,8 +9,8 @@ mod support;
 use std::fs;
 
 use change::{Divergence, plan};
-use fixture::invoke::run;
-use fixture::session::Session;
+use mock::invoke::run;
+use mock::session::Session;
 use serde_json::json;
 
 /// One initial dispatch plus every repair attempt. Mirrors the
@@ -44,7 +44,7 @@ fn uncovered_grouping_answer() -> String {
         "gate": {
             "change": "## Intent\n\nIncomplete grouping.\n\n## Scope\n\nTwo slices.",
             "discovery-summary": "Sources: 2. Leads: 5.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | fixture-docs | x |\n| code | fixture-code | x |"
+            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | mock-docs | x |\n| code | mock-code | x |"
         }
     }))
     .expect("grouping serialises")
@@ -66,11 +66,11 @@ async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project
 // divergence survives the projection.
 #[tokio::test]
 async fn overlap_merges() {
-    let session = Session::scripted("fixture", vec![fixture::answers::adversarial_grouping()]);
+    let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
 
     let authored = author(&session).await.expect("author walks to pending");
     assert_eq!(authored.slices, ["login-flow", "session-policy", "password-reset"]);
-    // Both fixture sources surveyed (key order), docs with its three
+    // Both mock sources surveyed (key order), docs with its three
     // leads including the docs-only password-reset.
     assert_eq!(authored.surveyed.len(), 2);
     assert_eq!(authored.surveyed[0].source, "code");
@@ -111,7 +111,7 @@ async fn uncovered_lead_exhausts() {
     // The same defective grouping for the whole budget: the first
     // dispatch plus every repair attempt, so the leg surfaces the
     // kernel's refusal.
-    let session = Session::scripted("fixture", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
+    let session = Session::scripted("mock", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
 
     let err = author(&session).await.expect_err("coverage gap refused");
     let detail = err.to_string();

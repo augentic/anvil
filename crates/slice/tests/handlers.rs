@@ -12,8 +12,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use fixture::invoke::run;
-use fixture::session::Session;
+use mock::invoke::run;
+use mock::session::Session;
 
 /// Stage a one-project `registry.yaml` at the project root.
 fn stage_registry(root: &Path) {
@@ -29,7 +29,7 @@ mod registry {
 
     #[tokio::test]
     async fn add_mints_file() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let body = run::<project::registry::handlers::Add, _, _>(
             project.provider(),
             project::registry::handlers::AddInput {
@@ -49,7 +49,7 @@ mod registry {
 
     #[tokio::test]
     async fn duplicate_add_errors() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         stage_registry(project.root());
         let err = run::<project::registry::handlers::Add, _, _>(
             project.provider(),
@@ -70,7 +70,7 @@ mod registry {
 
     #[tokio::test]
     async fn staged_catalogue_validates() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         stage_registry(project.root());
         run::<project::registry::handlers::Validate, _, _>(
             project.provider(),
@@ -97,7 +97,7 @@ mod registry {
 
     #[tokio::test]
     async fn remove_drops_entry() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         stage_registry(project.root());
         run::<project::registry::handlers::Remove, _, _>(
             project.provider(),
@@ -126,7 +126,7 @@ mod archive {
 
     #[tokio::test]
     async fn prune_keeps_newest() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let archive = stage(project.root());
         let body = run::<slice::handlers::Prune, _, _>(
             project.provider(),
@@ -145,7 +145,7 @@ mod archive {
 
     #[tokio::test]
     async fn prune_requires_bound() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         stage(project.root());
         let err = run::<slice::handlers::Prune, _, _>(
             project.provider(),
@@ -296,7 +296,7 @@ mod journal {
 
     #[tokio::test]
     async fn emit_appends_line() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let body = run::<project::journal::handlers::Emit, _, _>(
             project.provider(),
             project::journal::handlers::EmitInput {
@@ -317,7 +317,7 @@ mod journal {
 
     #[tokio::test]
     async fn emit_unknown_event_refused() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let err = run::<project::journal::handlers::Emit, _, _>(
             project.provider(),
             project::journal::handlers::EmitInput {
@@ -335,7 +335,7 @@ mod journal {
 
     #[tokio::test]
     async fn emit_bad_payload_refused() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let err = run::<project::journal::handlers::Emit, _, _>(
             project.provider(),
             project::journal::handlers::EmitInput {
@@ -357,7 +357,7 @@ mod journal {
 
     #[tokio::test]
     async fn show_reads_filtered() {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         run::<project::journal::handlers::Emit, _, _>(
             project.provider(),
             project::journal::handlers::EmitInput {

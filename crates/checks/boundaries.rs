@@ -190,15 +190,15 @@ mod direction {
     ];
 
     /// Dependencies the workflow core rejects outside dev-dependencies.
-    const HOST_CRATES: &[&str] = &["linked", "eval", "fixture", "lab", "harness"];
+    const HOST_CRATES: &[&str] = &["linked", "eval", "mock", "lab", "harness"];
 
     /// Production dependencies `linked` rejects (concrete adapter
     /// crates are already caught by the repository-wide rule).
-    const LINKED_REJECTS: &[&str] = &["fixture", "eval", "lab", "harness", "omnia-cursor"];
+    const LINKED_REJECTS: &[&str] = &["mock", "eval", "lab", "harness", "omnia-cursor"];
 
     /// Production dependencies `eval` rejects (`linked` itself is its
     /// one host dependency).
-    const EVAL_REJECTS: &[&str] = &["fixture", "lab", "harness", "omnia-cursor", "change"];
+    const EVAL_REJECTS: &[&str] = &["mock", "lab", "harness", "omnia-cursor", "change"];
 
     /// Effective package names declared under the root
     /// `[workspace.dependencies]`, keyed by alias, so a member's
@@ -292,7 +292,7 @@ mod direction {
         assert!(!direction_findings(dir.path()).is_empty());
 
         let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "crates/linked/Cargo.toml", "[dependencies]\nfixture = \"1\"\n");
+        write(dir.path(), "crates/linked/Cargo.toml", "[dependencies]\nmock = \"1\"\n");
         assert!(!direction_findings(dir.path()).is_empty());
 
         let dir = tempfile::tempdir().expect("tempdir");
@@ -324,7 +324,7 @@ mod direction {
 
         // Dev-dependencies on host/test-support crates remain legal.
         let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "crates/change/Cargo.toml", "[dev-dependencies]\nfixture = \"1\"\n");
+        write(dir.path(), "crates/change/Cargo.toml", "[dev-dependencies]\nmock = \"1\"\n");
         assert!(direction_findings(dir.path()).is_empty());
     }
 }
@@ -371,14 +371,14 @@ fn bad_fixtures() {
     );
     assert!(findings(dir.path()).is_empty());
 
-    // The in-tree fixture crate (the fixture adapter core's home) is an
+    // The in-tree mock crate (the mock adapter core's home) is an
     // ordinary workspace member; its name collides with nothing in
     // specify-adapters and needs no allowance.
     let dir = tempfile::tempdir().expect("tempdir");
     write(
         dir.path(),
         "Cargo.toml",
-        "[workspace.dependencies]\nfixture = { path = \"crates/fixture\" }\n",
+        "[workspace.dependencies]\nmock = { path = \"crates/mock\" }\n",
     );
     assert!(findings(dir.path()).is_empty());
 

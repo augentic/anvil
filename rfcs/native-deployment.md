@@ -32,7 +32,7 @@ WORKFLOW CORE
         │      │      │
    workflow   lab   future product
    tests            (distribution RFC)
-   + fixture
+   + mock
 ```
 
 The Wasm deployment remains authoritative for component loading, WIT conformance, isolation, digests, and adapter-store behavior. Linked tests never claim those properties.
@@ -42,8 +42,8 @@ The Wasm deployment remains authoritative for component loading, WIT conformance
 The current package names describe their first consumers rather than their architectural roles:
 
 - `crates/harness` contains the native provider, adapter catalog, engine-to-adapter conversion, Cursor model bridge, MCP reference host, typed invocation helpers, command router, process-environment test support, live eval trials, scenarios, grading, telemetry, and sandbox management.
-- `crates/fixture` contains deterministic source and target adapters, scripted model answers, a request-recording model decorator, and native project sessions.
-- `crates/eval` is the concrete native composition binary over the fixture adapters.
+- `crates/mock` contains deterministic source and target adapters, scripted model answers, a request-recording model decorator, and native project sessions.
+- `crates/eval` is the concrete native composition binary over the mock adapters.
 
 This makes a coherent linked host look like accumulated testing machinery. It also hides the correspondence between the two providers:
 
@@ -74,13 +74,13 @@ The linked host makes those concerns visible:
 
 1. Establish the linked host as a first-class way to run the same workflow core and command contract as the Wasm flavor.
 2. Keep the linked host out of the workflow core; workflow crates depend only on capability contracts and deployment-neutral adapter types.
-3. Preserve dependency inversion: `linked` never depends on `eval`, `lab`, `fixture`, Cursor crates, or `augentic/specify-adapters`.
+3. Preserve dependency inversion: `linked` never depends on `eval`, `lab`, `mock`, Cursor crates, or `augentic/specify-adapters`.
 4. Compose with values: catalogs and model backends are supplied by composition roots; the host carries no binding trait, registration macro, or model type parameter.
 5. Make the linked catalog a complete static declaration: each adapter's identity, operation axis, metadata, and embedded references.
 6. Let the linked host satisfy an exact adapter pin when the compiled catalog contains that exact `(name, version)`; reject mismatches and local component selectors without silently substituting another implementation.
 7. Replace byte-oriented `Hydrator::fetch` with `Resolver::ensure` so initialization does not run component hydration before linked catalog matching.
 8. Preserve workflow command I/O, exit codes, artifacts, lifecycle transitions, adapter operation order, and model request/answer shapes across providers; selector diagnostics and linked provisioning remain the explicit divergences.
-9. Keep Specify's workflow integration tests self-contained over local fixture adapters through `linked`'s library API.
+9. Keep Specify's workflow integration tests self-contained over local mock adapters through `linked`'s library API.
 10. Separate command execution from live-model eval: command mode lives in `linked`; `eval` is optional and lab-only.
 11. Make runtime values and resources explicit: project root, cache parent, model value, MCP listener ownership.
 12. Keep one linked implementation of provider dispatch, catalog construction, and MCP reference serving, with adapter operations monomorphized at exactly one model type (`DynModel`).
@@ -105,8 +105,8 @@ The linked host makes those concerns visible:
 - Closing the existing gap where `SourceBinding.version` is persisted but survey/extract ignore it. That correctness fix is Stage 1b and is not required to extract the linked host.
 - Rewriting bare linked init selectors into exact package pins. Persist what the operator typed; resolve reports the catalog version.
 - Changing `--version` flavor labels or neutralizing shared help text in Stage 1. Those are Stage 5 documentation polish.
-- Renaming `SPECIFY_EVAL_MODEL`, `fixture::model::Harness`, or `DevModel` as part of the architectural cut. Optional later polish.
-- Renaming the default fixture source or target identity. `fixture` remains valid on both axes; catalog uniqueness is per-axis.
+- Renaming `SPECIFY_EVAL_MODEL`, `mock::model::Harness`, or `DevModel` as part of the architectural cut. Optional later polish.
+- Renaming the default mock source or target identity. `mock` remains valid on both axes; catalog uniqueness is per-axis.
 - Adding compatibility aliases for removed internal crate names.
 - Widening public workflow APIs solely to support tests.
 
@@ -119,8 +119,8 @@ The linked host makes those concerns visible:
 - **Adapter selector** — the operator-supplied shape retained through `ensure`: bare name, exact package reference, or local component path.
 - **Erased model (`DynModel`)** — the linked host's one concrete model type: a reference-counted object-safe wrapper that any `Model` backend converts into.
 - **Eval library (`eval`)** — lab-only trial, scenario, grading, telemetry, sandbox, and eval CLI logic.
-- **Lab (`lab`)** — an unpublished repository composition binary that dispatches between linked command passthrough and eval. Specify's lab binds fixture adapters; the adapter repository's lab declares the first-party catalog and depends on the concrete adapter crates.
-- **Fixture adapters** — deterministic local SDK-native adapters in `crates/fixture`, not mocks of the workflow seam.
+- **Lab (`lab`)** — an unpublished repository composition binary that dispatches between linked command passthrough and eval. Specify's lab binds mock adapters; the adapter repository's lab declares the first-party catalog and depends on the concrete adapter crates.
+- **Fixture adapters** — deterministic local SDK-native adapters in `crates/mock`, not mocks of the workflow seam.
 
 ## Decision
 
@@ -137,7 +137,7 @@ The linked host makes those concerns visible:
      model host import                   DynModel value
      adapter HTTP refs                   ReferenceHost
               │                                 │
-              │                                 ├── workflow tests (+ fixture)
+              │                                 ├── workflow tests (+ mock)
               │                                 ├── repository labs
               │                                 └── (future product binary)
               │
@@ -152,19 +152,19 @@ One breath: workflow code talks to capabilities; Wasm satisfies them with compon
 Dependency direction in the Specify workspace:
 
 ```text
-lab ──► fixture
+lab ──► mock
 lab ──► linked
 lab ──► eval ──► linked
-tests ──► linked (+ fixture as needed)
+tests ──► linked (+ mock as needed)
 
 linked ──✗──► eval
 linked ──✗──► lab
-linked ──✗──► fixture
+linked ──✗──► mock
 linked ──✗──► specify-adapters
 linked ──✗──► Cursor / omnia-cursor
 
-workflow-core production dependencies ──✗──► linked / eval / fixture / lab
-workflow-core dev-dependencies ────────────► linked + fixture where integration suites need them
+workflow-core production dependencies ──✗──► linked / eval / mock / lab
+workflow-core dev-dependencies ────────────► linked + mock where integration suites need them
 ```
 
 ### Crate names and ownership
@@ -174,7 +174,7 @@ workflow-core dev-dependencies ────────────► linked + 
 | `linked` | library | Linked host: catalog, provider, erased model, references, command execution | Native execution modules from `harness` (not Cursor, not eval) |
 | `eval` | library (`publish = false`) | Lab-only workflow trial, adapter scenarios, grading, telemetry, sandbox, eval CLI | Eval modules from `harness` |
 | `lab` | binary (`publish = false`) | In-repo composition and argv dispatch | Current `eval` binary, renamed |
-| `fixture` | library (`publish = false`) | Deterministic adapters, answer corpus, recording model, sessions | Existing `fixture`, retargeted to `linked` |
+| `mock` | library (`publish = false`) | Deterministic adapters, answer corpus, recording model, sessions | Existing `mock`, retargeted to `linked` |
 
 After migration there is no `harness` package. The current `eval` binary package moves to `lab`, and a new library package takes the freed `eval` name. This reuse is deliberate: `eval` is the established project term and `cargo make eval` remains the task surface.
 
@@ -190,7 +190,7 @@ Linked composition is static:
 
 1. Specify owns `crates/linked` and the linked command API.
 2. Specify ships no first-party-bound linked executable; that would introduce a reverse dependency on `specify-adapters`.
-3. Specify's `lab` uses `fixture::catalog()`.
+3. Specify's `lab` uses `mock::catalog()`.
 4. The adapter repository's `lab` depends on `eval`, `linked`, and the concrete first-party adapters, and owns `catalog()` (plus a CI inventory check that every first-party adapter appears exactly once on its axis).
 5. When a linked operator distribution binary appears later, extract the shared catalog into a library both the lab and that binary consume. This RFC does not add that library.
 
@@ -199,22 +199,22 @@ augentic/specify                         augentic/specify-adapters
 ────────────────                         ─────────────────────────
 linked host library ───────────────────► lab binary
 eval library ──────────────────────────►   catalog() + command/eval dispatch
-fixture catalog ─► Specify lab             concrete first-party adapters
+mock catalog ─► Specify lab             concrete first-party adapters
 ```
 
 ### Dependency enforcement
 
 The Specify `checks` package enforces dependency direction by parsing Cargo manifests:
 
-- `error`, `diagnostics`, `artifacts`, `adapter`, `project`, `slice`, `change`, and `transport` reject `linked`, `eval`, `fixture`, `lab`, and the removed `harness` in production and build dependencies;
-- explicit dev-dependencies on `linked` and `fixture` remain legal for workflow integration suites;
-- `linked` rejects `fixture`, `eval`, `lab`, Cursor crates, and concrete adapter crates in production dependencies;
-- `eval` depends on `linked` plus deployment-neutral artifact/project types needed for grading, and rejects `fixture`, `lab`, `change`, Cursor integration, and concrete adapter crates.
+- `error`, `diagnostics`, `artifacts`, `adapter`, `project`, `slice`, `change`, and `transport` reject `linked`, `eval`, `mock`, `lab`, and the removed `harness` in production and build dependencies;
+- explicit dev-dependencies on `linked` and `mock` remain legal for workflow integration suites;
+- `linked` rejects `mock`, `eval`, `lab`, Cursor crates, and concrete adapter crates in production dependencies;
+- `eval` depends on `linked` plus deployment-neutral artifact/project types needed for grading, and rejects `mock`, `lab`, `change`, Cursor integration, and concrete adapter crates.
 
 The adapter repository adds its own checks:
 
 - the lab's default catalog contains every first-party adapter exactly once on its declared axis; any subset feature declares and tests its reduced expected inventory;
-- published first-party adapter names remain globally unique across axes (store has no axis segment). Fixture's dual-axis `fixture` name is Specify-local and unpublished.
+- published first-party adapter names remain globally unique across axes (store has no axis segment). Fixture's dual-axis `mock` name is Specify-local and unpublished.
 
 Extend the existing `checks` manifest coverage with these rules, then retire `crates/harness/tests/boundary.rs`; the invariant moves rather than disappearing.
 
@@ -246,7 +246,7 @@ pub struct AdapterIdentity {
 `adapter::Source` and `adapter::Target` expose `const IDENTITY: AdapterIdentity` in place of a name-only constant. Their generic associated operation methods remain unchanged and non-object-safe.
 
 - Published adapters set exact package version, normally from `env!("CARGO_PKG_VERSION")`.
-- Unpublished fixture/probe adapters may use a development placeholder version; they remain bare-only identities for pin matching.
+- Unpublished mock/probe adapters may use a development placeholder version; they remain bare-only identities for pin matching.
 - Resolve-time `SourceMetadata` / `TargetMetadata` remain non-identity metadata. Version does not move into the WIT `metadata` answer.
 - Adapter crate tests assert that published identity name/version agree with the crate package and component publication configuration.
 
@@ -358,7 +358,7 @@ pub struct ExecutionPaths {
 The type lives in `project::handler` beside `Anchor`, exposes read-only accessors, and is re-exported by `linked`. Cache resolution receives it rather than mutating process environment:
 
 - linked lab execution passes a canonical project root and inherits the operator's configured/default cache parent;
-- eval and fixture sessions pass a sandbox-local cache parent;
+- eval and mock sessions pass a sandbox-local cache parent;
 - the Wasm provider continues to resolve the guest cache mount;
 - `SPECIFY_PROJECT_CACHE` remains a process-start configuration input, not a variable changed while tasks are running.
 
@@ -379,7 +379,7 @@ It owns:
 
 It does not own:
 
-- fixture adapters or scripted answers;
+- mock adapters or scripted answers;
 - trials, scenarios, grading, telemetry, or sandbox orchestration;
 - lab argv parsing or `--project-dir`;
 - Tokio runtime creation;
@@ -407,13 +407,13 @@ The cost is one vtable hop per model completion. The benefits are:
 Backends with post-run state expose it through caller-held clones:
 
 ```rust
-let recording = fixture::model::Harness::answering(answers); // rename optional later
+let recording = mock::model::Harness::answering(answers); // rename optional later
 let paths = ExecutionPaths::isolated(root, cache_parent);
 let model = DynModel::new(recording.clone());
 let provider = Provider::new(
     paths,
     model,
-    fixture::catalog()?,
+    mock::catalog()?,
     ReferenceMode::Offline,
 );
 
@@ -445,7 +445,7 @@ fn catalog() -> Result<linked::Catalog, linked::Error> {
 - published identities without exact SemVer;
 - conflicting MCP shelf identities.
 
-Cross-axis name collisions are **not** rejected by the linked catalog. Dispatch is always axis-qualified (`source:fixture` vs `target:fixture`). Published first-party adapters must still keep globally unique names because the Wasm store has no axis segment; that invariant is enforced by adapter-repository checks, not by renaming fixture. The default fixture source and target both keep the identity name `fixture`.
+Cross-axis name collisions are **not** rejected by the linked catalog. Dispatch is always axis-qualified (`source:mock` vs `target:mock`). Published first-party adapters must still keep globally unique names because the Wasm store has no axis segment; that invariant is enforced by adapter-repository checks, not by renaming mock. The default mock source and target both keep the identity name `mock`.
 
 Runtime subsets are ordinary post-build filters (or builder-time `if` around `.source::<T>()`). Producing a smaller binary still requires Cargo feature/dependency gating at the lab (or later shared catalog library).
 
@@ -488,7 +488,7 @@ async fn main() -> std::process::ExitCode {
 async fn entry() -> Result<std::process::ExitCode, Box<dyn std::error::Error>> {
     let mut argv: Vec<String> = std::env::args().collect();
     let root = lab_project_root(&mut argv)?;
-    let catalog = catalog()?; // fixture::catalog() or first-party lab catalog()
+    let catalog = catalog()?; // mock::catalog() or first-party lab catalog()
     let options = CursorOptions::from_env(); // lab-local, not linked
 
     if argv.get(1).is_some_and(|arg| arg == "eval") {
@@ -573,7 +573,7 @@ This posture is documented rather than encoded as process-global singletons.
 It does not:
 
 - construct a concrete adapter catalog;
-- depend on fixture or first-party adapter crates;
+- depend on mock or first-party adapter crates;
 - construct a Cursor backend;
 - create or block a Tokio runtime;
 - mutate process-global cache environment;
@@ -614,7 +614,7 @@ Each repository owns an unpublished `lab` binary. It creates one Tokio runtime t
 - `eval` runs the shared eval client;
 - `--project-dir` is parsed only here;
 - when placed before `eval`, `--project-dir` intentionally anchors that eval's `sandbox/` instead of relying on process current directory;
-- the binary is the target of `cargo make dev` and `cargo make eval`;
+- the binary is the target of `cargo make specify` and `cargo make eval`;
 - it is never an install or release artifact.
 
 The two repositories intentionally duplicate the small dispatch. The adapters lab also owns the first-party `catalog()` declaration and depends on the concrete adapter crates directly. A shared catalog library appears only when a second consumer needs it.
@@ -674,9 +674,9 @@ Behavior intentionally specific to a provider:
 
 ```text
 offline linked::Provider
-  ├── fixture catalog
+  ├── mock catalog
   ├── temporary project root + explicit cache parent
-  └── fixture recording model over omnia_testkit::model::Scripted
+  └── mock recording model over omnia_testkit::model::Scripted
       └── caller-held clone for requests / exhaustion
 ```
 
@@ -694,7 +694,7 @@ CLI-reachable workflow behavior goes through the transport router. Linked host d
 - runtime `specify_floor` enforcement;
 - reference no-op, bind failure, grant routing, and shutdown.
 
-No linked production dependency on fixture is introduced. Same-name source and target probe entries are allowed (mirroring fixture).
+No linked production dependency on mock is introduced. Same-name source and target probe entries are allowed (mirroring mock).
 
 ### Eval tests
 
@@ -709,7 +709,7 @@ No linked production dependency on fixture is introduced. Same-name source and t
 
 ### Fixture tests
 
-Fixture behavior, answer recording, and catalog inventory remain under `crates/fixture/tests/`. `Session` stores its recording model beside the provider and uses an explicit temporary cache parent. Renaming `fixture::model::Harness` is optional polish, not required by this RFC. Do **not** rename the default fixture source/target identity `fixture`.
+Fixture behavior, answer recording, and catalog inventory remain under `crates/mock/tests/`. `Session` stores its recording model beside the provider and uses an explicit temporary cache parent. Renaming `mock::model::Harness` is optional polish, not required by this RFC. Do **not** rename the default mock source/target identity `mock`.
 
 ### Wasm boundary tests
 
@@ -717,7 +717,7 @@ No linked test claims Wasm coverage. Existing component gates remain:
 
 - adapter crate tests;
 - adapters `composed` tests;
-- the Specify fixture change example;
+- the Specify mock change example;
 - the first-party change example over the published core component.
 
 ## Module migration
@@ -778,7 +778,7 @@ The actual default dependency list still includes the workspace contracts requir
 ```toml
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 eval.workspace = true
-fixture.workspace = true
+mock.workspace = true
 linked = { workspace = true, features = ["cli"] }
 omnia-cursor.workspace = true
 # plus whatever the private Cursor bridge needs
@@ -814,7 +814,7 @@ Operator-facing workflow verbs and wire outputs do not change in this RFC. Stage
 
 Development tasks retain their names but target the lab:
 
-- `cargo make dev -- ARGS` — lab command passthrough;
+- `cargo make specify -- ARGS` — lab command passthrough;
 - `cargo make eval` — lab eval command;
 - `cargo make eval scenario <id>` — one prompt scenario;
 - `cargo make change-run` — Wasm composed example.
@@ -827,7 +827,7 @@ Stages are dependency order. Prefer small mergeable cuts over one flag day. Whil
 
 ### Stage 1 — Shared seams the linked host needs
 
-1. Add SDK `AdapterIdentity { name, version }`; update source-adapter and target-adapter implementors in both repositories. Keep the default fixture name `fixture` on both axes.
+1. Add SDK `AdapterIdentity { name, version }`; update source-adapter and target-adapter implementors in both repositories. Keep the default mock name `mock` on both axes.
 2. Delete the lossy `AdapterRef`; parse persisted/raw values directly into typed `AdapterSelector` in `project::adapter`.
 3. Delete `Hydrator`; add `Resolver::ensure_source` / `ensure_target` over `AdapterSelector` and `ExecutionPaths`. Keep current deterministic component fetch/store/cache kernels behind the Wasm implementation. Init/upgrade/plan policy stays in handlers.
 4. Make ensure/resolve preserve selector kind and return actual resolved identity for the selectors init and target resolution already consume. Persist selectors as typed; do not rewrite bare to exact package pins.
@@ -856,11 +856,11 @@ Depends on Stage 1's `AdapterSelector` and `ensure_*`. Does not block Stage 2.
 
 1. Add `crates/linked` and move catalog, conversion, provider, command, and reference code from `harness`.
 2. Introduce `DynModel`; remove the model type parameter from `Catalog` and `Provider`.
-3. Delete `Binding` and `adapters!`; make fixture catalogs plain validated values.
+3. Delete `Binding` and `adapters!`; make mock catalogs plain validated values.
 4. Implement linked ensure over exact catalog identities; catalog validation is per-axis only; bare selectors persist as bare.
 5. Make command execution asynchronous and value-consuming; composition roots own Tokio.
 6. Add owned lazy reference hosting with `ReferenceMode`, explicit failure projection, and awaited shutdown.
-7. Retarget `fixture` and workflow suites from `harness` to `linked`.
+7. Retarget `mock` and workflow suites from `harness` to `linked`.
 8. Move linked host tests and replace `Provider::model()` call sites with caller-held recording/telemetry handles.
 9. Leave Cursor bridge code in the temporary harness/lab path until Stage 3; do not import it into `linked`.
 
@@ -871,7 +871,7 @@ Depends on Stage 1's `AdapterSelector` and `ensure_*`. Does not block Stage 2.
 3. Route workflow phases through the linked command API and keep only grading-required project/artifact dependencies.
 4. Inline async dispatch, lab-only project-root parsing, Cursor model construction, and catalog declaration in `crates/lab`.
 5. Remove the emptied `crates/harness`.
-6. Point `cargo make dev` and `cargo make eval` at `-p lab`.
+6. Point `cargo make specify` and `cargo make eval` at `-p lab`.
 
 ### Stage 4 — Adapter repository
 
@@ -894,7 +894,7 @@ Document:
 - linked tests as non-WIT/non-store coverage;
 - adapters lab as the first-party catalog owner until a product binary needs a shared library;
 - linked operator distribution as unresolved follow-up;
-- fixture's dual-axis `fixture` name as intentional and unpublished.
+- mock's dual-axis `mock` name as intentional and unpublished.
 
 Optionally neutralize shared help wording and add a composition-supplied `--version` label. Cosmetic renames remain optional.
 
@@ -907,8 +907,8 @@ In `augentic/specify`:
 ```bash
 cargo make check
 cargo make ci
-cargo make dev -- --help
-cargo make dev -- --version
+cargo make specify -- --help
+cargo make specify -- --version
 cargo make eval
 cargo check --lib -p specify --example change --target wasm32-wasip2
 cargo make change-run
@@ -919,8 +919,8 @@ In `augentic/specify-adapters`:
 ```bash
 cargo make check
 cargo make ci
-cargo make dev -- --help
-cargo make dev -- --version
+cargo make specify -- --help
+cargo make specify -- --version
 cargo make eval
 cargo make change-run
 ```
@@ -939,18 +939,18 @@ Live-model and composed change-run commands remain operator-invoked when credent
 8. Linked init and upgrade persist the operator's selector as typed; bare bindings are not rewritten into exact package pins.
 9. The runtime `specify_floor` gate remains active for linked catalog entries at ensure time.
 10. `Catalog` and `Provider` carry no model type parameter; no `Binding` trait or `adapters!` macro remains.
-11. Catalog construction validates identities, per-axis duplicates, and reference shelf coherence; same-name source and target entries remain legal (fixture keeps `fixture` on both axes).
-12. `linked` contains no concrete adapter, fixture, eval, lab, or Cursor dependency in production dependencies.
+11. Catalog construction validates identities, per-axis duplicates, and reference shelf coherence; same-name source and target entries remain legal (mock keeps `mock` on both axes).
+12. `linked` contains no concrete adapter, mock, eval, lab, or Cursor dependency in production dependencies.
 13. Command execution accepts execution paths, model, catalog, and argv values; libraries do not construct Tokio runtimes.
 14. Lab command execution anchors at a canonical project root; lab-only `--project-dir` is canonicalized before provider construction.
-15. Cache isolation is explicit in execution context; no linked/eval/fixture path mutates `SPECIFY_PROJECT_CACHE` after runtime startup.
+15. Cache isolation is explicit in execution context; no linked/eval/mock path mutates `SPECIFY_PROJECT_CACHE` after runtime startup.
 16. Online providers fail loudly when reference documents cannot be served, no-op for no-doc catalogs, share one listener across clones, and expose an awaited shutdown path used by command execution.
 17. `eval` receives workspace root, catalog, and model factory values, constructs neither concrete adapters nor Cursor backends, and creates no runtime.
 18. Scenario reports derive the effective model from observed requests plus the factory-supplied default.
-19. Specify workflow integration tests use offline `linked` plus fixture adapters and caller-held recording-model handles.
+19. Specify workflow integration tests use offline `linked` plus mock adapters and caller-held recording-model handles.
 20. The adapter repository's lab owns first-party `catalog()`; this RFC adds no `composition` package.
 21. Both labs remain unpublished and are never documented as install paths.
-22. `cargo make dev`, `cargo make eval`, and prompt scenarios preserve their lab behavior.
+22. `cargo make specify`, `cargo make eval`, and prompt scenarios preserve their lab behavior.
 23. The Wasm workflow guest, component manifests, shipped Wasm runtime behavior, and current Wasm release surface remain intact.
 24. Linked tests explicitly avoid claiming component ABI, WIT, isolation, digest, or adapter-store coverage.
 25. The linked command path is documented as single-flight; eval guards its persistent sandbox against concurrent writers.
@@ -1002,7 +1002,7 @@ Mitigation: Cursor stays out of `linked` and `eval`; labs construct backends and
 
 ### Eval regains concrete adapter or model dependencies
 
-Mitigation: eval consumes catalog and model factory values; manifest checks reject concrete adapters, fixture, and Cursor dependencies.
+Mitigation: eval consumes catalog and model factory values; manifest checks reject concrete adapters, mock, and Cursor dependencies.
 
 ### Reference listeners leak or silently disappear
 
@@ -1066,9 +1066,9 @@ Rejected. Persist what the operator typed; resolve reports the catalog version. 
 
 Deferred. Workflow identity is `(name, version)`. Namespace on `AdapterSelector::Package` preserves parse fidelity. Store-sidecar provenance is Wasm follow-up and is not required to extract the linked host.
 
-### Rename fixture source to `fixture-source`
+### Rename mock source to `mock-source`
 
-Rejected. The default fixture intentionally shares the name `fixture` on both axes, matching the Wasm guest. Linked catalog uniqueness is per-axis; published global uniqueness stays an adapters-repo check.
+Rejected. The default mock intentionally shares the name `mock` on both axes, matching the Wasm guest. Linked catalog uniqueness is per-axis; published global uniqueness stays an adapters-repo check.
 
 ### Keep scoped process-environment cache mutation
 
@@ -1130,7 +1130,7 @@ Rejected. It evolves atomically with workflow, transport, and adapter SDK contra
 - Adapter selectors retain their input kind; `Resolver::ensure_*` is the deployment policy entry.
 - Linked init persists selectors as typed; resolve reports catalog versions without rewriting bare pins.
 - A linked catalog carries real package identities, satisfies exact matching pins, and rejects local components without substitution.
-- Catalog uniqueness is per-axis; fixture keeps dual-axis `fixture`; published global uniqueness remains an adapters check.
+- Catalog uniqueness is per-axis; mock keeps dual-axis `mock`; published global uniqueness remains an adapters check.
 - `DynModel` removes the generic binding tower while leaving adapter operation methods generic.
 - Command and eval libraries are asynchronous; composition roots own Tokio.
 - MCP listener and cache lifecycles become explicit rather than detached or process-mutating.

@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use fixture::invoke::run;
-use fixture::session::Session;
+use mock::invoke::run;
+use mock::session::Session;
 use slice::handlers::{Preview, PreviewInput};
 
 const MERGE_CASES: &[&str] = &[
@@ -51,7 +51,7 @@ fn assert_golden(path: &Path, actual: &str) {
 #[tokio::test]
 async fn merged_outputs() {
     for name in MERGE_CASES {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let case = fixtures().join(name);
         stage(&project, &case, "golden");
 
@@ -82,7 +82,7 @@ async fn merged_outputs() {
 #[tokio::test]
 async fn validation_outputs() {
     for name in VALIDATION_CASES {
-        let project = Session::scripted("fixture", Vec::new());
+        let project = Session::scripted("mock", Vec::new());
         let case = fixtures().join(name);
         stage(&project, &case, "FAIL");
 

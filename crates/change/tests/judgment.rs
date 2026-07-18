@@ -8,8 +8,8 @@
 mod support;
 
 use change::plan;
-use fixture::invoke::run;
-use fixture::session::Session;
+use mock::invoke::run;
+use mock::session::Session;
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
@@ -38,8 +38,8 @@ async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project
 #[tokio::test]
 async fn malformed_repaired_in_loop() {
     let session = Session::scripted(
-        "fixture",
-        vec![malformed_answer(), fixture::answers::greeting_grouping()],
+        "mock",
+        vec![malformed_answer(), mock::answers::greeting_grouping()],
     );
 
     let authored = author(&session).await.expect("the repaired answer lands");
@@ -52,7 +52,7 @@ async fn malformed_repaired_in_loop() {
 
 #[tokio::test]
 async fn unrepairable_exhausts_budget() {
-    let session = Session::scripted("fixture", vec![malformed_answer(); JUDGMENT_BUDGET]);
+    let session = Session::scripted("mock", vec![malformed_answer(); JUDGMENT_BUDGET]);
 
     let err = author(&session).await.expect_err("the budget exhausts");
     let detail = err.to_string();

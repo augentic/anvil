@@ -29,7 +29,7 @@ Specify has two adapter roles with a shared shape. **Source adapters** turn exte
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the closed WIT contract (`wit/specify.wit`) — one component, no manifest file. The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same component contract, same prose layout in the authoring repo. The axis decides the operations, which derive from the WIT contract rather than being declared on the wire.
 
-The WIT package also defines an additive combined `adapter` world (`export source; export target;`) so one component can serve both axes. It exists for self-contained testing — Specify's own fixture adapter uses it — and imposes no obligation on external adapters: source-only and target-only components remain the published shape.
+The WIT package also defines an additive combined `adapter` world (`export source; export target;`) so one component can serve both axes. It exists for self-contained testing — Specify's own mock adapter uses it — and imposes no obligation on external adapters: source-only and target-only components remain the published shape.
 
 Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class they emit (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice via `specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>` and then re-run `/spec:refine`; the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). See [Authority resolution](#authority-resolution).
 

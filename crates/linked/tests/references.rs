@@ -24,11 +24,11 @@ fn dual_axis_shelf_mounts_once() {
 
     let shelves = references::shelves(&linked);
     assert_eq!(shelves.len(), 2, "both axis entries expose the shared shelf");
-    assert!(shelves.iter().all(|shelf| shelf.name == "fixture"));
+    assert!(shelves.iter().all(|shelf| shelf.name == "mock"));
     // Shelf identity carries the adapter's version, not the crate's.
     assert!(shelves.iter().all(|shelf| shelf.references.version == "0.0.0"));
 
-    // Would panic on a duplicate `/mcp/fixture` mount before dedup.
+    // Would panic on a duplicate `/mcp/mock` mount before dedup.
     let _router = references::router(&linked);
 }
 

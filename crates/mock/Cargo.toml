@@ -1,6 +1,6 @@
 [package]
-name = "fixture"
-description = "SDK-native fixture adapter"
+name = "mock"
+description = "SDK-native mock adapter"
 publish = false
 version.workspace = true
 edition.workspace = true
