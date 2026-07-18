@@ -1,18 +1,28 @@
-# Linked Specify — Statically Linked Deployment, Evaluation, and Composition Boundaries
+# Linked Specify — Native Operator Product, Evaluation, and Lab Composition
 
 > Status: Draft
 >
-> Owns: the Wasm-free, statically linked deployment of the Specify engine and adapter libraries; the separation of linked execution, evaluation support, and concrete application composition.
+> Owns: the Wasm-free, statically linked operator deployment of the Specify engine; its separation from live-model evaluation and from in-repo lab composition.
 
 ## Abstract
 
-Specify's workflow engine and adapter operation implementations are ordinary Rust libraries behind capability traits. The shipped application composes those libraries as Wasm guests on the Omnia runtime, while the current `harness` crate already composes the same engine and adapters directly for native tests, development commands, and live-model evaluation.
+Specify's workflow engine and adapter operation implementations are ordinary Rust libraries behind capability traits. Today the shipped operator product composes those libraries as Wasm guests on the Omnia runtime, while `crates/harness` already composes the same engine and adapters directly for native tests, development commands, and live-model evaluation.
 
-This RFC makes that second path explicit as a **linked deployment** rather than treating it as test scaffolding. It extracts the reusable deployment substrate into a crate named `linked`, narrows the shared live-model evaluation framework into a library crate named `eval`, and renames each repository's concrete composition binary to `workbench` — one package name, one shape, in both repositories.
+This RFC makes that second path a **peer operator product**: the native, statically linked deployment. It extracts the host into a crate named `linked` (library exposing the product command entry), narrows live-model evaluation into a lab-only library named `eval`, and keeps each repository's fixture/first-party **lab** composition in a package named `workbench`. The first-party shippable fat binary is composed in `specify-adapters` over that host — workbench is never the install path.
 
-Specify's workbench links only the local deterministic `fixture` adapters. It never depends on `augentic/specify-adapters`. The sibling adapter repository owns its own workbench that links the first-party adapters, depending one-way on Specify's `adapter`, `linked`, and `eval` crates.
+```text
+OPERATOR PRODUCTS                              LAB ONLY
+┌──────────────┐  ┌───────────────────┐       ┌────────────┐  ┌──────────┐
+│ specify      │  │ linked            │       │ workbench  │  │ eval     │
+│ Wasm product │  │ Native product    │       │ in-repo    │  │ trials / │
+│              │  │ host (this repo)  │       │ composition│  │ scenarios│
+│ ship/install │  │ + fat bin*        │       │ unpublished│  │ lab lib  │
+└──────────────┘  └───────────────────┘       └────────────┘  └──────────┘
 
-The shipped Wasm deployment remains authoritative for component loading, WIT conformance, isolation, and adapter-store behavior. Linked execution is a first-class local deployment for development, integration tests, and prompt evaluation; it is not evidence that the Wasm boundary works.
+* First-party fat binary composed/released from specify-adapters over the host.
+```
+
+`linked` does not depend on `workbench`, `eval`, or `fixture`. Lab tools and tests depend on `linked`. The Wasm deployment remains authoritative for component loading, WIT conformance, isolation, and adapter-store behavior; linked tests never claim those properties.
 
 ## Motivation
 
@@ -22,29 +32,31 @@ The current package names describe their first consumers rather than their archi
 - `crates/fixture` contains deterministic source and target adapters, scripted model answers, a request-recording model decorator, and native project sessions.
 - `crates/eval` is the concrete native composition binary over the fixture adapters.
 
-This makes a coherent native application look like an accumulation of testing crates. It also obscures the correspondence between the two deployments — a correspondence that must be drawn at the right level. `src/lib.rs` and `src/provider.rs` are adapter-agnostic: adapters reach the Wasm deployment at composition time, through WIT imports resolved by a deployment manifest. The linked analog of that pair is the generic substrate (provider, catalog dispatch, router assembly), and the linked analog of the deployment manifest is the concrete binary's adapter declaration:
+This makes a coherent native **operator product** look like an accumulation of testing crates. It also obscures the correspondence between the two deployments. `src/lib.rs` and `src/provider.rs` are adapter-agnostic: adapters reach the Wasm deployment at composition time through WIT imports. The linked analog of that pair is the host (`Provider`, catalog dispatch, router assembly); the linked analog of the deployment manifest is the binary's `adapters!` declaration:
 
 ```text
 Dynamic Wasm deployment                         Static linked deployment
 
 src/lib.rs + src/provider.rs                    linked::Provider<M> + router assembly
-deployment manifest composing components        workbench `adapters!` declaration
+deployment manifest composing components        product binary `adapters!` declaration
 adapter components                              linked adapter libraries
+shipped operator binary: specify                shipped operator binary: linked
 ```
 
-The linked path should be understood and maintained as a deployment of the same engine, with tests and evaluation layered on top of it — and with concrete composition roots living beside the engine, exactly as deployment manifests do.
+Evaluation and in-repo fixture/first-party scratch binaries are consumers of that product host — not the product itself.
 
 ## Goals
 
-1. Establish a first-class linked deployment of Specify with no Wasm guest or component runtime.
-2. Keep the reusable substrate in the Specify workspace without making it part of the workflow core.
-3. Preserve dependency inversion: workflow crates depend only on capability traits, never on the linked deployment.
-4. Keep Specify's integration tests self-contained by composing only the local `fixture` adapters.
-5. Let downstream repositories compose their own linked applications without the Specify repository depending back on them.
-6. Separate linked execution from live-model evaluation and from concrete adapter selection — including model-backend selection, which belongs to the composition root end to end.
-7. Preserve the current command, test, scenario, and evaluation behavior while changing ownership and names, with two declared exceptions: the live reference listener fails loudly instead of silently skipping, and the model-override variable loses its `EVAL` name.
-8. Keep one implementation of provider dispatch, model bridging, adapter registration, and MCP reference serving.
-9. Give both repositories the same composition shape: one `workbench` package declaring linked adapters, everything else shared.
+1. Establish the linked deployment as a first-class **shippable native operator product**, peer to Wasm `specify`: Specify owns the `linked` host library and product command entry; the first-party fat binary is composed where the adapters live.
+2. Keep the linked host out of the workflow core; workflow crates depend only on capability traits.
+3. Preserve dependency inversion: `linked` never depends on `eval`, `workbench`, `fixture`, or `augentic/specify-adapters`.
+4. Keep Specify's integration tests self-contained over local `fixture` adapters via `linked`'s library API.
+5. Let downstream repositories compose their own linked binaries (product or lab) without Specify depending back on them.
+6. Separate the operator command surface from live-model evaluation: command mode lives in `linked`; `eval` is optional and lab-only.
+7. Model-backend selection belongs to the composition root (product `main` or lab entry), not to provider dispatch.
+8. Preserve current command, test, scenario, and evaluation behavior while changing ownership and names, with two declared exceptions: the live reference listener fails loudly instead of silently skipping, and the model-override variable loses its `EVAL` name.
+9. Keep one implementation of provider dispatch, model bridging, adapter registration, and MCP reference serving.
+10. Demote `workbench` to unpublished in-repo lab composition (fixture or first-party adapters plus eval UX) — not the answer to "how do I ship native Specify?"
 
 ## Non-goals
 
@@ -56,97 +68,171 @@ The linked path should be understood and maintained as a deployment of the same 
 - Changing workflow semantics, artifact schemas, lifecycle transitions, prompts, or adapter operation traits.
 - Adding a compatibility alias for the old crate names; this is an internal pre-1.0 workspace refactor.
 - Widening workflow APIs solely to support tests.
-- Serving the HTTP transport from the linked deployment. The typed HTTP router exists and axum is already a substrate dependency, so this is a natural later extension; it is out of scope here.
+- Serving the HTTP transport from the linked deployment (natural later extension; out of scope).
+- Defining the full release-pipeline matrix for the linked binary in this RFC (artifact naming and CI attachment are follow-on; the architecture must make that attachment possible).
 
 ## Terminology
 
 - **Workflow core** — the deployment-neutral engine crates: `project`, `slice`, `change`, and `transport`, plus their dependency leaves.
-- **Wasm deployment** — the shipped native Omnia host running the workflow and adapter Wasm guests. That host is itself a native process: what distinguishes the two deployments is not nativeness but *static Rust linking versus dynamic component composition*.
-- **Linked deployment** — the workflow core and adapter libraries compiled into one native process and connected through Rust capability traits.
-- **Linked substrate** — the reusable provider, adapter catalog, model bridge, MCP host, and invocation machinery in the `linked` crate.
-- **Evaluation framework** — reusable trials, scenarios, grading, telemetry, and sandbox orchestration in the `eval` crate.
-- **Workbench** — a concrete composition root: the package named `workbench` in each repository, declaring which adapters are linked and delegating its entrypoint to the shared framework. Specify's workbench binds the fixture adapters; the adapter repository's binds the first-party adapters.
-- **Fixture adapters** — deterministic local implementations in `crates/fixture`; they are concrete SDK-native adapters, not mocks of the workflow seam.
+- **Wasm deployment / `specify`** — the shipped Omnia-hosted operator product: native host process + workflow and adapter Wasm guests. Authoritative for component loading, WIT, isolation, digests, and the adapter store.
+- **Linked deployment / `linked`** — the shipped native operator product: workflow core and adapter libraries compiled into one process and connected through Rust capability traits. Peer to `specify`, not a harness.
+- **Linked host** — the reusable library surface of the `linked` package: provider, catalog, model bridge, MCP, command entry, process cache isolation.
+- **Evaluation framework (`eval`)** — lab-only trials, scenarios, grading, telemetry, and sandbox orchestration.
+- **Workbench** — unpublished in-repo lab composition: declares adapters and runs the shared eval/dev UX. Not an operator product. Specify's workbench binds `fixture`; the adapter repository's binds first-party adapters.
+- **Fixture adapters** — deterministic local implementations in `crates/fixture`; concrete SDK-native adapters, not mocks of the workflow seam.
 
 ## Decision
 
+### Mental model
+
+```text
+OPERATOR PRODUCTS (two deployments of the same engine)
+┌──────────────────────────┐     ┌──────────────────────────┐
+│ specify                  │     │ linked                   │
+│ Wasm deployment          │     │ Native deployment        │
+│                          │     │                          │
+│ omnia runtime + guests   │     │ host library +           │
+│ WIT provider             │     │ product command entry    │
+│ component adapters       │     │ Provider + Catalog       │
+│ adapter-store / digests  │     │ convert / MCP / command  │
+│ ship / install / release │     │ ship / install / release*│
+└──────────────────────────┘     └────────────┬─────────────┘
+                                              │
+                         library API of the same package
+                              ┌───────────────┼───────────────┐
+                              │               │               │
+                              ▼               ▼               ▼
+                  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐
+                  │ Integration    │ │ workbench      │ │ First-party    │
+                  │ tests          │ │ (lab only)     │ │ product bin*   │
+                  │ scripted Model │ │ adapters!      │ │ (adapters repo)│
+                  │ fixture bind   │ │ + eval::entry  │ │ adapters!      │
+                  │ no eval        │ └───────┬────────┘ │ linked::command│
+                  └────────────────┘         │          │ no eval        │
+                                             ▼          └────────────────┘
+                                     ┌────────────────┐
+                                     │ eval (lab lib) │
+                                     │ trials /       │
+                                     │ scenarios      │
+                                     └────────────────┘
+
+* First-party fat binary ships from the adapters repo over this host library;
+  see [Adapter composition and shipping](#adapter-composition-and-shipping).
+```
+
+Dependency direction (Cargo):
+
+```text
+workbench ──► linked
+workbench ──► eval ──► linked
+tests     ──► linked   (+ fixture as needed)
+
+linked  ──✗──► workbench
+linked  ──✗──► eval
+linked  ──✗──► fixture
+linked  ──✗──► specify-adapters
+specify ──✗──► specify-adapters
+```
+
 ### Crate names and ownership
 
-The current `harness` and `eval` responsibilities are split and renamed as follows:
+| Target crate | Kind | Responsibility | Source of current code |
+| --- | --- | --- | --- |
+| `linked` | library | Native operator host: catalog, provider, MCP, `command::run`, model bridge | Native execution modules from `harness` |
+| `eval` | library | Lab-only live-model evaluation framework | Evaluation modules from `harness` |
+| `workbench` | binary (`publish = false`) | In-repo lab composition (fixture + eval UX) | Current `eval` binary, renamed and demoted |
+| `fixture` | library | Deterministic adapters, answers, sessions | Existing `fixture`, retargeted to `linked` |
 
-| Target crate | Kind    | Responsibility                                           | Source of current code                                    |
-| ------------ | ------- | -------------------------------------------------------- | --------------------------------------------------------- |
-| `linked`     | library | Generic linked-deployment substrate                      | Native execution modules from current `harness`           |
-| `eval`       | library | Shared live-model evaluation framework                   | Evaluation modules from current `harness`                 |
-| `workbench`  | binary  | Concrete fixture-adapter linked application              | Current `eval` binary, renamed                            |
-| `fixture`    | library | Deterministic adapters, answer corpus, scripted sessions | Existing `fixture`, retargeted from `harness` to `linked` |
+The shippable first-party **linked fat binary** is not a Specify workspace package — it is composed in `specify-adapters` over this `linked` library (see below).
 
-The package name `eval` is freed by the workbench rename and reused for the code that actually evaluates prompts and scenarios. (A stale `cargo run -p eval` fails with a missing-binary error rather than doing something else.) After the migration there is no `harness` package in the Specify workspace, and no crate is named `native`: that word already means `cfg(not(target_arch = "wasm32"))`, "native tests", and "native-only" throughout both repositories, and the shipped deployment's host is a native process too. `linked` states the deployment's actual distinguishing property and stays greppable.
+After migration there is no `harness` package. No crate is named `native`: that word already means `cfg(not(target_arch = "wasm32"))` and "native tests," and the Wasm product's host is itself a native process. `linked` names the deployment's distinguishing property (static linking vs dynamic component composition).
 
-The sibling `augentic/specify-adapters` workspace mirrors the shape:
+The package name `eval` is freed by the workbench rename and reused for code that evaluates prompts and scenarios. A stale `cargo run -p eval` fails with a missing-binary error rather than doing something else.
 
-- its current `eval` binary becomes `workbench` (its `scenarios/` root moves with the package);
-- that workbench links the first-party source and target adapter crates;
-- it consumes Specify's `adapter`, `linked`, and `eval` crates as one-way dependencies.
+### Adapter composition and shipping
 
-### Dependency direction
+Wasm `specify` ships the engine from this repository and loads adapter components dynamically from the store — so the operator binary has no compile-time dependency on `specify-adapters`.
 
-The linked crates are leaves over the workflow core:
+Linked composition is static. Therefore:
+
+1. **Specify owns the linked host** — `crates/linked` as a library (and the product-shaped binary entry APIs: `command::run`, `Provider`, `adapters!`).
+2. **Specify's `linked` binary does not bind first-party adapters** — that would require a dependency on `specify-adapters`. Its production dependencies stay free of `fixture`, `eval`, and `workbench` as well.
+3. **The first-party native operator product** — the fat binary operators install when they want omnia/vectis/contracts/… linked in-process — is **composed and released from `augentic/specify-adapters`**: depends one-way on Specify's `linked` library, declares first-party `adapters!`, and calls `linked::command` only (no `eval`).
+4. **Workbench is never that product** — in both repositories it remains the unpublished lab binary (dev command passthrough + `eval` subcommand).
+
+```text
+augentic/specify                         augentic/specify-adapters
+────────────────                         ─────────────────────────
+specify     ← shipped Wasm product
+linked      ← host lib (+ product APIs) ──► linked fat binary
+              (no first-party adapters)     (first-party adapters;
+                                             shippable native product)
+eval        ← lab framework
+workbench   ← lab: fixture + eval        workbench ← lab: first-party + eval
+```
+
+The released argv0 for the first-party fat binary is a follow-on packaging choice (`linked` vs another operator-facing name). Architecturally it is the linked deployment product; it is not `workbench`.
+
+### Dependency graph (Specify workspace)
 
 ```text
 augentic/specify
 
-crates/workbench
+crates/linked                          # library — native product host
+  ├── crates/adapter
+  └── crates/transport                 (behind the live feature)
+        ├── crates/change
+        ├── crates/slice
+        └── crates/project
+
+crates/eval                            # lab library
+  ├── crates/linked
+  ├── crates/change
+  └── crates/project
+
+crates/workbench                       # lab binary only
   ├── crates/fixture
   │     └── crates/adapter
   ├── crates/linked
-  │     ├── crates/adapter
-  │     └── crates/transport        (behind the `cli` feature)
-  │           ├── crates/change
-  │           ├── crates/slice
-  │           └── crates/project
   └── crates/eval
-        ├── crates/linked
-        ├── crates/change
-        └── crates/project
+
+# Integration-test targets may dev-depend on linked + fixture.
+# No workflow-core crate has a normal dependency on linked, eval,
+# fixture, or workbench.
 ```
 
-No workflow-core crate has a normal dependency on `linked`, `eval`, `fixture`, or `workbench`. Integration-test targets may dev-depend on `linked` and `fixture`.
-
-The cross-repository direction remains:
+Cross-repository:
 
 ```text
 augentic/specify-adapters
-  └── workbench
+  ├── <first-party product binary>     # linked::command + first-party adapters!
+  │     ├── first-party adapter crates
+  │     └── augentic/specify::linked   # library only
+  └── workbench                        # lab only
         ├── first-party adapter crates
         ├── augentic/specify::linked
         └── augentic/specify::eval
-
-augentic/specify
-  ── no dependency on augentic/specify-adapters
 ```
 
-This avoids the circular dependency that would result if Specify's own native tests selected first-party adapters from the sibling repository.
-
-The lightweight `checks` package enforces these directions from Cargo manifests, parsed as TOML (the `toml` dev-dependency is already present) rather than substring-matched. One manifest walk rejects: `linked`, `eval`, `fixture`, `workbench`, or the removed `harness` in `[dependencies]` and `[build-dependencies]` of `error`, `diagnostics`, `artifacts`, `adapter`, `project`, `slice`, `change`, and `transport`; and `fixture` or any concrete adapter crate anywhere in `linked` and `eval`. Explicit `[dev-dependencies]` on `linked` and `fixture` remain legal where core integration suites require them. This check absorbs the current `harness/tests/boundary.rs`.
+The lightweight `checks` package enforces these directions from Cargo manifests, parsed as TOML. One manifest walk rejects: `linked`, `eval`, `fixture`, `workbench`, or the removed `harness` in `[dependencies]` and `[build-dependencies]` of `error`, `diagnostics`, `artifacts`, `adapter`, `project`, `slice`, `change`, and `transport`; rejects `fixture`, `eval`, `workbench`, or any concrete adapter crate in `linked`'s production dependencies; and rejects `fixture` or concrete adapter crates in `eval`. Explicit `[dev-dependencies]` on `linked` and `fixture` remain legal where core integration suites require them. This check absorbs the current `harness/tests/boundary.rs`.
 
 ## Architecture
 
 ### Workflow core
 
-The workflow core remains deployment-neutral:
+Unchanged and deployment-neutral:
 
 - handlers implement `omnia_guest::api::operation::Operation<P>`;
 - each operation states its minimum capability intersection on `P`;
-- orchestrators receive `project::seam::Capabilities` where independent model, source, target, and resolver types are useful;
+- orchestrators receive `project::seam::Capabilities` where useful;
 - `transport` assembles the typed command and HTTP routers;
 - the adapter SDK owns `adapter::Source` and `adapter::Target`.
 
-The workflow core does not know whether those capabilities are satisfied by WIT imports, linked Rust implementations, scripted doubles, or a live Cursor backend.
+The workflow core does not know whether capabilities are satisfied by WIT imports, linked Rust implementations, scripted doubles, or a live Cursor backend.
 
-### The `linked` crate
+### The `linked` package (operator product host)
 
-`linked` is a generic deployment library. Its public surface is usable by a workbench, an integration test, or a downstream application without importing evaluation machinery.
+`linked` is the native deployment host: a **library** used by tests, workbench, and the shippable first-party product binary. Product `main` functions live in composition roots that depend on this library; they call `linked::command` and declare `adapters!`.
 
 It owns:
 
@@ -155,53 +241,63 @@ It owns:
 - `Provider<M>`, implementing `Anchor`, `Resolver`, `Hydrator`, `Model`, workflow `Source`, and workflow `Target`;
 - adapter-SDK to workflow-seam DTO conversion;
 - provider-neutral typed operation invocation;
-- command-router assembly over a caller-supplied model backend;
+- **command-router assembly and process command entry** over a caller-supplied model backend;
 - the guest-model to host-model bridge;
-- the Cursor-backed `Model` implementation behind an optional `cursor` feature;
+- the Cursor-backed `Model` implementation behind an optional live/cursor feature;
 - ephemeral MCP serving for linked adapters' embedded reference shelves;
-- process-scoped project-cache environment support used by sandboxes and tests.
+- process-scoped project-cache isolation (`env`) used when a linked process must not inherit the operator's global cache location (sandboxes, tests, and isolated product runs).
 
 It does not own:
 
 - fixture adapters or scripted answers;
-- live trial definitions;
-- scenario configuration;
-- grading;
-- evaluation telemetry;
-- a concrete adapter list;
-- a model choice — composition roots supply the backend;
-- a `main` function.
+- live trial definitions, scenarios, grading, or evaluation telemetry;
+- the lab `eval` subcommand multiplexer (that stays in `eval` for workbench UX);
+- a hard-coded model choice inside provider dispatch — composition roots supply the backend.
 
-One acknowledged impurity: `env`'s scoped project-cache guard is sandbox and test support, not deployment configuration. It lives in `linked` because the dependency directions leave it no better home — `fixture` cannot host it without inverting the `fixture → linked` edge, and `eval` cannot host it without giving `fixture` an evaluation dependency.
+#### Command entry (product path)
 
-The central application assembly:
+The operator command surface lives in `linked`, not in `eval`:
 
 ```rust
-let model = CursorModel::new(&root);
-let provider = Provider::bound::<Adapters>(root, model).await?;
+// Product or lab composition root supplies Binding + model factory.
+linked::command::run::<B, M>(argv, model_factory).await
+```
+
+Central assembly:
+
+```rust
+let model = model_factory(&root);
+let provider = Provider::bound::<B>(root, model).await?;
 let invoker = Invoker::new("specify", provider);
 let router = transport::command::router(invoker)?;
 let response = router.execute(argv).await;
 ```
 
-`Provider<M>` stays generic over `omnia_guest::Model`, and the command entry receives its model from the caller — `linked::command::run::<B, M>(argv, factory)` with a `fn(&Path) -> M` factory — so Cursor is selected by the composition root: not by provider dispatch, and not by the entry the composition root delegates to. Native integration tests substitute `fixture::RecordingModel<omnia_testkit::model::Scripted>` without introducing a second provider implementation; `eval` supplies `CursorModel::new`.
+`Provider<M>` stays generic over `omnia_guest::Model`. Native integration tests substitute `fixture::RecordingModel<omnia_testkit::model::Scripted>` without a second provider implementation. Product binaries and `eval` supply `CursorModel::new` (or another backend) at their composition root.
 
-Feature layout: the default surface (catalog, conversion, invocation, provider) stays dependency-light for scripted workflow tests. The process-entry surface — command-router assembly and MCP reference serving — sits behind a `cli` feature carrying the transport and server dependencies. The Cursor backend and model bridge sit behind a `cursor` feature carrying the omnia host dependencies, and gate nothing else: a downstream application with its own `Model` implementation runs the full command surface with `cli` alone.
+A command-only product binary never depends on `eval`.
 
-### Adapter catalog
+#### Features
+
+- **default** — catalog, convert, invoke, `Provider::new` (dependency-light for scripted workflow tests).
+- **live** (or split `cli` + `cursor` if a non-Cursor `Model` consumer appears) — transport router, MCP serving, Cursor backend and model bridge. Not default.
+
+Headline extension seam: caller-supplied model factory on `command::run`. The feature split is implementation detail supporting that seam.
+
+#### Adapter catalog
 
 The adapter SDK traits are associated-function traits generic over `P: Model` and are deliberately not object-safe. The catalog remains a typed, monomorphized vtable:
 
-- a workbench registers each source and target adapter type;
+- a composition root registers each source and target adapter type;
 - registration captures operation function pointers specialized for the application's model type;
 - `Provider<M>` resolves `<axis>:<name>` identities against that catalog;
 - workflow `Source` and `Target` calls narrow their DTOs, dispatch the registered operation with `&M`, and widen the result.
 
-This is the linked equivalent of the workflow guest's source/target WIT imports. It is application composition, not a test mock layer.
+This is the linked equivalent of the workflow guest's source/target WIT imports — application composition, not a test mock layer.
 
-### Model bridge
+#### Model bridge
 
-Workflow and adapter libraries consume `omnia_guest::Model`, while `omnia_cursor::Client` implements the host-side `omnia_wasi_model::WasiModelCtx`. The model bridge remains necessary to preserve deployed semantics:
+Workflow and adapter libraries consume `omnia_guest::Model`, while `omnia_cursor::Client` implements the host-side `omnia_wasi_model::WasiModelCtx`. The bridge remains necessary:
 
 - map guest `Request` to the host wire request;
 - run the host request gate;
@@ -210,24 +306,27 @@ Workflow and adapter libraries consume `omnia_guest::Model`, while `omnia_cursor
 - validate and project the answer back into a guest `Reply`;
 - preserve typed model errors.
 
-The current `DevModel` is renamed `CursorModel`. The current internal `Native<B>` bridge is renamed `ModelBridge<B>` so neither type collides with the `cfg`-axis vocabulary or hides its role. The Cursor backend's driver-side model-id override is renamed from `SPECIFY_EVAL_MODEL` to `SPECIFY_MODEL`: the override belongs to the deployment's Cursor backend — the command passthrough honors it as much as evaluation does — so its name must not claim it is evaluation-only.
+Rename `DevModel` → `CursorModel` and internal `Native<B>` → `ModelBridge<B>`. Rename the driver-side model-id override from `SPECIFY_EVAL_MODEL` to `SPECIFY_MODEL`: the override belongs to the deployment's Cursor backend (product command passthrough and evaluation alike).
 
-### MCP references
+#### MCP references
 
 Adapter judgment requests carry MCP grants for embedded adapter references. A linked deployment must serve the same reference shelves to preserve prompt behavior.
 
-`Provider::bound` therefore remains the live constructor:
+Constructors:
 
-1. build the selected adapter catalog;
-2. start the ephemeral MCP listener;
-3. record its base URL;
-4. rewrite each operation context to the selected adapter's `/mcp/<name>` shelf.
+- `Provider::new(root, model, catalog)` — no listener (deterministic tests).
+- `Provider::serve_references(self).await?` — start the ephemeral MCP listener; **fails** when no port can bind (no silent shelf stripping).
+- `Provider::bound::<B>(root, model).await?` — sugar: build `B`'s catalog, `new`, then `serve_references`.
 
-It now fails when the listener cannot start. The previous behavior — skip serving when no port can be bound — was test-scaffolding tolerance; in a deployment it silently strips reference shelves from every prompt and silently degrades trial quality. `Provider::new` remains the listener-free constructor for deterministic tests, which are unaffected.
+The previous skip-when-unbound behavior was test-scaffolding tolerance; in an operator product it silently degrades every prompt that needs references.
 
-### The `eval` crate
+#### Process cache isolation (`env`)
 
-`eval` is a library over `linked` (enabling its `cli` and `cursor` features), not a composition root. It also depends directly on `change` and `project` because trials invoke typed plan operations and sandbox inspection loads workflow state. It owns:
+`env`'s scoped project-cache guard isolates the process-global cache location for sandboxes, tests, and other isolated runs. That is legitimate linked-host process configuration, not evaluation residue. It stays in `linked`.
+
+### The `eval` crate (lab only)
+
+`eval` is a library over `linked` (enabling its live features). It also depends directly on `change` and `project` because trials invoke typed plan operations and sandbox inspection loads workflow state. It owns:
 
 - the multi-step live workflow trial;
 - single-operation adapter scenarios;
@@ -235,9 +334,7 @@ It now fails when the listener cannot start. The previous behavior — skip serv
 - model-request telemetry;
 - sandbox seeding and cleanup;
 - shared evaluation CLI parsing;
-- the combined entry helper that selects command passthrough or the `eval` subcommand.
-
-The entry takes one explicit configuration value instead of ambient anchors:
+- the combined **lab** entry helper that selects command passthrough or the `eval` subcommand for workbench UX.
 
 ```rust
 pub struct Config {
@@ -247,22 +344,23 @@ pub struct Config {
     pub sandbox: PathBuf,
 }
 
+/// Lab entry used by workbench only. Not the operator product entry.
 pub fn main<B: linked::Binding>(config: Config) -> ExitCode
 ```
 
-This replaces the positional `Option<&Path>` scenario argument and the module-level sandbox constant, so the framework keeps no implicit current-directory anchors beyond the configured roots. The entry deliberately still couples command passthrough with the `eval` subcommand: that coupling is the workbench UX, and accepting it here is what keeps both workbenches pure declarations.
+Command passthrough inside this lab entry still delegates to `linked::command` with a model factory — it does not reimplement the router. Product binaries call `linked::command` directly and never go through `eval::main`.
 
 `eval` is generic over `linked::Binding`. It never selects concrete adapters and never depends on `fixture` or first-party adapter crates.
 
-The evaluation provider remains a transparent composition:
+Evaluation provider composition remains:
 
 ```text
 linked::Provider<Telemetry<CursorModel>>
 ```
 
-### The Specify workbench
+### Workbench (lab only)
 
-`crates/workbench` is the concrete linked application for the Specify repository. Its whole body is the fixture binding plus one entry call:
+`crates/workbench` is the unpublished in-repo lab binary. Its body is the fixture binding plus one lab entry call:
 
 ```rust
 fn main() -> std::process::ExitCode {
@@ -278,71 +376,48 @@ linked::adapters! {
 }
 ```
 
-- ordinary arguments run a Specify command through the linked substrate;
-- the `eval` subcommand runs the shared live trial through the evaluation framework.
+- ordinary arguments run a Specify command through `linked` (via the lab entry);
+- the `eval` subcommand runs the shared live trial.
 
-This binary is the target of `cargo make dev` and `cargo make eval`. It provides a live Cursor-backed fixture application for local development, while integration tests assemble the same `linked::Provider` with scripted model answers directly.
+This binary is the target of `cargo make dev` and `cargo make eval`. It is **not** the shipped native operator product; do not document "build workbench" as how to ship or install linked Specify.
 
-The `adapters!` declaration is the linked analog of a deployment manifest, and like a manifest it lives beside the engine rather than inside the root package. The root package's targets stay what they are today: the Wasm guest lib, the shipped `specify` runtime, and the change example.
+Integration tests assemble `linked::Provider` with scripted model answers directly — they do not require workbench.
 
-### The adapter repository workbench
+### Adapter-repository composition
 
-`augentic/specify-adapters/crates/workbench` is the same shape over the first-party source and target adapters, passing its `scenarios/` root through `entry::Config`.
+`augentic/specify-adapters` consumes Specify's `adapter`, `linked`, and (for lab only) `eval` crates one-way.
 
-It is not a dependency of Specify, its fixture crate, or Specify's tests. Its purpose is:
+| Binary | Role | Entry | Adapters |
+| --- | --- | --- | --- |
+| First-party **product** binary | Shippable native operator product | `linked::command` + model factory | first-party `adapters!` |
+| `workbench` | Lab only (`publish = false`) | `eval::entry::main` | first-party `adapters!` + scenarios root |
 
-- native development against first-party adapters;
-- live first-party prompt trials;
-- single-adapter prompt scenarios.
-
-The sibling repository's Wasm composed tests and change example remain separate gates.
+Wasm composed tests and the change example remain separate gates.
 
 ## Wasm and linked correspondence
 
-The two deployments share engine and adapter operation code but differ at their deployment seams:
+| Concern | Wasm (`specify`) | Linked (`linked`) |
+| --- | --- | --- |
+| Operator product | shipped `specify` binary | shipped linked fat binary (first-party: adapters repo) |
+| Workflow composition | `src/lib.rs` + `src/provider.rs` | `linked::Provider<M>` + router assembly |
+| Adapter selection | component identity + deployment manifest | product binary `adapters!` |
+| Engine invocation | `Invoker` + `transport` router | same |
+| Model access | `omnia:model/completion` host import | composition-root `Model` (Cursor via bridge) |
+| Adapter dispatch | WIT source/target imports | typed linked `Catalog<M>` |
+| References | adapter HTTP guest routed by Omnia | ephemeral linked MCP listener |
+| Project tree | shared Wasm preopen | native project path |
+| Isolation | component instance per call | one native process |
+| Lab composition | n/a | unpublished `workbench` + `eval` |
 
-| Concern              | Wasm deployment                            | Linked deployment                                 |
-| -------------------- | ------------------------------------------ | ------------------------------------------------- |
-| Workflow composition | `src/lib.rs` and `src/provider.rs`         | `linked::Provider<M>` and router assembly         |
-| Adapter selection    | component identity and deployment manifest | workbench `adapters!` declaration                 |
-| Engine invocation    | `Invoker` and `transport` router           | same `Invoker` and `transport` router             |
-| Model access         | `omnia:model/completion` host import       | composition-root `Model` (Cursor via the bridge)  |
-| Adapter dispatch     | WIT source/target imports                  | typed linked `Catalog<M>`                         |
-| References           | adapter HTTP guest routed by Omnia         | ephemeral linked MCP listener                     |
-| Project tree         | shared Wasm preopen                        | native project path                               |
-| Isolation            | component instance per call                | one native process                                |
+Observable behavior the linked product must preserve: command I/O, exit codes, artifact writes, lifecycle transitions, adapter operation order, model request/answer schema, MCP reference contents, report validation.
 
-The linked deployment must preserve observable workflow behavior:
-
-- command input and output;
-- exit codes;
-- artifact writes;
-- lifecycle transitions;
-- adapter operation order;
-- model request and answer schema;
-- MCP reference contents;
-- report validation.
-
-It does not preserve or test:
-
-- component ABI conformance;
-- WIT mapping;
-- Wasm isolation;
-- instance-per-call behavior;
-- dynamic component hydration;
-- global adapter-store resolution;
-- pinned component digest verification;
-- deployment-manifest link configuration.
-
-Those remain owned by adapter crate tests, composed-deployment tests, and the operator-invoked Wasm change example.
+It does not preserve or test: component ABI, WIT mapping, Wasm isolation, instance-per-call behavior, dynamic component hydration, global adapter-store resolution, pinned digest verification, deployment-manifest link configuration. Those remain owned by adapter crate tests, composed-deployment tests, and the operator-invoked Wasm change example.
 
 ## Testing model
 
-Native testing is a consumer of the linked deployment, not the reason it exists.
+Native testing is a consumer of the linked **library**, not a reason the product exists — and not routed through workbench.
 
 ### Workflow integration tests
-
-Workflow suites compose:
 
 ```text
 linked::Provider<fixture::RecordingModel<omnia_testkit::model::Scripted>>
@@ -351,101 +426,73 @@ linked::Provider<fixture::RecordingModel<omnia_testkit::model::Scripted>>
   └── scripted model answers
 ```
 
-They invoke public operations through `linked::invoke::run` or the transport router. They do not define per-crate provider mocks when the shared fixture can reach the behavior.
+Invoke public operations through `linked::invoke::run` or the transport router.
 
-### Substrate tests
+### Substrate / product-host tests
 
-Tests for catalog registration, provider dispatch, command routing, MCP serving, and model bridging live under `crates/linked/tests/`.
+Catalog registration, provider dispatch, command routing, MCP serving, and model bridging live under `crates/linked/tests/`.
 
 ### Evaluation tests
 
-Tests for scenario loading, grading, telemetry, and trial argument handling live under `crates/eval/tests/`.
+Scenario loading, grading, telemetry, and trial argument handling live under `crates/eval/tests/`.
 
 ### Fixture tests
 
-Tests for deterministic fixture behavior, answer recording, and the exhaustive fixture adapter inventory remain owned by `crates/fixture/tests/`.
+Deterministic fixture behavior, answer recording, and the exhaustive fixture inventory remain in `crates/fixture/tests/`.
 
-The request-recording model decorator in `crates/fixture/src/model.rs` is renamed from `Harness<B>` to `RecordingModel<B>`. Once the `harness` package is gone, `Harness` no longer describes the type's behavior and risks being mistaken for the removed crate. The same argument applies verbatim to the sibling repository's `testkit::Harness` copy — that workspace is also losing its `harness` dependency — so it is renamed in the same coordination stage. The later move upstream to `omnia-testkit` remains optional and does not block this RFC.
+Rename `fixture::model::Harness<B>` → `fixture::RecordingModel<B>`. Rename the sibling repository's `testkit::Harness` copy the same way in the coordination stage. A later move upstream to `omnia-testkit` remains optional.
 
 ### Wasm boundary tests
 
-No linked-deployment test claims Wasm coverage. The existing component gates remain:
-
-- adapter composed-deployment tests in `augentic/specify-adapters/composed`;
-- the Specify fixture change example;
-- the first-party change example over the published core component.
+No linked test claims Wasm coverage. Existing component gates remain: adapters `composed` tests, the Specify fixture change example, and the first-party change example over the published core component.
 
 ## Module migration
 
-The current `crates/harness/src` modules move as follows:
+| Current module | Target | Notes |
+| --- | --- | --- |
+| `catalog.rs` | `crates/linked/src/catalog.rs` | `Binding`, catalog builder, `adapters!` |
+| `convert.rs` | `crates/linked/src/convert.rs` | SDK/workflow DTO mapping |
+| `env.rs` | `crates/linked/src/env.rs` | Process cache isolation |
+| `invoke.rs` | `crates/linked/src/invoke.rs` | Typed operation invocation |
+| `provider.rs` | `crates/linked/src/provider.rs` | Generic provider; loud `serve_references` / `bound` |
+| `command.rs` | `crates/linked/src/command.rs` | Model factory from caller; live feature |
+| `mcp.rs` | `crates/linked/src/mcp.rs` | Ephemeral reference shelves; live feature |
+| `model.rs` | `crates/linked/src/cursor_model.rs` | `CursorModel`; `SPECIFY_MODEL`; live/cursor feature |
+| `native.rs` | `crates/linked/src/model_bridge.rs` | `ModelBridge<B>`; live/cursor feature |
+| `entry.rs` | `crates/eval/src/entry.rs` | Lab command/eval multiplexer; `entry::Config` |
+| `fs.rs` | `crates/eval/src/fs.rs` | Evaluation tree-copy |
+| `grade.rs` | `crates/eval/src/grade.rs` | Grading |
+| `sandbox.rs` | `crates/eval/src/sandbox.rs` | Sandbox; root from `Config` |
+| `scenario.rs` | `crates/eval/src/scenario.rs` | Prompt scenarios |
+| `telemetry.rs` | `crates/eval/src/telemetry.rs` | Model request counts |
+| `trial.rs` | `crates/eval/src/trial.rs` | Live workflow trial |
 
-| Current module | Target                              | Notes                                                                 |
-| -------------- | ----------------------------------- | --------------------------------------------------------------------- |
-| `catalog.rs`   | `crates/linked/src/catalog.rs`      | Keeps `Binding`, catalog builder, entries, and the `adapters!` macro  |
-| `convert.rs`   | `crates/linked/src/convert.rs`      | Keeps SDK/workflow DTO mapping                                        |
-| `env.rs`       | `crates/linked/src/env.rs`          | Process-scoped cache-root support (sandbox/test support; see above)   |
-| `invoke.rs`    | `crates/linked/src/invoke.rs`       | Provider-neutral typed operation invocation                           |
-| `provider.rs`  | `crates/linked/src/provider.rs`     | Generic composite provider; `bound` becomes fallible                  |
-| `command.rs`   | `crates/linked/src/command.rs`      | Model supplied by the caller; behind the `cli` feature                |
-| `mcp.rs`       | `crates/linked/src/mcp.rs`          | Ephemeral adapter reference shelves; behind the `cli` feature         |
-| `model.rs`     | `crates/linked/src/cursor_model.rs` | Rename `DevModel` to `CursorModel`; `SPECIFY_MODEL` override; `cursor` feature |
-| `native.rs`    | `crates/linked/src/model_bridge.rs` | Rename `Native<B>` to `ModelBridge<B>`; `cursor` feature              |
-| `entry.rs`     | `crates/eval/src/entry.rs`          | Combined command/eval entry over `linked`; takes `entry::Config`      |
-| `fs.rs`        | `crates/eval/src/fs.rs`             | Evaluation tree-copy support                                          |
-| `grade.rs`     | `crates/eval/src/grade.rs`          | Evaluation grading                                                    |
-| `sandbox.rs`   | `crates/eval/src/sandbox.rs`        | Evaluation sandbox; root from `entry::Config`                         |
-| `scenario.rs`  | `crates/eval/src/scenario.rs`       | Single-operation prompt scenarios                                     |
-| `telemetry.rs` | `crates/eval/src/telemetry.rs`      | Model request counts                                                  |
-| `trial.rs`     | `crates/eval/src/trial.rs`          | Live workflow trial; sandbox root from `entry::Config`                |
-
-The current `crates/eval/src/main.rs` becomes `crates/workbench/src/main.rs` and changes imports:
-
-- `harness::entry` → `eval::entry`, passing a default `entry::Config`;
-- `harness::adapters!` → `linked::adapters!`.
-
-The `fixture` host modules change imports:
-
-- `harness::catalog` → `linked::catalog`;
-- `harness::provider` → `linked::provider`;
-- `harness::convert` references → `linked::convert`;
-- `harness::env` → `linked::env`.
-
-Workflow integration tests change:
-
-- `harness::invoke::run` → `linked::invoke::run`;
-- direct `harness::provider::Provider` → `linked::provider::Provider`.
-
-User-facing strings move with the vocabulary in the same motion: the `catalog.rs` lookup and `unlinked` messages ("is not linked into the native harness" / "native shim"), the `provider.rs` Hydrator refusal ("the native harness links adapters directly"), and the `scenario.rs` binding validation all name the linked deployment instead.
+Current `crates/eval` becomes `crates/workbench` (lab). User-facing strings that name the "native harness" or "native shim" name the linked deployment / linked host instead.
 
 ## Test migration
 
-Current `crates/harness/tests` ownership changes:
-
-- move `catalog.rs`, `provider.rs`, `command.rs`, and `mcp.rs` to `crates/linked/tests`, with `required-features` narrowed to the new `cli` / `cursor` split;
-- move `grade.rs` and `scenario.rs` to `crates/eval/tests`;
-- `boundary.rs` is superseded by the `checks` manifest invariant and is deleted with the `harness` package;
-- split suite-local support modules by their owning suite rather than introducing another shared test crate.
-
-Existing `change`, `slice`, `project`, and `transport` integration tests replace their `harness` dev-dependency with `linked`. Tests using `fixture::Session` continue to do so.
+- Move `catalog.rs`, `provider.rs`, `command.rs`, and `mcp.rs` to `crates/linked/tests`.
+- Move `grade.rs` and `scenario.rs` to `crates/eval/tests`.
+- Delete `boundary.rs` in favor of the `checks` manifest invariant.
+- Workflow suites: `harness` → `linked`; `fixture::Session` unchanged in role.
+- Rename `RecordingModel` across both repositories.
 
 ## Cargo and feature layout
 
 ### Specify workspace
-
-Add:
 
 ```toml
 eval = { path = "crates/eval" }
 linked = { path = "crates/linked" }
 ```
 
-The `harness` workspace-dependency entry is removed. `workbench` needs no workspace-dependency entry — nothing depends on it.
+Remove the `harness` workspace-dependency entry. `workbench` needs no workspace-dependency entry.
 
-`linked` keeps a dependency-light default for scripted workflow integration tests; the `cli` feature activates the transport router, MCP serving, and their dependencies; the `cursor` feature activates the Cursor backend and model bridge with the omnia host dependencies. Neither feature is default.
+`linked` default stays dependency-light; live features pull transport, MCP, and Cursor/omnia host deps.
 
-`eval` enables `linked/cli` and `linked/cursor` and carries only evaluation dependencies such as `clap`, `serde`, and trial-specific workflow types. Its Cargo dependencies name `change` and `project` directly rather than relying on transitive access through `linked`; the evaluation trial imports plan handlers and plan-entry types, while sandbox code reads `project::config::Layout`.
+`eval` enables `linked`'s live features and names `change` / `project` directly.
 
-`workbench` mirrors the current concrete binary's manifest:
+`workbench` (lab):
 
 ```toml
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -454,13 +501,13 @@ fixture.workspace = true
 linked.workspace = true
 ```
 
-Workflow crates use `linked` only in `[dev-dependencies]`.
+`workbench` is `publish = false` and never attached to a release.
 
-The shipped surface is untouched: the root package's targets do not change, release workflows continue to build and package `--bin specify`, and `cargo install --git ... --bin specify` remains the documented source installation path. The workbench is `publish = false`, is never attached to a release, and needs no feature gating to stay out of one.
+The Wasm release surface (`--bin specify`, core guest, adapter contract) remains. Attaching a linked fat binary to releases is follow-on work in the adapters (and possibly Specify) release pipelines; this RFC requires that architecture not block it.
 
 ### Adapter workspace
 
-Replace the current shared dependency:
+Replace:
 
 ```toml
 harness = { git = "https://github.com/augentic/specify.git" }
@@ -474,99 +521,81 @@ eval = { git = "https://github.com/augentic/specify.git" }
 linked = { git = "https://github.com/augentic/specify.git" }
 ```
 
-Update the committed sibling path patches accordingly. Rename the adapter workspace's current `crates/eval` package to `crates/workbench`, moving its `scenarios/` root with it and passing that root through `entry::Config`. No dependency aliases are required anywhere.
+- Rename current `crates/eval` → `crates/workbench` (lab; move `scenarios/` with it).
+- Add (or rename toward) the **first-party product binary** that depends on `linked` (library) + first-party adapters and calls `linked::command` only.
+- Update sibling path patches. No dependency aliases required.
 
 ## Command surface
 
-Operator-facing Specify commands do not change.
+Operator-facing Specify verbs do not change.
 
-Development tasks retain their names:
+Development tasks retain their names but target the lab binary:
 
-- `cargo make dev -- ARGS` runs the workbench's command passthrough;
-- `cargo make eval` runs the same binary's `eval` subcommand;
-- `cargo make change-run` continues to run the Wasm composed example.
+- `cargo make dev -- ARGS` → workbench command passthrough (via `eval::entry` → `linked::command`);
+- `cargo make eval` → workbench `eval` subcommand;
+- `cargo make change-run` → Wasm composed example.
 
-Package selection changes from `cargo run -p eval` to `cargo run -p workbench` — one word in each task body, identical in both repositories.
+Package selection for lab tasks: `cargo run -p workbench`. Installing or releasing the native operator product is **not** `cargo install` of workbench.
 
 ## Implementation plan
 
-### Stage 1 — Extract the linked substrate
+### Stage 1 — Extract the linked host
 
-1. Add `crates/linked/Cargo.toml` and `crates/linked/src/lib.rs`.
-2. Move `catalog`, `convert`, `env`, `invoke`, `provider`, `command`, `mcp`, `model`, and `native` from the current `harness`.
-3. Rename `DevModel` to `CursorModel` and `Native<B>` to `ModelBridge<B>`; rename the model-override variable `SPECIFY_EVAL_MODEL` to `SPECIFY_MODEL`.
-4. Split the features: dependency-light default; `cli` for the command entry and MCP serving; `cursor` for the backend and bridge. Parameterize `command::run` over the caller-supplied model factory.
-5. Make `Provider::bound` fail when the reference listener cannot start.
-6. Update the user-facing strings that name the "native harness" or "native shim".
-7. Move the catalog, provider, command, and MCP tests into `crates/linked/tests`.
-8. Add `linked` to workspace dependencies; retarget `fixture`, workflow tests, transport tests, and project test support to `linked`.
-9. Rename `fixture::model::Harness<B>` to `fixture::RecordingModel<B>` and update session aliases, tests, rustdoc, and the fixture answer-recording surface.
-10. Run the linked and affected workflow suites before changing the remaining package names.
+1. Add `crates/linked` and move `catalog`, `convert`, `env`, `invoke`, `provider`, `command`, `mcp`, `model`, and `native` from `harness`.
+2. Rename `DevModel` → `CursorModel`, `Native<B>` → `ModelBridge<B>`, `SPECIFY_EVAL_MODEL` → `SPECIFY_MODEL`.
+3. Parameterize `command::run` over a caller-supplied model factory; keep Cursor out of provider dispatch.
+4. Add `serve_references` (fallible); make `bound` use it; fail loud on bind failure.
+5. Update user-facing "native harness" / "shim" strings.
+6. Move host tests into `crates/linked/tests`; retarget `fixture` and workflow tests to `linked`.
+7. Rename `fixture::model::Harness` → `RecordingModel`.
+8. Run linked and affected workflow suites.
 
-This stage is behavior-preserving apart from the two declared exceptions (listener loudness, variable rename). The existing `eval` binary temporarily consumes `linked` for its adapter binding while the evaluation modules still live under the old `harness` package.
+### Stage 2 — Lab binary rename
 
-### Stage 2 — Rename the concrete binary
+1. `git mv crates/eval crates/workbench`; update package name and description (`publish = false`, lab-only docs).
+2. Point `cargo make dev` / `cargo make eval` at `-p workbench`.
 
-1. `git mv crates/eval crates/workbench`; update the package name and description.
-2. Retain its `harness::entry` import for now (the entry moves in Stage 3); its adapter declaration already uses `linked::adapters!` after Stage 1.
-3. Update `cargo make dev` and `cargo make eval` to select `-p workbench`.
+### Stage 3 — Evaluation library
 
-This frees the `eval` package name and changes no behavior.
+1. Create `crates/eval` from `entry`, `fs`, `grade`, `sandbox`, `scenario`, `telemetry`, and `trial`.
+2. Lab entry delegates command mode to `linked::command`; introduce `entry::Config`.
+3. Keep evaluation generic over `linked::Binding`; no fixture/adapter deps.
+4. Retarget workbench to `eval::entry::main`.
+5. Remove emptied `crates/harness`.
 
-### Stage 3 — Make evaluation a library
+### Stage 4 — Adapter repository
 
-1. Create the new `crates/eval` library from `entry`, `fs`, `grade`, `sandbox`, `scenario`, `telemetry`, and `trial`.
-2. Replace internal provider, catalog, command, model, environment, and invocation imports with `linked`; enable `linked/cli` and `linked/cursor`.
-3. Introduce `entry::Config` (scenario and sandbox roots) and delete the module-level sandbox constant.
-4. Keep evaluation generic over `linked::Binding`.
-5. Move grading and scenario tests under `crates/eval/tests`.
-6. Retarget the workbench from `harness::entry` to `eval::entry::main` with a default `Config`.
-7. Remove the emptied old `crates/harness` package.
-8. Verify that `eval` has no dependency on `fixture` or concrete adapter crates.
-
-### Stage 4 — Coordinate the adapter repository
-
-1. Publish or pin a Specify revision exposing `adapter`, `linked`, and `eval`.
-2. In `augentic/specify-adapters`, add `linked` and `eval` dependencies and sibling path patches; drop `harness`.
-3. Rename its concrete `crates/eval` package to `crates/workbench`; move `scenarios/` with it and pass the root through `entry::Config`.
-4. Move its first-party adapter binding to `linked::adapters!` and delegate its entry handling to `eval::entry`.
-5. Rename the `testkit` crate's `Harness` copy to `RecordingModel`, for the same reason as the fixture rename: `harness` no longer names anything in that workspace either.
-6. Update `cargo make dev` and `cargo make eval` to select `workbench`.
-7. Confirm there is still no reverse dependency from Specify to `specify-adapters`.
+1. Pin Specify revision exposing `adapter`, `linked`, and `eval`.
+2. Rename lab `eval` → `workbench`; wire `eval::entry` + first-party `adapters!`.
+3. Introduce the first-party **product** binary over `linked::command` (no eval).
+4. Rename `testkit::Harness` → `RecordingModel`.
+5. Confirm no reverse dependency from Specify to `specify-adapters`.
 
 ### Stage 5 — Documentation and checks
 
-Update:
+Update both repositories' `AGENTS.md`, adapter `TESTING.md`, Specify testing/architecture standards, quality-gate docs, Makefiles, and rustdoc.
 
-- both repositories' `AGENTS.md` crate graphs and testing descriptions;
-- `TESTING.md` in the adapter repository;
-- Specify testing and architecture standards that name `harness` or the old `eval` binary;
-- contributing quality-gate documentation;
-- Makefile comments and package descriptions;
-- any rustdoc links naming moved modules.
+Add a linked-deployment section to the architecture document that states:
 
-Add a short linked-deployment section to the standing architecture document. It must state that the Wasm deployment remains the release and component-boundary authority.
+- `specify` and `linked` are peer operator products (Wasm vs static);
+- `workbench` / `eval` are lab-only;
+- linked tests never satisfy component/WIT/digest/store gates.
 
-Extend `crates/checks/boundaries.rs` with the Cargo-manifest invariant defined under [Dependency direction](#dependency-direction) — parsed as TOML, absorbing the old `harness/tests/boundary.rs` — and update `crates/checks/Cargo.toml` comments that currently name `harness` as cross-crate test support.
+Extend `crates/checks/boundaries.rs` with the manifest invariant under [Dependency direction](#dependency-graph-specify-workspace).
 
 ### Stage 6 — Verification
 
-Run in `augentic/specify`:
+In `augentic/specify`:
 
 ```bash
 cargo make check
 cargo make ci
 cargo make dev -- --help
 cargo make eval
-```
-
-Compile-check the Wasm guests:
-
-```bash
 cargo check --lib -p specify --example change --target wasm32-wasip2
 ```
 
-Run in `augentic/specify-adapters`:
+In `augentic/specify-adapters`:
 
 ```bash
 cargo make check
@@ -575,105 +604,113 @@ cargo make dev -- --help
 cargo make eval
 ```
 
-Keep the live-model commands operator-invoked when credentials are unavailable, and report that limitation rather than weakening the gate.
+Keep live-model commands operator-invoked when credentials are unavailable.
 
 ## Acceptance criteria
 
-1. `linked` is a reusable library containing no concrete adapter binding and no fixture dependency.
-2. `linked` can run the Specify command router over any `Binding` and any `Model` supplied by the composition root; no entry inside `linked` constructs a Cursor backend.
-3. `eval` is generic over `linked::Binding` and contains no concrete adapter or fixture dependency.
-4. `workbench` is the only Specify package selecting fixture adapters for a linked application, and its whole body is the adapter declaration plus one entry call.
-5. Specify's workflow integration tests use `linked` plus local `fixture` adapters and never reference `augentic/specify-adapters`.
-6. The sibling workbench depends one-way on Specify's `adapter`, `linked`, and `eval` crates.
-7. `cargo make dev` preserves native command passthrough behavior in both repositories.
-8. `cargo make eval` preserves live trial and scenario behavior in both repositories.
-9. The Wasm workflow guest, fixture example guest, component manifests, shipped runtime behavior, and release surface are unchanged; default and release builds produce only the shipped `specify` binary.
+1. `linked` is a reusable host library containing no concrete adapter binding, no fixture dependency, no eval dependency, and no workbench dependency.
+2. `linked` can run the Specify command router over any `Binding` and any `Model` supplied by the composition root; no path inside `linked` constructs a Cursor backend except behind an optional feature module selected by that root.
+3. A command-only product binary can depend on `linked` alone (plus its adapter crates) — it must not require `eval` or `workbench`.
+4. `eval` is generic over `linked::Binding` and contains no concrete adapter or fixture dependency; it is documented and packaged as lab-only.
+5. `workbench` is unpublished lab composition (Specify: fixture adapters + eval UX) and is never described as the shipped native operator product.
+6. Specify's workflow integration tests use `linked` plus local `fixture` adapters and never reference `augentic/specify-adapters`.
+7. The sibling repository's first-party **product** binary depends one-way on Specify's `linked` library and calls `linked::command`; its workbench remains lab-only over `eval`.
+8. `cargo make dev` / `cargo make eval` preserve lab behavior via workbench in both repositories.
+9. The Wasm workflow guest, fixture example guest, component manifests, shipped `specify` runtime behavior, and existing Wasm release surface remain intact.
 10. Linked-deployment tests explicitly avoid claiming component ABI, WIT, isolation, or adapter-store coverage.
 11. Crate-level tests remain integration-first; no public workflow API is widened solely for the migration.
 12. Full local CI passes in both repositories, or unavailable live gates are reported precisely.
-13. `checks` parses Cargo manifests and rejects workflow-core production or build dependencies on `linked`, `eval`, `fixture`, `workbench`, or `harness`; rejects `fixture` and concrete adapter crates from `linked` and `eval`; and allows explicit dev-dependencies for integration tests.
-14. The request-recording model doubles are exported as `RecordingModel` in both repositories; no type named `Harness` remains.
-15. `Provider::bound` fails when the reference listener cannot start; no live path silently drops MCP reference shelves.
-16. No user-facing string names the removed `harness` or calls the deployment a "shim".
+13. `checks` enforces the dependency rules in [Dependency graph](#dependency-graph-specify-workspace).
+14. Request-recording doubles are exported as `RecordingModel` in both repositories; no type named `Harness` remains.
+15. `Provider::serve_references` / `bound` fail when the reference listener cannot start.
+16. No user-facing string names the removed `harness` or calls the linked deployment a "shim".
+17. Documentation answers "how do I ship/install native Specify?" with the linked operator product — not workbench.
 
 ## Risks and mitigations
 
 ### Linked behavior is mistaken for Wasm conformance
 
-Mitigation: preserve distinct documentation and commands for linked and Wasm gates. Keep composed-deployment and change-example coverage explicit in testing standards.
+Mitigation: distinct documentation and commands for linked vs Wasm gates; keep composed-deployment and change-example coverage explicit.
 
-### Extracting the old packages creates a difficult migration
+### Operators confuse workbench with the product
 
-Mitigation: extract `linked` first; the binary move is a package rename rather than a relocation, so no interim aliases or feature gates exist at any stage. Do not retain compatibility aliases.
+Mitigation: workbench stays `publish = false`; docs and acceptance criterion 17 forbid describing it as the install path; product entry is `linked::command`.
+
+### Specifying "linked is the product" while first-party adapters live elsewhere
+
+Mitigation: document the static-composition constraint explicitly — Specify owns the host; the first-party fat binary is composed in `specify-adapters`. Same dependency inversion as Wasm components vs the `specify` binary, different linking time.
 
 ### Cursor dependencies leak into ordinary tests
 
-Mitigation: the `cursor` feature gates only the backend and bridge, and the `cli` feature gates the entry surface; `linked`'s default remains suitable for scripted integration tests.
+Mitigation: live features are opt-in; default `linked` stays scripted-test suitable.
 
 ### Evaluation regains concrete adapter dependencies
 
-Mitigation: make every evaluation entry generic over `linked::Binding`; enforce the dependency boundary in the repository checks package.
+Mitigation: every evaluation entry generic over `Binding`; enforce in `checks`.
 
 ### A second implementation of adapter dispatch appears
 
-Mitigation: all linked providers use `linked::Catalog` and `linked::Provider`. Concrete composition roots declare only their adapter binding.
+Mitigation: all linked providers use `linked::Catalog` and `linked::Provider`.
 
 ### Cross-repository development becomes lockstep
 
-Mitigation: publish or revision-pin `linked` and `eval` like the existing `adapter` dependency. The sibling path patch remains a co-development convenience, not a runtime probe.
+Mitigation: revision-pin `linked` and `eval` like `adapter`; sibling path patch remains co-development only.
 
-### The linked deployment is accidentally presented as the release architecture
+### Released argv0 / packaging bikeshed blocks the refactor
 
-Mitigation: retain the Wasm runtime as the shipped operator path. Document linked execution as a local, statically linked deployment with intentionally different loading and isolation properties.
-
-### Two packages named `workbench` cause confusion
-
-Mitigation: the two workbenches never share a dependency graph — each is repo-local, unpublished, and depended on by nothing. The shared name is deliberate: same role, same shape, either repository.
+Mitigation: this RFC locks architecture and dependency arrows; exact release artifact names and CI attachment are follow-on.
 
 ## Alternatives considered
 
 ### Keep the current crate names
 
-Rejected. `harness` would continue to mean generic native runtime, test utilities, and evaluation framework, while `eval` would continue to be the actual application composition root. The names hide the architecture.
+Rejected. `harness` conflates host, evaluation, and composition; `eval` names the lab binary rather than the evaluation library.
 
-### Host Specify's composition root as a feature-gated root `[[bin]]` named `native`
+### Treat workbench as the linked deployment / composition root for the product
 
-Rejected; this was an earlier draft of this RFC. It holds the package count flat but pays with machinery: a binary target named `native` cannot link a library named `native` (rustc cannot distinguish the dependency from the current crate), forcing a permanent `native-runtime` dependency rename in exactly the file that invokes the registration macro; the target needs a `native-app` feature, optional dependencies, `required-features`, and a cfg-gated empty Wasm `main`; the invocation grows to `cargo run -p specify --bin native --features native-app`; the release workflow needs explicit caveats; and the terminology splits into "native binary" (Specify's) versus "workbench" (downstream's) for the same architectural role. The claimed benefit — displaying correspondence with `src/lib.rs` — draws the analogy at the wrong level: `src/lib.rs` is adapter-agnostic, and the `adapters!` declaration corresponds to the deployment manifest, which also lives beside the engine rather than inside the root package.
+Rejected. "Build workbench" is the wrong operator intuition for a shippable native product. Workbench is lab-only; the product entry is `linked::command` (and the first-party fat binary in the adapters repo).
 
-### Name the substrate crate `native`
+### Host the composition root as a feature-gated root `[[bin]]` named `native`
 
-Rejected. "Native" already means `cfg(not(target_arch = "wasm32"))`, "native tests", and "native-only" throughout both repositories, so the name is neither precise nor greppable — and the shipped Wasm deployment's host is itself a native process. The property that distinguishes this deployment is static Rust linking versus dynamic component composition; `linked` states it.
+Rejected. Package/binary name collisions, feature gates, release caveats, and split terminology ("native" vs "workbench") for the same role. Correspondence with `src/lib.rs` is drawn at the host layer (`Provider` + router), not by stuffing the adapter manifest into the root package.
+
+### Name the host crate `native`
+
+Rejected. Collides with `cfg(not(target_arch = "wasm32"))` vocabulary; the Wasm host is also a native process. `linked` states the distinguishing property.
 
 ### Fold evaluation into `linked` behind a feature
 
-Rejected. A feature cannot stop evaluation code from reaching into runtime internals, and it leaves the "one crate doing two jobs" reading intact. The crate boundary is what the checks package can enforce.
+Rejected. Blurs the operator product with lab machinery; `checks` cannot enforce a clean boundary as well as a crate edge. Command-only product binaries must not pull eval.
 
-### Put all shared code in the workbench binaries
+### Put all shared host code only in workbench binaries
 
-Rejected. Specify tests and downstream native applications would duplicate provider dispatch, model bridging, catalog registration, and MCP serving.
+Rejected. Duplicates provider dispatch, bridging, catalog, and MCP across tests and product binaries.
 
-### Put the Specify workbench in `augentic/specify-adapters`
+### Put first-party adapters in Specify's linked binary
 
-Rejected. Specify's integration tests must use local fixture adapters without a sibling checkout. A reverse dependency on the adapter repository would create a circular repository relationship.
+Rejected. Would create a Specify → `specify-adapters` dependency (or move adapters in-tree). Same inversion rule as today: Specify does not depend on the sibling adapter repository.
 
-### Put first-party adapters in Specify's workbench
+### Put Specify's lab workbench in `specify-adapters`
 
-Rejected for the same dependency-direction reason. Specify's workbench selects fixture adapters; the sibling workbench selects first-party adapters.
+Rejected. Specify's integration tests and fixture lab must work without a sibling checkout.
 
-### Hard-code Cursor into `Provider` or the command entry
+### Hard-code Cursor into `Provider` or `command::run`
 
-Rejected. `Provider<M>` is the capability-substitution seam shared by live execution, scripted tests, and telemetry, and the command entry is the surface composition roots actually delegate to. Hard-coding Cursor into either would force a second implementation for other backends and permit behavioral drift; the Cursor backend is a `cursor`-feature module selected by the composition root.
+Rejected. `Provider<M>` is the capability-substitution seam for live execution, scripted tests, and telemetry. The composition root supplies the model factory.
+
+### Route operator command mode through `eval::entry`
+
+Rejected for the product path. Lab workbench may use `eval::entry` as UX sugar (delegating to `linked::command`); the shippable product must not depend on `eval`.
 
 ### Move `linked` to a separate repository
 
-Rejected. It evolves atomically with workflow and adapter SDK seams, and Specify's own integration tests consume it. A workspace leaf crate provides architectural separation without cross-repository release and dependency cycles.
+Rejected. It evolves atomically with workflow and adapter SDK seams; Specify's tests consume it. A workspace package provides separation without extra release cycles for the host library.
 
 ## Consequences
 
-- Linked execution becomes an explicit deployment mode rather than implicit test scaffolding.
-- Crate names describe architectural responsibility, and none collides with the `cfg`-axis vocabulary or with its own binary target.
-- Both repositories share one composition shape: a `workbench` package whose whole content is an adapter declaration and an entry call.
-- Specify's core tests remain self-contained over fixture adapters; first-party adapter evaluation remains downstream and one-way.
-- The substrate becomes reusable by other linked applications, with the model backend chosen by each composition root.
-- The workspace gains the `linked` and `eval` libraries and renames the concrete binary to `workbench` — one more package than today, and in exchange the root package carries no feature gates, no dependency aliases, and no second entrypoint.
+- Linked execution is an explicit **operator product**, peer to Wasm `specify`.
+- `linked` is the product host library (`command::run` and friends); `eval` and `workbench` are lab-only and unpublished as products.
+- Command mode lives in `linked`; evaluation is an optional lab client of that host.
+- Specify's core tests remain self-contained over fixture adapters; first-party fat binaries and first-party lab workbench remain downstream and one-way.
 - The Wasm deployment remains necessary and authoritative for the component boundary.
+- First-party native shipping is composed where the adapters live, over Specify's `linked` library — the static-linking dual of publishing `.wasm` components for the Wasm product.
