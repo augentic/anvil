@@ -15,11 +15,13 @@ mod anchor;
 mod ctx;
 mod error;
 mod output;
+mod paths;
 
 pub use anchor::Anchor;
 pub use ctx::Ctx;
 pub use error::Error;
 pub use output::{Render, ReportBody, ReportRow};
+pub use paths::ExecutionPaths;
 
 /// Result alias for operation bodies: any `error::Error` coerces via
 /// `From`, and the report-carrying failures construct

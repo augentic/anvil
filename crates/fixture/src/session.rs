@@ -8,9 +8,9 @@
 
 use std::path::{Path, PathBuf};
 
-use harness::env::CacheGuard;
 use harness::provider::Provider;
 use omnia_testkit::model::Scripted as ScriptedModel;
+use project::handler::ExecutionPaths;
 
 use crate::model::Harness;
 
@@ -21,13 +21,14 @@ pub type Scripted = Provider<Harness<ScriptedModel>>;
 
 /// A throw-away project tree plus the scripted fixture provider.
 ///
-/// The tempdir and the pinned out-of-tree project cache live exactly
-/// as long as the session, so adapter cache writes stay hermetic.
+/// The tempdir and the session's isolated project-cache parent live
+/// exactly as long as the session, so adapter cache writes stay
+/// hermetic — the provider carries the cache placement as
+/// [`ExecutionPaths`]; no process environment is mutated.
 #[derive(Debug)]
 pub struct Session {
     root: PathBuf,
     provider: Scripted,
-    _cache: CacheGuard,
     _tmp: tempfile::TempDir,
 }
 
@@ -40,12 +41,12 @@ impl Session {
     /// Panics when the tempdir cannot be created.
     #[must_use]
     pub fn bare(answers: Vec<String>) -> Self {
-        let (tmp, root, cache) = owned_tree();
-        let provider = Provider::new(&root, Harness::answering(answers), crate::catalog());
+        let (tmp, root) = owned_tree();
+        let paths = ExecutionPaths::isolated(&root, root.join("project-cache"));
+        let provider = Provider::new(paths, Harness::answering(answers), crate::catalog());
         Self {
             root,
             provider,
-            _cache: cache,
             _tmp: tmp,
         }
     }
@@ -88,12 +89,11 @@ impl Session {
     }
 }
 
-// A fresh tempdir with the out-of-tree project cache pinned inside it.
-fn owned_tree() -> (tempfile::TempDir, PathBuf, CacheGuard) {
+// A fresh tempdir; the session's cache parent lives inside it.
+fn owned_tree() -> (tempfile::TempDir, PathBuf) {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path().canonicalize().expect("canonical tempdir");
-    let cache = harness::env::scoped_cache(&root);
-    (tmp, root, cache)
+    (tmp, root)
 }
 
 /// RAII current-directory guard for the few scaffold tests that

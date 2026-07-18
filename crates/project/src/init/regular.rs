@@ -1,17 +1,14 @@
 //! Regular (non-workspace) init body. Scaffolds the per-project `.specify/`
-//! tree, resolves the requested adapter into the out-of-tree cache, and
-//! writes `project.yaml`.
+//! tree over the ensured adapter binding and writes `project.yaml`.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
 use error::Error;
-use jiff::Timestamp;
 
-use crate::adapter::{AdapterRef, Resolver};
+use crate::adapter::ComponentMeta;
 use crate::config::{Layout, ProjectConfig};
-use crate::init::cache::{ComponentMeta, cache_adapter};
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
     upsert_gitignore, validate_platforms,
@@ -24,10 +21,8 @@ use crate::init::{
 /// `artifacts::validate::registry::rules_for`.
 const SCAFFOLDED_RULE_KEYS: &[&str] = &["proposal", "specs", "design", "tasks"];
 
-pub(super) fn run(
-    resolver: &impl Resolver, opts: InitOptions<'_>, now: Timestamp,
-) -> Result<InitResult, Error> {
-    let adapter = opts.adapter.ok_or_else(|| Error::Diag {
+pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
+    let ensured = opts.adapter.ok_or_else(|| Error::Diag {
         code: "init-requires-adapter-or-workspace",
         detail: "pass <adapter> or --workspace".to_string(),
     })?;
@@ -40,7 +35,7 @@ pub(super) fn run(
     // `.specify/specs/` is retained as a per-project convention used
     // by the bundled `omnia` adapter.
     // The memoization cache is out-of-tree (OS cache, created on demand
-    // by `cache_adapter`), so it is not scaffolded here.
+    // by the provider's ensure), so it is not scaffolded here.
     for dir in [
         layout.specify_dir(),
         layout.slices_dir(),
@@ -54,13 +49,16 @@ pub(super) fn run(
         }
     }
 
-    let source = cache_adapter(adapter, opts.project_dir, now)?;
-    let adapter_value = source.adapter_value;
-    let adapter_ref = AdapterRef::from_value(&adapter_value);
-    let target = resolver.resolve_target(&adapter_ref, opts.project_dir)?;
-    let adapter_name = target.manifest.name.clone();
-    let validated_platforms =
-        validate_platforms(opts.platforms, target.manifest.platforms.as_ref(), &adapter_name)?;
+    // Persist the operator's selector as typed (a component path is
+    // canonicalized so the recorded value outlives the CWD; the kind
+    // is never rewritten).
+    let adapter_value = ensured.selector.persist_value(opts.project_dir)?;
+    let adapter_name = ensured.resolved.manifest.name.clone();
+    let validated_platforms = validate_platforms(
+        opts.platforms,
+        ensured.resolved.manifest.platforms.as_ref(),
+        &adapter_name,
+    )?;
     let scaffolded_rule_keys: Vec<String> =
         SCAFFOLDED_RULE_KEYS.iter().map(|key| (*key).to_string()).collect();
 
@@ -88,7 +86,7 @@ pub(super) fn run(
 
     upsert_gitignore(opts.project_dir)?;
 
-    let cache_present = ComponentMeta::path(opts.project_dir).exists();
+    let cache_present = ComponentMeta::path(opts.paths).exists();
 
     Ok(InitResult {
         config_path,

@@ -34,6 +34,6 @@ impl<P: Anchor + Resolver> Operation<P> for Next {
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        Ok(claim_next(context.provider, cx.layout(), cx.now(), &cx.config)?)
+        Ok(claim_next(context.provider, &cx.paths, cx.now(), &cx.config)?)
     }
 }

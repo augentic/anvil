@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use error::Error;
 use jiff::Timestamp;
 
-use super::Anchor;
+use super::{Anchor, ExecutionPaths};
 use crate::adapter::{ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
 
@@ -20,6 +20,9 @@ pub struct Ctx {
     pub project_dir: PathBuf,
     /// Loaded `.specify/project.yaml`.
     pub config: ProjectConfig,
+    /// The provider's cache placement re-anchored at the resolved
+    /// project root — what adapter resolution receives.
+    pub paths: ExecutionPaths,
 }
 
 impl Ctx {
@@ -34,7 +37,12 @@ impl Ctx {
         let project_dir =
             ProjectConfig::find_root(anchor.project_root()).ok_or(Error::NotInitialized)?;
         let config = ProjectConfig::load(&project_dir)?;
-        Ok(Self { project_dir, config })
+        let paths = anchor.paths().with_root(&project_dir);
+        Ok(Self {
+            project_dir,
+            config,
+            paths,
+        })
     }
 
     /// Resolve this project's target adapter into a
@@ -47,7 +55,7 @@ impl Ctx {
     pub fn resolve_target_adapter(
         &self, resolver: &impl Resolver,
     ) -> Result<ResolvedTarget, Error> {
-        crate::target_policy::project_adapter(resolver, &self.config, &self.project_dir)
+        crate::target_policy::project_adapter(resolver, &self.config, &self.paths)
     }
 
     /// Typed view over `.specify/`-anchored paths. Hand this to

@@ -2,11 +2,8 @@
 //! the requested adapter, writes `project.yaml`, and upserts
 //! `.gitignore` lines. Workspace mode additionally mints `registry.yaml`.
 
-mod adapter_uri;
-mod cache;
 mod context;
 pub mod handlers;
-mod hydrate;
 mod regular;
 mod upgrade;
 mod workspace;
@@ -16,26 +13,39 @@ use std::path::{Path, PathBuf};
 use artifacts::atomic::bytes_write;
 use context::Skip;
 use error::Error;
-use jiff::Timestamp;
 
-use crate::adapter::PlatformsSurface;
+use crate::adapter::{AdapterSelector, PlatformsSurface, ResolvedTarget};
 use crate::config::Layout;
+use crate::handler::ExecutionPaths;
 use crate::platform::Platform;
+
+/// The adapter binding an init run ensured ahead of the scaffold: the
+/// operator's selector as typed plus the deployment's resolved
+/// identity. Provisioning (hydration, mirroring) already happened
+/// through [`crate::adapter::Resolver::ensure_target`].
+#[derive(Debug, Clone)]
+pub(crate) struct EnsuredAdapter {
+    /// The selector as parsed from the `<adapter>` argument (fresh
+    /// init) or the recorded `project.yaml.adapter` (`--upgrade`).
+    pub selector: AdapterSelector,
+    /// The ensured, resolved target adapter.
+    pub resolved: ResolvedTarget,
+}
 
 /// Inputs to [`init`].
 ///
 /// Borrow-shaped so callers (the CLI and tests) can build the struct
-/// without cloning path buffers. All fields are `Copy` references or
-/// scalars, so the struct is `Copy` and threads through the workspace /
-/// regular runners by value without a clone.
+/// without cloning path buffers.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct InitOptions<'a> {
     pub project_dir: &'a Path,
-    /// Adapter identifier (bare name like `omnia` or a URL) to fetch
-    /// or copy into the out-of-tree per-project cache. Required for regular init; must
+    /// The provider's execution paths (cache placement) for the
+    /// component-mirror tenant probes.
+    pub paths: &'a ExecutionPaths,
+    /// The ensured adapter binding. Required for regular init; must
     /// be `None` when [`InitOptions::workspace`] is `true` (workspace
     /// roots do not resolve an adapter at init time).
-    pub adapter: Option<&'a str>,
+    pub adapter: Option<&'a EnsuredAdapter>,
     pub name: Option<&'a str>,
     pub description: Option<&'a str>,
     /// When `true`, scaffold a registry-only **workspace** instead
@@ -100,9 +110,6 @@ pub(crate) struct InitResult {
 /// When [`InitOptions::workspace`] is `true`, dispatches to the private
 /// workspace runner for the workspace on-disk shape.
 ///
-/// `now` records the `component-meta.yaml::fetched_at` stamp; the dispatcher
-/// passes `Timestamp::now` and tests pin a deterministic value.
-///
 /// # Errors
 ///
 /// Pre-condition: regular (non-workspace) init requires
@@ -113,19 +120,19 @@ pub(crate) struct InitResult {
 /// filesystem, adapter resolution, and serialisation errors from
 /// the underlying calls.
 pub(crate) fn init(
-    resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>, now: Timestamp,
+    resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>,
 ) -> Result<InitResult, Error> {
     let mut result = if opts.upgrade {
-        upgrade::run(resolver, opts)?
+        upgrade::run(opts)?
     } else if opts.workspace {
         workspace::run(opts)?
     } else {
-        regular::run(resolver, opts, now)?
+        regular::run(opts)?
     };
     // Every branch shares one context-generation pass over the freshly
     // written project: the skip logic (existing `AGENTS.md`, workspace
     // slot) gives `--upgrade` its regenerate-only-when-absent behavior.
-    result.context_skip_reason = context::generate(resolver, opts.project_dir)?;
+    result.context_skip_reason = context::generate(resolver, opts.paths)?;
     Ok(result)
 }
 
@@ -148,7 +155,7 @@ pub(crate) fn upsert_gitignore(project_dir: &Path) -> Result<(), Error> {
 }
 
 /// Filename of the project-local wasm-pkg config inside `.specify/`.
-const WASM_PKG_CONFIG_FILENAME: &str = "wasm-pkg.toml";
+pub(crate) const WASM_PKG_CONFIG_FILENAME: &str = "wasm-pkg.toml";
 
 /// Canonical contents `specify init` writes for a fresh project.
 ///

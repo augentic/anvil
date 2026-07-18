@@ -133,12 +133,13 @@ pub fn author_gate(
 /// findings when it loads. Finding order is stable: doctor findings
 /// first, then `registry-shape`, then staleness.
 pub fn full_report(
-    resolver: &impl crate::adapter::Resolver, plan: &Plan, layout: crate::config::Layout<'_>,
+    resolver: &impl crate::adapter::Resolver, plan: &Plan, paths: &crate::handler::ExecutionPaths,
 ) -> Vec<Diagnostic> {
     use diagnostics::Severity;
 
     use crate::plan::validate::finding;
 
+    let layout = crate::config::Layout::new(paths.project_root());
     let project_dir = layout.project_dir();
     let (registry, registry_err) = match Registry::load(project_dir) {
         Ok(reg) => (reg, None),
@@ -153,7 +154,7 @@ pub fn full_report(
         results.extend(crate::registry::cache_staleness(
             resolver,
             reg,
-            &project_dir.join("workspace"),
+            paths,
             &layout.topology_lock_path(),
         ));
     }

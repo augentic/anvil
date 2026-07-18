@@ -13,7 +13,7 @@ use adapter::seam::{
     BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, Platform, Report,
     SourceMetadata, Status, TargetMetadata, WorkingTree,
 };
-use adapter::{Source, Target};
+use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
 use omnia_guest::model::{Format, Request};
 
@@ -34,7 +34,10 @@ pub const DOCS: &[Doc] = &[Doc {
 pub struct Probe;
 
 impl Source for Probe {
-    const NAME: &'static str = "fixture";
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "fixture",
+        version: "0.0.0",
+    };
 
     fn metadata() -> SourceMetadata {
         SourceMetadata { specify_floor: None }
@@ -67,7 +70,10 @@ impl Source for Probe {
 }
 
 impl Target for Probe {
-    const NAME: &'static str = "fixture";
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "fixture",
+        version: "0.0.0",
+    };
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
@@ -108,7 +114,10 @@ impl Target for Probe {
 pub struct FailGuidance;
 
 impl Target for FailGuidance {
-    const NAME: &'static str = "fixture-fail-guidance";
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "fixture-fail-guidance",
+        version: "0.0.0",
+    };
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
@@ -145,7 +154,10 @@ impl Target for FailGuidance {
 pub struct Floored;
 
 impl Target for Floored {
-    const NAME: &'static str = "floored";
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "floored",
+        version: "0.0.0",
+    };
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {

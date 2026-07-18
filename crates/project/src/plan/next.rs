@@ -13,6 +13,7 @@ use serde::Serialize;
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
 use crate::adapter::Resolver;
 use crate::config::{Layout, Mutation, ProjectConfig, with_state};
+use crate::handler::ExecutionPaths;
 use crate::journal::{self, Event, EventKind};
 use crate::plan::claim_gate;
 
@@ -134,7 +135,7 @@ pub struct NextBody {
 ///   `next_eligible` only selects `Pending` entries).
 pub fn plan_next_body(
     resolver: &impl Resolver, plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig,
-    project_dir: &Path,
+    paths: &ExecutionPaths,
 ) -> Result<NextBody, Error> {
     if has_blocking(&claim_gate(plan, slices_dir)) {
         return Err(structural_errors());
@@ -159,8 +160,7 @@ pub fn plan_next_body(
             ..NextBody::default()
         },
         Some(entry) => {
-            let target =
-                crate::target_policy::best_effort_next(resolver, config, project_dir, entry);
+            let target = crate::target_policy::best_effort_next(resolver, config, paths, entry);
             NextBody {
                 next: Some(entry.name.to_string()),
                 project: entry.project.clone(),
@@ -198,12 +198,12 @@ fn structural_errors() -> Error {
 ///   [`plan_next_body`].
 /// - journal append failures for the advance event.
 pub fn claim_next(
-    resolver: &impl Resolver, layout: Layout<'_>, now: Timestamp, config: &ProjectConfig,
+    resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp, config: &ProjectConfig,
 ) -> Result<NextBody, Error> {
+    let layout = Layout::new(paths.project_root());
     let slices_dir = layout.slices_dir();
-    let project_dir = layout.project_dir().to_path_buf();
     let (body, plan_name) = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
-        let body = plan_next_body(resolver, plan, &slices_dir, config, &project_dir)?;
+        let body = plan_next_body(resolver, plan, &slices_dir, config, paths)?;
         let changed = body.next.is_some();
         let pair = (body, plan.name.clone());
         Ok(if changed { Mutation::changed(pair) } else { Mutation::unchanged(pair) })

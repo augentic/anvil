@@ -6,16 +6,17 @@
 //! widened with caller-owned envelope fields before validation.
 
 use std::future::Future;
+use std::sync::LazyLock;
 
 use artifacts::evidence::AuthorityClass;
 use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Error;
 use project::adapter::metadata::{Metadata, Request};
 use project::adapter::{
-    AdapterRef, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource, ResolvedTarget,
-    Resolver,
+    AdapterSelector, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource,
+    ResolvedTarget, Resolver,
 };
-use project::handler::Anchor;
+use project::handler::{Anchor, ExecutionPaths};
 use project::seam::{self, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree};
 use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 use wasip3::http_compat::IncomingMessage as _;
@@ -25,63 +26,75 @@ use crate::bindings::specify::adapter::{source, target, types};
 /// Workflow capabilities backed by the world's WIT imports.
 pub struct Provider;
 
+/// The guest's execution paths: the project-root mount preopen, with
+/// cache placement resolved by the wasm32 [`diagnostics::cache`]
+/// mounts (no explicit cache parent).
+static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(|| ExecutionPaths::operator("."));
+
 impl omnia_guest::Model for Provider {}
 
 impl Anchor for Provider {
-    fn project_root(&self) -> &std::path::Path {
-        std::path::Path::new(".")
+    fn paths(&self) -> &ExecutionPaths {
+        &PATHS
     }
 }
 
 impl Resolver for Provider {
     fn resolve_source(
-        &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        project::adapter::resolver::Component::new(metadata)
-            .resolve_source(adapter_ref, project_dir)
+        project::adapter::resolver::Component::new(metadata).resolve_source(selector, paths)
     }
 
     fn resolve_target(
-        &self, adapter_ref: &AdapterRef, project_dir: &std::path::Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
-        project::adapter::resolver::Component::new(metadata)
-            .resolve_target(adapter_ref, project_dir)
+        project::adapter::resolver::Component::new(metadata).resolve_target(selector, paths)
+    }
+
+    async fn ensure_source(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedSource, Error> {
+        project::adapter::ensure::source(metadata, selector, paths, jiff::Timestamp::now(), fetch)
+            .await
+    }
+
+    async fn ensure_target(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedTarget, Error> {
+        project::adapter::ensure::target(metadata, selector, paths, jiff::Timestamp::now(), fetch)
+            .await
     }
 }
 
-impl project::adapter::Hydrator for Provider {
-    // Straight `wasi:http/client` send — deliberately not
-    // `omnia_wasi_http::handle`, whose keyvalue-backed cache would add
-    // a `wasi:keyvalue` import no specify deployment links.
-    fn fetch(&self, url: &str) -> impl Future<Output = Result<Vec<u8>, Error>> + Send {
-        let url = url.to_string();
-        async move {
-            let diag = |detail: String| Error::Diag {
-                code: "http-fetch",
-                detail,
-            };
-            let request = omnia_guest::http::Request::get(&url)
-                .body(omnia_guest::axum::body::Body::empty())
-                .map_err(|err| diag(format!("building the request for {url}: {err}")))?;
-            let request = wasip3::http_compat::http_into_wasi_request(request)
-                .map_err(|err| diag(format!("converting the request for {url}: {err}")))?;
-            let response = wasip3::http::client::send(request)
-                .await
-                .map_err(|err| diag(format!("fetching {url}: {err}")))?;
-            let response = wasip3::http_compat::http_from_wasi_response(response)
-                .map_err(|err| diag(format!("reading the response from {url}: {err}")))?;
-            if !response.status().is_success() {
-                return Err(diag(format!("fetching {url}: HTTP {}", response.status())));
-            }
-            let (_, mut body) = response.into_parts();
-            let Some(wasi_response) = body.take_unstarted() else {
-                return Ok(Vec::new());
-            };
-            let (_, body_rx) = wasip3::wit_future::new(|| Ok(()));
-            let (stream, _trailers) = wasi_response.consume_body(body_rx);
-            Ok(stream.collect().await)
-        }
+// Straight `wasi:http/client` send — deliberately not
+// `omnia_wasi_http::handle`, whose keyvalue-backed cache would add
+// a `wasi:keyvalue` import no specify deployment links.
+async fn fetch(url: String) -> Result<Vec<u8>, Error> {
+    let diag = |detail: String| Error::Diag {
+        code: "http-fetch",
+        detail,
+    };
+    let request = omnia_guest::http::Request::get(&url)
+        .body(omnia_guest::axum::body::Body::empty())
+        .map_err(|err| diag(format!("building the request for {url}: {err}")))?;
+    let request = wasip3::http_compat::http_into_wasi_request(request)
+        .map_err(|err| diag(format!("converting the request for {url}: {err}")))?;
+    let response = wasip3::http::client::send(request)
+        .await
+        .map_err(|err| diag(format!("fetching {url}: {err}")))?;
+    let response = wasip3::http_compat::http_from_wasi_response(response)
+        .map_err(|err| diag(format!("reading the response from {url}: {err}")))?;
+    if !response.status().is_success() {
+        return Err(diag(format!("fetching {url}: HTTP {}", response.status())));
     }
+    let (_, mut body) = response.into_parts();
+    let Some(wasi_response) = body.take_unstarted() else {
+        return Ok(Vec::new());
+    };
+    let (_, body_rx) = wasip3::wit_future::new(|| Ok(()));
+    let (stream, _trailers) = wasi_response.consume_body(body_rx);
+    Ok(stream.collect().await)
 }
 
 impl Source for Provider {

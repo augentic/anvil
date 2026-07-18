@@ -21,9 +21,9 @@ wit-bindgen.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 harness.workspace = true
 omnia-testkit.workspace = true
+project.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
 [dev-dependencies]
-project.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

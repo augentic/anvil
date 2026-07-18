@@ -36,8 +36,7 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Refine {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome =
-            orchestrate::refine_breakout(caps, cx.layout(), cx.now(), &input.name).await?;
+        let outcome = orchestrate::refine_breakout(caps, &cx.paths, cx.now(), &input.name).await?;
         Ok(RefineBody {
             slice: outcome.slice,
             artifacts: outcome.artifacts,

@@ -8,13 +8,14 @@ use anyhow::{Context as _, Result, ensure};
 use change::plan::handlers::{Execute, ExecuteBody, ExecuteInput};
 use change::{Entry as PlanEntry, Status};
 use clap::{Parser, Subcommand};
+use project::handler::ExecutionPaths;
 
 use crate::catalog::Binding;
 use crate::invoke::run as run_op;
 use crate::model::DevModel;
 use crate::provider::Provider;
 use crate::telemetry::{self, Telemetry};
-use crate::{command, env, fs as evalfs, grade, sandbox, scenario};
+use crate::{command, fs as evalfs, grade, sandbox, scenario};
 
 /// Persistent trial project and scenario scratch root.
 const SANDBOX: &str = "sandbox";
@@ -131,7 +132,6 @@ impl Trial {
 async fn init<B: Binding>(trial: &Trial) -> Result<()> {
     let root = sandbox::replace(&trial.sandbox)?;
     println!("trial project: {}", root.display());
-    let _cache = env::scoped_cache(&root);
     if let Some(seed) = &trial.seed {
         evalfs::copy_tree(seed, &root)?;
     }
@@ -141,7 +141,6 @@ async fn init<B: Binding>(trial: &Trial) -> Result<()> {
 async fn plan<B: Binding>(trial: &Trial) -> Result<()> {
     let root = sandbox::require(&trial.sandbox)?;
     println!("trial project: {}", root.display());
-    let _cache = env::scoped_cache(&root);
     let provider = provider::<B>(&root).await;
 
     command::invoke(&provider, &trial.author).await?;
@@ -156,7 +155,6 @@ async fn plan<B: Binding>(trial: &Trial) -> Result<()> {
 async fn execute<B: Binding>(trial: &Trial) -> Result<()> {
     let root = sandbox::require(&trial.sandbox)?;
     println!("trial project: {}", root.display());
-    let _cache = env::scoped_cache(&root);
     let provider = provider::<B>(&root).await;
 
     let executed = run_op::<Execute, ExecuteBody, _>(&provider, ExecuteInput {})
@@ -181,7 +179,6 @@ async fn execute<B: Binding>(trial: &Trial) -> Result<()> {
 async fn finalize<B: Binding>(trial: &Trial) -> Result<()> {
     let root = sandbox::require(&trial.sandbox)?;
     println!("trial project: {}", root.display());
-    let _cache = env::scoped_cache(&root);
     command::invoke(&provider::<B>(&root).await, &["plan", "archive"]).await
 }
 
@@ -192,6 +189,10 @@ fn clean(trial: &Trial) -> Result<()> {
     Ok(())
 }
 
+/// A trial provider with the per-run cache isolated inside the sandbox
+/// (the explicit `ExecutionPaths` counterpart of the retired
+/// `SPECIFY_PROJECT_CACHE` mutation).
 async fn provider<B: Binding>(root: &Path) -> Provider<Telemetry<DevModel>> {
-    Provider::bound::<B>(root, Telemetry::new(DevModel::new(root))).await
+    let paths = ExecutionPaths::isolated(root, root.join("project-cache"));
+    Provider::bound::<B>(paths, Telemetry::new(DevModel::new(root))).await
 }

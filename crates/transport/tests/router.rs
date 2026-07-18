@@ -14,7 +14,7 @@ use tempfile::TempDir;
 // adapter seam, so the scripted provider's empty script never runs.
 fn provider(root: impl Into<PathBuf>) -> Scripted {
     harness::provider::Provider::new(
-        root.into(),
+        project::handler::ExecutionPaths::operator(root.into()),
         Harness::answering(Vec::<String>::new()),
         fixture::catalog(),
     )

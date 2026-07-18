@@ -22,12 +22,10 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
 
-use super::adapter_uri::adapter_name_from_value;
-use super::cache::ComponentMeta;
-use super::{InitOptions, InitResult, hydrate, init};
-use crate::adapter::{Hydrator, Resolver};
+use super::{EnsuredAdapter, InitOptions, InitResult, init};
+use crate::adapter::{AdapterSelector, ComponentMeta, Resolver};
 use crate::config::{Layout, ProjectConfig};
-use crate::handler::{Anchor, Render};
+use crate::handler::{Anchor, ExecutionPaths, Render};
 use crate::platform::parse_platforms_csv;
 
 /// Wire input for `specify init` — the full argument surface.
@@ -59,7 +57,7 @@ pub struct InitInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
 
-impl<P: Anchor + Resolver + Hydrator> Operation<P> for Init {
+impl<P: Anchor + Resolver> Operation<P> for Init {
     type Error = crate::handler::Error;
     type Input = InitInput;
     type Output = InitBody;
@@ -75,14 +73,22 @@ impl<P: Anchor + Resolver + Hydrator> Operation<P> for Init {
             platforms,
             upgrade,
         } = input;
-        let project_dir = context.provider.project_root();
+        let paths = context.provider.paths();
+        let project_dir = paths.project_root();
 
         // Re-entry: an already-initialized project is a no-op that
         // routes the operator to `--upgrade` (docs/init.md §Re-entry).
         if !upgrade && Layout::new(project_dir).config_path().exists() {
-            return Ok(InitBody::reentry(project_dir)?);
+            return Ok(InitBody::reentry(project_dir, paths)?);
         }
 
+        if !upgrade && workspace && adapter.is_some() {
+            return Err(Error::Diag {
+                code: "init-requires-adapter-or-workspace",
+                detail: "pass <adapter> or --workspace".to_string(),
+            }
+            .into());
+        }
         if adapter.is_none() && !workspace && !upgrade {
             return Err(Error::validation_failed(
                 "init-adapter-required",
@@ -101,38 +107,69 @@ impl<P: Anchor + Resolver + Hydrator> Operation<P> for Init {
                 }
             })?;
 
-        // Hydrate a pinned package reference that misses the global
-        // store before resolution demands it. Fresh init hydrates the
-        // requested adapter; `--upgrade` re-runs hydration over the
-        // project's declared adapter.
-        let pinned =
+        // Ensure the adapter binding ahead of the scaffold: fresh init
+        // ensures the requested `<adapter>` argument; `--upgrade`
+        // re-ensures the project's recorded binding (without rewriting
+        // it). Package hydration into the global store, digest
+        // verification, and local-component mirroring are the
+        // provider's ensure policy.
+        let binding =
             if upgrade { ProjectConfig::load(project_dir)?.adapter } else { adapter.clone() };
         let mut hydrated = Vec::new();
-        if let Some(value) = pinned.as_deref()
-            && let Some(installed) = hydrate::hydrate(context.provider, project_dir, value).await?
-        {
-            hydrated.push(installed);
-        }
+        let ensured = match binding.as_deref() {
+            Some(value) => Some(ensure(context.provider, value, paths, &mut hydrated).await?),
+            None => None,
+        };
 
         let opts = InitOptions {
             project_dir,
-            adapter: adapter.as_deref(),
+            paths,
+            adapter: ensured.as_ref(),
             name: name.as_deref(),
             description: description.as_deref(),
             workspace,
             platforms: parsed_platforms.as_deref(),
             upgrade,
         };
-        let result = init(context.provider, opts, jiff::Timestamp::now())?;
+        let result = init(context.provider, opts)?;
         let mode = if upgrade { InitMode::Upgraded } else { InitMode::Scaffolded };
         Ok(InitBody::from_result(&result, mode, hydrated))
     }
+}
+
+/// Parse and ensure one adapter binding, recording any package pin
+/// this run installed into the global store on `hydrated` (the store
+/// state is observed around the ensure so the envelope reports only
+/// actual fetches).
+async fn ensure(
+    provider: &impl Resolver, value: &str, paths: &ExecutionPaths, hydrated: &mut Vec<String>,
+) -> Result<EnsuredAdapter, Error> {
+    let selector = AdapterSelector::parse(value)?;
+    let pin = match &selector {
+        AdapterSelector::Package { name, version, .. } => {
+            let installed =
+                diagnostics::cache::adapter_store_entry(name, &version.to_string()).is_file();
+            (!installed).then(|| format!("{name}@{version}"))
+        }
+        AdapterSelector::Bare { .. } | AdapterSelector::Component { .. } => None,
+    };
+    let resolved = provider.ensure_target(&selector, paths).await?;
+    if let Some(identity) = pin {
+        hydrated.push(identity);
+    }
+    Ok(EnsuredAdapter { selector, resolved })
 }
 
 /// Display a path as the canonical absolute form when it exists; fall
 /// back to the lossy display when it does not.
 fn canonical(p: &Path) -> String {
     std::fs::canonicalize(p).map_or_else(|_| p.display().to_string(), |c| c.display().to_string())
+}
+
+/// Best-effort display name for a recorded adapter value — the
+/// re-entry body never fails over a malformed historical value.
+fn recorded_name(value: &str) -> String {
+    AdapterSelector::parse(value).ok().and_then(|selector| selector.name().ok()).unwrap_or_default()
 }
 
 /// Closed outcome discriminant on [`InitBody::mode`].
@@ -204,18 +241,18 @@ impl InitBody {
     }
 
     /// The no-op re-entry body, read from the existing `project.yaml`.
-    fn reentry(project_dir: &Path) -> Result<Self, Error> {
+    fn reentry(project_dir: &Path, paths: &ExecutionPaths) -> Result<Self, Error> {
         let cfg = ProjectConfig::load(project_dir)?;
         let adapter_name = if cfg.workspace {
             "workspace".to_string()
         } else {
-            cfg.adapter.as_deref().map_or_else(String::new, adapter_name_from_value)
+            cfg.adapter.as_deref().map_or_else(String::new, recorded_name)
         };
         Ok(Self {
             mode: InitMode::AlreadyInitialized,
             config_path: canonical(&Layout::new(project_dir).config_path()),
             adapter_name,
-            cache_present: ComponentMeta::path(project_dir).exists(),
+            cache_present: ComponentMeta::path(paths).exists(),
             directories_created: Vec::new(),
             scaffolded_rule_keys: Vec::new(),
             specify_version: cfg.specify_version.unwrap_or_default(),

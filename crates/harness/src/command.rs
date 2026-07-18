@@ -7,8 +7,8 @@ use anyhow::{Result, ensure};
 use omnia_guest::Model;
 use omnia_guest::api::Provider as ApiProvider;
 use omnia_guest::api::invoke::Invoker;
-use project::adapter::{Hydrator, Resolver};
-use project::handler::Anchor;
+use project::adapter::Resolver;
+use project::handler::{Anchor, ExecutionPaths};
 use project::seam::{Source, Target};
 
 use crate::catalog::Binding;
@@ -23,7 +23,7 @@ use crate::provider::Provider;
 /// Returns a router-assembly failure and any non-zero verb exit.
 pub async fn invoke<P>(provider: &P, argv: &[impl AsRef<str> + Sync]) -> Result<()>
 where
-    P: ApiProvider + Anchor + Model + Resolver + Hydrator + Source + Target + Clone,
+    P: ApiProvider + Anchor + Model + Resolver + Source + Target + Clone,
 {
     let display = argv.iter().map(AsRef::as_ref).collect::<Vec<_>>().join(" ");
     eprintln!("==> specify {display}");
@@ -56,7 +56,7 @@ pub async fn run<B: Binding>(mut argv: Vec<String>) -> u8 {
         }
     };
     let model = DevModel::new(&root);
-    let provider = Provider::bound::<B>(root, model).await;
+    let provider = Provider::bound::<B>(ExecutionPaths::operator(root), model).await;
     let router = match transport::command::router(Invoker::new("specify", provider)) {
         Ok(router) => router,
         Err(error) => {

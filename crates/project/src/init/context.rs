@@ -15,9 +15,10 @@ use std::path::Path;
 use artifacts::atomic::bytes_write;
 use error::Error;
 
-use crate::adapter::{AdapterRef, ResolvedTarget, Resolver};
+use crate::adapter::{AdapterSelector, ResolvedTarget, Resolver};
 use crate::agents::{detect, fences, fingerprint, lock, render};
 use crate::config::{Layout, ProjectConfig, is_slot};
+use crate::handler::ExecutionPaths;
 use crate::registry::{Registry, RegistryProject, TopologyLock, TopologyProject};
 use crate::slice::SliceMetadata;
 
@@ -59,8 +60,9 @@ impl Skip {
 /// Bubbles up filesystem, config-load, adapter-resolution, and
 /// fence-composition errors.
 pub(super) fn generate(
-    resolver: &impl Resolver, project_dir: &Path,
+    resolver: &impl Resolver, paths: &ExecutionPaths,
 ) -> Result<Option<Skip>, Error> {
+    let project_dir = paths.project_root();
     if is_slot(project_dir) {
         return Ok(Some(Skip::WorkspaceClone));
     }
@@ -72,7 +74,7 @@ pub(super) fn generate(
     }
 
     let config = ProjectConfig::load(project_dir)?;
-    let assembly = render_input(resolver, project_dir, &config)?;
+    let assembly = render_input(resolver, paths, &config)?;
     let aggregate = fingerprint::aggregate(env!("CARGO_PKG_VERSION"), assembly.inputs.clone());
     let generated = render::render_document(&assembly.input, &aggregate);
     let fenced = fences::parse_document(generated.as_bytes())
@@ -103,8 +105,9 @@ struct Assembly {
 /// Walk the project (adapter, registry, slices, root markers) into a
 /// [`render::Input`] plus the per-input fingerprint set.
 fn render_input(
-    resolver: &impl Resolver, project_dir: &Path, config: &ProjectConfig,
+    resolver: &impl Resolver, paths: &ExecutionPaths, config: &ProjectConfig,
 ) -> Result<Assembly, Error> {
+    let project_dir = paths.project_root();
     let layout = Layout::new(project_dir);
     let mut collector = fingerprint::InputCollector::new(project_dir);
     collector.add_file(&layout.config_path())?;
@@ -114,9 +117,9 @@ fn render_input(
 
     let adapter = match config.adapter.as_deref().filter(|_| !config.workspace) {
         Some(value) => {
-            let target_ref = AdapterRef::from_value(value);
-            let target = resolver.resolve_target(&target_ref, project_dir)?;
-            collect_adapter_input(&mut collector, &target_ref, &target);
+            let selector = AdapterSelector::parse(value)?;
+            let target = resolver.resolve_target(&selector, paths)?;
+            collect_adapter_input(&mut collector, &selector, &target);
             Some(render::Adapter {
                 name: target.manifest.name,
                 version: target.manifest.version,
@@ -159,17 +162,17 @@ fn render_input(
 /// bytes still drive the digest. A non-file origin (the native test
 /// resolver) contributes no input.
 fn collect_adapter_input(
-    collector: &mut fingerprint::InputCollector, adapter_ref: &AdapterRef,
+    collector: &mut fingerprint::InputCollector, selector: &AdapterSelector,
     resolved: &ResolvedTarget,
 ) {
     let path = Path::new(&resolved.origin.reference);
     if !path.is_file() {
         return;
     }
-    let identity = adapter_ref.version.as_ref().map_or_else(
-        || format!("{}.wasm", adapter_ref.name),
-        |version| format!("{}@{version}.wasm", adapter_ref.name),
-    );
+    let name = &resolved.manifest.name;
+    let identity = selector
+        .version()
+        .map_or_else(|| format!("{name}.wasm"), |version| format!("{name}@{version}.wasm"));
     collector.add_file_as(&format!("{}:{identity}", resolved.origin.label), path);
 }
 

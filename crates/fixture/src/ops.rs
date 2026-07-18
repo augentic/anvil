@@ -11,7 +11,7 @@ use adapter::seam::{
     Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
     WorkingTree,
 };
-use adapter::{Source, Target};
+use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
 
 use crate::behaviour;
@@ -27,7 +27,12 @@ pub const DOCS: &[Doc] = &[Doc {
 macro_rules! fixture_source {
     ($ty:ident, $name:literal) => {
         impl Source for $ty {
-            const NAME: &'static str = $name;
+            // Unpublished fixture identity: a development placeholder
+            // version, never a pin-matchable release.
+            const IDENTITY: AdapterIdentity = AdapterIdentity {
+                name: $name,
+                version: "0.0.0",
+            };
 
             fn metadata() -> SourceMetadata {
                 SourceMetadata { specify_floor: None }
@@ -53,7 +58,12 @@ macro_rules! fixture_source {
 macro_rules! fixture_target {
     ($ty:ident, $name:literal) => {
         impl Target for $ty {
-            const NAME: &'static str = $name;
+            // Unpublished fixture identity: a development placeholder
+            // version, never a pin-matchable release.
+            const IDENTITY: AdapterIdentity = AdapterIdentity {
+                name: $name,
+                version: "0.0.0",
+            };
 
             fn metadata() -> TargetMetadata {
                 TargetMetadata {

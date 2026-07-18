@@ -12,7 +12,6 @@
 
 pub mod catalog;
 pub mod convert;
-pub mod env;
 pub mod invoke;
 pub mod provider;
 

@@ -8,6 +8,7 @@
 
 pub mod answers;
 mod call;
+mod identity;
 mod operations;
 pub mod phase;
 pub mod references;
@@ -20,6 +21,7 @@ pub mod source;
 pub mod target;
 
 pub use call::{MAX_REPAIRS, judgment, repaired};
+pub use identity::AdapterIdentity;
 pub use omnia_guest::Model;
 #[cfg(target_arch = "wasm32")]
 pub use omnia_guest::model::WasiModel;

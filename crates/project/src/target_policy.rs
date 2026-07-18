@@ -11,12 +11,11 @@
 //!   projection; `None` when the topology cannot resolve (the build
 //!   phase re-resolves before use).
 
-use std::path::Path;
-
 use error::Error;
 
-use crate::adapter::{AdapterRef, ResolvedTarget, Resolver};
+use crate::adapter::{AdapterSelector, ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
+use crate::handler::ExecutionPaths;
 use crate::plan::{Entry, resolve_target, resolve_topology};
 use crate::slice::SliceMetadata;
 
@@ -32,7 +31,7 @@ use crate::slice::SliceMetadata;
 /// `workspace-no-adapter` for adapter-less workspace projects;
 /// propagates adapter-resolution failures.
 pub fn project_adapter(
-    resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path,
+    resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths,
 ) -> Result<ResolvedTarget, Error> {
     let Some(adapter_value) = config.adapter.as_deref() else {
         return Err(Error::Diag {
@@ -43,7 +42,7 @@ pub fn project_adapter(
                 .to_string(),
         });
     };
-    resolver.resolve_target(&AdapterRef::from_value(adapter_value), project_dir)
+    resolver.resolve_target(&AdapterSelector::parse(adapter_value)?, paths)
 }
 
 /// Fresh policy: resolve `$TARGET` for a slice that does not exist yet
@@ -55,10 +54,11 @@ pub fn project_adapter(
 /// `slice-create-target-missing` when the topology does not resolve a
 /// target for `entry`; propagates config-load and topology failures.
 pub fn fresh(
-    resolver: &impl Resolver, layout: Layout<'_>, entry: &Entry, slice: &str, phase: &str,
+    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry, slice: &str, phase: &str,
 ) -> Result<String, Error> {
+    let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
-    let topology = resolve_topology(resolver, &config, layout.project_dir())?;
+    let topology = resolve_topology(resolver, &config, paths)?;
     resolve_target(entry, &topology).map(|target| target.to_string()).map_err(|err| Error::Diag {
         code: "slice-create-target-missing",
         detail: format!(
@@ -82,9 +82,9 @@ pub fn resumed(layout: Layout<'_>, slice: &str) -> Result<String, Error> {
 /// freshly advanced entry. `None` when the topology cannot resolve —
 /// the build phase re-resolves the target before use.
 pub fn best_effort_next(
-    resolver: &impl Resolver, config: &ProjectConfig, project_dir: &Path, entry: &Entry,
+    resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths, entry: &Entry,
 ) -> Option<String> {
-    resolve_topology(resolver, config, project_dir)
+    resolve_topology(resolver, config, paths)
         .and_then(|topology| resolve_target(entry, &topology))
         .ok()
         .map(|target| target.to_string())

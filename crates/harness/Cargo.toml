@@ -46,6 +46,7 @@ omnia-cursor = { workspace = true, optional = true }
 omnia-guest.workspace = true
 omnia-wasi-model = { workspace = true, optional = true }
 project.workspace = true
+semver.workspace = true
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }

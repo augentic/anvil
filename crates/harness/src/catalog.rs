@@ -292,8 +292,8 @@ impl<M: Model> Builder<M> {
     pub fn source<A: Source + 'static>(mut self) -> Self {
         self.entries.push(Entry {
             axis: Axis::Source,
-            name: A::NAME,
-            server_name: references::server_name(A::NAME),
+            name: A::IDENTITY.name,
+            server_name: references::server_name(A::IDENTITY.name),
             metadata: || convert::source_metadata(A::metadata()),
             docs: A::docs,
             ops: Ops::Source {
@@ -309,8 +309,8 @@ impl<M: Model> Builder<M> {
     pub fn target<A: Target + 'static>(mut self) -> Self {
         self.entries.push(Entry {
             axis: Axis::Target,
-            name: A::NAME,
-            server_name: references::server_name(A::NAME),
+            name: A::IDENTITY.name,
+            server_name: references::server_name(A::IDENTITY.name),
             metadata: || convert::target_metadata(A::metadata()),
             docs: A::docs,
             ops: Ops::Target {

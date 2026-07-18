@@ -37,7 +37,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
-        let results = plan_full_report(context.provider, &plan, cx.layout());
+        let results = plan_full_report(context.provider, &plan, &cx.paths);
 
         let has_errors = has_blocking(&results);
         let body = ReportBody::new(results, Some("Plan OK"), write_row);

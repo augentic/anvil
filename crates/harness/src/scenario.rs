@@ -7,14 +7,15 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context as _, Result, bail, ensure};
+use project::handler::ExecutionPaths;
 use project::seam::wire::{BuildReport, BuildStatus};
 use project::seam::{Input, MergePhase, Target as _, WorkingTree};
 use serde::Deserialize;
 
 use crate::catalog::Binding;
+use crate::fs as evalfs;
 use crate::model::DevModel;
 use crate::provider::Provider;
-use crate::{env, fs as evalfs};
 
 /// One scenario's machine-readable routing, from `scenario.toml`.
 #[derive(Debug, Deserialize)]
@@ -71,7 +72,6 @@ pub async fn run<B: Binding>(root: &Path, sandbox: &Path, id: Option<&str>) -> R
     let config = load::<B>(root, &dir).with_context(|| format!("scenario `{id}`"))?;
 
     let scratch = seed(sandbox, id, &dir)?;
-    let _cache = env::scoped_cache(&scratch);
     println!(
         "eval scenario {id}: {} `{}` slice={} scratch={}",
         config.operation.label(),
@@ -80,7 +80,8 @@ pub async fn run<B: Binding>(root: &Path, sandbox: &Path, id: Option<&str>) -> R
         scratch.display()
     );
 
-    let provider = Provider::bound::<B>(&*scratch, DevModel::new(&scratch)).await;
+    let paths = ExecutionPaths::isolated(&*scratch, scratch.join("project-cache"));
+    let provider = Provider::bound::<B>(paths, DevModel::new(&scratch)).await;
     let inputs = inputs(&dir.join("inputs"))?;
     let report = dispatch(&provider, &config, inputs).await?;
     conclude(id, &scratch, &report, &config.expect)

@@ -1,13 +1,12 @@
 //! Native seam provider: project anchoring, judgment, and adapter dispatch.
 //! Maps adapter seam DTOs onto workflow seam DTOs like the wasm guest shim.
 
-use std::path::{Path, PathBuf};
-
 use adapter::seam::{self as aseam, Context};
 use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Reply, Request};
-use project::adapter::{AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
+use project::adapter::{AdapterSelector, Axis, Origin, ResolvedSource, ResolvedTarget, Resolver};
+use project::handler::ExecutionPaths;
 use project::seam::wire::BuildReport;
 use project::seam::{self, Evidence, Input, Lead, Source, Target, WorkingTree};
 
@@ -18,7 +17,7 @@ use crate::convert;
 /// [`Model`] backend.
 #[derive(Debug)]
 pub struct Provider<M> {
-    project_dir: PathBuf,
+    paths: ExecutionPaths,
     model: M,
     catalog: Catalog<M>,
     mcp_base: Option<String>,
@@ -27,7 +26,7 @@ pub struct Provider<M> {
 impl<M: Clone> Clone for Provider<M> {
     fn clone(&self) -> Self {
         Self {
-            project_dir: self.project_dir.clone(),
+            paths: self.paths.clone(),
             model: self.model.clone(),
             catalog: self.catalog.clone(),
             mcp_base: self.mcp_base.clone(),
@@ -36,11 +35,11 @@ impl<M: Clone> Clone for Provider<M> {
 }
 
 impl<M> Provider<M> {
-    /// A provider anchored at `project_dir` over the given model backend
+    /// A provider anchored at `paths` over the given model backend
     /// and linked-adapter catalog.
-    pub fn new(project_dir: impl Into<PathBuf>, model: M, catalog: Catalog<M>) -> Self {
+    pub const fn new(paths: ExecutionPaths, model: M, catalog: Catalog<M>) -> Self {
         Self {
-            project_dir: project_dir.into(),
+            paths,
             model,
             catalog,
             mcp_base: None,
@@ -52,13 +51,13 @@ impl<M> Provider<M> {
     /// be bound); the shelf base URL feeds the per-operation MCP grant
     /// rewrite.
     #[cfg(feature = "cursor")]
-    pub async fn bound<B: crate::catalog::Binding>(root: impl Into<PathBuf>, model: M) -> Self
+    pub async fn bound<B: crate::catalog::Binding>(paths: ExecutionPaths, model: M) -> Self
     where
         M: Model,
     {
         let catalog = B::catalog();
         let base = crate::mcp::ephemeral_base(&catalog).await;
-        let mut provider = Self::new(root, model, catalog);
+        let mut provider = Self::new(paths, model, catalog);
         provider.mcp_base = base;
         provider
     }
@@ -83,44 +82,33 @@ impl<M> Provider<M> {
     fn ctx<'a>(&'a self, id: &'a str, url: Option<&'a str>) -> Context<'a> {
         Context {
             adapter_id: id,
-            project_root: &self.project_dir,
+            project_root: self.paths.project_root(),
             mcp_url: url,
         }
     }
 }
 
 impl<M: Send + Sync + 'static> project::handler::Anchor for Provider<M> {
-    fn project_root(&self) -> &Path {
-        &self.project_dir
+    fn paths(&self) -> &ExecutionPaths {
+        &self.paths
     }
 }
 
 impl<M: Send + Sync> Resolver for Provider<M> {
     fn resolve_source(
-        &self, adapter_ref: &AdapterRef, _project_dir: &Path,
+        &self, selector: &AdapterSelector, _paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        require_bare(adapter_ref)?;
-        let entry = self.catalog.get(Axis::Source, &adapter_ref.name)?;
-        project::adapter::resolver::source(adapter_ref, entry.metadata(), origin(&entry))
+        let name = require_bare(selector)?;
+        let entry = self.catalog.get(Axis::Source, name)?;
+        project::adapter::resolver::source(name, linked_version(), entry.metadata(), origin(&entry))
     }
 
     fn resolve_target(
-        &self, adapter_ref: &AdapterRef, _project_dir: &Path,
+        &self, selector: &AdapterSelector, _paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
-        require_bare(adapter_ref)?;
-        let entry = self.catalog.get(Axis::Target, &adapter_ref.name)?;
-        project::adapter::resolver::target(adapter_ref, entry.metadata(), origin(&entry))
-    }
-}
-
-impl<M: Send + Sync> project::adapter::Hydrator for Provider<M> {
-    async fn fetch(&self, url: &str) -> Result<Vec<u8>, Error> {
-        Err(Error::Diag {
-            code: "adapter-hydrate-unavailable",
-            detail: format!(
-                "the native harness links adapters directly and fetches nothing (requested {url})"
-            ),
-        })
+        let name = require_bare(selector)?;
+        let entry = self.catalog.get(Axis::Target, name)?;
+        project::adapter::resolver::target(name, linked_version(), entry.metadata(), origin(&entry))
     }
 }
 
@@ -186,18 +174,24 @@ impl<M: Model> Target for Provider<M> {
     }
 }
 
-fn require_bare(adapter_ref: &AdapterRef) -> Result<(), Error> {
-    if adapter_ref.version.is_none() {
-        return Ok(());
+fn require_bare(selector: &AdapterSelector) -> Result<&str, Error> {
+    match selector {
+        AdapterSelector::Bare { name } => Ok(name),
+        AdapterSelector::Package { .. } | AdapterSelector::Component { .. } => Err(Error::Diag {
+            code: "adapter-not-found",
+            detail: format!(
+                "native adapter resolution accepts bare development identities only; \
+                 `{selector}` must resolve through the component deployment"
+            ),
+        }),
     }
-    Err(Error::Diag {
-        code: "adapter-not-found",
-        detail: format!(
-            "native adapter resolution accepts bare development identities only; \
-             `{}` is pinned and must resolve through the component deployment",
-            adapter_ref.name
-        ),
-    })
+}
+
+/// The version a linked adapter resolves as until the linked host
+/// reports real identities (Stage 2): the `0.0.0` development
+/// placeholder, matching the component deployment's bare-name posture.
+const fn linked_version() -> semver::Version {
+    semver::Version::new(0, 0, 0)
 }
 
 fn origin<M>(entry: &Entry<M>) -> Origin {

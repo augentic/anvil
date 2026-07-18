@@ -1,34 +1,70 @@
 //! Deployment-neutral adapter resolution and component implementation.
 
+use std::future::Future;
 use std::path::{Path, PathBuf};
 
 use error::Error;
 
 use super::core::{
-    AdapterLocation, AdapterRef, Axis, Origin, ResolvedSource, ResolvedTarget, SourceAdapter,
-    TargetAdapter, check_requires_specify, parse_floor,
+    AdapterLocation, Axis, Origin, ResolvedSource, ResolvedTarget, SourceAdapter, TargetAdapter,
+    check_requires_specify, dev_version, parse_floor,
 };
 use super::metadata::{self, Metadata};
+use super::selector::AdapterSelector;
+use crate::handler::ExecutionPaths;
 
 /// Provider capability for resolving source and target adapters.
+///
+/// `resolve_*` is read-only re-resolution of an already-provisioned
+/// selector. `ensure_*` owns deployment policy for making a selector
+/// usable — the component deployment's package hydration, digest
+/// sidecar, and local-component mirror; a linked host's static catalog
+/// match — before resolving it. The defaults make `ensure_*` a
+/// side-effect-free resolve for deployments with nothing to provision.
 pub trait Resolver: Send + Sync {
-    /// Resolve one source adapter identity.
+    /// Resolve one source adapter selector.
     ///
     /// # Errors
     ///
     /// Preserves location, metadata, and compatibility failures.
     fn resolve_source(
-        &self, adapter_ref: &AdapterRef, project_dir: &Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error>;
 
-    /// Resolve one target adapter identity.
+    /// Resolve one target adapter selector.
     ///
     /// # Errors
     ///
     /// Preserves location, metadata, and compatibility failures.
     fn resolve_target(
-        &self, adapter_ref: &AdapterRef, project_dir: &Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error>;
+
+    /// Make `selector` usable under this deployment, then resolve it.
+    ///
+    /// # Errors
+    ///
+    /// Deployment provisioning failures (hydration, digest, mirror,
+    /// catalog mismatch) ahead of the resolve failures.
+    fn ensure_source(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> impl Future<Output = Result<ResolvedSource, Error>> + Send {
+        let resolved = self.resolve_source(selector, paths);
+        async move { resolved }
+    }
+
+    /// Make `selector` usable under this deployment, then resolve it.
+    ///
+    /// # Errors
+    ///
+    /// Deployment provisioning failures (hydration, digest, mirror,
+    /// catalog mismatch) ahead of the resolve failures.
+    fn ensure_target(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> impl Future<Output = Result<ResolvedTarget, Error>> + Send {
+        let resolved = self.resolve_target(selector, paths);
+        async move { resolved }
+    }
 }
 
 /// Component-backed resolver used by the shipped WASI provider.
@@ -47,22 +83,28 @@ impl Component {
 
 impl Resolver for Component {
     fn resolve_source(
-        &self, adapter_ref: &AdapterRef, project_dir: &Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        let name = adapter_ref.name.as_str();
-        let location = locate(Axis::Source, adapter_ref, project_dir)?;
-        let metadata = metadata::load(self.metadata, &location, Axis::Source, name)?;
-        source(adapter_ref, metadata, location.origin())
+        let name = selector.name()?;
+        let location = locate(Axis::Source, selector, &name, paths)?;
+        let metadata = metadata::load(self.metadata, &location, Axis::Source, &name)?;
+        source(&name, resolved_version(selector), metadata, location.origin())
     }
 
     fn resolve_target(
-        &self, adapter_ref: &AdapterRef, project_dir: &Path,
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
-        let name = adapter_ref.name.as_str();
-        let location = locate(Axis::Target, adapter_ref, project_dir)?;
-        let metadata = metadata::load(self.metadata, &location, Axis::Target, name)?;
-        target(adapter_ref, metadata, location.origin())
+        let name = selector.name()?;
+        let location = locate(Axis::Target, selector, &name, paths)?;
+        let metadata = metadata::load(self.metadata, &location, Axis::Target, &name)?;
+        target(&name, resolved_version(selector), metadata, location.origin())
     }
+}
+
+/// The version a component selector resolves as: the exact package pin
+/// when present, else the `0.0.0` development placeholder.
+fn resolved_version(selector: &AdapterSelector) -> semver::Version {
+    selector.version().cloned().unwrap_or_else(dev_version)
 }
 
 /// Build a resolved source from provider metadata, enforcing its CLI floor.
@@ -71,16 +113,15 @@ impl Resolver for Component {
 ///
 /// Returns metadata, version-floor, or resolution errors.
 pub fn source(
-    adapter_ref: &AdapterRef, metadata: Metadata, origin: Origin,
+    name: &str, version: semver::Version, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedSource, Error> {
-    let name = adapter_ref.name.as_str();
     let Metadata { specify_floor, .. } = metadata;
     let floor = parse_floor(specify_floor.as_deref(), name, &origin)?;
     check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
     Ok(ResolvedSource {
         manifest: SourceAdapter {
             name: name.to_string(),
-            version: adapter_ref.resolved_version(),
+            version,
             requires_specify: floor,
         },
         origin,
@@ -93,15 +134,14 @@ pub fn source(
 ///
 /// Returns metadata, version-floor, or resolution errors.
 pub fn target(
-    adapter_ref: &AdapterRef, metadata: Metadata, origin: Origin,
+    name: &str, version: semver::Version, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedTarget, Error> {
-    let name = adapter_ref.name.as_str();
     let floor = parse_floor(metadata.specify_floor.as_deref(), name, &origin)?;
     check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
     Ok(ResolvedTarget {
         manifest: TargetAdapter {
             name: name.to_string(),
-            version: adapter_ref.resolved_version(),
+            version,
             requires_specify: floor,
             inputs: metadata.inputs,
             platforms: metadata.platforms,
@@ -110,16 +150,17 @@ pub fn target(
     })
 }
 
-/// Project component cache directory.
+/// Project component cache directory under the execution context's
+/// cache placement.
 #[must_use]
-pub(crate) fn component_cache_dir(project_dir: &Path) -> PathBuf {
-    diagnostics::cache::project_cache_dir(project_dir).join("components")
+pub(crate) fn component_cache_dir(paths: &ExecutionPaths) -> PathBuf {
+    paths.cache_dir().join("components")
 }
 
 /// Project component cache entry for `name`.
 #[must_use]
-pub(crate) fn component_cache_entry(project_dir: &Path, name: &str) -> PathBuf {
-    component_cache_dir(project_dir).join(format!("{name}.wasm"))
+pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathBuf {
+    component_cache_dir(paths).join(format!("{name}.wasm"))
 }
 
 /// The in-repo development release-build candidate for a bare-name
@@ -143,10 +184,9 @@ pub(crate) fn dev_component_filename(name: &str) -> String {
 }
 
 fn locate(
-    axis: Axis, adapter_ref: &AdapterRef, project_dir: &Path,
+    axis: Axis, selector: &AdapterSelector, name: &str, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
-    let name = adapter_ref.name.as_str();
-    if let Some(version) = adapter_ref.version.as_ref() {
+    if let AdapterSelector::Package { version, .. } = selector {
         let version = version.to_string();
         let entry = diagnostics::cache::adapter_store_entry(name, &version);
         if !entry.is_file() {
@@ -175,8 +215,13 @@ fn locate(
         return Ok(AdapterLocation::Store(entry));
     }
 
+    // Bare development shorthand and persisted local-component
+    // selectors share the project-contained probe set: the mirrored
+    // project component cache, then the in-repo release build. A
+    // component selector resolves through its cache mirror, so it
+    // keeps working after the operator's original file is removed.
     let candidates =
-        [component_cache_entry(project_dir, name), dev_component_path(project_dir, name)];
+        [component_cache_entry(paths, name), dev_component_path(paths.project_root(), name)];
     if let Some(hit) = candidates.iter().find(|path| path.is_file()) {
         return Ok(AdapterLocation::Dev(hit.clone()));
     }
