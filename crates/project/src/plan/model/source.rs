@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
+
 /// One top-level [`super::Plan::sources`] binding.
 ///
 /// Carries the kebab-case source adapter name plus exactly one of
@@ -33,6 +35,27 @@ pub struct SourceBinding {
     /// `path`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+}
+
+impl SourceBinding {
+    /// The typed adapter selector this binding resolves through: the
+    /// bare development name for an unpinned binding, or the
+    /// first-party package pin when `version` is set (the binding
+    /// schema carries no namespace field; pins are implicitly
+    /// `specify:`).
+    #[must_use]
+    pub fn selector(&self) -> AdapterSelector {
+        self.version.as_ref().map_or_else(
+            || AdapterSelector::Bare {
+                name: self.adapter.clone(),
+            },
+            |version| AdapterSelector::Package {
+                namespace: FIRST_PARTY_NAMESPACE.to_string(),
+                name: self.adapter.clone(),
+                version: version.clone(),
+            },
+        )
+    }
 }
 
 /// One `(source, lead)` binding under [`super::Entry::sources`].

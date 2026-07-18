@@ -23,6 +23,7 @@ error.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 project.workspace = true
+semver.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 serde_json.workspace = true

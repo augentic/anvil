@@ -80,8 +80,14 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     } = caps;
     let layout = Layout::new(paths.project_root());
     refuse_workspace(layout)?;
+    // Ensure every binding up front — before the scaffold write and
+    // the survey fan-out — so an unresolvable adapter (missing pin,
+    // `specify_floor`) fails fast with nothing on disk.
+    for binding in bindings.values() {
+        resolver.ensure_source(&binding.selector(), paths).await?;
+    }
     scaffold(layout, name, bindings)?;
-    let surveyed = super::survey_all(sources, layout, now).await?;
+    let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
     let discovery = Discovery::load(&layout.discovery_path())?;
     let topology = load_topology(resolver, paths)?;

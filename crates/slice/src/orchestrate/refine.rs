@@ -105,7 +105,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let lead = binding.lead(slice).to_string();
-        super::extract(caps.sources, layout, now, &source, &lead, slice).await?;
+        super::extract(caps.sources, caps.resolver, paths, now, &source, &lead, slice).await?;
         extracted.push((source, lead));
     }
 

@@ -6,8 +6,9 @@ use artifacts::atomic::bytes_write;
 use artifacts::discovery::Discovery;
 use error::Error;
 use jiff::Timestamp;
-use project::adapter::SourceOperation;
+use project::adapter::{Resolver, SourceOperation};
 use project::config::Layout;
+use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::Plan;
 use project::seam::{Source, seam_failure, source_id};
@@ -33,12 +34,15 @@ pub struct ExtractOutcome {
 ///
 /// # Errors
 ///
-/// `source-unknown` for an unbound source key, seam and
+/// `source-unknown` for an unbound source key, adapter ensure/resolve
+/// failures (missing pin, `specify_floor`), seam and
 /// `evidence-schema` validation failures from the adapter's extract
 /// leg, plus plan-load and persistence I/O failures.
 pub async fn extract(
-    seam: &impl Source, layout: Layout<'_>, now: Timestamp, source: &str, lead: &str, slice: &str,
+    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
+    source: &str, lead: &str, slice: &str,
 ) -> Result<ExtractOutcome, Error> {
+    let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
     let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
         code: "source-unknown",
@@ -49,17 +53,22 @@ pub async fn extract(
     })?;
     let seam_lead = resolve_seam_lead(layout, source, lead)?;
 
+    // Ensure/resolve before dispatch: the binding's pin and the
+    // adapter's `specify_floor` are enforced by the deployment's
+    // resolver, and dispatch routes by the resolved name only.
+    let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest.name;
+
     emit(
         layout,
         now,
         EventKind::SourceExecutionAgent {
             source: source.to_string(),
-            adapter: binding.adapter.clone(),
+            adapter: adapter.clone(),
             operation: SourceOperation::Extract,
         },
     )?;
 
-    let id = source_id(&binding.adapter);
+    let id = source_id(&adapter);
     let evidence = seam
         .extract(id.clone(), seam_lead)
         .await
@@ -88,7 +97,7 @@ pub async fn extract(
     )?;
     Ok(ExtractOutcome {
         source: source.to_string(),
-        adapter: binding.adapter.clone(),
+        adapter,
         evidence: path,
     })
 }

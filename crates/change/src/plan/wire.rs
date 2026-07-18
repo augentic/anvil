@@ -14,6 +14,7 @@ use std::str::FromStr;
 use artifacts::discovery::{Discovery, DiscoveryResolveError};
 use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
+use project::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
 use project::config::Layout;
 use project::plan::{Divergence, SliceSourceBinding, SourceBinding};
 use serde::{Deserialize, Serialize};
@@ -76,7 +77,9 @@ impl SourceAssign {
 /// # Errors
 ///
 /// `Error::Diag` with the stable `plan-source-duplicate-key`
-/// discriminant on a duplicate source key.
+/// discriminant on a duplicate source key, or
+/// `plan-source-adapter-invalid` when the adapter token is neither a
+/// bare name nor a first-party `<name>@<semver>` pin.
 pub(crate) fn source_map(
     mut sources: Vec<SourceAssign>, intent: Option<String>,
 ) -> Result<BTreeMap<String, SourceBinding>> {
@@ -97,17 +100,55 @@ pub(crate) fn source_map(
                 detail: format!("duplicate key `{key}` in --source arguments"),
             });
         }
+        let (adapter, version) = parse_source_adapter(&key, &adapter)?;
         map.insert(
             key,
             SourceBinding {
                 adapter,
-                version: None,
+                version,
                 path,
                 value,
             },
         );
     }
     Ok(map)
+}
+
+/// Parse the `<adapter>` half of a source binding: a bare development
+/// name (`typescript`) or a first-party exact pin
+/// (`typescript@1.2.0`, sugar for `specify:typescript@1.2.0`). The pin
+/// lands in the binding's existing `version` field — `SourceBinding`
+/// carries no namespace, so only the implicit `specify` namespace is
+/// representable.
+///
+/// # Errors
+///
+/// `plan-source-adapter-invalid` for component paths and foreign
+/// namespaces; selector parse failures (malformed pins, GitHub URLs)
+/// propagate with their own discriminants.
+fn parse_source_adapter(key: &str, raw: &str) -> Result<(String, Option<semver::Version>)> {
+    match AdapterSelector::parse(raw)? {
+        AdapterSelector::Bare { name } => Ok((name, None)),
+        AdapterSelector::Package {
+            namespace,
+            name,
+            version,
+        } if namespace == FIRST_PARTY_NAMESPACE => Ok((name, Some(version))),
+        AdapterSelector::Package { namespace, .. } => Err(Error::Diag {
+            code: "plan-source-adapter-invalid",
+            detail: format!(
+                "source `{key}` binds adapter `{raw}` in namespace `{namespace}`; source \
+                 bindings accept only bare names or first-party pins (`<name>@<semver>`)"
+            ),
+        }),
+        AdapterSelector::Component { .. } => Err(Error::Diag {
+            code: "plan-source-adapter-invalid",
+            detail: format!(
+                "source `{key}` binds adapter `{raw}`, which is not a source-adapter name; \
+                 source bindings accept only bare names or first-party pins (`<name>@<semver>`)"
+            ),
+        }),
+    }
 }
 
 /// One per-slice source binding as it crosses the wire: the key from

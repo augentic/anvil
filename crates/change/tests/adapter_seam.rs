@@ -58,6 +58,82 @@ async fn survey_failure_aborts_author() {
 }
 
 #[tokio::test]
+async fn unknown_adapter_fails_ensure_before_scaffold() {
+    let session = Session::scripted("fixture", Vec::new());
+
+    // Ensure runs over every binding before the plan scaffold write, so
+    // an unlinked adapter aborts with nothing on disk — not a seam
+    // failure halfway through the survey fan-out.
+    let err = author(&session, "no-such-adapter").await.expect_err("ensure fails");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-found"), "{detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn pinned_binding_refused_by_linked_resolver() {
+    let session = Session::scripted("fixture", Vec::new());
+
+    // `<name>@<semver>` parses into the first-party package pin
+    // (implicit `specify` namespace); the linked resolver accepts bare
+    // development identities only, so ensure refuses it before survey.
+    let err = author(&session, "fixture@1.0.0").await.expect_err("ensure refuses the pin");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-found"), "{detail}");
+    assert!(detail.contains("specify:fixture@1.0.0"), "pin parsed into the package form: {detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn survey_ensures_pinned_binding_before_dispatch() {
+    let session = Session::scripted("fixture", Vec::new());
+
+    // A pinned binding already on disk (the plan schema has carried
+    // `version` all along) must be ensured at dispatch time too — the
+    // breakout `source survey` path, not just plan author.
+    let mut bindings = std::collections::BTreeMap::new();
+    bindings.insert(
+        "main".to_string(),
+        project::plan::SourceBinding {
+            adapter: "fixture".to_string(),
+            version: Some(semver::Version::new(1, 0, 0)),
+            path: None,
+            value: Some("The greeting service.".to_string()),
+        },
+    );
+    let plan_path = session.root().join("plan.yaml");
+    project::plan::scaffold(&plan_path, "demo", bindings)
+        .expect("scaffold")
+        .save(&plan_path)
+        .expect("save plan.yaml");
+
+    let err = run::<change::source::Survey, _, _>(
+        session.provider(),
+        change::source::SurveyInput {
+            source: "main".to_string(),
+            plan: None,
+        },
+    )
+    .await
+    .expect_err("ensure refuses the pin before dispatch");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-found"), "{detail}");
+    assert!(detail.contains("specify:fixture@1.0.0"), "{detail}");
+}
+
+#[tokio::test]
+async fn malformed_adapter_token_refused_at_parse() {
+    let session = Session::scripted("fixture", Vec::new());
+
+    // A non-semver `@` suffix is neither a bare name nor a first-party
+    // pin, so the wire parse refuses it before ensure or scaffold.
+    let err = author(&session, "fixture@not-semver").await.expect_err("parse refuses the token");
+    let detail = err.to_string();
+    assert!(detail.contains("plan-source-adapter-invalid"), "{detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
 async fn extract_failure_parks_refine() {
     let session = Session::scripted("fixture", vec![fixture::answers::greeting_grouping()]);
 

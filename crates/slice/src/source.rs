@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::seam::Source;
 use serde::{Deserialize, Serialize};
@@ -29,7 +30,7 @@ pub struct ExtractInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Extract;
 
-impl<P: Anchor + Source> Operation<P> for Extract {
+impl<P: Anchor + Source + Resolver> Operation<P> for Extract {
     type Error = project::handler::Error;
     type Input = ExtractInput;
     type Output = ExtractBody;
@@ -40,7 +41,8 @@ impl<P: Anchor + Source> Operation<P> for Extract {
         let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::extract(
             context.provider,
-            cx.layout(),
+            context.provider,
+            &cx.paths,
             cx.now(),
             &input.source,
             &input.lead,

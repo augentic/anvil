@@ -507,6 +507,7 @@ dependencies = [
  "omnia-guest",
  "project",
  "prose",
+ "semver",
  "serde",
  "serde-saphyr",
  "serde_json",

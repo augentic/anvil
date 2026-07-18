@@ -5,8 +5,9 @@ use std::path::Path;
 use artifacts::discovery::{Discovery, Lead as DiscoveryLead, validate_leads};
 use error::Error;
 use jiff::Timestamp;
-use project::adapter::SourceOperation;
+use project::adapter::{Resolver, SourceOperation};
 use project::config::Layout;
+use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{Plan, SourceBinding};
 use project::seam::{Source, seam_failure, source_id};
@@ -35,12 +36,13 @@ pub struct SurveyedSource {
 /// Plan-load failures plus whatever [`survey`] surfaces for the first
 /// failing binding.
 pub async fn survey_all(
-    seam: &impl Source, layout: Layout<'_>, now: Timestamp,
+    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
+    let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
     let mut surveyed = Vec::with_capacity(plan.sources.len());
     for (source, binding) in &plan.sources {
-        surveyed.push(survey_one(seam, layout, now, source, binding).await?);
+        surveyed.push(survey_one(seam, resolver, paths, now, source, binding).await?);
     }
     Ok(surveyed)
 }
@@ -55,11 +57,14 @@ pub async fn survey_all(
 /// # Errors
 ///
 /// `source-unknown` for an unbound source key, an `--plan` argument
-/// error when the guard fails, seam and schema-gate failures from the
-/// adapter's survey leg, plus plan-load and merge I/O failures.
+/// error when the guard fails, adapter ensure/resolve failures
+/// (missing pin, `specify_floor`), seam and schema-gate failures from
+/// the adapter's survey leg, plus plan-load and merge I/O failures.
 pub async fn survey(
-    seam: &impl Source, layout: Layout<'_>, now: Timestamp, source: &str, plan_guard: Option<&str>,
+    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
+    source: &str, plan_guard: Option<&str>,
 ) -> Result<SurveyedSource, Error> {
+    let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
     if let Some(expected) = plan_guard
         && plan.name.as_str() != expected
@@ -79,24 +84,33 @@ pub async fn survey(
              its argument against the plan's source keys, not the adapter name"
         ),
     })?;
-    survey_one(seam, layout, now, source, binding).await
+    survey_one(seam, resolver, paths, now, source, binding).await
 }
 
-/// Survey one binding: dispatch, attribute, validate, merge, journal.
+/// Survey one binding: ensure/resolve, dispatch, attribute, validate,
+/// merge, journal.
 async fn survey_one(
-    seam: &impl Source, layout: Layout<'_>, now: Timestamp, source: &str, binding: &SourceBinding,
+    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
+    source: &str, binding: &SourceBinding,
 ) -> Result<SurveyedSource, Error> {
+    let layout = Layout::new(paths.project_root());
+
+    // Ensure/resolve before dispatch: the binding's pin and the
+    // adapter's `specify_floor` are enforced by the deployment's
+    // resolver, and dispatch routes by the resolved name only.
+    let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest.name;
+
     emit(
         layout,
         now,
         EventKind::SourceExecutionAgent {
             source: source.to_string(),
-            adapter: binding.adapter.clone(),
+            adapter: adapter.clone(),
             operation: SourceOperation::Survey,
         },
     )?;
 
-    let id = source_id(&binding.adapter);
+    let id = source_id(&adapter);
     let raw = seam.survey(id.clone()).await.map_err(|err| seam_failure("survey", &id, &err))?;
 
     // Attribution is orchestrator-owned, mirroring the native verb: a
@@ -123,12 +137,12 @@ async fn survey_one(
         now,
         EventKind::SourceSurveyCompleted {
             source: source.to_string(),
-            adapter: binding.adapter.clone(),
+            adapter: adapter.clone(),
         },
     )?;
     Ok(SurveyedSource {
         source: source.to_string(),
-        adapter: binding.adapter.clone(),
+        adapter,
         leads: lead_ids,
     })
 }
