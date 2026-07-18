@@ -127,8 +127,7 @@ async fn guidance_crosses_workflow_seam() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
 
-    let prompt =
-        provider.guidance("target:mock".to_string()).await.expect("guidance dispatches");
+    let prompt = provider.guidance("target:mock".to_string()).await.expect("guidance dispatches");
     assert_eq!(prompt, "mock guidance");
 
     // The adapter's typed guidance error survives catalog dispatch and
@@ -197,12 +196,7 @@ async fn build_and_merge_cross_workflow_seam() {
     assert_eq!(report.outputs[0].path, "build:demo:1");
 
     let report = provider
-        .merge(
-            "target:mock".to_string(),
-            "demo".to_string(),
-            seam::MergePhase::Preflight,
-            tree(),
-        )
+        .merge("target:mock".to_string(), "demo".to_string(), seam::MergePhase::Preflight, tree())
         .await
         .expect("merge dispatches");
     assert_eq!(report.outputs[0].path, "merge:demo:preflight");
@@ -218,9 +212,7 @@ async fn axis_routing() {
         .survey("target:mock".to_string())
         .await
         .expect_err("a target id never reaches the source legs");
-    assert!(
-        matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("target:mock"))
-    );
+    assert!(matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("target:mock")));
 
     let err = provider
         .guidance("source:mock".to_string())

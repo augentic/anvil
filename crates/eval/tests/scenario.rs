@@ -59,9 +59,8 @@ mod config {
 
     #[test]
     fn merge_gate_allows_empty_expect() {
-        let (_tmp, scenarios, dir) = stage(
-            "adapter = \"target:mock\"\noperation = \"merge-preflight\"\nslice = \"demo\"\n",
-        );
+        let (_tmp, scenarios, dir) =
+            stage("adapter = \"target:mock\"\noperation = \"merge-preflight\"\nslice = \"demo\"\n");
         scenario::load(&scenarios, &dir, &catalog())
             .expect("merge gates carry no mandatory expect");
     }

@@ -164,8 +164,7 @@ async fn extract_failure_parks_refine() {
 
 #[tokio::test]
 async fn guidance_failure_parks_refine() {
-    let session =
-        Session::scripted("mock-fail-guidance", vec![mock::answers::greeting_grouping()]);
+    let session = Session::scripted("mock-fail-guidance", vec![mock::answers::greeting_grouping()]);
 
     author(&session, "mock").await.expect("author succeeds");
     approve(&session).await;

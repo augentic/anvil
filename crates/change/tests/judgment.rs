@@ -37,10 +37,8 @@ async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project
 
 #[tokio::test]
 async fn malformed_repaired_in_loop() {
-    let session = Session::scripted(
-        "mock",
-        vec![malformed_answer(), mock::answers::greeting_grouping()],
-    );
+    let session =
+        Session::scripted("mock", vec![malformed_answer(), mock::answers::greeting_grouping()]);
 
     let authored = author(&session).await.expect("the repaired answer lands");
     assert_eq!(authored.slices, ["greeting"]);

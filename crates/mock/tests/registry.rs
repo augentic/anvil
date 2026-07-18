@@ -102,15 +102,10 @@ async fn missing_output_reports_unwritten_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let _guard = mock::Cwd::enter(tmp.path());
 
-    let report = MissingOutput::build(
-        &model,
-        &ctx("target:mock-missing-output"),
-        "greeting",
-        &[],
-        &tree(),
-    )
-    .await
-    .expect("missing-output reports success");
+    let report =
+        MissingOutput::build(&model, &ctx("target:mock-missing-output"), "greeting", &[], &tree())
+            .await
+            .expect("missing-output reports success");
     assert_eq!(report.status, Status::Success);
     assert_eq!(report.outputs.len(), 1);
     assert!(!tmp.path().join(&report.outputs[0].path).exists(), "the output is never written");

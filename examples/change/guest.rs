@@ -33,8 +33,7 @@ impl source::Guest for Adapter {
 
     async fn survey(id: source::AdapterId) -> Result<Vec<source::Lead>, source::Error> {
         let ctx = Context::guest(&id, None);
-        let leads =
-            mock::Adapter::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
+        let leads = mock::Adapter::survey(&WasiModel, &ctx).await.map_err(source::Error::from)?;
         Ok(leads.into_iter().map(source::Lead::from).collect())
     }
 
