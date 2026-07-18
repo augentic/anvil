@@ -13,7 +13,7 @@ pub mod source;
 
 // The intentional external surface: the plan state machine, its domain
 // enums and DTO types, and the propose/topology entry points the
-// harness and crate-level tests drive.
+// linked host and crate-level tests drive.
 pub use project::plan::{
     AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Lifecycle,
     LoopStep, NextActionKind, NextBody, NextReason, Patch, Plan, SliceSourceBinding, SourceBinding,

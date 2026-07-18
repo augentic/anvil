@@ -67,9 +67,8 @@ async fn regular_mode() {
     );
 }
 
-/// A provider whose resolver answers from memory — the
-/// native-harness (linked crates) shape: no component file exists
-/// anywhere on disk.
+/// A provider whose resolver answers from memory — the linked-host
+/// shape: no component file exists anywhere on disk.
 #[derive(Clone)]
 struct Linked(Provider);
 

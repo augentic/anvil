@@ -104,7 +104,7 @@ impl wasip3::exports::http::handler::Guest for HttpGuest {
 
 const REF_NAME: &str = "adapter-reference";
 const REF_DOC: &str = "# Adapter Reference\n\n\
-     The harness adapter serves both axes from one component: \
+     The fixture adapter serves both axes from one component: \
      deterministic survey/extract data on the source interface and \
      guidance/build/merge on the target interface.\n";
 
@@ -118,7 +118,7 @@ impl McpServer for References {
     fn tools(&self) -> Vec<Tool> {
         vec![Tool::new(
             "read_reference",
-            "Read the harness adapter's single reference document in full.",
+            "Read the fixture adapter's single reference document in full.",
             json!({ "type": "object", "properties": {} }),
         )]
     }
@@ -134,7 +134,7 @@ impl McpServer for References {
         vec![Resource::new(
             format!("doc://{REF_NAME}"),
             REF_NAME,
-            "The harness adapter's single reference document.",
+            "The fixture adapter's single reference document.",
             "text/markdown",
         )]
     }

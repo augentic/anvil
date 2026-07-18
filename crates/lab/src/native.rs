@@ -1,5 +1,5 @@
 //! Native guest-side [`Model`] over a host-side [`WasiModelCtx`]
-//! backend — the eval harness's stand-in for the deployment
+//! backend — the lab runtime's stand-in for the deployment
 //! boundary.
 //!
 //! [`Native`] performs off-`wasm32` what the guest default body and

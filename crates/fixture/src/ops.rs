@@ -19,7 +19,7 @@ use crate::behaviour;
 /// The fixture's single embedded reference document.
 pub const DOCS: &[Doc] = &[Doc {
     path: "reference.md",
-    body: "# Adapter Reference\n\nThe harness adapter serves both axes from one component: \
+    body: "# Adapter Reference\n\nThe fixture adapter serves both axes from one component: \
            deterministic survey/extract data on the source interface and guidance/build/merge \
            on the target interface.\n",
 }];

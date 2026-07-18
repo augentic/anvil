@@ -2,7 +2,7 @@
 //!
 //! The trial's `execute` phase walks the baseline specs and runs the
 //! provenance gate directly; anything catalog-specific stays out of
-//! the shared harness.
+//! this shared library.
 
 use std::fs;
 use std::path::Path;

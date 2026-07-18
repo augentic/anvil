@@ -113,21 +113,20 @@ impl Provider {
         if entry.docs().is_empty() {
             return Ok(None);
         }
-        let base = match &self.references {
-            References::Offline => return Ok(None),
+        match &self.references {
+            References::Offline => Ok(None),
             #[cfg(feature = "cli")]
             References::Online(host) => {
-                host.base().await.map_err(|err| seam::Error::Internal(err.to_string()))?
+                let base =
+                    host.base().await.map_err(|err| seam::Error::Internal(err.to_string()))?;
+                Ok(base.map(|base| format!("{base}/mcp/{}", entry.name())))
             }
             #[cfg(not(feature = "cli"))]
-            References::Online => {
-                return Err(seam::Error::Internal(format!(
-                    "reference-listener-unavailable: `{id}` carries reference documents but \
-                     this linked host was built without the `cli` networking stack"
-                )));
-            }
-        };
-        Ok(base.map(|base| format!("{base}/mcp/{}", entry.name())))
+            References::Online => Err(seam::Error::Internal(format!(
+                "reference-listener-unavailable: `{id}` carries reference documents but \
+                 this linked host was built without the `cli` networking stack"
+            ))),
+        }
     }
 
     // Every operation method computes the URL first (the ctx borrows it),

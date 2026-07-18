@@ -363,7 +363,7 @@ world target-adapter {
 /// A combined source and target adapter component. Additive: external
 /// adapters remain single-axis (`source-adapter` xor `target-adapter`);
 /// this world exists for components that deliberately serve both axes,
-/// such as the Specify-owned harness adapter, bound under one artifact
+/// such as the Specify-owned fixture adapter, bound under one artifact
 /// at both a `source:<name>` and a `target:<name>` dispatch id.
 world adapter {
   export source;
