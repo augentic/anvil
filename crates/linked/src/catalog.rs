@@ -9,6 +9,10 @@
 //! ids over. `build()` validates identities, per-axis duplicates, and
 //! reference-shelf coherence; same-name source and target entries
 //! remain legal (dispatch is always axis-qualified).
+//!
+//! Publicly the catalog is construction plus read-only inventory;
+//! operation dispatch is crate-private and reachable only through the
+//! [`crate::Provider`] seam.
 
 use std::fmt;
 use std::future::Future;
@@ -194,7 +198,7 @@ impl Catalog {
     ///
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
-    pub async fn guidance(
+    pub(crate) async fn guidance(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str,
     ) -> Result<String, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
@@ -209,7 +213,7 @@ impl Catalog {
     ///
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked source.
-    pub async fn survey(
+    pub(crate) async fn survey(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str,
     ) -> Result<Vec<aseam::Lead>, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
@@ -224,7 +228,7 @@ impl Catalog {
     ///
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked source.
-    pub async fn extract(
+    pub(crate) async fn extract(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, lead: &aseam::Lead,
     ) -> Result<aseam::Evidence, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
@@ -239,7 +243,7 @@ impl Catalog {
     ///
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
-    pub async fn build(
+    pub(crate) async fn build(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
         tree: &aseam::WorkingTree,
     ) -> Result<aseam::Report, aseam::Error> {
@@ -255,7 +259,7 @@ impl Catalog {
     ///
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
-    pub async fn merge(
+    pub(crate) async fn merge(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
         phase: aseam::MergePhase, tree: &aseam::WorkingTree,
     ) -> Result<aseam::Report, aseam::Error> {

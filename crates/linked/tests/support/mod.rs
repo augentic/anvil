@@ -3,10 +3,11 @@
 //! One dual-axis [`Probe`] registered as `fixture`, the always-failing
 //! [`FailGuidance`] target, the [`Floored`] target carrying a
 //! metadata floor, the [`Reflect`] source echoing its reference URL,
-//! and the [`BadVersion`] target with a non-SemVer identity — enough
-//! surface for the catalog, provider, references, and command suites
-//! without a dependency on any concrete adapter crate (the checks
-//! package pins that invariant).
+//! the [`Pinned`] target with a published identity version, and the
+//! [`BadVersion`] target with a non-SemVer identity — enough surface
+//! for the catalog, provider, references, and command suites without a
+//! dependency on any concrete adapter crate (the checks package pins
+//! that invariant).
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
@@ -222,6 +223,46 @@ impl Source for Reflect {
         _model: &P, _ctx: &Context<'_>, lead: &Lead,
     ) -> Result<Evidence, Error> {
         Err(Error::Internal(format!("no evidence for {}", lead.lead)))
+    }
+}
+
+/// A target carrying a published (non-placeholder) identity version,
+/// for exact-pin matching asserts.
+#[derive(Clone, Copy, Debug)]
+pub struct Pinned;
+
+impl Target for Pinned {
+    const IDENTITY: AdapterIdentity = AdapterIdentity {
+        name: "pinned",
+        version: "1.2.3",
+    };
+
+    fn metadata() -> TargetMetadata {
+        TargetMetadata {
+            specify_floor: None,
+            inputs: Vec::new(),
+            platforms: None,
+        }
+    }
+
+    fn docs() -> &'static [Doc] {
+        DOCS
+    }
+
+    async fn guidance<P: Model>(_model: &P, _ctx: &Context<'_>) -> Result<String, Error> {
+        Ok("fixture guidance".to_string())
+    }
+
+    async fn build<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+    ) -> Result<Report, Error> {
+        Ok(Report::success())
+    }
+
+    async fn merge<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+    ) -> Result<Report, Error> {
+        Ok(Report::success())
     }
 }
 

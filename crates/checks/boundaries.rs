@@ -205,7 +205,17 @@ mod direction {
             .into_iter()
             .filter(|(table, _)| !table.contains("dev-dependencies"))
             .flat_map(|(table, entries)| {
-                entries.keys().map(move |name| (table.clone(), name.replace('_', "-")))
+                // Resolve the effective package name, so a Cargo alias
+                // (`host = { package = "linked", … }`) cannot bypass
+                // the direction rules.
+                entries.iter().map(move |(name, spec)| {
+                    let package = spec
+                        .as_table()
+                        .and_then(|table| table.get("package"))
+                        .and_then(Value::as_str)
+                        .unwrap_or(name);
+                    (table.clone(), package.replace('_', "-"))
+                })
             })
             .collect()
     }
@@ -250,6 +260,15 @@ mod direction {
 
         let dir = tempfile::tempdir().expect("tempdir");
         write(dir.path(), "crates/eval/Cargo.toml", "[dependencies]\nomnia-cursor = \"1\"\n");
+        assert!(!direction_findings(dir.path()).is_empty());
+
+        // A Cargo alias cannot smuggle a rejected package past the rule.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(
+            dir.path(),
+            "crates/slice/Cargo.toml",
+            "[dependencies]\nhost = { package = \"linked\", version = \"1\" }\n",
+        );
         assert!(!direction_findings(dir.path()).is_empty());
 
         // Dev-dependencies on host/test-support crates remain legal.

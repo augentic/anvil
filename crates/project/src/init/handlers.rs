@@ -139,23 +139,26 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
 
 /// Parse and ensure one adapter binding, recording any package pin
 /// this run installed into the global store on `hydrated` (the store
-/// state is observed around the ensure so the envelope reports only
-/// actual fetches).
+/// state is observed on both sides of the ensure so the envelope
+/// reports only actual fetches — a linked ensure writes no store entry
+/// and reports nothing).
 async fn ensure(
     provider: &impl Resolver, value: &str, paths: &ExecutionPaths, hydrated: &mut Vec<String>,
 ) -> Result<EnsuredAdapter, Error> {
     let selector = AdapterSelector::parse(value)?;
     let pin = match &selector {
         AdapterSelector::Package { name, version, .. } => {
-            let installed =
-                diagnostics::cache::adapter_store_entry(name, &version.to_string()).is_file();
-            (!installed).then(|| format!("{name}@{version}"))
+            let version = version.to_string();
+            let installed = diagnostics::cache::adapter_store_entry(name, &version).is_file();
+            (!installed).then(|| (name.clone(), version))
         }
         AdapterSelector::Bare { .. } | AdapterSelector::Component { .. } => None,
     };
     let resolved = provider.ensure_target(&selector, paths).await?;
-    if let Some(identity) = pin {
-        hydrated.push(identity);
+    if let Some((name, version)) = pin
+        && diagnostics::cache::adapter_store_entry(&name, &version).is_file()
+    {
+        hydrated.push(format!("{name}@{version}"));
     }
     Ok(EnsuredAdapter { selector, resolved })
 }

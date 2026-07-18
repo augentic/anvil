@@ -5,8 +5,9 @@
 //! shim. Linked ensure is a static package match, not a component
 //! store lookup: bare selectors resolve to the catalog entry's actual
 //! version, exact pins succeed only on the exact compiled `(name,
-//! version)`, and everything else fails as `adapter-not-linked` before
-//! any cache mutation could occur.
+//! version)` of a published (non-placeholder) identity, and everything
+//! else fails as `adapter-not-linked` before any cache mutation could
+//! occur.
 
 use adapter::seam::{self as aseam, Context};
 use error::Error;
@@ -157,7 +158,18 @@ impl Provider {
                     )));
                 }
                 let entry = self.catalog.get(axis, name)?;
-                if entry_version(&entry)? == *version {
+                let linked = entry_version(&entry)?;
+                // Unpublished adapters carry the `0.0.0` development
+                // placeholder; they remain bare-only identities for
+                // pin matching.
+                if linked == PLACEHOLDER {
+                    return Err(not_linked(format!(
+                        "adapter `{selector}` (axis `{axis}`): the linked `{name}` carries the \
+                         development placeholder version {PLACEHOLDER} and matches only a bare \
+                         reference"
+                    )));
+                }
+                if linked == *version {
                     Ok(entry)
                 } else {
                     Err(not_linked(format!(
@@ -270,6 +282,10 @@ impl Target for Provider {
         Ok(convert::widen_report(&id, slice, report))
     }
 }
+
+/// The development placeholder version unpublished adapters compile
+/// with; placeholder identities match only bare references.
+const PLACEHOLDER: semver::Version = semver::Version::new(0, 0, 0);
 
 /// The exact compiled version a catalog entry resolves as.
 fn entry_version(entry: &Entry) -> Result<semver::Version, Error> {

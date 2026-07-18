@@ -187,4 +187,23 @@ async fn local_component_mirrored() {
     )
     .expect("the mirrored component resolves the bare name");
     assert_eq!(resolved.manifest.name, "demo");
+
+    // The persisted selector survives the operator's original file:
+    // `--upgrade` re-ensures the recorded `file://` binding through
+    // the project-cache mirror after the download is deleted.
+    fs::remove_file(&staged).expect("remove the operator's original file");
+    let body = run::<project::init::handlers::Init, _, _>(
+        &project,
+        project::init::handlers::InitInput {
+            adapter: None,
+            name: None,
+            description: None,
+            workspace: false,
+            platforms: None,
+            upgrade: true,
+        },
+    )
+    .await
+    .expect("re-ensure resolves through the mirrored component");
+    assert_eq!(body.adapter_name, "demo");
 }

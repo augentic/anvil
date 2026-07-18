@@ -14,7 +14,7 @@ use omnia_testkit::model::Scripted;
 use project::adapter::{AdapterSelector, Resolver as _};
 use project::handler::ExecutionPaths;
 use project::seam::{self, Source as _, Target as _};
-use support::{FailGuidance, Floored, Probe};
+use support::{FailGuidance, Floored, Pinned, Probe};
 
 fn provider(root: &std::path::Path, answers: &[&str]) -> Provider {
     let catalog = Catalog::builder()
@@ -22,6 +22,7 @@ fn provider(root: &std::path::Path, answers: &[&str]) -> Provider {
         .target::<Probe>()
         .target::<FailGuidance>()
         .target::<Floored>()
+        .target::<Pinned>()
         .build()
         .expect("valid catalog");
     Provider::new(
@@ -57,27 +58,37 @@ fn bare_resolution() {
     assert_eq!(unknown.variant_str(), "adapter-not-linked");
 }
 
-// An exact package pin succeeds only on the exact compiled identity.
+// An exact package pin succeeds only on the exact compiled identity
+// of a published adapter; placeholder identities are bare-only.
 #[tokio::test]
 async fn exact_pin_matching() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
     let paths = ExecutionPaths::operator(tmp.path());
 
-    let exact = AdapterSelector::parse("specify:fixture@0.0.0").expect("package selector");
+    let exact = AdapterSelector::parse("specify:pinned@1.2.3").expect("package selector");
     let resolved =
         provider.ensure_target(&exact, &paths).await.expect("the exact compiled pin ensures");
-    assert_eq!(resolved.manifest.name, "fixture");
-    assert_eq!(resolved.manifest.version.to_string(), "0.0.0");
+    assert_eq!(resolved.manifest.name, "pinned");
+    assert_eq!(resolved.manifest.version.to_string(), "1.2.3");
 
-    let mismatch = AdapterSelector::parse("specify:fixture@1.0.0").expect("package selector");
+    let mismatch = AdapterSelector::parse("specify:pinned@1.0.0").expect("package selector");
     let err = provider
         .ensure_target(&mismatch, &paths)
         .await
         .expect_err("a mismatched pin refuses before any cache mutation");
     assert_eq!(err.variant_str(), "adapter-not-linked");
     // The refusal names the linked identity the pin missed.
-    assert!(err.to_string().contains("fixture@0.0.0"), "{err}");
+    assert!(err.to_string().contains("pinned@1.2.3"), "{err}");
+
+    // The fixture probe compiles with the `0.0.0` development
+    // placeholder, so even its "exact" pin refuses: unpublished
+    // identities match only bare references.
+    let placeholder = AdapterSelector::parse("specify:fixture@0.0.0").expect("package selector");
+    let err =
+        provider.ensure_target(&placeholder, &paths).await.expect_err("a placeholder pin refuses");
+    assert_eq!(err.variant_str(), "adapter-not-linked");
+    assert!(err.to_string().contains("placeholder"), "{err}");
 }
 
 // A local component selector can never select a same-named compiled
@@ -143,4 +154,82 @@ async fn survey_crosses_workflow_seam() {
     assert_eq!(leads.len(), 1);
     assert_eq!(leads[0].lead, "greeting");
     assert_eq!(leads[0].synopsis, "surveyed by source:fixture");
+}
+
+// The extract leg threads its lead and surfaces the adapter's typed
+// error across the seam.
+#[tokio::test]
+async fn extract_crosses_workflow_seam() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let provider = provider(tmp.path(), &[]);
+
+    let lead = seam::Lead {
+        lead: "password-reset".to_string(),
+        synopsis: String::new(),
+        topics: Vec::new(),
+    };
+    let err = provider
+        .extract("source:fixture".to_string(), lead)
+        .await
+        .expect_err("the probe's extract fails with a typed error naming the lead");
+    assert!(
+        matches!(err, seam::Error::Internal(detail) if detail.contains("password-reset")),
+        "the lead reached the adapter leg"
+    );
+}
+
+// The build and merge legs thread slice, inputs, and phase; the probe
+// echoes them through the report's single output path.
+#[tokio::test]
+async fn build_and_merge_cross_workflow_seam() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let provider = provider(tmp.path(), &[]);
+    let tree = || seam::WorkingTree {
+        base: "live".to_string(),
+        subpath: None,
+    };
+
+    let inputs = vec![seam::Input::Proposal("BODY".to_string())];
+    let report = provider
+        .build("target:fixture".to_string(), "demo".to_string(), inputs, tree())
+        .await
+        .expect("build dispatches");
+    assert_eq!(report.outputs[0].path, "build:demo:1");
+
+    let report = provider
+        .merge(
+            "target:fixture".to_string(),
+            "demo".to_string(),
+            seam::MergePhase::Preflight,
+            tree(),
+        )
+        .await
+        .expect("merge dispatches");
+    assert_eq!(report.outputs[0].path, "merge:demo:preflight");
+}
+
+// A routed id never crosses axes, and unlinked ids refuse on both.
+#[tokio::test]
+async fn axis_routing() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let provider = provider(tmp.path(), &[]);
+
+    let err = provider
+        .survey("target:fixture".to_string())
+        .await
+        .expect_err("a target id never reaches the source legs");
+    assert!(
+        matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("target:fixture"))
+    );
+
+    let err = provider
+        .guidance("source:fixture".to_string())
+        .await
+        .expect_err("a source id never reaches the target legs");
+    assert!(matches!(err, seam::Error::InvalidRequest(_)));
+
+    let err = provider.survey("source:unknown".to_string()).await.expect_err("unlinked refuses");
+    assert!(
+        matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("source:unknown"))
+    );
 }

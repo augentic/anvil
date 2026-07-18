@@ -148,6 +148,15 @@ fn mirror(
 ) -> Result<(), Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
+    // A persisted component selector stays resolvable after the
+    // operator's original file is removed: the earlier mirror in the
+    // project component cache satisfies re-ensure.
+    if !absolute.is_file()
+        && selector::name_from_component(path)
+            .is_ok_and(|name| component_cache_entry(paths, &name).is_file())
+    {
+        return Ok(());
+    }
     ensure_component_file(&absolute, &selector.wire_value())?;
     let canonical = canonicalize_component(path, paths.project_root())?;
     let name = selector::name_from_component(&canonical)?;

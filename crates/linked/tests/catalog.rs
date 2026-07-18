@@ -1,34 +1,21 @@
-//! Catalog builder validation, vtable dispatch, and [`DynModel`]
+//! Catalog builder validation, read-only inventory, and [`DynModel`]
 //! forwarding over the shared probe implementors.
 //!
 //! One linked type may implement both axes (the one-axis rule binds
-//! component exports, not linked impls); the catalog still routes each
-//! axis-qualified id to its own operation set.
+//! component exports, not linked impls). Operation dispatch is the
+//! provider's surface — see `tests/provider.rs`.
 
 mod support;
 
-use adapter::seam::{Context, Error, Input, MergePhase, WorkingTree};
 use linked::{Catalog, DynModel};
 use omnia_guest::Model as _;
 use omnia_guest::model::{Format, Request};
 use omnia_testkit::model::Scripted;
 use project::adapter::Axis;
-use support::{BadVersion, FailGuidance, Floored, Probe, ProbeV2};
-
-fn linked() -> Catalog {
-    Catalog::builder().source::<Probe>().target::<Probe>().build().expect("valid catalog")
-}
+use support::{BadVersion, Floored, Probe, ProbeV2};
 
 fn model(answers: &[&str]) -> DynModel {
     DynModel::new(Scripted::answers(answers.iter().copied()))
-}
-
-const fn ctx<'a>(id: &'a str, root: &'a std::path::Path) -> Context<'a> {
-    Context {
-        adapter_id: id,
-        project_root: root,
-        mcp_url: None,
-    }
 }
 
 // The erased model forwards requests and clones share the backing
@@ -46,88 +33,6 @@ async fn dyn_model_forwards_and_shares() {
     assert_eq!(first.answer, "first");
     let second = clone.create(request()).await.expect("second scripted answer");
     assert_eq!(second.answer, "second");
-}
-
-#[tokio::test]
-async fn survey_threads_the_model() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let model = model(&[r#"{"answer":"password-reset"}"#]);
-    let ctx = ctx("source:fixture", tmp.path());
-
-    let leads = linked().survey(&model, &ctx, "source:fixture").await.expect("survey dispatches");
-
-    assert_eq!(leads.len(), 1);
-    assert_eq!(leads[0].lead, r#"{"answer":"password-reset"}"#);
-    assert_eq!(leads[0].synopsis, "surveyed by source:fixture");
-}
-
-#[tokio::test]
-async fn target_legs_dispatch() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let model = model(&[]);
-    let ctx = ctx("target:fixture", tmp.path());
-    let tree = WorkingTree {
-        base: "live".to_string(),
-        subpath: None,
-    };
-    let linked = linked();
-
-    let guidance =
-        linked.guidance(&model, &ctx, "target:fixture").await.expect("guidance dispatches");
-    assert_eq!(guidance, "fixture guidance");
-
-    // The probe echoes its arguments through the report's single
-    // output path, so the asserts prove the legs thread them intact.
-    let inputs = vec![Input::Proposal("BODY".to_string())];
-    let report = linked
-        .build(&model, &ctx, "target:fixture", "demo", &inputs, &tree)
-        .await
-        .expect("build dispatches");
-    assert_eq!(report.outputs[0].path, "build:demo:1");
-
-    let report = linked
-        .merge(&model, &ctx, "target:fixture", "demo", MergePhase::Preflight, &tree)
-        .await
-        .expect("merge dispatches");
-    assert_eq!(report.outputs[0].path, "merge:demo:preflight");
-}
-
-// A typed guidance error crosses catalog dispatch intact. The routed
-// id reaches the implementor through `ctx.adapter_id`, so the failing
-// identity selects its own failure.
-#[tokio::test]
-async fn guidance_failure_propagates() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let model = model(&[]);
-    let ctx = ctx("target:fixture-fail-guidance", tmp.path());
-    let linked = Catalog::builder().target::<FailGuidance>().build().expect("valid catalog");
-
-    let err = linked
-        .guidance(&model, &ctx, "target:fixture-fail-guidance")
-        .await
-        .expect_err("the failing identity fails guidance");
-    assert!(
-        matches!(err, Error::Internal(detail) if detail.contains("fixture-fail-guidance")),
-        "the adapter's typed error survives catalog dispatch"
-    );
-}
-
-#[tokio::test]
-async fn axis_routing() {
-    let tmp = tempfile::tempdir().expect("tempdir");
-    let model = model(&[]);
-    let ctx = ctx("target:fixture", tmp.path());
-    let linked = linked();
-
-    // A target id never reaches the source legs, and vice versa.
-    let err = linked.survey(&model, &ctx, "target:fixture").await.expect_err("axis mismatch");
-    assert!(matches!(err, Error::InvalidRequest(detail) if detail.contains("target:fixture")));
-    let err = linked.guidance(&model, &ctx, "source:fixture").await.expect_err("axis mismatch");
-    assert!(matches!(err, Error::InvalidRequest(_)));
-
-    // Unlinked ids refuse on both axes.
-    let err = linked.survey(&model, &ctx, "source:unknown").await.expect_err("unlinked");
-    assert!(matches!(err, Error::InvalidRequest(detail) if detail.contains("source:unknown")));
 }
 
 #[test]

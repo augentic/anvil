@@ -86,15 +86,19 @@ async fn mismatched_pin_refused_before_scaffold() {
 }
 
 #[tokio::test]
-async fn exact_pin_satisfied_by_linked_identity() {
-    // The fixture source compiles as `fixture@0.0.0`, so the exact pin
-    // ensures and the trial proceeds into survey (which then consumes
-    // the scripted judgment answer downstream — here we only need the
-    // ensure gate to pass, so a full author over the pinned binding
-    // succeeding is the assert).
-    let session = Session::scripted("fixture", vec![fixture::answers::greeting_grouping()]);
-    author(&session, "fixture@0.0.0").await.expect("the exact compiled pin ensures");
-    assert!(session.root().join("plan.yaml").exists(), "plan scaffolded");
+async fn placeholder_pin_refused_before_scaffold() {
+    let session = Session::scripted("fixture", Vec::new());
+
+    // The fixture source compiles with the `0.0.0` development
+    // placeholder, which remains a bare-only identity: even the
+    // matching "exact" pin refuses before survey. (Exact-pin success
+    // against a published identity is covered by the linked provider
+    // suite.)
+    let err = author(&session, "fixture@0.0.0").await.expect_err("ensure refuses the pin");
+    let detail = err.to_string();
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
+    assert!(detail.contains("placeholder"), "{detail}");
+    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
 }
 
 #[tokio::test]

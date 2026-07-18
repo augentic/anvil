@@ -107,7 +107,7 @@ pub async fn run(
         return Ok(ExitCode::SUCCESS);
     }
 
-    let trial = Trial::from_args(&args, sandbox, catalog, model)?;
+    let trial = Trial::from_args(&args, &workspace_root, sandbox, catalog, model)?;
     let _guard = sandbox::single_writer(&trial.sandbox)?;
     match args.phase {
         Some(Phase::Init) => trial.init().await?,
@@ -133,7 +133,8 @@ fn anchored(workspace_root: &Path, path: &Path) -> PathBuf {
 
 impl Trial {
     fn from_args(
-        args: &Args, sandbox: PathBuf, catalog: Catalog, factory: ModelFactory,
+        args: &Args, workspace_root: &Path, sandbox: PathBuf, catalog: Catalog,
+        factory: ModelFactory,
     ) -> Result<Self> {
         let target = args.target.as_deref().context("trial requires --target")?;
         let change = args.change.as_deref().context("trial requires --change")?;
@@ -153,7 +154,9 @@ impl Trial {
 
         Ok(Self {
             sandbox,
-            seed: args.seed.clone(),
+            // A relative seed anchors at the workspace root, not the
+            // process current directory.
+            seed: args.seed.as_deref().map(|seed| anchored(workspace_root, seed)),
             init,
             author,
             change: change.to_string(),
