@@ -1,11 +1,14 @@
-//! Linked-adapter catalog: a typed vtable over the per-axis operations
-//! traits.
+//! Linked-adapter catalog: a validated, typed vtable over the per-axis
+//! operations traits.
 //!
-//! Consumers declare their linked adapters once through [`Builder`]
-//! (`Catalog::builder().source::<A>()...target::<B>().build()`); each
-//! call monomorphizes the implementor's operation legs into fn pointers,
-//! so dispatch stays compile-checked trait calls while the catalog
-//! itself is plain data the provider routes ids over.
+//! Consumers declare their linked adapters once
+//! (`Catalog::builder().source::<A>()…target::<B>().build()?`); each
+//! registration monomorphizes the implementor's operation legs into fn
+//! pointers at [`DynModel`], so dispatch stays compile-checked trait
+//! calls while the catalog itself is plain data the provider routes
+//! ids over. `build()` validates identities, per-axis duplicates, and
+//! reference-shelf coherence; same-name source and target entries
+//! remain legal (dispatch is always axis-qualified).
 
 use std::fmt;
 use std::future::Future;
@@ -14,95 +17,71 @@ use std::pin::Pin;
 use adapter::registry::Doc;
 use adapter::seam::{self as aseam, Context};
 use adapter::{Source, Target, references};
-use error::Error;
-use omnia_guest::Model;
-#[doc(hidden)]
-pub use omnia_guest::Model as CatalogModel;
 use project::adapter::Axis;
 use project::adapter::metadata::Metadata;
 
 use crate::convert;
+use crate::error::Error;
+use crate::model::DynModel;
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-type SurveyFn<M> =
-    for<'a> fn(&'a M, &'a Context<'a>) -> BoxFuture<'a, Result<Vec<aseam::Lead>, aseam::Error>>;
-type GuidanceFn<M> =
-    for<'a> fn(&'a M, &'a Context<'a>) -> BoxFuture<'a, Result<String, aseam::Error>>;
-type ExtractFn<M> = for<'a> fn(
-    &'a M,
+type SurveyFn = for<'a> fn(
+    &'a DynModel,
+    &'a Context<'a>,
+) -> BoxFuture<'a, Result<Vec<aseam::Lead>, aseam::Error>>;
+type GuidanceFn =
+    for<'a> fn(&'a DynModel, &'a Context<'a>) -> BoxFuture<'a, Result<String, aseam::Error>>;
+type ExtractFn = for<'a> fn(
+    &'a DynModel,
     &'a Context<'a>,
     &'a aseam::Lead,
 ) -> BoxFuture<'a, Result<aseam::Evidence, aseam::Error>>;
-type BuildFn<M> = for<'a> fn(
-    &'a M,
+type BuildFn = for<'a> fn(
+    &'a DynModel,
     &'a Context<'a>,
     &'a str,
     &'a [aseam::Input],
     &'a aseam::WorkingTree,
 ) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
-type MergeFn<M> = for<'a> fn(
-    &'a M,
+type MergeFn = for<'a> fn(
+    &'a DynModel,
     &'a Context<'a>,
     &'a str,
     aseam::MergePhase,
     &'a aseam::WorkingTree,
 ) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
 
-/// One repository's linked-adapter declaration.
-///
-/// The single hook a wrapper implements to bind its concrete adapters
-/// into the shared harness (the engine's eval crate binds the fixture
-/// registry; `engine` binds the first-party adapters). Generic
-/// over the model backend so one declaration serves every provider
-/// shape the trial, scenario, command, and HTTP entrypoints construct.
-pub trait Binding {
-    /// The linked-adapter catalog over model backend `M`.
-    fn catalog<M: Model>() -> Catalog<M>;
-}
-
 /// The monomorphized operation legs of one linked adapter.
-enum Ops<M> {
-    Source { survey: SurveyFn<M>, extract: ExtractFn<M> },
-    Target { guidance: GuidanceFn<M>, build: BuildFn<M>, merge: MergeFn<M> },
+#[derive(Clone, Copy)]
+enum Ops {
+    Source { survey: SurveyFn, extract: ExtractFn },
+    Target { guidance: GuidanceFn, build: BuildFn, merge: MergeFn },
 }
 
-impl<M> Clone for Ops<M> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<M> Copy for Ops<M> {}
-
-/// One Rust adapter crate linked into the native harness.
-pub struct Entry<M> {
+/// One Rust adapter crate linked into the host.
+#[derive(Clone, Copy)]
+pub struct Entry {
     axis: Axis,
     name: &'static str,
+    version: &'static str,
     server_name: &'static str,
     metadata: fn() -> Metadata,
     docs: fn() -> &'static [Doc],
-    ops: Ops<M>,
+    ops: Ops,
 }
 
-impl<M> Clone for Entry<M> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<M> Copy for Entry<M> {}
-
-impl<M> fmt::Debug for Entry<M> {
+impl fmt::Debug for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Entry")
             .field("axis", &self.axis)
             .field("name", &self.name)
+            .field("version", &self.version)
             .finish_non_exhaustive()
     }
 }
 
-impl<M> Entry<M> {
+impl Entry {
     /// Adapter axis.
     #[must_use]
     pub const fn axis(&self) -> Axis {
@@ -113,6 +92,12 @@ impl<M> Entry<M> {
     #[must_use]
     pub const fn name(&self) -> &'static str {
         self.name
+    }
+
+    /// Exact compiled adapter version (`AdapterIdentity.version`).
+    #[must_use]
+    pub const fn version(&self) -> &'static str {
+        self.version
     }
 
     /// MCP server name.
@@ -140,36 +125,29 @@ impl<M> Entry<M> {
     }
 }
 
-/// The linked adapters behind one harness instantiation, generic over
-/// the model backend the operation legs receive.
-pub struct Catalog<M> {
-    entries: Vec<Entry<M>>,
+/// The linked adapters behind one host instantiation.
+#[derive(Clone)]
+pub struct Catalog {
+    entries: Vec<Entry>,
 }
 
-impl<M> Clone for Catalog<M> {
-    fn clone(&self) -> Self {
-        Self {
-            entries: self.entries.clone(),
-        }
-    }
-}
-
-impl<M> fmt::Debug for Catalog<M> {
+impl fmt::Debug for Catalog {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Catalog").field("entries", &self.entries).finish()
     }
 }
 
-impl<M> Catalog<M> {
+impl Catalog {
     /// An empty catalog builder.
     #[must_use]
-    pub const fn builder() -> Builder<M> {
+    pub const fn builder() -> Builder {
         Builder { entries: Vec::new() }
     }
 
-    /// Every linked adapter, in declaration order.
+    /// Every linked adapter, in declaration order — the read-only
+    /// inventory for diagnostics and build information.
     #[must_use]
-    pub fn entries(&self) -> &[Entry<M>] {
+    pub fn entries(&self) -> &[Entry] {
         &self.entries
     }
 
@@ -177,26 +155,39 @@ impl<M> Catalog<M> {
     ///
     /// # Errors
     ///
-    /// Returns `adapter-not-found` when the catalog has no matching entry.
-    pub fn get(&self, axis: Axis, name: &str) -> Result<Entry<M>, Error> {
+    /// Returns `adapter-not-linked` when the catalog has no matching
+    /// entry, naming the available identities on that axis.
+    pub fn get(&self, axis: Axis, name: &str) -> Result<Entry, error::Error> {
         self.entries
             .iter()
             .copied()
             .find(|entry| entry.axis == axis && entry.name == name)
-            .ok_or_else(|| Error::Diag {
-                code: "adapter-not-found",
+            .ok_or_else(|| error::Error::Diag {
+                code: "adapter-not-linked",
                 detail: format!(
-                    "adapter `{name}` (axis `{axis}`) is not linked into the native harness"
+                    "adapter `{name}` (axis `{axis}`) is not linked into this host; linked \
+                     identities on that axis: [{}]",
+                    self.axis_inventory(axis),
                 ),
             })
     }
 
-    fn find(&self, id: &str) -> Option<&Entry<M>> {
+    /// The `name@version` inventory of one axis, for refusal details.
+    #[must_use]
+    pub(crate) fn axis_inventory(&self, axis: Axis) -> String {
+        let names: Vec<String> = self
+            .entries
+            .iter()
+            .filter(|entry| entry.axis == axis)
+            .map(|entry| format!("{}@{}", entry.name, entry.version))
+            .collect();
+        names.join(", ")
+    }
+
+    pub(crate) fn find(&self, id: &str) -> Option<&Entry> {
         self.entries.iter().find(|entry| entry.id() == id)
     }
-}
 
-impl<M: Model> Catalog<M> {
     /// Dispatch `guidance` to the linked target adapter behind `id`.
     ///
     /// # Errors
@@ -204,7 +195,7 @@ impl<M: Model> Catalog<M> {
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
     pub async fn guidance(
-        &self, model: &M, ctx: &Context<'_>, id: &str,
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str,
     ) -> Result<String, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Target { guidance, .. }) => guidance(model, ctx).await,
@@ -219,7 +210,7 @@ impl<M: Model> Catalog<M> {
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked source.
     pub async fn survey(
-        &self, model: &M, ctx: &Context<'_>, id: &str,
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str,
     ) -> Result<Vec<aseam::Lead>, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Source { survey, .. }) => survey(model, ctx).await,
@@ -234,7 +225,7 @@ impl<M: Model> Catalog<M> {
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked source.
     pub async fn extract(
-        &self, model: &M, ctx: &Context<'_>, id: &str, lead: &aseam::Lead,
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str, lead: &aseam::Lead,
     ) -> Result<aseam::Evidence, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Source { extract, .. }) => extract(model, ctx, lead).await,
@@ -249,7 +240,7 @@ impl<M: Model> Catalog<M> {
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
     pub async fn build(
-        &self, model: &M, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
         tree: &aseam::WorkingTree,
     ) -> Result<aseam::Report, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
@@ -265,8 +256,8 @@ impl<M: Model> Catalog<M> {
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
     pub async fn merge(
-        &self, model: &M, ctx: &Context<'_>, id: &str, slice: &str, phase: aseam::MergePhase,
-        tree: &aseam::WorkingTree,
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
+        phase: aseam::MergePhase, tree: &aseam::WorkingTree,
     ) -> Result<aseam::Report, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Target { merge, .. }) => merge(model, ctx, slice, phase, tree).await,
@@ -275,24 +266,25 @@ impl<M: Model> Catalog<M> {
     }
 }
 
-/// Accumulates linked adapters into a [`Catalog`].
-pub struct Builder<M> {
-    entries: Vec<Entry<M>>,
+/// Accumulates linked adapters into a validated [`Catalog`].
+pub struct Builder {
+    entries: Vec<Entry>,
 }
 
-impl<M> fmt::Debug for Builder<M> {
+impl fmt::Debug for Builder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Builder").field("entries", &self.entries).finish()
     }
 }
 
-impl<M: Model> Builder<M> {
+impl Builder {
     /// Link one source implementor.
     #[must_use]
     pub fn source<A: Source + 'static>(mut self) -> Self {
         self.entries.push(Entry {
             axis: Axis::Source,
             name: A::IDENTITY.name,
+            version: A::IDENTITY.version,
             server_name: references::server_name(A::IDENTITY.name),
             metadata: || convert::source_metadata(A::metadata()),
             docs: A::docs,
@@ -310,6 +302,7 @@ impl<M: Model> Builder<M> {
         self.entries.push(Entry {
             axis: Axis::Target,
             name: A::IDENTITY.name,
+            version: A::IDENTITY.version,
             server_name: references::server_name(A::IDENTITY.name),
             metadata: || convert::target_metadata(A::metadata()),
             docs: A::docs,
@@ -326,46 +319,72 @@ impl<M: Model> Builder<M> {
         self
     }
 
-    /// The finished catalog.
-    #[must_use]
-    pub fn build(self) -> Catalog<M> {
-        Catalog {
-            entries: self.entries,
+    /// The finished, validated catalog.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Catalog`] for a malformed identity name, a
+    /// version that is not exact SemVer, a per-axis duplicate, or two
+    /// same-name entries with conflicting reference-shelf identities
+    /// (dual-axis registrations must share one version and one
+    /// embedded docs registry).
+    pub fn build(self) -> Result<Catalog, Error> {
+        for (index, entry) in self.entries.iter().enumerate() {
+            validate_identity(entry)?;
+            for earlier in &self.entries[..index] {
+                if earlier.name != entry.name {
+                    continue;
+                }
+                if earlier.axis == entry.axis {
+                    return Err(Error::Catalog {
+                        detail: format!("duplicate `{}` entry `{}`", entry.axis, entry.name),
+                    });
+                }
+                if earlier.version != entry.version || !std::ptr::eq(earlier.docs(), entry.docs()) {
+                    return Err(Error::Catalog {
+                        detail: format!(
+                            "conflicting reference-shelf identities for `{}`: dual-axis \
+                             registrations must share one version and one embedded docs registry",
+                            entry.name
+                        ),
+                    });
+                }
+            }
         }
+        Ok(Catalog {
+            entries: self.entries,
+        })
     }
 }
 
-fn unlinked(id: &str) -> aseam::Error {
-    aseam::Error::InvalidRequest(format!("adapter `{id}` is not linked into the native shim"))
+fn validate_identity(entry: &Entry) -> Result<(), Error> {
+    if !is_kebab_name(entry.name) {
+        return Err(Error::Catalog {
+            detail: format!(
+                "adapter identity `{}` (axis `{}`) is not a kebab-case name",
+                entry.name, entry.axis
+            ),
+        });
+    }
+    if semver::Version::parse(entry.version).is_err() {
+        return Err(Error::Catalog {
+            detail: format!(
+                "adapter identity `{}` (axis `{}`) carries version `{}`, which is not exact \
+                 SemVer",
+                entry.name, entry.axis, entry.version
+            ),
+        });
+    }
+    Ok(())
 }
 
-/// Declare the only repository-specific part of a native harness
-/// binary: its statically linked adapters.
-#[macro_export]
-macro_rules! adapters {
-    (
-        $visibility:vis $name:ident {
-            $($axis:ident $adapter:ty),+ $(,)?
-        }
-    ) => {
-        #[doc = concat!("Linked adapter binding `", stringify!($name), "`.")]
-        #[derive(Clone, Copy, Debug)]
-        $visibility struct $name;
+/// `^[a-z][a-z0-9-]*$` — a kebab-case adapter name.
+fn is_kebab_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars.next().is_some_and(|first| first.is_ascii_lowercase())
+        && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
 
-        impl $crate::catalog::Binding for $name {
-            fn catalog<M: $crate::catalog::CatalogModel>() -> $crate::catalog::Catalog<M> {
-                let builder = $crate::catalog::Catalog::builder();
-                $(
-                    let builder = $crate::adapters!(@register builder, $axis, $adapter);
-                )+
-                builder.build()
-            }
-        }
-    };
-    (@register $builder:ident, source, $adapter:ty) => {
-        $builder.source::<$adapter>()
-    };
-    (@register $builder:ident, target, $adapter:ty) => {
-        $builder.target::<$adapter>()
-    };
+fn unlinked(id: &str) -> aseam::Error {
+    aseam::Error::InvalidRequest(format!("adapter `{id}` is not linked into this host"))
 }

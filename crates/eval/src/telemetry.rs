@@ -1,5 +1,6 @@
 //! Per-leg request telemetry: a transparent [`Model`] wrapper counting
-//! how many completion requests each judgment leg issued.
+//! how many completion requests each judgment leg issued, and
+//! recording each request's model id for effective-model reporting.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -10,12 +11,13 @@ use omnia_guest::model::{Error, Format, Model, Reply, Request};
 ///
 /// The leg key is the request's schema name (`proposal`, `synthesis`);
 /// a schema-free request counts under its format name. Clones share
-/// the tally, so the trial reads counts back through the provider's
-/// model accessor after the run.
+/// the tally, so the caller keeps a handle taken before erasure and
+/// reads counts back after the run.
 #[derive(Clone, Debug)]
 pub struct Telemetry<M> {
     inner: M,
     counts: Arc<Mutex<BTreeMap<String, usize>>>,
+    models: Arc<Mutex<Vec<Option<String>>>>,
 }
 
 impl<M> Telemetry<M> {
@@ -24,6 +26,7 @@ impl<M> Telemetry<M> {
         Self {
             inner,
             counts: Arc::new(Mutex::new(BTreeMap::new())),
+            models: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -36,6 +39,24 @@ impl<M> Telemetry<M> {
     pub fn counts(&self) -> BTreeMap<String, usize> {
         self.counts.lock().expect("the tally is never poisoned").clone()
     }
+
+    /// The effective model for the run: the model id carried by an
+    /// observed request when present, otherwise the composition
+    /// root's configured `default` — never a reread of process
+    /// environment.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the tally lock is poisoned (never in practice).
+    #[must_use]
+    pub fn effective_model(&self, default: Option<&str>) -> Option<String> {
+        self.models
+            .lock()
+            .expect("the tally is never poisoned")
+            .iter()
+            .find_map(Clone::clone)
+            .or_else(|| default.map(ToString::to_string))
+    }
 }
 
 impl<M: Model> Model for Telemetry<M> {
@@ -46,6 +67,7 @@ impl<M: Model> Model for Telemetry<M> {
             Format::Text => "text".to_string(),
         };
         *self.counts.lock().expect("the tally is never poisoned").entry(leg).or_default() += 1;
+        self.models.lock().expect("the tally is never poisoned").push(request.model.clone());
         self.inner.create(request).await
     }
 }

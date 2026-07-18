@@ -1,23 +1,24 @@
-//! Host-only session helpers over the harness default layer.
+//! Host-only session helpers over the offline linked provider.
 //!
-//! A [`Session`] is a throw-away project tree plus a linked-only
-//! [`harness::provider::Provider`] over the full fixture
+//! A [`Session`] is a throw-away project tree plus an offline
+//! [`linked::Provider`] over the full fixture
 //! [`crate::registry::catalog`] and `omnia-testkit`'s FIFO `Scripted`
-//! model double. Construction goes through `Provider::new` — never
-//! `Provider::bound` — so native tests start no listeners.
+//! model double. Reference mode is always [`ReferenceMode::Offline`],
+//! so native tests start no listeners; the recording model handle is
+//! held beside the provider (the provider exposes no model accessor).
 
 use std::path::{Path, PathBuf};
 
-use harness::provider::Provider;
+use linked::{DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted as ScriptedModel;
 use project::handler::ExecutionPaths;
 
 use crate::model::Harness;
 
-/// The provider shape the scripted suites run against: the fixture
-/// catalog behind the seams, a request-recording [`Harness`] over
-/// `omnia-testkit`'s FIFO script behind the judgment legs.
-pub type Scripted = Provider<Harness<ScriptedModel>>;
+/// The recording model shape the scripted suites hold beside the
+/// provider: a request-recording [`Harness`] over `omnia-testkit`'s
+/// FIFO script behind the judgment legs.
+pub type Scripted = Harness<ScriptedModel>;
 
 /// A throw-away project tree plus the scripted fixture provider.
 ///
@@ -28,7 +29,8 @@ pub type Scripted = Provider<Harness<ScriptedModel>>;
 #[derive(Debug)]
 pub struct Session {
     root: PathBuf,
-    provider: Scripted,
+    provider: Provider,
+    model: Scripted,
     _tmp: tempfile::TempDir,
 }
 
@@ -43,10 +45,17 @@ impl Session {
     pub fn bare(answers: Vec<String>) -> Self {
         let (tmp, root) = owned_tree();
         let paths = ExecutionPaths::isolated(&root, root.join("project-cache"));
-        let provider = Provider::new(paths, Harness::answering(answers), crate::catalog());
+        let model = Harness::answering(answers);
+        let provider = Provider::new(
+            paths,
+            DynModel::new(model.clone()),
+            crate::catalog(),
+            ReferenceMode::Offline,
+        );
         Self {
             root,
             provider,
+            model,
             _tmp: tmp,
         }
     }
@@ -77,15 +86,15 @@ impl Session {
 
     /// The scripted fixture provider.
     #[must_use]
-    pub const fn provider(&self) -> &Scripted {
+    pub const fn provider(&self) -> &Provider {
         &self.provider
     }
 
-    /// The recording model backend — for `requests()` and
+    /// The caller-held recording model handle — for `requests()` and
     /// `assert_exhausted`.
     #[must_use]
-    pub const fn model(&self) -> &Harness<ScriptedModel> {
-        self.provider.model()
+    pub const fn model(&self) -> &Scripted {
+        &self.model
     }
 }
 

@@ -8,8 +8,8 @@
 mod support;
 
 use change::plan;
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 
 /// One initial dispatch plus every repair attempt. Mirrors the
 /// private `project::judgment::MAX_REPAIRS` (2) — kept local rather

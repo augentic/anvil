@@ -116,17 +116,11 @@ cargo vet --locked
 '''
 install_crate = "cargo-vet"
 
-# # Eval — the live-model prompt-evaluation harness (operator-invoked, never CI)
-# [tasks.eval]
-# command = "cargo"
-# args = ["run", "-p", "eval", "--", "${@}"]
-# env_files = [".env"]
-
-# Eval — the live-model prompt-evaluation harness (operator-invoked, never CI).
+# Eval — the live-model prompt evaluation over the lab binary (operator-invoked, never CI).
 [tasks.eval]
 env_files = [".env"]
 script = '''
-cargo run -p eval -- eval \
+cargo run -p lab -- eval \
   --change "auth" \
   --intent "auth" \
   --source "docs=fixture-docs:value:The docs source." \
@@ -136,8 +130,8 @@ cargo run -p eval -- eval \
 '''
 #   --seed examples/change/seed \
 
-# The `eval` CLI passthrough: any specify verb against the native shim
+# The lab CLI passthrough: any specify verb through the linked host
 # over the fixture catalog (`cargo make dev -- --project-dir <dir> slice list`).
 [tasks.dev]
 command = "cargo"
-args = ["run", "-q", "-p", "eval", "--", "${@}"]
+args = ["run", "-q", "-p", "lab", "--", "${@}"]

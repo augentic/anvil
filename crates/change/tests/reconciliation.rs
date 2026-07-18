@@ -9,8 +9,8 @@ mod support;
 use std::fs;
 
 use change::{Divergence, plan};
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 use serde_json::json;
 
 /// One initial dispatch plus every repair attempt. Mirrors the

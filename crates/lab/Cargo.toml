@@ -1,6 +1,6 @@
 [package]
-name = "eval"
-description = "Lab-only live-model evaluation library over the linked host"
+name = "lab"
+description = "Unpublished in-repo composition binary: linked command passthrough and live eval over the fixture catalog"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -11,19 +11,13 @@ rust-version.workspace = true
 [lints]
 workspace = true
 
-[dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
-artifacts.workspace = true
-clap.workspace = true
-linked = { workspace = true, features = ["cli"] }
-omnia-guest.workspace = true
-project.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-toml.workspace = true
-
-[dev-dependencies]
+eval.workspace = true
 fixture.workspace = true
-omnia-testkit.workspace = true
-tempfile.workspace = true
+linked = { workspace = true, features = ["cli"] }
+omnia.workspace = true
+omnia-cursor.workspace = true
+omnia-guest.workspace = true
+omnia-wasi-model.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

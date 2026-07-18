@@ -3,8 +3,8 @@
 use std::fs;
 use std::path::Path;
 
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 
 /// Rule ids carried by a failing validate operation's report.
 fn report_rule_ids(err: &project::handler::Error) -> Vec<String> {

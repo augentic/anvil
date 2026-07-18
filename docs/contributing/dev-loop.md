@@ -19,7 +19,7 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 Runs the `eval` harness (`crates/eval`): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
 
-Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See [`crates/eval/README.md`](../../crates/eval/README.md).
+Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See [`crates/lab/README.md`](../../crates/lab/README.md).
 
 ## The WASM seam
 

@@ -502,7 +502,6 @@ dependencies = [
  "diagnostics",
  "error",
  "fixture",
- "harness",
  "jiff",
  "omnia-guest",
  "project",
@@ -1162,8 +1161,19 @@ dependencies = [
 name = "eval"
 version = "0.27.2"
 dependencies = [
+ "anyhow",
+ "artifacts",
+ "clap",
  "fixture",
- "harness",
+ "linked",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -1212,7 +1222,7 @@ name = "fixture"
 version = "0.27.2"
 dependencies = [
  "adapter",
- "harness",
+ "linked",
  "omnia-guest",
  "omnia-testkit",
  "project",
@@ -1492,34 +1502,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
-]
-
-[[package]]
-name = "harness"
-version = "0.27.2"
-dependencies = [
- "adapter",
- "anyhow",
- "artifacts",
- "axum",
- "cfg-if",
- "change",
- "clap",
- "diagnostics",
- "error",
- "omnia",
- "omnia-cursor",
- "omnia-guest",
- "omnia-testkit",
- "omnia-wasi-model",
- "project",
- "semver",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
- "transport",
 ]
 
 [[package]]
@@ -2036,6 +2018,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lab"
+version = "0.27.2"
+dependencies = [
+ "anyhow",
+ "eval",
+ "fixture",
+ "linked",
+ "omnia",
+ "omnia-cursor",
+ "omnia-guest",
+ "omnia-wasi-model",
+ "tokio",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2085,6 +2082,25 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "linked"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "artifacts",
+ "axum",
+ "diagnostics",
+ "error",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "semver",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "transport",
 ]
 
 [[package]]
@@ -2947,7 +2963,7 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
- "harness",
+ "fixture",
  "jiff",
  "omnia-guest",
  "petgraph",
@@ -3878,7 +3894,6 @@ dependencies = [
  "diagnostics",
  "error",
  "fixture",
- "harness",
  "jiff",
  "omnia-guest",
  "project",
@@ -4467,7 +4482,7 @@ dependencies = [
  "clap",
  "error",
  "fixture",
- "harness",
+ "linked",
  "omnia-guest",
  "project",
  "serde",

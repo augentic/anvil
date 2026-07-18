@@ -10,10 +10,12 @@
 //!   (success profiles and typed failure profiles alike), implementing
 //!   the per-axis operations traits (`adapter::Source` /
 //!   `adapter::Target`) over the core.
-//! - [`registry`] (host) — the exhaustive linked catalog behind each
-//!   wrapper's `Binding` onto the shared harness.
-//! - [`session`] (host) — throw-away project trees over the harness
-//!   default layer, plus the RAII current-directory guard.
+//! - [`registry`] (host) — the exhaustive linked catalog the workflow
+//!   suites and the Specify lab bind into the linked host.
+//! - [`session`] (host) — throw-away project trees over an offline
+//!   [`linked::Provider`], plus the RAII current-directory guard.
+//! - [`invoke`] (host) — typed operation invocation for suites that
+//!   inspect an operation's typed output.
 //! - [`answers`] (host) — the scripted judgment-answer corpus behind
 //!   `omnia-testkit`'s FIFO `Scripted` model double.
 //! - [`model`] (host) — the request-recording `Harness` model double
@@ -22,8 +24,9 @@
 //!   bindings plus the seam mappings the examples guest shims over.
 //!
 //! The crate speaks the SDK seam DTOs end to end: only the workflow
-//! providers (`harness::convert`) widen values onto engine DTOs, and
-//! only the WASM guest maps them onto the WIT records.
+//! providers (the linked host's conversion layer) widen values onto
+//! engine DTOs, and only the WASM guest maps them onto the WIT
+//! records.
 
 pub mod behaviour;
 pub mod ops;
@@ -33,6 +36,8 @@ pub mod wit;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod answers;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod invoke;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod model;
 #[cfg(not(target_arch = "wasm32"))]

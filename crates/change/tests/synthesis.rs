@@ -9,8 +9,8 @@ mod support;
 use std::fs;
 
 use change::plan;
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 use serde_json::json;
 
 /// Synthesis for `session-policy`: the two `session.timeout` claims

@@ -13,7 +13,7 @@ use project::adapter::Axis;
 // renamed one must update this inventory deliberately.
 #[test]
 fn inventory() {
-    let catalog = catalog::<Scripted>();
+    let catalog = catalog();
     let entries: Vec<(Axis, &str)> =
         catalog.entries().iter().map(|entry| (entry.axis(), entry.name())).collect();
     assert_eq!(

@@ -2,8 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 use slice::handlers::{Preview, PreviewInput};
 
 const MERGE_CASES: &[&str] = &[

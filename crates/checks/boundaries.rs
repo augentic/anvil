@@ -170,6 +170,95 @@ fn repo_has_no_adapter_dependencies() {
     assert!(findings.is_empty(), "adapter boundary violated:\n{findings:#?}");
 }
 
+/// Workflow-core crates must not production- or build-depend on the
+/// linked host, its labs, or test support; `linked` and `eval` must
+/// not production-depend on what would drag concrete adapters, Cursor
+/// integration, or the workflow surface they bypass into the host.
+mod direction {
+    use super::*;
+
+    /// Crates forming the deployment-neutral workflow core.
+    const WORKFLOW_CORE: &[&str] = &[
+        "error",
+        "diagnostics",
+        "artifacts",
+        "adapter",
+        "project",
+        "slice",
+        "change",
+        "transport",
+    ];
+
+    /// Dependencies the workflow core rejects outside dev-dependencies.
+    const HOST_CRATES: &[&str] = &["linked", "eval", "fixture", "lab", "harness"];
+
+    /// Production dependencies `linked` rejects (concrete adapter
+    /// crates are already caught by the repository-wide rule).
+    const LINKED_REJECTS: &[&str] = &["fixture", "eval", "lab", "harness", "omnia-cursor"];
+
+    /// Production dependencies `eval` rejects (`linked` itself is its
+    /// one host dependency).
+    const EVAL_REJECTS: &[&str] = &["fixture", "lab", "harness", "omnia-cursor", "change"];
+
+    fn production_dependencies(document: &Table) -> Vec<(String, String)> {
+        dependency_tables(document)
+            .into_iter()
+            .filter(|(table, _)| !table.contains("dev-dependencies"))
+            .flat_map(|(table, entries)| {
+                entries.keys().map(move |name| (table.clone(), name.replace('_', "-")))
+            })
+            .collect()
+    }
+
+    fn direction_findings(root: &Path) -> Vec<String> {
+        let mut out = Vec::new();
+        for (member, rejected) in std::iter::empty()
+            .chain(WORKFLOW_CORE.iter().map(|name| (*name, HOST_CRATES)))
+            .chain([("linked", LINKED_REJECTS), ("eval", EVAL_REJECTS)])
+        {
+            let manifest = root.join("crates").join(member).join("Cargo.toml");
+            let Ok(body) = fs::read_to_string(&manifest) else {
+                continue;
+            };
+            let Ok(document) = body.parse::<Table>() else {
+                continue;
+            };
+            for (table, name) in production_dependencies(&document) {
+                if rejected.contains(&name.as_str()) {
+                    out.push(format!("crates/{member}/Cargo.toml: [{table}] {name}"));
+                }
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn workflow_core_stays_host_free() {
+        let findings = direction_findings(&repo_root());
+        assert!(findings.is_empty(), "dependency direction violated:\n{findings:#?}");
+    }
+
+    #[test]
+    fn bad_fixtures() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "crates/slice/Cargo.toml", "[dependencies]\nlinked = \"1\"\n");
+        assert!(!direction_findings(dir.path()).is_empty());
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "crates/linked/Cargo.toml", "[dependencies]\nfixture = \"1\"\n");
+        assert!(!direction_findings(dir.path()).is_empty());
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "crates/eval/Cargo.toml", "[dependencies]\nomnia-cursor = \"1\"\n");
+        assert!(!direction_findings(dir.path()).is_empty());
+
+        // Dev-dependencies on host/test-support crates remain legal.
+        let dir = tempfile::tempdir().expect("tempdir");
+        write(dir.path(), "crates/change/Cargo.toml", "[dev-dependencies]\nfixture = \"1\"\n");
+        assert!(direction_findings(dir.path()).is_empty());
+    }
+}
+
 #[test]
 fn bad_fixtures() {
     let dir = tempfile::tempdir().expect("tempdir");

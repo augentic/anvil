@@ -22,7 +22,7 @@ strum.workspace = true
 
 [dev-dependencies]
 fixture.workspace = true
-harness.workspace = true
+linked.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 tower.workspace = true

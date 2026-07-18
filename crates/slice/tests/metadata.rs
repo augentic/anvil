@@ -2,8 +2,8 @@
 
 use std::fs;
 
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 
 mod list {
     use super::*;

@@ -1,20 +1,26 @@
-//! Catalog builder and vtable dispatch over the shared probe
-//! implementors.
+//! Catalog builder validation, vtable dispatch, and [`DynModel`]
+//! forwarding over the shared probe implementors.
 //!
-//! One native type may implement both axes (the one-axis rule binds
-//! component exports, not native impls); the catalog still routes each
+//! One linked type may implement both axes (the one-axis rule binds
+//! component exports, not linked impls); the catalog still routes each
 //! axis-qualified id to its own operation set.
 
 mod support;
 
 use adapter::seam::{Context, Error, Input, MergePhase, WorkingTree};
-use harness::catalog::Catalog;
+use linked::{Catalog, DynModel};
+use omnia_guest::Model as _;
+use omnia_guest::model::{Format, Request};
 use omnia_testkit::model::Scripted;
 use project::adapter::Axis;
-use support::{FailGuidance, Floored, Probe};
+use support::{BadVersion, FailGuidance, Floored, Probe, ProbeV2};
 
-fn linked() -> Catalog<Scripted> {
-    Catalog::builder().source::<Probe>().target::<Probe>().build()
+fn linked() -> Catalog {
+    Catalog::builder().source::<Probe>().target::<Probe>().build().expect("valid catalog")
+}
+
+fn model(answers: &[&str]) -> DynModel {
+    DynModel::new(Scripted::answers(answers.iter().copied()))
 }
 
 const fn ctx<'a>(id: &'a str, root: &'a std::path::Path) -> Context<'a> {
@@ -25,10 +31,27 @@ const fn ctx<'a>(id: &'a str, root: &'a std::path::Path) -> Context<'a> {
     }
 }
 
+// The erased model forwards requests and clones share the backing
+// state: two clones drain one FIFO script in call order.
+#[tokio::test]
+async fn dyn_model_forwards_and_shares() {
+    let model = model(&["first", "second"]);
+    let clone = model.clone();
+
+    let request = || Request {
+        format: Format::Text,
+        ..Request::default()
+    };
+    let first = model.create(request()).await.expect("first scripted answer");
+    assert_eq!(first.answer, "first");
+    let second = clone.create(request()).await.expect("second scripted answer");
+    assert_eq!(second.answer, "second");
+}
+
 #[tokio::test]
 async fn survey_threads_the_model() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let model = Scripted::answers([r#"{"answer":"password-reset"}"#]);
+    let model = model(&[r#"{"answer":"password-reset"}"#]);
     let ctx = ctx("source:fixture", tmp.path());
 
     let leads = linked().survey(&model, &ctx, "source:fixture").await.expect("survey dispatches");
@@ -41,7 +64,7 @@ async fn survey_threads_the_model() {
 #[tokio::test]
 async fn target_legs_dispatch() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let model = Scripted::answers::<&str>([]);
+    let model = model(&[]);
     let ctx = ctx("target:fixture", tmp.path());
     let tree = WorkingTree {
         base: "live".to_string(),
@@ -75,9 +98,9 @@ async fn target_legs_dispatch() {
 #[tokio::test]
 async fn guidance_failure_propagates() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let model = Scripted::answers::<&str>([]);
+    let model = model(&[]);
     let ctx = ctx("target:fixture-fail-guidance", tmp.path());
-    let linked: Catalog<Scripted> = Catalog::builder().target::<FailGuidance>().build();
+    let linked = Catalog::builder().target::<FailGuidance>().build().expect("valid catalog");
 
     let err = linked
         .guidance(&model, &ctx, "target:fixture-fail-guidance")
@@ -92,7 +115,7 @@ async fn guidance_failure_propagates() {
 #[tokio::test]
 async fn axis_routing() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    let model = Scripted::answers::<&str>([]);
+    let model = model(&[]);
     let ctx = ctx("target:fixture", tmp.path());
     let linked = linked();
 
@@ -109,12 +132,17 @@ async fn axis_routing() {
 
 #[test]
 fn entries_and_metadata() {
-    let linked: Catalog<Scripted> =
-        Catalog::builder().source::<Probe>().target::<Probe>().target::<Floored>().build();
-    let ids: Vec<String> = linked.entries().iter().map(harness::catalog::Entry::id).collect();
+    let linked = Catalog::builder()
+        .source::<Probe>()
+        .target::<Probe>()
+        .target::<Floored>()
+        .build()
+        .expect("valid catalog");
+    let ids: Vec<String> = linked.entries().iter().map(linked::Entry::id).collect();
     assert_eq!(ids, ["source:fixture", "target:fixture", "target:floored"]);
 
     let entry = linked.get(Axis::Target, "fixture").expect("target entry");
+    assert_eq!(entry.version(), "0.0.0");
     assert_eq!(entry.server_name(), "fixture-references");
     assert_eq!(entry.metadata().specify_floor, None);
     assert!(!entry.docs().is_empty());
@@ -123,5 +151,48 @@ fn entries_and_metadata() {
     assert_eq!(floored.metadata().specify_floor.as_deref(), Some("9.9.9"));
 
     let err = linked.get(Axis::Source, "unknown").expect_err("unlinked refuses");
-    assert_eq!(err.variant_str(), "adapter-not-found");
+    assert_eq!(err.variant_str(), "adapter-not-linked");
+}
+
+mod validation {
+    use super::*;
+
+    #[test]
+    fn per_axis_duplicate_refused() {
+        let err = Catalog::builder()
+            .source::<Probe>()
+            .source::<Probe>()
+            .build()
+            .expect_err("a per-axis duplicate refuses");
+        assert!(err.to_string().contains("duplicate"), "{err}");
+    }
+
+    #[test]
+    fn dual_axis_same_identity_allowed() {
+        // Fixture's intentional dual-axis `fixture` shape stays legal.
+        Catalog::builder()
+            .source::<Probe>()
+            .target::<Probe>()
+            .build()
+            .expect("dual-axis same-identity entries share one shelf");
+    }
+
+    #[test]
+    fn shelf_conflict_refused() {
+        let err = Catalog::builder()
+            .source::<Probe>()
+            .target::<ProbeV2>()
+            .build()
+            .expect_err("same name at different versions conflicts on one shelf");
+        assert!(err.to_string().contains("conflicting reference-shelf"), "{err}");
+    }
+
+    #[test]
+    fn non_semver_version_refused() {
+        let err = Catalog::builder()
+            .target::<BadVersion>()
+            .build()
+            .expect_err("a non-SemVer identity version refuses");
+        assert!(err.to_string().contains("not exact SemVer"), "{err}");
+    }
 }

@@ -6,8 +6,8 @@
 mod support;
 
 use change::plan;
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 
 async fn author(
     session: &Session, source_adapter: &str,
@@ -66,22 +66,35 @@ async fn unknown_adapter_fails_ensure_before_scaffold() {
     // failure halfway through the survey fan-out.
     let err = author(&session, "no-such-adapter").await.expect_err("ensure fails");
     let detail = err.to_string();
-    assert!(detail.contains("adapter-not-found"), "{detail}");
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
     assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
 }
 
 #[tokio::test]
-async fn pinned_binding_refused_by_linked_resolver() {
+async fn mismatched_pin_refused_before_scaffold() {
     let session = Session::scripted("fixture", Vec::new());
 
     // `<name>@<semver>` parses into the first-party package pin
-    // (implicit `specify` namespace); the linked resolver accepts bare
-    // development identities only, so ensure refuses it before survey.
+    // (implicit `specify` namespace); linked ensure succeeds only on
+    // the exact compiled identity, so a mismatched pin refuses before
+    // survey.
     let err = author(&session, "fixture@1.0.0").await.expect_err("ensure refuses the pin");
     let detail = err.to_string();
-    assert!(detail.contains("adapter-not-found"), "{detail}");
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
     assert!(detail.contains("specify:fixture@1.0.0"), "pin parsed into the package form: {detail}");
     assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+}
+
+#[tokio::test]
+async fn exact_pin_satisfied_by_linked_identity() {
+    // The fixture source compiles as `fixture@0.0.0`, so the exact pin
+    // ensures and the trial proceeds into survey (which then consumes
+    // the scripted judgment answer downstream — here we only need the
+    // ensure gate to pass, so a full author over the pinned binding
+    // succeeding is the assert).
+    let session = Session::scripted("fixture", vec![fixture::answers::greeting_grouping()]);
+    author(&session, "fixture@0.0.0").await.expect("the exact compiled pin ensures");
+    assert!(session.root().join("plan.yaml").exists(), "plan scaffolded");
 }
 
 #[tokio::test]
@@ -117,7 +130,7 @@ async fn survey_ensures_pinned_binding_before_dispatch() {
     .await
     .expect_err("ensure refuses the pin before dispatch");
     let detail = err.to_string();
-    assert!(detail.contains("adapter-not-found"), "{detail}");
+    assert!(detail.contains("adapter-not-linked"), "{detail}");
     assert!(detail.contains("specify:fixture@1.0.0"), "{detail}");
 }
 

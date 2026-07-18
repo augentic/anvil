@@ -4,7 +4,7 @@
 //! the SDK seam DTOs ([`adapter::seam`]) — the canonical internal
 //! representation. The trait implementors in [`crate::ops`] and the
 //! WASM adapter guest both route through it; only the workflow
-//! providers (`harness::convert`) widen the values onto engine DTOs.
+//! providers (the linked host's conversion layer) widen the values onto engine DTOs.
 //!
 //! Behaviour keys off the routed adapter id: an id containing `docs`
 //! or `code` selects that half of the adversarial pair, anything else

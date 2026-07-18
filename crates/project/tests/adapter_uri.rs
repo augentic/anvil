@@ -4,7 +4,7 @@ use std::fs;
 
 mod support;
 
-use harness::invoke::run;
+use fixture::invoke::run;
 use support::{Provider, scoped_store, stage_dev_component};
 
 fn input(adapter: &str) -> project::init::handlers::InitInput {

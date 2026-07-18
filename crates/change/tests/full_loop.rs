@@ -12,8 +12,8 @@ use std::fs;
 
 use change::{LoopStep, Status, plan};
 use fixture::behaviour;
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 
 /// The scripted answers for the whole loop, in dispatch order: the
 /// reconciliation grouping (author) and the synthesis response

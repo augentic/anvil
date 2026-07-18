@@ -4,8 +4,8 @@ use std::fs;
 
 mod support;
 
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 use support::report_rule_ids;
 
 #[tokio::test]

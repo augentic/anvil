@@ -1,23 +1,16 @@
 //! Model-free scenario runner gates: config, artifacts, run dirs,
-//! outcomes — over the shared probe target.
-
-mod support;
+//! outcomes — over the fixture target.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use harness::catalog::{Binding, Catalog};
-use harness::scenario;
-use omnia_guest::Model;
+use eval::scenario;
+use linked::Catalog;
 use project::seam::wire::{BUILD_VERSION, BuildReport, BuildStatus};
 use tempfile::TempDir;
 
-struct Probe;
-
-impl Binding for Probe {
-    fn catalog<M: Model>() -> Catalog<M> {
-        Catalog::builder().target::<support::Probe>().build()
-    }
+fn catalog() -> Catalog {
+    fixture::catalog()
 }
 
 fn report(status: BuildStatus) -> BuildReport {
@@ -50,7 +43,8 @@ mod config {
             "adapter = \"target:unknown\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"contracts\"]\n",
         );
-        let err = scenario::load::<Probe>(&scenarios, &dir).expect_err("unlinked adapter refuses");
+        let err =
+            scenario::load(&scenarios, &dir, &catalog()).expect_err("unlinked adapter refuses");
         assert!(format!("{err:#}").contains("not linked"), "{err:#}");
     }
 
@@ -59,7 +53,7 @@ mod config {
         let (_tmp, scenarios, dir) =
             stage("adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n");
         let err =
-            scenario::load::<Probe>(&scenarios, &dir).expect_err("build without expect refuses");
+            scenario::load(&scenarios, &dir, &catalog()).expect_err("build without expect refuses");
         assert!(format!("{err:#}").contains("at least one `expect`"), "{err:#}");
     }
 
@@ -68,7 +62,8 @@ mod config {
         let (_tmp, scenarios, dir) = stage(
             "adapter = \"target:fixture\"\noperation = \"merge-preflight\"\nslice = \"demo\"\n",
         );
-        scenario::load::<Probe>(&scenarios, &dir).expect("merge gates carry no mandatory expect");
+        scenario::load(&scenarios, &dir, &catalog())
+            .expect("merge gates carry no mandatory expect");
     }
 
     #[test]
@@ -77,7 +72,8 @@ mod config {
             "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"/etc/passwd\"]\n",
         );
-        let err = scenario::load::<Probe>(&scenarios, &dir).expect_err("absolute expect refuses");
+        let err =
+            scenario::load(&scenarios, &dir, &catalog()).expect_err("absolute expect refuses");
         assert!(format!("{err:#}").contains("absolute"), "{err:#}");
     }
 
@@ -87,7 +83,7 @@ mod config {
             "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"../outside\"]\n",
         );
-        let err = scenario::load::<Probe>(&scenarios, &dir)
+        let err = scenario::load(&scenarios, &dir, &catalog())
             .expect_err("parent-traversing expect refuses");
         assert!(format!("{err:#}").contains("plain names"), "{err:#}");
     }
@@ -99,7 +95,7 @@ mod config {
              expect = [\"  \"]\n",
         );
         let err =
-            scenario::load::<Probe>(&scenarios, &dir).expect_err("blank expect entry refuses");
+            scenario::load(&scenarios, &dir, &catalog()).expect_err("blank expect entry refuses");
         assert!(format!("{err:#}").contains("empty expect entry"), "{err:#}");
     }
 
@@ -109,7 +105,7 @@ mod config {
             "adapter = \"target:fixture\"\noperation = \"build\"\nslice = \"demo\"\n\
              expect = [\"contracts\"]\nsurprise = true\n",
         );
-        let err = scenario::load::<Probe>(&scenarios, &dir).expect_err("unknown keys refuse");
+        let err = scenario::load(&scenarios, &dir, &catalog()).expect_err("unknown keys refuse");
         assert!(format!("{err:#}").contains("surprise"), "{err:#}");
     }
 }
@@ -201,6 +197,7 @@ mod outcome {
             tmp.path(),
             &report(BuildStatus::Success),
             &["api.yaml".to_string()],
+            None,
         )
         .expect("both gates pass");
         assert_eq!(persisted(tmp.path())["outcome"], "pass");
@@ -214,6 +211,7 @@ mod outcome {
             tmp.path(),
             &report(BuildStatus::Success),
             &["api.yaml".to_string()],
+            None,
         )
         .expect_err("a success report without its artifact fails");
         assert_eq!(persisted(tmp.path())["outcome"], "fail");
@@ -228,6 +226,7 @@ mod outcome {
             tmp.path(),
             &report(BuildStatus::Failure),
             &["api.yaml".to_string()],
+            None,
         )
         .expect_err("a failing report fails regardless of artifacts");
         assert_eq!(persisted(tmp.path())["outcome"], "fail");

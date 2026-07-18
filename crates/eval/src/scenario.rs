@@ -7,15 +7,14 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context as _, Result, bail, ensure};
-use project::handler::ExecutionPaths;
+use linked::{Catalog, DynModel, ExecutionPaths, Provider, ReferenceMode};
 use project::seam::wire::{BuildReport, BuildStatus};
 use project::seam::{Input, MergePhase, Target as _, WorkingTree};
 use serde::Deserialize;
 
-use crate::catalog::Binding;
 use crate::fs as evalfs;
-use crate::model::DevModel;
-use crate::provider::Provider;
+use crate::run::ModelFactory;
+use crate::telemetry::Telemetry;
 
 /// One scenario's machine-readable routing, from `scenario.toml`.
 #[derive(Debug, Deserialize)]
@@ -57,19 +56,21 @@ impl Operation {
     }
 }
 
-/// Run one scenario by `<adapter>/<name>` id over `B`'s linked
-/// adapters, or list them all.
+/// Run one scenario by `<adapter>/<name>` id over the supplied linked
+/// catalog and model factory, or list them all.
 ///
 /// # Errors
 ///
 /// Returns an unknown or malformed scenario, seeding failures, a failing adapter
 /// report, and a missing `expect` artifact.
-pub async fn run<B: Binding>(root: &Path, sandbox: &Path, id: Option<&str>) -> Result<()> {
+pub async fn run(
+    root: &Path, sandbox: &Path, id: Option<&str>, catalog: &Catalog, factory: &ModelFactory,
+) -> Result<()> {
     let Some(id) = id else {
         return list(root);
     };
     let dir = root.join(id);
-    let config = load::<B>(root, &dir).with_context(|| format!("scenario `{id}`"))?;
+    let config = load(root, &dir, catalog).with_context(|| format!("scenario `{id}`"))?;
 
     let scratch = seed(sandbox, id, &dir)?;
     println!(
@@ -80,11 +81,16 @@ pub async fn run<B: Binding>(root: &Path, sandbox: &Path, id: Option<&str>) -> R
         scratch.display()
     );
 
+    let instance = (factory)(&scratch)?;
+    let telemetry = Telemetry::new(instance.model);
+    let model = DynModel::new(telemetry.clone());
     let paths = ExecutionPaths::isolated(&*scratch, scratch.join("project-cache"));
-    let provider = Provider::bound::<B>(paths, DevModel::new(&scratch)).await;
+    let provider = Provider::new(paths, model, catalog.clone(), ReferenceMode::Online);
     let inputs = inputs(&dir.join("inputs"))?;
-    let report = dispatch(&provider, &config, inputs).await?;
-    conclude(id, &scratch, &report, &config.expect)
+    let report = dispatch(&provider, &config, inputs).await;
+    provider.shutdown().await;
+    let effective = telemetry.effective_model(instance.default_model.as_deref());
+    conclude(id, &scratch, &report?, &config.expect, effective.as_deref())
 }
 
 /// Parse and validate the scenario config at `dir/scenario.toml`.
@@ -92,7 +98,7 @@ pub async fn run<B: Binding>(root: &Path, sandbox: &Path, id: Option<&str>) -> R
 /// # Errors
 ///
 /// Returns a missing or unparseable `scenario.toml` and any validation failure.
-pub fn load<B: Binding>(root: &Path, dir: &Path) -> Result<Config> {
+pub fn load(root: &Path, dir: &Path, catalog: &Catalog) -> Result<Config> {
     let path = dir.join("scenario.toml");
     if !path.is_file() {
         bail!(
@@ -104,14 +110,14 @@ pub fn load<B: Binding>(root: &Path, dir: &Path) -> Result<Config> {
     let body = fs::read_to_string(&path)?;
     let config: Config =
         toml::from_str(&body).with_context(|| format!("parsing {}", path.display()))?;
-    validate::<B>(&config)?;
+    validate(&config, catalog)?;
     Ok(config)
 }
 
-fn validate<B: Binding>(config: &Config) -> Result<()> {
+fn validate(config: &Config, catalog: &Catalog) -> Result<()> {
     ensure!(
-        B::catalog::<DevModel>().entries().iter().any(|entry| entry.id() == config.adapter),
-        "adapter `{}` is not linked into the native shim",
+        catalog.entries().iter().any(|entry| entry.id() == config.adapter),
+        "adapter `{}` is not linked into this host",
         config.adapter
     );
     ensure!(!config.slice.trim().is_empty(), "empty slice name");
@@ -145,7 +151,9 @@ fn validate_entry(rel: &str) -> Result<()> {
 ///
 /// Returns a failing adapter report, a failed artifact expectation, and
 /// report-persistence I/O failures.
-pub fn conclude(id: &str, scratch: &Path, report: &BuildReport, expect: &[String]) -> Result<()> {
+pub fn conclude(
+    id: &str, scratch: &Path, report: &BuildReport, expect: &[String], model: Option<&str>,
+) -> Result<()> {
     for finding in &report.findings {
         eprintln!(
             "finding [{}] {}: {}",
@@ -164,7 +172,7 @@ pub fn conclude(id: &str, scratch: &Path, report: &BuildReport, expect: &[String
         if report.status == BuildStatus::Success && gate.is_ok() { "pass" } else { "fail" };
 
     let report_path = scratch.join("report.json");
-    fs::write(&report_path, serde_json::to_vec_pretty(&envelope(id, outcome, report)?)?)?;
+    fs::write(&report_path, serde_json::to_vec_pretty(&envelope(id, outcome, report, model)?)?)?;
     println!("eval scenario {id}: report {}", report_path.display());
 
     ensure!(
@@ -243,9 +251,7 @@ pub fn allocate_run_dir(base: &Path) -> Result<PathBuf> {
     candidate.canonicalize().context("canonical run dir")
 }
 
-async fn dispatch(
-    provider: &Provider<DevModel>, config: &Config, inputs: Vec<Input>,
-) -> Result<BuildReport> {
+async fn dispatch(provider: &Provider, config: &Config, inputs: Vec<Input>) -> Result<BuildReport> {
     let tree = WorkingTree {
         base: "eval".to_string(),
         subpath: None,
@@ -336,13 +342,15 @@ fn inputs(dir: &Path) -> Result<Vec<Input>> {
     Ok(inputs)
 }
 
-fn envelope(id: &str, outcome: &str, report: &BuildReport) -> Result<serde_json::Value> {
+fn envelope(
+    id: &str, outcome: &str, report: &BuildReport, model: Option<&str>,
+) -> Result<serde_json::Value> {
     Ok(serde_json::json!({
         "version": 1,
         "scenario": id,
         "profile": "adapter-live",
-        "runtime": "native",
-        "model": std::env::var("SPECIFY_EVAL_MODEL").unwrap_or_else(|_| "cursor-default".to_owned()),
+        "runtime": "linked",
+        "model": model.unwrap_or("backend-default"),
         "outcome": outcome,
         "report": serde_json::to_value(report)?,
     }))

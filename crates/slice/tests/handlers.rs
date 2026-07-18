@@ -12,8 +12,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use fixture::invoke::run;
 use fixture::session::Session;
-use harness::invoke::run;
 
 /// Stage a one-project `registry.yaml` at the project root.
 fn stage_registry(root: &Path) {

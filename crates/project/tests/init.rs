@@ -8,7 +8,7 @@ use std::fs;
 
 mod support;
 
-use harness::invoke::run;
+use fixture::invoke::run;
 use project::adapter::AdapterSelector;
 use project::handler::{Anchor as _, ExecutionPaths};
 use support::Provider;
