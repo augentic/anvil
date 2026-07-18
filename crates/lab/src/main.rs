@@ -33,6 +33,10 @@ async fn main() -> ExitCode {
 
 async fn entry() -> anyhow::Result<ExitCode> {
     let mut argv: Vec<String> = std::env::args().collect();
+    // `cargo make dev -- ARGS` forwards the literal `--` separator.
+    if argv.get(1).is_some_and(|arg| arg == "--") {
+        argv.remove(1);
+    }
     let root = project_root(&mut argv)?;
     let catalog = fixture::catalog();
 
