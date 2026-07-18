@@ -6,7 +6,8 @@
 //! gate, the `lend_workspace` → project-root tool host, and the answer
 //! projection. The connection happens on first use so deterministic
 //! phases never require cursor-agent on `PATH`; clones share the
-//! connection cell, so one trial connects cursor-agent at most once.
+//! connection cell, so each constructed backend connects cursor-agent
+//! at most once (the trial constructs one per phase).
 //!
 //! `SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the
 //! id fills `Request.model` only when the caller left it `None`, so a
