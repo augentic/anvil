@@ -180,8 +180,8 @@ change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
 eval = { path = "crates/eval" }
-mock = { path = "crates/mock" }
 linked = { path = "crates/linked" }
+mock = { path = "crates/mock" }
 project = { path = "crates/project" }
 prose = { path = "crates/prose" }
 slice = { path = "crates/slice" }

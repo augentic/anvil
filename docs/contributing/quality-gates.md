@@ -25,7 +25,7 @@ When adding coverage:
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
 3. Put cross-crate workflow behavior in the native workflow suites over the mock adapter and scripted answers.
-4. Behavior that only a WebAssembly/WIT/runtime seam can prove has no automated home here — it is covered by the operator-run change example and by the composed-deployment tests in `specify-adapters`.
+4. Behavior that only a WebAssembly/WIT/runtime seam can prove has no automated home here — it is covered by the operator-run change example here and in `specify-adapters`.
 5. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
 Do not copy an assertion into another gate for reassurance: each fact has one owning seam.

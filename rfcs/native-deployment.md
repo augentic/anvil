@@ -629,7 +629,7 @@ Integration tests assemble an offline `linked::Provider` directly and never requ
 | --- | --- | --- | --- |
 | `lab` | Dev command + eval + first-party catalog | `catalog()` + inline dispatch | owns the first-party catalog |
 
-Wasm composed tests and the change example remain separate gates. A future linked product binary would extract the catalog into a shared library; that extraction is out of scope here.
+The change example remains a separate Wasm gate. A future linked product binary would extract the catalog into a shared library; that extraction is out of scope here.
 
 ## Wasm and linked correspondence
 
@@ -716,7 +716,6 @@ Fixture behavior, answer recording, and catalog inventory remain under `crates/m
 No linked test claims Wasm coverage. Existing component gates remain:
 
 - adapter crate tests;
-- adapters `composed` tests;
 - the Specify mock change example;
 - the first-party change example over the published core component.
 

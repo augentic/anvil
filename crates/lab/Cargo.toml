@@ -14,8 +14,8 @@ workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 eval.workspace = true
-mock.workspace = true
 linked = { workspace = true, features = ["cli"] }
+mock.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-guest.workspace = true
