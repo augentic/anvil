@@ -4,7 +4,7 @@ Specify proves engine correctness from this repository alone: native integration
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + plugin authoring), and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native workflow suites inside it prove the complete `init → author → approve → execute` loop through the mock adapter over the offline native provider and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, the `checks` package (adapter boundary + plugin authoring), and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native engine suites inside it prove the complete `init → author → approve → execute` loop through the mock adapter over the offline native provider and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
@@ -24,7 +24,7 @@ When adding coverage:
 
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
-3. Put cross-crate workflow behavior in the native workflow suites over the mock adapter and scripted answers.
+3. Put cross-crate workflow behavior in the native engine suites over the mock adapter and scripted answers.
 4. Behavior that only a WebAssembly/WIT/runtime seam can prove has no automated home here — it is covered by the operator-run wasm example here and in `specify-adapters`.
 5. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 

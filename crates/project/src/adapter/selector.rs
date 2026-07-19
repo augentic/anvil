@@ -25,7 +25,7 @@ use error::Error;
 ///   catalog match for a native host).
 /// - [`Self::Package`] — an immutable registry locator with a
 ///   mandatory exact-SemVer pin. `namespace` is parse/display
-///   provenance, not a second workflow identity axis.
+///   provenance, not a second engine identity axis.
 /// - [`Self::Component`] — a local `.wasm` component file. The kind is
 ///   retained so a native host can refuse it instead of silently
 ///   narrowing to a same-named compiled adapter.

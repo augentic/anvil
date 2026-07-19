@@ -5,7 +5,7 @@
 //! `docs` / `code` pair (reconciliation, synthesis). Keeping one copy
 //! of each answer here stops the suites drifting apart on envelope
 //! shape. Source-binding builders live with the `change` suites — the
-//! corpus itself is plain JSON and depends on no workflow crate.
+//! corpus itself is plain JSON and depends on no engine crate.
 
 use serde_json::json;
 

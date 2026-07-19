@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "adapter"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "mock",
  "omnia-guest",
@@ -152,7 +152,7 @@ checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
 
 [[package]]
 name = "artifacts"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "diagnostics",
  "error",
@@ -496,7 +496,7 @@ dependencies = [
 
 [[package]]
 name = "change"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "artifacts",
  "diagnostics",
@@ -518,7 +518,7 @@ dependencies = [
 
 [[package]]
 name = "checks"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "semver",
  "serde",
@@ -1032,7 +1032,7 @@ checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 
 [[package]]
 name = "diagnostics"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "base16ct",
  "proptest",
@@ -1151,7 +1151,7 @@ dependencies = [
 
 [[package]]
 name = "error"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "serde-saphyr",
  "thiserror 2.0.18",
@@ -1159,7 +1159,7 @@ dependencies = [
 
 [[package]]
 name = "eval"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "anyhow",
  "artifacts",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "guest"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "artifacts",
  "diagnostics",
@@ -2020,7 +2020,7 @@ dependencies = [
 
 [[package]]
 name = "lab"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "anyhow",
  "eval",
@@ -2196,7 +2196,7 @@ dependencies = [
 
 [[package]]
 name = "mock"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "adapter",
  "native",
@@ -2227,7 +2227,7 @@ dependencies = [
 
 [[package]]
 name = "native"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "adapter",
  "artifacts",
@@ -2973,7 +2973,7 @@ dependencies = [
 
 [[package]]
 name = "project"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "artifacts",
  "diagnostics",
@@ -3015,7 +3015,7 @@ dependencies = [
 
 [[package]]
 name = "prose"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "tempfile",
 ]
@@ -3903,7 +3903,7 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "slice"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "artifacts",
  "diagnostics",
@@ -3944,7 +3944,7 @@ dependencies = [
 
 [[package]]
 name = "specify"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "adapter",
  "anyhow",
@@ -4482,7 +4482,7 @@ dependencies = [
 
 [[package]]
 name = "transport"
-version = "0.27.2"
+version = "0.28.0"
 dependencies = [
  "artifacts",
  "change",

@@ -127,7 +127,7 @@ specify plan execute
 <div class="platform">
   <div class="platform-product" data-active="true">
     <div class="platform-name">Specify</div>
-    <div class="platform-role">Workflow engine</div>
+    <div class="platform-role">Engine</div>
     <div class="platform-body">
       <p>Owns planning, slice artifacts, lifecycle gates, and the auditable contract from intent to merge.</p>
     </div>

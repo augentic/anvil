@@ -10,18 +10,6 @@ use serde_json::{Value, json};
 
 use crate::registry::{self, Doc};
 
-/// Adapter MCP URL from `SPECIFY_<ADAPTER>_MCP_URL`.
-///
-/// Accepts a bare name or axis-qualified id (`target:contracts`); the
-/// axis prefix is stripped. Absent means judgment legs run without a
-/// reference grant.
-#[must_use]
-pub fn mcp_url(adapter: &str) -> Option<String> {
-    let name = adapter.rsplit(':').next().unwrap_or(adapter);
-    let key = format!("SPECIFY_{}_MCP_URL", name.to_uppercase().replace('-', "_"));
-    std::env::var(key).ok()
-}
-
 /// `<name>-references`, interned once per process so it stays `&'static`.
 ///
 /// # Panics

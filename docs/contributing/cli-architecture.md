@@ -6,11 +6,11 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/omnia.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
 
-The core guest identity is versioned by the binary (`specify:core@<binary version>`).
+The engine guest identity is versioned by the binary (`specify:engine@<binary version>`).
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; the three workflow crates own the domain and every command operation (`project` the foundation + init, `slice` the refine-build-merge loop, `change` the plan loop; `Operation<P>` impls in each crate's `<domain>::handlers`, shared plumbing in `project::handler`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; the three engine crates own the domain and every command operation (`project` the foundation + init, `slice` the refine-build-merge loop, `change` the plan loop; `Operation<P>` impls in each crate's `<domain>::handlers`, shared plumbing in `project::handler`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 

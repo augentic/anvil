@@ -173,8 +173,7 @@ pub fn dispatch_metadata<A: crate::Target>() -> AdapterMetadata {
 ///
 /// As the implementor's [`guidance`](crate::Target::guidance).
 pub async fn dispatch_guidance<A: crate::Target>(id: AdapterId) -> Result<String, Error> {
-    let url = crate::references::mcp_url(A::IDENTITY.name);
-    let ctx = crate::seam::Context::guest(&id, url.as_deref());
+    let ctx = crate::seam::Context::guest(&id, None);
     A::guidance(&crate::WasiModel, &ctx).await.map_err(Into::into)
 }
 
@@ -186,8 +185,7 @@ pub async fn dispatch_build<A: crate::Target>(
 ) -> Result<Report, Error> {
     let inputs: Vec<crate::seam::Input> = inputs.into_iter().map(Into::into).collect();
     let tree = crate::seam::WorkingTree::from(tree);
-    let url = crate::references::mcp_url(A::IDENTITY.name);
-    let ctx = crate::seam::Context::guest(&id, url.as_deref());
+    let ctx = crate::seam::Context::guest(&id, None);
     A::build(&crate::WasiModel, &ctx, &slice, &inputs, &tree)
         .await
         .map(Into::into)
@@ -202,8 +200,7 @@ pub async fn dispatch_merge<A: crate::Target>(
 ) -> Result<Report, Error> {
     let phase = crate::seam::MergePhase::from(phase);
     let tree = crate::seam::WorkingTree::from(tree);
-    let url = crate::references::mcp_url(A::IDENTITY.name);
-    let ctx = crate::seam::Context::guest(&id, url.as_deref());
+    let ctx = crate::seam::Context::guest(&id, None);
     A::merge(&crate::WasiModel, &ctx, &slice, phase, &tree)
         .await
         .map(Into::into)

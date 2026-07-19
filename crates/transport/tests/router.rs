@@ -119,14 +119,14 @@ async fn detailed_help() {
 async fn argv_zero_replaced() {
     let router = command_router(".");
     let expected = router.execute(["specify", "plan", "transition"]).await;
-    let forwarded = router.execute(["specify:core@0.1.0", "plan", "transition"]).await;
+    let forwarded = router.execute(["specify:engine@0.1.0", "plan", "transition"]).await;
 
     assert_eq!(expected.exit, 2);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
     assert!(stderr.contains("Usage: specify plan transition"));
-    assert!(!stderr.contains("specify:core@0.1.0"));
+    assert!(!stderr.contains("specify:engine@0.1.0"));
 }
 
 #[derive(Clone, Copy)]

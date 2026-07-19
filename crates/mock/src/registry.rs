@@ -1,4 +1,4 @@
-//! The exhaustive mock registry linked into the workflow suites.
+//! The exhaustive mock registry linked into the engine suites.
 
 use native::Catalog;
 

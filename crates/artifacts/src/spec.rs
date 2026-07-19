@@ -91,7 +91,7 @@ pub struct Rename {
 
 // ---------------------------------------------------------------------------
 // ID grammar — the single authority for the closed `REQ` / `TASK` ID shapes.
-// The validate and workflow layers call these predicates rather than
+// The validate and engine layers call these predicates rather than
 // re-encoding the pattern, so the grammar lives in exactly one place.
 // ---------------------------------------------------------------------------
 

@@ -32,7 +32,7 @@ use crate::digest::{Hasher, sha256_hex};
 const CACHE_ENV: &str = "SPECIFY_PROJECT_CACHE";
 
 /// Guest-visible preopen name of the per-project derived cache inside
-/// the workflow guest's WASI sandbox.
+/// the engine guest's WASI sandbox.
 ///
 /// The generated deployment manifest mounts the host's
 /// [`project_cache_dir`] under this name (guest routing: the guest
@@ -55,7 +55,7 @@ pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
 /// fall back into the working tree. When no environment anchor is
 /// available the OS temp directory is used as a last resort.
 ///
-/// On wasm32 (the workflow guest) the cache is the
+/// On wasm32 (the engine guest) the cache is the
 /// [`GUEST_CACHE_MOUNT`] preopen the deployment manifest grants; a
 /// deployment without the mount simply misses every cache probe, the
 /// same degradation as an unpopulated cache natively.
@@ -118,7 +118,7 @@ fn projects_root() -> PathBuf {
 const ADAPTER_STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
 
 /// Guest-visible preopen name of the global adapter store inside the
-/// workflow guest's WASI sandbox.
+/// engine guest's WASI sandbox.
 ///
 /// The generated deployment manifest mounts the host's
 /// [`adapter_store_root`] under this name **writable**: forwarded
@@ -155,7 +155,7 @@ pub fn adapter_store_entry(name: &str, version: &str) -> PathBuf {
 /// temp directory anchors a last-resort root, keeping the helper
 /// infallible.
 ///
-/// On wasm32 (the workflow guest) the store is the writable
+/// On wasm32 (the engine guest) the store is the writable
 /// [`GUEST_STORE_MOUNT`] preopen the deployment manifest grants — the
 /// env override is host-side relocation and never crosses the seam.
 #[must_use]

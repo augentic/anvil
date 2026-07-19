@@ -36,7 +36,7 @@ The runtime architecture — Specify as a family of Wasm guests on the Omnia run
 
 Realising the architecture spans four repositories, coordinated only through versioned WIT seams — never a shared build or a lockstep release.
 
-- **`augentic/specify`** (this repo) — owns the typed contract (the `specify:adapter` package), the Specify runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the workflow guest, and the operator CLI surface.
+- **`augentic/specify`** (this repo) — owns the typed contract (the `specify:adapter` package), the Specify runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the engine guest, and the operator CLI surface.
 - **`augentic/omnia`** — owns the generic runtime library (the Wasmtime interpreter, the pluggable host-service framework, multi-guest deployments, host-mediated linking) and the general-purpose host interfaces, including `wasi-model` (`omnia:model/completion.create`). It carries zero Specify domain knowledge and zero model knowledge.
 - **`augentic/backends`** — owns the model backends behind `wasi-model`: `omnia-cursor` (spawns `cursor-agent` against the mounted working tree with MCP grants) and `omnia-genai` (frontier / hosted APIs); Omnia's in-tree `ModelDefault` covers deterministic replay.
 - **`augentic/specify-adapters`** — consumes the `specify:adapter` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references.
@@ -118,7 +118,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Substrate:** the deployment already serves MCP — every adapter guest exports `wasi:http/incoming-handler` over `omnia_guest::mcp`, and the runtime binary routes MCP prefixes. This item becomes another route on the existing deployment (plausibly an export of the workflow guest), not a standalone server.
+**Substrate:** the deployment already serves MCP — every adapter guest exports `wasi:http/incoming-handler` over `omnia_guest::mcp`, and the runtime binary routes MCP prefixes. This item becomes another route on the existing deployment (plausibly an export of the engine guest), not a standalone server.
 **Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 

@@ -27,7 +27,7 @@ This approach provides three major benefits:
 The system is two roles communicating over one contract: a generic runtime and the guests that run on it.
 
 - **Omnia is the foundation**: a command-line executable that instantiates a guest and satisfies its typed effect imports from the backends bound for this deployment. It knows nothing about adapters, workflows, or models.
-- **Everything else is a guest**: the workflow (`plan`, `execute`), the adapters (source and target), and the development tooling all run as peers on the runtime.
+- **Everything else is a guest**: the engine (`plan`, `execute`), the adapters (source and target), and the development tooling all run as peers on the runtime.
 - **Capabilities are host interfaces**: a guest reaches the outside world only by importing a host interface (`wasi:filesystem`, `wasi:keyvalue`, `wasi-model`, …) and calling it. Each interface is satisfied by a swappable backend.
 - **The boundary is typed**: only typed records and handles cross it — never untyped text.
 
@@ -100,7 +100,7 @@ Record/replay is a property of the backend boundary: a recording backend logs re
 
 ## Guest-to-guest interaction: host-mediated dynamic linking
 
-A single operation spans several guests: the workflow guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
+A single operation spans several guests: the engine guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
 
 - **How it works**: the caller imports the per-axis host interfaces (`source` / `target`) and names a plan-bound `adapter-id` as the first argument of each call (`build(id, …)`, `survey(id)`, …) — the very interfaces the adapters export, so there is no separate dispatch facade to keep in sync. The Omnia host intercepts these imports through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's matching export (`specify:adapter/source` / `target`) over the bound transport.
 - **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, carries the typed WIT records to it over wRPC, invokes the exported function, and returns the typed result.
@@ -116,8 +116,8 @@ The binary holds every guest on **one runtime** and picks among them in native c
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
-  "workflow"             -> InstancePre     (the core guest, resolved from the global store
-                                             by the binary's own version: specify:core@<version>)
+  "workflow"             -> InstancePre     (the engine guest, resolved from the global store
+                                             by the binary's own version: specify:engine@<version>)
   "source:typescript"    -> InstancePre   ┐  hydrated into the global single-file store
   "source:documentation" -> InstancePre   │  ($HOME/.specify/adapters) — only the identities
   "target:omnia"         -> InstancePre   ┘  the generated deployment manifest names are loaded
@@ -126,12 +126,12 @@ GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
 Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
 
 - the `wasi-model` callback resolves against the adapter whose brief is being evaluated — its identity is fixed for the duration of that `eval`;
-- a workflow→target call (`build`, `merge`, `guidance`) targets the slice's bound target; a workflow→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.
+- an engine→target call (`build`, `merge`, `guidance`) targets the slice's bound target; an engine→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.
 
 The same select-by-identity resolves an **inbound trigger**, not only a guest-to-guest call:
 
 - A CLI command names its guest directly (`omnia <guest>.wasm`)
-- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. The starting point is a **declarative route table keyed by path prefix** — the model Fermyon [Spin](https://spinframework.dev/v4/http-trigger)'s `spin.toml` popularised, longest-prefix wins — projecting a prefix onto a registry key (`/target/omnia/…` → `target:omnia`). Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. Because Specify owns the `wasi:http` host implementation, the static table is the floor, not the ceiling — the host may instead route **programmatically**, computing the identity from the request's path, host, or headers (the mapping held in `wasi:keyvalue`) the way Cloudflare's [Workers for Platforms](https://developers.cloudflare.com/cloudflare-for-platforms/workers-for-platforms/configuration/dynamic-dispatch/) dispatch worker resolves a script by name. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
+- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. The starting point is a **declarative route table keyed by path prefix** — the model Fermyon [Spin](https://spinframework.dev/v4/http-trigger)'s `spin.toml` popularised, longest-prefix wins — projecting a prefix onto a registry key. Specify's generated deployment uses one fixed projection (`/mcp/<name>` → `source:<name>` or `target:<name>`; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) — routes are never a second authored vocabulary beside the guest list. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. Because Specify owns the `wasi:http` host implementation, the static table is the floor, not the ceiling — the host may instead route **programmatically**, computing the identity from the request's path by that same rule (no `[[route.http]]` rows), the way Cloudflare's [Workers for Platforms](https://developers.cloudflare.com/cloudflare-for-platforms/workers-for-platforms/configuration/dynamic-dispatch/) dispatch worker resolves a script by name. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
 
 ## Lifecycle of an operation
 
@@ -139,7 +139,7 @@ Logical sequence: build
 
 A `build` flows like this:
 
-1. The workflow guest resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
+1. The engine guest resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
 2. It runs any deterministic setup (a `tool` adapter export, reached by host-mediated dynamic linking).
 3. For the judgment leg it calls `wasi-model.eval` with the `build` brief.
 4. The model backend drives the model. `resolve` follows the brief's references (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
@@ -175,7 +175,7 @@ Because guests interact only with typed interfaces, the deployment topology is d
 
 When evaluating a design decision — prose or code, what a function takes, where it runs — keep this principle in mind:
 
-> Run every adapter and workflow as a guest on a runtime that understands only typed effects. Keep structure in deterministic guest code, reach the model through the `wasi-model` host behind a swappable backend, and pass handles instead of raw text across boundaries.
+> Run every adapter and the engine as a guest on a runtime that understands only typed effects. Keep structure in deterministic guest code, reach the model through the `wasi-model` host behind a swappable backend, and pass handles instead of raw text across boundaries.
 
 1. **Typed boundaries**: WIT records for data, WIT interfaces for effects. Untyped text is not passed across boundaries.
 2. **The runtime core only knows effects**: Omnia core doesn't know about workflows, adapters, or models — only how to host guests and satisfy typed effects. Which backend satisfies an interface — including which model backs `wasi-model` — is deployment configuration the runtime core never sees.
@@ -196,14 +196,14 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `specify` binary is two strictly separated layers:
 
-- **A narrow initialization surface** carrying project scaffolding through `init`; removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders. Other argv forwards **unparsed** to the core guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
+- **A narrow initialization surface** carrying project scaffolding through `init`; removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders. Other argv forwards **unparsed** to the engine guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
 - **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime (`omnia::runtime!`), mounted **in-process** via the macro's public `drive` beside its `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the generated deployment manifest.
 
 The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/adapters` (relocatable via `$SPECIFY_ADAPTER_STORE`):
 
-- **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command or workflow module advertised by the CLI.
-- **Core versioned by the binary**: the workflow (core) guest resolves as `specify:core@<the binary's own version>` from the same store — the binary version *is* the core version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_CORE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves core-guest iteration; it is a development affordance, never a release mode.
-- **Generated deployment manifest**: provisioning renders the manifest into the per-project derived cache from the resolved store entries — one `[[guest]]` per component, the writable `"."` project mount, per-adapter MCP routes, and the core's link allow-list. It is derived, never committed, never hand-edited; the host layer reads nothing else.
+- **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command or engine module advertised by the CLI.
+- **Engine versioned by the binary**: the engine guest resolves as `specify:engine@<the binary's own version>` from the same store — the binary version *is* the engine version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_ENGINE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves engine-guest iteration; it is a development affordance, never a release mode.
+- **Generated deployment manifest**: provisioning renders the manifest into the per-project derived cache from the resolved store entries — one `[[guest]]` per component, the writable `"."` project mount, MCP routes projected from those adapter guests (`/mcp/<name>`), and the engine's link allow-list. It is derived, never committed, never hand-edited; the host layer reads nothing else.
 
 ## Deferred relatives
 

@@ -116,7 +116,7 @@ impl Entry {
         format!("{}:{}", self.axis, self.name)
     }
 
-    /// Adapter metadata projected onto the workflow shape.
+    /// Adapter metadata projected onto the engine shape.
     #[must_use]
     pub fn metadata(&self) -> Metadata {
         (self.metadata)()

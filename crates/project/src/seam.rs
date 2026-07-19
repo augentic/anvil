@@ -3,7 +3,7 @@
 //! [`Source`] and [`Target`] mirror the WIT `source` / `target`
 //! interfaces. Their DTOs omit caller-owned fields, such as the source
 //! attribution added by the orchestrator. Keeping `wit-bindgen` providers
-//! outside this crate leaves workflow code wasm-free.
+//! outside this crate leaves engine code wasm-free.
 //!
 //! [`Capabilities`] is the borrowed capability bundle the guest
 //! orchestrations in the slice and change crates dispatch across.

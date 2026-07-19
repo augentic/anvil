@@ -6,7 +6,7 @@ argument-hint: "[slice-name]"
 
 # Build Skill
 
-The workflow guest owns the whole build flow — request assembly and schema validation, the target adapter's build operation, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `refined → built` transition gate. This skill only resolves the slice name, invokes the verb, and relays its output.
+The engine guest owns the whole build flow — request assembly and schema validation, the target adapter's build operation, report validation, the `target-build-*` aborts, the `slice.build.*` events, and the `refined → built` transition gate. This skill only resolves the slice name, invokes the verb, and relays its output.
 
 ## Invocation
 

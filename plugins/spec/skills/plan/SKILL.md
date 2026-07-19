@@ -6,7 +6,7 @@ argument-hint: <name> [source]...
 
 # Plan Skill
 
-The workflow guest owns the whole authoring flow — plan scaffold, per-source survey into `discovery.md`, lead reconciliation into `slices[]`, Gate 1 review prose, validation, and the exit at `pending`. This skill only elicits arguments, invokes the verb, and relays its output.
+The engine guest owns the whole authoring flow — plan scaffold, per-source survey into `discovery.md`, lead reconciliation into `slices[]`, Gate 1 review prose, validation, and the exit at `pending`. This skill only elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 

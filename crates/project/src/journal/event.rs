@@ -255,7 +255,7 @@ pub enum EventKind {
         reason: String,
     },
     /// The guest merge orchestrator skipped the workspace-clone git
-    /// commit leg — the workflow guest owns no git surface, so the
+    /// commit leg — the engine guest owns no git surface, so the
     /// merge lands on `.specify/` state only. Explicit
     /// so a journal reader can tell a guest merge (no `merge-sha` on
     /// its `slice.archive.created`) from a native merge that simply ran

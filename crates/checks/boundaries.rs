@@ -1,4 +1,4 @@
-//! Keep concrete adapter crates out of the workflow engine.
+//! Keep concrete adapter crates out of the engine.
 //!
 //! Parses every engine Cargo manifest and inspects each dependency
 //! table: an entry is a violation when its effective package name is a
@@ -177,10 +177,10 @@ fn repo_has_no_adapter_dependencies() {
 mod direction {
     use super::*;
 
-    /// Crates forming the deployment-neutral workflow core, plus the
+    /// Crates forming the deployment-neutral engine core, plus the
     /// Wasm deployment's `guest` crate (which must stay equally free of
     /// the native host and its labs).
-    const WORKFLOW_CORE: &[&str] = &[
+    const ENGINE_CORE: &[&str] = &[
         "error",
         "diagnostics",
         "artifacts",
@@ -192,7 +192,7 @@ mod direction {
         "guest",
     ];
 
-    /// Dependencies the workflow core rejects outside dev-dependencies.
+    /// Dependencies the engine core rejects outside dev-dependencies.
     const HOST_CRATES: &[&str] = &["native", "eval", "mock", "lab", "harness"];
 
     /// Production dependencies `native` rejects (concrete adapter
@@ -263,7 +263,7 @@ mod direction {
         let aliases = workspace_aliases(root);
         let mut out = Vec::new();
         for (member, rejected) in std::iter::empty()
-            .chain(WORKFLOW_CORE.iter().map(|name| (*name, HOST_CRATES)))
+            .chain(ENGINE_CORE.iter().map(|name| (*name, HOST_CRATES)))
             .chain([("native", NATIVE_REJECTS), ("eval", EVAL_REJECTS)])
         {
             let manifest = root.join("crates").join(member).join("Cargo.toml");

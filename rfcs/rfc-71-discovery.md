@@ -10,7 +10,7 @@
 
 ## Abstract
 
-Define the descriptor and trust substrate that lets Specify match adapters to inputs without hard-coded adapter names in workflow core.
+Define the descriptor and trust substrate that lets Specify match adapters to inputs without hard-coded adapter names in engine core.
 
 This RFC owns the layers common to both adapter axes:
 
@@ -44,7 +44,7 @@ Discovery therefore needs a typed descriptor, a deterministic inventory, and an 
 ## Goals
 
 1. Describe adapter applicability in typed, searchable descriptors shared by first-party and third-party adapters.
-2. Keep workflow core free of adapter-specific `if name == ...` branches.
+2. Keep engine core free of adapter-specific `if name == ...` branches.
 3. Make every recommendation explainable through matched evidence.
 4. Keep registry search and package trust outside model control.
 5. Give source selection and target selection one shared filtering, explanation, and report substrate.

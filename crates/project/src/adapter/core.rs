@@ -135,7 +135,7 @@ pub enum PlatformsSurface<'a> {
 }
 
 impl PlatformsViolation {
-    /// Convert this violation into the workflow [`Error`] for the given
+    /// Convert this violation into the engine [`Error`] for the given
     /// caller surface, preserving each surface's locked diagnostic
     /// codes and message wording.
     pub(crate) fn into_error(self, surface: PlatformsSurface<'_>) -> Error {

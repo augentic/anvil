@@ -1,7 +1,7 @@
 //! Provider gates over the shared probe implementors: native ensure
 //! (bare and exact-pin matching, mismatched-pin and component-selector
 //! refusal, runtime floor enforcement) and the operation legs crossing
-//! the workflow seam.
+//! the engine seam.
 //!
 //! Linked coverage only: these tests claim nothing about component
 //! ABI, WIT mapping, instance isolation, digests, or the adapter
@@ -138,7 +138,7 @@ async fn guidance_crosses_workflow_seam() {
         .expect_err("the failing identity fails guidance");
     assert!(
         matches!(err, seam::Error::Internal(detail) if detail.contains("mock-fail-guidance")),
-        "the typed error crosses the workflow seam"
+        "the typed error crosses the engine seam"
     );
 }
 

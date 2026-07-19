@@ -1,6 +1,6 @@
 # Release process
 
-A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **core guest** published as the wasm-pkg package `specify:core@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. CI builds and attaches the binaries; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
+A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **engine guest** published as the wasm-pkg package `specify:engine@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. CI builds and attaches the binaries; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
 
 ## Before tagging
 
@@ -30,11 +30,11 @@ The shipped surface is the `specify` binary alone: the binary is a single macro-
 
 Both wasm-pkg packages are published manually with `wkg publish` by a maintainer whose wkg config maps the `specify:` namespace to `augentic.io` with a GitHub token carrying `packages: write` (see [`wit/README.md`](../wit/README.md) for the config shape). Registry identities are immutable — never re-publish an existing version; bump the version first.
 
-- **Core guest.** After tagging, publish the release-built workflow component as `specify:core@<version>`, where `<version>` is the `VERSION` file — the published core identity must equal the binary version: a released binary consumes exactly `specify:core@<its own version>` and carries no embedded guest.
+- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the `VERSION` file — the published engine identity must equal the binary version: a released binary consumes exactly `specify:engine@<its own version>` and carries no embedded guest.
 
 ```bash
 cargo build --lib -p specify --release --target wasm32-wasip2
-wkg publish target/wasm32-wasip2/release/specify.wasm --package "specify:core@$(cat VERSION)"
+wkg publish target/wasm32-wasip2/release/specify.wasm --package "specify:engine@$(cat VERSION)"
 ```
 
 - **Adapter contract.** When a contract change bumps the `package specify:adapter@<ver>;` declaration in `wit/specify.wit`, publish it as `specify:adapter@<ver>` — the WIT versions independently of the binary. See [`wit/README.md`](../wit/README.md) for the exact commands. `specify-adapters` consumes the published package as its vendored pin.
@@ -52,7 +52,7 @@ Two supported install paths:
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
 
-Subsequent updates use the same installation channel: rerun `cargo install`, upgrade through the package manager, or replace the downloaded binary. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the workflow (core) guest resolves by the binary's own version, `specify:core@<binary version>`.
+Subsequent updates use the same installation channel: rerun `cargo install`, upgrade through the package manager, or replace the downloaded binary. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest resolves by the binary's own version, `specify:engine@<binary version>`.
 
 ## Adding a new target triple
 
@@ -64,4 +64,4 @@ Subsequent updates use the same installation channel: rerun `cargo install`, upg
 
 - **`cross` installation fails.** Pin to a known-good commit in the `Install cross` step.
 - **Archive SHA256 drift.** Always regenerate after tagging — never hand-edit. The `.sha256` companion files uploaded by `release-binaries.yaml` are authoritative.
-- **`wkg publish` rejects or the identity already exists.** Registry identities are immutable — never re-push different bytes into an existing version. Bump the version (the `VERSION` file for the core, the WIT `package` declaration for the contract) and publish the new identity instead.
+- **`wkg publish` rejects or the identity already exists.** Registry identities are immutable — never re-push different bytes into an existing version. Bump the version (the `VERSION` file for the engine, the WIT `package` declaration for the contract) and publish the new identity instead.

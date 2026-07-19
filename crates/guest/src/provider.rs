@@ -1,6 +1,6 @@
 //! WIT-backed capabilities used by workflow orchestrators.
 //!
-//! Mappings live here so workflow code remains wasm-free. Claims map
+//! Mappings live here so engine code remains wasm-free. Claims map
 //! onto the typed [`artifacts::evidence::Claim`], whose flattened
 //! extras preserve open per-kind fields. Compact build reports are
 //! widened with caller-owned envelope fields before validation.

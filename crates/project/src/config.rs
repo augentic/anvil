@@ -241,7 +241,7 @@ impl<'a> Layout<'a> {
 
     /// Absolute path to `<project_dir>/.specify/guest.lock` — the
     /// guest execute loop's create-exclusive advisory marker
-    /// (the workflow guest marker), the guest-vs-guest
+    /// (the engine guest marker), the guest-vs-guest
     /// breakout refusal fence.
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {

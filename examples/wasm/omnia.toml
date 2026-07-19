@@ -13,12 +13,14 @@ source.path = "../../target/wasm32-wasip2/debug/examples/mock_source.wasm"
 id = "target:mock"
 source.path = "../../target/wasm32-wasip2/debug/examples/mock_target.wasm"
 
+# Dual-axis same name (`mock`) — RFC-70 fallback `/mcp/<axis>/<name>`.
+# First-party deployments use `/mcp/<name>` (names unique across axes).
 [[route.http]]
-prefix = "/mcp/source"
+prefix = "/mcp/source/mock"
 guest = "source:mock"
 
 [[route.http]]
-prefix = "/mcp/target"
+prefix = "/mcp/target/mock"
 guest = "target:mock"
 
 [[mount]]

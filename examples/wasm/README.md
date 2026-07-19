@@ -2,7 +2,7 @@
 
 This is an end-to-end example of the Specify application. It uses Specify's core engine + source and target adapters to implement a rudimentary workflow.
 
-The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are each one SDK export-macro invocation over the canonical `mock::Adapter` implementor — the exact anatomy of a production adapter in `augentic/specify-adapters`. Each component also serves its embedded reference documents over MCP (the macro wires that in). The workflow guest itself is the engine's `specify` cdylib: one `guest::export!()` over the `guest` crate.
+The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are each one SDK export-macro invocation over the canonical `mock::Adapter` implementor — the exact anatomy of a production adapter in `augentic/specify-adapters`. Each component also serves its embedded reference documents over MCP (the macro wires that in). The engine guest itself is the engine's `specify` cdylib: one `guest::export!()` over the `guest` crate.
 
 ## Quick start
 
