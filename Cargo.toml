@@ -49,7 +49,7 @@ omnia-wasi-http.workspace = true
 
 [[example]]
 name = "change"
-path = "examples/change/guest.rs"
+path = "examples/change/adapters.rs"
 crate-type = ["cdylib"]
 
 [lints]
