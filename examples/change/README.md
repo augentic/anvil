@@ -39,6 +39,6 @@ The example runs the Specify ***change*** workflow. It will `author->approve->ex
 After running, inspect the generated result at:
 
 ```text
-sandbox/change/workspace/mock-build/greeting.md
+sandbox/change/workspace/mock-build/<slice>.md
 ```
 

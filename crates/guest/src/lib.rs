@@ -2,9 +2,11 @@
 //!
 //! One `wit_bindgen::generate!` over the `workflow` world (the
 //! `source` / `target` imports Omnia satisfies by host-mediated
-//! dispatch), the WIT-backed [`Provider`] those imports feed, and the
-//! [`export!`] macro that wires the shared typed transport routers
+//! dispatch), the WIT-backed `Provider` those imports feed, and the
+//! `export!` macro that wires the shared typed transport routers
 //! onto `wasi:cli/run` + `wasi:http/incoming-handler`.
+//!
+//! The crate is `wasm32`-only: native builds see an empty crate.
 //!
 //! A deployment's guest crate is one invocation: `guest::export!();`.
 //! The engine's root `specify` cdylib is the canonical caller; the

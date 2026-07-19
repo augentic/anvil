@@ -46,6 +46,15 @@ name = "mock-target"
 path = "examples/change/target.rs"
 crate-type = ["cdylib"]
 
+[[example]]
+name = "native"
+path = "examples/native/main.rs"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+linked = { workspace = true, features = ["cli"] }
+mock.workspace = true
+omnia-guest.workspace = true
+
 [lints]
 workspace = true
 
