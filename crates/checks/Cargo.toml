@@ -1,8 +1,8 @@
 # Repo-local checks as a lightweight package: architecture boundary
 # and plugin authoring shape. Kept as its own crate (not root-package
 # tests) so the Wasmtime-heavy runtime graph stays out of the ordinary
-# test build. Docs/plugin link integrity is lychee's job (`cargo make
-# links`). Cross-crate test support lives in `crates/linked` and
+# test build. Developer Guide link integrity is mdBook's job (`cargo
+# make links`). Cross-crate test support lives in `crates/native` and
 # `crates/mock`; fixtures are crate-local under
 # `crates/<name>/tests/fixtures/`.
 [package]

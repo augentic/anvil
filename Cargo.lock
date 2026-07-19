@@ -1164,8 +1164,8 @@ dependencies = [
  "anyhow",
  "artifacts",
  "clap",
- "linked",
  "mock",
+ "native",
  "omnia-guest",
  "omnia-testkit",
  "project",
@@ -1468,6 +1468,22 @@ checksum = "d03f81ad4732830d85cfd417a9f62cde6dadda4354d37d078a6084a19560aa2d"
 dependencies = [
  "arraydeque",
  "smallvec",
+]
+
+[[package]]
+name = "guest"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "diagnostics",
+ "error",
+ "jiff",
+ "omnia-guest",
+ "project",
+ "slice",
+ "transport",
+ "wasip3",
+ "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -2008,8 +2024,8 @@ version = "0.27.2"
 dependencies = [
  "anyhow",
  "eval",
- "linked",
  "mock",
+ "native",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -2067,25 +2083,6 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "linked"
-version = "0.27.2"
-dependencies = [
- "adapter",
- "artifacts",
- "axum",
- "diagnostics",
- "error",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "semver",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "transport",
 ]
 
 [[package]]
@@ -2202,14 +2199,13 @@ name = "mock"
 version = "0.27.2"
 dependencies = [
  "adapter",
- "linked",
+ "native",
  "omnia-guest",
  "omnia-testkit",
  "project",
  "serde_json",
  "tempfile",
  "tokio",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -2227,6 +2223,25 @@ dependencies = [
  "smallvec",
  "tagptr",
  "uuid",
+]
+
+[[package]]
+name = "native"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "artifacts",
+ "axum",
+ "diagnostics",
+ "error",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "semver",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "transport",
 ]
 
 [[package]]
@@ -3933,25 +3948,17 @@ version = "0.27.2"
 dependencies = [
  "adapter",
  "anyhow",
- "artifacts",
  "cfg-if",
- "diagnostics",
- "error",
- "jiff",
+ "guest",
  "mock",
+ "native",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
- "project",
- "serde_json",
- "slice",
  "tokio",
- "transport",
- "wasip3",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -4481,8 +4488,8 @@ dependencies = [
  "change",
  "clap",
  "error",
- "linked",
  "mock",
+ "native",
  "omnia-guest",
  "project",
  "serde",

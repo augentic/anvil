@@ -1,6 +1,6 @@
 [package]
 name = "lab"
-description = "Unpublished in-repo composition binary: linked command passthrough and live eval over the mock catalog"
+description = "Unpublished in-repo composition binary: native command passthrough and live eval over the mock catalog"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -14,8 +14,8 @@ workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 eval.workspace = true
+native = { workspace = true, features = ["cli"] }
 mock.workspace = true
-linked = { workspace = true, features = ["cli"] }
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-guest.workspace = true

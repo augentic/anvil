@@ -33,7 +33,7 @@ Both build envelopes are closed-shape YAML, keyed on `(slice, target)`, owned by
 1. `<project-cache>/components/<name>.wasm` — the project component cache (an operator-supplied local component mirrored at init).
 2. `target/wasm32-wasip2/release/<name>.wasm` under the project — the live development release build (`cargo build --release --target wasm32-wasip2`).
 
-Resolution is project-local plus the global store; there is no sibling-checkout probe and no environment-variable fallback to an out-of-tree framework checkout. An adapter built elsewhere reaches the project as an operator-supplied local `.wasm` at init (mirrored into the project component cache) or a pinned store install. When no probe matches, component resolution fails with `adapter-not-found`, naming every probed path; the linked host's static catalog match fails with `adapter-not-linked`, naming the linked identities on that axis.
+Resolution is project-local plus the global store; there is no sibling-checkout probe and no environment-variable fallback to an out-of-tree framework checkout. An adapter built elsewhere reaches the project as an operator-supplied local `.wasm` at init (mirrored into the project component cache) or a pinned store install. When no probe matches, component resolution fails with `adapter-not-found`, naming every probed path; the native host's static catalog match fails with `adapter-not-linked`, naming the linked identities on that axis.
 
 In workspace mode, slot setup is operator-owned. Each materialized slot must independently satisfy adapter resolution; Specify does not mirror the workspace's component cache into slots.
 

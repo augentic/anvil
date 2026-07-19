@@ -1,8 +1,8 @@
-//! Compile-time adapter identity for linked (statically composed)
+//! Compile-time adapter identity for native (statically composed)
 //! deployments.
 //!
 //! The component deployment derives identity from the published
-//! package and its resolved artifact location. A linked host has no
+//! package and its resolved artifact location. A native host has no
 //! component artifact, so each SDK implementor exposes the equivalent
 //! identity as a `const`: the globally unique workflow `(name,
 //! version)` pair. Resolve-time metadata (`specify-floor`, build

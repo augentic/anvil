@@ -1,0 +1,36 @@
+# Specify's hosted wasm example.
+
+[[guest]]
+id = "specify"
+source.path = "../../target/wasm32-wasip2/debug/specify.wasm"
+link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]
+
+[[guest]]
+id = "source:mock"
+source.path = "../../target/wasm32-wasip2/debug/examples/mock_source.wasm"
+
+[[guest]]
+id = "target:mock"
+source.path = "../../target/wasm32-wasip2/debug/examples/mock_target.wasm"
+
+[[route.http]]
+prefix = "/mcp/source"
+guest = "source:mock"
+
+[[route.http]]
+prefix = "/mcp/target"
+guest = "target:mock"
+
+[[mount]]
+name = "."
+path = "../../sandbox/wasm/workspace"
+writable = true
+
+[[mount]]
+name = "/specify-cache"
+path = "../../sandbox/wasm/cache"
+writable = true
+[[mount]]
+name = "/specify-store"
+path = "../../sandbox/wasm/store"
+writable = true

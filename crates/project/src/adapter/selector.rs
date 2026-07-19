@@ -22,12 +22,12 @@ use error::Error;
 ///
 /// - [`Self::Bare`] — development shorthand; resolution defers to the
 ///   deployment (project component cache / dev build for components,
-///   catalog match for a linked host).
+///   catalog match for a native host).
 /// - [`Self::Package`] — an immutable registry locator with a
 ///   mandatory exact-SemVer pin. `namespace` is parse/display
 ///   provenance, not a second workflow identity axis.
 /// - [`Self::Component`] — a local `.wasm` component file. The kind is
-///   retained so a linked host can refuse it instead of silently
+///   retained so a native host can refuse it instead of silently
 ///   narrowing to a same-named compiled adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterSelector {

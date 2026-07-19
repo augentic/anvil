@@ -18,7 +18,7 @@ use crate::handler::ExecutionPaths;
 /// `resolve_*` is read-only re-resolution of an already-provisioned
 /// selector. `ensure_*` owns deployment policy for making a selector
 /// usable — the component deployment's package hydration, digest
-/// sidecar, and local-component mirror; a linked host's static catalog
+/// sidecar, and local-component mirror; a native host's static catalog
 /// match — before resolving it. The defaults make `ensure_*` a
 /// side-effect-free resolve for deployments with nothing to provision.
 pub trait Resolver: Send + Sync {

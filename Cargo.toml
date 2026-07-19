@@ -17,7 +17,7 @@ crate-type = ["cdylib"]
 
 [[bin]]
 name = "specify"
-path = "src/runtime.rs"
+path = "src/omnia.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -30,27 +30,30 @@ omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-artifacts.workspace = true
-diagnostics.workspace = true
-error.workspace = true
-jiff.workspace = true
-omnia-guest.workspace = true
-project.workspace = true
-serde_json.workspace = true
-slice.workspace = true
-transport.workspace = true
-wasip3.workspace = true
-wit-bindgen.workspace = true
+guest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 adapter.workspace = true
 mock.workspace = true
-omnia-wasi-http.workspace = true
 
 [[example]]
-name = "change"
-path = "examples/change/guest.rs"
+name = "mock-source"
+path = "examples/wasm/source.rs"
 crate-type = ["cdylib"]
+
+[[example]]
+name = "mock-target"
+path = "examples/wasm/target.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "native"
+path = "examples/native/main.rs"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+native = { workspace = true, features = ["cli"] }
+mock.workspace = true
+omnia-guest.workspace = true
 
 [lints]
 workspace = true
@@ -180,8 +183,9 @@ change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
 eval = { path = "crates/eval" }
+guest = { path = "crates/guest" }
+native = { path = "crates/native" }
 mock = { path = "crates/mock" }
-linked = { path = "crates/linked" }
 project = { path = "crates/project" }
 prose = { path = "crates/prose" }
 slice = { path = "crates/slice" }

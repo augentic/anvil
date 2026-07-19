@@ -8,6 +8,7 @@ Install the mdBook 0.5 toolchain locally:
 
 ```bash
 cargo install --locked mdbook
+cargo install --locked mdbook-linkcheck2
 ```
 
 ## Serve (live reload)
@@ -24,7 +25,7 @@ Opens at [http://localhost:3000](http://localhost:3000) by default and live-relo
 mdbook build docs   # from the repo root
 ```
 
-Output lands in `docs/book/` (the CI deploy step points Cloudflare Pages at that path). Internal link integrity is not a book concern: lychee validates every relative link under `docs/` and `plugins/` at PR time — run `cargo make links` locally (config in the repo-root `lychee.toml`).
+Output lands in `docs/book/html/` (the CI deploy step points Cloudflare Pages at that path). The same build runs [`mdbook-linkcheck2`](https://github.com/marxin/mdbook-linkcheck2) via `[output.linkcheck2]` in [`book.toml`](book.toml) — relative links must resolve; web links are not a CI predicate. Local shorthand: `cargo make links`.
 
 ## Custom theme and diagrams
 
@@ -32,8 +33,8 @@ Output lands in `docs/book/` (the CI deploy step points Cloudflare Pages at that
 - Project-owned chrome overrides: [`theme/css/chrome.css`](theme/css/chrome.css) (banner block at file bottom), [`theme/head.hbs`](theme/head.hbs).
 - Cross-cutting component CSS: [`assets/theme/specify-docs.css`](assets/theme/specify-docs.css).
 - Interactive authority widget: [`assets/theme/authority-widget.js`](assets/theme/authority-widget.js).
-- Copy-paste HTML scaffolds: [`authoring-snippets/`](authoring-snippets/) (not wired to any preprocessor).
-- SVG diagrams: [`assets/diagrams/`](assets/diagrams/) — see `_STYLE.md` in that folder.
+- Copy-paste HTML scaffolds: [`authoring-snippets/`](authoring-snippets/README.md) (also listed in `SUMMARY.md` for the link gate).
+- SVG diagrams: `assets/diagrams/` — see `_STYLE.md` in that folder.
 
 ### Re-vendoring the theme after an mdBook upgrade
 

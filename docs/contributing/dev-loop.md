@@ -9,11 +9,11 @@ cargo make eval                              # run the live prompt-evaluation ru
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest --workspace` over the workspace crates (including `mock`, `linked`, and `checks`). The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `linked` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates (including `mock`, `native`, and `checks`). The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
-`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, and docs. `cargo make ci` adds vet/deny. When a change crosses a WIT, dispatch, or preopen seam, also compile-check the wasm32 guests — `cargo check --lib -p specify --example change --target wasm32-wasip2` — so a WIT revision and its seam break in the same push.
+`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, and docs. `cargo make ci` adds vet/deny. When a change crosses a WIT, dispatch, or preopen seam, also compile-check the wasm32 guests — `cargo check --lib -p specify --examples --target wasm32-wasip2` — so a WIT revision and its seam break in the same push.
 
 ## 2. `cargo make eval` — prompt evaluation
 
@@ -23,11 +23,11 @@ Live runs are always explicit, never a side effect. The documented cadence: befo
 
 ## The WASM seam
 
-There is no automated WASM boundary rung. The component seam — the combined `change.wasm` loading through the checked-in `omnia.toml`, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked change example: `cargo make change-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/change/README.md`](../../examples/change/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+There is no automated WASM boundary rung. The component seam — the per-axis mock components loading through the checked-in `omnia.toml`, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## What CI runs
 
 - Per push: `cargo make ci` — the self-contained workspace gate (nextest `--workspace`, clippy/doc/doctest/vet/deny). No sibling checkout, no component hosting, no model.
-- Never: the eval rung or the change example. CI never requires model credentials.
+- Never: the eval rung or the wasm example. CI never requires model credentials.
 
 `specify-adapters` gates its own crates and components against the published WIT contract and its declared engine pin; neither repository gates on the other's HEAD.

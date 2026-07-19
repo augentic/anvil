@@ -1,4 +1,4 @@
-//! Provider gates over the shared probe implementors: linked ensure
+//! Provider gates over the shared probe implementors: native ensure
 //! (bare and exact-pin matching, mismatched-pin and component-selector
 //! refusal, runtime floor enforcement) and the operation legs crossing
 //! the workflow seam.
@@ -9,7 +9,7 @@
 
 mod support;
 
-use linked::{Catalog, DynModel, Provider, ReferenceMode};
+use native::{Catalog, DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted;
 use project::adapter::{AdapterSelector, Resolver as _};
 use project::handler::ExecutionPaths;
@@ -45,12 +45,12 @@ fn bare_resolution() {
     let provider = provider(tmp.path(), &[]);
     let paths = ExecutionPaths::operator(tmp.path());
 
-    let source = provider.resolve_source(&bare("mock"), &paths).expect("linked source resolves");
+    let source = provider.resolve_source(&bare("mock"), &paths).expect("native source resolves");
     assert_eq!(source.manifest.version.to_string(), "0.0.0");
-    assert_eq!(source.origin.label, "linked");
+    assert_eq!(source.origin.label, "native");
     assert_eq!(source.origin.reference, "rust:source:mock");
 
-    let target = provider.resolve_target(&bare("mock"), &paths).expect("linked target resolves");
+    let target = provider.resolve_target(&bare("mock"), &paths).expect("native target resolves");
     assert_eq!(target.origin.reference, "rust:target:mock");
 
     let unknown =
@@ -103,7 +103,7 @@ async fn component_selector_refused() {
     let err = provider
         .ensure_target(&component, &paths)
         .await
-        .expect_err("linked execution does not load supplied components");
+        .expect_err("native execution does not load supplied components");
     assert_eq!(err.variant_str(), "adapter-not-linked");
     assert!(err.to_string().contains("does not load the supplied component"), "{err}");
 }

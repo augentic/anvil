@@ -1,4 +1,4 @@
-//! Asynchronous linked command execution over the shared typed
+//! Asynchronous native command execution over the shared typed
 //! Specify router.
 //!
 //! Value-consuming and runtime-free: the composition root owns Tokio,

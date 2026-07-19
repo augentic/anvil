@@ -5,7 +5,7 @@ A Specify release ships three artifacts: the **platform binaries** (the archives
 ## Before tagging
 
 - **Check the omnia pins.** Release builds run `cargo build --locked`, so the `[patch.crates-io]` entries in `Cargo.toml` must resolve on a clean runner: git-rev pins build anywhere, sibling *path* pins only build where the sibling checkout exists. Re-pin any local-path patch to a pushed rev before tagging.
-- **Run the operator rungs.** `cargo make change-run` (the end-to-end change example over the WASM seam; needs `CURSOR_API_KEY` in `examples/.env`) and `cargo make eval` from the repository root (needs command-mode model credentials; see [the developer loop](contributing/dev-loop.md)). Read rising per-leg repair counts as prompt drift even when the run passes.
+- **Run the operator rungs.** `cargo make wasm-run` (the end-to-end wasm example over the WASM seam; needs `CURSOR_API_KEY` in `examples/.env`) and `cargo make eval` from the repository root (needs command-mode model credentials; see [the developer loop](contributing/dev-loop.md)). Read rising per-leg repair counts as prompt drift even when the run passes.
 
 ## Triggering a release
 
@@ -24,7 +24,7 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
-The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/runtime.rs`), so there is no second binary to build or package.
+The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/omnia.rs`), so there is no second binary to build or package.
 
 ## Publishing the wasm-pkg packages
 

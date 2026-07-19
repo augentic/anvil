@@ -75,7 +75,7 @@ async fn mismatched_pin_refused_before_scaffold() {
     let session = Session::scripted("mock", Vec::new());
 
     // `<name>@<semver>` parses into the first-party package pin
-    // (implicit `specify` namespace); linked ensure succeeds only on
+    // (implicit `specify` namespace); native ensure succeeds only on
     // the exact compiled identity, so a mismatched pin refuses before
     // survey.
     let err = author(&session, "mock@1.0.0").await.expect_err("ensure refuses the pin");
@@ -92,7 +92,7 @@ async fn placeholder_pin_refused_before_scaffold() {
     // The mock source compiles with the `0.0.0` development
     // placeholder, which remains a bare-only identity: even the
     // matching "exact" pin refuses before survey. (Exact-pin success
-    // against a published identity is covered by the linked provider
+    // against a published identity is covered by the native provider
     // suite.)
     let err = author(&session, "mock@0.0.0").await.expect_err("ensure refuses the pin");
     let detail = err.to_string();

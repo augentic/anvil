@@ -21,7 +21,7 @@ The framework lives in one repository with two surfaces:
 
 Adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) repository.
 
-See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides.
+See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides. To preview working-tree `/spec:*` skills against a local CLI, see [Cursor operator plugins](docs/contributing/operator-plugins.md).
 
 ## Code style
 
@@ -95,7 +95,7 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 1. Create a feature branch off of `main`.
 2. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against `main`.
-3. Run checks: `cargo test -p checks` for boundary/links; `make ci` (`cargo make ci`) for the full gate.
+3. Run checks: `cargo test -p checks` for boundary/authoring; `cargo make links` for the Developer Guide; `make ci` (`cargo make ci`) for the full gate.
 4. Accept the Developer's Certificate of Origin on all commits (see above).
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).

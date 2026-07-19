@@ -48,11 +48,21 @@ install_crate = "cargo-udeps"
 command = "rustup"
 args = ["run", "nightly", "cargo", "fmt", "--all"]
 
-# Links — docs/plugin relative-link integrity (config in lychee.toml)
+# Links — Developer Guide relative-link integrity (mdbook-linkcheck2 via docs/book.toml)
 [tasks.links]
-command = "lychee"
-args = ["--config", "lychee.toml", "docs/**/*.md", "plugins/**/*.md"]
-install_crate = { crate_name = "lychee", binary = "lychee", test_arg = "--version" }
+dependencies = ["install-mdbook", "install-mdbook-linkcheck2"]
+command = "mdbook"
+args = ["build", "docs"]
+
+[tasks.install-mdbook]
+command = "mdbook"
+args = ["--version"]
+install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = "--version" }
+
+[tasks.install-mdbook-linkcheck2]
+command = "mdbook-linkcheck2"
+args = ["--version"]
+install_crate = { crate_name = "mdbook-linkcheck2", binary = "mdbook-linkcheck2", test_arg = "--version" }
 
 # Lint
 [tasks.lint]

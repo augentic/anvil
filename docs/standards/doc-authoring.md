@@ -23,7 +23,7 @@ Chapters that use a hero block should **omit** the duplicate `# Title` H1 — th
 
 ## Visual system
 
-The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross-cutting stylesheet at [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
+The book ships a forked mdbook theme ([`docs/theme/`](../theme/index.hbs)) plus the cross-cutting stylesheet at [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
 
 | Class                                                              | Use                                                                                  |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
@@ -50,7 +50,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/)) plus the cross
 
 ## HTML component blocks
 
-Copy HTML scaffolds from [`docs/authoring-snippets/`](../authoring-snippets/) or from the exemplar chapters listed under [Page-type scaffolds](#page-type-scaffolds). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`specify-docs.css`](../assets/theme/specify-docs.css); do not invent one-off CSS.
+Copy HTML scaffolds from [`docs/authoring-snippets/`](../authoring-snippets/README.md) or from the exemplar chapters listed under [Page-type scaffolds](#page-type-scaffolds). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`specify-docs.css`](../assets/theme/specify-docs.css); do not invent one-off CSS.
 
 ### Hero block
 
@@ -302,7 +302,7 @@ mdBook 0.5 adds an **On this page** block to the left sidebar while you read a c
 - **Reference and contributing pages** may use SVG or ASCII command snippets where scannability matters.
 - Prefer one flagship SVG per conceptual page over several small ASCII fragments.
 
-Diagram assets live under [`docs/assets/diagrams/`](../assets/diagrams/). Follow `_STYLE.md` in that folder for SVG authoring.
+Diagram assets live under `docs/assets/diagrams/`. Follow `docs/assets/diagrams/_STYLE.md` for SVG authoring.
 
 ## Raw HTML in markdown
 
@@ -310,24 +310,21 @@ mdBook allows inline HTML for layout components the CSS targets (hero, cards, se
 
 ## Link gate
 
-[lychee](https://github.com/lycheeverse/lychee) validates every relative link under `docs/` and `plugins/` at PR time. Settings live in the repo-root [`lychee.toml`](../../lychee.toml):
+[`mdbook-linkcheck2`](https://github.com/marxin/mdbook-linkcheck2) runs as an mdBook backend (`[output.linkcheck2]` in [`book.toml`](../book.toml)) and validates every relative link in the Developer Guide. Web links are skipped (`follow-web-links = false`); out-of-tree workspace targets are allowed (`traverse-parent-directories = true`).
 
-- `offline = true` — local links only; web links are house style, not a CI predicate.
-- `exclude_path = [ … ]` — pages that intentionally cite illustrative asset paths (this page is one of them).
-
-Run `cargo make links` locally. If the gate fails on a new ref, the cleanest fix is to retarget the link to the canonical page; only add to `exclude_path` if the page intentionally cites paths that do not exist.
+Run `cargo make links` (or `mdbook build docs`) locally. If the gate fails on a new ref, retarget the link to a real file — preferably a chapter listed in `SUMMARY.md`, or a concrete path under `crates/` / `plugins/` / the repo root. Directory hrefs and chapters missing from `SUMMARY.md` fail the build.
 
 ## RFC citations
 
-User-facing docs should not cite RFC numbers in visible prose except in [`../contributing/`](../contributing/). Link targets to RFC paths are fine when the link text does not name the RFC. This is house style applied in review, not a CI check.
+User-facing docs should not cite RFC numbers in visible prose except in [`contributing/`](../contributing/index.md). Link targets to RFC paths are fine when the link text does not name the RFC. This is house style applied in review, not a CI check.
 
 ## Building locally
 
 ```bash
-mdbook build docs   # HTML
+mdbook build docs   # HTML + linkcheck; output under docs/book/html/
 mdbook serve docs   # live reload at http://localhost:3000
 ```
 
-Requires mdBook **0.5.1+** — see [`docs/README.md`](../README.md).
+Requires mdBook **0.5.1+** and `mdbook-linkcheck2` — see [`docs/README.md`](../README.md).
 
-Run `mdbook build docs` before opening a documentation PR so `docs/book/` stays in sync with CI deploy output.
+Run `mdbook build docs` before opening a documentation PR so the published book and its link gate stay in sync with CI.

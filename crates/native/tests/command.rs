@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use linked::{Catalog, DynModel, ExecutionPaths};
+use native::{Catalog, DynModel, ExecutionPaths};
 use omnia_testkit::model::Scripted;
 use tempfile::TempDir;
 
@@ -36,7 +36,7 @@ fn argv(args: &[&str]) -> Vec<String> {
 async fn executes_a_verb() {
     let (_tmp, root) = project();
     let paths = ExecutionPaths::operator(&root);
-    let response = linked::command::execute(
+    let response = native::command::execute(
         paths,
         model(),
         catalog(),
@@ -53,7 +53,7 @@ async fn failure_is_a_typed_response() {
     let (_tmp, root) = project();
     let paths = ExecutionPaths::operator(&root);
     // An unknown verb is a buffered response, not a library error.
-    let response = linked::command::execute(paths, model(), catalog(), argv(&["no-such-verb"]))
+    let response = native::command::execute(paths, model(), catalog(), argv(&["no-such-verb"]))
         .await
         .expect("the router assembles");
     assert_ne!(response.exit, 0);

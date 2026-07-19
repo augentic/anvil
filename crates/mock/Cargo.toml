@@ -15,11 +15,8 @@ workspace = true
 adapter.workspace = true
 omnia-guest.workspace = true
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wit-bindgen.workspace = true
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-linked.workspace = true
+native.workspace = true
 omnia-testkit.workspace = true
 project.workspace = true
 serde_json.workspace = true

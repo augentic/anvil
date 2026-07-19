@@ -171,13 +171,15 @@ fn repo_has_no_adapter_dependencies() {
 }
 
 /// Workflow-core crates must not production- or build-depend on the
-/// linked host, its labs, or test support; `linked` and `eval` must
+/// native host, its labs, or test support; `native` and `eval` must
 /// not production-depend on what would drag concrete adapters, Cursor
 /// integration, or the workflow surface they bypass into the host.
 mod direction {
     use super::*;
 
-    /// Crates forming the deployment-neutral workflow core.
+    /// Crates forming the deployment-neutral workflow core, plus the
+    /// Wasm deployment's `guest` crate (which must stay equally free of
+    /// the native host and its labs).
     const WORKFLOW_CORE: &[&str] = &[
         "error",
         "diagnostics",
@@ -187,16 +189,17 @@ mod direction {
         "slice",
         "change",
         "transport",
+        "guest",
     ];
 
     /// Dependencies the workflow core rejects outside dev-dependencies.
-    const HOST_CRATES: &[&str] = &["linked", "eval", "mock", "lab", "harness"];
+    const HOST_CRATES: &[&str] = &["native", "eval", "mock", "lab", "harness"];
 
-    /// Production dependencies `linked` rejects (concrete adapter
+    /// Production dependencies `native` rejects (concrete adapter
     /// crates are already caught by the repository-wide rule).
-    const LINKED_REJECTS: &[&str] = &["mock", "eval", "lab", "harness", "omnia-cursor"];
+    const NATIVE_REJECTS: &[&str] = &["mock", "eval", "lab", "harness", "omnia-cursor"];
 
-    /// Production dependencies `eval` rejects (`linked` itself is its
+    /// Production dependencies `eval` rejects (`native` itself is its
     /// one host dependency).
     const EVAL_REJECTS: &[&str] = &["mock", "lab", "harness", "omnia-cursor", "change"];
 
@@ -261,7 +264,7 @@ mod direction {
         let mut out = Vec::new();
         for (member, rejected) in std::iter::empty()
             .chain(WORKFLOW_CORE.iter().map(|name| (*name, HOST_CRATES)))
-            .chain([("linked", LINKED_REJECTS), ("eval", EVAL_REJECTS)])
+            .chain([("native", NATIVE_REJECTS), ("eval", EVAL_REJECTS)])
         {
             let manifest = root.join("crates").join(member).join("Cargo.toml");
             let Ok(body) = fs::read_to_string(&manifest) else {
@@ -288,11 +291,11 @@ mod direction {
     #[test]
     fn bad_fixtures() {
         let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "crates/slice/Cargo.toml", "[dependencies]\nlinked = \"1\"\n");
+        write(dir.path(), "crates/slice/Cargo.toml", "[dependencies]\nnative = \"1\"\n");
         assert!(!direction_findings(dir.path()).is_empty());
 
         let dir = tempfile::tempdir().expect("tempdir");
-        write(dir.path(), "crates/linked/Cargo.toml", "[dependencies]\nmock = \"1\"\n");
+        write(dir.path(), "crates/native/Cargo.toml", "[dependencies]\nmock = \"1\"\n");
         assert!(!direction_findings(dir.path()).is_empty());
 
         let dir = tempfile::tempdir().expect("tempdir");
@@ -304,7 +307,7 @@ mod direction {
         write(
             dir.path(),
             "crates/slice/Cargo.toml",
-            "[dependencies]\nhost = { package = \"linked\", version = \"1\" }\n",
+            "[dependencies]\nhost = { package = \"native\", version = \"1\" }\n",
         );
         assert!(!direction_findings(dir.path()).is_empty());
 
@@ -313,7 +316,7 @@ mod direction {
         write(
             dir.path(),
             "Cargo.toml",
-            "[workspace.dependencies]\nhost = { package = \"linked\", path = \"crates/linked\" }\n",
+            "[workspace.dependencies]\nhost = { package = \"native\", path = \"crates/native\" }\n",
         );
         write(
             dir.path(),

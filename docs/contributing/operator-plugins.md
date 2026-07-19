@@ -27,11 +27,32 @@ The marketplace manifest at `.cursor-plugin/marketplace.json` lists exactly thes
 
 ## Preview a working-tree plugin
 
+The `/spec:*` skills are ultrathin wrappers: they check `specify --version`, elicit arguments, invoke one CLI verb, and relay stdout. Preview the working-tree plugin separately from building the CLI that skills call.
+
+From the repository root:
+
 ```bash
 cursor-agent --plugin-dir plugins/spec
 ```
 
-Pass `--plugin-dir` once per local plugin when testing more than one. Omit it to use the published marketplace plugins.
+That loads `plugins/spec/` instead of the marketplace copy. Pass `--plugin-dir` once per local plugin when testing more than one (e.g. add `plugins/capture`). Omit it to use the published marketplace plugins. Then run `/spec:init`, `/spec:plan`, and the other skills in chat as usual.
+
+Skills need a real binary on `PATH` (`cargo make specify` is the lab/mock shim, not this):
+
+```bash
+cargo install --path . --locked
+specify --version
+```
+
+Reinstall when you change the CLI. Guest verbs that call the model also need `cursor-agent` on `PATH` and logged in.
+
+| You're changing…                 | Do this                                                                         |
+| -------------------------------- | ------------------------------------------------------------------------------- |
+| `plugins/spec/skills/*/SKILL.md` | `cursor-agent --plugin-dir plugins/spec` (no rebuild)                           |
+| Rust CLI / guest orchestrations  | `cargo install --path . --locked`, then use skills or call `specify …` directly |
+| Shape/authoring invariants only  | `cargo test -p checks` (no agent needed)                                        |
+
+For a dry run without Cursor, call the same verbs the skills wrap (`specify init`, `specify plan author`, …) after install.
 
 ## Publishing a new Cursor plugin
 

@@ -1,5 +1,5 @@
 //! Init-time component resolution through the public `Init`
-//! operation: the dev-probe path, the linked (component-free)
+//! operation: the dev-probe path, the native (component-free)
 //! resolver shape, and local-component mirroring into the project
 //! cache. The component-free workspace/journal init coverage lives
 //! with the slice handler suite.
@@ -67,7 +67,7 @@ async fn regular_mode() {
     );
 }
 
-/// A provider whose resolver answers from memory — the linked-host
+/// A provider whose resolver answers from memory — the native-host
 /// shape: no component file exists anywhere on disk.
 #[derive(Clone)]
 struct Linked(Provider);
@@ -84,9 +84,9 @@ impl project::adapter::Resolver for Linked {
     ) -> Result<project::adapter::ResolvedSource, error::Error> {
         project::adapter::resolver::source(
             &selector.name()?,
-            linked_version(),
+            native_version(),
             project::adapter::metadata::Metadata::default(),
-            linked_origin(),
+            native_origin(),
         )
     }
 
@@ -95,18 +95,18 @@ impl project::adapter::Resolver for Linked {
     ) -> Result<project::adapter::ResolvedTarget, error::Error> {
         project::adapter::resolver::target(
             &selector.name()?,
-            linked_version(),
+            native_version(),
             project::adapter::metadata::Metadata::default(),
-            linked_origin(),
+            native_origin(),
         )
     }
 }
 
-const fn linked_version() -> semver::Version {
+const fn native_version() -> semver::Version {
     semver::Version::new(0, 0, 0)
 }
 
-fn linked_origin() -> project::adapter::Origin {
+fn native_origin() -> project::adapter::Origin {
     project::adapter::Origin {
         label: "native".to_string(),
         reference: "rust:target:demo".to_string(),

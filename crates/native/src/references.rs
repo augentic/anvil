@@ -1,8 +1,8 @@
-//! Linked reference hosting: per-adapter MCP shelves at `/mcp/<name>`,
+//! Native reference hosting: per-adapter MCP shelves at `/mcp/<name>`,
 //! plus the owned lazy loopback listener online providers share.
 //!
 //! Router construction is separate from ephemeral listener ownership,
-//! so a later linked HTTP host can mount the same routes without a
+//! so a later native HTTP host can mount the same routes without a
 //! second implementation. The listener half needs the `cli` feature's
 //! networking stack; without it an online provider fails loudly on the
 //! first operation that carries reference documents.
@@ -24,7 +24,7 @@ pub struct Shelf {
 /// Every linked adapter's reference shelf.
 ///
 /// Shelf identity uses the catalog entry's name and version, not the
-/// `linked` crate version.
+/// `native` crate version.
 #[must_use]
 pub fn shelves(catalog: &Catalog) -> Vec<Shelf> {
     catalog
