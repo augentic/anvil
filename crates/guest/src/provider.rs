@@ -24,6 +24,7 @@ use wasip3::http_compat::IncomingMessage as _;
 use crate::bindings::specify::adapter::{source, target, types};
 
 /// Workflow capabilities backed by the world's WIT imports.
+#[derive(Clone, Copy, Debug)]
 pub struct Provider;
 
 /// The guest's execution paths: the project-root mount preopen, with

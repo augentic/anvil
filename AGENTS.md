@@ -143,7 +143,7 @@ All commands are run from the repository root:
 - `cargo make links` — docs/plugin link integrity via lychee (config in `lychee.toml`).
 - `make ci` — the full local gate: `cargo make ci` (the Rust workspace, `Makefile.toml` at the repo root), which includes the checks package and the links gate.
 
-Per-push CI is the shared org workflow (nextest, clippy, doc, doctest, vet, and deny over the whole workspace); no sibling checkout is required — the engine embeds no adapter-authored prose. There is no per-push WASM gate; the wasm32 guests compile-check locally with `cargo check --lib -p specify --example change --target wasm32-wasip2`, and boundary execution is the operator-invoked change example. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
+Per-push CI is the shared org workflow (nextest, clippy, doc, doctest, vet, and deny over the whole workspace); no sibling checkout is required — the engine embeds no adapter-authored prose. There is no per-push WASM gate; the wasm32 guests compile-check locally with `cargo check --lib -p specify --examples --target wasm32-wasip2`, and boundary execution is the operator-invoked change example. See [docs/contributing/checks.md](docs/contributing/checks.md) for the check model.
 
 The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Frontmatter shape is enforced by the typed check in [`crates/checks/authoring.rs`](crates/checks/authoring.rs) (the `checks` package); body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
@@ -180,11 +180,12 @@ change                   # the change loop — depends on {project,slice}: plan 
 transport                # wasm-clean transport assembly — explicit typed command/HTTP routers over Invoker, exhaustive Args-to-Input TryFrom conversions, projectors, and exit contract; depends on {project,slice,change}
 prose                    # build-dependency crate — embed-time prompt-corpus walk + link check generating each crate's DOCS table
 linked                   # the linked host — the validated adapter Catalog over the SDK operations traits, DynModel type erasure, the non-generic seam Provider (Anchor/Resolver/Model/Source/Target), linked reference hosting, and cli-gated asynchronous command execution; depends on {adapter,project,transport,…} and never on a concrete adapter, mock, eval, lab, or Cursor crate
-mock                     # dev-only mock crate (publish = false) — the canonical SDK-native mock adapter core (mock::behaviour over the seam DTOs), the typed operations-trait implementors and exhaustive catalog registry (mock::registry + mock::catalog()), the scripted answer corpus, the request-recording model Harness, the host-only Session helpers over the linked provider, the mock::invoke test-suite entry, and the wasm32-only `wit` export bindings the examples guest shims over; dev-dep'd (legally cyclically) by the workflow/transport suites and the examples guest, and depended on by the lab binary
+guest                    # the workflow guest as a library (wasm32-only) — the `workflow`-world WIT bindings, the WIT-backed seam Provider (Anchor/Resolver/Model/Source/Target over the world's imports), and the guest::export! macro wiring the shared typed transport routers onto wasi:cli/run + wasi:http/incoming-handler; depends on {project,slice,transport,…}; invoked by the root specify cdylib and by the change example guest in augentic/specify-adapters
+mock                     # dev-only mock crate (publish = false) — the canonical SDK-native mock adapter core (mock::behaviour over the seam DTOs), the typed operations-trait implementors and exhaustive catalog registry (mock::registry + mock::catalog()), the scripted answer corpus, the request-recording model Harness, the host-only Session helpers over the linked provider, and the mock::invoke test-suite entry; dev-dep'd (legally cyclically) by the workflow/transport suites and the example adapter components, and depended on by the lab binary
 checks                   # dev-only repo invariants (publish = false) — boundaries (incl. dependency directions), authoring as plain cargo tests (links are lychee's job)
 eval                     # lab-only live-model evaluation library (publish = false, native-only) — the multi-step live trial, prompt scenarios, deterministic grading, telemetry, and single-writer sandbox over linked's cli feature; receives workspace root, catalog, and model factory from its composition root and creates no runtime
 lab                      # unpublished composition binary (publish = false, native-only) — owns the Tokio runtime, std::env::args, the lab-only --project-dir, Cursor backend construction, and the mock catalog binding; dispatches between linked command mode and eval::run; the target of `cargo make specify` and `cargo make eval`
-specify (root crate) # Omnia deployment unit under src/: guest lib (wasm32, exporting wasi:cli/run + wasi:http/incoming-handler over the shared typed transport routers, published as specify:core@<binary version>) + shipped runtime + the examples/change cargo example (the mock adapter guest over mock's wit bindings)
+specify (root crate) # Omnia deployment unit under src/: guest cdylib (wasm32, one guest::export!() over the guest crate, published as specify:core@<binary version>) + shipped runtime + the examples/change adapter components (adapter::source!/target! over mock::Adapter)
 ```
 
 The artifact validation rule registry lives in `artifacts::validate`: `artifacts` depends on none of the workflow crates, so a rule cannot transition a slice or stamp a plan. `artifacts` is the lifecycle-free leaf holding the artifact types and parsers the workflow layer reads. The neutral `Diagnostic` / `DiagnosticReport` substrate lives in the `diagnostics` crate alongside the shared `diagnostics::digest` SHA-256 helpers, so every check producer — validate and review alike — emits the same finding currency without importing the other surface's code. Engineering-standards rules ship inside the target adapters in `augentic/specify-adapters`; there is no engine-side rules crate.
@@ -213,8 +214,8 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/transport/src/co
 
 ```text
 src/omnia.rs             shipped binary — omnia::runtime! command mode over cursor backends
-src/lib.rs               wasm32 core guest — the wasi:cli/run + wasi:http/incoming-handler exports over transport's routers (mod provider;)
-src/provider.rs          WIT-backed Provider (Anchor + Model + Source + Target over the world's imports)
+src/lib.rs               wasm32 core guest cdylib — one guest::export!() over crates/guest
+crates/guest/            the workflow guest library — workflow-world WIT bindings, the WIT-backed Provider, and the guest::export! macro
 crates/transport/         shared command/HTTP routing, clap grammar, conversions, projectors, and exit contract
 crates/adapter/          the adapter SDK — per-axis operations traits, WIT package + wasm export macros, seam DTOs, embedded prose registry
 crates/project/          foundation — init, adapter resolution, config, journal, registry, plan + slice data models, seam traits, judgment kernel
@@ -225,7 +226,7 @@ crates/checks/           lightweight checks package (boundaries, authoring); fix
 crates/linked/           the linked host — validated adapter catalog, DynModel, seam provider, reference hosting, cli-gated command execution
 crates/eval/             lab-only live-model evaluation library (native-only) — trial, scenarios, grading, telemetry, sandbox over linked
 crates/lab/              unpublished composition binary (native-only; cargo make specify / eval) — runtime, Cursor backend, mock catalog binding
-examples/                the change example: a root-crate cargo example (the mock adapter guest) plus its omnia.toml deployment and runner tasks
+examples/                the change example: two root-crate cargo examples (the mock adapter components over the SDK export macros) plus their omnia.toml deployment and runner tasks
 ```
 
 | Code | Name                     | When                                                                  |

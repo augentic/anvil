@@ -16,7 +16,7 @@ Cadence is documented convention, not automation: before a release tag, and afte
 
 ## The WASM seam (operator-invoked)
 
-There is no automated WASM gate. The facts only the component boundary can prove — WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam — are exercised by the operator-invoked change example: `cargo make change-run` stages the checked-in [`examples/change/omnia.toml`](../../examples/change/omnia.toml) with `specify.wasm` and `change.wasm` and runs the full `init → author → approve → execute` loop against a live model. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam, and before a release tag. For a model-free signal, compile-check the guests: `cargo check --lib -p specify --example change --target wasm32-wasip2`.
+There is no automated WASM gate. The facts only the component boundary can prove — WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam — are exercised by the operator-invoked change example: `cargo make change-run` stages the checked-in [`examples/change/omnia.toml`](../../examples/change/omnia.toml) with `specify.wasm` and the per-axis mock components and runs the full `init → author → approve → execute` loop against a live model. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam, and before a release tag. For a model-free signal, compile-check the guests: `cargo check --lib -p specify --examples --target wasm32-wasip2`.
 
 ## Placement decision
 
@@ -33,7 +33,7 @@ Do not copy an assertion into another gate for reassurance: each fact has one ow
 ## Boundaries
 
 - `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: mock leads, evidence, scripted answers, and assertions.
-- `mock::behaviour` (in `crates/mock`) is the only adapter double; `examples/change/guest.rs` is its WIT component example over the `mock::wit` bindings. Do not add another mock adapter or mock-adapter copy.
+- `mock::behaviour` (in `crates/mock`) is the only adapter double; the example components (`examples/change/source.rs` / `target.rs`) are its WIT component examples over the SDK export macros. Do not add another mock adapter or mock-adapter copy.
 - External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Reader acceptance

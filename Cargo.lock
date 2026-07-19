@@ -1471,6 +1471,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "guest"
+version = "0.27.2"
+dependencies = [
+ "artifacts",
+ "diagnostics",
+ "error",
+ "jiff",
+ "omnia-guest",
+ "project",
+ "slice",
+ "transport",
+ "wasip3",
+ "wit-bindgen 0.59.0",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2209,7 +2225,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]
@@ -3933,25 +3948,15 @@ version = "0.27.2"
 dependencies = [
  "adapter",
  "anyhow",
- "artifacts",
  "cfg-if",
- "diagnostics",
- "error",
- "jiff",
+ "guest",
  "mock",
  "omnia",
  "omnia-cursor",
- "omnia-guest",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
- "project",
- "serde_json",
- "slice",
  "tokio",
- "transport",
- "wasip3",
- "wit-bindgen 0.59.0",
 ]
 
 [[package]]

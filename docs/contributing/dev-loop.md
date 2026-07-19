@@ -13,7 +13,7 @@ Runs `cargo nextest --workspace` over the workspace crates (including `mock`, `l
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
-`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, and docs. `cargo make ci` adds vet/deny. When a change crosses a WIT, dispatch, or preopen seam, also compile-check the wasm32 guests — `cargo check --lib -p specify --example change --target wasm32-wasip2` — so a WIT revision and its seam break in the same push.
+`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, and docs. `cargo make ci` adds vet/deny. When a change crosses a WIT, dispatch, or preopen seam, also compile-check the wasm32 guests — `cargo check --lib -p specify --examples --target wasm32-wasip2` — so a WIT revision and its seam break in the same push.
 
 ## 2. `cargo make eval` — prompt evaluation
 
@@ -23,7 +23,7 @@ Live runs are always explicit, never a side effect. The documented cadence: befo
 
 ## The WASM seam
 
-There is no automated WASM boundary rung. The component seam — the combined `change.wasm` loading through the checked-in `omnia.toml`, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked change example: `cargo make change-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/change/README.md`](../../examples/change/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+There is no automated WASM boundary rung. The component seam — the per-axis mock components loading through the checked-in `omnia.toml`, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked change example: `cargo make change-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/change/README.md`](../../examples/change/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## What CI runs
 

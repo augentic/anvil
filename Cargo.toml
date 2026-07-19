@@ -30,26 +30,20 @@ omnia-wasi-otel.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-artifacts.workspace = true
-diagnostics.workspace = true
-error.workspace = true
-jiff.workspace = true
-omnia-guest.workspace = true
-project.workspace = true
-serde_json.workspace = true
-slice.workspace = true
-transport.workspace = true
-wasip3.workspace = true
-wit-bindgen.workspace = true
+guest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 adapter.workspace = true
 mock.workspace = true
-omnia-wasi-http.workspace = true
 
 [[example]]
-name = "change"
-path = "examples/change/adapters.rs"
+name = "mock-source"
+path = "examples/change/source.rs"
+crate-type = ["cdylib"]
+
+[[example]]
+name = "mock-target"
+path = "examples/change/target.rs"
 crate-type = ["cdylib"]
 
 [lints]
@@ -180,6 +174,7 @@ change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
 eval = { path = "crates/eval" }
+guest = { path = "crates/guest" }
 linked = { path = "crates/linked" }
 mock = { path = "crates/mock" }
 project = { path = "crates/project" }

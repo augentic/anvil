@@ -20,19 +20,15 @@
 //!   `omnia-testkit`'s FIFO `Scripted` model double.
 //! - [`model`] (host) — the request-recording `Harness` model double
 //!   and `mcp_grants`, pending their move upstream to `omnia-testkit`.
-//! - `wit` (`wasm32` only) — the combined `adapter`-world export
-//!   bindings plus the seam mappings the examples guest shims over.
 //!
 //! The crate speaks the SDK seam DTOs end to end: only the workflow
 //! providers (the linked host's conversion layer) widen values onto
-//! engine DTOs, and only the WASM guest maps them onto the WIT
-//! records.
+//! engine DTOs. The example components in `examples/change/` wire
+//! [`ops::Adapter`] straight into the SDK's `source!` / `target!`
+//! export macros — no crate-local WIT bindings.
 
 pub mod behaviour;
 pub mod ops;
-
-#[cfg(target_arch = "wasm32")]
-pub mod wit;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod answers;

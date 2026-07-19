@@ -50,7 +50,7 @@ This makes a coherent linked host look like accumulated testing machinery. It al
 ```text
 Wasm provider                                Linked provider
 
-src/lib.rs + src/provider.rs                 linked::Provider + command assembly
+src/lib.rs + crates/guest                    linked::Provider + command assembly
 component deployment configuration           lab-owned Catalog value
 adapter components                           linked adapter libraries
 host model import                            composition-root DynModel value
@@ -909,7 +909,7 @@ cargo make ci
 cargo make specify -- --help
 cargo make specify -- --version
 cargo make eval
-cargo check --lib -p specify --example change --target wasm32-wasip2
+cargo check --lib -p specify --examples --target wasm32-wasip2
 cargo make change-run
 ```
 

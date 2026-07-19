@@ -177,7 +177,9 @@ fn repo_has_no_adapter_dependencies() {
 mod direction {
     use super::*;
 
-    /// Crates forming the deployment-neutral workflow core.
+    /// Crates forming the deployment-neutral workflow core, plus the
+    /// Wasm deployment's `guest` crate (which must stay equally free of
+    /// the linked host and its labs).
     const WORKFLOW_CORE: &[&str] = &[
         "error",
         "diagnostics",
@@ -187,6 +189,7 @@ mod direction {
         "slice",
         "change",
         "transport",
+        "guest",
     ];
 
     /// Dependencies the workflow core rejects outside dev-dependencies.
