@@ -24,7 +24,7 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
-The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/runtime.rs`), so there is no second binary to build or package.
+The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/omnia.rs`), so there is no second binary to build or package.
 
 ## Publishing the wasm-pkg packages
 

@@ -4,7 +4,7 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary, one guest
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/runtime.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
+The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/omnia.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
 
 The core guest identity is versioned by the binary (`specify:core@<binary version>`).
 
@@ -21,7 +21,7 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/runtime.rs  →  omnia::runtime! (command mode)  →  specify guest  →  typed command router
+src/omnia.rs    →  omnia::runtime! (command mode)  →  specify guest  →  typed command router
 ```
 
 The full operator grammar — unsupported provisioning commands included — is assembled in `crates/transport/src/command.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/transport/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
