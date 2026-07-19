@@ -1,6 +1,6 @@
-//! Typed linked-host failures outside the workflow error currency.
+//! Typed native-host failures outside the workflow error currency.
 
-/// Failures owned by the linked host itself.
+/// Failures owned by the native host itself.
 ///
 /// Covers catalog construction, direct reference-host startup, and
 /// command-router assembly. Workflow operations keep the shared
@@ -10,7 +10,7 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Catalog construction rejected an entry.
-    #[error("invalid linked catalog: {detail}")]
+    #[error("invalid native catalog: {detail}")]
     Catalog {
         /// What the builder rejected.
         detail: String,

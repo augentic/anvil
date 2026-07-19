@@ -1,23 +1,23 @@
 
-[tasks.change-clean]
-script = "rm -rf sandbox/change"
+[tasks.wasm-clean]
+script = "rm -rf sandbox/wasm"
 
-[tasks.change-build]
+[tasks.wasm-build]
 script = '''
 cargo build -p specify --lib --examples --target wasm32-wasip2
 '''
 
-[tasks.change-run]
-dependencies = ["change-clean", "change-build"]
+[tasks.wasm-run]
+dependencies = ["wasm-clean", "wasm-build"]
 env_files = [".env"]
 script = '''
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 
-mkdir -p sandbox/change/{workspace,cache,store}
-cp target/wasm32-wasip2/debug/examples/mock_target.wasm sandbox/change/workspace/mock.wasm
+mkdir -p sandbox/wasm/{workspace,cache,store}
+cp target/wasm32-wasip2/debug/examples/mock_target.wasm sandbox/wasm/workspace/mock.wasm
 
 run() {
-  cargo run -p specify -- run --config examples/change/omnia.toml -- "$@"
+  cargo run -p specify -- run --config examples/wasm/omnia.toml -- "$@"
 }
 
 # Initialize workspace

@@ -7,7 +7,7 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context as _, Result, bail, ensure};
-use linked::{Catalog, DynModel, ExecutionPaths, Provider, ReferenceMode};
+use native::{Catalog, DynModel, ExecutionPaths, Provider, ReferenceMode};
 use project::seam::wire::{BuildReport, BuildStatus};
 use project::seam::{Input, MergePhase, Target as _, WorkingTree};
 use serde::Deserialize;
@@ -56,7 +56,7 @@ impl Operation {
     }
 }
 
-/// Run one scenario by `<adapter>/<name>` id over the supplied linked
+/// Run one scenario by `<adapter>/<name>` id over the supplied native
 /// catalog and model factory, or list them all.
 ///
 /// # Errors
@@ -349,7 +349,7 @@ fn envelope(
         "version": 1,
         "scenario": id,
         "profile": "adapter-live",
-        "runtime": "linked",
+        "runtime": "native",
         "model": model.unwrap_or("backend-default"),
         "outcome": outcome,
         "report": serde_json::to_value(report)?,

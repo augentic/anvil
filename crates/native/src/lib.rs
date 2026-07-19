@@ -1,4 +1,4 @@
-//! The Specify linked host: a Wasm-free deployment of the workflow
+//! The Specify native host: a Wasm-free deployment of the workflow
 //! engine over statically compiled adapters.
 //!
 //! Consumers declare their linked adapters once through the validated
@@ -8,7 +8,7 @@
 //! project anchoring, ensure/resolve, model, workflow source, and
 //! workflow target capabilities. The optional `cli` feature adds
 //! asynchronous command execution over the shared typed transport
-//! router plus linked reference hosting.
+//! router plus native reference hosting.
 //!
 //! The command path is single-flight: one command runs to completion
 //! per provider graph. `Provider: Clone` supports router invocation

@@ -1,4 +1,4 @@
-//! Shared probe implementors for the linked-host test binaries.
+//! Shared probe implementors for the native-host test binaries.
 //!
 //! One dual-axis [`Probe`] registered as `mock`, the always-failing
 //! [`FailGuidance`] target, the [`Floored`] target carrying a

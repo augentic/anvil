@@ -38,12 +38,12 @@ mock.workspace = true
 
 [[example]]
 name = "mock-source"
-path = "examples/change/source.rs"
+path = "examples/wasm/source.rs"
 crate-type = ["cdylib"]
 
 [[example]]
 name = "mock-target"
-path = "examples/change/target.rs"
+path = "examples/wasm/target.rs"
 crate-type = ["cdylib"]
 
 [[example]]
@@ -51,7 +51,7 @@ name = "native"
 path = "examples/native/main.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-linked = { workspace = true, features = ["cli"] }
+native = { workspace = true, features = ["cli"] }
 mock.workspace = true
 omnia-guest.workspace = true
 
@@ -184,7 +184,7 @@ diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
 eval = { path = "crates/eval" }
 guest = { path = "crates/guest" }
-linked = { path = "crates/linked" }
+native = { path = "crates/native" }
 mock = { path = "crates/mock" }
 project = { path = "crates/project" }
 prose = { path = "crates/prose" }

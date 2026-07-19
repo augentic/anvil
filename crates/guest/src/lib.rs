@@ -10,7 +10,7 @@
 //!
 //! A deployment's guest crate is one invocation: `guest::export!();`.
 //! The engine's root `specify` cdylib is the canonical caller; the
-//! change example in `augentic/specify-adapters` builds the identical
+//! wasm example in `augentic/specify-adapters` builds the identical
 //! guest from this crate rather than vendoring these sources.
 #![cfg(target_arch = "wasm32")]
 

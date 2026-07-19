@@ -10,7 +10,7 @@ Slice skills operate on a single slice inside `.specify/slices/<name>/`. They co
 
 `/spec:init` is one-time scaffolding. The loop runs inside `specify plan execute`, but each phase is invokable by hand. See [Drive a slice manually](../../how-to/drive-slice-manually.md).
 
-**Canonical reference.** The authoritative operator surface for every skill — synopsis, arguments, the step-by-step critical path, guardrails, closing hints, and error modes — is its canonical skill body under [`plugins/spec/skills/<phase>/SKILL.md`](../../../plugins/spec/skills/). The sections below are navigation entries and carry no operator steps, so the two surfaces cannot drift.
+**Canonical reference.** The authoritative operator surface for every skill — synopsis, arguments, the step-by-step critical path, guardrails, closing hints, and error modes — is its canonical skill body under [`plugins/spec/skills/<phase>/SKILL.md`](../../../plugins/spec/README.md). The sections below are navigation entries and carry no operator steps, so the two surfaces cannot drift.
 
 ## Skill summary
 
@@ -30,7 +30,7 @@ See also: [Prerequisites](../../orientation/prerequisites.md) — what to instal
 
 ## /spec:refine
 
-Refine a plan entry's slice — invoke `specify slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../crates/slice/prompts/synthesis/).
+Refine a plan entry's slice — invoke `specify slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../crates/slice/prompts/synthesize.md).
 
 See also: [Resolve spec conflicts](../../how-to/resolve-spec-conflicts.md) — `[conflict]` and `[divergence]` tags · [Artifact format](../artifact-format.md) — requirement block shape · [Lifecycle](../lifecycle.md) — slice state machine.
 
@@ -54,7 +54,7 @@ See also: [Lifecycle](../lifecycle.md) — the dropped state.
 
 ## How skills delegate
 
-Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/skills/) for the authoritative steps.
+Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/README.md) for the authoritative steps.
 
 ## See also
 

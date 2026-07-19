@@ -1,4 +1,4 @@
-//! [`DynModel`] — the linked host's erased model backend.
+//! [`DynModel`] — the native host's erased model backend.
 //!
 //! `omnia_guest::Model` is not object-safe (`create` returns `impl
 //! Future`), so the composition root erases its backend exactly once

@@ -1,7 +1,7 @@
-//! Host-only session helpers over the offline linked provider.
+//! Host-only session helpers over the offline native provider.
 //!
 //! A [`Session`] is a throw-away project tree plus an offline
-//! [`linked::Provider`] over the full mock
+//! [`native::Provider`] over the full mock
 //! [`crate::registry::catalog`] and `omnia-testkit`'s FIFO `Scripted`
 //! model double. Reference mode is always [`ReferenceMode::Offline`],
 //! so native tests start no listeners; the recording model handle is
@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use linked::{DynModel, Provider, ReferenceMode};
+use native::{DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted as ScriptedModel;
 use project::handler::ExecutionPaths;
 

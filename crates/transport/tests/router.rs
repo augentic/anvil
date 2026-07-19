@@ -5,8 +5,8 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
-use linked::{DynModel, Provider, ReferenceMode};
 use mock::model::Harness;
+use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use tempfile::TempDir;
 

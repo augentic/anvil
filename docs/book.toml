@@ -16,3 +16,12 @@ admonitions = true
 [output.html.fold]
 enable = true
 level = 1
+
+# Relative-link integrity for the Developer Guide. Web links are house
+# style, not a CI predicate. Out-of-tree targets (`../../crates/…`,
+# `../../AGENTS.md`, …) are allowed so contributor docs can cite the
+# workspace. HTML lands under `docs/book/html/` when this backend is on.
+[output.linkcheck2]
+follow-web-links = false
+traverse-parent-directories = true
+warning-policy = "error"

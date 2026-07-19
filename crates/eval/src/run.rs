@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result, ensure};
 use clap::{Parser, Subcommand};
-use linked::{Catalog, DynModel, ExecutionPaths};
+use native::{Catalog, DynModel, ExecutionPaths};
 use project::plan::Status;
 
 use crate::telemetry::{self, Telemetry};
@@ -34,7 +34,7 @@ pub struct ModelInstance {
 pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<ModelInstance> + Send + Sync>;
 
 #[derive(Debug, Parser)]
-#[command(name = "eval", about = "Run the live-model trial over linked adapters")]
+#[command(name = "eval", about = "Run the live-model trial over native adapters")]
 struct Args {
     /// Optional tree copied into a fresh trial project.
     #[arg(long)]
@@ -179,7 +179,7 @@ impl Trial {
         full.extend(argv.iter().map(ToString::to_string));
         let paths = ExecutionPaths::isolated(root, root.join("project-cache"));
         let response =
-            linked::command::execute(paths, model.clone(), self.catalog.clone(), full).await?;
+            native::command::execute(paths, model.clone(), self.catalog.clone(), full).await?;
         io::stdout().write_all(&response.stdout)?;
         io::stderr().write_all(&response.stderr)?;
         ensure!(response.exit == 0, "`specify {display}` exited {}", response.exit);

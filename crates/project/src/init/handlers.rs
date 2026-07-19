@@ -140,7 +140,7 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
 /// Parse and ensure one adapter binding, recording any package pin
 /// this run installed into the global store on `hydrated` (the store
 /// state is observed on both sides of the ensure so the envelope
-/// reports only actual fetches — a linked ensure writes no store entry
+/// reports only actual fetches — a native ensure writes no store entry
 /// and reports nothing).
 async fn ensure(
     provider: &impl Resolver, value: &str, paths: &ExecutionPaths, hydrated: &mut Vec<String>,

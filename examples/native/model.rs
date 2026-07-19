@@ -1,4 +1,4 @@
-//! Cursor model backend for native linked execution.
+//! Cursor model backend for native host execution.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

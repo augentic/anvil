@@ -18,17 +18,20 @@ jobs:
   links:
     name: Links
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      - name: Check docs/plugin links
-        uses: lycheeverse/lychee-action@v2
+      - name: Install mdbook toolchain
+        uses: taiki-e/install-action@v2
         with:
-          args: --config lychee.toml "docs/**/*.md" "plugins/**/*.md"
-          fail: true
+          # mdbook-linkcheck2 is not in the install-action manifest; falls back to cargo-binstall.
+          tool: mdbook,mdbook-linkcheck2
+
+      - name: Check Developer Guide links
+        run: mdbook build docs
 
   # wasm:
   #   name: Wasm
@@ -51,6 +54,6 @@ jobs:
   #     - name: Check wasm guests
   #       run: |
   #         cargo check --locked --lib -p specify -p transport --target wasm32-wasip2
-  #         cargo check --locked -p examples --example change --target wasm32-wasip2
+  #         cargo check --locked -p examples --example wasm --target wasm32-wasip2
   #       env:
   #         RUSTFLAGS: -Dwarnings

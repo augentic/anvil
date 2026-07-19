@@ -1,4 +1,4 @@
-# Change Example
+# Wasm Example
 
 This is an end-to-end example of the Specify application. It uses Specify's core engine + source and target adapters to implement a rudimentary workflow.
 
@@ -17,16 +17,16 @@ or set `CURSOR_API_KEY` in `.env`.
 Run the example:
 
 ```bash
-make change-run
+make wasm-run
 ```
 
 Clean up afterwards:
 
 ```bash
-make change-clean
+make wasm-clean
 ```
 
-Artifacts land under the gitignored `sandbox/change/`.
+Artifacts land under the gitignored `sandbox/wasm/`.
 
 ## What it demonstrates
 
@@ -39,6 +39,6 @@ The example runs the Specify ***change*** workflow. It will `author->approve->ex
 After running, inspect the generated result at:
 
 ```text
-sandbox/change/workspace/mock-build/<slice>.md
+sandbox/wasm/workspace/mock-build/<slice>.md
 ```
 

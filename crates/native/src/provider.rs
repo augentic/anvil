@@ -1,8 +1,8 @@
-//! The linked seam provider: project anchoring, ensure/resolve over
+//! The native seam provider: project anchoring, ensure/resolve over
 //! the compiled catalog, model access, and adapter dispatch.
 //!
 //! Maps adapter seam DTOs onto workflow seam DTOs like the wasm guest
-//! shim. Linked ensure is a static package match, not a component
+//! shim. Native ensure is a static package match, not a component
 //! store lookup: bare selectors resolve to the catalog entry's actual
 //! version, exact pins succeed only on the exact compiled `(name,
 //! version)` of a published (non-placeholder) identity, and everything
@@ -40,7 +40,7 @@ pub enum ReferenceMode {
     Online,
 }
 
-/// The linked host provider over a validated [`Catalog`] and an
+/// The native host provider over a validated [`Catalog`] and an
 /// erased [`DynModel`] backend.
 ///
 /// Clones share the model, catalog, and reference listener — `Clone`
@@ -67,7 +67,7 @@ enum References {
 
 impl Provider {
     /// A provider anchored at `paths` over the given model backend,
-    /// linked-adapter catalog, and reference mode.
+    /// native adapter catalog, and reference mode.
     #[must_use]
     pub fn new(
         paths: ExecutionPaths, model: DynModel, catalog: Catalog, references: ReferenceMode,
@@ -89,7 +89,7 @@ impl Provider {
         }
     }
 
-    /// The linked-adapter catalog.
+    /// The native adapter catalog.
     #[must_use]
     pub const fn catalog(&self) -> &Catalog {
         &self.catalog
@@ -124,7 +124,7 @@ impl Provider {
             #[cfg(not(feature = "cli"))]
             References::Online => Err(seam::Error::Internal(format!(
                 "reference-listener-unavailable: `{id}` carries reference documents but \
-                 this linked host was built without the `cli` networking stack"
+                 this native host was built without the `cli` networking stack"
             ))),
         }
     }
@@ -139,7 +139,7 @@ impl Provider {
         }
     }
 
-    /// Match one selector against the compiled catalog (linked
+    /// Match one selector against the compiled catalog (native
     /// ensure): bare by name, exact pin by `(name, version)`; anything
     /// else refuses as `adapter-not-linked`.
     fn matched(&self, axis: Axis, selector: &AdapterSelector) -> Result<Entry, Error> {
@@ -173,13 +173,13 @@ impl Provider {
                 } else {
                     Err(not_linked(format!(
                         "adapter `{selector}` (axis `{axis}`) does not match the linked \
-                         `{name}@{}`; use a compatible linked build or the Wasm deployment",
+                         `{name}@{}`; use a compatible native build or the Wasm deployment",
                         entry.version()
                     )))
                 }
             }
             AdapterSelector::Component { path } => Err(not_linked(format!(
-                "linked execution does not load the supplied component `{}`; linked \
+                "native execution does not load the supplied component `{}`; linked \
                  identities on axis `{axis}`: [{}]",
                 path.display(),
                 self.catalog.axis_inventory(axis),
@@ -307,7 +307,7 @@ const fn not_linked(detail: String) -> Error {
 
 fn origin(entry: &Entry) -> Origin {
     Origin {
-        label: "linked".to_string(),
+        label: "native".to_string(),
         reference: format!("rust:{}", entry.id()),
     }
 }

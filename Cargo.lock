@@ -1164,8 +1164,8 @@ dependencies = [
  "anyhow",
  "artifacts",
  "clap",
- "linked",
  "mock",
+ "native",
  "omnia-guest",
  "omnia-testkit",
  "project",
@@ -2024,8 +2024,8 @@ version = "0.27.2"
 dependencies = [
  "anyhow",
  "eval",
- "linked",
  "mock",
+ "native",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -2083,25 +2083,6 @@ dependencies = [
  "cc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "linked"
-version = "0.27.2"
-dependencies = [
- "adapter",
- "artifacts",
- "axum",
- "diagnostics",
- "error",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "semver",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "transport",
 ]
 
 [[package]]
@@ -2218,7 +2199,7 @@ name = "mock"
 version = "0.27.2"
 dependencies = [
  "adapter",
- "linked",
+ "native",
  "omnia-guest",
  "omnia-testkit",
  "project",
@@ -2242,6 +2223,25 @@ dependencies = [
  "smallvec",
  "tagptr",
  "uuid",
+]
+
+[[package]]
+name = "native"
+version = "0.27.2"
+dependencies = [
+ "adapter",
+ "artifacts",
+ "axum",
+ "diagnostics",
+ "error",
+ "omnia-guest",
+ "omnia-testkit",
+ "project",
+ "semver",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "transport",
 ]
 
 [[package]]
@@ -3950,8 +3950,8 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "guest",
- "linked",
  "mock",
+ "native",
  "omnia",
  "omnia-cursor",
  "omnia-guest",
@@ -4488,8 +4488,8 @@ dependencies = [
  "change",
  "clap",
  "error",
- "linked",
  "mock",
+ "native",
  "omnia-guest",
  "project",
  "serde",

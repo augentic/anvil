@@ -1,4 +1,4 @@
-# Specify's hosted change example.
+# Specify's hosted wasm example.
 
 [[guest]]
 id = "specify"
@@ -23,14 +23,14 @@ guest = "target:mock"
 
 [[mount]]
 name = "."
-path = "../../sandbox/change/workspace"
+path = "../../sandbox/wasm/workspace"
 writable = true
 
 [[mount]]
 name = "/specify-cache"
-path = "../../sandbox/change/cache"
+path = "../../sandbox/wasm/cache"
 writable = true
 [[mount]]
 name = "/specify-store"
-path = "../../sandbox/change/store"
+path = "../../sandbox/wasm/store"
 writable = true

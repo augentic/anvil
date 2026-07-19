@@ -101,7 +101,7 @@ The closure skill (`/spec:finalize`) that verifies the plan is drained, confirms
 The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Specify ships. Written by `specify plan transition <name> approved`; `/spec:plan` exits at `pending` and prints the literal command in its closing hint.
 
 **Gate (quality)**
-One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run change example (`cargo make change-run`). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
+One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run wasm example (`cargo make wasm-run`). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
 
 ## H
 

@@ -2,9 +2,9 @@
 //! suites.
 //!
 //! Typed operation execution alongside the CLI-argv path in
-//! `linked::command`, so a suite can inspect an operation's typed
+//! `native::command`, so a suite can inspect an operation's typed
 //! output (e.g. the execute body's phases) without reimplementing
-//! router machinery. Generic over the provider: [`linked::Provider`]
+//! router machinery. Generic over the provider: [`native::Provider`]
 //! and suite-local providers call through the same entry.
 
 use omnia_guest::api::invocation::Invocation;

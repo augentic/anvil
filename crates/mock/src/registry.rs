@@ -1,6 +1,6 @@
 //! The exhaustive mock registry linked into the workflow suites.
 
-use linked::Catalog;
+use native::Catalog;
 
 use crate::ops::{
     Adapter, Code, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput,

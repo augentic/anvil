@@ -7,7 +7,7 @@
 
 mod support;
 
-use linked::{Catalog, DynModel};
+use native::{Catalog, DynModel};
 use omnia_guest::Model as _;
 use omnia_guest::model::{Format, Request};
 use omnia_testkit::model::Scripted;
@@ -43,7 +43,7 @@ fn entries_and_metadata() {
         .target::<Floored>()
         .build()
         .expect("valid catalog");
-    let ids: Vec<String> = linked.entries().iter().map(linked::Entry::id).collect();
+    let ids: Vec<String> = linked.entries().iter().map(native::Entry::id).collect();
     assert_eq!(ids, ["source:mock", "target:mock", "target:floored"]);
 
     let entry = linked.get(Axis::Target, "mock").expect("target entry");

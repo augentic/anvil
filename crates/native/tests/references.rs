@@ -1,10 +1,10 @@
-//! Linked reference hosting: shelf mounting, the lazy shared loopback
+//! Native reference hosting: shelf mounting, the lazy shared loopback
 //! listener, per-operation grant routing, no-op document-free
 //! catalogs, and awaited shutdown.
 
 mod support;
 
-use linked::{Catalog, DynModel, Provider, ReferenceMode, references};
+use native::{Catalog, DynModel, Provider, ReferenceMode, references};
 use omnia_testkit::model::Scripted;
 use project::handler::ExecutionPaths;
 use project::seam::Source as _;

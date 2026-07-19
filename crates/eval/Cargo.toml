@@ -1,6 +1,6 @@
 [package]
 name = "eval"
-description = "Lab-only live-model evaluation library over the linked host"
+description = "Lab-only live-model evaluation library over the native host"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -15,7 +15,7 @@ workspace = true
 anyhow.workspace = true
 artifacts.workspace = true
 clap.workspace = true
-linked = { workspace = true, features = ["cli"] }
+native = { workspace = true, features = ["cli"] }
 omnia-guest.workspace = true
 project.workspace = true
 serde.workspace = true
