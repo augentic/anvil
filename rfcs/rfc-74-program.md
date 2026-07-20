@@ -578,41 +578,64 @@ Events carry program, item, change, project, source, and adapter identities wher
 
 The journal's `Event` / `EventKind` taxonomy is closed (`crates/project/src/journal.rs`). Each stage that introduces program events lands the matching engine variants — kebab-case wire ids such as `migration.program.created` and `migration.item.activated` — in the same change. Events are never emitted around the closed taxonomy through a side channel.
 
+## First delivery
+
+The program track delivers a **usable in-house migration loop**, not a finished multi-tenant product. An Augentic engineer should be able to: import a small repo list, approve source/target pins at Gate M1, run changes serially through ordinary Gate 1 and `plan execute` / breakouts, stop cleanly for publication, and resume the next item — on first-party adapters and operator-prepared slots.
+
+### Substrate (see each RFC's §First delivery)
+
+| RFC | In first delivery | Deferred |
+| --- | ----------------- | -------- |
+| [RFC-70](rfc-70-deployment.md#first-delivery) | Typed `run`, miss-hook, closure hydrate, fail-closed verify | `resolution.json` / doctor, MCP projection, host-held digest pins |
+| [RFC-71](rfc-71-discovery.md#first-delivery) | Static first-party index, filter, persisted reports | Model adjudication, registry / `describe` (Stage 3) |
+| [RFC-72](rfc-72-migration.md#first-delivery) | Catalogue, Git+docs snapshots, profile, approve, serial `@key` lowering | Multi-binding, auto-approve, `--jobs`, portal import, prune |
+| [RFC-73](rfc-73-materialization.md#first-delivery) | Operator-prepared slots | `workspace sync`, leases, hosted |
+| This RFC | Stages 1–2 below | Rich `progress.yaml`, batch Gate 1, parallelism, forge/hosted |
+
+### Exit checklist (in-house usable)
+
+1. `specify …` runs workflow commands with no authored Omnia guest table; first-party adapters hydrate and dispatch via the miss-hook.
+2. Recommend from the static index without engine adapter-name switches; multi-candidate → operator / M1.
+3. Import → snapshot → profile → approve (or M1) → `@key` plan author → survey.
+4. Migration program: M1 → one ordinary change → Gate 1 → execute → publication stop → next item.
+5. Interrupt and resume at Gate 1 and publication without corrupt lifecycle; `migration status` names the next human action.
+
+Leave `program.yaml`, the item-status enum, and any `progress.yaml` shape flexible through the first real in-house run; correct them from that run rather than freezing them in design review.
+
+Throughout, the coordinator consumes only deployment-neutral capabilities — the materialization lease (when present), the seam provider, `wasi-model`, the journal — so the hosted product (roadmap RM-18) remains a backend swap under the same coordinator.
+
 ## Sequencing
 
-The header dependency chain describes ownership, not build order. The first vertical slice is a walking skeleton that proves the coordinator semantics — program planning, Gate M1, stop conditions, re-entry, and progress projection — over the smallest substrate:
+The header dependency chain describes ownership, not build order. First delivery follows the [exit checklist](#exit-checklist-in-house-usable) over:
 
-- [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) Stage 1 only: the static first-party descriptor index, with no registry search or trust infrastructure;
-- [Migration Intake and Source Selection](rfc-72-migration.md) Stages 1–2: catalogue, snapshots, profiling, and recommendation over that index;
-- operator-prepared workspace slots: [Managed Workspace Materialization](rfc-73-materialization.md) is skipped entirely at first;
-- serial execution through the existing plan and slice verbs.
+- [RFC-70](rfc-70-deployment.md) Stages 0–1;
+- [RFC-71](rfc-71-discovery.md) Stage 1 + report persistence;
+- [RFC-72](rfc-72-migration.md) Stages 1–3 (serial);
+- operator-prepared slots ([RFC-73](rfc-73-materialization.md) skipped until cloning friction dominates);
+- this RFC Stages 1–2 (serial coordinator).
 
-Managed materialization (RFC-73) and registry discovery (RFC-71 Stage 3) backfill skeleton friction as real migrations demand them. Omnia lazy guest resolution ([Self-Assembling Wasm Deployment](rfc-70-deployment.md)) is **expected substrate** for any program that installs adapters mid-run — hydrate via `ensure_*`, dispatch via Omnia's generic miss-hook. The walking skeleton (Stages 1–2 below) can still run on a pre-hydrated first-party store.
-
-A working rule for the skeleton: leave `program.yaml`, the item-status enum, and `progress.yaml` flexible until at least one real migration has been driven over the source catalogue by hand. The first real run informs those schemas more than any design review; the schemas in this RFC are proposals to be corrected by that run.
-
-Throughout, the coordinator consumes only deployment-neutral capabilities — the materialization lease, the seam provider, `wasi-model`, the journal — so the hosted product (roadmap RM-18) is a backend swap under the same coordinator.
+Pull in RFC-73 Stage 1 (`workspace sync`), RFC-70 Stage 2 (doctor), RFC-71 adjudication, and this RFC's Stage 3 progress projection only when the checklist is green and the team feels the specific pain.
 
 ## Implementation stages
 
-### Stage 1 — Program plan and approval
+### Stage 1 — Program plan and approval (first delivery)
 
 1. Define migration program artifacts and writers.
 2. Integrate source profiles and adapter recommendation reports.
-3. Add target topology recommendations under policy.
+3. Add target topology recommendations under a small closed policy table (grow when a real brief needs more).
 4. Add Program Gate M1 and approval invalidation.
 
-### Stage 2 — Serial coordinator
+### Stage 2 — Serial coordinator (first delivery)
 
-1. Add `migration next|execute|status`.
+1. Add `migration next|execute|status` with a structured next-action projection (journal + item fields are enough; a rich `progress.yaml` waits for Stage 3).
 2. Create one ordinary change for one ready item.
 3. Stop at ordinary Gate 1.
 4. Resume through single-project `plan execute` or the workspace breakout sequence.
-5. Hand off publication and release the workspace lease.
+5. Hand off publication (operator-owned push/merge) and continue to the next item.
 
 ### Stage 3 — Progress projection
 
-1. Project item status from journals, active plans, and archives.
+1. Project item status from journals, active plans, and archives into `progress.yaml` when status-from-journal is no longer enough for the team.
 2. Add scope coverage and partial-migration reporting.
 3. Add byte-stable progress rebuilding.
 4. Reconcile and replace the deferred migration ledger.
@@ -631,7 +654,11 @@ Throughout, the coordinator consumes only deployment-neutral capabilities — th
 3. Wait durably for CI, review, and merge.
 4. Confirm publication before item completion.
 
+`approve-changes` (batch Gate 1) lands when per-change stamps become the bottleneck — not before.
+
 ## Acceptance criteria
+
+**First delivery (Stages 1–2)**
 
 1. A migration program can be created from a repository list, intent brief, and policy without adapter names.
 2. Program inspection produces evidence-backed source and target recommendations.
@@ -641,20 +668,24 @@ Throughout, the coordinator consumes only deployment-neutral capabilities — th
 6. Every generated change uses ordinary `change.md`, `plan.yaml`, and slice artifacts.
 7. Ordinary Gate 1 remains a separate stamp; Program Gate M1 does not write `plan.lifecycle: approved`.
 8. Serial execution stops with a structured next action at every human or failure boundary.
-9. Progress can be rebuilt from journals, active plans, archives, and approval records.
+9. `migration status` (and the journal) answer pending / active / blocked / publication for each item.
 10. One merged slice does not automatically mark a source repository complete.
 11. Source-to-target mapping remains compatible with one slice targeting one project.
 12. Existing single-change workflows require no migration program.
-13. Parallel execution cannot acquire two writers for one target project.
-14. Unsupported target workload kinds remain explicit blockers.
-15. Finalization requires publication confirmation or explicit abandonment for every item.
-16. Workspace execution uses typed lifecycle operations and does not bypass the current workspace-root execute guard.
-17. Batch change approval invokes the ordinary plan transition writer per change with a recorded operator actor; no path auto-approves Gate 1.
+13. Unsupported target workload kinds remain explicit blockers.
+14. Finalization requires publication confirmation or explicit abandonment for every item.
+15. Workspace execution uses typed lifecycle operations; the workspace-root execute guard still applies.
+
+**Later**
+
+16. Progress can be rebuilt byte-stably from journals, active plans, archives, and approval records.
+17. Parallel execution cannot acquire two writers for one target project.
+18. Batch change approval invokes the ordinary plan transition writer per change with a recorded operator actor; no path auto-approves Gate 1.
 
 ## Testing
 
 - Program artifact writers, lifecycle transitions, approval invalidation, stop conditions, and the serial coordinator are crate-level integration tests over the mock adapter catalogue and scripted answers, driving the same plan and slice verbs the coordinator invokes.
-- Byte-stable `progress.yaml` rebuilding is a golden-file assertion over fixture journals and archives, following the existing `REGENERATE_GOLDENS` pattern.
+- When Stage 3 lands, byte-stable `progress.yaml` rebuilding is a golden-file assertion over fixture journals and archives, following the existing `REGENERATE_GOLDENS` pattern.
 - The judgment legs (workload classification, target recommendation) pin their answer shapes through the answers-goldens family; prompt quality is eval-rung coverage (`cargo make eval`), including at least one multi-repository migration scenario over `sandbox/`.
 - Re-entry is asserted by interrupting and resuming the coordinator at every stop condition in an integration harness.
 

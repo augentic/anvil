@@ -420,28 +420,53 @@ Drift is reported separately from malformed state:
 - approved adapter version is yanked or outside current policy;
 - snapshot cache entry is absent but reproducible.
 
+## First delivery
+
+In-house intake is a reviewed catalogue of Git repos and local docs, pinned snapshots, profiles, explicit approve (or Program Gate M1), and `@key` plan lowering into ordinary survey. Serial CLI is fine; monorepo multi-binding and portal import wait for a real request.
+
+**In first delivery**
+
+- Stages 1–2 with **Git + local documentation** only; one approved binding per source is enough.
+- Explicit `source approve` (programs may cover this at Gate M1 — see [RFC-74](rfc-74-program.md)).
+- Stage 3 plan lowering: `@key` → exact adapter + snapshot identity → `survey` (serial).
+- Inline `--source <key>=<adapter>:<binding>` remains available as the escape hatch.
+
+**Deferred until needed**
+
+| Capability | Pull in when |
+| ---------- | ------------ |
+| Screenshots, captures, other media kinds | A migration needs them as intake |
+| Multiple bindings / monorepo subpaths | One origin needs two adapters or scoped trees |
+| Policy-driven auto-approval | Manual approve (or M1) becomes rubber-stamping fatigue |
+| Concurrent `--jobs` fan-out | Wall-clock pain on multi-repo sync/profile/survey |
+| Profile-cache reuse as a hard gate | Nice-to-have; recompute is acceptable at first |
+| `source prune` | Disk pressure from snapshot cache |
+| External catalogue import (Stage 4 / RM-12) | Portal-backed membership is required |
+
+Program sequencing: [RFC-74 §First delivery](rfc-74-program.md#first-delivery).
+
 ## Implementation stages
 
-### Stage 1 — Catalogue and snapshots
+### Stage 1 — Catalogue and snapshots (first delivery)
 
 1. Reconcile and replace the deferred source-catalogue schema.
 2. Add CLI-owned import, list, show, remove, validate, and sync operations.
 3. Add the out-of-tree immutable snapshot store.
 4. Support Git repositories and local documentation first.
 
-### Stage 2 — Profiles and recommendations
+### Stage 2 — Profiles and recommendations (first delivery)
 
 1. Add repository profiling and cache keys.
 2. Store recommendation reports.
-3. Add approve and policy-driven source auto-approval.
-4. Support multiple bindings per catalogue source.
+3. Add explicit approve; policy-driven auto-approval waits for demonstrated fatigue.
+4. Multiple bindings per catalogue source wait for a monorepo need; the schema may allow them early if cheap.
 
-### Stage 3 — Plan lowering
+### Stage 3 — Plan lowering (first delivery)
 
-1. Add `@source` and `@source/binding` selectors.
+1. Add `@source` selectors (and `@source/binding` when multiple bindings exist).
 2. Ensure exact adapters before survey.
 3. Preserve snapshot identity in the plan binding.
-4. Add deterministic concurrent survey fan-out.
+4. Deterministic concurrent survey fan-out — **when serial intake is too slow**.
 
 ### Stage 4 — External catalogue imports (gated on RM-12)
 
@@ -454,19 +479,24 @@ This stage is the parked roadmap item RM-12 applied to sources. It graduates wit
 
 ## Acceptance criteria
 
+**First delivery (Stages 1–3 serial)**
+
 1. An operator can import a repository list without naming source adapters.
 2. Every repository is materialized at an immutable revision before profiling.
 3. A repository profile is deterministic for a fixed revision, subpath, profiler version, and detector policy.
-4. Re-profiling an unchanged revision reuses the derived result.
-5. One source can carry several approved source-adapter bindings, including subpath-scoped bindings within one monorepo snapshot.
-6. Source snapshots are read-only to adapters and distinct from target workspace slots.
-7. `plan author --source @key` lowers approved bindings into ordinary plan sources carrying exact adapter and snapshot identity.
-8. Plan execution remains valid if the source catalogue later changes.
-9. No skill body owns intake, synchronization, profiling, or fan-out.
-10. Removing an active source is refused with the referencing plan or migration program.
-11. Cache deletion costs recomputation only and cannot delete catalogue or audit state.
-12. External catalogue imports present a reviewable diff before changing membership.
-13. Existing inline `--source <key>=<adapter>:<binding>` remains available.
+4. Source snapshots are read-only to adapters and distinct from target workspace slots.
+5. `plan author --source @key` lowers approved bindings into ordinary plan sources carrying exact adapter and snapshot identity.
+6. Plan execution remains valid if the source catalogue later changes.
+7. No skill body owns intake, synchronization, profiling, or fan-out.
+8. Removing an active source is refused with the referencing plan or migration program.
+9. Cache deletion costs recomputation only and cannot delete catalogue or audit state.
+10. Existing inline `--source <key>=<adapter>:<binding>` remains available.
+
+**Later**
+
+11. Re-profiling an unchanged revision reuses the derived result.
+12. One source can carry several approved source-adapter bindings, including subpath-scoped bindings within one monorepo snapshot.
+13. External catalogue imports present a reviewable diff before changing membership.
 
 ## Testing
 

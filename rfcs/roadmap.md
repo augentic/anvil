@@ -51,7 +51,7 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
 
-In parallel, the operator-deployment and migration track is sketched in [RFC-70](rfc-70-deployment.md) through [RFC-74](rfc-74-program.md): a coordinated Omnia + Specify cut where RFC-70 lands Omnia's generic registry-miss guest resolver with the Specify launcher (direct `specify ...`, no authored `omnia.toml`), while RFCs 71–74 build the multi-repo modernization experience via the walking-skeleton sequence in [RFC-74 §Sequencing](rfc-74-program.md#sequencing). Omnia stays free of Specify vocabulary throughout.
+In parallel, the operator-deployment and migration track is sketched in [RFC-70](rfc-70-deployment.md) through [RFC-74](rfc-74-program.md): a coordinated Omnia + Specify cut where RFC-70 lands Omnia's generic registry-miss guest resolver with the Specify launcher (direct `specify ...`, no authored `omnia.toml`), while RFCs 71–74 deliver an **in-house-usable** serial migration loop first — see [RFC-74 §First delivery](rfc-74-program.md#first-delivery) — and defer diagnostics polish, managed materialization, third-party registry discovery, parallelism, and forge/hosted integration until that loop is in daily use. Omnia stays free of Specify vocabulary throughout.
 
 #### Deferred until trigger conditions or prerequisites
 

@@ -475,6 +475,29 @@ Local component selectors that resolve outside the project root require no addit
 
 
 
+## First delivery
+
+The first cut must be something an in-house team can run daily: `specify …` with no authored Omnia config, first-party adapters hydrating into the store, and clear resolve failures. It does not need a polished diagnostics product or third-party trust theatre.
+
+**In first delivery**
+
+- Stages 0–1 below (miss-hook, typed `run`, nested launcher, closure hydrate, fail-closed sidecar verify).
+- Release archive *or* registry hydrate for the engine and first-party pins the team actually uses.
+- Kebab-case resolve/dispatch errors that name the missing or mismatched identity.
+
+**Deferred until the team needs them**
+
+| Capability | Pull in when |
+| ---------- | ------------ |
+| `resolution.json`, fingerprint reuse | Re-resolve cost or “what’s loaded?” support load |
+| `deployment show\|doctor`, orphan audits | Store/digest failures are hard to diagnose from exit text alone |
+| Host-held digests in `resolution.json` | Mid-run / third-party install makes guest-writable sidecars a real concern |
+| MCP path→identity on the ordinary path | In-house workflows need adapter MCP references through the product binary |
+| User-level `~/.specify/wasm-pkg.toml` | Mirrored registry installs outside project config |
+| Fallback `omnia.toml` / static guest contingency | Omnia typed `run` or miss-hook slips a release |
+
+Program sequencing: [RFC-74 §First delivery](rfc-74-program.md#first-delivery).
+
 ## Implementation stages
 
 Stages below are the planned order for the coordinated Omnia + Specify cut. The [contingency](#contingency-static-guest-inventory) exists only if the miss-hook slips.
@@ -483,56 +506,65 @@ Stages below are the planned order for the coordinated Omnia + Specify cut. The 
 
 Land the Omnia-side design note (*registry-miss guest resolution*) in `augentic/omnia`, covering the miss-hook deliverables below plus the typed-deployment argument to `run`, so the generic-runtime constraint is defended by Omnia's own review.
 
-### Stage 1 — Omnia miss-hook, typed `run`, and direct invocation
+### Stage 1 — Omnia miss-hook, typed `run`, and direct invocation (first delivery)
 
 Omnia:
 
 1. Change `run` to take a typed deployment value; the file/flag path remains on the generated `main` for plain Omnia apps (see the [fallback staging](#typed-deployment-value) if the typed value must slip a release).
 2. Define the deployment-side `GuestResolver` contract (opaque guest id + expected world → verified bytes) with registry late insertion: single-flight on concurrent misses, no negative caching of refusals.
 3. Serve-at-resolve: a late-resolved guest exporting a linked interface gains its host-mediated serve side at resolve time.
-4. Deployment-supplied HTTP path→identity projection beside the static route table.
 
 Specify:
 
-5. Implement the store-backed resolver behind path-glob + fail-closed digest policy, checking closure identities against the `resolution.json`-recorded digests.
-6. Split the native binary: nest `runtime!` in a host submodule; crate-root launcher `main` owns closure + assemble + `host::run(…)`, projecting selectors through the shared `crates/transport` grammar.
-7. Assemble the typed deployment value — engine guest, mounts, resolver policy; no per-adapter guest / route table, no `omnia.toml`.
+4. Implement the store-backed resolver behind path-glob + fail-closed sidecar digest policy (closure digests recorded in `resolution.json` wait for Stage 2).
+5. Split the native binary: nest `runtime!` in a host submodule; crate-root launcher `main` owns closure + assemble + `host::run(…)`, projecting selectors through the shared `crates/transport` grammar.
+6. Assemble the typed deployment value in memory — engine guest, mounts, resolver policy; no per-adapter guest / route table, no `omnia.toml`.
+7. Hydrate closure components before `run` when missing from the store (release archive when present, else registry).
 8. Forward all workflow arguments and exits unchanged; `--version` is the launcher's only native fast path.
 9. Change the composed example to invoke `specify ...` directly.
+10. Confirm mid-run `ensure_*` installs are dispatchable without regenerating runtime configuration.
 
-### Stage 2 — Exact project closure and diagnostics
+### Stage 2 — Diagnostics and hardened verify
 
-1. Persist `resolution.json` from project/plan/typed-argument closure.
-2. Add `deployment show|doctor` (resolver path coverage, sidecar-less entries, closure-orphan store entries, `--all-slots`).
-3. Hydrate closure components before `run` when missing from the store — from the release archive on first launch, else the registry (user-level `~/.specify/wasm-pkg.toml` before the compiled default when no project config exists).
-4. Confirm mid-run `ensure_*` installs are dispatchable without regenerating runtime configuration.
+1. Persist `resolution.json` from project/plan/typed-argument closure; fingerprint reuse.
+2. Check closure identities against `resolution.json`-recorded digests at resolve time.
+3. Add `deployment show|doctor` (resolver path coverage, sidecar-less entries, closure-orphan store entries, `--all-slots`).
+4. Deployment-supplied HTTP path→identity projection for the ordinary MCP path (hand-authored example routes remain until then).
+5. User-level `~/.specify/wasm-pkg.toml` precedence for pre-project hydrate.
 
 
 
 ## Acceptance criteria
 
-1. A released Wasm installation runs `specify --help` and every workflow command without `run --config`; on an archive install, first launch requires no network.
-2. The ordinary operator path involves no `omnia.toml` at all — authored or generated; the launcher passes a typed deployment value to `run`.
+**First delivery (Stages 0–1)**
+
+1. A Wasm installation runs `specify --help` and workflow commands without `run --config`.
+2. The ordinary operator path involves no `omnia.toml` — authored or generated; the launcher passes a typed deployment value to `run`.
 3. Adding a supported first-party source binding does not require editing runtime configuration.
 4. Project and plan selectors remain the authoritative adapter bindings.
-5. Derived deployment state (`resolution.json`) lives outside the repository and is safe to delete.
-6. The engine guest remains the sole owner of command semantics and lifecycle transitions.
-7. Omnia's guest-resolver contract carries no Specify vocabulary; Specify supplies the store-backed implementor and path-glob policy.
-8. Specify nests `omnia::runtime!` in a host submodule and calls `run` from crate-root launcher `main` with the assembled typed deployment value.
-9. Exact pins and component digests are visible in `specify deployment show --format json`.
-10. A missing, incompatible, wrong-axis, sidecar-less, or digest-mismatched component fails before its operation runs (the resolver is fail-closed).
-11. The native host remains a separate deployment and does not become a fallback for missing Wasm components.
-12. The composed Wasm example and at least one third-party-style local component exercise the same operator invocation.
-13. A component installed by `ensure_*` is callable in the same process without regenerating a static guest list.
-14. The ordinary derived deployment (the typed value, or its fallback TOML rendering) names no per-adapter guest or HTTP route entries.
+5. The engine guest remains the sole owner of command semantics and lifecycle transitions.
+6. Omnia's guest-resolver contract carries no Specify vocabulary; Specify supplies the store-backed implementor and path-glob policy.
+7. Specify nests `omnia::runtime!` in a host submodule and calls `run` from crate-root launcher `main` with the assembled typed deployment value.
+8. A missing, incompatible, wrong-axis, sidecar-less, or digest-mismatched component fails before its operation runs (fail-closed sidecar verify).
+9. The native host remains a separate deployment and does not become a fallback for missing Wasm components.
+10. The composed Wasm example exercises the same operator invocation as the product binary.
+11. A component installed by `ensure_*` is callable in the same process without regenerating a static guest list.
+12. The ordinary derived deployment names no per-adapter guest or HTTP route entries.
+
+**Later (Stage 2)**
+
+13. Derived deployment state (`resolution.json`) lives outside the repository and is safe to delete.
+14. Exact pins and component digests are visible in `specify deployment show --format json`.
+15. On an archive install, first launch requires no network.
+16. At least one third-party-style local component exercises the same operator invocation.
 
 
 
 ## Testing
 
-- Closure computation, deployment assembly, fingerprinting, and `deployment show|doctor` are crate-level integration tests over fixture stores and caches; no live registry access in CI.
+- Closure computation and deployment assembly are crate-level integration tests over fixture stores and caches; no live registry access in CI. Fingerprinting and `deployment show|doctor` join when Stage 2 lands.
 - Missing, digest-mismatched, wrong-axis, and floor-incompatible components are asserted at the CLI boundary through exit codes and the kebab-case error discriminants.
-- The Omnia miss-hook, serve-at-resolve, path→identity projection, and typed `run(deployment)` are covered by Omnia's own suite plus the operator-invoked composed wasm example (`cargo make wasm-run`), updated to invoke `specify ...` directly per acceptance criterion 12; there is no new per-push WASM gate.
+- The Omnia miss-hook, serve-at-resolve, and typed `run(deployment)` are covered by Omnia's own suite plus the operator-invoked composed wasm example (`cargo make wasm-run`), updated to invoke `specify ...` directly; there is no new per-push WASM gate. Path→identity projection joins with Stage 2.
 - Launcher selector projection is asserted against the shared `crates/transport` grammar: a selector-bearing verb added to the grammar must surface in closure computation without launcher changes.
 
 

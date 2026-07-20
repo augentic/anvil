@@ -347,9 +347,29 @@ Those operations must wrap existing workflow state rather than becoming new life
 - Source snapshots and target slots use separate roots and permissions.
 - Hosted leases must provide equivalent isolation and ownership semantics.
 
+## First delivery
+
+An in-house team can ship the first migration programs on **operator-prepared slots** (today's default): clone or link targets by hand, keep trees clean, publish yourself. That is usable for a small expert team; it is not the long-term UX.
+
+**In first delivery**
+
+- No managed materialization required — [RFC-74](rfc-74-program.md) runs against prepared slots.
+- Document the operator checklist (clone, branch hygiene, publish) beside the migration program how-to.
+
+**Pull in next for the same team (still local)**
+
+| Stage | Pull in when |
+| ----- | ------------ |
+| Stage 1 — `workspace sync\|inspect` | Cloning / linking many targets is the dominant friction |
+| Stage 2 — prepare + exclusive lease | Two changes contend for one slot, or the coordinator should own branches |
+| Stage 3 — program-integrated materialize-next | Sync+lease exist and idle slots need lifecycle |
+| Stage 4 — hosted backend | Roadmap RM-18 |
+
+Program sequencing: [RFC-74 §First delivery](rfc-74-program.md#first-delivery).
+
 ## Implementation stages
 
-The first migration program walking skeleton uses operator-prepared slots (today's default). These stages backfill the manual cloning and preparation friction once the coordination loop is proven.
+Operator-prepared slots satisfy first delivery. These stages backfill cloning and preparation friction once the coordination loop is in daily use.
 
 ### Stage 1 — Inspect and sync
 

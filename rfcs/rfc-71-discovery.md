@@ -348,23 +348,41 @@ These registry capabilities are required by the third-party adapter ecosystem (r
 
 If the package ecosystem adopts OCI or Warg-backed discovery, this RFC's descriptor and policy semantics remain unchanged; only the registry client changes.
 
+## First delivery
+
+In-house migrations run on first-party adapters. The team needs searchable descriptors, deterministic candidates with evidence, and a persisted recommendation the operator (or Program Gate M1) can approve — not a third-party registry or a ranking engine.
+
+**In first delivery**
+
+- Stage 1 (descriptor types, first-party index, deterministic filter + explanation).
+- Stage 2 report persistence and invalidation when inputs change (profile / descriptor / policy digest).
+- Multi-candidate sets always go to operator (or Gate M1) review.
+
+**Deferred until needed**
+
+| Capability | Pull in when |
+| ---------- | ------------ |
+| Model adjudication leg | Real multi-candidate cases the team refuses to pick by hand |
+| `describe` WIT export, registry search, publisher trust, offline index (Stage 3) | First third-party adapter (RM-21) |
+| Declarative predicate interpreter | Third-party needs detectors without shipping Rust |
+| Numeric ranking | Coarse filter + operator review cannot settle an ambiguity |
+
+Program sequencing: [RFC-74 §First delivery](rfc-74-program.md#first-delivery).
+
 ## Implementation stages
 
-### Stage 1 — First-party descriptors and static index
+### Stage 1 — First-party descriptors and static index (first delivery)
 
 1. Add the descriptor types to the adapter SDK as plain Rust values; no WIT change.
 2. Define descriptors for every first-party adapter.
 3. Validate descriptor identity against crate and component identity.
-4. Generate a static first-party index for development, tests, and the migration walking skeleton.
+4. Generate a static first-party index for development, tests, and in-house migration programs.
 5. Add deterministic candidate filtering (Rust detectors) and explanation.
 
-This stage is the only prerequisite this RFC imposes on the first migration program.
+### Stage 2 — Recommendation reports (first delivery) and adjudication (later)
 
-### Stage 2 — Recommendation reports and adjudication
-
-1. Add the structured explanation currency.
-2. Add recommendation-report persistence and digest-based invalidation.
-3. Add the `recommendation` answers schema and the model adjudication leg.
+1. Add the structured explanation currency and recommendation-report persistence with digest-based invalidation — **first delivery**.
+2. Add the `recommendation` answers schema and the model adjudication leg — **when multi-candidate review becomes a bottleneck**.
 
 ### Stage 3 — Registry discovery (gated on the third-party ecosystem)
 
@@ -378,15 +396,20 @@ This stage is the only prerequisite this RFC imposes on the first migration prog
 
 ## Acceptance criteria
 
+**First delivery (Stages 1–2 reports)**
+
 1. Workflow core contains no adapter-name matching branches.
-2. When the `describe` export ships, it is discovery-only; execution continues to read `metadata`.
-3. Every recommendation cites matched profile or desired-state evidence.
-4. A model cannot introduce a package that deterministic filtering excluded.
-5. The static first-party index and a registry index produce identical candidate sets for identical inputs.
-6. Installation verifies the descriptor's component digest.
-7. A changed profile, policy, descriptor, or component digest invalidates the derived report and approval.
-8. An offline index can reproduce candidate generation without network access.
-9. First-party and third-party adapters use the same descriptor schema.
+2. Every recommendation cites matched profile or desired-state evidence.
+3. A model cannot introduce a package that deterministic filtering excluded (when adjudication is absent, there is no model leg on this path).
+4. Installation verifies the component digest for an approved pin.
+5. A changed profile, policy, descriptor, or component digest invalidates the derived report and approval.
+6. First-party adapters share one descriptor schema (third-party uses the same schema when Stage 3 lands).
+
+**Later**
+
+7. When the `describe` export ships, it is discovery-only; execution continues to read `metadata`.
+8. The static first-party index and a registry index produce identical candidate sets for identical inputs.
+9. An offline index can reproduce candidate generation without network access.
 
 ## Testing
 
