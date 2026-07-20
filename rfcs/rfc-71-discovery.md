@@ -4,9 +4,9 @@
 >
 > Owns: install-time adapter descriptors, the closed discovery vocabularies (including workload kinds), the registry descriptor projection, publisher and namespace trust policy, deterministic candidate filtering and explanation, and the shared recommendation-report currency.
 >
-> Depends on: [Self-Assembling Wasm Deployment](rfc-70-operator-deployment.md).
+> Depends on: [Self-Assembling Wasm Deployment](rfc-70-deployment.md).
 >
-> Consumed by: [Migration Intake and Source Selection](rfc-72-migration-intake.md) (source selection) and [Migration Programs](rfc-74-migration-program.md) (target selection).
+> Consumed by: [Migration Intake and Source Selection](rfc-72-migration.md) (source selection) and [Migration Programs](rfc-74-program.md) (target selection).
 
 ## Abstract
 
@@ -21,7 +21,7 @@ This RFC owns the layers common to both adapter axes:
 5. the immutable recommendation-report currency and its invalidation rules;
 6. registry, publisher, and namespace trust policy.
 
-It deliberately does not own selection *policy* or approval *surfaces*. Source selection — profiling inputs, composition, auto-bind conditions, and the `specify source recommend|approve` surface — is owned by [Migration Intake and Source Selection](rfc-72-migration-intake.md). Target selection policy and Program Gate M1 are owned by [Migration Programs](rfc-74-migration-program.md). A source adapter answers "what can faithfully inspect this input?" A target adapter answers "what should this project become?" Those are different questions with different owners; this RFC gives them one shared substrate.
+Source selection — profiling inputs, composition, auto-bind conditions, and the `specify source recommend|approve` surface — is owned by [Migration Intake and Source Selection](rfc-72-migration.md). Target selection policy and Program Gate M1 are owned by [Migration Programs](rfc-74-program.md). A source adapter answers "what can faithfully inspect this input?" A target adapter answers "what should this project become?" Those are different questions with different owners; this RFC gives them one shared substrate.
 
 ## Motivation
 
@@ -32,7 +32,7 @@ The current adapter metadata is sufficient for execution but not discovery:
 - path-based adapter detection is explicitly deferred;
 - operators bind source adapters and target adapters by name.
 
-That supports a small known adapter set. It does not support a migration intake containing unfamiliar repositories, multiple languages, design documents, screenshots, captures, or third-party adapters.
+That supports a small known adapter set. A migration intake containing unfamiliar repositories, multiple languages, design documents, screenshots, captures, or third-party adapters needs more.
 
 Naive auto-selection would introduce two unacceptable risks:
 
@@ -52,13 +52,13 @@ Discovery therefore needs a typed descriptor, a deterministic inventory, and an 
 
 ## Non-goals
 
-- Owning the recommendation and approval CLI surfaces. [Migration Intake and Source Selection](rfc-72-migration-intake.md) owns the source surface; [Migration Programs](rfc-74-migration-program.md) owns the target surface.
-- Owning the repository profiler or the profile schema. [Migration Intake and Source Selection](rfc-72-migration-intake.md) owns profiling; this RFC defines only the predicates evaluated against a profile.
+- Owning the recommendation and approval CLI surfaces. [Migration Intake and Source Selection](rfc-72-migration.md) owns the source surface; [Migration Programs](rfc-74-program.md) owns the target surface.
+- Owning the repository profiler or the profile schema. [Migration Intake and Source Selection](rfc-72-migration.md) owns profiling; this RFC defines only the predicates evaluated against a profile.
 - Letting an adapter mutate a repository during detection.
 - Running every registry component to discover whether it might apply.
 - Replacing source adapter `survey` or `extract`.
 - Replacing target adapter `guidance`, `build`, or `merge`.
-- Defining migration scheduling. [Migration Programs](rfc-74-migration-program.md) owns scheduling.
+- Defining migration scheduling. [Migration Programs](rfc-74-program.md) owns scheduling.
 - Making source language a sufficient target-selection rule.
 - Allowing untrusted registries because a model recommends them.
 
@@ -70,13 +70,13 @@ Each adapter defines one `AdapterDescriptor` beside its operation implementation
 
 This preserves one authored home while making descriptors searchable before component installation.
 
-**The descriptor is a sibling `describe` export, not an extension of `metadata` — and the export itself is deferred until third-party adapters exist.** When the WIT surface grows, it grows as one deterministic `describe` operation per axis world: `metadata` keeps its small execution-critical shape (the host-CLI floor, a target's build inputs and platform capability), and `describe` carries discovery-only applicability data that execution never reads. Until then, first-party descriptors are ordinary Rust values in each adapter crate, and the release pipeline projects them into the static first-party index directly — no WIT change, no component call. The trigger for the export and the live registry projection is the first adapter whose descriptor Specify cannot compile in: a third-party component. Search never requires installing a component in either phase.
+**The descriptor is a sibling `describe` export — deferred until third-party adapters exist.** When the WIT surface grows, it grows as one deterministic `describe` operation per axis world: `metadata` keeps its small execution-critical shape (the host-CLI floor, a target's build inputs and platform capability), and `describe` carries discovery-only applicability data. Until then, first-party descriptors are ordinary Rust values in each adapter crate, and the release pipeline projects them into the static first-party index directly. The trigger for the export and the live registry projection is the first adapter whose descriptor Specify cannot compile in: a third-party component. Candidate generation reads the index or registry projection in either phase.
 
 The Stage 1 authored form, illustratively — a plain value beside the operations implementor in the adapter's guest crate (`sources/typescript/` in `augentic/specify-adapters`), over closed SDK enums:
 
 ```rust
 /// sources/typescript/src/descriptor.rs — projected into the static
-/// first-party index by the release pipeline; never read at run time.
+/// first-party index by the release pipeline.
 pub const DESCRIPTOR: AdapterDescriptor = AdapterDescriptor {
     axis: Axis::Source,
     stability: Stability::Stable,
@@ -138,7 +138,7 @@ requires:
   optional-inputs: [tokens, assets, components, screenshots]
 ```
 
-The descriptor is not an adapter manifest and does not list operations. Operations still derive from the closed WIT axis contract. The descriptor is searchable applicability and distribution metadata.
+The descriptor is searchable applicability and distribution metadata. Operations still derive from the closed WIT axis contract.
 
 ### Closed discovery vocabularies
 
@@ -154,7 +154,7 @@ The initial schema uses closed values for facts that drive filtering:
 
 Languages, frameworks, architectures, and sentinel paths are normalized slugs with registry validation. New semantic axes require a schema revision rather than arbitrary metadata bags.
 
-This RFC owns the **workload-kind taxonomy** consumed by descriptors, repository profiles ([RFC-72](rfc-72-migration-intake.md)), and target policy ([RFC-74](rfc-74-migration-program.md)). The initial closed set:
+This RFC owns the **workload-kind taxonomy** consumed by descriptors, repository profiles ([RFC-72](rfc-72-migration.md)), and target policy ([RFC-74](rfc-74-program.md)). The initial closed set:
 
 - `web-service` — network-facing service or API backend;
 - `web-frontend` — browser-delivered UI;
@@ -164,7 +164,7 @@ This RFC owns the **workload-kind taxonomy** consumed by descriptors, repository
 - `library` — embedded library or SDK;
 - `contract-set` — interface definitions (OpenAPI, AsyncAPI, JSON Schema) treated as first-class work.
 
-Extending the set is a descriptor schema revision with registry validation, not a free-text field.
+Extending the set is a descriptor schema revision with registry validation.
 
 Sentinel detection is intentionally limited to safe, declarative predicates:
 
@@ -174,14 +174,14 @@ Sentinel detection is intentionally limited to safe, declarative predicates:
 - a recognized manifest contains a dependency or package key;
 - repository language share exceeds a threshold.
 
-In the first-party phase these predicates are implemented as plain Rust detectors inside the profiler ([Migration Intake and Source Selection](rfc-72-migration-intake.md)), each with a stable detector id. The declarative predicate schema is not evaluated from descriptor data until third-party adapters need to declare detection without shipping Rust — building a predicate interpreter for eight compiled-in adapters would be a rules engine without a second tenant. The list above is the ceiling either way: descriptors cannot execute scripts or arbitrary Wasm during candidate generation.
+In the first-party phase these predicates are implemented as plain Rust detectors inside the profiler ([Migration Intake and Source Selection](rfc-72-migration.md)), each with a stable detector id. The declarative predicate schema is not evaluated from descriptor data until third-party adapters need to declare detection without shipping Rust — building a predicate interpreter for eight compiled-in adapters would be a rules engine without a second tenant. The list above is the ceiling either way: descriptors cannot execute scripts or arbitrary Wasm during candidate generation.
 
 ### Profile and brief inputs
 
 Filtering evaluates descriptor predicates against two typed inputs this RFC does not own:
 
-- a **repository profile** — deterministic, anchored observations about one source; the schema and profiler are owned by [Migration Intake and Source Selection](rfc-72-migration-intake.md);
-- a **desired-state brief** — migration intent, constraints, and organization policy facts; owned by [Migration Programs](rfc-74-migration-program.md).
+- a **repository profile** — deterministic, anchored observations about one source; the schema and profiler are owned by [Migration Intake and Source Selection](rfc-72-migration.md);
+- a **desired-state brief** — migration intent, constraints, and organization policy facts; owned by [Migration Programs](rfc-74-program.md).
 
 Both inputs are content-addressed. Every filtering result records the digests of the inputs it was computed from, so a changed profile or brief invalidates downstream recommendations deterministically.
 
@@ -226,7 +226,7 @@ Each candidate receives:
 
 There is deliberately **no numeric ranking framework in the first version** — no normalized scores, configured thresholds, or ambiguity margins. Deterministic filtering either yields one candidate, which is eligible for policy-gated auto-binding, or several, which always go to adjudication or operator review. The tuning apparatus is deferred until a real migration produces an ambiguity that coarse filtering plus adjudication cannot settle; adding a score to the report shape then is additive.
 
-One candidate's explanation, as `specify adapter explain` projects it for the `legacy-billing` repository profile from [Migration Intake and Source Selection](rfc-72-migration-intake.md):
+One candidate's explanation, as `specify adapter explain` projects it for the `legacy-billing` repository profile from [Migration Intake and Source Selection](rfc-72-migration.md):
 
 ```yaml
 candidate: specify:typescript@1.4.0
@@ -317,7 +317,7 @@ The consuming surface (`specify source approve` here, Program Gate M1 for target
 
 The report is immutable once approved. A changed profile, policy, descriptor, or component digest invalidates the report and any approval derived from it; re-running discovery creates a replacement report.
 
-The report **writers** are the consuming surfaces: source recommendations and approvals belong to [Migration Intake and Source Selection](rfc-72-migration-intake.md); target recommendations and Program Gate M1 belong to [Migration Programs](rfc-74-migration-program.md). In every case approval lowers into the existing single writers — source bindings into `plan.yaml.sources` or the source catalogue, target bindings through `specify init` — and package identities are hydrated through `Resolver::ensure_*`.
+The report **writers** are the consuming surfaces: source recommendations and approvals belong to [Migration Intake and Source Selection](rfc-72-migration.md); target recommendations and Program Gate M1 belong to [Migration Programs](rfc-74-program.md). In every case approval lowers into the existing single writers — source bindings into `plan.yaml.sources` or the source catalogue, target bindings through `specify init` — and package identities are hydrated through `Resolver::ensure_*`. Hydration and dispatch are one path: once `ensure_*` writes verified bytes into the store (or project component cache), Omnia's registry-miss guest resolver ([Self-Assembling Wasm Deployment](rfc-70-deployment.md)) loads them on first call — no regenerated static guest list, and no Specify vocabulary inside Omnia.
 
 ### CLI surface
 
@@ -329,7 +329,7 @@ specify adapter search --axis target --intent <brief>
 specify adapter explain <package>
 ```
 
-Mutation does not. `specify source recommend|approve` ([RFC-72](rfc-72-migration-intake.md)) and `specify migration inspect|approve` ([RFC-74](rfc-74-migration-program.md)) own recommendation and approval; every approval records the actor and exact selected identities in the journal.
+Mutation does not. `specify source recommend|approve` ([RFC-72](rfc-72-migration.md)) and `specify migration inspect|approve` ([RFC-74](rfc-74-program.md)) own recommendation and approval; every approval records the actor and exact selected identities in the journal.
 
 ## Registry and package requirements
 
@@ -344,7 +344,7 @@ The current hydration protocol can fetch bytes for a known exact identity. Disco
 
 Registry search is read-only. Installation remains an exact-identity operation.
 
-These registry capabilities are required by the third-party adapter ecosystem (roadmap RM-21), **not** by the first migration program. The migration walking skeleton runs entirely on the static first-party index from Stage 1 below; registry discovery is gated on third-party adapters existing, not on [RFC-74](rfc-74-migration-program.md).
+These registry capabilities are required by the third-party adapter ecosystem (roadmap RM-21), **not** by the first migration program. The migration walking skeleton runs entirely on the static first-party index from Stage 1 below; registry discovery is gated on third-party adapters existing, not on [RFC-74](rfc-74-program.md).
 
 If the package ecosystem adopts OCI or Warg-backed discovery, this RFC's descriptor and policy semantics remain unchanged; only the registry client changes.
 
@@ -374,12 +374,12 @@ This stage is the only prerequisite this RFC imposes on the first migration prog
 4. Add configured-registry search.
 5. Enforce publisher and namespace trust policy.
 6. Support offline index snapshots.
-7. Hydrate only after approval.
+7. Hydrate only after approval — dispatch then follows the RFC-70 miss-hook.
 
 ## Acceptance criteria
 
 1. Workflow core contains no adapter-name matching branches.
-2. When the `describe` export ships, it never affects execution metadata; `metadata` answers are unchanged by descriptor revisions within one component digest.
+2. When the `describe` export ships, it is discovery-only; execution continues to read `metadata`.
 3. Every recommendation cites matched profile or desired-state evidence.
 4. A model cannot introduce a package that deterministic filtering excluded.
 5. The static first-party index and a registry index produce identical candidate sets for identical inputs.

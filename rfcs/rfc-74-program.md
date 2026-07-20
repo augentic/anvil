@@ -4,7 +4,7 @@
 >
 > Owns: a migration-sized umbrella above changes, repository-by-repository scheduling, target selection policy, approved adapter and topology decisions, durable progress, re-entry, and migration audit projections.
 >
-> Depends on: [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md) (Stage 1) and [Migration Intake and Source Selection](rfc-72-migration-intake.md). [Managed Workspace Materialization](rfc-73-workspace-materialization.md) is optional for the walking skeleton — see [Sequencing](#sequencing).
+> Depends on: [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) (Stage 1) and [Migration Intake and Source Selection](rfc-72-migration.md). [Managed Workspace Materialization](rfc-73-materialization.md) is optional for the walking skeleton — see [Sequencing](#sequencing).
 >
 > Supersedes after reconciliation: [Migration Ledger and Slice Mapping](future/rfc-22-ledger.md).
 
@@ -24,7 +24,7 @@ migration program
   → next change
 ```
 
-The migration program coordinates; it does not replace `change.md`, `plan.yaml`, Gate 1, slice metadata, target build, or merge.
+The migration program coordinates over `change.md`, `plan.yaml`, Gate 1, slice metadata, target build, and merge.
 
 ## Vision
 
@@ -54,11 +54,11 @@ From those inputs Specify can:
 - stop at required human gates;
 - retain durable progress and resume after interruption.
 
-“Intelligently chooses” means evidence-backed recommendation under policy. It does not mean unconstrained architecture selection or arbitrary package execution.
+“Intelligently chooses” means evidence-backed recommendation under policy.
 
 ## Motivation
 
-A change is the right umbrella for one approved set of slices. It is not a durable queue for an 80-repository modernization:
+A change is the right umbrella for one approved set of slices. An 80-repository modernization needs a longer-lived queue:
 
 - repositories enter at different times;
 - profiling and adapter selection happen before any one change;
@@ -103,7 +103,7 @@ Use the terms distinctly:
 - **change** — operator-defined umbrella owning one `change.md` and `plan.yaml`;
 - **slice** — unit flowing through `refine → build → merge`.
 
-A migration program does not introduce a parallel slice lifecycle.
+Program items track program progress; slices keep their ordinary lifecycle.
 
 The noun is deliberately migration-specific. The roadmap's generic **initiative** (RM-20) may generalize it later; a concrete migration profile teaches what a generic initiative needs far better than designing the abstraction first. The renaming this may eventually cost — CLI namespace, artifact paths, journal ids — is accepted in exchange for not speculating now.
 
@@ -204,7 +204,7 @@ Item status is coordination state:
 - `completed` — all required work and publication are recorded;
 - `abandoned` — operator ended the item with a reason.
 
-These values do not mirror or replace slice lifecycle states.
+Item status is program coordination; slice lifecycle remains the per-slice authority.
 
 ### Program lifecycle
 
@@ -240,7 +240,7 @@ Examples:
 - an iOS and Android pair may be classified as related mobile apps, while intent recommends one Vectis target;
 - OpenAPI files may bind the documentation source adapter and route contract work to the contracts target without making the source repository itself a contracts project.
 
-Unknown or unsupported target cases remain blocked with explicit missing capability; Specify does not pick the nearest adapter.
+Unknown or unsupported target cases remain blocked with explicit missing capability.
 
 ### Target selection policy
 
@@ -253,7 +253,7 @@ Target selection is normative, not observational. It uses:
 - greenfield or in-place mode;
 - target repository constraints;
 - design documents and approved decisions;
-- target adapter capabilities, from the descriptors in [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md).
+- target adapter capabilities, from the descriptors in [Adapter Descriptors and Registry Trust](rfc-71-discovery.md).
 
 Legacy implementation facts are supporting evidence, never the sole authority.
 
@@ -272,7 +272,7 @@ approval:
   target-binding: required
 ```
 
-Workload kinds are the closed taxonomy owned by [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md); the policy schema is owned here, where it is consumed.
+Workload kinds are the closed taxonomy owned by [Adapter Descriptors and Registry Trust](rfc-71-discovery.md); the policy schema is owned here, where it is consumed.
 
 ### Program approval
 
@@ -319,9 +319,9 @@ items:
 
 If `legacy-mobile`'s profile digest later changes, only that item drops back to `pending`; `legacy-billing`'s approval stands.
 
-Gate M1 is also the source-binding approval for program items: sources consumed through a program do not additionally require `specify source approve` ([Migration Intake and Source Selection](rfc-72-migration-intake.md#recommendation-and-approval)). One review covers membership, bindings, and topology, keeping the operator at three meaningful stops — M1, per-change Gate 1 (individually or batched), and publication — rather than four parallel approval surfaces inviting rubber-stamping.
+Gate M1 is also the source-binding approval for program items: sources consumed through a program are covered by this review rather than a separate `specify source approve` ([Migration Intake and Source Selection](rfc-72-migration.md#recommendation-and-approval)). One review covers membership, bindings, and topology, keeping the operator at three meaningful stops — M1, per-change Gate 1 (individually or batched), and publication.
 
-This is **Program Gate M1**. It does not stamp a change plan `approved`.
+This is **Program Gate M1**. Ordinary Gate 1 (`plan.lifecycle: approved`) remains a separate stamp on each change.
 
 ### Applying approved topology
 
@@ -333,9 +333,9 @@ After Program Gate M1, Specify may:
 - run `specify init` in uninitialized targets with approved adapter and platforms;
 - validate existing project configuration against the approved recommendation.
 
-For an uninitialized target, the approved item carries an initialization proposal — project name and description, exact target adapter selector, declared platforms, and mode — applied through the normal `specify init` writer inside the slot. Materialization ([Managed Workspace Materialization](rfc-73-workspace-materialization.md)) never writes project configuration itself.
+For an uninitialized target, the approved item carries an initialization proposal — project name and description, exact target adapter selector, declared platforms, and mode — applied through the normal `specify init` writer inside the slot.
 
-Existing target configuration wins. A mismatch returns the program item to `blocked` with an amendment workflow; it is never silently overwritten.
+Existing target configuration wins. A mismatch returns the program item to `blocked` with an amendment workflow.
 
 ### Creating ordinary changes
 
@@ -354,9 +354,7 @@ specify plan transition <change> approved
 specify migration execute <program>
 ```
 
-The migration program never writes `plan.lifecycle: approved`.
-
-An organization policy may permit pre-approved classes of changes in the future, but that must be a separate operator-owned approval mechanism that calls the same transition and records the actor and policy. It is not implicit in Program Gate M1.
+An organization policy may permit pre-approved classes of changes in the future, but that must be a separate operator-owned approval mechanism that calls the same transition and records the actor and policy.
 
 ### Gate 1 at scale
 
@@ -395,9 +393,9 @@ plan status / plan next at the workspace
   → repeat
 ```
 
-The coordinator invokes those typed CLI operations and relays their structured outcomes. It never edits `plan.yaml`, slice metadata, or lifecycle state directly.
+The coordinator invokes those typed CLI operations and relays their structured outcomes.
 
-Workspace-root `plan execute` may later absorb this routing and become the coordinator's implementation detail. That is an optimization after routing parity is proven, not a prerequisite for the first migration program.
+Workspace-root `plan execute` may later absorb this routing and become the coordinator's implementation detail — an optimization after routing parity is proven.
 
 ### Execution strategy
 
@@ -584,16 +582,16 @@ The journal's `Event` / `EventKind` taxonomy is closed (`crates/project/src/jour
 
 The header dependency chain describes ownership, not build order. The first vertical slice is a walking skeleton that proves the coordinator semantics — program planning, Gate M1, stop conditions, re-entry, and progress projection — over the smallest substrate:
 
-- [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md) Stage 1 only: the static first-party descriptor index, with no registry search or trust infrastructure;
-- [Migration Intake and Source Selection](rfc-72-migration-intake.md) Stages 1–2: catalogue, snapshots, profiling, and recommendation over that index;
-- operator-prepared workspace slots: [Managed Workspace Materialization](rfc-73-workspace-materialization.md) is skipped entirely at first;
+- [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) Stage 1 only: the static first-party descriptor index, with no registry search or trust infrastructure;
+- [Migration Intake and Source Selection](rfc-72-migration.md) Stages 1–2: catalogue, snapshots, profiling, and recommendation over that index;
+- operator-prepared workspace slots: [Managed Workspace Materialization](rfc-73-materialization.md) is skipped entirely at first;
 - serial execution through the existing plan and slice verbs.
 
-Managed materialization (RFC-73), registry discovery (RFC-71 Stage 3), and Omnia lazy resolution ([Self-Assembling Wasm Deployment](rfc-70-operator-deployment.md) Stage 3) backfill the friction the skeleton makes visible, in whatever order that friction demands. Nothing in Stages 1–2 below requires them.
+Managed materialization (RFC-73) and registry discovery (RFC-71 Stage 3) backfill skeleton friction as real migrations demand them. Omnia lazy guest resolution ([Self-Assembling Wasm Deployment](rfc-70-deployment.md)) is **expected substrate** for any program that installs adapters mid-run — hydrate via `ensure_*`, dispatch via Omnia's generic miss-hook. The walking skeleton (Stages 1–2 below) can still run on a pre-hydrated first-party store.
 
-A working rule for the skeleton: do not freeze `program.yaml`, the item-status enum, or `progress.yaml` until at least one real migration has been driven over the source catalogue by hand. The first real run informs those schemas more than any design review; the schemas in this RFC are proposals to be corrected by that run, not contracts to preserve through it.
+A working rule for the skeleton: leave `program.yaml`, the item-status enum, and `progress.yaml` flexible until at least one real migration has been driven over the source catalogue by hand. The first real run informs those schemas more than any design review; the schemas in this RFC are proposals to be corrected by that run.
 
-Throughout, the coordinator consumes only deployment-neutral capabilities — the materialization lease, the seam provider, `wasi-model`, the journal — so the hosted product (roadmap RM-18) is a backend swap under the same coordinator, not a second one.
+Throughout, the coordinator consumes only deployment-neutral capabilities — the materialization lease, the seam provider, `wasi-model`, the journal — so the hosted product (roadmap RM-18) is a backend swap under the same coordinator.
 
 ## Implementation stages
 
@@ -641,7 +639,7 @@ Throughout, the coordinator consumes only deployment-neutral capabilities — th
 4. Approval changes invalidate only affected items.
 5. The program initializes projects only through existing CLI writers.
 6. Every generated change uses ordinary `change.md`, `plan.yaml`, and slice artifacts.
-7. The program never stamps ordinary Gate 1 approval.
+7. Ordinary Gate 1 remains a separate stamp; Program Gate M1 does not write `plan.lifecycle: approved`.
 8. Serial execution stops with a structured next action at every human or failure boundary.
 9. Progress can be rebuilt from journals, active plans, archives, and approval records.
 10. One merged slice does not automatically mark a source repository complete.

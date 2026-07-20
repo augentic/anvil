@@ -116,14 +116,16 @@ The binary holds every guest on **one runtime** and picks among them in native c
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
-  "workflow"             -> InstancePre     (the engine guest, resolved from the global store
-                                             by the binary's own version: specify:engine@<version>)
-  "source:typescript"    -> InstancePre   ┐  hydrated into the global single-file store
-  "source:documentation" -> InstancePre   │  ($HOME/.specify/adapters) — only the identities
-  "target:omnia"         -> InstancePre   ┘  the generated deployment manifest names are loaded
+  "workflow" / "specify" -> InstancePre   (the engine guest, resolved from the global store
+                                           by the binary's own version: specify:engine@<version>)
+  (miss)                 -> GuestResolver  (deployment-supplied; Specify plugs store probe +
+                                           path-glob policy — Omnia sees opaque guest ids only)
+  "source:typescript"    -> InstancePre    ┐  cached after first resolve from
+  "source:documentation" -> InstancePre    │  $HOME/.specify/adapters (or project component cache)
+  "target:omnia"         -> InstancePre    ┘
 ```
 
-Each call selects an `InstancePre` by identity, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
+Each call selects an `InstancePre` by identity — from the static engine entry or from a prior miss-hook resolve — instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
 
 - the `wasi-model` callback resolves against the adapter whose brief is being evaluated — its identity is fixed for the duration of that `eval`;
 - an engine→target call (`build`, `merge`, `guidance`) targets the slice's bound target; an engine→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.
@@ -131,7 +133,7 @@ Each call selects an `InstancePre` by identity, instantiates a fresh instance on
 The same select-by-identity resolves an **inbound trigger**, not only a guest-to-guest call:
 
 - A CLI command names its guest directly (`omnia <guest>.wasm`)
-- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. The starting point is a **declarative route table keyed by path prefix** — the model Fermyon [Spin](https://spinframework.dev/v4/http-trigger)'s `spin.toml` popularised, longest-prefix wins — projecting a prefix onto a registry key. Specify's generated deployment uses one fixed projection (`/mcp/<name>` → `source:<name>` or `target:<name>`; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) — routes are never a second authored vocabulary beside the guest list. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. Because Specify owns the `wasi:http` host implementation, the static table is the floor, not the ceiling — the host may instead route **programmatically**, computing the identity from the request's path by that same rule (no `[[route.http]]` rows), the way Cloudflare's [Workers for Platforms](https://developers.cloudflare.com/cloudflare-for-platforms/workers-for-platforms/configuration/dynamic-dispatch/) dispatch worker resolves a script by name. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
+- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above (including the miss-hook). Specify's ordinary deployment uses one fixed projection (`/mcp/<name>` → guest id; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) computed from the request path — no authored `[[route.http]]` table. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored deployments (the composed example); programmatic path→identity routing is the ordinary product path. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
 
 ## Lifecycle of an operation
 
@@ -197,13 +199,13 @@ This enables progressive optimisation: as a transformation becomes well-understo
 Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `specify` binary is two strictly separated layers:
 
 - **A narrow initialization surface** carrying project scaffolding through `init`; removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders. Other argv forwards **unparsed** to the engine guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
-- **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime (`omnia::runtime!`), mounted **in-process** via the macro's public `drive` beside its `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the generated deployment manifest.
+- **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime nested in a host submodule, mounted **in-process** via `run`. Specify's launcher owns crate-root `main` and calls `run` with the typed deployment value it assembles; plain Omnia apps keep the macro at crate root and use the generated `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the derived deployment (engine guest, mounts, resolver policy). See [RFC-70 §Omnia `runtime!` composition](rfc-70-deployment.md#omnia-runtime-composition).
 
-The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/adapters` (relocatable via `$SPECIFY_ADAPTER_STORE`):
+The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/adapters` (relocatable via `$SPECIFY_ADAPTER_STORE`), with dispatch through Omnia's registry-miss guest resolver:
 
 - **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command or engine module advertised by the CLI.
 - **Engine versioned by the binary**: the engine guest resolves as `specify:engine@<the binary's own version>` from the same store — the binary version *is* the engine version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_ENGINE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves engine-guest iteration; it is a development affordance, never a release mode.
-- **Generated deployment manifest**: provisioning renders the manifest into the per-project derived cache from the resolved store entries — one `[[guest]]` per component, the writable `"."` project mount, MCP routes projected from those adapter guests (`/mcp/<name>`), and the engine's link allow-list. It is derived, never committed, never hand-edited; the host layer reads nothing else.
+- **Derived deployment**: the launcher assembles a typed deployment value in memory — the engine guest, writable project / cache / store mounts, the engine's link allow-list, and resolver policy (filesystem path globs plus fail-closed digest verification) — and persists only the `resolution.json` diagnostics record into the per-project cache ([RFC-70](rfc-70-deployment.md)). The miss-hook loads adapter guests by identity. Derived and safe to delete; the host layer reads the typed value.
 
 ## Deferred relatives
 

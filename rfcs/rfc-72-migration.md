@@ -4,7 +4,7 @@
 >
 > Owns: durable source membership, source materialization, the repository profile schema and deterministic profiler, source-adapter selection policy, recommendation and approval, and the lowering of approved sources into change plans.
 >
-> Depends on: [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md) — Stage 1 (the static first-party index) suffices for the migration walking skeleton.
+> Depends on: [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) — Stage 1 (the static first-party index) suffices for the migration walking skeleton.
 >
 > Supersedes after reconciliation: [Source Catalogue and Source-Clone Cache](future/rfc-21-catalogue.md).
 
@@ -14,7 +14,7 @@ Let an operator provide a list of repositories and supporting inputs once, then 
 
 Migration intake creates a CLI-owned `sources.yaml`, materializes immutable source snapshots in an out-of-tree cache, profiles each repository, recommends one or more source adapters, and records approved exact bindings. A later change selects source keys instead of repeating URLs, paths, and adapter names.
 
-Source selection policy lives here — profiling, composition, auto-bind conditions, and approval — built over the descriptor, filtering, explanation, and report substrate defined by [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md).
+Source selection policy lives here — profiling, composition, auto-bind conditions, and approval — built over the descriptor, filtering, explanation, and report substrate defined by [Adapter Descriptors and Registry Trust](rfc-71-discovery.md).
 
 This RFC keeps source inputs separate from target projects:
 
@@ -52,9 +52,9 @@ The deferred source-catalogue RFC identified the catalogue and clone-cache need.
 ## Non-goals
 
 - Choosing or creating target projects.
-- Materializing writable target workspace slots. [Managed Workspace Materialization](rfc-73-workspace-materialization.md) owns that.
+- Materializing writable target workspace slots. [Managed Workspace Materialization](rfc-73-materialization.md) owns that.
 - Scheduling changes across the whole migration.
-- Recording cross-change completion. [Migration Programs](rfc-74-migration-program.md) owns the ledger projection.
+- Recording cross-change completion. [Migration Programs](rfc-74-program.md) owns the ledger projection.
 - Mutating imported repositories.
 - Replacing source adapter `survey` or `extract`.
 - Treating one repository as exactly one source binding.
@@ -232,9 +232,9 @@ For the catalogue above, with derived profiles alongside as cache tenants:
 
 Deleting any of it costs re-materialization from the pinned origin and re-profiling — `sources.yaml` and its digests are untouched.
 
-The default parent follows the platform cache convention and is relocatable for tests and hosted execution. It is not `.specify/cache/`.
+The default parent follows the platform cache convention and is relocatable for tests and hosted execution (out-of-tree, beside the project cache).
 
-Content-addressed object storage with cross-source deduplication (an `objects/<content-id>/` pool behind per-workspace symlink trees) is deferred until a real migration's store size demands it: deduplication is an optimization with a measurable trigger, not a correctness property.
+Content-addressed object storage with cross-source deduplication (an `objects/<content-id>/` pool behind per-workspace symlink trees) is deferred until a real migration's store size demands it.
 
 The likely convergence point is the architecture's host-materialized working-tree capability ([RFC-55](future/rfc-55-working-tree.md)): the same content-addressed materializer that produces writable target trees can serve read-only source snapshots — locally from clones, hosted from whatever backend materializes trees on a cluster node. The store therefore stays behind one narrow seam (`content digest → readable tree`), so swapping the plain layout for the RFC-55 materializer or a hosted backend changes no catalogue, plan, or adapter contract. That seam is what keeps intake identical between the operator-local CLI and a hosted deployment.
 
@@ -258,7 +258,7 @@ migration-architecture  ok: content unchanged
 
 ### Profiling
 
-This RFC owns the repository profile schema and the deterministic profiler. After materialization, intake profiles each source; the profile is the typed input to the deterministic candidate filtering defined by [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md).
+This RFC owns the repository profile schema and the deterministic profiler. After materialization, intake profiles each source; the profile is the typed input to the deterministic candidate filtering defined by [Adapter Descriptors and Registry Trust](rfc-71-discovery.md).
 
 The profiler emits a normalized `RepositoryProfile`:
 
@@ -284,7 +284,7 @@ artifacts:
     path: docs/
 ```
 
-Every fact carries a source anchor or deterministic detector id. The profile contains observations, not target recommendations; `workload-signals` use the closed workload-kind taxonomy owned by [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md).
+Every fact carries a source anchor or deterministic detector id. The profile contains observations, not target recommendations; `workload-signals` use the closed workload-kind taxonomy owned by [Adapter Descriptors and Registry Trust](rfc-71-discovery.md).
 
 Profiles live as derived cache entries keyed by:
 
@@ -318,18 +318,18 @@ The default policy may auto-bind a source candidate when:
 - it is the only candidate surviving deterministic filtering for its media kind;
 - no mutually exclusive adapter is already bound.
 
-Anything else — several surviving candidates, an adjudicated selection, or a policy that disables auto-binding — is recorded as a recommendation requiring review. There is deliberately no score threshold or ambiguity margin to configure; see [Adapter Descriptors and Registry Trust §Explanation and adjudication](rfc-71-adapter-discovery.md#explanation-and-adjudication).
+Anything else — several surviving candidates, an adjudicated selection, or a policy that disables auto-binding — is recorded as a recommendation requiring review. There is deliberately no score threshold or ambiguity margin to configure; see [Adapter Descriptors and Registry Trust §Explanation and adjudication](rfc-71-discovery.md#explanation-and-adjudication).
 
 ### Recommendation and approval
 
-Intake filters and ranks candidates for each profile through the substrate in [Adapter Descriptors and Registry Trust](rfc-71-adapter-discovery.md) and stores the resulting recommendation report.
+Intake filters and ranks candidates for each profile through the substrate in [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) and stores the resulting recommendation report.
 
 ```bash
 specify source recommend [<key>...]
 specify source approve <key> <recommendation>
 ```
 
-Continuing the intake session, against the recommendation report shown in [Adapter Descriptors and Registry Trust §Recommendation reports](rfc-71-adapter-discovery.md#recommendation-reports):
+Continuing the intake session, against the recommendation report shown in [Adapter Descriptors and Registry Trust §Recommendation reports](rfc-71-discovery.md#recommendation-reports):
 
 ```console
 $ specify source recommend legacy-billing
@@ -346,7 +346,7 @@ Approval may create several bindings for one source. Only approved bindings are 
 
 A sole-candidate recommendation may be auto-approved when workspace policy permits it, under the conditions above. The journal records whether approval came from an operator or policy.
 
-Within a migration program, Program Gate M1 ([Migration Programs](rfc-74-migration-program.md#program-approval)) covers the source bindings the program consumes, so program items do not require a separate `source approve` pass. The standalone surface here serves catalogue use outside programs — reusable sources for ordinary changes.
+Within a migration program, Program Gate M1 ([Migration Programs](rfc-74-program.md#program-approval)) covers the source bindings the program consumes, so program items do not require a separate `source approve` pass. The standalone surface here serves catalogue use outside programs — reusable sources for ordinary changes.
 
 ### Lowering into a change
 
@@ -372,7 +372,7 @@ Before survey, the plan author orchestration:
 4. lowers each selected binding into `plan.yaml.sources`;
 5. runs `survey` through the ordinary source capability.
 
-The resulting plan is self-describing and does not require `sources.yaml` for later `extract`: each lowered binding carries the exact adapter selector and the pinned snapshot identity (the wire shape shown under [One source may have several bindings](#one-source-may-have-several-bindings)).
+The resulting plan is self-describing for later `extract`: each lowered binding carries the exact adapter selector and the pinned snapshot identity (the wire shape shown under [One source may have several bindings](#one-source-may-have-several-bindings)).
 
 ### Concurrency
 

@@ -4,7 +4,7 @@
 >
 > Owns: cloning and refreshing registry projects, creating writable workspace slots, branch preparation, cleanliness checks, and the lease boundary required by automated multi-repository execution.
 >
-> Depends on: [Migration Intake and Source Selection](rfc-72-migration-intake.md). Optional for the first migration program walking skeleton — operator-prepared slots satisfy the coordinator in [Migration Programs](rfc-74-migration-program.md).
+> Depends on: [Migration Intake and Source Selection](rfc-72-migration.md). Optional for the first migration program walking skeleton — operator-prepared slots satisfy the coordinator in [Migration Programs](rfc-74-program.md).
 
 ## Abstract
 
@@ -25,7 +25,7 @@ Current workspace mode intentionally leaves slot materialization to the operator
 
 That boundary is appropriate for an explicit multi-repo change. It blocks the desired migration experience where an operator supplies a repository list and Specify processes repositories serially or in bounded parallel batches.
 
-Source snapshot materialization does not solve this problem. A source snapshot is immutable input for `survey` and `extract`; a workspace slot is a mutable target tree for `build` and `merge`. Even when both originate from the same repository and revision, they are different capabilities.
+A source snapshot is immutable input for `survey` and `extract`; a workspace slot is a mutable target tree for `build` and `merge`. Even when both originate from the same repository and revision, they are different capabilities.
 
 ## Goals
 
@@ -128,9 +128,9 @@ The capability returns:
 
 The local provider implements the capability with Git and filesystem operations. A hosted provider may implement it with ephemeral clones or worktrees.
 
-This capability is intended to converge on the architecture's host-materialized working tree ([RFC-55](future/rfc-55-working-tree.md)): a tree materialized from a content-addressed base revision, mutated in place, with the change-set extracted by the host. This RFC adds the policy RFC-55 does not own — registry modes, branch and cleanliness rules, and the lease — not a second tree-materialization mechanism. When RFC-55's git-aware filesystem backend lands, the local provider becomes a thin policy layer over it, and the hosted provider is the same policy over the backend a cluster node already uses. The dual deployment posture rides entirely on the provider: the workflow consumes one contract in both.
+This capability is intended to converge on the architecture's host-materialized working tree ([RFC-55](future/rfc-55-working-tree.md)): a tree materialized from a content-addressed base revision, mutated in place, with the change-set extracted by the host. This RFC adds the policy layer — registry modes, branch and cleanliness rules, and the lease. When RFC-55's git-aware filesystem backend lands, the local provider becomes a thin policy layer over it, and the hosted provider is the same policy over the backend a cluster node already uses. The dual deployment posture rides entirely on the provider: the workflow consumes one contract in both.
 
-Slice and change orchestrations consume the returned working-tree value; they do not run Git clone commands themselves.
+Slice and change orchestrations consume the returned working-tree value.
 
 ### Local slot layout
 
@@ -279,7 +279,7 @@ This preserves evidence integrity during in-place migration.
 
 ### Project initialization and target binding
 
-A newly materialized target may not contain `.specify/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [Migration Programs](rfc-74-migration-program.md#applying-approved-topology). Materialization itself never writes project configuration, and an existing configuration remains authoritative.
+A newly materialized target may lack `.specify/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [Migration Programs](rfc-74-program.md#applying-approved-topology). An existing configuration remains authoritative.
 
 ### CLI surface
 
@@ -294,7 +294,7 @@ specify workspace release <project> --change <name>
 specify workspace clean <project>
 ```
 
-`sync` creates or fetches managed slots but does not create change branches. `prepare` pins the base, creates the branch, and acquires the lease. `release` drops the lease after validating the tree and recording the outcome.
+`sync` creates or fetches managed slots. `prepare` pins the base, creates the branch, and acquires the lease. `release` drops the lease after validating the tree and recording the outcome.
 
 One managed project through the full cycle:
 
@@ -315,9 +315,9 @@ billing  lease released — tree clean on specify/migrate-payments/billing, outc
 
 ### Execution routing boundary
 
-The current guest-routed `plan execute` refuses workspace-root execution. Managed materialization does not bypass that guard.
+The current guest-routed `plan execute` refuses workspace-root execution. The workspace-root execute guard still applies under managed materialization.
 
-The first migration coordinator uses the existing root plan-status/advance surface and invokes the project-bound refine, build, and merge verbs against the selected slot. Those CLI verbs remain the only lifecycle writers. A later change may teach `plan execute` to perform the same workspace routing internally; until then, this RFC's automatic `prepare` / `release` integration applies to single-project execution and to the migration coordinator, not to a workspace-root `plan execute`.
+The first migration coordinator uses the existing root plan-status/advance surface and invokes the project-bound refine, build, and merge verbs against the selected slot. Those CLI verbs remain the only lifecycle writers. A later change may teach `plan execute` to perform the same workspace routing internally; until then, this RFC's automatic `prepare` / `release` integration applies to single-project execution and to the migration coordinator.
 
 ### Publication boundary
 
@@ -349,7 +349,7 @@ Those operations must wrap existing workflow state rather than becoming new life
 
 ## Implementation stages
 
-Managed materialization is not a prerequisite for the first migration program walking skeleton: operator-prepared slots (today's default) satisfy the coordinator. These stages backfill the manual cloning and preparation friction once the coordination loop is proven.
+The first migration program walking skeleton uses operator-prepared slots (today's default). These stages backfill the manual cloning and preparation friction once the coordination loop is proven.
 
 ### Stage 1 — Inspect and sync
 
@@ -403,7 +403,7 @@ Managed materialization is not a prerequisite for the first migration program wa
 - Clone, sync, cleanliness classification, lease acquisition and recovery, and topology refresh are crate-level integration tests over local fixture Git repositories and temp directories; no live forge access in CI.
 - Cleanliness and re-entry states form a dense deterministic matrix (clean, expected branch, explained-dirty, unaccounted-dirty, drifted, diverged) asserted at the CLI boundary.
 - Byte-stable topology-lock regeneration is a golden-file assertion following the existing `REGENERATE_GOLDENS` pattern.
-- Coordinator integration (prepare/release around refine, build, merge) is covered with [Migration Programs](rfc-74-migration-program.md); the hosted backend contract is exercised only by its own provider's suite.
+- Coordinator integration (prepare/release around refine, build, merge) is covered with [Migration Programs](rfc-74-program.md); the hosted backend contract is exercised only by its own provider's suite.
 
 ## Open questions
 
