@@ -172,11 +172,21 @@ async fn local_component_mirrored() {
         b"\0asm-component",
         "the mirror is a byte-copy of the supplied file"
     );
-    let meta = fs::read_to_string(components.join("demo.meta.yaml")).expect("provenance stamp");
-    assert!(meta.contains("file://"), "provenance records the local source:\n{meta}");
-    let config =
-        fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
-    assert!(config.contains("file://"), "the recorded adapter value is the file URI:\n{config}");
+    let meta = project::adapter::ComponentMeta::load(project.paths(), "demo")
+        .expect("provenance sidecar parses");
+    assert!(
+        meta.source.starts_with("file://"),
+        "provenance records the local source: {}",
+        meta.source
+    );
+    // The persisted binding is the sidecar's canonical source, so the
+    // recorded value matches the mirror provenance byte for byte.
+    let config = project::config::ProjectConfig::load(&project.root).expect("project.yaml");
+    assert_eq!(
+        config.adapter.as_deref(),
+        Some(meta.source.as_str()),
+        "the recorded adapter value matches the mirror provenance"
+    );
 
     let resolved = project::adapter::Resolver::resolve_target(
         &support::resolver(),
@@ -204,4 +214,51 @@ async fn local_component_mirrored() {
     .await
     .expect("re-ensure resolves through the mirrored component");
     assert_eq!(body.adapter_name, "demo");
+}
+
+#[tokio::test]
+async fn local_component_outside_mounts() {
+    // The shipped wasm deployment: the launcher mirrors the operator's
+    // component into the project cache (stamping provenance) host-side
+    // before the runtime starts, then the engine guest runs `init`
+    // with the original argv. The guest cannot canonicalize the host
+    // path — it lives outside every mount — so init must persist the
+    // sidecar's canonical `file://` source instead.
+    let project = Provider::bare();
+    let components = support::expected_cache_dir(&project).join("components");
+    fs::create_dir_all(&components).expect("mkdir component cache");
+    let component = components.join("demo.wasm");
+    fs::write(&component, b"\0asm-component").expect("stage mirrored component");
+    let digest = diagnostics::cache::file_content_digest(&component);
+    fs::write(
+        components.join("demo.wasm.metadata.json"),
+        format!("{{ \"digest\": \"{digest}\", \"metadata\": {{}} }}"),
+    )
+    .expect("stage metadata sidecar");
+    fs::write(
+        components.join("demo.meta.yaml"),
+        "source: file:///host/downloads/demo.wasm\nfetched_at: \"1970-01-01T00:00:00Z\"\n",
+    )
+    .expect("stage provenance sidecar");
+
+    let body = run::<project::init::handlers::Init, _, _>(
+        &project,
+        project::init::handlers::InitInput {
+            adapter: Some("/host/downloads/demo.wasm".into()),
+            name: Some("demo-project".into()),
+            description: None,
+            workspace: false,
+            platforms: None,
+            upgrade: false,
+        },
+    )
+    .await
+    .expect("init succeeds without touching the unreachable host path");
+    assert_eq!(body.adapter_name, "demo");
+    let config = project::config::ProjectConfig::load(&project.root).expect("project.yaml");
+    assert_eq!(
+        config.adapter.as_deref(),
+        Some("file:///host/downloads/demo.wasm"),
+        "the recorded adapter value is the sidecar's host-canonical source"
+    );
 }

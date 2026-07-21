@@ -213,7 +213,7 @@ fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
 }
 
 /// One claimed entry: the slice to run and its best-effort resolved
-/// target (`name@vN`).
+/// target (`name[@vN]`).
 struct Claim {
     slice: String,
     target: Option<String>,

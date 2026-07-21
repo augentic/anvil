@@ -15,12 +15,8 @@ use project::handler::{CachePlacement, Locations};
 /// The engine version the tests inject — the composition root's pin.
 const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// The injected engine identity without embedded bytes — the dev-build
-/// shape every non-embed test runs with.
-const ENGINE: launcher::Engine = launcher::Engine {
-    version: ENGINE_VERSION,
-    bytes: None,
-};
+/// The injected engine identity — the binary's version pin.
+const ENGINE: launcher::Engine = launcher::Engine { version: ENGINE_VERSION };
 
 /// One sandboxed invocation context: a project directory plus explicit
 /// store and cache roots, all inside one tempdir.
@@ -250,37 +246,6 @@ fn deployment_mounts(sandbox: &Sandbox) -> Deployment {
     deployment(sandbox.prepare(&["registry", "validate"]))
 }
 
-/// A release-shaped binary carries the engine component: the first
-/// `prepare` seeds the store entry plus its digest sidecar from the
-/// embedded bytes — no registry fetch (the refusing transport proves
-/// it) — and the second invocation resolves the seeded entry offline.
-#[test]
-fn embedded_engine_seeds_the_store_without_fetching() {
-    let sandbox = Sandbox::new();
-    let embedded = launcher::Engine {
-        version: ENGINE_VERSION,
-        bytes: Some(b"embedded engine bytes"),
-    };
-    let prepare = || {
-        launcher::prepare_with(
-            &sandbox.root,
-            &argv(&["registry", "validate"]),
-            embedded,
-            sandbox.locations.clone(),
-            refuse,
-        )
-    };
-
-    let first = deployment(prepare());
-    let entry = sandbox.store.join(format!("engine@{ENGINE_VERSION}.wasm"));
-    assert_eq!(first.engine.component, entry);
-    assert_eq!(std::fs::read(&entry).expect("read seeded entry"), b"embedded engine bytes");
-    assert!(sandbox.store.join(format!("engine@{ENGINE_VERSION}.meta")).is_file());
-
-    let second = deployment(prepare());
-    assert_eq!(second.engine.component, entry);
-}
-
 #[test]
 fn mounts_are_the_three_well_known_locations() {
     let sandbox = Sandbox::new();
@@ -483,31 +448,6 @@ fn help_renders_host_side() {
         assert!(!stdout.is_empty(), "{display:?}");
     }
     assert!(!sandbox.store.join(format!("engine@{ENGINE_VERSION}.wasm")).exists());
-}
-
-/// The embedded bytes are authoritative for the binary's version: a
-/// dev rebuild that changes the guest without bumping the version
-/// re-seeds the drifted store entry instead of launching the stale
-/// component.
-#[test]
-fn embedded_engine_reseeds_on_drift() {
-    let sandbox = Sandbox::new();
-    sandbox.seed_engine(); // the previous build's entry + sidecar
-    let embedded = launcher::Engine {
-        version: ENGINE_VERSION,
-        bytes: Some(b"rebuilt engine bytes"),
-    };
-
-    let deployment = deployment(launcher::prepare_with(
-        &sandbox.root,
-        &argv(&["registry", "validate"]),
-        embedded,
-        sandbox.locations.clone(),
-        refuse,
-    ));
-    let entry = sandbox.store.join(format!("engine@{ENGINE_VERSION}.wasm"));
-    assert_eq!(deployment.engine.component, entry);
-    assert_eq!(std::fs::read(&entry).expect("read reseeded entry"), b"rebuilt engine bytes");
 }
 
 #[test]

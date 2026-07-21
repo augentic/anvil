@@ -14,7 +14,7 @@
 //!   plus the pure [`build_request`] / `build_catalog` assembly.
 //! - `topology` — [`resolve_topology`], the only filesystem access:
 //!   it reads the workspace topology cache or resolves the regular
-//!   project's target adapter to its canonical `name@vN` ref.
+//!   project's target adapter to its canonical `name[@vN]` ref.
 //! - `kernel` — the `Plan::propose_from` projection kernel and its
 //!   semantic invariants.
 

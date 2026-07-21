@@ -13,15 +13,13 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 ## Jobs that run
 
-1. **`build` (matrix).** Each job builds the engine guest first, then the platform binary with the guest embedded — the build ordering matters:
+1. **`build` (matrix).** Each job builds the platform binary:
 
 ```bash
-cargo build --lib -p specify --release --target wasm32-wasip2
-SPECIFY_ENGINE_WASM=target/wasm32-wasip2/release/specify.wasm \
-  cargo build --release --locked --bin specify
+cargo build --release --locked --bin specify
 ```
 
-   `SPECIFY_ENGINE_WASM` makes the root-crate `build.rs` embed the engine component in the binary (`src/omnia.rs` passes it to `launcher::prepare`); the first launch seeds `engine@<version>.wasm` plus its digest sidecar into the global store from the embedded bytes, removing the first-launch network dependency. A build without the variable compiles the same binary minus the embed and hydrates the engine from the registry instead. Supported targets:
+   The binary's launcher hydrates `specify:engine@<binary version>` from the registry on a store miss — the same path as every other package pin. Supported targets:
    - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
    - `x86_64-apple-darwin` on `macos-13` (native).
@@ -38,11 +36,12 @@ The shipped surface is the `specify` binary alone: the binary is the deployment 
 
 Both wasm-pkg packages are published manually with `wkg publish` by a maintainer whose wkg config maps the `specify:` namespace to `augentic.io` with a GitHub token carrying `packages: write` (see [`wit/README.md`](../wit/README.md) for the config shape). Registry identities are immutable — never re-publish an existing version; bump the version first.
 
-- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the `VERSION` file — the published engine identity must equal the binary version: a released binary consumes exactly `specify:engine@<its own version>`. The release binary already embeds the same component (seeded into the store on first launch), so the registry identity serves builds without the embed (`cargo install --git`, dev builds) and any operator who clears the store.
+- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the workspace package version — the published engine identity must equal the binary version: a released binary consumes exactly `specify:engine@<its own version>`. First launch (and any cleared store) hydrates that identity from the registry.
 
 ```bash
 cargo build --lib -p specify --release --target wasm32-wasip2
-wkg publish target/wasm32-wasip2/release/specify.wasm --package "specify:engine@$(cat VERSION)"
+wkg publish target/wasm32-wasip2/release/specify.wasm \
+  --package "specify:engine@$(cargo pkgid -p specify | sed 's/.*#//')"
 ```
 
 - **Adapter contract.** When a contract change bumps the `package specify:adapter@<ver>;` declaration in `wit/specify.wit`, publish it as `specify:adapter@<ver>` — the WIT versions independently of the binary. See [`wit/README.md`](../wit/README.md) for the exact commands. `specify-adapters` consumes the published package as its vendored pin.

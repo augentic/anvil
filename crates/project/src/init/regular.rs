@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use error::Error;
 
-use crate::adapter::ComponentMeta;
+use crate::adapter::{AdapterSelector, ComponentMeta};
 use crate::config::{Layout, ProjectConfig};
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
@@ -49,11 +49,22 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         }
     }
 
-    // Persist the operator's selector as typed (a component path is
-    // canonicalized so the recorded value outlives the CWD; the kind
-    // is never rewritten).
-    let adapter_value = ensured.selector.persist_value(opts.project_dir)?;
+    // Persist the operator's selector as typed (the kind is never
+    // rewritten). A component path is recorded as its canonical
+    // `file://` form so the value outlives the CWD — read from the
+    // cache mirror's provenance sidecar when present, because the
+    // engine guest cannot canonicalize a host path that lives outside
+    // its mounts (the launcher mirrored and stamped it host-side
+    // before the runtime started); canonicalized directly otherwise.
     let adapter_name = ensured.resolved.manifest.name.clone();
+    let adapter_value = match &ensured.selector {
+        AdapterSelector::Component { .. } => ComponentMeta::load(opts.paths, &adapter_name)
+            .map_or_else(
+                || ensured.selector.persist_value(opts.project_dir),
+                |meta| Ok(meta.source),
+            )?,
+        _ => ensured.selector.persist_value(opts.project_dir)?,
+    };
     let validated_platforms = validate_platforms(
         opts.platforms,
         ensured.resolved.manifest.platforms.as_ref(),

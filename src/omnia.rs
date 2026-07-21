@@ -32,24 +32,12 @@ cfg_if::cfg_if! {
             });
         }
 
-        /// The engine component a release build embeds
-        /// (`SPECIFY_ENGINE_WASM` at build time, re-exported by
-        /// `build.rs`); dev builds fall back to registry hydration.
-        #[cfg(engine_embedded)]
-        const ENGINE_WASM: Option<&[u8]> = Some(include_bytes!(env!("SPECIFY_ENGINE_WASM")));
-        /// No embedded engine: the launcher hydrates the store entry
-        /// from the configured registry on first launch.
-        #[cfg(not(engine_embedded))]
-        const ENGINE_WASM: Option<&[u8]> = None;
-
         /// The engine identity this binary supplies to the launcher:
         /// its own version (the engine guest is versioned by the
-        /// binary) plus the embedded component when the build carried
-        /// one.
-        const ENGINE: launcher::Engine = launcher::Engine {
-            version: env!("CARGO_PKG_VERSION"),
-            bytes: ENGINE_WASM,
-        };
+        /// binary). The launcher hydrates `specify:engine@<version>`
+        /// from the registry on a store miss.
+        const ENGINE: launcher::Engine =
+            launcher::Engine { version: env!("CARGO_PKG_VERSION") };
 
         fn main() -> ExitCode {
             let argv: Vec<String> = std::env::args().skip(1).collect();

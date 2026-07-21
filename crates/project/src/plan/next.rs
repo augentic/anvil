@@ -104,8 +104,9 @@ pub struct NextBody {
     pub active: Option<String>,
     /// Bound project for the advanced entry.
     pub project: Option<String>,
-    /// Resolved target adapter (`name@vN`); best-effort, `None` when the
-    /// topology cannot be resolved.
+    /// Resolved target adapter (`name[@vN]`, bare for an unpinned cache
+    /// resolve); best-effort, `None` when the topology cannot be
+    /// resolved.
     pub target: Option<String>,
     /// Advanced entry description.
     pub description: Option<String>,

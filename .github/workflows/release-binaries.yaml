@@ -52,11 +52,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      # wasm32-wasip2 builds the engine guest the platform binary embeds.
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }},wasm32-wasip2
+          targets: ${{ matrix.target }}
 
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
@@ -67,27 +66,14 @@ jobs:
         if: matrix.use_cross
         run: cargo install cross --locked --git https://github.com/cross-rs/cross
 
-      # Build ordering matters: the engine guest cdylib first, then the
-      # platform binary with SPECIFY_ENGINE_WASM set so the binary embeds
-      # its own guest (seeded into the store on first launch).
-      - name: Build engine guest
-        shell: bash
-        run: cargo build --lib -p specify --release --locked --target wasm32-wasip2
-
       - name: Build (cargo)
         if: ${{ !matrix.use_cross }}
         shell: bash
-        env:
-          SPECIFY_ENGINE_WASM: target/wasm32-wasip2/release/specify.wasm
         run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
 
-      # Cross passes SPECIFY_ENGINE_WASM into its container through the
-      # passthrough list in Cross.toml.
       - name: Build (cross)
         if: matrix.use_cross
         shell: bash
-        env:
-          SPECIFY_ENGINE_WASM: target/wasm32-wasip2/release/specify.wasm
         run: cross build --release --locked --target ${{ matrix.target }} --bin specify
 
       - name: Compute version

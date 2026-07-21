@@ -97,24 +97,11 @@ Relocation remains legitimate production configuration — sandboxes and install
 
 ## Decision
 
-### D1 — `Locations` value: production defaults, one home override (FromEnv)
+### D1 — `Locations` value: production defaults, one home override
 
-Introduce a deployment-neutral **value** (not a trait) that owns the two well-known roots and the layout formulas over them. Construction encodes policy; methods are pure path math.
+Introduce a deployment-neutral **value** (not a trait) that owns the two well-known roots and the layout formulas over them. Construction encodes policy; methods are pure path math. The one override (`SPECIFY_HOME`) is a plain `std::env::var_os` read inside `from_env` — a single optional variable does not warrant a config-derive dependency.
 
 ```rust
-mod config {
-    use fromenv::FromEnv;
-
-    /// Relocation override captured from the environment — the
-    /// complete override surface for artifact layout.
-    #[derive(Debug, Clone, FromEnv)]
-    pub(super) struct Overrides {
-        /// Umbrella Specify root. Store and cache derive together.
-        #[env(from = "SPECIFY_HOME")]
-        pub home: Option<PathBuf>,
-    }
-}
-
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CachePlacement {
@@ -144,7 +131,7 @@ impl Locations {
     /// `$HOME/.specify`, then `<temp>/specify` when `$HOME` is
     /// unavailable. Derive `<home>/store` and `<home>/cache`.
     /// Composition-root only — never called from kernels or handlers.
-    pub fn from_env() -> Self { /* Overrides::from_env().finalize() + defaults */ }
+    pub fn from_env() -> Self { /* env_path("SPECIFY_HOME") + defaults */ }
 
     /// Explicit layout — no env reads. Sandboxed sessions and tests
     /// pass `Parent`; the wasm32 guest passes `Project` for its
@@ -180,7 +167,7 @@ The launcher constructs one `ExecutionPaths` after anchoring the project and pas
 
 `diagnostics::cache` reduces to pure path math parameterized by roots (project-id digesting, sidecar naming, digest verify). Its env-reading resolvers (`adapter_store_root()`, `projects_root()`) and its `cfg!(target_arch = "wasm32")` mount branches migrate into `Locations::from_env` / the guest's `explicit` construction. This is the same seam discipline as the Omnia backends: `Client::connect_with(options)` never reads env; `ConnectOptions::from_env()` at the composition root does.
 
-Dependency note: `fromenv` is added to the workspace and used by the crate that homes `Locations` (`project::handler`, beside `ExecutionPaths`). `from_env()` may be `#[cfg(not(target_arch = "wasm32"))]` — the guest only ever constructs `explicit`.
+Dependency note: no new dependency — the single `SPECIFY_HOME` read is a hand-rolled `std::env::var_os` inside `Locations::from_env` in the crate that homes `Locations` (`project::handler`, beside `ExecutionPaths`). `from_env()` may be `#[cfg(not(target_arch = "wasm32"))]` — the guest only ever constructs `explicit`.
 
 ### D2 — `locate` becomes layout-blind
 
@@ -351,7 +338,7 @@ cargo build --target wasm32-wasip2
 
 ### Stage 1 — Cut the probe (this RFC’s landing)
 
-1. Land `Locations` (value + `CachePlacement` + `from_env` / `explicit` constructors, `fromenv` dependency) and fold it into `ExecutionPaths`; migrate `diagnostics::cache` env reads and wasm32 mount branches into construction.
+1. Land `Locations` (value + `CachePlacement` + `from_env` / `explicit` constructors) and fold it into `ExecutionPaths`; migrate `diagnostics::cache` env reads and wasm32 mount branches into construction.
 2. Thread one carried `ExecutionPaths` through `locate`, ensure mirror paths, launcher hydrate, and deployment assembly; kernels stop reading env and launcher mounts use the value's root accessors.
 3. Delete Cargo probes and `AdapterLocation::Dev`; emit `"cache"`; update resolve envelopes and the init `context.lock` fingerprint keys that keyed on `"dev"`.
 4. Make resolved identity versions `Option<semver::Version>`; omit the version for cache-backed resolve envelopes, project unpinned topology targets as bare names, and replace the launcher's `0.0.0` skip with the explicit bare-target predicate.
@@ -413,7 +400,7 @@ Record answers here before implementation freezes Stage 1 wire behavior.
 1. **Verb naming.** `specify adapter add` vs `specify adapter install` vs folding into `specify init --component`? (`add` preferred: it is a cache seed, not a store install.)
 2. **Bare miss UX.** Exact `adapter-not-found` detail string — it should name `specify adapter add` and the pin form, and must not name Cargo.
 3. **Plan source grammar.** Should plan sources also accept component selectors directly (mirroring at `plan author` time), making `adapter add` a convenience rather than the only path? Deferred; Stage 1's supported local path is `adapter add` followed by a bare binding.
-4. **`fromenv` at the leaf.** `Locations` homes in `project::handler` beside `ExecutionPaths`; confirm `diagnostics` keeps only pure math (no `fromenv` dependency on the leaf).
+4. **Env reads at the leaf.** `Locations` homes in `project::handler` beside `ExecutionPaths`; confirm `diagnostics` keeps only pure math (no environment reads on the leaf).
 5. **Option A vs B for `AdapterLocation`.** Confirm Stage 1 enum vs opaque `Origin` only.
 
 ## Alternatives considered

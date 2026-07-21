@@ -9,7 +9,6 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-artifacts.workspace = true
 diagnostics.workspace = true
 error.workspace = true
 jiff.workspace = true

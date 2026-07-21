@@ -2048,7 +2048,6 @@ dependencies = [
 name = "launcher"
 version = "0.28.0"
 dependencies = [
- "artifacts",
  "diagnostics",
  "error",
  "jiff",

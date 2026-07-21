@@ -1,14 +1,14 @@
 [tasks.wasm-clean]
 script = "rm -rf sandbox/wasm"
 
-# Build the engine guest and the example adapter components, then the
-# binary with the guest embedded (SPECIFY_ENGINE_WASM): the first
-# launch seeds the store entry from the embedded bytes, so the example
-# performs no manual engine store seeding.
+# Build the engine guest, the example adapter components, and the
+# native binary. Local iteration seeds the guest into the sandboxed
+# store (see wasm-run) — the same shape registry hydration leaves.
 [tasks.wasm-build]
 script = '''
+TARGET="${CARGO_TARGET_DIR:-target}"
 cargo build -p specify --lib --examples --target wasm32-wasip2
-SPECIFY_ENGINE_WASM=target/wasm32-wasip2/debug/specify.wasm cargo build -p specify --bin specify
+cargo build -p specify --bin specify
 '''
 
 [tasks.wasm-run]
@@ -18,18 +18,34 @@ script_runner = "bash"
 script = '''
 set -eo pipefail
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
+export GUEST_TIMEOUT_MS=600000
 export SPECIFY_HOME="$PWD/sandbox/wasm"
 
-run() { target/debug/specify "$@"; }
+TARGET="${CARGO_TARGET_DIR:-target}"
+case "$TARGET" in /*) ;; *) TARGET="$PWD/$TARGET";; esac
 
-mkdir -p "$SPECIFY_HOME/workspace"
+# Execute commands in the project directory, not the repository root.
+run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
+
+mkdir -p "$SPECIFY_HOME/project" "$SPECIFY_HOME/downloads" "$SPECIFY_HOME/store"
+
+# Seed the locally-built engine into the store (entry + digest sidecar).
+VERSION=$(cargo pkgid -p specify | sed 's/.*#//')
+ENGINE_WASM="$TARGET/wasm32-wasip2/debug/specify.wasm"
+cp "$ENGINE_WASM" "$SPECIFY_HOME/store/engine@${VERSION}.wasm"
+if command -v sha256sum >/dev/null; then
+  HEX=$(sha256sum "$ENGINE_WASM" | awk '{print $1}')
+else
+  HEX=$(shasum -a 256 "$ENGINE_WASM" | awk '{print $1}')
+fi
+printf 'tree_digest: sha256:%s\n' "$HEX" > "$SPECIFY_HOME/store/engine@${VERSION}.meta"
 
 # Use the target adapter as an operator-supplied component
-cp target/wasm32-wasip2/debug/examples/mock_target.wasm "$SPECIFY_HOME/workspace/mock.wasm"
+cp "$TARGET/wasm32-wasip2/debug/examples/mock_target.wasm" "$SPECIFY_HOME/downloads/mock.wasm"
 
 # Initialise the project and seed the source adapter
-run init "$SPECIFY_HOME/workspace/mock.wasm" --name change
-run adapter add target/wasm32-wasip2/debug/examples/mock_source.wasm
+run init "$SPECIFY_HOME/downloads/mock.wasm" --name change
+run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock_source.wasm"
 
 # Author, transition, and execute a plan
 run plan author change --source main="mock-source:value:The greeting service."

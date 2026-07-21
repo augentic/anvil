@@ -47,17 +47,13 @@ pub use deployment::{Deployment, Guest, Mount};
 ///
 /// The engine guest is versioned by the binary, so the binary's own
 /// `CARGO_PKG_VERSION` is the pin — injected here rather than read
-/// from the launcher crate's, which is a different package. A release
-/// build additionally carries the engine component itself
-/// (`SPECIFY_ENGINE_WASM` at build time): the embedded bytes seed the
-/// store entry on first launch, removing the first-launch network
-/// dependency; `None` falls back to registry hydration.
+/// from the launcher crate's, which is a different package. The
+/// launcher hydrates `specify:engine@<version>` from the registry on
+/// a store miss (the same path as every other package pin).
 #[derive(Debug, Clone, Copy)]
 pub struct Engine {
     /// Exact semver of the engine guest — the binary's own version.
     pub version: &'static str,
-    /// The embedded engine component, when the build carried one.
-    pub bytes: Option<&'static [u8]>,
 }
 
 /// What the binary should do with one argv.
@@ -96,11 +92,10 @@ impl Outcome {
 /// Prepare the deployment for one invocation.
 ///
 /// Captures the artifact layout (`Locations::from_env`) exactly once,
-/// projects selectors from argv, derives the closure, hydrates misses
-/// (the embedded engine seeds the store; registry over HTTPS for the
-/// rest), verifies, and assembles. Help and version displays and the
-/// deterministic `adapter add` seed complete host-side without a
-/// deployment.
+/// projects selectors from argv, derives the closure, hydrates store
+/// misses from the registry over HTTPS, verifies, and assembles. Help
+/// and version displays and the deterministic `adapter add` seed
+/// complete host-side without a deployment.
 #[must_use]
 pub fn prepare(invoked_dir: &Path, argv: &[String], engine: Engine) -> Outcome {
     prepare_with(invoked_dir, argv, engine, Locations::from_env(), hydrate::http_fetch)

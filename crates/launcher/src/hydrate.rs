@@ -91,14 +91,7 @@ where
     let engine_version =
         closure.engine.version().expect("the engine selector is a package pin").to_string();
     let engine_component = paths.locations().store_entry(ENGINE_NAME, &engine_version);
-    // The binary can carry its own guest component: embedded bytes
-    // seed (or refresh) the store entry without a registry fetch;
-    // registry hydration remains the fallback for builds without the
-    // embed.
-    match closure.engine_bytes {
-        Some(bytes) => seed_engine(paths, &engine_version, bytes)?,
-        None => ensure::provision(&closure.engine, paths, now, &fetch).await?,
-    }
+    ensure::provision(&closure.engine, paths, now, &fetch).await?;
     if !engine_component.is_file() {
         return Err(Error::Diag {
             code: "adapter-not-found",
@@ -150,32 +143,6 @@ where
         engine_component,
         adapters,
     })
-}
-
-/// Seed — or refresh — the embedded engine component in the global
-/// store: write the entry plus its digest sidecar, the same state a
-/// registry hydration leaves behind, so verification and every later
-/// invocation flow through the store identically.
-///
-/// The embedded bytes are authoritative for the binary's own version:
-/// a dev rebuild changes the guest without bumping the version, so an
-/// entry whose content drifts from the embedded bytes is re-seeded
-/// rather than kept — the one sanctioned overwrite of a store entry
-/// (release pins never drift; every release carries a new version). A
-/// matching entry is a no-op.
-fn seed_engine(paths: &ExecutionPaths, version: &str, bytes: &[u8]) -> Result<(), Error> {
-    let entry = paths.locations().store_entry(ENGINE_NAME, version);
-    let meta = paths.locations().store_meta(ENGINE_NAME, version);
-    let digest = format!("sha256:{}", diagnostics::digest::sha256_hex(bytes));
-    if diagnostics::cache::read_store_meta(&meta).is_some_and(|recorded| recorded == digest)
-        && diagnostics::cache::file_content_digest(&entry) == digest
-    {
-        return Ok(());
-    }
-    std::fs::create_dir_all(paths.locations().store_root())?;
-    artifacts::atomic::bytes_write(&entry, bytes)?;
-    diagnostics::cache::write_store_meta(&meta, &digest, None)?;
-    Ok(())
 }
 
 /// Fail closed on a store entry without a digest sidecar.

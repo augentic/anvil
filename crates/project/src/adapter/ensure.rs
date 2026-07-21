@@ -266,6 +266,19 @@ impl ComponentMeta {
     pub fn path(paths: &ExecutionPaths, name: &str) -> PathBuf {
         paths.cache_dir().join("components").join(format!("{name}.meta.yaml"))
     }
+
+    /// Load the provenance sidecar for `name`, when present and
+    /// parseable. The recorded `source` is the canonical `file://`
+    /// URI of the component the mirror was seeded from — the value
+    /// init persists on `project.yaml.adapter` for a component
+    /// selector, so a guest that cannot see the operator's host path
+    /// (the launcher mirrored it before the runtime started) still
+    /// records the host-canonical binding.
+    #[must_use]
+    pub fn load(paths: &ExecutionPaths, name: &str) -> Option<Self> {
+        let raw = fs::read_to_string(Self::path(paths, name)).ok()?;
+        serde_saphyr::from_str(&raw).ok()
+    }
 }
 
 /// The registry fetch URL for one pinned package, from the project's

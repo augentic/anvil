@@ -33,9 +33,6 @@ use crate::Engine;
 pub struct Closure {
     /// The engine package pin (`specify:engine@<binary version>`).
     pub engine: AdapterSelector,
-    /// The embedded engine component the composition root supplied,
-    /// seeding a missing store entry without a registry fetch.
-    pub engine_bytes: Option<&'static [u8]>,
     /// Adapter requirements, in derivation order; duplicates are
     /// merged after resolution, when component paths are known.
     pub adapters: Vec<Requirement>,
@@ -58,11 +55,7 @@ impl Requirement {
     /// The deployment guest id — `<axis>:<name>`, the routed adapter
     /// id the engine names on every seam call.
     pub fn guest_id(&self) -> String {
-        let axis = match self.axis {
-            Axis::Source => "source",
-            Axis::Target => "target",
-        };
-        format!("{axis}:{}", self.name)
+        format!("{}:{}", self.axis.prefix(), self.name)
     }
 }
 
@@ -110,7 +103,6 @@ pub fn compute(root: &Path, selectors: &CommandSelectors, engine: Engine) -> Clo
 
     Closure {
         engine: engine_selector(engine.version),
-        engine_bytes: engine.bytes,
         adapters,
     }
 }
