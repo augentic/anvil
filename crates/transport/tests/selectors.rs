@@ -20,6 +20,7 @@ fn argv(args: &[&str]) -> Vec<String> {
 fn forwarded(args: &[&str]) -> CommandSelectors {
     match from_argv(&argv(args)) {
         Projection::Forward(selectors) => selectors,
+        Projection::Display { rendered } => panic!("argv {args:?} displayed: {rendered}"),
         Projection::Rejected { rendered } => panic!("argv {args:?} rejected: {rendered}"),
     }
 }
@@ -27,6 +28,7 @@ fn forwarded(args: &[&str]) -> CommandSelectors {
 fn rejected(args: &[&str]) -> String {
     match from_argv(&argv(args)) {
         Projection::Rejected { rendered } => rendered,
+        Projection::Display { rendered } => panic!("argv {args:?} displayed: {rendered}"),
         Projection::Forward(selectors) => panic!("argv {args:?} forwarded: {selectors:?}"),
     }
 }
@@ -93,14 +95,16 @@ fn selector_free_route() {
 fn adapter_add_engine_only() {
     // The cache copy is deterministic engine work: the component path
     // is the copy's input, never a deployment requirement — but the
-    // launcher must see it to perform the seed host-side.
+    // launcher must see it to perform the seed host-side. An absent
+    // `--project-dir` projects `None` so the launcher's ancestor walk
+    // anchors the cache at the project root.
     let selectors = forwarded(&["adapter", "add", "./demo.wasm"]);
     assert!(selectors.sources.is_empty());
     assert!(selectors.targets.is_empty());
     assert_eq!(selectors.scope, ClosureScope::ENGINE);
     let seed = selectors.seed.expect("adapter add projects its seed request");
     assert_eq!(seed.component, std::path::PathBuf::from("./demo.wasm"));
-    assert_eq!(seed.project_dir, Some(std::path::PathBuf::from(".")));
+    assert_eq!(seed.project_dir, None);
 }
 
 #[test]
@@ -117,12 +121,20 @@ fn selector_free_routes_project_no_seed() {
 }
 
 #[test]
-fn help_and_version_forward_empty() {
-    for display in [&["--help"][..], &["plan", "--help"][..], &["--version"][..]] {
-        let selectors = forwarded(display);
-        assert!(selectors.sources.is_empty(), "{display:?}");
-        assert!(selectors.targets.is_empty(), "{display:?}");
-        assert_eq!(selectors.scope, ClosureScope::ENGINE, "{display:?}");
+fn help_and_version_render_host_side() {
+    // Displays are answered by the shared grammar itself — no
+    // deployment, byte-identical to what the guest would print.
+    for (display, expect) in [
+        (&["--help"][..], "Usage: specify"),
+        (&["plan", "--help"][..], "Usage: specify plan"),
+        (&["--version"][..], env!("CARGO_PKG_VERSION")),
+    ] {
+        match from_argv(&argv(display)) {
+            Projection::Display { rendered } => {
+                assert!(rendered.contains(expect), "{display:?}: {rendered}");
+            }
+            other => panic!("{display:?} did not display: {other:?}"),
+        }
     }
 }
 

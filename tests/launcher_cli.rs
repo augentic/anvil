@@ -1,8 +1,8 @@
 //! CLI-boundary exit-code contract for the shipped binary's launcher:
-//! the `--version` fast path, grammar rejection, fail-closed store
-//! verification, and the `SPECIFY_HOME` environment-capture contract —
-//! all before any runtime starts, and all without touching the
-//! network (each fixture pre-seeds the pinned store so hydration
+//! host-side help/version displays, grammar rejection, fail-closed
+//! store verification, and the `SPECIFY_HOME` environment-capture
+//! contract — all before any runtime starts, and all without touching
+//! the network (each fixture pre-seeds the pinned store so hydration
 //! never fetches).
 
 #![cfg(not(target_arch = "wasm32"))]
@@ -67,11 +67,23 @@ fn stderr(output: &Output) -> String {
 }
 
 #[test]
-fn version_fast_path() {
+fn version_renders_host_side() {
     let output = Sandbox::new().run(&["--version"]);
     assert_eq!(output.status.code(), Some(0));
     assert_eq!(String::from_utf8_lossy(&output.stdout), format!("specify {VERSION}\n"));
     assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn help_renders_host_side() {
+    // The shared grammar answers help without assembling a deployment:
+    // exit 0 with usage on stdout, and nothing hydrated into the
+    // (empty) store.
+    let sandbox = Sandbox::new();
+    let output = sandbox.run(&["--help"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Usage: specify"));
+    assert!(!sandbox.store().join(format!("engine@{VERSION}.wasm")).exists());
 }
 
 #[test]

@@ -1,12 +1,13 @@
 //! The shipped `specify` executable: the RFC-70 deployment launcher
 //! over the Omnia runtime.
 //!
-//! `main` answers `--version` natively, asks the launcher to derive,
-//! hydrate, and verify the invocation's component closure, then runs
-//! the typed deployment through the nested Omnia host — argv and the
-//! engine guest's exit code pass through byte-for-byte. There is no
-//! `omnia.toml` and no `run --config` surface: the deployment exists
-//! only in memory, per invocation.
+//! `main` asks the launcher to derive, hydrate, and verify the
+//! invocation's component closure, then runs the typed deployment
+//! through the nested Omnia host — argv and the engine guest's exit
+//! code pass through byte-for-byte. Help/version displays and the
+//! host-side `adapter add` seed complete inside the launcher without
+//! a deployment. There is no `omnia.toml` and no `run --config`
+//! surface: the deployment exists only in memory, per invocation.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
@@ -52,10 +53,6 @@ cfg_if::cfg_if! {
 
         fn main() -> ExitCode {
             let argv: Vec<String> = std::env::args().skip(1).collect();
-            if matches!(argv.as_slice(), [flag] if flag == "--version" || flag == "-V") {
-                println!("specify {}", env!("CARGO_PKG_VERSION"));
-                return ExitCode::SUCCESS;
-            }
             let invoked_dir = match std::env::current_dir() {
                 Ok(dir) => dir,
                 Err(err) => {
@@ -65,8 +62,9 @@ cfg_if::cfg_if! {
             };
             let deployment = match launcher::prepare(&invoked_dir, &argv, ENGINE) {
                 launcher::Outcome::Run(deployment) => deployment,
-                launcher::Outcome::Exit { stderr, code } => {
+                launcher::Outcome::Done { stdout, stderr, code } => {
                     use std::io::Write as _;
+                    drop(std::io::stdout().write_all(&stdout));
                     drop(std::io::stderr().write_all(&stderr));
                     return ExitCode::from(code);
                 }
@@ -105,3 +103,4 @@ cfg_if::cfg_if! {
         fn main() {}
     }
 }
+

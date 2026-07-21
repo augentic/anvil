@@ -3006,7 +3006,6 @@ dependencies = [
  "artifacts",
  "diagnostics",
  "error",
- "fromenv",
  "jiff",
  "mock",
  "omnia-guest",

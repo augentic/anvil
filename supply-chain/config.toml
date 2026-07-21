@@ -306,14 +306,6 @@ criteria = "safe-to-deploy"
 version = "0.15.4"
 criteria = "safe-to-deploy"
 
-[[exemptions.fromenv]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.fromenv-derive]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.fs-set-times]]
 version = "0.20.3"
 criteria = "safe-to-deploy"

@@ -11,9 +11,11 @@
 //! diagnostic — the launcher fails closed before anything is started,
 //! byte-identical to what the guest would print.
 //!
-//! Help and version displays are *not* rejections: they forward with
-//! an empty selector set so the engine guest stays the sole owner of
-//! command semantics.
+//! Help and version displays are answered host-side
+//! ([`Projection::Display`]): the shared grammar renders them
+//! byte-identically to the guest, so no deployment is assembled just
+//! to print usage. Command *semantics* stay with the engine guest —
+//! only clap's own displays short-circuit.
 
 use clap::FromArgMatches;
 use clap::error::ErrorKind;
@@ -49,8 +51,9 @@ pub struct CommandSelectors {
     pub targets: Vec<String>,
     /// The `adapter add` cache-seed request, when this argv carries
     /// one. Not a closure requirement — the launcher performs the
-    /// seed host-side before the runtime starts, because the operator
-    /// path may live outside the engine guest's mounts.
+    /// seed host-side and renders its report without starting the
+    /// runtime, because the operator path may live outside the engine
+    /// guest's mounts.
     pub seed: Option<SeedRequest>,
 }
 
@@ -72,8 +75,7 @@ pub struct SeedRequest {
 ///
 /// Argv-carried selectors ([`CommandSelectors::sources`] /
 /// [`CommandSelectors::targets`]) always join the closure and are not
-/// a leg here. The default (all `false`) is the engine-only scope of
-/// help and version displays.
+/// a leg here. The default (all `false`) is the engine-only scope.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ClosureScope {
     /// The project's bound target adapter (`project.yaml.adapter`).
@@ -124,9 +126,15 @@ impl ClosureScope {
 /// Outcome of projecting one argv through the shared grammar.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Projection {
-    /// Argv parses (or is a help/version display): forward to the
-    /// engine guest with these selectors.
+    /// Argv parses: forward to the engine guest with these selectors.
     Forward(CommandSelectors),
+    /// A help or version display: clap's rendered text, to print on
+    /// stdout with exit 0 — byte-identical to what the guest would
+    /// print, so no deployment is needed.
+    Display {
+        /// The rendered help/version text.
+        rendered: String,
+    },
     /// Argv fails the shared grammar: clap's rendered diagnostic, to
     /// print on stderr with exit 2, nothing started.
     Rejected {
@@ -147,7 +155,9 @@ pub fn from_argv(argv: &[String]) -> Projection {
         Err(error)
             if matches!(error.kind(), ErrorKind::DisplayHelp | ErrorKind::DisplayVersion) =>
         {
-            return Projection::Forward(CommandSelectors::default());
+            return Projection::Display {
+                rendered: error.render().to_string(),
+            };
         }
         Err(error) => {
             return Projection::Rejected {
@@ -240,9 +250,11 @@ pub const SCOPE_ROUTES: &[(&[&str], ClosureScope)] = &[
     (&["init"], ClosureScope::PROJECT_TARGET),
     // A deterministic cache copy: the component path is the copy's
     // input, not an adapter requirement the deployment must
-    // enumerate. The launcher performs the seed host-side (the
-    // operator path may live outside the guest's mounts); the guest
-    // verb then reports over the already-seeded entry.
+    // enumerate. The launcher performs the seed and renders its
+    // report host-side without starting the runtime (the operator
+    // path may live outside the guest's mounts); the route stays
+    // classified for the coverage guard and for the native host,
+    // which dispatches the verb directly.
     (&["adapter", "add"], ClosureScope::ENGINE),
     (&["completions"], ClosureScope::ENGINE),
     (&["source", "resolve"], ClosureScope::ENGINE),
@@ -344,10 +356,18 @@ impl Anchor for Grammar {
     }
 }
 
+/// Every capability body: parse projection stops at the grammar, so
+/// dispatch is a routing bug, not a runtime condition.
+macro_rules! never_dispatched {
+    () => {
+        unreachable!("the grammar-only provider never dispatches")
+    };
+}
+
 impl omnia_guest::Model for Grammar {
     #[cfg(not(target_arch = "wasm32"))]
     async fn create(&self, _request: Request) -> Result<Reply, omnia_guest::model::Error> {
-        Err(omnia_guest::model::Error::Backend(NEVER_DISPATCHED.to_string()))
+        never_dispatched!()
     }
 }
 
@@ -355,49 +375,40 @@ impl Resolver for Grammar {
     fn resolve_source(
         &self, _selector: &AdapterSelector, _paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, error::Error> {
-        Err(never_dispatched())
+        never_dispatched!()
     }
 
     fn resolve_target(
         &self, _selector: &AdapterSelector, _paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, error::Error> {
-        Err(never_dispatched())
+        never_dispatched!()
     }
 }
 
 impl seam::Source for Grammar {
     async fn survey(&self, _id: String) -> Result<Vec<Lead>, seam::Error> {
-        Err(seam::Error::Internal(NEVER_DISPATCHED.to_string()))
+        never_dispatched!()
     }
 
     async fn extract(&self, _id: String, _lead: Lead) -> Result<Evidence, seam::Error> {
-        Err(seam::Error::Internal(NEVER_DISPATCHED.to_string()))
+        never_dispatched!()
     }
 }
 
 impl seam::Target for Grammar {
     async fn guidance(&self, _id: String) -> Result<String, seam::Error> {
-        Err(seam::Error::Internal(NEVER_DISPATCHED.to_string()))
+        never_dispatched!()
     }
 
     async fn build(
         &self, _id: String, _slice: String, _inputs: Vec<Input>, _tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
-        Err(seam::Error::Internal(NEVER_DISPATCHED.to_string()))
+        never_dispatched!()
     }
 
     async fn merge(
         &self, _id: String, _slice: String, _phase: MergePhase, _tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
-        Err(seam::Error::Internal(NEVER_DISPATCHED.to_string()))
-    }
-}
-
-const NEVER_DISPATCHED: &str = "the grammar-only provider never dispatches";
-
-fn never_dispatched() -> error::Error {
-    error::Error::Diag {
-        code: "grammar-only",
-        detail: NEVER_DISPATCHED.to_string(),
+        never_dispatched!()
     }
 }

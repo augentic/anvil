@@ -63,34 +63,6 @@ pub struct Locations {
     cache: CachePlacement,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-mod config {
-    //! The relocation override captured from the environment — the
-    //! complete override surface for artifact layout.
-
-    #![allow(
-        clippy::same_name_method,
-        reason = "the FromEnv derive emits inherent methods mirroring its own trait; the \
-                  expansion cannot carry a narrower expectation"
-    )]
-
-    use std::path::PathBuf;
-
-    use fromenv::FromEnv;
-
-    // `pub` satisfies the derive's visibility requirement; the private
-    // `config` module keeps the type crate-internal.
-    #[derive(Debug, Clone, FromEnv)]
-    pub struct Overrides {
-        /// Umbrella Specify root. Store and cache derive together.
-        #[env(from = "SPECIFY_HOME")]
-        pub home: Option<PathBuf>,
-        /// The user home the effective default derives from.
-        #[env(from = "HOME")]
-        pub user_home: Option<PathBuf>,
-    }
-}
-
 impl Locations {
     /// Production layout: capture `SPECIFY_HOME` once. A non-empty
     /// absolute override wins; otherwise the effective home is
@@ -104,12 +76,8 @@ impl Locations {
     #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
     pub fn from_env() -> Self {
-        let overrides = config::Overrides::from_env().finalize().ok();
-        let (home, user_home) =
-            overrides.map_or((None, None), |captured| (captured.home, captured.user_home));
-        let home = home
-            .filter(|path| absolute(path))
-            .or_else(|| user_home.filter(|path| absolute(path)).map(|path| path.join(".specify")))
+        let home = env_path("SPECIFY_HOME")
+            .or_else(|| env_path("HOME").map(|user_home| user_home.join(".specify")))
             .unwrap_or_else(|| std::env::temp_dir().join("specify"));
         Self::explicit(home.join("store"), CachePlacement::Parent(home.join("cache")))
     }
@@ -186,9 +154,15 @@ impl Locations {
     }
 }
 
-/// Accept an override only when it is a non-empty absolute path;
-/// empty or relative values fall through to the effective default.
+/// Read one environment override, accepting only a non-empty absolute
+/// path; empty or relative values fall through to the effective
+/// default.
 #[cfg(not(target_arch = "wasm32"))]
-fn absolute(path: &Path) -> bool {
-    !path.as_os_str().is_empty() && path.is_absolute()
+fn env_path(key: &str) -> Option<PathBuf> {
+    let value = std::env::var_os(key)?;
+    if value.is_empty() {
+        return None;
+    }
+    let path = PathBuf::from(value);
+    path.is_absolute().then_some(path)
 }

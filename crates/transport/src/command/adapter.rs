@@ -13,7 +13,8 @@ pub struct AddArgs {
     #[arg(value_name = "PATH")]
     pub component: PathBuf,
     /// Project directory the cache is keyed by (defaults to the
+    /// nearest ancestor carrying `.specify/project.yaml`, else the
     /// current directory); `.specify/` need not exist yet.
-    #[arg(long, default_value = ".")]
+    #[arg(long)]
     pub project_dir: Option<PathBuf>,
 }

@@ -169,7 +169,7 @@ async fn refuse(url: String) -> Result<Vec<u8>, error::Error> {
 fn deployment(outcome: Outcome) -> Deployment {
     match outcome {
         Outcome::Run(deployment) => deployment,
-        Outcome::Exit { stderr, code } => {
+        Outcome::Done { stderr, code, .. } => {
             panic!("expected Run, got exit {code}: {}", String::from_utf8_lossy(&stderr))
         }
     }
@@ -177,8 +177,28 @@ fn deployment(outcome: Outcome) -> Deployment {
 
 fn exit(outcome: Outcome) -> (String, u8) {
     match outcome {
-        Outcome::Exit { stderr, code } => (String::from_utf8_lossy(&stderr).into_owned(), code),
-        Outcome::Run(deployment) => panic!("expected Exit, got Run: {deployment:?}"),
+        Outcome::Done { stderr, code, .. } => {
+            (String::from_utf8_lossy(&stderr).into_owned(), code)
+        }
+        Outcome::Run(deployment) => panic!("expected Done, got Run: {deployment:?}"),
+    }
+}
+
+/// A host-side success: exit 0 with the rendered stdout report.
+fn done(outcome: Outcome) -> String {
+    match outcome {
+        Outcome::Done {
+            stdout,
+            stderr,
+            code: 0,
+        } => {
+            assert!(stderr.is_empty(), "{}", String::from_utf8_lossy(&stderr));
+            String::from_utf8_lossy(&stdout).into_owned()
+        }
+        Outcome::Done { stderr, code, .. } => {
+            panic!("expected success, got exit {code}: {}", String::from_utf8_lossy(&stderr))
+        }
+        Outcome::Run(deployment) => panic!("expected Done, got Run: {deployment:?}"),
     }
 }
 
@@ -409,33 +429,87 @@ fn argv_component_selector_mirrors_into_cache() {
 }
 
 #[test]
-fn adapter_add_seeds_host_side_before_the_runtime() {
+fn adapter_add_completes_host_side() {
     // The operator's component may live anywhere on the host —
-    // outside the guest's mounts — so the launcher performs the cache
-    // seed itself; the deployment stays engine-only.
+    // outside the guest's mounts — and the copy is deterministic
+    // engine-free work, so the launcher seeds and reports without
+    // starting the runtime (the untouched store proves no deployment
+    // was assembled).
     let sandbox = Sandbox::new();
-    sandbox.seed_engine();
     let elsewhere = sandbox.root.parent().expect("sandbox base").join("built/demo.wasm");
     std::fs::create_dir_all(elsewhere.parent().expect("parent")).expect("mkdir build dir");
     std::fs::write(&elsewhere, b"freshly built component").expect("write built component");
 
-    let deployment =
-        deployment(sandbox.prepare(&["adapter", "add", &elsewhere.display().to_string()]));
-    assert!(deployment.adapters.is_empty());
+    let stdout = done(sandbox.prepare(&["adapter", "add", &elsewhere.display().to_string()]));
+    assert!(stdout.contains("Seeded `demo`"), "{stdout}");
     let entry = project::handler::ExecutionPaths::new(&sandbox.root, sandbox.locations.clone())
         .cache_dir()
         .join("components/demo.wasm");
-    assert!(entry.is_file(), "seeded before the runtime starts");
+    assert!(entry.is_file(), "seeded without a runtime");
     assert_eq!(std::fs::read(&entry).expect("read entry"), b"freshly built component");
+    assert!(
+        !sandbox.store.join(format!("engine@{ENGINE_VERSION}.wasm")).exists(),
+        "no deployment was assembled"
+    );
 }
 
 #[test]
 fn adapter_add_missing_component_fails_closed() {
     let sandbox = Sandbox::new();
-    sandbox.seed_engine();
     let (stderr, code) = exit(sandbox.prepare(&["adapter", "add", "./no-such.wasm"]));
     assert_eq!(code, 1);
     assert!(stderr.contains("adapter-component-missing"), "{stderr}");
+}
+
+/// A stale cache entry must not mask a typo: re-adding a name whose
+/// operator file no longer exists fails instead of reporting the old
+/// entry (the persisted-mirror fallback belongs to the component
+/// selector's re-ensure, not to the explicit seed verb).
+#[test]
+fn adapter_add_stale_path_with_cached_name_fails() {
+    let sandbox = Sandbox::new();
+    sandbox.seed_cached_component("demo");
+    let (stderr, code) = exit(sandbox.prepare(&["adapter", "add", "./demo.wasm"]));
+    assert_eq!(code, 1);
+    assert!(stderr.contains("adapter-component-missing"), "{stderr}");
+}
+
+#[test]
+fn help_renders_host_side() {
+    // Displays never assemble a deployment: the shared grammar renders
+    // them, so no hydration (the refusing transport plus the untouched
+    // store prove it).
+    let sandbox = Sandbox::new();
+    for display in [&["--help"][..], &["plan", "--help"][..], &["--version"][..]] {
+        let stdout = done(sandbox.prepare(display));
+        assert!(!stdout.is_empty(), "{display:?}");
+    }
+    assert!(!sandbox.store.join(format!("engine@{ENGINE_VERSION}.wasm")).exists());
+}
+
+/// The embedded bytes are authoritative for the binary's version: a
+/// dev rebuild that changes the guest without bumping the version
+/// re-seeds the drifted store entry instead of launching the stale
+/// component.
+#[test]
+fn embedded_engine_reseeds_on_drift() {
+    let sandbox = Sandbox::new();
+    sandbox.seed_engine(); // the previous build's entry + sidecar
+    let embedded = launcher::Engine {
+        version: ENGINE_VERSION,
+        bytes: Some(b"rebuilt engine bytes"),
+    };
+
+    let deployment = deployment(launcher::prepare_with(
+        &sandbox.root,
+        &argv(&["registry", "validate"]),
+        embedded,
+        sandbox.locations.clone(),
+        refuse,
+    ));
+    let entry = sandbox.store.join(format!("engine@{ENGINE_VERSION}.wasm"));
+    assert_eq!(deployment.engine.component, entry);
+    assert_eq!(std::fs::read(&entry).expect("read reseeded entry"), b"rebuilt engine bytes");
 }
 
 #[test]

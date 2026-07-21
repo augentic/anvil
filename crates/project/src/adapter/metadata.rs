@@ -63,20 +63,13 @@ pub(super) fn load(
         return Ok(answer);
     }
 
-    let adapter_id = format!("{}:{name}", axis_prefix(axis));
+    let adapter_id = format!("{}:{name}", axis.prefix());
     let answer = runner(&Request {
         axis,
         adapter_id: &adapter_id,
     })?;
     write_cache(&cache_path, &digest, &answer);
     Ok(answer)
-}
-
-const fn axis_prefix(axis: Axis) -> &'static str {
-    match axis {
-        Axis::Source => "source",
-        Axis::Target => "target",
-    }
 }
 
 fn read_cache(cache_path: &Path, digest: &str) -> Option<Metadata> {

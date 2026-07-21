@@ -160,7 +160,6 @@ base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.2", features = ["derive", "env"] }
 clap_complete = "4.6.7"
-fromenv = "0.1.0"
 glob = "0.3.3"
 jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
 petgraph = "0.8.3"

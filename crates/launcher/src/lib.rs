@@ -17,6 +17,12 @@
 //! the result is a typed [`Deployment`] the binary maps onto an Omnia
 //! manifest and runs. Nothing starts when verification fails.
 //!
+//! Two argv shapes never assemble a deployment: help and version
+//! displays render host-side from the shared grammar (byte-identical
+//! to the guest's), and `adapter add` — a deterministic cache copy
+//! whose input may live outside any guest mount — seeds and reports
+//! host-side.
+//!
 //! `SPECIFY_HOME` remains a relocation override only — the Cargo
 //! model: everything anchors at the user home or the project root by
 //! default, and one invocation captures the layout exactly once
@@ -27,7 +33,8 @@ use std::path::Path;
 
 use error::Error;
 use project::handler::{ExecutionPaths, Locations};
-use transport::command::selectors::{CommandSelectors, Projection, from_argv};
+use transport::command::Format;
+use transport::command::selectors::{CommandSelectors, Projection, SeedRequest, from_argv};
 
 mod anchor;
 mod closure;
@@ -59,11 +66,15 @@ pub enum Outcome {
     /// The closure resolved and verified: start the runtime over this
     /// deployment.
     Run(Deployment),
-    /// Nothing was started: write `stderr` and exit with `code`
-    /// (grammar rejections render clap's own diagnostic; closure,
-    /// hydration, and verification failures render the standard
-    /// failure envelope in the invocation's `--format`).
-    Exit {
+    /// The invocation completed (or failed) host-side, no runtime
+    /// needed: write both channels and exit with `code`. Help and
+    /// version displays and the `adapter add` report land on `stdout`;
+    /// grammar rejections render clap's own diagnostic and failures
+    /// render the standard envelope in the invocation's `--format`,
+    /// both on `stderr`.
+    Done {
+        /// Rendered success output for the stdout channel.
+        stdout: Vec<u8>,
         /// Rendered diagnostic for the stderr channel.
         stderr: Vec<u8>,
         /// Process exit code.
@@ -71,12 +82,25 @@ pub enum Outcome {
     },
 }
 
+impl Outcome {
+    fn failure(format: Format, error: &Error) -> Self {
+        let (stderr, code) = transport::command::render_failure(format, error);
+        Self::Done {
+            stdout: Vec::new(),
+            stderr,
+            code,
+        }
+    }
+}
+
 /// Prepare the deployment for one invocation.
 ///
 /// Captures the artifact layout (`Locations::from_env`) exactly once,
 /// projects selectors from argv, derives the closure, hydrates misses
 /// (the embedded engine seeds the store; registry over HTTPS for the
-/// rest), verifies, and assembles.
+/// rest), verifies, and assembles. Help and version displays and the
+/// deterministic `adapter add` seed complete host-side without a
+/// deployment.
 #[must_use]
 pub fn prepare(invoked_dir: &Path, argv: &[String], engine: Engine) -> Outcome {
     prepare_with(invoked_dir, argv, engine, Locations::from_env(), hydrate::http_fetch)
@@ -96,8 +120,16 @@ where
     Fut: Future<Output = Result<Vec<u8>, Error>> + Send,
 {
     let selectors = match from_argv(argv) {
+        Projection::Display { rendered } => {
+            return Outcome::Done {
+                stdout: rendered.into_bytes(),
+                stderr: Vec::new(),
+                code: 0,
+            };
+        }
         Projection::Rejected { rendered } => {
-            return Outcome::Exit {
+            return Outcome::Done {
+                stdout: Vec::new(),
                 stderr: rendered.into_bytes(),
                 code: 2,
             };
@@ -105,41 +137,50 @@ where
         Projection::Forward(selectors) => selectors,
     };
     let format = selectors.format;
-    match assemble(invoked_dir, &selectors, engine, locations, fetch) {
+    let root = anchor::project_root(invoked_dir, &selectors);
+    let paths = ExecutionPaths::new(root, locations);
+    if let Some(request) = &selectors.seed {
+        return seed(request, &paths, format);
+    }
+    match assemble(&paths, &selectors, engine, fetch) {
         Ok(deployment) => Outcome::Run(deployment),
-        Err(error) => {
-            let (stderr, code) = transport::command::render_failure(format, &error);
-            Outcome::Exit { stderr, code }
-        }
+        Err(error) => Outcome::failure(format, &error),
     }
 }
 
 fn assemble<F, Fut>(
-    invoked_dir: &Path, selectors: &CommandSelectors, engine: Engine, locations: Locations,
-    fetch: F,
+    paths: &ExecutionPaths, selectors: &CommandSelectors, engine: Engine, fetch: F,
 ) -> Result<Deployment, Error>
 where
     F: Fn(String) -> Fut + Send + Sync,
     Fut: Future<Output = Result<Vec<u8>, Error>> + Send,
 {
-    let root = anchor::project_root(invoked_dir, selectors);
-    let paths = ExecutionPaths::new(root, locations);
-    seed(selectors, &paths)?;
     let closure = closure::compute(paths.project_root(), selectors, engine);
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
-    let resolved = runtime.block_on(hydrate::resolve(&paths, closure, fetch))?;
-    deployment::assemble(&paths, resolved)
+    let resolved = runtime.block_on(hydrate::resolve(paths, closure, fetch))?;
+    deployment::assemble(paths, resolved)
 }
 
-/// Perform an `adapter add` cache seed host-side, before the runtime
-/// starts: the operator's component path may live anywhere on the
-/// host, while the engine guest sees only its mounts. The guest verb
-/// then reports over the already-seeded entry.
-fn seed(selectors: &CommandSelectors, paths: &ExecutionPaths) -> Result<(), Error> {
-    let Some(request) = &selectors.seed else {
-        return Ok(());
-    };
+/// Run `adapter add` host-side, end to end: the operator's component
+/// path may live anywhere on the host, while the engine guest sees
+/// only its mounts — and the copy is deterministic engine-free work,
+/// so no runtime is started. Renders the same success envelope the
+/// guest verb produces on a native host.
+fn seed(request: &SeedRequest, paths: &ExecutionPaths, format: Format) -> Outcome {
     // Relative component paths anchor at the selected project
     // directory — the kernel's own contract.
-    project::adapter::ensure::seed(&request.component, paths, jiff::Timestamp::now()).map(drop)
+    match project::adapter::ensure::seed(&request.component, paths, jiff::Timestamp::now()) {
+        Ok(seeded) => {
+            let body = project::adapter::handlers::AddBody::from(seeded);
+            match transport::command::render_success(format, &body) {
+                Ok(stdout) => Outcome::Done {
+                    stdout,
+                    stderr: Vec::new(),
+                    code: 0,
+                },
+                Err(error) => Outcome::failure(format, &error),
+            }
+        }
+        Err(error) => Outcome::failure(format, &error),
+    }
 }

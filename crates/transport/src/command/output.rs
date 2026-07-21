@@ -10,6 +10,7 @@ use std::process::ExitCode;
 
 use clap::ValueEnum;
 use error::Error;
+use project::handler::Render;
 use serde::Serialize;
 
 /// Structured (`json`) or human (`text`) CLI output.
@@ -132,6 +133,20 @@ impl From<&Error> for ErrorBody {
             hint: err.hint(),
         }
     }
+}
+
+/// Render a success `body` as the stdout bytes the command projector
+/// would emit — the success envelope for callers outside a router
+/// dispatch (the deployment launcher's host-side `adapter add`).
+///
+/// # Errors
+///
+/// Propagates the underlying serialization or I/O failure; callers
+/// route it through [`render_failure`].
+pub fn render_success<T: Serialize + Render>(format: Format, body: &T) -> Result<Vec<u8>, Error> {
+    let mut stdout = Vec::new();
+    emit(&mut stdout, format, body, |w, v| v.render(w))?;
+    Ok(stdout)
 }
 
 /// Render `error` as the stderr bytes and exit code the command

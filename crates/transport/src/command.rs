@@ -14,7 +14,7 @@ use project::seam::{Source, Target};
 use serde::Serialize;
 
 use self::output::{ErrorBody, Exit, emit, write_error_text};
-pub use self::output::{Format, render_failure};
+pub use self::output::{Format, render_failure, render_success};
 
 mod adapter;
 mod archive;
@@ -151,12 +151,11 @@ fn error_response(format: Format, error: &error::Error) -> Result<CommandRespons
     Ok(CommandResponse::failure(stderr, Exit::from(error).code()))
 }
 
-/// [`error_response`] with rendering failures collapsed onto a plain
-/// exit-1 line — the terminal fallback when the envelope itself cannot
-/// be produced.
+/// [`render_failure`] mapped onto a `CommandResponse` — the terminal
+/// fallback (a plain exit-1 line) lives in one place.
 fn failure_response(format: Format, error: &error::Error) -> CommandResponse {
-    error_response(format, error)
-        .unwrap_or_else(|fallback| CommandResponse::failure(format!("error: {fallback}\n"), 1))
+    let (stderr, code) = render_failure(format, error);
+    CommandResponse::failure(stderr, code)
 }
 
 fn operation_response(

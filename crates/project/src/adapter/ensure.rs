@@ -136,14 +136,12 @@ where
     let digest = file_content_digest(&entry);
     let meta = paths.locations().store_meta(name, &version);
     write_store_meta(&meta, &digest, None)?;
-    verify_store_entry(&entry, &meta).map_err(|mismatch| Error::Diag {
-        code: "adapter-digest-mismatch",
-        detail: format!(
-            "store entry {} failed verify-after-write: recorded {} but read back {}",
-            entry.display(),
-            mismatch.recorded,
-            mismatch.actual
-        ),
+    verify_store_entry(&entry, &meta).map_err(|mismatch| {
+        super::resolver::digest_mismatch(
+            &format!("store entry {}", entry.display()),
+            "verify-after-write",
+            &mismatch,
+        )
     })?;
     Ok(())
 }
@@ -151,11 +149,22 @@ where
 /// Mirror an operator-supplied local component into the project
 /// component cache — the project-local leg the bare/component resolver
 /// probes first — stamping provenance in [`ComponentMeta`].
+///
+/// Carries the persisted-mirror fallback: a component selector stays
+/// resolvable after the operator's original file is removed, because
+/// the earlier mirror in the project component cache satisfies
+/// re-ensure. The explicit [`seed`] verb has no such fallback — a
+/// missing path there is an operator mistake to surface, not a
+/// re-ensure to satisfy.
 fn mirror(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<(), Error> {
-    // `seed` carries the persisted-mirror fallback: a component
-    // selector stays resolvable after the operator's original file is
-    // removed, because the earlier mirror in the project component
-    // cache satisfies re-ensure.
+    let absolute =
+        if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
+    if !absolute.is_file()
+        && let Ok(name) = selector::name_from_component(path)
+        && component_cache_entry(paths, &name).is_file()
+    {
+        return Ok(());
+    }
     seed(path, paths, now).map(drop)
 }
 
@@ -184,36 +193,19 @@ pub struct Seeded {
 /// axis; a wrong-world component fails at the dispatch/metadata gate,
 /// not during seeding. Relative `path`s anchor at the carried project
 /// root. The shared mirror kernel behind the component-selector ensure
-/// leg and `specify adapter add`.
-///
-/// An unreachable `path` whose derived name is already seeded reports
-/// the existing entry instead of failing — the persisted-mirror
-/// fallback the component-selector ensure leg also relies on. The
-/// engine guest depends on it too: the launcher seeds host-side (the
-/// operator path may live outside the guest's mounts) and the guest
-/// verb then reports over the seeded entry.
+/// leg ([`mirror`], which adds the persisted-mirror fallback) and
+/// `specify adapter add` (strict: a missing path fails even when the
+/// derived name is already cached — a stale entry must not mask a
+/// typo).
 ///
 /// # Errors
 ///
-/// `adapter-component-missing` when `path` is not a `.wasm` file and
-/// no cache entry carries its derived name,
+/// `adapter-component-missing` when `path` is not a `.wasm` file,
 /// `adapter-canonicalize-failed` when it cannot be canonicalized, and
 /// I/O failures from the copy or provenance write.
 pub fn seed(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<Seeded, Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
-    if !absolute.is_file()
-        && let Ok(name) = selector::name_from_component(path)
-    {
-        let entry = component_cache_entry(paths, &name);
-        if entry.is_file() {
-            return Ok(Seeded {
-                name,
-                entry,
-                source: absolute,
-            });
-        }
-    }
     ensure_component_file(&absolute, &path.display().to_string())?;
     let canonical = canonicalize_component(path, paths.project_root())?;
     let name = selector::name_from_component(&canonical)?;

@@ -194,16 +194,11 @@ pub fn locate(
         }
         let meta = paths.locations().store_meta(name, &version);
         if let Err(mismatch) = diagnostics::cache::verify_store_entry(&entry, &meta) {
-            return Err(Error::Diag {
-                code: "adapter-digest-mismatch",
-                detail: format!(
-                    "adapter `{name}@{version}` (axis `{axis}`) store entry at {} failed \
-                     verify-on-read: recorded digest {} but recomputed {}",
-                    entry.display(),
-                    mismatch.recorded,
-                    mismatch.actual,
-                ),
-            });
+            return Err(digest_mismatch(
+                &format!("adapter `{name}@{version}` (axis `{axis}`) store entry at {}", entry.display()),
+                "verify-on-read",
+                &mismatch,
+            ));
         }
         return Ok(AdapterLocation::Store(entry));
     }
@@ -226,4 +221,24 @@ pub fn locate(
             entry.display(),
         ),
     })
+}
+
+/// The locked `adapter-digest-mismatch` envelope for a store entry
+/// whose recomputed content digest no longer matches its sidecar.
+///
+/// `subject` names what the caller was resolving; `phase` is the
+/// verification leg (`verify-on-read` / `verify-after-write`). One
+/// constructor keeps the wording identical across [`locate`], the
+/// hydration kernel, and the deployment launcher.
+#[must_use]
+pub fn digest_mismatch(
+    subject: &str, phase: &str, mismatch: &diagnostics::cache::DigestMismatch,
+) -> Error {
+    Error::Diag {
+        code: "adapter-digest-mismatch",
+        detail: format!(
+            "{subject} failed {phase}: recorded digest {} but recomputed {}",
+            mismatch.recorded, mismatch.actual,
+        ),
+    }
 }

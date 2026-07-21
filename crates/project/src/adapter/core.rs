@@ -46,6 +46,16 @@ impl Axis {
             Self::Target => "targets",
         }
     }
+
+    /// Axis prefix of a routed adapter id — the `<axis>` in
+    /// `<axis>:<name>`, the id the engine names on every seam call.
+    #[must_use]
+    pub const fn prefix(self) -> &'static str {
+        match self {
+            Self::Source => "source",
+            Self::Target => "target",
+        }
+    }
 }
 
 /// One adapter-declared build input from the target's `metadata`
