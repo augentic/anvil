@@ -16,7 +16,9 @@ use project::handler::{CachePlacement, Locations};
 const ENGINE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The injected engine identity — the binary's version pin.
-const ENGINE: launcher::Engine = launcher::Engine { version: ENGINE_VERSION };
+const ENGINE: launcher::Engine = launcher::Engine {
+    version: ENGINE_VERSION,
+};
 
 /// One sandboxed invocation context: a project directory plus explicit
 /// store and cache roots, all inside one tempdir.

@@ -43,7 +43,7 @@ path = "examples/wasm/source.rs"
 crate-type = ["cdylib"]
 
 [[example]]
-name = "mock-target"
+name = "mock"
 path = "examples/wasm/target.rs"
 crate-type = ["cdylib"]
 

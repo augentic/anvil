@@ -6,7 +6,6 @@ script = "rm -rf sandbox/wasm"
 # store (see wasm-run) — the same shape registry hydration leaves.
 [tasks.wasm-build]
 script = '''
-TARGET="${CARGO_TARGET_DIR:-target}"
 cargo build -p specify --lib --examples --target wasm32-wasip2
 cargo build -p specify --bin specify
 '''
@@ -18,33 +17,24 @@ script_runner = "bash"
 script = '''
 set -eo pipefail
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
-export GUEST_TIMEOUT_MS=600000
 export SPECIFY_HOME="$PWD/sandbox/wasm"
 
-TARGET="${CARGO_TARGET_DIR:-target}"
-case "$TARGET" in /*) ;; *) TARGET="$PWD/$TARGET";; esac
-
 # Execute commands in the project directory, not the repository root.
+TARGET="$PWD/target"
 run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
 
-mkdir -p "$SPECIFY_HOME/project" "$SPECIFY_HOME/downloads" "$SPECIFY_HOME/store"
+mkdir -p "$SPECIFY_HOME/project" "$SPECIFY_HOME/store"
 
 # Seed the locally-built engine into the store (entry + digest sidecar).
+ENGINE="$TARGET/wasm32-wasip2/debug/specify.wasm"
 VERSION=$(cargo pkgid -p specify | sed 's/.*#//')
-ENGINE_WASM="$TARGET/wasm32-wasip2/debug/specify.wasm"
-cp "$ENGINE_WASM" "$SPECIFY_HOME/store/engine@${VERSION}.wasm"
-if command -v sha256sum >/dev/null; then
-  HEX=$(sha256sum "$ENGINE_WASM" | awk '{print $1}')
-else
-  HEX=$(shasum -a 256 "$ENGINE_WASM" | awk '{print $1}')
-fi
+
+cp "$ENGINE" "$SPECIFY_HOME/store/engine@${VERSION}.wasm"
+HEX=$(openssl dgst -sha256 -r "$ENGINE" | awk '{print $1}')
 printf 'tree_digest: sha256:%s\n' "$HEX" > "$SPECIFY_HOME/store/engine@${VERSION}.meta"
 
-# Use the target adapter as an operator-supplied component
-cp "$TARGET/wasm32-wasip2/debug/examples/mock_target.wasm" "$SPECIFY_HOME/downloads/mock.wasm"
-
-# Initialise the project and seed the source adapter
-run init "$SPECIFY_HOME/downloads/mock.wasm" --name change
+# Initialise with the mock target; seed the source into the project cache.
+run init "$TARGET/wasm32-wasip2/debug/examples/mock.wasm" --name change
 run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock_source.wasm"
 
 # Author, transition, and execute a plan
